@@ -20,6 +20,8 @@ import {
   hotspotsForMap,
   MAP_IMAGE,
 } from "./content-data.mjs";
+import { EXCURSOES_CAROUSEL_BY_LOCALE } from "./excursoes-carousel-data.mjs";
+import { excursionsCarouselTrackSsrHtml } from "./excursoes-carousel-ssr.mjs";
 import { rewriteHtmlMediaUrls, htmlWithStaticAssetPrefix, toPublicAssetRel } from "./media-url.mjs";
 import {
   extractFirstImage,
@@ -33,6 +35,9 @@ import { premiumRevistaPtBundle, revistaSlugFromPathKey } from "./gcv-premium-re
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
+const PKG_JSON = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8"));
+/** Evita JavaScript antigo em cache (CDN/browser) após cada deploy. */
+const BUILD_ASSET_QUERY = `?v=${encodeURIComponent(String(PKG_JSON.version || "1").trim())}`;
 
 const INSTAGRAM_URL = "https://www.instagram.com/guiachapadaveadeiros/";
 
@@ -91,9 +96,16 @@ const emitSkipContactApi = CONTACT_CLIENT_ONLY && !CONTACT_USE_WEB3FORMS;
 /** Ícone nos resultados de busca / aba — caminho relativamente a `/assets/img/` (ex.: `imagens/favicon.png`). */
 const FAVICON_REL = (process.env.FAVICON_REL || "imagens/favicon.png").replace(/^\//, "");
 
+function gcvRelativePublicJsEnv() {
+  const v = String(process.env.GCV_RELATIVE_JS || "").trim().toLowerCase();
+  return v === "1" || v === "true" || v === "yes";
+}
+
 /**
- * Scripts com URL absoluta no domínio (`/assets/js/...`): evita `../assets` falhar em rewrites/CDN/cache
- * ou página servida sob path inesperado. Opcional: `SITE_PATH_PREFIX=blog` → `/blog/assets/js/...`
+ * Scripts em `assets/js`: por omissão **URL absoluta** na raiz do domínio (`/assets/js/…`) — ideal para
+ * produção (HTTPS) e cache com `?v=` (versão do `package.json`).
+ * `GCV_RELATIVE_JS=1` → caminhos relativos ao HTML (`./` ou `../…`), útil ao abrir `file://`.
+ * `SITE_PATH_PREFIX=blog` → `/blog/assets/js/…`
  */
 function sitePathSegmentsTrimmed() {
   return String(process.env.SITE_PATH_PREFIX || "")
@@ -101,12 +113,23 @@ function sitePathSegmentsTrimmed() {
     .replace(/^\/+|\/+$/g, "");
 }
 
-/** @param {string} file ex.: `site.js` */
-function publicJsSrc(file) {
+/**
+ * @param {string} file ex.: `site.js`
+ * @param {string} [pageOutRelPath] ex.: `es/index.html` — necessário quando `GCV_RELATIVE_JS=1`
+ */
+function publicJsSrc(file, pageOutRelPath) {
   const name = String(file || "").trim().replace(/^\//, "");
-  const prefix = sitePathSegmentsTrimmed();
-  const raw = prefix ? `/${prefix}/assets/js/${name}` : `/assets/js/${name}`;
-  return raw.replace(/\/{2,}/g, "/");
+  const q = BUILD_ASSET_QUERY;
+  const prefixSegment = sitePathSegmentsTrimmed();
+  if (prefixSegment) {
+    const raw = `/${prefixSegment}/assets/js/${name}${q}`;
+    return raw.replace(/\/{2,}/g, "/");
+  }
+  if (gcvRelativePublicJsEnv()) {
+    const ap = pageOutRelPath != null ? assetPrefix(pageOutRelPath) : "./";
+    return `${ap}assets/js/${name}${q}`;
+  }
+  return `/assets/js/${name}${q}`;
 }
 
 function footerShopHref(locale) {
@@ -1067,7 +1090,7 @@ function footerHtml(ctx) {
 </footer>`;
 }
 
-function wrapPageFixed({ lang, topbar, skipLabel, head, header, main, footer, ap, extraFooterScripts = "" }) {
+function wrapPageFixed({ lang, topbar, skipLabel, head, header, main, footer, ap, pageOutRel, extraFooterScripts = "" }) {
   return `<!DOCTYPE html>
 <html lang="${esc(lang)}">
 <head>
@@ -1081,7 +1104,7 @@ ${head}
 ${main}
   </main>
   ${footer}
-  ${extraFooterScripts}<script src="${esc(publicJsSrc("site.js"))}" defer></script>
+  ${extraFooterScripts}<script src="${esc(publicJsSrc("site.js", pageOutRel))}" defer></script>
 </body>
 </html>`;
 }
@@ -1122,6 +1145,7 @@ function homeExcursionsSection(locale) {
   const L = copy[locale];
   if (!L) return "";
   return `    <section id="excursoes-junho" class="gcv-excursoes" data-locale="${esc(locale)}" aria-labelledby="gcv-excursoes-heading">
+      <script type="application/json" id="gcv-excursoes-payload">${safeJsonLd(EXCURSOES_CAROUSEL_BY_LOCALE)}</script>
       <div class="gcv-excursoes__head">
         <span class="gcv-excursoes__badge">${esc(L.badge)}</span>
         <h2 id="gcv-excursoes-heading" class="gcv-excursoes__title">${esc(L.title)}</h2>
@@ -1131,7 +1155,7 @@ function homeExcursionsSection(locale) {
           <i class="ti ti-chevron-left" aria-hidden="true"></i>
         </button>
         <div class="gcv-excursoes__viewport">
-          <div class="gcv-excursoes__track"></div>
+          <div class="gcv-excursoes__track">${excursionsCarouselTrackSsrHtml(locale)}</div>
         </div>
         <button type="button" class="gcv-excursoes__nav gcv-excursoes__nav--next" aria-label="${esc(L.next)}">
           <i class="ti ti-chevron-right" aria-hidden="true"></i>
@@ -1154,7 +1178,7 @@ function homeMainHtml(locale, ap) {
     locale === "en" ? "Highlight navigation" : locale === "es" ? "Navegación de destacados" : "Navegação dos destaques";
 
   const slidesHtml = slides
-    .map((slide) => {
+    .map((slide, i) => {
       const anim = buildHeroAnim(slide.title, slide.lead, slide.sub || "");
       const contactHref = relBetweenSync(cur, outRelPath(locale, "contato.html"));
       const plainChip =
@@ -1171,7 +1195,10 @@ function homeMainHtml(locale, ap) {
             ? `<a class="gcv-hero-line gcv-hero-plain-chip gcv-hero-cta" href="${esc(waUrl(locale))}" target="_blank" rel="noopener noreferrer" style="animation-delay:${anim.ctaStartMs}ms">${WA_SVG}${esc(slide.ctaLabel)}</a>`
             : `<a class="gcv-hero-line gcv-hero-plain-chip gcv-hero-cta" href="${esc(contactHref)}" style="animation-delay:${anim.ctaStartMs}ms">${esc(slide.ctaLabel)}</a>`;
 
-      return `<div class="gcv-hero__slide" data-gcv-hero-slide aria-hidden="true">
+      /** 1.º slide visível no HTML — sem JS (.gcv-hero__slide só ganha opacity com .is-active). */
+      const first = i === 0;
+
+      return `<div class="gcv-hero__slide${first ? " is-active" : ""}" data-gcv-hero-slide aria-hidden="${first ? "false" : "true"}">
   ${heroPictureBg(ap, slide.image, true)}
   <div class="gcv-hero__gradient" aria-hidden="true"></div>
   <div class="gcv-hero-overlay-text">
@@ -1189,7 +1216,9 @@ function homeMainHtml(locale, ap) {
     .map((_, i) => {
       const label =
         locale === "en" ? `Highlight ${i + 1} of ${n}` : locale === "es" ? `Destacado ${i + 1} de ${n}` : `Destaque ${i + 1} de ${n}`;
-      return `<button type="button" class="gcv-hero__dot" data-gcv-hero-dot role="tab" aria-selected="false" aria-label="${esc(
+      const first = i === 0;
+
+      return `<button type="button" class="gcv-hero__dot${first ? " is-active" : ""}" data-gcv-hero-dot role="tab" aria-selected="${first ? "true" : "false"}" aria-label="${esc(
         label,
       )}"></button>`;
     })
@@ -1829,12 +1858,17 @@ function renderPage(locale, pathKey, { title, desc, ogImageRel, current, mainHtm
     main: mainHtml,
     footer,
     ap,
+    pageOutRel: outR,
     extraFooterScripts,
   });
 }
 
 /** --------- run --------- */
 const sitemapUrls = [];
+
+if (gcvRelativePublicJsEnv()) {
+  console.log("[build] GCV_RELATIVE_JS: scripts com caminhos relativos (bom para file://).");
+}
 
 hydrateCmsContratarPostsLiteEnEsOnce();
 
@@ -1869,14 +1903,14 @@ for (const locale of LOCALES) {
       ogImageWidth = 1600;
       ogImageHeight = 900;
     }
-    const pageAp = assetPrefix(outRelPath(locale, pk));
+    const outPk = outRelPath(locale, pk);
     const homeExcursionsHead =
       (locale === "pt" || locale === "en" || locale === "es") && pk === ""
         ? {
             extraCss: ["assets/css/excursoes.css"],
             extraHead: `    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" crossorigin="anonymous" />`,
-            extraFooterScripts: `  <script src="${esc(publicJsSrc("excursoes-carousel.js"))}" defer></script>\n  `,
+            extraFooterScripts: `  <script src="${esc(publicJsSrc("excursoes-carousel.js", outPk))}" defer></script>\n  `,
           }
         : {};
     const html = renderPage(locale, pk, {

@@ -9,6 +9,14 @@
   }
 
   function initHeroCarousel() {
+    try {
+      bootHeroCarousel();
+    } catch (err) {
+      if (typeof console !== "undefined" && console.error) console.error("[gcv-hero]", err);
+    }
+  }
+
+  function bootHeroCarousel() {
     var root = document.querySelector("[data-gcv-hero]");
     if (!root) return;
 

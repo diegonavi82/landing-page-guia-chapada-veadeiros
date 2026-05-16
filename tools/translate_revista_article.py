@@ -147,8 +147,7 @@ def process(pt_path: Path, target: str):
         if lk["href"].startswith("../assets"):
             lk["href"] = "../../assets/" + lk["href"].split("../assets/", 1)[-1]
     for sc in soup.find_all("script", src=re.compile(r"site\.js")):
-        if sc.get("src", "").startswith("../"):
-            sc["src"] = "../../assets/js/site.js"
+        sc["src"] = "/assets/js/site.js"
 
     fix_asset_refs(soup)
 

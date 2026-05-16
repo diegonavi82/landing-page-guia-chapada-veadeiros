@@ -12,6 +12,10 @@
     return SAIDA_HORA_PADRAO;
   }
 
+  /**
+   * Fonte preferida: JSON embutido no HTML pelo `npm run build` (id=`gcv-excursoes-payload`).
+   * Editar sempre `tools/excursoes-carousel-data.mjs`; o objeto EXCURSOES abaixo é só fallback.
+   */
   /** @type {Record<string, Array<Record<string, unknown>>>} */
   var EXCURSOES = {
     pt: [
@@ -297,6 +301,28 @@
     if (lang.indexOf("en") === 0) return "en";
     if (lang.indexOf("es") === 0) return "es";
     return "pt";
+  }
+
+  /**
+   * @param {HTMLElement} root
+   * @returns {Array<Record<string, unknown>>|null}
+   */
+  function loadExcursaoRowsFromPayload(root) {
+    try {
+      var node =
+        (typeof document !== "undefined" && document.getElementById("gcv-excursoes-payload")) ||
+        root.querySelector('script[type="application/json"][id="gcv-excursoes-payload"]');
+      if (!node || typeof node.textContent !== "string" || node.textContent.trim() === "") {
+        return null;
+      }
+      var all = JSON.parse(node.textContent);
+      var loc = detectLocale(root);
+      var rows = Object.prototype.hasOwnProperty.call(all, loc) ? all[loc] : all.pt;
+      return Array.isArray(rows) && rows.length ? rows : null;
+    } catch (err) {
+      if (typeof console !== "undefined" && console.warn) console.warn("[gcv-excursoes] payload JSON", err);
+      return null;
+    }
   }
 
   function tpl(str, map) {
@@ -619,7 +645,9 @@
 
     var locale = detectLocale(root);
     var s = STRINGS[locale] || STRINGS.pt;
-    var excursoes = EXCURSOES[locale] || EXCURSOES.pt;
+    var fromPayload = loadExcursaoRowsFromPayload(root);
+    var excursoes =
+      fromPayload && fromPayload.length ? fromPayload : EXCURSOES[locale] || EXCURSOES.pt;
 
     var track = root.querySelector(".gcv-excursoes__track");
     var viewport = root.querySelector(".gcv-excursoes__viewport");
@@ -630,11 +658,20 @@
 
     var dotsWrap = ensureDotsShell(root, s);
 
-    track.innerHTML = excursoes
-      .map(function (e, i) {
-        return buildCard(e, i, locale, s);
-      })
-      .join("");
+    var html = "";
+    try {
+      html = excursoes
+        .map(function (e, i) {
+          return buildCard(e, i, locale, s);
+        })
+        .join("");
+    } catch (err) {
+      if (typeof console !== "undefined" && console.error) console.error("[gcv-excursoes] buildCard", err);
+      return;
+    }
+    if (html) {
+      track.innerHTML = html;
+    }
 
     var dots = [];
     for (var d = 0; d < excursoes.length; d++) {
@@ -661,7 +698,7 @@
     var STEP = CARD + GAP;
 
     function computeTranslate(i) {
-      var vw = viewport.clientWidth;
+      var vw = Math.max(viewport.clientWidth || 0, 1);
       var mobile = vw < 640;
       var n = excursoes.length;
       var trackW = n * CARD + (n - 1) * GAP;
