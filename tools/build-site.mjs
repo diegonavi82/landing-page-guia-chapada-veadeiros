@@ -74,6 +74,8 @@ if (existsSync(cmsPath)) {
 }
 
 const SITE_ORIGIN = (process.env.SITE_ORIGIN || "https://www.guiachapadaveadeiros.com").replace(/\/$/, "");
+const GOOGLE_SITE_VERIFICATION = (process.env.GOOGLE_SITE_VERIFICATION || "iX1Yk-5FoSjpSbyVkS_XN49QoMuTLDlIVloEAwsEIa8").trim();
+const PUBLISHER_LOGO_ABS = `${SITE_ORIGIN}/wp-content/uploads/2024/05/Logo-Guia-Chapada-Veadeiros-2024.jpg`;
 const CONTACT_POST_URL = (process.env.CONTACT_POST_URL || `${SITE_ORIGIN}/api/contact`).trim();
 const WHATSAPP_PHONE = (process.env.WHATSAPP_PHONE_E164 || "5562982506891").replace(/\D/g, "");
 const CONTACT_EMAIL = process.env.CONTACT_EMAIL || "contato@guiachapadaveadeiros.com";
@@ -729,7 +731,21 @@ function langLinksHtml(locale, pathKey) {
 }
 
 function buildHead(ctx) {
-  const { title, desc, locale, pathKey, ogImageRel, ap, extraCss, ogTitle, ogDesc, extraHead, ogType } = ctx;
+  const {
+    title,
+    desc,
+    locale,
+    pathKey,
+    ogImageRel,
+    ap,
+    extraCss,
+    ogTitle,
+    ogDesc,
+    extraHead,
+    ogType,
+    ogImageWidth,
+    ogImageHeight,
+  } = ctx;
   const ogT = ogTitle ?? title;
   const ogD = ogDesc ?? desc;
   const ogSiteType = ogType || "website";
@@ -758,23 +774,33 @@ function buildHead(ctx) {
   const faviconSizesAttr = faviconMime === "image/png" ? ' sizes="192x192"' : "";
   const appleTouchSizesAttr = faviconMime === "image/png" ? ' sizes="180x180"' : "";
 
+  const ogLocale = locale === "pt" ? "pt_BR" : locale === "en" ? "en_US" : "es_ES";
+  const ogLocaleAlternate = LOCALES.filter((l) => l !== locale)
+    .map((l) => (l === "pt" ? "pt_BR" : l === "en" ? "en_US" : "es_ES"))
+    .map((tag) => `    <meta property="og:locale:alternate" content="${esc(tag)}" />`)
+    .join("\n");
+
   return `<meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light" />
     <meta name="theme-color" content="#0f3d2e" />
-    <link rel="icon" href="${esc(faviconAbs)}" type="${esc(faviconMime)}"${faviconSizesAttr} />
+    ${GOOGLE_SITE_VERIFICATION ? `<meta name="google-site-verification" content="${esc(GOOGLE_SITE_VERIFICATION)}" />\n    ` : ""}<link rel="icon" href="${esc(faviconAbs)}" type="${esc(faviconMime)}"${faviconSizesAttr} />
     <link rel="apple-touch-icon" href="${esc(faviconAbs)}"${appleTouchSizesAttr} />
     <title>${esc(title)}</title>
     <meta name="description" content="${esc(desc)}" />
     <link rel="canonical" href="${esc(canon)}" />
 ${hreflangBlock}
     <meta property="og:type" content="${esc(ogSiteType)}" />
-    <meta property="og:locale" content="${esc(locale === "pt" ? "pt_BR" : locale === "en" ? "en_US" : "es_ES")}" />
+    <meta property="og:site_name" content="Guia Chapada Veadeiros" />
+    <meta property="og:locale" content="${esc(ogLocale)}" />
+${ogLocaleAlternate}
     <meta property="og:url" content="${esc(canon)}" />
     <meta property="og:title" content="${esc(ogT)}" />
     <meta property="og:description" content="${esc(ogD)}" />
-    ${ogAbs ? `<meta property="og:image" content="${esc(ogAbs)}" />` : ""}
-    <meta name="twitter:card" content="summary_large_image" />
+    ${ogAbs ? `<meta property="og:image" content="${esc(ogAbs)}" />\n    ` : ""}${ogAbs && ogImageWidth ? `<meta property="og:image:width" content="${esc(String(ogImageWidth))}" />\n    ` : ""}${ogAbs && ogImageHeight ? `<meta property="og:image:height" content="${esc(String(ogImageHeight))}" />\n    ` : ""}<meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="${esc(ogT)}" />
+    <meta name="twitter:description" content="${esc(ogD)}" />
+    ${ogAbs ? `<meta name="twitter:image" content="${esc(ogAbs)}" />` : ""}
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
@@ -860,7 +886,7 @@ function footerHtml(ctx) {
       </nav>
       <div class="footer-col footer-support">
         <h3 class="footer-col-title">${esc(F.colSupport)}</h3>
-        <p><strong>${esc(F.whatsappLabel)}</strong> +55 62 98250-6891</p>
+        <p><strong>${esc(F.whatsappLabel)}</strong> <a href="https://wa.me/${WHATSAPP_PHONE}" rel="noopener noreferrer" target="_blank">${esc(S.contact.phoneDisplay)}</a></p>
         <p><strong>${esc(F.emailLabel)}</strong> <a href="mailto:${esc(CONTACT_EMAIL)}">${esc(CONTACT_EMAIL)}</a></p>
         <p><strong>${esc(F.baseLabel)}</strong> ${esc(F.baseValue)}</p>
       </div>
@@ -981,6 +1007,20 @@ function homeMainHtml(locale, ap) {
     areaServed: { "@type": "AdministrativeArea", name: "Chapada dos Veadeiros" },
   };
 
+  const webSiteLd = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "Guia Chapada Veadeiros",
+    url: `${SITE_ORIGIN}${locale === "pt" ? "/" : `/${locale}/`}`,
+    inLanguage: S.htmlLang,
+    publisher: {
+      "@type": "Organization",
+      name: "Guia Chapada Veadeiros",
+      url: SITE_ORIGIN,
+      logo: { "@type": "ImageObject", url: PUBLISHER_LOGO_ABS },
+    },
+  };
+
   return `<div class="official-home-shell gcv-page-pad">
   <div class="gcv-home-max">
     <section class="gcv-hero" data-gcv-hero role="region" aria-roledescription="${esc(roleDesc)}">
@@ -1033,6 +1073,7 @@ ${featuredCards}
     ${homeReviewsRichHtml(locale, ap)}
   </div>
 </div>
+<script type="application/ld+json">${safeJsonLd(webSiteLd)}</script>
 <script type="application/ld+json">${safeJsonLd(jsonLd)}</script>`;
 }
 
@@ -1062,7 +1103,6 @@ function contatoMain(locale, ap) {
 <div class="gcv-contact-grid">
 <div class="gcv-contact-form-shell">
 <h2 class="gcv-contact-form-title">${esc(c.formTitle)}</h2>
-<p class="gcv-contact-form-intro">${esc(c.formIntroBefore)}<strong class="gcv-contact-intro-strong">${esc(c.formIntroStrong)}</strong>${esc(CONTACT_USE_WEB3FORMS ? c.formIntroWeb3Forms : c.formIntroAfter)}</p>
 <div id="gcv-contact-sent" class="gcv-contact-sent" hidden>
 <p class="gcv-contact-sent__title">${esc(c.successTitle)}</p>
 <p class="gcv-contact-sent__line">${esc(c.successLine)}</p>
@@ -1540,7 +1580,7 @@ function revistaPostMain(locale, post, ap, pathKey) {
 <script type="application/ld+json">${safeJsonLd(jsonLd)}</script>`;
 }
 
-function renderPage(locale, pathKey, { title, desc, ogImageRel, current, mainHtml, extraCss, ogTitle, ogDesc, extraHead, ogType }) {
+function renderPage(locale, pathKey, { title, desc, ogImageRel, current, mainHtml, extraCss, ogTitle, ogDesc, extraHead, ogType, ogImageWidth, ogImageHeight }) {
   const outR = outRelPath(locale, pathKey);
   const ap = assetPrefix(outR);
   const head = buildHead({
@@ -1555,6 +1595,8 @@ function renderPage(locale, pathKey, { title, desc, ogImageRel, current, mainHtm
     ogDesc,
     extraHead,
     ogType,
+    ogImageWidth,
+    ogImageHeight,
   });
   const header = headerHtml({ locale, pathKey, ap, current });
   const footer = footerHtml({ locale, pathKey, ap });
@@ -1598,10 +1640,19 @@ for (const locale of LOCALES) {
       title = `${S.atrativosHub.title} | Guia Chapada Veadeiros`;
       desc = S.atrativosHub.lead;
     }
+    const HERO_SLIDE_OG = "imagens/hero-slide-01-guias-locais-cachoeira.png";
+    let ogImageWidth;
+    let ogImageHeight;
+    if (og === HERO_SLIDE_OG) {
+      ogImageWidth = 1600;
+      ogImageHeight = 900;
+    }
     const html = renderPage(locale, pk, {
       title,
       desc,
       ogImageRel: og,
+      ogImageWidth,
+      ogImageHeight,
       current: p.current,
       mainHtml: p.main(locale),
     });
@@ -1722,6 +1773,12 @@ for (const locale of LOCALES) {
     writePage(locale, pk, html);
     sitemapUrls.push(`${SITE_ORIGIN}${localePathToUrl(locale, pk)}`);
   }
+}
+
+/** Páginas estáticas feitas à mão (não passam pelo template do build). */
+const SITEMAP_STATIC_REVISTA_SLUG = "revista/ataque-onca-parda-chapada-veadeiros.html";
+for (const locale of LOCALES) {
+  sitemapUrls.push(`${SITE_ORIGIN}${localePathToUrl(locale, SITEMAP_STATIC_REVISTA_SLUG)}`);
 }
 
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>

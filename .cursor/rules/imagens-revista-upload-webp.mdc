@@ -1,0 +1,26 @@
+---
+description: Fluxo obrigatório para novas fotos na revista — WebP + JPEG antes de referenciar
+globs: assets/img/**/*,revista/**/*,**/revista.html,**/revista/**,tools/**/*.{mjs,js}
+alwaysApply: false
+---
+
+# Imagens para `assets/img/uploads/`
+
+Antes de **ligar no HTML** qualquer JPG/PNG novo para a revista:
+
+1. Coloque o ficheiro-bruto em `assets/img/uploads/_inbox-revista/` com nome simples (`onca-arvore-hero.png`).
+2. Na raiz do site rode:
+
+```bash
+node tools/optimize-revista-upload.mjs onca-arvore-hero.png nome-sem-ext uploads/revista/<subpasta>/
+```
+
+Gera `{nome-sem-ext}.webp` e `{nome-sem-ext}.jpg` na pasta final — **prioridade WebP** no `<picture>`; JPEG só como fallback `<img>`.
+
+3. No markup use sempre `<picture><source type="image/webp">` + `<img src="…jpg">`.
+
+4. **Open Graph / Twitter / JSON-LD:** pode usar o mesmo URL `.webp` em `og:image`, `twitter:image` e na propriedade `image` do `Article`. Alguns crawlers mais antigos ainda tratam JPG com melhor suporte — se algo não pré-visualizar bem, repetir só o JPG nessas metas mantendo `<picture>` com WebP no corpo da página.
+
+5. Opcional: largura máxima em pixéis como **último** argumento (ex.: `1400`; default script `1920`).
+
+Não usar PNG/JPG grandes na pasta definitiva como única cópia — sempre passar pelo script.

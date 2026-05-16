@@ -254,12 +254,6 @@ export const STRINGS = {
       title: "Contato",
       subtitle: "Fale com o Guia Chapada dos Veadeiros.",
       formTitle: "Envie uma mensagem",
-      formIntroBefore: "Preencha os campos e clique em ",
-      formIntroStrong: "Enviar",
-      formIntroAfter:
-        ". Tentamos enviar também pela API do site (e-mail no servidor quando estiver configurado). Se você abrir a página como arquivo salvo no computador ou se a conexão com a API falhar, abrimos o WhatsApp do atendimento e o seu cliente de e-mail já com o texto — conclua o envio nos dois canais.",
-      formIntroWeb3Forms:
-        " Os dados são enviados por e-mail para nossa equipe pelo Web3Forms (formulário na nuvem — ideal para site estático). Se o envio falhar, oferecemos WhatsApp e e-mail no seu aparelho como alternativa.",
       labelName: "Nome",
       labelSubject: "Assunto / tipo de contato",
       labelEmail: "Email (opcional)",
@@ -400,12 +394,6 @@ export const STRINGS = {
       title: "Contact",
       subtitle: "Get in touch with Guia Chapada dos Veadeiros.",
       formTitle: "Send a message",
-      formIntroBefore: "Fill in the fields and click ",
-      formIntroStrong: "Send",
-      formIntroAfter:
-        ". We submit through the site API when your connection allows (server email when configured). If you open the page from a local file or the API is unreachable, we open WhatsApp and your email app prefilled — finish sending on both.",
-      formIntroWeb3Forms:
-        " Your details are emailed to us through Web3Forms (hosted form service). If that fails, we fall back to opening WhatsApp and your mail app on this device.",
       labelName: "Name",
       labelSubject: "Subject / type of contact",
       labelEmail: "Email (optional)",
@@ -546,12 +534,6 @@ export const STRINGS = {
       title: "Contacto",
       subtitle: "Habla con el Guía Chapada dos Veadeiros.",
       formTitle: "Envía un mensaje",
-      formIntroBefore: "Completa los campos y pulsa ",
-      formIntroStrong: "Enviar",
-      formIntroAfter:
-        ". Intentamos registrarlo por la API del sitio (correo en el servidor cuando esté configurado). Si ves la página como archivo local o la API falla, abrimos WhatsApp y tu cliente de correo con el texto listo para que envíes por ambos canales.",
-      formIntroWeb3Forms:
-        " Los datos se envían por correo con Web3Forms (servicio en la nube). Si falla, ofrecemos WhatsApp y correo en tu dispositivo como alternativa.",
       labelName: "Nombre",
       labelSubject: "Asunto / tipo de contacto",
       labelEmail: "Correo (opcional)",

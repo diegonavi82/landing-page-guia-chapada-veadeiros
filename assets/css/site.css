@@ -2550,3 +2550,62 @@ table.season th {
   inset: 0;
   z-index: 2;
 }
+
+/* Botão WhatsApp fixo — apenas telemóvel / tablet (index e páginas que reutilizem a classe) */
+.gcv-float-wa {
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .gcv-float-wa {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    right: max(1rem, env(safe-area-inset-right, 0px));
+    bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+    z-index: 9000;
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: 50%;
+    background: #25d366;
+    color: #fff;
+    box-shadow: 0 0.35rem 1.25rem rgba(15, 61, 46, 0.35),
+      0 0 0 1px rgba(255, 255, 255, 0.12) inset;
+    text-decoration: none;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .gcv-float-wa:hover {
+    transform: scale(1.06);
+    box-shadow: 0 0.5rem 1.5rem rgba(15, 61, 46, 0.42),
+      0 0 0 1px rgba(255, 255, 255, 0.15) inset;
+  }
+
+  .gcv-float-wa:focus-visible {
+    outline: 3px solid #0f3d2e;
+    outline-offset: 3px;
+  }
+
+  .gcv-float-wa svg {
+    width: 1.75rem;
+    height: 1.75rem;
+    flex-shrink: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gcv-float-wa {
+    transition: none;
+  }
+
+  .gcv-float-wa:hover {
+    transform: none;
+  }
+}
+
+@media print {
+  .gcv-float-wa {
+    display: none !important;
+  }
+}

@@ -63,7 +63,7 @@ function authorCard(h, innerHtml) {
 }
 
 const AUTHOR_BIO = `<p>
-        Brasileiro, pai, nascido no Rio de Janeiro, cidadão italiano por descendência, analista de sistemas pela
+        Brasileiro, pai, nascido no Rio de Janeiro, descendência italiana, analista de sistemas pela
         PUC-RIO, <strong>Diego Navi</strong> trocou o escritório pelo cerrado e fundou a Guia Chapada Veadeiros em 2017. Fluente
         em inglês e espanhol, conduziu centenas de grupos com segurança pela Chapada dos Veadeiros em todas as
         épocas do ano e conhece cada cachoeira, cada trilha e cada cantinho deste portal da Terra desde 2009.
