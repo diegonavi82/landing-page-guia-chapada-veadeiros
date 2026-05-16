@@ -702,13 +702,16 @@ export const ARTICLE_CONTRATAR = {
 <p>Hiring locally is also <strong>saved time and less stress</strong>: fewer U-turns, more crystal pools and more living stories about the biome.</p>`,
   },
   es: {
-    title: "¿Por qué contratar un guía local en Chapada dos Veadeiros?",
-    desc: "Seguridad, mejor uso del tiempo, fotos memorables y rutas que solo quien vive aquí domina — con Cadastur.",
+    title:
+      "¿Por qué es tan importante contratar un guía en excursiones por senderos y naturaleza?",
+    desc:
+      "Contratar guía turístico no es un lujo: marca la diferencia entre una salida segura y memorable y una aventura que puede terminar mal. Entienda por qué un conductor acreditado (Cadastur) es indispensable en Chapada dos Veadeiros.",
     path: "revista/contratar-guia-local-chapada-veadeiros.html",
-    blocks: `<p class="lead">En la naturaleza cada minuto cuenta: aparcamiento, luz del sol, senderos cerrados, alternativas con lluvia y normas del Parque Nacional casi nunca están en una app genérica — están con quien trabaja cada día en la Chapada.</p>
-<p>Un <strong>guía habilitado</strong> vuelve el cerrado más seguro: ritmo acorde al grupo, lectura de riesgos (calor, rocas resbaladizas, carga del sendero) y plan B si el clima cambia.</p>
-<p>También lograrás <strong>mejores fotos</strong> — encuadre, luz y rincones tranquilos forman parte del oficio. El día deja de ser “suerte en Google Maps” y pasa a ser una ruta memorable.</p>
-<p>Contratar local es <strong>ahorrar tiempo y estrés</strong>: menos vueltas, más pozas cristalinas y más historia viva del bioma.</p>`,
+    blocks: `<p class="lead">Chapada dos Veadeiros es uno de los destinos de ecoturismo más extraordinarios de Brasil: cascadas de agua cristalina, senderos en el cerrado nativo, pozos verde-esmeralda y formaciones rocosas milenarias. También es un entorno salvaje que exige respeto y, sobre todo, <strong>conocimiento local</strong>.</p>
+<p>Ahí aparece el rol insustituible del <strong>guía de turismo habilitado</strong>: cada minuto cuenta — aparcamiento, luz del sol, senderos cerrados, alternativas con lluvia y normas del Parque Nacional casi nunca están en una app genérica; están con quien trabaja cada día en la Chapada.</p>
+<p>El guía traduce el cerrado en experiencia segura: ritmo acorde al grupo, lectura de riesgos (calor, rocas resbaladizas, carga del sendero) y plan B cuando el clima cambia a mitad del día.</p>
+<p>También tendrás <strong>mejores fotos</strong> — encuadre, luz y rincones menos concurridos son parte del oficio. El día deja de ser “suerte en Google Maps” y se convierte en una ruta memorable.</p>
+<p>Contratar local es <strong>ahorrar tiempo y estrés</strong>: menos idas y venidas, más pozas cristalinas y más historia viva del bioma.</p>`,
   },
 };
 

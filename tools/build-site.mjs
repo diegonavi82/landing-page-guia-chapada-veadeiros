@@ -118,8 +118,23 @@ const REVISTA_ESSENTIAL_ORDER = [
   "contratar-guia-local-chapada-veadeiros",
 ];
 
+/**
+ * Teaser da home: só estas matérias editoriais fixas — evita sumir quando `postsLite` do CMS
+ * ganha vários posts (ordenação global por data empurra a onça / outras pra fora do slice(3)).
+ */
+const REVISTA_HOME_TEASER_SLUGS = new Set([
+  "ataque-onca-parda-chapada-veadeiros",
+  "melhor-epoca-visitar-chapada-dos-veadeiros",
+  "contratar-guia-local-chapada-veadeiros",
+]);
+
 function normalizeRevistaSlug(post) {
-  return String(post?.slug || "").trim();
+  const raw = String(post?.slug ?? post?.baseSlug ?? "").trim();
+  let s = raw.replace(/\\/g, "/");
+  const ri = s.toLowerCase().indexOf("revista/");
+  if (ri !== -1) s = s.slice(ri + "revista/".length);
+  s = s.replace(/^\.\/+/, "").replace(/\.html?$/i, "");
+  return s.trim();
 }
 
 /** Espelho de frontend/cliente/src/config/wpUploadsAssets.ts (detailImageByPageSlug) */
@@ -357,17 +372,10 @@ function normalizeStaticRevistaLocaleFields(post, locale) {
   return post;
 }
 
-/** API + artigos estáticos (mesma ideia que `mergeRevistaTeaserPosts` no cliente). */
-function revistaHubMergedPosts(locale) {
-  const fromApi = CMS?.locales?.[locale]?.postsLite ?? [];
+/** Fallbacks editoriais para o merge e base fixa dos 3 teasers na home (sempre 3 cards). */
+function editorialRevistaFallbackTriplet(locale) {
   const chip = STRINGS[locale].revistaPage.chipDefault;
-  const bySlug = new Map();
-  for (const p of fromApi) {
-    const slug = normalizeRevistaSlug(p);
-    if (!slug) continue;
-    bySlug.set(slug, { ...p, slug });
-  }
-  const fallbacks = [
+  return [
     {
       slug: "melhor-epoca-visitar-chapada-dos-veadeiros",
       title: ARTICLE_EPOCA[locale].title,
@@ -396,6 +404,62 @@ function revistaHubMergedPosts(locale) {
       categories: [{ name: ARTICLE_ONCA_PARDA[locale].chip, slug: "seguranca" }],
     },
   ];
+}
+
+/** Iguala slugs com/sem acento (ex.: onça/onca no JSON do WP). */
+function homeTeaserCanonSlug(normSlug) {
+  const fold = (s) =>
+    String(s || "")
+      .trim()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+  const n = fold(normSlug);
+  if (!n) return "";
+  for (const canon of REVISTA_HOME_TEASER_SLUGS) {
+    if (fold(canon) === n) return canon;
+  }
+  return "";
+}
+
+const CMS_CONTRATAR_SLUG = "contratar-guia-local-chapada-veadeiros";
+let didHydrateCmsContratarPostsLiteEnEs = false;
+
+/** O export do WP costuma duplicar título/resumo em PT dentro de `postsLite.en`/`postsLite.es`. Normaliza uma vez para ARTICLE_* (fonte editorial). */
+function hydrateCmsContratarPostsLiteEnEsOnce() {
+  if (didHydrateCmsContratarPostsLiteEnEs || !CMS?.locales) return;
+  didHydrateCmsContratarPostsLiteEnEs = true;
+  for (const loc of /** @type {const} */ (["en", "es"])) {
+    const arr = CMS.locales[loc]?.postsLite;
+    if (!Array.isArray(arr)) continue;
+    const idx = arr.findIndex((p) => normalizeRevistaSlug(p) === CMS_CONTRATAR_SLUG);
+    if (idx === -1) continue;
+    const A = ARTICLE_CONTRATAR[loc];
+    const cur = arr[idx];
+    arr[idx] = {
+      ...cur,
+      title: A.title,
+      excerpt: A.desc,
+      seoTitle: A.title,
+      seoDescription: A.desc,
+      featuredImageAlt: A.title,
+    };
+  }
+}
+
+/** API + artigos estáticos (mesma ideia que `mergeRevistaTeaserPosts` no cliente). */
+function revistaHubMergedPosts(locale) {
+  const fromApi = CMS?.locales?.[locale]?.postsLite ?? [];
+  const chip = STRINGS[locale].revistaPage.chipDefault;
+  const bySlug = new Map();
+  for (const p of fromApi) {
+    let slug = normalizeRevistaSlug(p);
+    if (!slug) continue;
+    const canonHome = homeTeaserCanonSlug(slug);
+    if (canonHome) slug = canonHome;
+    bySlug.set(slug, { ...p, slug });
+  }
+  const fallbacks = editorialRevistaFallbackTriplet(locale);
   for (const p of fallbacks) {
     if (!bySlug.has(p.slug)) bySlug.set(p.slug, p);
   }
@@ -409,6 +473,33 @@ function revistaHubMergedPosts(locale) {
     list.sort((a, b) => revistaTeaserSortTime(b) - revistaTeaserSortTime(a));
   }
   return list;
+}
+
+/** Na home sempre 3 cartões editorial: skeleton + opcional dados do CMS (slug canônico, tolera acentos no JSON). */
+function revistaHubHomeTeaserPosts(locale) {
+  const mergedFlat = revistaHubMergedPosts(locale);
+  const byCanon = new Map();
+  for (const p of mergedFlat) {
+    const canon = homeTeaserCanonSlug(normalizeRevistaSlug(p));
+    if (!canon || !REVISTA_HOME_TEASER_SLUGS.has(canon)) continue;
+    const cur = byCanon.get(canon);
+    if (!cur || revistaTeaserSortTime(p) > revistaTeaserSortTime(cur)) {
+      byCanon.set(canon, { ...p, slug: canon });
+    }
+  }
+  const skeleton = editorialRevistaFallbackTriplet(locale);
+  const picked = skeleton.map((base) =>
+    normalizeStaticRevistaLocaleFields(
+      {
+        ...base,
+        ...(byCanon.get(base.slug) || {}),
+        slug: base.slug,
+      },
+      locale,
+    ),
+  );
+  picked.sort((a, b) => revistaTeaserSortTime(b) - revistaTeaserSortTime(a));
+  return picked;
 }
 
 function revistaCapaCardHtml(post, href, ap, chipFallback, locale) {
@@ -626,12 +717,12 @@ function homeRevistaTeaserHtml(locale, ap, cur) {
   const CONTRATAR_SLUG = "contratar-guia-local-chapada-veadeiros";
   const EPOCA_SLUG = "melhor-epoca-visitar-chapada-dos-veadeiros";
   const ONCA_SLUG = "ataque-onca-parda-chapada-veadeiros";
-  const top = revistaHubMergedPosts(locale).slice(0, 3);
+  const top = revistaHubHomeTeaserPosts(locale);
 
   if (top.length > 0) {
     const cards = top
       .map((post) => {
-        const slugStr = String(post.slug || "");
+        const slugStr = normalizeRevistaSlug(post);
         let cardTitle = post.title;
         let cardExcerpt = (post.excerpt || "").trim();
         let cardImgAlt = post.featuredImageAlt || post.title;
@@ -651,7 +742,7 @@ function homeRevistaTeaserHtml(locale, ap, cur) {
           cardExcerpt = A.desc.trim();
           cardImgAlt = post.featuredImageAlt || A.title;
         }
-        const pk = revistaPathKey(post.slug);
+        const pk = revistaPathKey(slugStr);
         const href = relBetweenSync(cur, outRelPath(locale, pk));
         const imgRel =
           toPublicAssetRel(post.featuredImage) || "imagens/hero-slide-01-guias-locais-cachoeira.png";
@@ -1339,7 +1430,7 @@ function revistaHubMain(locale, ap, pathKey) {
   if (useEssentialTwoUp) {
     const pairGrid = merged
       .map((post) => {
-        const pk = revistaPathKey(post.slug);
+        const pk = revistaPathKey(normalizeRevistaSlug(post));
         const href = relBetweenSync(cur, outRelPath(locale, pk));
         return revistaListaCardHtml(post, href, ap, P.chipDefault, locale);
       })
@@ -1362,7 +1453,7 @@ ${pairGrid}
   const railCards = rest
     .slice(0, 5)
     .map((post) => {
-      const pk = revistaPathKey(post.slug);
+      const pk = revistaPathKey(normalizeRevistaSlug(post));
       const href = relBetweenSync(cur, outRelPath(locale, pk));
       return revistaListaCardHtml(post, href, ap, P.chipDefault, locale);
     })
@@ -1373,7 +1464,7 @@ ${pairGrid}
     const strip = rest
       .slice(5, 14)
       .map((post) => {
-        const pk = revistaPathKey(post.slug);
+        const pk = revistaPathKey(normalizeRevistaSlug(post));
         const href = relBetweenSync(cur, outRelPath(locale, pk));
         return revistaListaCardHtml(post, href, ap, P.chipDefault, locale);
       })
@@ -1384,7 +1475,7 @@ ${pairGrid}
 ${rest
   .slice(14)
   .map((post) => {
-    const pk = revistaPathKey(post.slug);
+    const pk = revistaPathKey(normalizeRevistaSlug(post));
     const href = relBetweenSync(cur, outRelPath(locale, pk));
     return revistaListaCardHtml(post, href, ap, P.chipDefault, locale);
   })
@@ -1727,6 +1818,8 @@ function renderPage(locale, pathKey, { title, desc, ogImageRel, current, mainHtm
 /** --------- run --------- */
 const sitemapUrls = [];
 
+hydrateCmsContratarPostsLiteEnEsOnce();
+
 for (const locale of LOCALES) {
   const pages = [
     { key: "", titleKey: "home", current: "home", main: (l) => homeMainHtml(l, assetPrefix(outRelPath(l, ""))) },
@@ -1785,10 +1878,11 @@ for (const locale of LOCALES) {
   const revistaBuilt = new Set();
   const posts = CMS?.locales?.[locale]?.postsLite ?? [];
   for (const post of posts) {
-    const pk = revistaPathKey(post.slug);
+    const postSlug = normalizeRevistaSlug(post);
+    const pk = revistaPathKey(postSlug);
     revistaBuilt.add(pk);
     const premium =
-      locale === "pt" ? premiumRevistaPtBundle(post.slug, premiumRevistaHelpers(locale, pk)) : null;
+      locale === "pt" ? premiumRevistaPtBundle(postSlug, premiumRevistaHelpers(locale, pk)) : null;
     if (premium) {
       const html = renderPage(locale, pk, {
         title: premium.fullTitle,
@@ -1806,7 +1900,7 @@ for (const locale of LOCALES) {
       sitemapUrls.push(`${SITE_ORIGIN}${localePathToUrl(locale, pk)}`);
       continue;
     }
-    const slugNorm = normalizeRevistaSlug(post);
+    const slugNorm = postSlug;
     const apPk = assetPrefix(outRelPath(locale, pk));
     /** `cms-generated` repete texto PT em todas as locales para estes slugs — corpo está em ARTICLE_* */
     if (slugNorm === "contratar-guia-local-chapada-veadeiros") {
