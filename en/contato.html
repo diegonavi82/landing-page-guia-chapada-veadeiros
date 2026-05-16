@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#0f3d2e" />
+    <link rel="icon" href="https://www.guiachapadaveadeiros.com/assets/img/imagens/favicon.png" type="image/png" sizes="192x192" />
+    <link rel="apple-touch-icon" href="https://www.guiachapadaveadeiros.com/assets/img/imagens/favicon.png" sizes="180x180" />
+    <title>Contact | Guia Chapada Veadeiros</title>
+    <meta name="description" content="Get in touch with Guia Chapada dos Veadeiros." />
+    <link rel="canonical" href="https://www.guiachapadaveadeiros.com/en/contato" />
+    <link rel="alternate" hreflang="pt-BR" href="https://www.guiachapadaveadeiros.com/contato" />
+    <link rel="alternate" hreflang="en" href="https://www.guiachapadaveadeiros.com/en/contato" />
+    <link rel="alternate" hreflang="es" href="https://www.guiachapadaveadeiros.com/es/contato" />
+    <link rel="alternate" hreflang="x-default" href="https://www.guiachapadaveadeiros.com/contato" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:url" content="https://www.guiachapadaveadeiros.com/en/contato" />
+    <meta property="og:title" content="Contact | Guia Chapada Veadeiros" />
+    <meta property="og:description" content="Get in touch with Guia Chapada dos Veadeiros." />
+    <meta property="og:image" content="https://www.guiachapadaveadeiros.com/assets/img/imagens/hero-slide-01-guias-locais-cachoeira.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../assets/css/site.css" />
+    <link rel="stylesheet" href="../assets/css/gcv-detail.css" />
+</head>
+<body>
+  <a class="skip-link" href="#conteudo">Skip to content</a>
+  <div class="topbar">+55 62 98250-6891 | contato@guiachapadaveadeiros.com</div>
+  <header class="site-header">
+  <div class="header-inner">
+    <a class="logo-link" href="index.html">
+      <picture>
+  <source srcset="../assets/img/imagens/logo-guia-chapada-veadeiros-oficial.webp" type="image/webp" />
+  <img src="../assets/img/imagens/logo-guia-chapada-veadeiros-oficial.png" alt="Guia Chapada Veadeiros" width="1024" height="189" loading="eager" decoding="async" fetchpriority="high" />
+</picture>
+    </a>
+    <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="nav-main">Menu</button>
+    <nav class="nav-main" id="nav-main" aria-label="Principal">
+      <a href="index.html" >Home</a>
+      <a href="revista.html" >Magazine</a>
+      <a href="atrativos.html" >Attractions</a>
+      <a href="contato.html"  aria-current="page">Contact</a>
+      <a class="nav-search" href="https://www.guiachapadaveadeiros.com/en/busca" aria-label="Search">⌕</a>
+      <div class="lang-switch" role="navigation" aria-label="Language"><a href="../contato.html" hreflang="pt-BR" lang="pt-BR">PT</a>
+    <a href="#" aria-current="true" lang="en">EN</a>
+    <a href="../es/contato.html" hreflang="es" lang="es">ES</a></div>
+    </nav>
+  </div>
+</header>
+  <main id="conteudo">
+<div class="gcv-contact-page">
+<article class="gcv-contact-article">
+<p class="gcv-contact-kicker">Guia Chapada</p>
+<h1 class="gcv-contact-h1">Contact</h1>
+<p class="gcv-contact-sub">Get in touch with Guia Chapada dos Veadeiros.</p>
+<div class="gcv-contact-grid">
+<div class="gcv-contact-form-shell">
+<h2 class="gcv-contact-form-title">Send a message</h2>
+<p class="gcv-contact-form-intro">Fill in the fields and click <strong class="gcv-contact-intro-strong">Send</strong>. We submit through the site API when your connection allows (server email when configured). If you open the page from a local file or the API is unreachable, we open WhatsApp and your email app prefilled — finish sending on both.</p>
+<div id="gcv-contact-sent" class="gcv-contact-sent" hidden>
+<p class="gcv-contact-sent__title">Message sent</p>
+<p class="gcv-contact-sent__line">Success! Your message was sent.</p>
+<p class="gcv-contact-sent__thanks">We’ll get back to you soon. Thank you!</p>
+<div class="gcv-contact-sent__actions">
+<button type="button" class="gcv-contact-btn gcv-contact-btn--secondary" id="gcv-contact-sent-reset">Clear</button>
+</div>
+</div>
+<form id="gcv-contact-form" class="gcv-contact-form" novalidate
+  data-endpoint="https://www.guiachapadaveadeiros.com/api/contact"
+  data-locale="en"
+  data-accept-language="en-US,en;q=0.9,pt-BR;q=0.6"
+  data-error-prefix="Could not send: "
+  data-whatsapp-phone="5562982506891"
+  data-contact-email="contato@guiachapadaveadeiros.com"
+  data-dual-success-title="Finish on WhatsApp &amp; email"
+  data-dual-success-line="WhatsApp support and your email client opened with everything filled in. Hit send in both so we reliably receive your message."
+  data-dual-success-thanks="If nothing opened, allow pop-ups for this site or use the WhatsApp/email links beside the form.">
+<div id="gcv-contact-error" class="gcv-contact-error" role="alert" hidden></div>
+<div class="gcv-contact-field">
+<label class="gcv-contact-label" for="contato-nome">Name</label>
+<input class="gcv-contact-input" id="contato-nome" name="nome" type="text" autocomplete="name" required minlength="2" />
+</div>
+<div class="gcv-contact-field">
+<label class="gcv-contact-label" for="contato-tipo">Subject / type of contact</label>
+<select class="gcv-contact-input gcv-contact-select" id="contato-tipo" name="tipo" required>
+<option value="elogio">Compliment</option>
+<option value="reclamacao">Complaint</option>
+<option value="duvida">Question</option>
+<option value="orcamento" selected>Quote or booking</option>
+<option value="outro">Other</option>
+</select>
+</div>
+<div class="gcv-contact-field-row">
+<div class="gcv-contact-field">
+<label class="gcv-contact-label" for="contato-email">Email (optional)</label>
+<input class="gcv-contact-input" id="contato-email" name="email" type="email" autocomplete="email" placeholder="you@example.com" />
+</div>
+<div class="gcv-contact-field">
+<label class="gcv-contact-label" for="contato-fone">WhatsApp or phone (optional)</label>
+<input class="gcv-contact-input" id="contato-fone" name="telefone" type="tel" autocomplete="tel" placeholder="+55 62 99999 9999" />
+</div>
+</div>
+<div class="gcv-contact-field gcv-contact-field--grow">
+<label class="gcv-contact-label" for="contato-msg">Message</label>
+<textarea class="gcv-contact-textarea" id="contato-msg" name="mensagem" required rows="6" minlength="10" maxlength="4000" placeholder="Tell us how we can help..."></textarea>
+</div>
+<div class="gcv-contact-actions">
+<button type="submit" class="gcv-contact-btn gcv-contact-btn--primary" data-label-submit="Send" data-label-sending="Sending...">Send</button>
+<button type="button" class="gcv-contact-btn gcv-contact-btn--secondary" id="gcv-contact-clear">Clear</button>
+</div>
+</form>
+</div>
+<aside class="gcv-contact-aside">
+<div>
+<p class="gcv-contact-aside__kicker">Service and location</p>
+<p class="gcv-contact-aside__lead">Guia Chapada answers on WhatsApp and by email. Our base is Alto Paraíso de Goiás (Chapada dos Veadeiros).</p>
+</div>
+<ul class="gcv-contact-aside__list">
+<li>
+<div class="gcv-contact-aside__lbl">Phone and WhatsApp</div>
+<a class="gcv-contact-aside__link" href="https://wa.me/5562982506891" rel="noreferrer" target="_blank">+55 62 98250-6891</a>
+</li>
+<li>
+<div class="gcv-contact-aside__lbl">Email</div>
+<a class="gcv-contact-aside__link" href="mailto:contato@guiachapadaveadeiros.com">contato@guiachapadaveadeiros.com</a>
+</li>
+</ul>
+<div class="gcv-contact-aside__block">
+<div class="gcv-contact-aside__lbl">Address (reference)</div>
+<div class="gcv-contact-aside__text">Alto Paraíso de Goiás, Goiás · Brazil</div>
+<div class="gcv-contact-aside__lbl gcv-contact-aside__lbl--spaced">Map</div>
+<div class="gcv-contact-map-wrap">
+<iframe class="gcv-contact-map" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://maps.google.com/maps?q=-14.1319%2C-47.51&amp;z=12&amp;hl=en&amp;output=embed" title="Map — Alto Paraíso de Goiás"></iframe>
+<a class="gcv-contact-map-hit" href="https://www.google.com/maps/search/?api=1&amp;query=Alto+Para%C3%ADso+de+Goi%C3%A1s,+Goi%C3%A1s,+Brasil" rel="noreferrer" target="_blank" aria-label="Open map full screen"></a>
+</div>
+</div>
+</aside>
+</div>
+</article>
+</div>
+  </main>
+  <footer class="site-footer">
+  <div class="footer-shell">
+    <div class="footer-grid">
+      <div class="footer-col footer-col--brand">
+        <div class="footer-brand-thumb"><picture>
+  <source srcset="../assets/img/imagens/parque-nacional-guia-chapada-veadeiros-saltos-rio-preto-garimpao.webp" type="image/webp" />
+  <img src="../assets/img/imagens/parque-nacional-guia-chapada-veadeiros-saltos-rio-preto-garimpao.jpg" alt="Chapada dos Veadeiros" width="128" height="96" loading="lazy" decoding="async" />
+</picture></div>
+        <h2 class="footer-tagline-title">Chapada Veadeiros Guide</h2>
+        <p class="footer-tagline-body">Itineraries, waterfalls, trails and experiences with a local guide so you can better plan your Chapada dos Veadeiros trip.</p>
+        <a class="footer-instagram" href="https://www.instagram.com/guiachapadaveadeiros/" rel="noreferrer" target="_blank">@guiachapadaveadeiros</a>
+      </div>
+      <div class="footer-col footer-col--cadastur">
+        <div class="footer-cadastur-img"><picture>
+  <source srcset="../assets/img/imagens/cadastur-guia-chapada-dos-veadeiros.webp" type="image/webp" />
+  <img src="../assets/img/imagens/cadastur-guia-chapada-dos-veadeiros.jpg" alt="Cadastur seal — Chapada Veadeiros Guide" width="400" height="520" loading="lazy" decoding="async" />
+</picture></div>
+      </div>
+      <nav class="footer-col footer-nav" aria-label="Plan your trip">
+        <h3 class="footer-col-title">Plan your trip</h3>
+        <a href="https://www.guiachapadaveadeiros.com/en/loja">Tours &amp; services</a>
+        <a href="https://www.guiachapadaveadeiros.com/en/hospedagem-na-chapada-dos-veadeiros">Lodging</a>
+        <a href="contato.html">Contact</a>
+        <a href="https://api.whatsapp.com/send?phone=5562982506891&amp;text=*Quero%20planejar%20minha%20viagem%20na%20Chapada*" rel="noreferrer" target="_blank">WhatsApp</a>
+      </nav>
+      <div class="footer-col footer-support">
+        <h3 class="footer-col-title">Support</h3>
+        <p><strong>WhatsApp:</strong> +55 62 98250-6891</p>
+        <p><strong>Email:</strong> <a href="mailto:contato@guiachapadaveadeiros.com">contato@guiachapadaveadeiros.com</a></p>
+        <p><strong>Based in:</strong> Chapada dos Veadeiros, Goiás — Brazil</p>
+      </div>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <p class="footer-copyright">© All rights reserved — 2026 | CNPJ 24.354.289/0001-05 | Built by Diego Marques</p>
+  </div>
+</footer>
+  <script src="../assets/js/site.js" defer></script>
+</body>
+</html>

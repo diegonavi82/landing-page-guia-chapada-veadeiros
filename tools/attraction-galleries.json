@@ -1,0 +1,738 @@
+{
+  "_meta": {
+    "source": "https://www.guiachapadaveadeiros.com",
+    "generator": "scripts/scrape-fusion-galleries.mjs",
+    "note": "Imagens em pasta única public/imagens; URLs relativas /imagens/<arquivo>.",
+    "migratedToPublic": "frontend/cliente/public/imagens"
+  },
+  "cachoeira-almecegas-poco-sao-bento-guia-chapada-veadeiros": [
+    {
+      "src": "/imagens/cachoeira-poco-sao-bento-guia-chapada-veadeiros-alto-paraiso-1.jpg",
+      "alt": "Poço São Bento com a cachoeira ao fundo em setembro no período de seca",
+      "title": "Poço São Bento"
+    },
+    {
+      "src": "/imagens/cachoeira-almecegas-guia-chapada-veadeiros-alto-paraiso-14.jpg",
+      "alt": "Cachoeira Almécegas 1 vista de frente pela manhã no período de seca no mês de setembro",
+      "title": "Cachoeira Almécegas 1"
+    },
+    {
+      "src": "/imagens/cachoeira-almecegas-guia-chapada-veadeiros-alto-paraiso-3.jpg",
+      "alt": "Escultura de rosto de um mago feita em eucalipto denominada espírito da floresta",
+      "title": "O espírito da floresta"
+    },
+    {
+      "src": "/imagens/cachoeira-almecegas-guia-chapada-veadeiros-alto-paraiso-2.jpg",
+      "alt": "Mirante da cachoeira almécegas 1 de cima do mirante",
+      "title": "Mirante da cachoeira almécegas 1"
+    },
+    {
+      "src": "/imagens/cachoeira-almecegas-guia-chapada-veadeiros-alto-paraiso-8.jpg",
+      "alt": "Cachoeira Almécegas 2 na Chapada dos Veadeiros com visão panorâmica das pedras e formações geológicas",
+      "title": "Cachoeira Almécegas 2"
+    },
+    {
+      "src": "/imagens/cachoeira-almecegas-guia-chapada-veadeiros-alto-paraiso-5.jpg",
+      "alt": "Cachoeira Almécegas 2 na chapada dos veadeiros vista de frente",
+      "title": "Cachoeira Almécegas 2"
+    },
+    {
+      "src": "/imagens/cachoeira-almecegas-guia-chapada-veadeiros-alto-paraiso-1.jpg",
+      "alt": "Almécegas 1 vista quando chega-se ao final da trilha em dia ensolarado",
+      "title": "Cachoeira Almécegas 1 na Chapada dos Veadeiros"
+    },
+    {
+      "src": "/imagens/cachoeira-almecegas-guia-chapada-veadeiros-alto-paraiso-12.jpg",
+      "alt": "Cachoeira almécegas 2 em visão vertical vista das pedras que ficam ao lado",
+      "title": "Cachoeira Almécegas 2 na Chapada dos Veadeiros"
+    },
+    {
+      "src": "/imagens/cachoeira-almecegas-guia-chapada-veadeiros-alto-paraiso-16.jpg",
+      "alt": "Buritis de 200 anos próximos da cachoeira Almécegas 2 em dia ensolarado de setembro",
+      "title": "Buritis da cachoeira Almécegas 2"
+    },
+    {
+      "src": "/imagens/cachoeira-almecegas-guia-chapada-veadeiros-alto-paraiso-7.jpg",
+      "alt": "Piscinas naturais das Cachoeiras Almécegas",
+      "title": "Piscinas Naturais das Cachoeiras Almécegas"
+    },
+    {
+      "src": "/imagens/cachoeira-almecegas-guia-chapada-veadeiros-alto-paraiso-10.jpg",
+      "alt": "Cachoeira almécegas 1 vista de frente pela manhã num dia de sol.",
+      "title": "Cachoeira Almécegas 1"
+    },
+    {
+      "src": "/imagens/cachoeira-almecegas-guia-chapada-veadeiros-alto-paraiso-4.jpg",
+      "alt": "Cachoeira Almécegas 2 de dentro da piscina",
+      "title": "Cachoeira Almécegas 2 com piscina natural"
+    }
+  ],
+  "cachoeira-anjos-arcanjos-guia-chapada-veadeiros-alto-paraiso": [
+    {
+      "src": "/imagens/cachoeira-arcanjos-anjos-guia-chapada-veadeiros-alto-paraiso-3.jpg",
+      "alt": "Cachoeira dos Anjos e sua piscina natural na Chapada dos Veadeiros em Alto Paraíso de Goiás",
+      "title": "cachoeira-arcanjos-anjos-guia-chapada-veadeiros-alto-paraiso (3)"
+    },
+    {
+      "src": "/imagens/cachoeira-arcanjos-anjos-guia-chapada-veadeiros-alto-paraiso-2.jpg",
+      "alt": "Cachoeira dos Anjos na Chapada dos Veadeiros em Alto Paraíso",
+      "title": "cachoeira-arcanjos-anjos-guia-chapada-veadeiros-alto-paraiso (2)"
+    },
+    {
+      "src": "/imagens/cachoeira-arcanjos-anjos-guia-chapada-veadeiros-alto-paraiso-1.jpg",
+      "alt": "Cachoeira dos Arcanjos na Chapada dos Veadeiros em Alto Paraíso",
+      "title": "cachoeira-arcanjos-anjos-guia-chapada-veadeiros-alto-paraiso (1)"
+    },
+    {
+      "src": "/imagens/cachoeira-arcanjos-anjos-guia-chapada-veadeiros-alto-paraiso.jpg",
+      "alt": "Cachoeira dos Arcanjos com reflexo da luz do sol na Chapada dos Veadeiros",
+      "title": "cachoeira-arcanjos-anjos-guia-chapada-veadeiros-alto-paraiso"
+    }
+  ],
+  "cachoeira-complexo-rio-prata-guia-chapada-veadeiros-cavalcante": [
+    {
+      "src": "/imagens/complexo-cachoeiras-rio-prata-guia-chapada-veadeiros-cavalcante-1.jpg",
+      "alt": "vale de marte no complexo de cachoeiras do rio da prata na chapada dos Veadeiros",
+      "title": "complexo-cachoeiras-rio-prata-guia-chapada-veadeiros-cavalcante (1)"
+    },
+    {
+      "src": "/imagens/complexo-rio-prata-cachoeira-tres-marias-guia-chapada-veadeiros.jpg",
+      "alt": "Cachoeira Três Maria no complexo de cachoeiras do rio da Prata em Cavalcante na Chapada dos Veadeiros",
+      "title": "complexo-rio-prata-cachoeira-tres-marias-guia-chapada-veadeiros"
+    },
+    {
+      "src": "/imagens/complexo-rio-prata-cachoeira-rei-guia-chapada-veadeiros-cavalcante.jpg",
+      "alt": "Cachoeira Rei do Prata com água verde esmeralda na Chapada dos Veadeiros",
+      "title": "complexo-rio-prata-cachoeira-rei-guia-chapada-veadeiros-cavalcante"
+    },
+    {
+      "src": "/imagens/complexo-rio-prata-cachoeira-rei-guia-chapada-veadeiros-cavalcante-2.jpg",
+      "alt": "Cachoeira Rei do Prata em Cavalcante na Chapada dos Veadeiros",
+      "title": "complexo-rio-prata-cachoeira-rei-guia-chapada-veadeiros-cavalcante (2)"
+    },
+    {
+      "src": "/imagens/complexo-rio-prata-cachoeira-rainha-guia-chapada-veadeiros-cavalcante.jpg",
+      "alt": "Cachoeira da Rainha no rio da Prata em Cavalcante na Chapada dos Veadeiro",
+      "title": "complexo-rio-prata-cachoeira-rainha-guia-chapada-veadeiros-cavalcante"
+    },
+    {
+      "src": "/imagens/complexo-rio-prata-cachoeira-passador-guia-chapada-veadeiros.jpg",
+      "alt": "Cachoeira do Passador no Complexo do Rio da Prata na Chapada dos Veadeiros",
+      "title": "complexo-rio-prata-cachoeira-passador-guia-chapada-veadeiros"
+    },
+    {
+      "src": "/imagens/complexo-cachoeiras-rio-prata-guia-chapada-veadeiros-cavalcante.jpg",
+      "alt": "Piscina natural no rio da prata",
+      "title": "complexo-cachoeiras-rio-prata-guia-chapada-veadeiros-cavalcante"
+    },
+    {
+      "src": "/imagens/complexo-cachoeiras-rio-prata-guia-chapada-veadeiros-cavalcante-2.jpg",
+      "alt": "Piscina natural no complexo de cachoeiras do rio da prata em cavalcante na Chapada dos Veadeiros",
+      "title": "complexo-cachoeiras-rio-prata-guia-chapada-veadeiros-cavalcante (2)"
+    }
+  ],
+  "cachoeira-cordovil-poco-esmeralda-guia-chapada-veadeiros": [
+    {
+      "src": "/imagens/cachoeira-cordovil-poco-esmeralda-guia-chapada-veadeiros-17.jpg",
+      "alt": "cachoeira do Cordovil na Chapada dos Veadeiros com pedras ao redor do poço",
+      "title": "cachoeira-cordovil-poco-esmeralda-guia-chapada-veadeiros (17)"
+    },
+    {
+      "src": "/imagens/cachoeira-cordovil-poco-esmeralda-guia-chapada-veadeiros-21.jpg",
+      "alt": "rio do poço esmeralda com platôs de pedras",
+      "title": "cachoeira-cordovil-poco-esmeralda-guia-chapada-veadeiros (21)"
+    },
+    {
+      "src": "/imagens/cachoeira-cordovil-poco-esmeralda-guia-chapada-veadeiros-8.jpg",
+      "alt": "cachoeira do Rodeador na Chapada dos Veadeiros, a primeira cachoeira da trilha do Cordovil",
+      "title": "cachoeira-cordovil-poco-esmeralda-guia-chapada-veadeiros (8)"
+    },
+    {
+      "src": "/imagens/cachoeira-cordovil-poco-esmeralda-guia-chapada-veadeiros-16.jpg",
+      "alt": "cachoeira do Cordovil na Chapada dos Veadeiros com visão panorâmica",
+      "title": "cachoeira-cordovil-poco-esmeralda-guia-chapada-veadeiros (16)"
+    },
+    {
+      "src": "/imagens/cachoeira-cordovil-poco-esmeralda-guia-chapada-veadeiros-4.jpg",
+      "alt": "Piscina natural formada pela cachoeira do Rodeador na Chapada dos Veadeiros",
+      "title": "cachoeira-cordovil-poco-esmeralda-guia-chapada-veadeiros (4)"
+    },
+    {
+      "src": "/imagens/cachoeira-cordovil-poco-esmeralda-guia-chapada-veadeiros-7.jpg",
+      "alt": "Rio da cachoeira do rodeador na Chapada dos Veadeiros",
+      "title": "cachoeira-cordovil-poco-esmeralda-guia-chapada-veadeiros (7)"
+    },
+    {
+      "src": "/imagens/cachoeira-cordovil-poco-esmeralda-guia-chapada-veadeiros-2.jpg",
+      "alt": "Cachoeira do Cordovil na época com volume de água elevado",
+      "title": "cachoeira-cordovil-poco-esmeralda-guia-chapada-veadeiros (2)"
+    },
+    {
+      "src": "/imagens/cachoeira-cordovil-poco-esmeralda-guia-chapada-veadeiros-10.jpg",
+      "alt": "Chuveirinhos na trilha da cachoeira do Cordovil na Chapada dos Veadeiros",
+      "title": "cachoeira-cordovil-poco-esmeralda-guia-chapada-veadeiros (10)"
+    },
+    {
+      "src": "/imagens/cachoeira-cordovil-poco-esmeralda-guia-chapada-veadeiros-1.jpg",
+      "alt": "Uma pequena queda que antecede a cachoeira do Cordovil na Chapada dos Veadeiros",
+      "title": "cachoeira-cordovil-poco-esmeralda-guia-chapada-veadeiros (1)"
+    },
+    {
+      "src": "/imagens/cachoeira-cordovil-poco-esmeralda-guia-chapada-veadeiros-9.jpg",
+      "alt": "Chuveirinhos do cerrado",
+      "title": "cachoeira-cordovil-poco-esmeralda-guia-chapada-veadeiros (9)"
+    }
+  ],
+  "cachoeira-cristais-guia-chapada-veadeiros-alto-paraiso": [
+    {
+      "src": "/imagens/cachoeira-cristais-guia-chapada-veadeiros-alto-paraiso-5.jpg",
+      "alt": "Deck de madeira com vista para o vale do moinho na cachoeira dos cristais",
+      "title": "cachoeira-cristais-guia-chapada-veadeiros-alto-paraiso (5)"
+    },
+    {
+      "src": "/imagens/cachoeira-cristais-guia-chapada-veadeiros-alto-paraiso.jpg",
+      "alt": "Cachoeira Véu da Noiva a última da trilha das cachoeiras dos Cristais",
+      "title": "cachoeira-cristais-guia-chapada-veadeiros-alto-paraiso"
+    },
+    {
+      "src": "/imagens/cachoeira-cristais-guia-chapada-veadeiros-alto-paraiso-4.jpg",
+      "alt": "Uma das cachoeiras do rio dos Cristais na Chapada dos Veadeiros",
+      "title": "cachoeira-cristais-guia-chapada-veadeiros-alto-paraiso (4)"
+    },
+    {
+      "src": "/imagens/cachoeira-cristais-guia-chapada-veadeiros-alto-paraiso-2.jpg",
+      "alt": "Pequeno poço das cachoeiras dos cristais",
+      "title": "cachoeira-cristais-guia-chapada-veadeiros-alto-paraiso (2)"
+    },
+    {
+      "src": "/imagens/cachoeira-cristais-veu-noiva-guia-chapada-veadeiros-alto-paraiso.jpg",
+      "alt": "Cachoeira Véu da Noiva, a última queda da trilha da cachoeira dos cristais",
+      "title": "cachoeira-cristais-veu-noiva-guia-chapada-veadeiros-alto-paraiso"
+    }
+  ],
+  "cachoeira-label-guia-chapada-veadeiros-sao-joao-alianca": [
+    {
+      "src": "/imagens/cachoeira-label-guia-chapada-veadeiros.jpg",
+      "alt": "Cachoeira do Label com 187 metros de altura de queda na chapada dos Veadeiros",
+      "title": "cachoeira-label-guia-chapada-veadeiros"
+    },
+    {
+      "src": "/imagens/cachoeira-label-guia-chapada-veadeiros-7.jpg",
+      "alt": "Cachoeira do label com 187 metros de altura na Chapada dos Veadeiros",
+      "title": "cachoeira-label-guia-chapada-veadeiros (7)"
+    },
+    {
+      "src": "/imagens/cachoeira-label-guia-chapada-veadeiros-5.jpg",
+      "alt": "Piscina natural na formada pela cachoeira do label",
+      "title": "cachoeira-label-guia-chapada-veadeiros (5)"
+    },
+    {
+      "src": "/imagens/cachoeira-label-guia-chapada-veadeiros-4.jpg",
+      "alt": "Cachoeira do Label na época de seca com pouca água",
+      "title": "cachoeira-label-guia-chapada-veadeiros (4)"
+    },
+    {
+      "src": "/imagens/cachoeira-label-guia-chapada-veadeiros-3.jpg",
+      "alt": "Cachoeira do Label a maior queda da centro-oeste brasileiro",
+      "title": "cachoeira-label-guia-chapada-veadeiros (3)"
+    },
+    {
+      "src": "/imagens/cachoeira-label-guia-chapada-veadeiros-2.jpg",
+      "alt": "Cachoera do Label na Chapada dos Veadeiros",
+      "title": "cachoeira-label-guia-chapada-veadeiros (2)"
+    },
+    {
+      "src": "/imagens/cachoeira-label-guia-chapada-veadeiros-1.jpg",
+      "alt": "Cachoeira do Label em São João da Aliança",
+      "title": "cachoeira-label-guia-chapada-veadeiros (1)"
+    },
+    {
+      "src": "/imagens/cachoeira-label-guia-chapada-veadeiros-8.jpg",
+      "alt": "Vista da cachoeira do label pela trilha no fundo das árvores",
+      "title": "cachoeira-label-guia-chapada-veadeiros (8)"
+    }
+  ],
+  "cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso": [
+    {
+      "src": "/imagens/cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso.jpg",
+      "alt": "Poço da cachoeira das Loquinhas com água esverdeada límpida na Chapada dos Veadeiros",
+      "title": "cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso"
+    },
+    {
+      "src": "/imagens/cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso-14.jpg",
+      "alt": "Poço curumim na cachoeira das Loquinhas na Chapada dos Veadeiros",
+      "title": "cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso (14)"
+    },
+    {
+      "src": "/imagens/cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso-7.jpg",
+      "alt": "Poço do Xamã na cachoeira das loquinhas na Chapada dos Veadeiros",
+      "title": "cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso (7)"
+    },
+    {
+      "src": "/imagens/cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso-6.jpg",
+      "alt": "Outro poço de águas cristalinas na cachoeira das loquinhas na Chapada dos Veadeiros",
+      "title": "cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso (6)"
+    },
+    {
+      "src": "/imagens/cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso-12.jpg",
+      "alt": "Poço do xamã com mico estrela parado no corrimão posando para foto na cachoeira das loquinhas na Chapada dos Veadeiros",
+      "title": "cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso (12)"
+    },
+    {
+      "src": "/imagens/cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso-11.jpg",
+      "alt": "Poço Xamã da cachoeira das loquinhas na época de seca na Chapada dos Veadeiros",
+      "title": "cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso (11)"
+    }
+  ],
+  "cachoeira-macacao-guia-chapada-veadeiros-sao-joao-alianca": [
+    {
+      "src": "/imagens/cachoeira-macaco-chapada-veadeiros-macacao-1-scaled.jpg",
+      "alt": "Cachoeira da Escadaria com diversas pessoas descansando e um homem saltando, na Chapada dos Veadeiros, complexo macaco",
+      "title": "cachoeira-macaco-chapada-veadeiros-macacao (1)"
+    },
+    {
+      "src": "/imagens/cachoeira-macaco-chapada-veadeiros-macacao-10.jpg",
+      "alt": "Pessoas na cachoeira da Escadaria, no complexo Macaco Macacão da Chapada dos Veadeiros",
+      "title": "cachoeira-macaco-chapada-veadeiros-macacao (10)"
+    },
+    {
+      "src": "/imagens/cachoeira-macaco-chapada-veadeiros-macacao-9.jpg",
+      "alt": "Homem abaixado molha mão na cachoeira Catedral vista da piscina do andar inferior",
+      "title": "cachoeira-macaco-chapada-veadeiros-macacao (9)"
+    },
+    {
+      "src": "/imagens/cachoeira-macaco-chapada-veadeiros-macacao-8.jpg",
+      "alt": "Cachoeira Escadaria do complexo macacão, chapada dos veadeiros",
+      "title": "cachoeira-macaco-chapada-veadeiros-macacao (8)"
+    },
+    {
+      "src": "/imagens/cachoeira-macaco-chapada-veadeiros-macacao-7.jpg",
+      "alt": "Prainha do complexo macaco macacão na Chapada dos Veadeiros",
+      "title": "cachoeira-macaco-chapada-veadeiros-macacao (7)"
+    },
+    {
+      "src": "/imagens/cachoeira-macaco-chapada-veadeiros-macacao-6.jpg",
+      "alt": "Piscina Natural em cima da cachoeira da Escadaria, no complexo macaco macacão na Chapada dos Veadeiros",
+      "title": "cachoeira-macaco-chapada-veadeiros-macacao (6)"
+    },
+    {
+      "src": "/imagens/cachoeira-macaco-chapada-veadeiros-macacao-5.jpg",
+      "alt": "Cachoeira Catedral formando duas piscinas em dois andares. Ainda três cachoeiras menores de uma piscina à outra.",
+      "title": "cachoeira-macaco-chapada-veadeiros-macacao (5)"
+    },
+    {
+      "src": "/imagens/cachoeira-macaco-chapada-veadeiros-macacao-4.jpg",
+      "alt": "Topo da cachoeira catedral no complexo macaco com rio passando",
+      "title": "cachoeira-macaco-chapada-veadeiros-macacao (4)"
+    },
+    {
+      "src": "/imagens/cachoeira-macaco-chapada-veadeiros-macacao-3.jpg",
+      "alt": "Cachoeira Catedral vista panorâmica de frente",
+      "title": "cachoeira-macaco-chapada-veadeiros-macacao (3)"
+    },
+    {
+      "src": "/imagens/cachoeira-macaco-chapada-veadeiros-macacao-2-scaled.jpg",
+      "alt": "Vista da borda infinita da cachoeira do Elo Perdido no complexo Macacão",
+      "title": "cachoeira-macaco-chapada-veadeiros-macacao (2)"
+    }
+  ],
+  "cachoeira-macaquinhos-guia-chapada-veadeiros-sao-joao-alianca": [
+    {
+      "src": "/imagens/cachoeira-macaquinhos-guia-chapada-veadeiros-2.jpg",
+      "alt": "cachoeira-macaquinhos-guia-chapada-veadeiros (2)",
+      "title": "cachoeira-macaquinhos-guia-chapada-veadeiros (2)"
+    },
+    {
+      "src": "/imagens/cachoeira-macaquinhos-guia-chapada-veadeiros-16.jpg",
+      "alt": "Vista do topo da cachoeira da Caverna para o poço",
+      "title": "cachoeira-macaquinhos-guia-chapada-veadeiros (16)"
+    },
+    {
+      "src": "/imagens/cachoeira-macaquinhos-guia-chapada-veadeiros-13.jpg",
+      "alt": "Cachoeira da Caverna com enorme paredão do cânion e o poço",
+      "title": "cachoeira-macaquinhos-guia-chapada-veadeiros (13)"
+    },
+    {
+      "src": "/imagens/cachoeira-macaquinhos-guia-chapada-veadeiros-1.jpg",
+      "alt": "Cachoeira da luz do complexo do rio Macaquinhos",
+      "title": "cachoeira-macaquinhos-guia-chapada-veadeiros (1)"
+    },
+    {
+      "src": "/imagens/cachoeira-macaquinhos-guia-chapada-veadeiros-12.jpg",
+      "alt": "Cachoeira da luz com água do poço da cor verde esmeralda",
+      "title": "cachoeira-macaquinhos-guia-chapada-veadeiros (12)"
+    },
+    {
+      "src": "/imagens/cachoeira-macaquinhos-guia-chapada-veadeiros-11.jpg",
+      "alt": "Reflexo das águas cristalinas da cachoeira da Caverna na Chapada dos Veadeiros",
+      "title": "cachoeira-macaquinhos-guia-chapada-veadeiros (11)"
+    },
+    {
+      "src": "/imagens/cachoeira-macaquinhos-guia-chapada-veadeiros-10.jpg",
+      "alt": "Cachoeira da Caverna no complexo do rio Macaquinhos na Chapada dos Veadeiros",
+      "title": "cachoeira-macaquinhos-guia-chapada-veadeiros (10)"
+    },
+    {
+      "src": "/imagens/cachoeira-macaquinhos-guia-chapada-veadeiros-6.jpg",
+      "alt": "Cachoeira do Encontro dos rios macacão e macaquinhos na Chapada dos Veadeiros",
+      "title": "cachoeira-macaquinhos-guia-chapada-veadeiros (6)"
+    },
+    {
+      "src": "/imagens/cachoeira-macaquinhos-guia-chapada-veadeiros-9.jpg",
+      "alt": "Cachoeira do banho dos Macacos, a primeira queda da trilha do rio macaquinhos",
+      "title": "cachoeira-macaquinhos-guia-chapada-veadeiros (9)"
+    },
+    {
+      "src": "/imagens/cachoeira-macaquinhos-guia-chapada-veadeiros-8.jpg",
+      "alt": "Cachoeira da caverna do rio macaquinhos com dois poços para banho",
+      "title": "cachoeira-macaquinhos-guia-chapada-veadeiros (8)"
+    },
+    {
+      "src": "/imagens/cachoeira-macaquinhos-guia-chapada-veadeiros-3.jpg",
+      "alt": "cachoeira-macaquinhos-guia-chapada-veadeiros (3)",
+      "title": "cachoeira-macaquinhos-guia-chapada-veadeiros (3)"
+    },
+    {
+      "src": "/imagens/cachoeira-macaquinhos-guia-chapada-veadeiros-4.jpg",
+      "alt": "cachoeira-macaquinhos-guia-chapada-veadeiros (4)",
+      "title": "cachoeira-macaquinhos-guia-chapada-veadeiros (4)"
+    },
+    {
+      "src": "/imagens/cachoeira-macaquinhos-guia-chapada-veadeiros-17.jpg",
+      "alt": "Cachoeira do Encontro dos rios macaquinhos e macacão na Chapada dos Veadeiros",
+      "title": "cachoeira-macaquinhos-guia-chapada-veadeiros (17)"
+    },
+    {
+      "src": "/imagens/cachoeira-macaquinhos-guia-chapada-veadeiros-15.jpg",
+      "alt": "Poço do jump com a cachoeira da Lua",
+      "title": "cachoeira-macaquinhos-guia-chapada-veadeiros (15)"
+    }
+  ],
+  "cachoeira-poco-encantado-guia-chapada-veadeiros-teresina-de-goias": [
+    {
+      "src": "/imagens/cachoeira-poco-encantado-guia-chapada-veadeiros-teresina-2.jpg",
+      "alt": "Cachoeira do Poço Encantado com vista panorâmica na época de seca na Chapada dos Veadeiros",
+      "title": "cachoeira-poco-encantado-guia-chapada-veadeiros-teresina (2)"
+    },
+    {
+      "src": "/imagens/cachoeira-poco-encantado-guia-chapada-veadeiros-teresina-4.jpg",
+      "alt": "Cachoeira do Poço Encantado vista por cima com prainha do lado esquerdo na Chapada dos Veadeiros",
+      "title": "cachoeira-poco-encantado-guia-chapada-veadeiros-teresina (4)"
+    },
+    {
+      "src": "/imagens/cachoeira-poco-encantado-guia-chapada-veadeiros-teresina-3.jpg",
+      "alt": "Prainha da cachoeira do Poço Encantado",
+      "title": "cachoeira-poco-encantado-guia-chapada-veadeiros-teresina (3)"
+    },
+    {
+      "src": "/imagens/cachoeira-poco-encantado-guia-chapada-veadeiros-teresina-5.jpg",
+      "alt": "Cachoeira do Poço Encantado vista de cima através de um drone",
+      "title": "cachoeira-poco-encantado-guia-chapada-veadeiros-teresina (5)"
+    }
+  ],
+  "cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante": [
+    {
+      "src": "/imagens/cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante-2.jpg",
+      "alt": "Turista boiando nas águas azul turquesa da cachoeira Santa Bárbara na Chapada dos Veadeiros"
+    },
+    {
+      "src": "/imagens/cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante-3.jpg",
+      "alt": "Queda da cachoeira Santa Bárbara que tem aproximadamente 50 metros"
+    },
+    {
+      "src": "/imagens/cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante-4.jpg",
+      "alt": "Turistas curtindo o poço cristalino da cachoeira Santa Bárbara na Chapada dos Veadeiros",
+      "title": "cachoeira-santa-barbara-kalungas"
+    },
+    {
+      "src": "/imagens/cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante-7.jpg",
+      "alt": "Pintura feita no CAT comunidade Kalunga na Chapada dos Veadeiros"
+    },
+    {
+      "src": "/imagens/cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante-6.jpg",
+      "alt": "Contraste de sombra com água verde turquesa da cachoeira Santa Bárbara na Chapada dos Veadeiros"
+    },
+    {
+      "src": "/imagens/cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante-8.jpg",
+      "alt": "Cachoeira Santa Bárbara com visão panorâmica com foco no poço azul turquesa aproximadamente meio-dia."
+    },
+    {
+      "src": "/imagens/cachoeira-santa-barbarinha-guia-chapada-veadeiros-cavalcante.jpg",
+      "alt": "Cachoeira Santa Barbarinha na Chapada dos Veadeirosl que não é permitido o banho"
+    },
+    {
+      "src": "/imagens/cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante-10.jpg",
+      "alt": "Almoço feito em fogão à lenha no restaurante kalunga Auriana perto do CAT do Engenho na cachoeira Santa Bárbara na Chapada dos Veadeiros",
+      "title": "cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante (10)"
+    },
+    {
+      "src": "/imagens/bar-helia-cavalcante-arara-cachoeira-santa-barbara.jpg",
+      "alt": "Arara canindé no bar da Hélia em Cavalcante na Chapada dos Veadeiros"
+    },
+    {
+      "src": "/imagens/cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante-5-1.jpg",
+      "alt": "Cachoeira Santa Bárbara na Chapada dos Veadeiros"
+    },
+    {
+      "src": "/imagens/cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante-9.jpg",
+      "alt": "Grupo de turistas posando para foto em cima de uma árvore no poço da cachoeira Santa Bárbara",
+      "title": "cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante (9)"
+    },
+    {
+      "src": "/imagens/cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante-11.jpg",
+      "alt": "Borboleta na mão de turista com a cachoeira Santa Bárbara ao fundo",
+      "title": "cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante (11)"
+    }
+  ],
+  "cachoeira-segredo-guia-chapada-veadeiros-sao-jorge": [
+    {
+      "src": "/imagens/cachoeira-segredo-guia-chapada-veadeiros-sao-jorge-1.jpg",
+      "alt": "Imagem panorâmica da cachoeira do Segredo na Chapada dos Veadeiros num final de tarde",
+      "title": "cachoeira-segredo-guia-chapada-veadeiros-sao-jorge (1)"
+    },
+    {
+      "src": "/imagens/cachoeira-segredo-guia-chapada-veadeiros-sao-jorge-4.jpg",
+      "alt": "Cachoeira do Segredo batendo um sol no poço no período da manhã na Chapada dos Veadeiros",
+      "title": "cachoeira-segredo-guia-chapada-veadeiros-sao-jorge (4)"
+    },
+    {
+      "src": "/imagens/cachoeira-segredo-guia-chapada-veadeiros-sao-jorge-7.jpg",
+      "alt": "Cachoeira do Segredo com 115 metros de altura no período de chuvas na Chapada dos Veadeiros",
+      "title": "cachoeira-segredo-guia-chapada-veadeiros-sao-jorge (7)"
+    },
+    {
+      "src": "/imagens/cachoeira-segredo-guia-chapada-veadeiros-sao-jorge-8.jpg",
+      "alt": "Piscina formada pela cachoeira do Segredo na Chapada dos Veadeiros",
+      "title": "cachoeira-segredo-guia-chapada-veadeiros-sao-jorge (8)"
+    },
+    {
+      "src": "/imagens/cachoeira-segredo-guia-chapada-veadeiros-sao-jorge-9.jpg",
+      "alt": "Cachoeira do segredo na Chapada dos Veadeiros no período de chuva com sua queda de 115 metros com volume alto",
+      "title": "cachoeira-segredo-guia-chapada-veadeiros-sao-jorge (9)"
+    },
+    {
+      "src": "/imagens/cachoeira-segredo-guia-chapada-veadeiros-sao-jorge-3.jpg",
+      "alt": "Cachoeira do Segredo em dia ensolarado no período de chuvas na Chapada dos Veadeiros",
+      "title": "cachoeira-segredo-guia-chapada-veadeiros-sao-jorge (3)"
+    },
+    {
+      "src": "/imagens/cachoeira-segredo-guia-chapada-veadeiros-sao-jorge-11.jpg",
+      "alt": "Cachoeira do segredo na Chapada dos Veadeiros vista de cima por um Drone, fotografada por Marcos Laterzal",
+      "title": "cachoeira-segredo-guia-chapada-veadeiros-sao-jorge (11)"
+    },
+    {
+      "src": "/imagens/cachoeira-segredo-guia-chapada-veadeiros-sao-jorge-13.jpg",
+      "alt": "Piscina natural com água transparente que fica no meio do caminho para cachoeira do Segredo na Chapada dos Veadeiros",
+      "title": "cachoeira-segredo-guia-chapada-veadeiros-sao-jorge (13)"
+    },
+    {
+      "src": "/imagens/cachoeira-segredo-guia-chapada-veadeiros-sao-jorge-12.jpg",
+      "alt": "Prainha na trilha da cachoeira do Segredo na Chapada dos Veadeiros",
+      "title": "cachoeira-segredo-guia-chapada-veadeiros-sao-jorge (12)"
+    }
+  ],
+  "cataratas-dos-couros-guia-chapada-veadeiros-alto-paraiso": [
+    {
+      "src": "/imagens/cataratas-couros-guia-chapada-veadeiros-alto-paraiso.jpg",
+      "alt": "Penhasco do grande cânion nas cataratas dos Couros na Chapada dos Veadeiros",
+      "title": "cataratas-couros-guia-chapada-veadeiros-alto-paraiso"
+    },
+    {
+      "src": "/imagens/cataratas-couros-guia-chapada-veadeiros-alto-paraiso-1.jpg",
+      "alt": "Vista do Platô de pedra das cachoeiras do Parafuso e Almécegas 1000 na época da seca nas cataratas dos Couros na Chapada dos Veadeiros",
+      "title": "cataratas-couros-guia-chapada-veadeiros-alto-paraiso (1)"
+    },
+    {
+      "src": "/imagens/cataratas-couros-guia-chapada-veadeiros-alto-paraiso-2.jpg",
+      "alt": "Pequenas quedas da trilha das cataratas dos Couros na Chapada dos Veadeiros com linda piscina natural na época da seca",
+      "title": "cataratas-couros-guia-chapada-veadeiros-alto-paraiso (2)"
+    },
+    {
+      "src": "/imagens/cataratas-couros-guia-chapada-veadeiros-alto-paraiso-3.jpg",
+      "alt": "Uma mulher pegando sol em uma das prainhas formadas às margens das cataratas dos Couros na Chapada dos Veadeiros",
+      "title": "cataratas-couros-guia-chapada-veadeiros-alto-paraiso (3)"
+    },
+    {
+      "src": "/imagens/cataratas-couros-guia-chapada-veadeiros-alto-paraiso-4.jpg",
+      "alt": "Piscinas naturais com água límpida no período da seca, formadas na cachoeira da Muralha nas cataratas dos Couros na Chapada dos Veadeiros",
+      "title": "cataratas-couros-guia-chapada-veadeiros-alto-paraiso (4)"
+    },
+    {
+      "src": "/imagens/cataratas-couros-guia-chapada-veadeiros-alto-paraiso-5.jpg",
+      "alt": "A força das águas nas cataratas dos Couros, formando a cachoeira da Muralha na Chapada dos Veadeiros no período de chuva.",
+      "title": "cataratas-couros-guia-chapada-veadeiros-alto-paraiso (5)"
+    },
+    {
+      "src": "/imagens/cataratas-couros-guia-chapada-veadeiros-alto-paraiso-7.jpg",
+      "alt": "Vista do mirante da cachoeira da Muralha nas cataratas dos Couros na região da Chapada dos Veadeiros no período de chuva.",
+      "title": "cataratas-couros-guia-chapada-veadeiros-alto-paraiso (7)"
+    },
+    {
+      "src": "/imagens/cataratas-couros-guia-chapada-veadeiros-alto-paraiso-19.jpg",
+      "alt": "Arco-íris formado no último penhasco da trilha pela parte da manhã em dia de muito sol nas cataratas dos Couros na Chapada dos Veadeiros",
+      "title": "cataratas-couros-guia-chapada-veadeiros-alto-paraiso (19)"
+    },
+    {
+      "src": "/imagens/cataratas-couros-guia-chapada-veadeiros-alto-paraiso-9.jpg",
+      "alt": "Vista do platô de pedras de piscina natural e cachoeiras do parafuso e almécegas 1000 nas cataratas dos Couros na Chapada dos Veadeiros em período chuvoso",
+      "title": "cataratas-couros-guia-chapada-veadeiros-alto-paraiso (9)"
+    },
+    {
+      "src": "/imagens/cataratas-couros-guia-chapada-veadeiros-alto-paraiso-21.jpg",
+      "alt": "Vista do Mirante mais alto da trilha das Cataratas dos Couros no período de seca com piscinas naturais",
+      "title": "cataratas-couros-guia-chapada-veadeiros-alto-paraiso (21)"
+    },
+    {
+      "src": "/imagens/cataratas-couros-guia-chapada-veadeiros-alto-paraiso-12.jpg",
+      "alt": "Última piscina natural da trilha das Cataratas dos Couros formada pela cachoeira do Buracão na Chapada dos Veadeiros com penhasco no final",
+      "title": "cataratas-couros-guia-chapada-veadeiros-alto-paraiso (12)"
+    },
+    {
+      "src": "/imagens/cataratas-couros-guia-chapada-veadeiros-alto-paraiso-17.jpg",
+      "alt": "Turistas pegam sol na última piscina natural das cataratas dos Couros no período de seca com as cachoeiras almécegas 1000 e do Parafuso no fundo na Chapada dos Veadeiros",
+      "title": "cataratas-couros-guia-chapada-veadeiros-alto-paraiso (17)"
+    },
+    {
+      "src": "/imagens/cataratas-couros-guia-chapada-veadeiros-alto-paraiso-18.jpg",
+      "alt": "Visão Panorâmica da cachoeira Almécegas 1000 nas cataratas dos Couros na região da Chapada dos Veadeiros",
+      "title": "cataratas-couros-guia-chapada-veadeiros-alto-paraiso (18)"
+    },
+    {
+      "src": "/imagens/cataratas-couros-guia-chapada-veadeiros-alto-paraiso-20.jpg",
+      "alt": "Penhasco dos cânions das cataratas dos Couros na Chapada dos Veadeiros",
+      "title": "cataratas-couros-guia-chapada-veadeiros-alto-paraiso (20)"
+    },
+    {
+      "src": "/imagens/cataratas-couros-guia-chapada-veadeiros-alto-paraiso-10.jpg",
+      "alt": "A força das águas das Cataratas dos Couros no período de Chuva",
+      "title": "cataratas-couros-guia-chapada-veadeiros-alto-paraiso (10)"
+    }
+  ],
+  "mirante-janela-cachoeira-abismo-guia-chapada-veadeiros-sao-jorge": [
+    {
+      "src": "/imagens/cachoeira-abismo-guia-chapada-veadeiros-sao-jorge-parque-nacional-2.jpg",
+      "alt": "Cachoeira do Abismo com volume de água e seu poço",
+      "title": "cachoeira-abismo-guia-chapada-veadeiros-sao-jorge-parque-nacional (2)"
+    },
+    {
+      "src": "/imagens/cachoeira-abismo-guia-chapada-veadeiros-sao-jorge-parque-nacional-3.jpg",
+      "alt": "Mini sapo na cachoeira do abismo ainda com um rabinho",
+      "title": "cachoeira-abismo-guia-chapada-veadeiros-sao-jorge-parque-nacional (3)"
+    },
+    {
+      "src": "/imagens/cachoeira-abismo-guia-chapada-veadeiros-sao-jorge-parque-nacional-4.jpg",
+      "alt": "Cachoeira do abismo com pouca água e paredão de pedras",
+      "title": "cachoeira-abismo-guia-chapada-veadeiros-sao-jorge-parque-nacional (4)"
+    },
+    {
+      "src": "/imagens/cachoeira-abismo-guia-chapada-veadeiros-sao-jorge-parque-nacional-5.jpg",
+      "alt": "Cachoeira do abismo seca sem nenhum volume de água",
+      "title": "cachoeira-abismo-guia-chapada-veadeiros-sao-jorge-parque-nacional (5)"
+    },
+    {
+      "src": "/imagens/cachoeira-abismo-guia-chapada-veadeiros-sao-jorge-parque-nacional-6.jpg",
+      "alt": "Cachoeira que fica no andar de baixo da cachoeira do abismo",
+      "title": "cachoeira-abismo-guia-chapada-veadeiros-sao-jorge-parque-nacional (6)"
+    },
+    {
+      "src": "/imagens/mirante-janela-guia-chapada-veadeiros-sao-jorge-parque-nacional-1.jpg",
+      "alt": "Pôr-do-sol no mirante da Janela com vale ao fundo",
+      "title": "mirante-janela-guia-chapada-veadeiros-sao-jorge-parque-nacional (1)"
+    },
+    {
+      "src": "/imagens/mirante-janela-guia-chapada-veadeiros-sao-jorge-parque-nacional-2.jpg",
+      "alt": "Vista panorâmica do estacionamento na cachoeira do abismo e mirante da Janela",
+      "title": "mirante-janela-guia-chapada-veadeiros-sao-jorge-parque-nacional (2)"
+    },
+    {
+      "src": "/imagens/mirante-janela-guia-chapada-veadeiros-sao-jorge-parque-nacional-4.jpg",
+      "alt": "Visão do platô de pedras que fica no mirante da Janela para o parque nacional da Chapada dos Veadeiro com a cachoeira de 120 metros e do garimpão no fundo",
+      "title": "mirante-janela-guia-chapada-veadeiros-sao-jorge-parque-nacional (4)"
+    },
+    {
+      "src": "/imagens/mirante-janela-guia-chapada-veadeiros-sao-jorge-parque-nacional-5.jpg",
+      "alt": "Vista panorâmica do vale com os saltos do rio Preto do mirante da Janela",
+      "title": "mirante-janela-guia-chapada-veadeiros-sao-jorge-parque-nacional (5)"
+    },
+    {
+      "src": "/imagens/mirante-janela-guia-chapada-veadeiros-sao-jorge-parque-nacional-6.jpg",
+      "alt": "Zoom nas cachoeiras dos saltos de 120 e 80 metros do parque nacional da Chapada dos Veadeiros vista na parte mais alta do Mirante da Janela",
+      "title": "mirante-janela-guia-chapada-veadeiros-sao-jorge-parque-nacional (6)"
+    }
+  ],
+  "parque-nacional-chapada-veadeiros-canions-carioquinhas-sao-jorge": [],
+  "parque-nacional-chapada-veadeiros-saltos-rio-preto-sao-jorge": [
+    {
+      "src": "/imagens/parque-nacional-guia-chapada-veadeiros-saltos-rio-preto-garimpao.jpg",
+      "alt": "cachoeira do garimpão pela manhã no mês de setembro com águas claras e muito sol. Saltos do rio preto de 80 metros do parque nacional da chapada dos veadeiros",
+      "title": "Cachoeira do Garimpão ou Saltos do rio Preto de 80 metros"
+    },
+    {
+      "src": "/imagens/parque-nacional-guia-chapada-veadeiros-saltos-rio-preto-garimpao-1.jpg",
+      "alt": "Uma pequena prainha formada no poço da cachoeira do Garimpão dos Saltos do rio Preto de 80 metros",
+      "title": "Prainha natural no poço da cachoeira do Garimpão"
+    },
+    {
+      "src": "/imagens/parque-nacional-guia-chapada-veadeiros-carrossel-saltos-rio-preto-3.jpg",
+      "alt": "Trilha suspensa em deck de madeira com vista para cachoeira do carrossel no parque nacional da chapada dos veadeiros",
+      "title": "Mirante da cachoeira do Carrossel"
+    },
+    {
+      "src": "/imagens/parque-nacional-guia-chapada-veadeiros-corredeiras.jpg",
+      "alt": "Grupo de turistas nos poços naturais formados nas corredeiras",
+      "title": "Corredeiras no parque nacional da Chapada dos Veadeiros"
+    },
+    {
+      "src": "/imagens/parque-nacional-guia-chapada-veadeiros-carrossel-saltos-rio-preto-4.jpg",
+      "alt": "Mirante da cachoeira do Carrossel construído sobre um deck de madeira com vista panorâmica no parque nacional da Chapada dos Veadeiros",
+      "title": "Mirante do Carrossel"
+    },
+    {
+      "src": "/imagens/parque-nacional-guia-chapada-veadeiros-saltos-rio-preto-120-metros-1.jpg",
+      "alt": "parque nacional da chapada dos veadeiros saltos de 120 metros no mês de setembro",
+      "title": "Saltos do rio Preto de 120 metros"
+    },
+    {
+      "src": "/imagens/parque-nacional-guia-chapada-veadeiros-carrossel-saltos-rio-preto-2.jpg",
+      "alt": "Placa de perigo com alertas de riscos e recomendações para a trilha do carrossel no parque nacional da Chapada dos Veadeiros",
+      "title": "Placa de perigo na trilha do Carrossel"
+    },
+    {
+      "src": "/imagens/parque-nacional-guia-chapada-veadeiros-saltos-rio-preto-garimpao-3.jpg",
+      "alt": "Saltos do rio preto de 80 metros mais conhecida como cachoeira do Garimpão no período de setembro com águas cristalinas no período da manhã de setembro no parque nacional da Chapada dos Veadeiros",
+      "title": "Cachoeira do Garimpão ou Saltos do rio Preto de 80 metros"
+    },
+    {
+      "src": "/imagens/parque-nacional-guia-chapada-veadeiros-carrossel-saltos-rio-preto.jpg",
+      "alt": "Cachoeira do Carrossel no parque nacional da Chapada dos Veadeiros no período de setembro pela manhã em dia ensolarado vista de frente",
+      "title": "Cachoeira do Carrossel no parque nacional da Chapada dos Veadeiros"
+    }
+  ],
+  "vale-lua-guia-chapada-veadeiros-sao-jorge": [
+    {
+      "src": "/imagens/vale-lua-guia-chapada-veadeiros-sao-jorge.jpg",
+      "alt": "Turistas tomando banho na segunda piscina do Vale da lua na Chapada dos Veadeiros",
+      "title": "Turistas na piscina do Vale da Lua"
+    },
+    {
+      "src": "/imagens/vale-lua-guia-chapada-veadeiros-sao-jorge-6.jpg",
+      "alt": "Gruta secreta no vale da lua com várias hidromassaegens na Chapada dos Veadeiros",
+      "title": "Gruta de hidromassagem no vale da Lua"
+    },
+    {
+      "src": "/imagens/vale-lua-guia-chapada-veadeiros-sao-jorge-4.jpg",
+      "alt": "Pequena prainha formada na primeira piscina natural do Vale da Lua na Chapada dos Veadeiros",
+      "title": "Prainha com piscina natural no Vale da Lua"
+    },
+    {
+      "src": "/imagens/vale-lua-guia-chapada-veadeiros-sao-jorge-3.jpg",
+      "alt": "Cachoeira secreta na primeira piscina natural do Vale da Lua na Chapada dos Veadeiros que só é possível visitar no período da seca, momento registrado em setembro",
+      "title": "Cachoeira do Vale da Lua"
+    },
+    {
+      "src": "/imagens/vale-lua-guia-chapada-veadeiros-sao-jorge-7.jpg",
+      "alt": "Piscina natural no Vale da Lua",
+      "title": "Piscina natural no Vale da Lua"
+    }
+  ]
+}

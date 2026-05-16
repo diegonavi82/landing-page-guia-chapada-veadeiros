@@ -1,0 +1,25 @@
+Guia Chapada Veadeiros — LANDING PAGE (100% estático)
+=====================================================
+
+1) Primeira vez ou após mudar imagens no monorepo React:
+   npm run setup
+   (sync da pasta public do cliente + WebP + HTML)
+
+2) Só regerar HTML depois de editar tools/content-data.mjs:
+   npm run build
+
+3) Variáveis opcionais: copie .env.example para .env
+   SITE_ORIGIN, WHATSAPP_PHONE_E164, CONTACT_EMAIL
+   Não há DATABASE_URL neste projeto.
+
+4) Estrutura publicada:
+   - index.html, contato.html, revista.html, atrativos.html (PT)
+   - atrativos/*.html (17 páginas)
+   - revista/contratar-guia-...html, revista/melhor-epoca-...html
+   - en/ e es/ espelham a mesma árvore
+   - assets/img/imagens e assets/img/uploads (originais + .webp)
+   - assets/css/site.css, assets/js/site.js
+
+5) Se sync não achar o monorepo, defina:
+   set GCV_MEDIA_SOURCE=C:\caminho\frontend\cliente\public
+   npm run sync:media
