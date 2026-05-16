@@ -31,7 +31,10 @@ def safe_translate(translator: GoogleTranslator, text: str) -> str:
         return t
     if len(t) < 4900:
         try:
-            return translator.translate(t)
+            result = translator.translate(t)
+            if result is None:
+                return t
+            return result
         except Exception as e:
             print("translate error:", e, file=sys.stderr)
             return t
@@ -41,7 +44,7 @@ def safe_translate(translator: GoogleTranslator, text: str) -> str:
     while start < len(t):
         part = t[start : start + step]
         try:
-            chunks.append(translator.translate(part))
+            chunks.append(translator.translate(part) or part)
         except Exception as e:
             print("translate chunk error:", e, file=sys.stderr)
             chunks.append(part)
