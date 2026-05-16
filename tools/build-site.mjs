@@ -11,6 +11,7 @@ import {
   REVIEWS,
   ARTICLE_CONTRATAR,
   ARTICLE_EPOCA,
+  ARTICLE_ONCA_PARDA,
   SEASON_ROWS,
   MONTH_NAME,
   BADGE_LABEL,
@@ -268,7 +269,7 @@ function capitalizeSentenceStart(s) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-/** Mesmo rótulo que o React (`formatPublicationDatePt`) — datas longas em pt-BR em todos os idiomas. */
+/** Data longa no padrão editorial em pt-BR (weekday capitalizado). */
 function formatPublicationDatePt(iso) {
   if (!iso) return "";
   try {
@@ -292,11 +293,68 @@ function formatPublicationDatePt(iso) {
   }
 }
 
+/** Data dos teasers da Revista no idioma da página (hub + capa lateral). */
+function formatPublicationDateForLocale(iso, locale) {
+  if (!iso) return "";
+  try {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
+    if (locale === "pt") return formatPublicationDatePt(iso);
+    const locTag = locale === "es" ? "es-ES" : "en-US";
+    const formatted = new Intl.DateTimeFormat(locTag, {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    }).format(d);
+    return locale === "es" ? capitalizeSentenceStart(formatted) : formatted;
+  } catch {
+    return "";
+  }
+}
+
 function revistaTeaserSortTime(p) {
   const t = p.publishedAt;
   if (!t) return 0;
   const n = Date.parse(t);
   return Number.isNaN(n) ? 0 : n;
+}
+
+/** Sobrepõe título/resumo/chip mesmo quando `cms-generated.json` traz apenas PT. */
+function normalizeStaticRevistaLocaleFields(post, locale) {
+  const slug = normalizeRevistaSlug(post);
+  const chipTips = STRINGS[locale].revistaPage.chipDefault;
+  if (slug === "melhor-epoca-visitar-chapada-dos-veadeiros") {
+    const A = ARTICLE_EPOCA[locale];
+    return {
+      ...post,
+      title: A.title,
+      excerpt: A.desc,
+      featuredImageAlt: A.title,
+      categories: [{ name: chipTips, slug: post.categories?.[0]?.slug || "dicas" }],
+    };
+  }
+  if (slug === "contratar-guia-local-chapada-veadeiros") {
+    const A = ARTICLE_CONTRATAR[locale];
+    return {
+      ...post,
+      title: A.title,
+      excerpt: A.desc,
+      featuredImageAlt: A.title,
+      categories: [{ name: chipTips, slug: post.categories?.[0]?.slug || "dicas" }],
+    };
+  }
+  if (slug === "ataque-onca-parda-chapada-veadeiros") {
+    const A = ARTICLE_ONCA_PARDA[locale];
+    return {
+      ...post,
+      title: A.title,
+      excerpt: A.desc,
+      featuredImageAlt: A.title,
+      categories: [{ name: A.chip, slug: "seguranca" }],
+    };
+  }
+  return post;
 }
 
 /** API + artigos estáticos (mesma ideia que `mergeRevistaTeaserPosts` no cliente). */
@@ -328,11 +386,20 @@ function revistaHubMergedPosts(locale) {
       publishedAt: "2026-05-13T14:00:00.000Z",
       categories: [{ name: chip, slug: "dicas" }],
     },
+    {
+      slug: "ataque-onca-parda-chapada-veadeiros",
+      title: ARTICLE_ONCA_PARDA[locale].title,
+      excerpt: ARTICLE_ONCA_PARDA[locale].desc,
+      featuredImage: "/uploads/revista/onca-parda-ataque-chapada/onca-parda-descansando-arvore-chapada-veadeiros.jpg",
+      featuredImageAlt: ARTICLE_ONCA_PARDA[locale].title,
+      publishedAt: "2026-05-16T03:00:00.000Z",
+      categories: [{ name: ARTICLE_ONCA_PARDA[locale].chip, slug: "seguranca" }],
+    },
   ];
   for (const p of fallbacks) {
     if (!bySlug.has(p.slug)) bySlug.set(p.slug, p);
   }
-  let list = [...bySlug.values()];
+  let list = [...bySlug.values()].map((p) => normalizeStaticRevistaLocaleFields(p, locale));
   const slugSet = new Set(list.map((p) => normalizeRevistaSlug(p)));
   const isEssentialPair =
     list.length === 2 && slugSet.size === 2 && [...slugSet].every((s) => REVISTA_ESSENTIAL_SLUGS.has(s));
@@ -344,10 +411,10 @@ function revistaHubMergedPosts(locale) {
   return list;
 }
 
-function revistaCapaCardHtml(post, href, ap, chipFallback) {
+function revistaCapaCardHtml(post, href, ap, chipFallback, locale) {
   const cat = post.categories?.[0]?.name || chipFallback;
   const dek = String(post.excerpt || post.seoDescription || "").trim();
-  const dateLabel = formatPublicationDatePt(post.publishedAt);
+  const dateLabel = formatPublicationDateForLocale(post.publishedAt, locale);
   const imgRel = toPublicAssetRel(post.featuredImage);
   const alt = post.featuredImageAlt || post.title;
   const media = imgRel
@@ -364,10 +431,10 @@ ${dateLabel ? `<p class="Revista-teaser__meta">${esc(dateLabel)}</p>` : ""}
 </a>`;
 }
 
-function revistaListaCardHtml(post, href, ap, chipFallback) {
+function revistaListaCardHtml(post, href, ap, chipFallback, locale) {
   const cat = post.categories?.[0]?.name || chipFallback;
   const dek = String(post.excerpt || post.seoDescription || "").trim();
-  const dateLabel = formatPublicationDatePt(post.publishedAt);
+  const dateLabel = formatPublicationDateForLocale(post.publishedAt, locale);
   const imgRel = toPublicAssetRel(post.featuredImage);
   const alt = post.featuredImageAlt || post.title;
   const media = imgRel
@@ -556,37 +623,10 @@ function homeRevistaTeaserHtml(locale, ap, cur) {
   const S = STRINGS[locale];
   const home = S.home;
   const revistaHubHref = relBetweenSync(cur, outRelPath(locale, "revista.html"));
-  const posts = CMS?.locales?.[locale]?.postsLite ?? [];
-  const sorted = [...posts].sort((a, b) => {
-    const da = new Date(a.publishedAt || 0).getTime();
-    const db = new Date(b.publishedAt || 0).getTime();
-    return db - da;
-  });
   const CONTRATAR_SLUG = "contratar-guia-local-chapada-veadeiros";
   const EPOCA_SLUG = "melhor-epoca-visitar-chapada-dos-veadeiros";
-  let top = sorted.slice(0, 2);
-  if (top.length === 1) {
-    const s = String(top[0].slug || "");
-    const avoidContratar = s === CONTRATAR_SLUG || s.includes("contratar-guia-local");
-    const fill = avoidContratar
-      ? {
-          slug: EPOCA_SLUG,
-          title: ARTICLE_EPOCA[locale].title,
-          excerpt: ARTICLE_EPOCA[locale].desc,
-          featuredImage:
-            "/uploads/revista/melhor-epoca/guia-diego-navi-palipalan-via-lactea-chapada-veadeiros.png",
-          featuredImageAlt: ARTICLE_EPOCA[locale].title,
-        }
-      : {
-          slug: CONTRATAR_SLUG,
-          title: ARTICLE_CONTRATAR[locale].title,
-          excerpt: ARTICLE_CONTRATAR[locale].desc,
-          featuredImage:
-            "/uploads/revista/contratar-guia-artigo/hero-mirante-grupo-guia-local-chapada-veadeiros.png",
-          featuredImageAlt: ARTICLE_CONTRATAR[locale].title,
-        };
-    top = [...top, fill];
-  }
+  const ONCA_SLUG = "ataque-onca-parda-chapada-veadeiros";
+  const top = revistaHubMergedPosts(locale).slice(0, 3);
 
   if (top.length > 0) {
     const cards = top
@@ -602,6 +642,11 @@ function homeRevistaTeaserHtml(locale, ap, cur) {
           cardImgAlt = post.featuredImageAlt || A.title;
         } else if (slugStr === EPOCA_SLUG || slugStr.includes("melhor-epoca-visitar-chapada")) {
           const A = ARTICLE_EPOCA[locale];
+          cardTitle = A.title;
+          cardExcerpt = A.desc.trim();
+          cardImgAlt = post.featuredImageAlt || A.title;
+        } else if (slugStr === ONCA_SLUG || slugStr.includes("ataque-onca-parda-chapada")) {
+          const A = ARTICLE_ONCA_PARDA[locale];
           cardTitle = A.title;
           cardExcerpt = A.desc.trim();
           cardImgAlt = post.featuredImageAlt || A.title;
@@ -1296,7 +1341,7 @@ function revistaHubMain(locale, ap, pathKey) {
       .map((post) => {
         const pk = revistaPathKey(post.slug);
         const href = relBetweenSync(cur, outRelPath(locale, pk));
-        return revistaListaCardHtml(post, href, ap, P.chipDefault);
+        return revistaListaCardHtml(post, href, ap, P.chipDefault, locale);
       })
       .join("\n");
     return `<div class="Revista-page">
@@ -1312,14 +1357,14 @@ ${pairGrid}
 </div>`;
   }
 
-  const capa = revistaCapaCardHtml(hero, heroHref, ap, P.chipDefault);
+  const capa = revistaCapaCardHtml(hero, heroHref, ap, P.chipDefault, locale);
 
   const railCards = rest
     .slice(0, 5)
     .map((post) => {
       const pk = revistaPathKey(post.slug);
       const href = relBetweenSync(cur, outRelPath(locale, pk));
-      return revistaListaCardHtml(post, href, ap, P.chipDefault);
+      return revistaListaCardHtml(post, href, ap, P.chipDefault, locale);
     })
     .join("\n");
 
@@ -1330,7 +1375,7 @@ ${pairGrid}
       .map((post) => {
         const pk = revistaPathKey(post.slug);
         const href = relBetweenSync(cur, outRelPath(locale, pk));
-        return revistaListaCardHtml(post, href, ap, P.chipDefault);
+        return revistaListaCardHtml(post, href, ap, P.chipDefault, locale);
       })
       .join("\n");
     const grid =
@@ -1341,7 +1386,7 @@ ${rest
   .map((post) => {
     const pk = revistaPathKey(post.slug);
     const href = relBetweenSync(cur, outRelPath(locale, pk));
-    return revistaListaCardHtml(post, href, ap, P.chipDefault);
+    return revistaListaCardHtml(post, href, ap, P.chipDefault, locale);
   })
   .join("\n")}
 </div>`
@@ -1756,6 +1801,41 @@ for (const locale of LOCALES) {
         extraHead: premium.extraHead,
         current: "revista",
         mainHtml: premium.mainHtml,
+      });
+      writePage(locale, pk, html);
+      sitemapUrls.push(`${SITE_ORIGIN}${localePathToUrl(locale, pk)}`);
+      continue;
+    }
+    const slugNorm = normalizeRevistaSlug(post);
+    const apPk = assetPrefix(outRelPath(locale, pk));
+    /** `cms-generated` repete texto PT em todas as locales para estes slugs — corpo está em ARTICLE_* */
+    if (slugNorm === "contratar-guia-local-chapada-veadeiros") {
+      const A = ARTICLE_CONTRATAR[locale];
+      const html = renderPage(locale, pk, {
+        title: `${A.title} | Guia Chapada Veadeiros`,
+        desc: A.desc,
+        ogImageRel: "uploads/revista/contratar-guia-artigo/hero-mirante-grupo-guia-local-chapada-veadeiros.png",
+        ogType: "article",
+        ogTitle: A.title,
+        ogDesc: A.desc,
+        current: "revista",
+        mainHtml: articleContratarMain(locale, apPk, pk),
+      });
+      writePage(locale, pk, html);
+      sitemapUrls.push(`${SITE_ORIGIN}${localePathToUrl(locale, pk)}`);
+      continue;
+    }
+    if (slugNorm === "melhor-epoca-visitar-chapada-dos-veadeiros") {
+      const A = ARTICLE_EPOCA[locale];
+      const html = renderPage(locale, pk, {
+        title: `${A.title} | Guia Chapada Veadeiros`,
+        desc: A.desc,
+        ogImageRel: "uploads/revista/melhor-epoca/guia-diego-navi-palipalan-via-lactea-chapada-veadeiros.png",
+        ogType: "article",
+        ogTitle: A.title,
+        ogDesc: A.desc,
+        current: "revista",
+        mainHtml: articleEpocaMain(locale, apPk, pk),
       });
       writePage(locale, pk, html);
       sitemapUrls.push(`${SITE_ORIGIN}${localePathToUrl(locale, pk)}`);

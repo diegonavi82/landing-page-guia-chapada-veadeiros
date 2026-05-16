@@ -732,3 +732,31 @@ export const ARTICLE_EPOCA = {
     intro: `<p class="lead">No hay un “mes perfecto” universal — quien busca <strong>cascadas monumentales</strong> acepta más lluvia; quien quiere <strong>pozas cristalinas y senderismo en seco</strong> suele preferir la estación seca. La tabla es tu brújula.</p>`,
   },
 };
+
+/** Matéria estática multisite (slug alinhado a `revista/ataque-onca-parda-chapada-veadeiros.html`). */
+export const ARTICLE_ONCA_PARDA = {
+  pt: {
+    title:
+      "Ataque de onça-parda na Chapada dos Veadeiros: o que aconteceu e como agir ao encontrar uma onça na trilha",
+    desc:
+      "Caso em maio de 2026 próximo à Cordovil, comportamento típico da fauna (repouso no alto, camuflagem no cerrado), o que guias recomendam e segurança em trilhas — episódio muito raro.",
+    chip: "Segurança",
+    path: "revista/ataque-onca-parda-chapada-veadeiros.html",
+  },
+  en: {
+    title:
+      "Cougar attack in Chapada dos Veadeiros: what happened and how to act when you encounter a cougar on the trail",
+    desc:
+      "May 2026 incident near Cordovil, resting vs. camouflage behavior, guide advice and rare predation vs. coexistence tips for trails.",
+    chip: "Safety",
+    path: "revista/ataque-onca-parda-chapada-veadeiros.html",
+  },
+  es: {
+    title:
+      "Ataque de puma en Chapada dos Veadeiros: qué pasó y cómo actuar al encontrar un puma en el sendero",
+    desc:
+      "Caso de mayo de 2026 junto a Cordovil, comportamiento habitual de la fauna, recomendaciones de guías y seguridad en senderos — suceso excepcional.",
+    chip: "Seguridad",
+    path: "revista/ataque-onca-parda-chapada-veadeiros.html",
+  },
+};
