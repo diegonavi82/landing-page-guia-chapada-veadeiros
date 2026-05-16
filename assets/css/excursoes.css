@@ -1,0 +1,619 @@
+/* Carrossel de excursões — Guia Chapada Veadeiros */
+#excursoes-junho.gcv-excursoes {
+  /* Espaço em relação ao hero (sombra/arredondado) — alinhado ao ritmo da .gcv-home-card */
+  margin-top: 2rem;
+  margin-bottom: 48px;
+  font-family: "Nunito", system-ui, sans-serif;
+}
+
+@media (min-width: 640px) {
+  #excursoes-junho.gcv-excursoes {
+    margin-top: 3rem;
+  }
+}
+
+.gcv-excursoes__head {
+  margin-bottom: 1.25rem;
+}
+
+.gcv-excursoes__badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 100px;
+  background: #065f46;
+  padding: 0.35rem 0.9rem;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #fff;
+}
+
+@media (min-width: 640px) {
+  .gcv-excursoes__badge {
+    font-size: 11px;
+  }
+}
+
+.gcv-excursoes__title {
+  margin: 0.65rem 0 0;
+  font-size: clamp(1.25rem, 4vw, 1.75rem);
+  font-weight: 900;
+  line-height: 1.15;
+  color: #0f172a;
+}
+
+.gcv-excursoes__shell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.gcv-excursoes__nav {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 999px;
+  border: 1px solid #c5c5c0;
+  background: #fff;
+  color: #334155;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease,
+    background 0.2s ease;
+}
+
+.gcv-excursoes__nav:hover,
+.gcv-excursoes__nav:focus-visible {
+  border-color: #10b981;
+  color: #047857;
+  outline: none;
+}
+
+.gcv-excursoes__nav .ti {
+  font-size: 1.25rem;
+}
+
+.gcv-excursoes__viewport {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.gcv-excursoes__track {
+  display: flex;
+  gap: 16px;
+  will-change: transform;
+  transition: transform 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.gcv-excursoes-card {
+  flex: 0 0 230px;
+  min-width: 230px;
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  background: #fff;
+  border: 1.5px solid #e0e0da;
+  overflow: hidden;
+}
+
+.gcv-excursoes-card--confirmada {
+  border: 4px solid #047857;
+  box-shadow: 0 6px 22px rgba(4, 120, 87, 0.14);
+}
+
+.gcv-excursoes-card--confirmada .gcv-excursoes-card__head {
+  background: linear-gradient(180deg, #ecfdf5 0%, #d1fae5 30%, #f0fdfa 72%, #ffffff 100%);
+  border-bottom: 3px solid #10b981;
+}
+
+/* “Em formação”: amarelo pastel */
+.gcv-excursoes-card--pendente {
+  border: 4px solid #e8ddb8;
+  box-shadow: 0 6px 22px rgba(232, 221, 184, 0.45);
+}
+
+.gcv-excursoes-card--pendente .gcv-excursoes-card__head {
+  background: linear-gradient(180deg, #fffef9 0%, #fffbeb 28%, #fffdf5 55%, #fafaf9 82%, #ffffff 100%);
+  border-bottom: 3px solid #f5e6b8;
+}
+
+.gcv-excursoes-card__head {
+  padding: 0.75rem 1rem 0.85rem;
+  background: #f7f6f2;
+  border-bottom: 1px solid #e8e8e2;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.65rem;
+}
+
+/* Dia + mês em destaque no topo */
+.gcv-excursoes-card__datestrip {
+  width: 100%;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.1);
+}
+
+.gcv-excursoes-card__datestrip .gcv-excursoes-card__row--city {
+  margin-top: 0.4rem;
+  min-height: 0;
+  justify-content: flex-start;
+}
+
+.gcv-excursoes-card--confirmada .gcv-excursoes-card__datestrip {
+  border-bottom-color: rgba(4, 120, 87, 0.35);
+}
+
+.gcv-excursoes-card--pendente .gcv-excursoes-card__datestrip {
+  border-bottom-color: rgba(232, 221, 184, 0.9);
+}
+
+.gcv-excursoes-card__datehero {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.gcv-excursoes-card__day {
+  flex-shrink: 0;
+  min-width: 2ch;
+  font-size: 2rem;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  text-align: center;
+}
+
+.gcv-excursoes-card--confirmada .gcv-excursoes-card__day {
+  color: #047857;
+}
+
+.gcv-excursoes-card--pendente .gcv-excursoes-card__day {
+  color: #a16207;
+}
+
+.gcv-excursoes-card__datehero-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.2rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.gcv-excursoes-card__datehero-time {
+  margin-left: auto;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  text-align: right;
+  min-width: 0;
+}
+
+.gcv-excursoes-card__time {
+  font-size: 1.05rem;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.gcv-excursoes-card--confirmada .gcv-excursoes-card__time {
+  color: #047857;
+}
+
+.gcv-excursoes-card--pendente .gcv-excursoes-card__time {
+  color: #a16207;
+}
+
+.gcv-excursoes-card__month {
+  font-size: 0.88rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  line-height: 1.15;
+  color: #0f172a;
+}
+
+.gcv-excursoes-card__weekday {
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #64748b;
+  line-height: 1.2;
+}
+
+/* Status + aviso — alturas mínimas alinham cards no carrossel */
+.gcv-excursoes-card__meta-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.45rem;
+  width: 100%;
+}
+
+.gcv-excursoes-card__row--status {
+  width: 100%;
+  min-height: 2rem;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.45rem;
+}
+
+.gcv-excursoes-card__row--city {
+  width: 100%;
+  min-height: 1.95rem;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.45rem;
+}
+
+.gcv-excursoes-card__row--falta {
+  width: 100%;
+  min-height: 3.55rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  box-sizing: border-box;
+}
+
+.gcv-excursoes-card__row--falta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+  flex-shrink: 0;
+  padding: 0.38rem 0.65rem;
+  border-radius: 100px;
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  line-height: 1.2;
+  max-width: 100%;
+  box-sizing: border-box;
+  white-space: normal;
+}
+
+.gcv-excursoes-card__status .ti {
+  font-size: 1rem;
+}
+
+.gcv-excursoes-card__status--ok {
+  background: #047857;
+  color: #fff;
+  box-shadow: 0 1px 4px rgba(4, 120, 87, 0.35);
+}
+
+.gcv-excursoes-card__status--wait {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+  box-shadow: 0 1px 3px rgba(251, 191, 36, 0.2);
+}
+
+.gcv-excursoes-card__cap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  flex-shrink: 0;
+  margin-left: auto;
+  white-space: nowrap;
+  padding: 0.3rem 0.45rem;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1;
+  color: #0f172a;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(15, 23, 42, 0.12);
+}
+
+.gcv-excursoes-card__cap .ti {
+  font-size: 1rem;
+  opacity: 0.88;
+}
+
+.gcv-excursoes-card__cap-ratio {
+  display: inline-flex;
+  align-items: baseline;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.gcv-excursoes-card__cap-slash {
+  font-weight: 800;
+  opacity: 0.55;
+  margin: 0 1px;
+}
+
+.gcv-excursoes-card__cap-x,
+.gcv-excursoes-card__cap-y {
+  font-weight: 900;
+}
+
+.gcv-excursoes-card--confirmada .gcv-excursoes-card__cap {
+  color: #065f46;
+  border-color: rgba(4, 120, 87, 0.4);
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.gcv-excursoes-card--pendente .gcv-excursoes-card__cap {
+  color: #92400e;
+  border-color: rgba(234, 179, 8, 0.45);
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.gcv-excursoes-card__falta {
+  margin: 0;
+  padding: 0.32rem 0.45rem;
+  border-radius: 8px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  line-height: 1.35;
+  color: #854d0e;
+  background: #fffef5;
+  border: 2px solid #f5e6b8;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.gcv-excursoes-card__confirmado-info {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.4rem;
+  margin: 0;
+  padding: 0.32rem 0.45rem;
+  border-radius: 8px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: #064e3b;
+  background: #ecfdf5;
+  border: 2px solid #6ee7b7;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.gcv-excursoes-card__confirmado-info strong {
+  font-weight: 900;
+  font-size: 0.78rem;
+}
+
+.gcv-excursoes-card__loc {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  max-width: 100%;
+  border-radius: 100px;
+  padding: 0.2rem 0.65rem;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  text-transform: none;
+  color: #fff;
+}
+
+.gcv-excursoes-card--confirmada .gcv-excursoes-card__loc {
+  background: #065f46;
+}
+
+.gcv-excursoes-card--pendente .gcv-excursoes-card__loc {
+  background: #a8975a;
+}
+
+.gcv-excursoes-card__loc .ti {
+  font-size: 0.85rem;
+}
+
+.gcv-excursoes-card__dest {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1.25;
+  color: #0f172a;
+  min-height: calc(17px * 1.25 * 2);
+}
+
+.gcv-excursoes-card__price-row {
+  margin: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 0.25rem;
+  width: 100%;
+}
+
+.gcv-excursoes-card__price {
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: #064e3b;
+}
+
+.gcv-excursoes-card--pendente .gcv-excursoes-card__price {
+  color: #7a6220;
+}
+
+.gcv-excursoes-card__per {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.gcv-excursoes-card__body {
+  padding: 0.85rem 1rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.65rem;
+  flex: 1;
+}
+
+.gcv-excursoes-card__block {
+  border-radius: 10px;
+  padding: 0.55rem 0.65rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.gcv-excursoes-card__block--in {
+  background: #ecfdf5;
+  border: 1px solid #6ee7b7;
+}
+
+.gcv-excursoes-card__label--in {
+  color: #047857;
+}
+
+.gcv-excursoes-card__block--out {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+}
+
+.gcv-excursoes-card__label {
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.35rem;
+}
+
+.gcv-excursoes-card__label--out {
+  color: #991b1b;
+}
+
+.gcv-excursoes-card__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gcv-excursoes-card__list li {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.25rem;
+  color: #334155;
+}
+
+.gcv-excursoes-card__list li:first-child {
+  margin-top: 0;
+}
+
+.gcv-excursoes-card__list .ti {
+  flex-shrink: 0;
+  margin-top: 0;
+  font-size: 1rem;
+}
+
+.gcv-excursoes-card__list .ti.text-ok {
+  color: #059669;
+}
+
+.gcv-excursoes-card__list .ti.text-no {
+  color: #b91c1c;
+}
+
+.gcv-excursoes-card__cta {
+  margin-top: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    filter 0.2s ease;
+}
+
+.gcv-excursoes-card--confirmada .gcv-excursoes-card__cta {
+  background: #059669;
+}
+
+.gcv-excursoes-card--confirmada .gcv-excursoes-card__cta:hover {
+  background: #047857;
+  filter: brightness(1.05);
+}
+
+.gcv-excursoes-card--pendente .gcv-excursoes-card__cta {
+  background: #d9c87a;
+  color: #3f3210;
+}
+
+.gcv-excursoes-card--pendente .gcv-excursoes-card__cta:hover {
+  background: #c9b86a;
+  filter: brightness(1.02);
+}
+
+.gcv-excursoes-card__cta .ti {
+  font-size: 1.1rem;
+}
+
+.gcv-excursoes__dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.4rem;
+  margin-top: 1rem;
+}
+
+.gcv-excursoes__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  border: none;
+  padding: 0;
+  background: #c5c5c0;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.gcv-excursoes__dot[aria-current="true"] {
+  background: #047857;
+  transform: scale(1.2);
+}
+
+@media (max-width: 639px) {
+  .gcv-excursoes__shell .gcv-excursoes__nav--prev {
+    display: none;
+  }
+  .gcv-excursoes__shell .gcv-excursoes__nav--next {
+    display: none;
+  }
+}

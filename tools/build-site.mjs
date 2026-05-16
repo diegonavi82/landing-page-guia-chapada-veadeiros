@@ -898,7 +898,7 @@ function footerHtml(ctx) {
 </footer>`;
 }
 
-function wrapPageFixed({ lang, topbar, skipLabel, head, header, main, footer, ap }) {
+function wrapPageFixed({ lang, topbar, skipLabel, head, header, main, footer, ap, extraFooterScripts = "" }) {
   return `<!DOCTYPE html>
 <html lang="${esc(lang)}">
 <head>
@@ -912,7 +912,7 @@ ${head}
 ${main}
   </main>
   ${footer}
-  <script src="${esc(`${ap}assets/js/site.js`)}" defer></script>
+  ${extraFooterScripts}<script src="${esc(`${ap}assets/js/site.js`)}" defer></script>
 </body>
 </html>`;
 }
@@ -923,6 +923,55 @@ function writePage(locale, pathKey, html) {
   const abs = join(ROOT, ...rel.split("/"));
   mkdirSync(dirname(abs), { recursive: true });
   writeFileSync(abs, html, "utf8");
+}
+
+/** Carrossel de excursões na home (pt, en, es). */
+function homeExcursionsSection(locale) {
+  const copy = {
+    pt: {
+      badge: "Excursões em grupo",
+      title: "Próximas saídas",
+      prev: "Excursão anterior",
+      next: "Próxima excursão",
+      dots: "Navegação do carrossel de excursões",
+    },
+    en: {
+      badge: "Small-group excursions",
+      title: "Upcoming departures",
+      prev: "Previous excursion",
+      next: "Next excursion",
+      dots: "Excursions carousel navigation",
+    },
+    es: {
+      badge: "Excursiones en grupo",
+      title: "Próximas salidas",
+      prev: "Excursión anterior",
+      next: "Próxima excursión",
+      dots: "Navegación del carrusel de excursiones",
+    },
+  };
+  const L = copy[locale];
+  if (!L) return "";
+  return `    <section id="excursoes-junho" class="gcv-excursoes" data-locale="${esc(locale)}" aria-labelledby="gcv-excursoes-heading">
+      <div class="gcv-excursoes__head">
+        <span class="gcv-excursoes__badge">${esc(L.badge)}</span>
+        <h2 id="gcv-excursoes-heading" class="gcv-excursoes__title">${esc(L.title)}</h2>
+      </div>
+      <div class="gcv-excursoes__shell">
+        <button type="button" class="gcv-excursoes__nav gcv-excursoes__nav--prev" aria-label="${esc(L.prev)}">
+          <i class="ti ti-chevron-left" aria-hidden="true"></i>
+        </button>
+        <div class="gcv-excursoes__viewport">
+          <div class="gcv-excursoes__track"></div>
+        </div>
+        <button type="button" class="gcv-excursoes__nav gcv-excursoes__nav--next" aria-label="${esc(L.next)}">
+          <i class="ti ti-chevron-right" aria-hidden="true"></i>
+        </button>
+      </div>
+      <div class="gcv-excursoes__dots" role="tablist" aria-label="${esc(L.dots)}"></div>
+    </section>
+
+`;
 }
 
 function homeMainHtml(locale, ap) {
@@ -1034,6 +1083,7 @@ ${dotsHtml}
       </div>
     </section>
 
+${homeExcursionsSection(locale)}
     <section class="gcv-home-card">
       <div class="gcv-home-card__head">
         <div>
@@ -1580,7 +1630,7 @@ function revistaPostMain(locale, post, ap, pathKey) {
 <script type="application/ld+json">${safeJsonLd(jsonLd)}</script>`;
 }
 
-function renderPage(locale, pathKey, { title, desc, ogImageRel, current, mainHtml, extraCss, ogTitle, ogDesc, extraHead, ogType, ogImageWidth, ogImageHeight }) {
+function renderPage(locale, pathKey, { title, desc, ogImageRel, current, mainHtml, extraCss, ogTitle, ogDesc, extraHead, ogType, ogImageWidth, ogImageHeight, extraFooterScripts }) {
   const outR = outRelPath(locale, pathKey);
   const ap = assetPrefix(outR);
   const head = buildHead({
@@ -1610,6 +1660,7 @@ function renderPage(locale, pathKey, { title, desc, ogImageRel, current, mainHtm
     main: mainHtml,
     footer,
     ap,
+    extraFooterScripts,
   });
 }
 
@@ -1647,6 +1698,16 @@ for (const locale of LOCALES) {
       ogImageWidth = 1600;
       ogImageHeight = 900;
     }
+    const pageAp = assetPrefix(outRelPath(locale, pk));
+    const homeExcursionsHead =
+      (locale === "pt" || locale === "en" || locale === "es") && pk === ""
+        ? {
+            extraCss: ["assets/css/excursoes.css"],
+            extraHead: `    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" crossorigin="anonymous" />`,
+            extraFooterScripts: `  <script src="${esc(`${pageAp}assets/js/excursoes-carousel.js`)}" defer></script>\n  `,
+          }
+        : {};
     const html = renderPage(locale, pk, {
       title,
       desc,
@@ -1655,6 +1716,7 @@ for (const locale of LOCALES) {
       ogImageHeight,
       current: p.current,
       mainHtml: p.main(locale),
+      ...homeExcursionsHead,
     });
     writePage(locale, pk || "", html);
     sitemapUrls.push(`${SITE_ORIGIN}${localePathToUrl(locale, pk)}`);

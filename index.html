@@ -35,6 +35,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="./assets/css/site.css" />
     <link rel="stylesheet" href="./assets/css/gcv-detail.css" />
+    <link rel="stylesheet" href="./assets/css/excursoes.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" crossorigin="anonymous" />
 </head>
 <body>
   <a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
@@ -101,6 +104,26 @@
 <button type="button" class="gcv-hero__dot" data-gcv-hero-dot role="tab" aria-selected="false" aria-label="Destaque 2 de 2"></button>
       </div>
     </section>
+
+    <section id="excursoes-junho" class="gcv-excursoes" data-locale="pt" aria-labelledby="gcv-excursoes-heading">
+      <div class="gcv-excursoes__head">
+        <span class="gcv-excursoes__badge">Excursões em grupo</span>
+        <h2 id="gcv-excursoes-heading" class="gcv-excursoes__title">Próximas saídas</h2>
+      </div>
+      <div class="gcv-excursoes__shell">
+        <button type="button" class="gcv-excursoes__nav gcv-excursoes__nav--prev" aria-label="Excursão anterior">
+          <i class="ti ti-chevron-left" aria-hidden="true"></i>
+        </button>
+        <div class="gcv-excursoes__viewport">
+          <div class="gcv-excursoes__track"></div>
+        </div>
+        <button type="button" class="gcv-excursoes__nav gcv-excursoes__nav--next" aria-label="Próxima excursão">
+          <i class="ti ti-chevron-right" aria-hidden="true"></i>
+        </button>
+      </div>
+      <div class="gcv-excursoes__dots" role="tablist" aria-label="Navegação do carrossel de excursões"></div>
+    </section>
+
 
     <section class="gcv-home-card">
       <div class="gcv-home-card__head">
@@ -218,17 +241,6 @@
     <a class="gcv-link-cerrado" href="revista.html">Ver tudo</a>
   </div>
   <div class="gcv-revista-teaser-grid">
-<a class="gcv-revista-teaser-card" href="revista/ataque-onca-parda-chapada-veadeiros.html">
-      <div class="gcv-revista-teaser-card__media"><picture>
-  <source srcset="./assets/img/uploads/revista/onca-parda-ataque-chapada/onca-parda-descansando-arvore-chapada-veadeiros.webp" type="image/webp" />
-  <img src="./assets/img/uploads/revista/onca-parda-ataque-chapada/onca-parda-descansando-arvore-chapada-veadeiros.jpg" alt="Onça-parda em galho coberto de musgos — caso raro na Cordovil, camuflagem em trilha e segurança com fauna na Chapada dos Veadeiros" width="640" height="426" loading="lazy" decoding="async" />
-</picture></div>
-      <div class="gcv-revista-teaser-card__body">
-        <h3 class="gcv-revista-teaser-card__title">Ataque de onça-parda na Chapada dos Veadeiros: o que aconteceu e como agir ao encontrar uma onça na trilha</h3>
-        <p class="gcv-revista-teaser-card__excerpt">Incidente pontual próximo à Cachoeira do Cordovil (mai/2026): comportamento típico da suçuarana, camuflagem no cerrado e protocolos recomendados por guias para encontros com fauna.</p>
-        <span class="gcv-revista-teaser-card__more">Ler matéria →</span>
-      </div>
-    </a>
 <a class="gcv-revista-teaser-card" href="revista/contratar-guia-local-chapada-veadeiros.html">
       <div class="gcv-revista-teaser-card__media"><picture>
   <source srcset="./assets/img/uploads/revista/contratar-guia-artigo/hero-mirante-grupo-guia-local-chapada-veadeiros.webp" type="image/webp" />
@@ -395,6 +407,7 @@
     <p class="footer-copyright">© Todos os Direitos Reservados - 2026 | CNPJ 24.354.289/0001-05 | Desenvolvido por Diego Marques</p>
   </div>
 </footer>
+    <script src="./assets/js/excursoes-carousel.js" defer></script>
   <script src="./assets/js/site.js" defer></script>
 </body>
 </html>
