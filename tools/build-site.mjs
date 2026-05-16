@@ -91,6 +91,24 @@ const emitSkipContactApi = CONTACT_CLIENT_ONLY && !CONTACT_USE_WEB3FORMS;
 /** Ícone nos resultados de busca / aba — caminho relativamente a `/assets/img/` (ex.: `imagens/favicon.png`). */
 const FAVICON_REL = (process.env.FAVICON_REL || "imagens/favicon.png").replace(/^\//, "");
 
+/**
+ * Scripts com URL absoluta no domínio (`/assets/js/...`): evita `../assets` falhar em rewrites/CDN/cache
+ * ou página servida sob path inesperado. Opcional: `SITE_PATH_PREFIX=blog` → `/blog/assets/js/...`
+ */
+function sitePathSegmentsTrimmed() {
+  return String(process.env.SITE_PATH_PREFIX || "")
+    .trim()
+    .replace(/^\/+|\/+$/g, "");
+}
+
+/** @param {string} file ex.: `site.js` */
+function publicJsSrc(file) {
+  const name = String(file || "").trim().replace(/^\//, "");
+  const prefix = sitePathSegmentsTrimmed();
+  const raw = prefix ? `/${prefix}/assets/js/${name}` : `/assets/js/${name}`;
+  return raw.replace(/\/{2,}/g, "/");
+}
+
 function footerShopHref(locale) {
   if (locale === "pt") return `${SITE_ORIGIN}/loja`;
   return `${SITE_ORIGIN}/${locale}/loja`;
@@ -1063,7 +1081,7 @@ ${head}
 ${main}
   </main>
   ${footer}
-  ${extraFooterScripts}<script src="${esc(`${ap}assets/js/site.js`)}" defer></script>
+  ${extraFooterScripts}<script src="${esc(publicJsSrc("site.js"))}" defer></script>
 </body>
 </html>`;
 }
@@ -1858,7 +1876,7 @@ for (const locale of LOCALES) {
             extraCss: ["assets/css/excursoes.css"],
             extraHead: `    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" crossorigin="anonymous" />`,
-            extraFooterScripts: `  <script src="${esc(`${pageAp}assets/js/excursoes-carousel.js`)}" defer></script>\n  `,
+            extraFooterScripts: `  <script src="${esc(publicJsSrc("excursoes-carousel.js"))}" defer></script>\n  `,
           }
         : {};
     const html = renderPage(locale, pk, {

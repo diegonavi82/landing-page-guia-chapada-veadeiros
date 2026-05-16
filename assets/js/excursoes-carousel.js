@@ -206,6 +206,7 @@
       exclLunch: "Almoço",
       cta: "Quero participar",
       dotAria: "Excursão {{i}} de {{n}}",
+      carouselDotsShellAria: "Navegação do carrossel de excursões",
     },
     en: {
       groupMaxOne: "Groups of up to 1 person",
@@ -245,6 +246,7 @@
       exclLunch: "Lunch",
       cta: "I want to join",
       dotAria: "Excursion {{i}} of {{n}}",
+      carouselDotsShellAria: "Excursions carousel navigation",
     },
     es: {
       groupMaxOne: "Grupos de hasta 1 persona",
@@ -284,6 +286,7 @@
       exclLunch: "Almuerzo",
       cta: "Quiero participar",
       dotAria: "Excursión {{i}} de {{n}}",
+      carouselDotsShellAria: "Navegación del carrusel de excursiones",
     },
   };
 
@@ -591,7 +594,26 @@
     );
   }
 
+  function ensureDotsShell(root, s) {
+    var el = root.querySelector(".gcv-excursoes__dots");
+    if (el) return el;
+    el = document.createElement("div");
+    el.className = "gcv-excursoes__dots";
+    el.setAttribute("role", "tablist");
+    el.setAttribute("aria-label", s.carouselDotsShellAria || "Carousel");
+    root.appendChild(el);
+    return el;
+  }
+
   function init() {
+    try {
+      bootExcursaoCarousel();
+    } catch (err) {
+      if (typeof console !== "undefined" && console.error) console.error("[gcv-excursoes]", err);
+    }
+  }
+
+  function bootExcursaoCarousel() {
     var root = document.getElementById("excursoes-junho");
     if (!root) return;
 
@@ -601,11 +623,12 @@
 
     var track = root.querySelector(".gcv-excursoes__track");
     var viewport = root.querySelector(".gcv-excursoes__viewport");
-    var dotsWrap = root.querySelector(".gcv-excursoes__dots");
     var prev = root.querySelector(".gcv-excursoes__nav--prev");
     var next = root.querySelector(".gcv-excursoes__nav--next");
 
-    if (!track || !viewport || !dotsWrap) return;
+    if (!track || !viewport) return;
+
+    var dotsWrap = ensureDotsShell(root, s);
 
     track.innerHTML = excursoes
       .map(function (e, i) {
@@ -723,8 +746,16 @@
       { passive: true },
     );
 
-    apply();
-    startAutoplay();
+    function kick() {
+      apply();
+      startAutoplay();
+    }
+    requestAnimationFrame(function () {
+      kick();
+      if (viewport.clientWidth < 32) {
+        requestAnimationFrame(kick);
+      }
+    });
   }
 
   if (document.readyState === "loading") {
