@@ -1,4 +1,6 @@
-# Deploy automático para Hostinger via FTP/FTPS ao dar push na branch main.
+# Deploy automático: cada git PUSH para a branch main no GitHub dispara este workflow
+# e envia os arquivos para a Hostinger (public_html). Commit só no PC não atualiza o site —
+# é preciso: git push origin main (ou Sync/Push no Cursor/VS Code).
 #
 # Secrets obrigatórios (GitHub → Settings → Secrets and variables → Actions):
 #   FTP_SERVER   — host FTP do hPanel (ex.: ftp.seudominio.com ou o hostname indicado pela Hostinger)
@@ -13,6 +15,7 @@ name: Deploy Hostinger (FTP)
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: deploy-hostinger-ftp
