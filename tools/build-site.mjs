@@ -591,22 +591,37 @@ function homeRevistaTeaserHtml(locale, ap, cur) {
   if (top.length > 0) {
     const cards = top
       .map((post) => {
+        const slugStr = String(post.slug || "");
+        let cardTitle = post.title;
+        let cardExcerpt = (post.excerpt || "").trim();
+        let cardImgAlt = post.featuredImageAlt || post.title;
+        if (slugStr === CONTRATAR_SLUG || slugStr.includes("contratar-guia-local")) {
+          const A = ARTICLE_CONTRATAR[locale];
+          cardTitle = A.title;
+          cardExcerpt = A.desc.trim();
+          cardImgAlt = post.featuredImageAlt || A.title;
+        } else if (slugStr === EPOCA_SLUG || slugStr.includes("melhor-epoca-visitar-chapada")) {
+          const A = ARTICLE_EPOCA[locale];
+          cardTitle = A.title;
+          cardExcerpt = A.desc.trim();
+          cardImgAlt = post.featuredImageAlt || A.title;
+        }
         const pk = revistaPathKey(post.slug);
         const href = relBetweenSync(cur, outRelPath(locale, pk));
         const imgRel =
           toPublicAssetRel(post.featuredImage) || "imagens/hero-slide-01-guias-locais-cachoeira.png";
-        const excerptRaw = (post.excerpt || "").trim();
-        const excerpt = excerptRaw.length > 160 ? `${excerptRaw.slice(0, 157)}…` : excerptRaw;
+        const excerpt =
+          cardExcerpt.length > 160 ? `${cardExcerpt.slice(0, 157)}…` : cardExcerpt;
         return `<a class="gcv-revista-teaser-card" href="${esc(href)}">
       <div class="gcv-revista-teaser-card__media">${picture(
         ap,
         imgRel,
-        post.featuredImageAlt || post.title,
+        cardImgAlt,
         640,
         360,
       )}</div>
       <div class="gcv-revista-teaser-card__body">
-        <h3 class="gcv-revista-teaser-card__title">${esc(post.title)}</h3>
+        <h3 class="gcv-revista-teaser-card__title">${esc(cardTitle)}</h3>
         <p class="gcv-revista-teaser-card__excerpt">${esc(excerpt)}</p>
         <span class="gcv-revista-teaser-card__more">${esc(home.revistaReadMore)} →</span>
       </div>

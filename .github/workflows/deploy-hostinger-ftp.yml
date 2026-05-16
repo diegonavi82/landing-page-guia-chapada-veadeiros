@@ -1,14 +1,17 @@
-# Deploy automático: cada git PUSH para a branch main no GitHub dispara este workflow
-# e envia os arquivos para a Hostinger (public_html). Commit só no PC não atualiza o site —
-# é preciso: git push origin main (ou Sync/Push no Cursor/VS Code).
+# Deploy automático: push para `main` ou execução manual (Actions → Deploy Hostinger → Run workflow).
 #
-# Secrets obrigatórios (GitHub → Settings → Secrets and variables → Actions):
-#   FTP_SERVER   — host FTP do hPanel (ex.: ftp.seudominio.com ou o hostname indicado pela Hostinger)
+# Secrets (repo → Settings → Secrets and variables → Actions → New repository secret):
+#   FTP_SERVER   — só o hostname, SEM ftp:// (ex.: ftp.seudominio.com ou o que o hPanel mostrar)
 #   FTP_USERNAME — usuário FTP
 #   FTP_PASSWORD — senha FTP
 #
-# Pasta no servidor: ajuste server-dir abaixo se o hPanel usar outro caminho
-# (ex.: domains/seusite.com/public_html/). Protocolo: troque para ftp se FTPS falhar.
+# Se falhar com ENOTFOUND: o host em FTP_SERVER não existe na internet (typo, secret errado,
+# ou hostname só válido na rede local). Confira no hPanel → Arquivos → contas FTP o “FTP hostname”.
+#
+# Se falhar handshake TLS: troque `protocol` para `ftp` (FTP simples, porta 21) ou teste `ftps-legacy`.
+#
+# Pasta remota: em muitos planos Hostinger o caminho é `public_html/`; em domínios extras pode ser
+# `domains/seusite.com/public_html/` — ajuste `server-dir` abaixo conforme o hPanel (FTP → diretório raiz).
 #
 name: Deploy Hostinger (FTP)
 
@@ -21,12 +24,37 @@ concurrency:
   group: deploy-hostinger-ftp
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Verificar secrets FTP
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          ok=0
+          if [ -z "$FTP_SERVER" ]; then echo "::error::Secret FTP_SERVER está vazio ou não existe."; ok=1; fi
+          if [ -z "$FTP_USERNAME" ]; then echo "::error::Secret FTP_USERNAME está vazio ou não existe."; ok=1; fi
+          if [ -z "$FTP_PASSWORD" ]; then echo "::error::Secret FTP_PASSWORD está vazio ou não existe."; ok=1; fi
+          exit $ok
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Instalar dependências e gerar HTML (build)
+        run: npm ci && npm run build
 
       - name: Deploy FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
@@ -36,7 +64,6 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           protocol: ftps
           server-dir: public_html/
-          # Site estático já versionado na raiz do repositório (sem npm run build aqui).
           exclude: |
             **/.git*
             **/.github/**
