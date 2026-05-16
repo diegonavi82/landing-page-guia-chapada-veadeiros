@@ -88,7 +88,7 @@ const SSR = {
     groupMaxMany: "Grupos de no máximo {{n}} pessoas",
     falta0: "Aguardando inscrições para confirmar.",
     falta1: "Falta 1 inscrição para confirmar.",
-    faltaMany: "Faltam {{n}} inscrições para confirmar.",
+    faltaMany: "Faltam {{n}} inscrições para confirmar",
     waHi:
       "Olá! Gostaria de me inscrever na excursão:\n\n" +
       "📅 Data: {{data}}\n" +

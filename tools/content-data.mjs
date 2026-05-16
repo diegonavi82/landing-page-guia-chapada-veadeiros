@@ -736,6 +736,28 @@ export const ARTICLE_EPOCA = {
   },
 };
 
+/** Roteiro editorial 4 dias — corpo em HTML estático; metadados para hub/teaser/build. */
+export const ARTICLE_ROTEIRO_4_DIAS = {
+  pt: {
+    title: "Roteiro de 4 dias na Chapada dos Veadeiros: o clássico para quem visita pela primeira vez",
+    desc: "Cataratas dos Couros, Parque Nacional, Santa Bárbara, Capivara, Vale da Lua e Segredo: o itinerário completo para estrear na Chapada dos Veadeiros.",
+    chip: "Roteiros",
+    path: "revista/roteiro-4-dias-chapada-dos-veadeiros.html",
+  },
+  en: {
+    title: "4-day Chapada dos Veadeiros itinerary: the classic first-time route",
+    desc: "Couros waterfalls, National Park, Santa Bárbara, Capivara, Moon Valley and Segredo: the complete itinerary for your first visit to Chapada dos Veadeiros.",
+    chip: "Itineraries",
+    path: "revista/roteiro-4-dias-chapada-dos-veadeiros.html",
+  },
+  es: {
+    title: "Ruta de 4 días en Chapada dos Veadeiros: lo clásico para la primera vez",
+    desc: "Cataratas del Couros, Parque Nacional, Santa Bárbara, Capivara, Valle de la Luna y Segredo: el itinerario completo para tu primera visita a Chapada dos Veadeiros.",
+    chip: "Rutas",
+    path: "revista/roteiro-4-dias-chapada-dos-veadeiros.html",
+  },
+};
+
 /** Matéria estática multisite (slug alinhado a `revista/ataque-onca-parda-chapada-veadeiros.html`). */
 export const ARTICLE_ONCA_PARDA = {
   pt: {

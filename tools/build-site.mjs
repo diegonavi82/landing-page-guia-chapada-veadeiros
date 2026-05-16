@@ -12,6 +12,7 @@ import {
   ARTICLE_CONTRATAR,
   ARTICLE_EPOCA,
   ARTICLE_ONCA_PARDA,
+  ARTICLE_ROTEIRO_4_DIAS,
   SEASON_ROWS,
   MONTH_NAME,
   BADGE_LABEL,
@@ -167,6 +168,7 @@ const REVISTA_HOME_TEASER_SLUGS = new Set([
   "ataque-onca-parda-chapada-veadeiros",
   "melhor-epoca-visitar-chapada-dos-veadeiros",
   "contratar-guia-local-chapada-veadeiros",
+  "roteiro-4-dias-chapada-dos-veadeiros",
 ]);
 
 function normalizeRevistaSlug(post) {
@@ -410,10 +412,20 @@ function normalizeStaticRevistaLocaleFields(post, locale) {
       categories: [{ name: A.chip, slug: "seguranca" }],
     };
   }
+  if (slug === "roteiro-4-dias-chapada-dos-veadeiros") {
+    const A = ARTICLE_ROTEIRO_4_DIAS[locale];
+    return {
+      ...post,
+      title: A.title,
+      excerpt: A.desc,
+      featuredImageAlt: A.title,
+      categories: [{ name: A.chip, slug: "roteiros" }],
+    };
+  }
   return post;
 }
 
-/** Fallbacks editoriais para o merge e base fixa dos 3 teasers na home (sempre 3 cards). */
+/** Fallbacks editoriais para o merge e base fixa dos cartões da home Revista (skeleton + CMS). */
 function editorialRevistaFallbackTriplet(locale) {
   const chip = STRINGS[locale].revistaPage.chipDefault;
   return [
@@ -443,6 +455,15 @@ function editorialRevistaFallbackTriplet(locale) {
       featuredImageAlt: ARTICLE_ONCA_PARDA[locale].title,
       publishedAt: "2026-05-16T03:00:00.000Z",
       categories: [{ name: ARTICLE_ONCA_PARDA[locale].chip, slug: "seguranca" }],
+    },
+    {
+      slug: "roteiro-4-dias-chapada-dos-veadeiros",
+      title: ARTICLE_ROTEIRO_4_DIAS[locale].title,
+      excerpt: ARTICLE_ROTEIRO_4_DIAS[locale].desc,
+      featuredImage: "/imagens/cataratas-couros-guia-chapada-veadeiros-alto-paraiso.jpg",
+      featuredImageAlt: ARTICLE_ROTEIRO_4_DIAS[locale].title,
+      publishedAt: "2026-05-16T22:00:00.000Z",
+      categories: [{ name: ARTICLE_ROTEIRO_4_DIAS[locale].chip, slug: "roteiros" }],
     },
   ];
 }
@@ -516,7 +537,7 @@ function revistaHubMergedPosts(locale) {
   return list;
 }
 
-/** Na home sempre 3 cartões editorial: skeleton + opcional dados do CMS (slug canônico, tolera acentos no JSON). */
+/** Na home cartões editoriais fixos (skeleton + opcional dados do CMS; slug canônico, tolera acentos no JSON). */
 function revistaHubHomeTeaserPosts(locale) {
   const mergedFlat = revistaHubMergedPosts(locale);
   const byCanon = new Map();
@@ -758,6 +779,7 @@ function homeRevistaTeaserHtml(locale, ap, cur) {
   const CONTRATAR_SLUG = "contratar-guia-local-chapada-veadeiros";
   const EPOCA_SLUG = "melhor-epoca-visitar-chapada-dos-veadeiros";
   const ONCA_SLUG = "ataque-onca-parda-chapada-veadeiros";
+  const ROTEIRO_SLUG = "roteiro-4-dias-chapada-dos-veadeiros";
   const top = revistaHubHomeTeaserPosts(locale);
 
   if (top.length > 0) {
@@ -779,6 +801,11 @@ function homeRevistaTeaserHtml(locale, ap, cur) {
           cardImgAlt = post.featuredImageAlt || A.title;
         } else if (slugStr === ONCA_SLUG || slugStr.includes("ataque-onca-parda-chapada")) {
           const A = ARTICLE_ONCA_PARDA[locale];
+          cardTitle = A.title;
+          cardExcerpt = A.desc.trim();
+          cardImgAlt = post.featuredImageAlt || A.title;
+        } else if (slugStr === ROTEIRO_SLUG || slugStr.includes("roteiro-4-dias-chapada")) {
+          const A = ARTICLE_ROTEIRO_4_DIAS[locale];
           cardTitle = A.title;
           cardExcerpt = A.desc.trim();
           cardImgAlt = post.featuredImageAlt || A.title;
@@ -2078,10 +2105,15 @@ for (const locale of LOCALES) {
   }
 }
 
-/** Páginas estáticas feitas à mão (não passam pelo template do build). */
-const SITEMAP_STATIC_REVISTA_SLUG = "revista/ataque-onca-parda-chapada-veadeiros.html";
+/** Páginas estáticas feitas à mão (não passam pelo template do build) — garantir URL no sitemap. */
+const SITEMAP_STATIC_REVISTA_PATHS = [
+  "revista/ataque-onca-parda-chapada-veadeiros.html",
+  "revista/roteiro-4-dias-chapada-dos-veadeiros.html",
+];
 for (const locale of LOCALES) {
-  sitemapUrls.push(`${SITE_ORIGIN}${localePathToUrl(locale, SITEMAP_STATIC_REVISTA_SLUG)}`);
+  for (const pk of SITEMAP_STATIC_REVISTA_PATHS) {
+    sitemapUrls.push(`${SITE_ORIGIN}${localePathToUrl(locale, pk)}`);
+  }
 }
 
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
