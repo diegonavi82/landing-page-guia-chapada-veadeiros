@@ -929,7 +929,7 @@ function writePage(locale, pathKey, html) {
 function homeExcursionsSection(locale) {
   const copy = {
     pt: {
-      badge: "Excursões em grupo",
+      badge: "Excursões",
       title: "Próximas saídas",
       prev: "Excursão anterior",
       next: "Próxima excursão",
