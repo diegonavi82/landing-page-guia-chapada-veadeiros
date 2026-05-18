@@ -885,6 +885,28 @@
       { passive: true },
     );
 
+    /** Pausa autoplay enquanto o utilizador arrasta com o dedo — evita lutar com o scroll. */
+    var touchEndTimer = null;
+    function onViewportTouchStart() {
+      if (!useMobileScroll() || fitsEntireTrack()) return;
+      if (touchEndTimer !== null) {
+        window.clearTimeout(touchEndTimer);
+        touchEndTimer = null;
+      }
+      stopAutoplay();
+    }
+    function onViewportTouchEnd() {
+      if (!useMobileScroll() || fitsEntireTrack()) return;
+      if (touchEndTimer !== null) window.clearTimeout(touchEndTimer);
+      touchEndTimer = window.setTimeout(function () {
+        touchEndTimer = null;
+        if (!fitsEntireTrack()) startAutoplay();
+      }, 2000);
+    }
+    viewport.addEventListener("touchstart", onViewportTouchStart, { passive: true });
+    viewport.addEventListener("touchend", onViewportTouchEnd, { passive: true });
+    viewport.addEventListener("touchcancel", onViewportTouchEnd, { passive: true });
+
     viewport.addEventListener(
       "wheel",
       function (ev) {

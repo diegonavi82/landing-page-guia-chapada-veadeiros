@@ -1,17 +1,13 @@
 # Deploy automático: push para `main` ou execução manual (Actions → Deploy Hostinger → Run workflow).
 #
 # Secrets (repo → Settings → Secrets and variables → Actions → New repository secret):
-#   FTP_SERVER   — só o hostname, SEM ftp:// (ex.: ftp.seudominio.com ou o que o hPanel mostrar)
+#   FTP_SERVER   — IP ou hostname FTP (SEM ftp://)
 #   FTP_USERNAME — usuário FTP
 #   FTP_PASSWORD — senha FTP
 #
-# Se falhar com ENOTFOUND: o host em FTP_SERVER não existe na internet (typo, secret errado,
-# ou hostname só válido na rede local). Confira no hPanel → Arquivos → contas FTP o “FTP hostname”.
-#
-# Se falhar handshake TLS: troque `protocol` para `ftp` (FTP simples, porta 21) ou teste `ftps-legacy`.
-#
-# Pasta remota: em muitos planos Hostinger o caminho é `public_html/`; em domínios extras pode ser
-# `domains/seusite.com/public_html/` — ajuste `server-dir` abaixo conforme o hPanel (FTP → diretório raiz).
+# Hostinger:
+#   server-dir correto normalmente:
+#   /public_html/
 #
 name: Deploy Hostinger (FTP)
 
@@ -31,6 +27,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -48,13 +45,22 @@ jobs:
           exit $ok
 
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
-          node-version: "24"
+          node-version: "20"
           cache: npm
 
       - name: Instalar dependências e gerar HTML (build)
-        run: npm ci && npm run build
+        run: |
+          npm ci
+          npm run build
+
+      - name: Listar arquivos gerados
+        run: |
+          echo "Arquivos locais:"
+          ls -la
+          echo "Conteúdo assets:"
+          ls -la assets || true
 
       - name: Deploy FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.4.0
@@ -62,8 +68,15 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
+
           protocol: ftps
-          server-dir: public_html/
+          port: 21
+
+          local-dir: ./
+          server-dir: /public_html/
+
+          dangerous-clean-slate: false
+
           exclude: |
             **/.git*
             **/.github/**
@@ -74,4 +87,7 @@ jobs:
             **/.env.*
             **/tools/**
             **/LEIA-ME.txt
-          log-level: minimal
+            **/.cursor/**
+            **/.vscode/**
+
+          log-level: verbose

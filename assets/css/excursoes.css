@@ -628,7 +628,7 @@
     font-size: 1.05rem;
   }
 
-  /* Scroll horizontal nativo (momentum no iOS/Android) — não só translate via JS */
+  /* Scroll horizontal nativo (momentum no iOS/Android) — clica, segura e arrasta */
   .gcv-excursoes__viewport {
     overflow-x: auto;
     overflow-y: hidden;
@@ -636,7 +636,12 @@
     overscroll-behavior-x: contain;
     scroll-snap-type: x mandatory;
     scrollbar-width: thin;
-    touch-action: pan-x pan-y;
+    touch-action: pan-x;
+    cursor: grab;
+  }
+
+  .gcv-excursoes__viewport:active {
+    cursor: grabbing;
   }
 
   .gcv-excursoes__viewport::-webkit-scrollbar {
@@ -658,5 +663,11 @@
   .gcv-excursoes-card {
     scroll-snap-align: center;
     scroll-snap-stop: always;
+    touch-action: pan-x;
+  }
+
+  /* Herdar pan-x: o gesto horizontal passa ao viewport mesmo começando no botão/link */
+  .gcv-excursoes-card * {
+    touch-action: inherit;
   }
 }
