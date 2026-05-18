@@ -711,9 +711,9 @@
       return trackWidthPx() <= viewportWidthPx();
     }
 
-    /** Mesmo breakpoint do CSS (<640px): scroll nativo horizontal no viewport. */
+    /** Mesmo breakpoint do CSS (<1024px): scroll nativo horizontal no viewport. */
     function useMobileScroll() {
-      return viewportWidthPx() < 640 && !fitsEntireTrack();
+      return viewportWidthPx() < 1024 && !fitsEntireTrack();
     }
 
     function computeTranslate(i) {

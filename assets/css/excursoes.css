@@ -51,46 +51,53 @@
   margin-top: 1rem;
 }
 
+/* Setas do carrossel: só desktop/notebook — em telas menores usa-se arrastar o strip */
 .gcv-excursoes__nav {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 999px;
-  border: 1px solid #c5c5c0;
-  background: #fff;
-  color: #334155;
-  cursor: pointer;
-  transition:
-    border-color 0.2s ease,
-    color 0.2s ease,
-    background 0.2s ease;
+  display: none;
 }
 
-.gcv-excursoes__nav:hover,
-.gcv-excursoes__nav:focus-visible {
-  border-color: #10b981;
-  color: #047857;
-  outline: none;
-}
+@media (min-width: 1024px) {
+  .gcv-excursoes__nav {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 999px;
+    border: 1px solid #c5c5c0;
+    background: #fff;
+    color: #334155;
+    cursor: pointer;
+    transition:
+      border-color 0.2s ease,
+      color 0.2s ease,
+      background 0.2s ease;
+  }
 
-.gcv-excursoes__nav .ti {
-  font-size: 1.25rem;
+  .gcv-excursoes__nav:hover,
+  .gcv-excursoes__nav:focus-visible {
+    border-color: #10b981;
+    color: #047857;
+    outline: none;
+  }
+
+  .gcv-excursoes__nav .ti {
+    font-size: 1.25rem;
+  }
 }
 
 .gcv-excursoes__viewport {
   flex: 1;
   min-width: 0;
   min-height: 260px;
-  /* Mobile-first: scroll horizontal com o dedo; em ≥640px o JS usa transform e clipamos abaixo */
+  /* Scroll horizontal nativo até desktop; em ≥1024px o JS usa transform + setas */
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
 }
 
-@media (min-width: 640px) {
+@media (min-width: 1024px) {
   .gcv-excursoes__viewport {
     overflow-x: hidden;
   }
@@ -619,25 +626,13 @@
   transform: scale(1.2);
 }
 
-@media (max-width: 639px) {
-  /* Setas visíveis e compactas — área central é scrollável com o dedo */
+@media (max-width: 1023px) {
   .gcv-excursoes__shell {
     gap: 0.35rem;
     align-items: stretch;
   }
 
-  .gcv-excursoes__nav {
-    width: 2.25rem;
-    height: 2.25rem;
-    align-self: center;
-    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
-  }
-
-  .gcv-excursoes__nav .ti {
-    font-size: 1.05rem;
-  }
-
-  /* Refinamentos só em telas estreitas (scroll nativo + snap suave) */
+  /* Scroll nativo + snap — telemóvel e tablet até ao breakpoint das setas */
   .gcv-excursoes__viewport {
     overscroll-behavior-x: contain;
     scroll-snap-type: x proximity;
