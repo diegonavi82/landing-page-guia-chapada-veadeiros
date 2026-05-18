@@ -7,9 +7,11 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Evita cancelar um deploy em andamento quando chega outro push ou “Run workflow” —
+# isso interrompe o FTP no meio (“Error: The operation was canceled”) e o site fica incompleto.
 concurrency:
   group: deploy-hostinger-ftp
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: read
