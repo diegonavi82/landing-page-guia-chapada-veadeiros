@@ -32,17 +32,6 @@ jobs:
           if [ -z "$FTP_PASSWORD" ]; then echo "::error::Secret FTP_PASSWORD está vazio ou não existe."; ok=1; fi
           exit $ok
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: npm
-
-      - name: Instalar dependências e gerar HTML (build)
-        run: |
-          npm ci
-          npm run build
-
       - name: Deploy FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.4.0
         with:
