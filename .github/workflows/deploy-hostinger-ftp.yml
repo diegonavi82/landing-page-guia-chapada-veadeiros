@@ -1,14 +1,5 @@
 # Deploy automático: push para `main` ou execução manual (Actions → Deploy Hostinger → Run workflow).
-#
-# Secrets (repo → Settings → Secrets and variables → Actions → New repository secret):
-#   FTP_SERVER   — IP ou hostname FTP (SEM ftp://)
-#   FTP_USERNAME — usuário FTP
-#   FTP_PASSWORD — senha FTP
-#
-# Hostinger:
-#   server-dir correto normalmente:
-#   /public_html/
-#
+
 name: Deploy Hostinger (FTP)
 
 on:
@@ -55,12 +46,10 @@ jobs:
           npm ci
           npm run build
 
-      - name: Listar arquivos gerados
+      - name: Listar arquivos locais
         run: |
-          echo "Arquivos locais:"
+          echo "RAIZ:"
           ls -la
-          echo "Conteúdo assets:"
-          ls -la assets || true
 
       - name: Deploy FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.4.0
@@ -73,7 +62,9 @@ jobs:
           port: 21
 
           local-dir: ./
-          server-dir: /public_html/
+
+          # TESTE: enviar para raiz FTP
+          server-dir: ./
 
           dangerous-clean-slate: false
 
