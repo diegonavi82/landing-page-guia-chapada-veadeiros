@@ -1,14 +1,10 @@
 # Deploy automático: push para `main` ou execução manual (Actions → Deploy Hostinger → Run workflow).
-
 name: Deploy Hostinger (FTP)
-
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
-# Evita cancelar um deploy em andamento quando chega outro push ou “Run workflow” —
-# isso interrompe o FTP no meio (“Error: The operation was canceled”) e o site fica incompleto.
 concurrency:
   group: deploy-hostinger-ftp
   cancel-in-progress: false
@@ -48,10 +44,16 @@ jobs:
           npm ci
           npm run build
 
-      - name: Listar arquivos locais
+      - name: Verificar output do build
         run: |
-          echo "RAIZ:"
+          echo "=== RAIZ ==="
           ls -la
+          echo "=== PASTA DIST (se existir) ==="
+          ls -la ./dist/ 2>/dev/null || echo "pasta dist não existe"
+          echo "=== PASTA BUILD (se existir) ==="
+          ls -la ./build/ 2>/dev/null || echo "pasta build não existe"
+          echo "=== PASTA PUBLIC (se existir) ==="
+          ls -la ./public/ 2>/dev/null || echo "pasta public não existe"
 
       - name: Deploy FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.4.0
@@ -59,17 +61,11 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-
           protocol: ftps
           port: 21
-
           local-dir: ./
-
-          # TESTE: enviar para raiz FTP
           server-dir: ./public_html/
-
           dangerous-clean-slate: false
-
           exclude: |
             **/.git*
             **/.github/**
@@ -82,5 +78,4 @@ jobs:
             **/LEIA-ME.txt
             **/.cursor/**
             **/.vscode/**
-
           log-level: verbose
