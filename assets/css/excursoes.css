@@ -611,10 +611,52 @@
 }
 
 @media (max-width: 639px) {
-  .gcv-excursoes__shell .gcv-excursoes__nav--prev {
-    display: none;
+  /* Setas visíveis e compactas — área central é scrollável com o dedo */
+  .gcv-excursoes__shell {
+    gap: 0.35rem;
+    align-items: stretch;
   }
-  .gcv-excursoes__shell .gcv-excursoes__nav--next {
-    display: none;
+
+  .gcv-excursoes__nav {
+    width: 2.25rem;
+    height: 2.25rem;
+    align-self: center;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
+  }
+
+  .gcv-excursoes__nav .ti {
+    font-size: 1.05rem;
+  }
+
+  /* Scroll horizontal nativo (momentum no iOS/Android) — não só translate via JS */
+  .gcv-excursoes__viewport {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: thin;
+    touch-action: pan-x pan-y;
+  }
+
+  .gcv-excursoes__viewport::-webkit-scrollbar {
+    height: 5px;
+  }
+
+  .gcv-excursoes__viewport::-webkit-scrollbar-thumb {
+    background: rgba(15, 23, 42, 0.28);
+    border-radius: 999px;
+  }
+
+  .gcv-excursoes__track {
+    transition: none;
+    will-change: auto;
+    width: max-content;
+    padding-block: 4px;
+  }
+
+  .gcv-excursoes-card {
+    scroll-snap-align: center;
+    scroll-snap-stop: always;
   }
 }

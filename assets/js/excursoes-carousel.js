@@ -684,7 +684,7 @@
       );
       (function (index) {
         b.addEventListener("click", function () {
-          go(index, true);
+          go(index, true, true);
         });
       })(d);
       dotsWrap.appendChild(b);
@@ -697,45 +697,151 @@
     var GAP = 16;
     var STEP = CARD + GAP;
 
-    function computeTranslate(i) {
-      var vw = Math.max(viewport.clientWidth || 0, 1);
-      var mobile = vw < 640;
+    function trackWidthPx() {
       var n = excursoes.length;
-      var trackW = n * CARD + (n - 1) * GAP;
+      return n * CARD + Math.max(0, n - 1) * GAP;
+    }
 
-      if (mobile) {
-        return vw / 2 - CARD / 2 - i * STEP;
+    function viewportWidthPx() {
+      return Math.max(viewport.clientWidth || 0, 1);
+    }
+
+    /** Quando todos os cards cabem na área visível, não há “scroll” — só centralizamos a faixa. */
+    function fitsEntireTrack() {
+      return trackWidthPx() <= viewportWidthPx();
+    }
+
+    /** Mesmo breakpoint do CSS (<640px): scroll nativo horizontal no viewport. */
+    function useMobileScroll() {
+      return viewportWidthPx() < 640 && !fitsEntireTrack();
+    }
+
+    function computeTranslate(i) {
+      var vw = viewportWidthPx();
+      var tw = trackWidthPx();
+      if (tw <= vw) {
+        return (vw - tw) / 2;
       }
 
-      var maxScroll = Math.max(0, trackW - vw);
+      var maxScroll = tw - vw;
       var raw = i * STEP;
       return -Math.min(raw, maxScroll);
     }
 
-    function syncDots() {
-      for (var i = 0; i < dots.length; i++) {
-        dots[i].setAttribute("aria-current", i === idx ? "true" : "false");
+    /**
+     * Alinha o centro do card ao centro do viewport (mobile scroll).
+     * Usa scrollLeft — compatível com gesto de arrastar no celular.
+     */
+    function scrollMobileToIndex(i, smooth) {
+      var cards = track.querySelectorAll(".gcv-excursoes-card");
+      var el = cards[i];
+      if (!el) return;
+      var vp = viewport;
+      var vpW = vp.clientWidth || 0;
+      if (vpW < 1) return;
+
+      var vr = vp.getBoundingClientRect();
+      var er = el.getBoundingClientRect();
+      var delta = er.left + er.width / 2 - (vr.left + vr.width / 2);
+      var target = vp.scrollLeft + delta;
+      var maxL = Math.max(0, vp.scrollWidth - vpW);
+      target = Math.max(0, Math.min(target, maxL));
+      try {
+        vp.scrollTo({
+          left: target,
+          behavior: smooth ? "smooth" : "auto",
+        });
+      } catch (err) {
+        vp.scrollLeft = target;
       }
     }
 
-    function apply() {
+    var scrollSyncRaf = null;
+    function syncIdxFromViewportScroll() {
+      if (!useMobileScroll()) return;
+      var cards = track.querySelectorAll(".gcv-excursoes-card");
+      if (!cards.length) return;
+      var rectVP = viewport.getBoundingClientRect();
+      var mid = rectVP.left + rectVP.width / 2;
+      var best = 0;
+      var bestDist = Infinity;
+      for (var i = 0; i < cards.length; i++) {
+        var r = cards[i].getBoundingClientRect();
+        var c = r.left + r.width / 2;
+        var d = Math.abs(c - mid);
+        if (d < bestDist) {
+          bestDist = d;
+          best = i;
+        }
+      }
+      if (best !== idx) {
+        idx = best;
+        syncDots();
+      }
+    }
+
+    function syncDots() {
+      var hideDots = fitsEntireTrack();
+      dotsWrap.hidden = hideDots;
+      dotsWrap.setAttribute("aria-hidden", hideDots ? "true" : "false");
+      for (var i = 0; i < dots.length; i++) {
+        dots[i].setAttribute("aria-current", i === idx ? "true" : "false");
+        dots[i].disabled = hideDots;
+      }
+    }
+
+    function syncNavButtons() {
+      var hide = fitsEntireTrack();
+      if (prev) {
+        prev.hidden = hide;
+        prev.setAttribute("aria-hidden", hide ? "true" : "false");
+        prev.disabled = hide;
+      }
+      if (next) {
+        next.hidden = hide;
+        next.setAttribute("aria-hidden", hide ? "true" : "false");
+        next.disabled = hide;
+      }
+    }
+
+    /**
+     * @param {{ smoothScroll?: boolean }} [opts]
+     */
+    function apply(opts) {
+      opts = opts || {};
+      var smoothScroll = !!opts.smoothScroll;
+
+      if (useMobileScroll()) {
+        track.style.transform = "";
+        scrollMobileToIndex(idx, smoothScroll);
+        syncDots();
+        syncNavButtons();
+        return;
+      }
+
+      viewport.scrollLeft = 0;
       var x = computeTranslate(idx);
       track.style.transform = "translateX(" + x + "px)";
       syncDots();
+      syncNavButtons();
     }
 
-    function go(i, user) {
+    /**
+     * @param {boolean} [fromUser]
+     * @param {boolean} [smoothScroll]
+     */
+    function go(i, fromUser, smoothScroll) {
       idx = ((i % excursoes.length) + excursoes.length) % excursoes.length;
-      apply();
-      if (user) restartAutoplay();
+      apply({ smoothScroll: !!smoothScroll });
+      if (fromUser) restartAutoplay();
     }
 
     function nextSlide() {
-      go(idx + 1, false);
+      go(idx + 1, false, false);
     }
 
     function prevSlide() {
-      go(idx - 1, false);
+      go(idx - 1, false, false);
     }
 
     function startAutoplay() {
@@ -752,40 +858,78 @@
 
     function restartAutoplay() {
       stopAutoplay();
-      startAutoplay();
+      if (!fitsEntireTrack()) startAutoplay();
     }
 
     if (prev) {
       prev.addEventListener("click", function () {
-        prevSlide();
-        restartAutoplay();
+        go(idx - 1, true, true);
       });
     }
     if (next) {
       next.addEventListener("click", function () {
-        nextSlide();
-        restartAutoplay();
+        go(idx + 1, true, true);
       });
     }
 
+    viewport.addEventListener(
+      "scroll",
+      function () {
+        if (!useMobileScroll()) return;
+        if (scrollSyncRaf !== null) return;
+        scrollSyncRaf = window.requestAnimationFrame(function () {
+          scrollSyncRaf = null;
+          syncIdxFromViewportScroll();
+        });
+      },
+      { passive: true },
+    );
+
+    viewport.addEventListener(
+      "wheel",
+      function (ev) {
+        if (fitsEntireTrack() || useMobileScroll()) return;
+        var dx = ev.deltaX;
+        if (ev.shiftKey && Math.abs(ev.deltaY) > Math.abs(dx)) {
+          dx = ev.deltaY;
+        }
+        var dy = ev.deltaY;
+        if (Math.abs(dx) < 12 && Math.abs(dy) >= Math.abs(dx) && !ev.shiftKey) return;
+        ev.preventDefault();
+        if (dx > 0) {
+          nextSlide();
+        } else {
+          prevSlide();
+        }
+        restartAutoplay();
+      },
+      { passive: false },
+    );
+
     root.addEventListener("mouseenter", stopAutoplay);
-    root.addEventListener("mouseleave", startAutoplay);
+    root.addEventListener("mouseleave", function () {
+      if (!fitsEntireTrack()) startAutoplay();
+    });
     root.addEventListener("focusin", stopAutoplay);
     root.addEventListener("focusout", function (ev) {
-      if (!root.contains(ev.relatedTarget)) startAutoplay();
+      if (!root.contains(ev.relatedTarget) && !fitsEntireTrack()) startAutoplay();
     });
 
     window.addEventListener(
       "resize",
       function () {
-        apply();
+        apply({ smoothScroll: false });
       },
       { passive: true },
     );
 
     function kick() {
-      apply();
-      startAutoplay();
+      apply({ smoothScroll: false });
+      if (fitsEntireTrack()) {
+        stopAutoplay();
+      } else {
+        startAutoplay();
+      }
     }
     requestAnimationFrame(function () {
       kick();

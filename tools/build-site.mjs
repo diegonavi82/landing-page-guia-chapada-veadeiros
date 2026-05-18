@@ -606,9 +606,10 @@ ${dateLabel ? `<p class="Revista-teaser__meta">${esc(dateLabel)}</p>` : ""}
 
 function localePathToUrl(loc, pathKey) {
   if (!pathKey) return loc === "pt" ? "/" : `/${loc}/`;
-  const noExt = pathKey.replace(/\.html$/, "");
   const prefix = loc === "pt" ? "" : `/${loc}`;
-  return `${prefix}/${noExt}`.replace(/\/+/g, "/") || "/";
+  let rel = String(pathKey).replace(/^\/+/, "");
+  if (!rel.endsWith(".html")) rel = `${rel}.html`;
+  return `${prefix}/${rel}`.replace(/\/+/g, "/");
 }
 
 const SKIP_TO_CONTENT = { pt: "Pular para o conteúdo", en: "Skip to content", es: "Ir al contenido" };
