@@ -928,6 +928,56 @@
       { passive: false },
     );
 
+    /** Deslize horizontal no modo transform (telas largas / track maior que o viewport) — trackpad não cobre toque. */
+    var swipePtr = { id: -1, startX: 0, locked: false };
+    var SWIPE_TH = 48;
+    var SWIPE_LOCK = 10;
+
+    function onSwipePtrEnd(e) {
+      if (swipePtr.id !== e.pointerId) return;
+      var dx = e.clientX - swipePtr.startX;
+      try {
+        viewport.releasePointerCapture(e.pointerId);
+      } catch (err) {
+        /* */
+      }
+      var wasLocked = swipePtr.locked;
+      swipePtr = { id: -1, startX: 0, locked: false };
+      if (useMobileScroll() || fitsEntireTrack()) return;
+      if (wasLocked && Math.abs(dx) >= SWIPE_TH) {
+        if (dx < 0) {
+          go(idx + 1, true, true);
+        } else {
+          go(idx - 1, true, true);
+        }
+      }
+    }
+
+    viewport.addEventListener(
+      "pointerdown",
+      function (e) {
+        if (useMobileScroll() || fitsEntireTrack()) return;
+        if (e.pointerType === "mouse" && e.button !== 0) return;
+        if (e.target.closest("button, a")) return;
+        swipePtr = { id: e.pointerId, startX: e.clientX, locked: false };
+        try {
+          viewport.setPointerCapture(e.pointerId);
+        } catch (err) {
+          /* */
+        }
+      },
+    );
+
+    viewport.addEventListener("pointermove", function (e) {
+      if (swipePtr.id !== e.pointerId) return;
+      if (!swipePtr.locked && Math.abs(e.clientX - swipePtr.startX) >= SWIPE_LOCK) {
+        swipePtr.locked = true;
+      }
+    });
+
+    viewport.addEventListener("pointerup", onSwipePtrEnd);
+    viewport.addEventListener("pointercancel", onSwipePtrEnd);
+
     root.addEventListener("mouseenter", stopAutoplay);
     root.addEventListener("mouseleave", function () {
       if (!fitsEntireTrack()) startAutoplay();

@@ -84,7 +84,16 @@
   flex: 1;
   min-width: 0;
   min-height: 260px;
-  overflow: hidden;
+  /* Mobile-first: scroll horizontal com o dedo; em ≥640px o JS usa transform e clipamos abaixo */
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (min-width: 640px) {
+  .gcv-excursoes__viewport {
+    overflow-x: hidden;
+  }
 }
 
 .gcv-excursoes__track {
@@ -628,13 +637,10 @@
     font-size: 1.05rem;
   }
 
-  /* Scroll horizontal nativo (momentum no iOS/Android) — clica, segura e arrasta */
+  /* Refinamentos só em telas estreitas (scroll nativo + snap suave) */
   .gcv-excursoes__viewport {
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
     overscroll-behavior-x: contain;
-    scroll-snap-type: x mandatory;
+    scroll-snap-type: x proximity;
     scrollbar-width: thin;
     touch-action: pan-x;
     cursor: grab;
