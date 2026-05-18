@@ -37,23 +37,3 @@ jobs:
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftps
-          port: 21
-          local-dir: ./
-          server-dir: public_html/
-          dangerous-clean-slate: false
-          exclude: |
-            .git/**
-            .git*
-            **/.github/**
-            **/node_modules/**
-            **/package.json
-            **/package-lock.json
-            **/.env
-            **/.env.*
-            **/tools/**
-            **/LEIA-ME.txt
-            **/.cursor/**
-            **/.vscode/**
-          log-level: verbose
