@@ -1663,21 +1663,6 @@ table.season th {
 }
 
 /* -------- Home: depoimentos (cartões) -------- */
-.gcv-chip-emerald {
-  display: inline-flex;
-  border-radius: 999px;
-  background: #168f7a;
-  padding: 0.4rem 0.85rem;
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: none;
-  color: #fff;
-}
-@media (min-width: 640px) {
-  .gcv-chip-emerald {
-    font-size: 11px;
-  }
-}
 .gcv-home-reviews {
   margin-top: 2.5rem;
   text-align: center;
@@ -1689,15 +1674,24 @@ table.season th {
 }
 .gcv-home-reviews__h2 {
   margin: 1rem 0 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35em;
+  flex-wrap: wrap;
+  max-width: 100%;
   font-size: clamp(1.35rem, 4vw, 2.25rem);
   font-weight: 900;
   color: #1e293b;
   text-transform: none;
   letter-spacing: -0.02em;
 }
+.gcv-home-reviews__h2-main {
+  text-wrap: balance;
+}
 .gcv-home-reviews__star {
   color: #e5a12d;
-  margin-right: 0.15em;
+  flex-shrink: 0;
 }
 .gcv-home-reviews__lead {
   margin: 0.5rem 0 0;

@@ -222,7 +222,6 @@ export const STRINGS = {
       instagramLead:
         "Acompanhe fotos recentes, bastidores de trilhas e novidades direto do @guiachapadaveadeiros. Esta versão estática não carrega o feed automaticamente — abra o perfil para ver todas as publicações.",
       instagramCta: "Ver publicações no Instagram",
-      reviewsKicker: "Ecoturismo",
       reviewsTitle: "Avaliações dos viajantes",
       reviewsLead: "Experiências reais de quem viveu a Chapada dos Veadeiros.",
       atrativoGalleryH2: "Galeria de fotos",
@@ -362,7 +361,6 @@ export const STRINGS = {
       instagramLead:
         "Trail photos, behind-the-scenes and local tips on @guiachapadaveadeiros. This static build does not load the API feed — open the profile for all posts.",
       instagramCta: "View posts on Instagram",
-      reviewsKicker: "Ecotourism",
       reviewsTitle: "Traveller reviews",
       reviewsLead: "Real experiences from visitors to Chapada dos Veadeiros.",
       atrativoGalleryH2: "Photo gallery",
@@ -502,7 +500,6 @@ export const STRINGS = {
       instagramLead:
         "Fotos recientes y novedades en @guiachapadaveadeiros. Esta versión estática no carga el feed automáticamente — abre el perfil para ver todas las publicaciones.",
       instagramCta: "Ver publicaciones en Instagram",
-      reviewsKicker: "Ecoturismo",
       reviewsTitle: "Opiniones de viajeros",
       reviewsLead: "Experiencias reales de quienes visitaron la Chapada dos Veadeiros.",
       atrativoGalleryH2: "Galería de fotos",

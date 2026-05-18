@@ -924,8 +924,7 @@ function homeReviewsRichHtml(locale, ap) {
     .join("\n");
   return `<section class="gcv-home-reviews" aria-label="${esc(home.reviewsTitle)}">
   <div class="gcv-home-reviews__intro">
-    <span class="gcv-chip-emerald">${esc(home.reviewsKicker)}</span>
-    <h2 class="gcv-home-reviews__h2"><span class="gcv-home-reviews__star" aria-hidden="true">★</span> ${esc(home.reviewsTitle)}</h2>
+    <h2 class="gcv-home-reviews__h2"><span class="gcv-home-reviews__star" aria-hidden="true">★</span> <span class="gcv-home-reviews__h2-main">${esc(home.reviewsTitle)}</span> <span class="gcv-home-reviews__star" aria-hidden="true">★</span></h2>
     <p class="gcv-home-reviews__lead">${esc(home.reviewsLead)}</p>
   </div>
   <div class="gcv-review-grid">
