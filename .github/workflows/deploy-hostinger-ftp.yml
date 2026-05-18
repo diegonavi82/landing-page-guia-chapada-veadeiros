@@ -41,8 +41,8 @@ jobs:
           protocol: ftps
           port: 21
           local-dir: ./
-          server-dir: ./public_html/
-          dangerous-clean-slate: true
+          server-dir: ./
+          dangerous-clean-slate: false
           exclude: |
             .git/**
             .git*
