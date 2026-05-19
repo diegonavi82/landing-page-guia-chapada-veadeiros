@@ -227,6 +227,8 @@ export const STRINGS = {
       instagramCta: "Ver publicações no Instagram",
       reviewsTitle: "Avaliações dos viajantes",
       reviewsLead: "Experiências reais de quem viveu a Chapada dos Veadeiros.",
+      reviewsCarouselAria: "Carrossel de avaliações — arraste para o lado",
+      reviewsDotAria: "Avaliação {{i}} de {{n}}",
       atrativoGalleryH2: "Galeria de fotos",
     },
     revistaHub: {
@@ -369,6 +371,8 @@ export const STRINGS = {
       instagramCta: "View posts on Instagram",
       reviewsTitle: "Traveller reviews",
       reviewsLead: "Real experiences from visitors to Chapada dos Veadeiros.",
+      reviewsCarouselAria: "Reviews carousel — swipe sideways",
+      reviewsDotAria: "Review {{i}} of {{n}}",
       atrativoGalleryH2: "Photo gallery",
     },
     revistaHub: {
@@ -511,6 +515,8 @@ export const STRINGS = {
       instagramCta: "Ver publicaciones en Instagram",
       reviewsTitle: "Opiniones de viajeros",
       reviewsLead: "Experiencias reales de quienes visitaron la Chapada dos Veadeiros.",
+      reviewsCarouselAria: "Carrusel de opiniones — desliza hacia los lados",
+      reviewsDotAria: "Opinión {{i}} de {{n}}",
       atrativoGalleryH2: "Galería de fotos",
     },
     revistaHub: {

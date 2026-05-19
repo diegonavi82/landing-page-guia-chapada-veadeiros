@@ -104,10 +104,13 @@ const SSR = {
     statusWait: "Em formação",
     perPerson: "/por pessoa",
     inclLabel: "Incluso",
-    inclPass: "Passaporte individual",
-    inclGuide: "Guia local certificado",
+    inclSpot: "Vaga em Excursão",
+    inclGuideShort: "Guia local",
+    inclTransport: "Transporte",
+    badgeTransport: "Com transporte",
     exclLabel: "Não incluso",
     exclEntries: "Entradas",
+    exclEntry: "Entrada",
     exclTransport: "Transporte",
     exclLunch: "Almoço",
     cta: "Quero participar",
@@ -133,10 +136,13 @@ const SSR = {
     statusWait: "Forming group",
     perPerson: "/per person",
     inclLabel: "Included",
-    inclPass: "Individual park passport",
-    inclGuide: "Certified local guide",
+    inclSpot: "Excursion spot",
+    inclGuideShort: "Local guide",
+    inclTransport: "Transport",
+    badgeTransport: "With transport",
     exclLabel: "Not included",
     exclEntries: "Admission fees",
+    exclEntry: "Admission",
     exclTransport: "Transport",
     exclLunch: "Lunch",
     cta: "I want to join",
@@ -162,15 +168,47 @@ const SSR = {
     statusWait: "En formación",
     perPerson: "/por persona",
     inclLabel: "Incluye",
-    inclPass: "Pasaporte individual del parque",
-    inclGuide: "Guía local certificado",
+    inclSpot: "Cupo en excursión",
+    inclGuideShort: "Guía local",
+    inclTransport: "Transporte",
+    badgeTransport: "Con transporte",
     exclLabel: "No incluye",
     exclEntries: "Entradas",
+    exclEntry: "Entrada",
     exclTransport: "Transporte",
     exclLunch: "Almuerzo",
     cta: "Quiero participar",
   },
 };
+
+function inclExclBlocksSsr(e, s) {
+  const comTransporte = e.comTransporte === true;
+  let inclItems =
+    `<li><i class="ti ti-user text-ok" aria-hidden="true"></i> ${esc(s.inclSpot)}</li>` +
+    `<li><i class="ti ti-flag text-ok" aria-hidden="true"></i> ${esc(s.inclGuideShort)}</li>`;
+  if (comTransporte) {
+    inclItems += `<li><i class="ti ti-bus text-ok" aria-hidden="true"></i> ${esc(s.inclTransport)}</li>`;
+  }
+  let exclItems;
+  if (comTransporte) {
+    exclItems =
+      `<li><i class="ti ti-ticket text-no" aria-hidden="true"></i> ${esc(s.exclEntries)}</li>` +
+      `<li><i class="ti ti-tools-kitchen-2 text-no" aria-hidden="true"></i> ${esc(s.exclLunch)}</li>`;
+  } else {
+    exclItems =
+      `<li><i class="ti ti-ticket text-no" aria-hidden="true"></i> ${esc(s.exclEntries)}</li>` +
+      `<li><i class="ti ti-bus text-no" aria-hidden="true"></i> ${esc(s.exclTransport)}</li>` +
+      `<li><i class="ti ti-tools-kitchen-2 text-no" aria-hidden="true"></i> ${esc(s.exclLunch)}</li>`;
+  }
+  return (
+    '<div class="gcv-excursoes-card__block gcv-excursoes-card__block--in">' +
+    `<span class="gcv-excursoes-card__label gcv-excursoes-card__label--in">${esc(s.inclLabel)}</span>` +
+    `<ul class="gcv-excursoes-card__list">${inclItems}</ul></div>` +
+    '<div class="gcv-excursoes-card__block gcv-excursoes-card__block--out">' +
+    `<span class="gcv-excursoes-card__label gcv-excursoes-card__label--out">${esc(s.exclLabel)}</span>` +
+    `<ul class="gcv-excursoes-card__list">${exclItems}</ul></div>`
+  );
+}
 
 /**
  * @param {string} locale
@@ -182,7 +220,9 @@ export function excursionsCarouselTrackSsrHtml(locale) {
     .map((e, idx) => {
       const hrefWa = waLinkExcursao(e, locale, s);
       const hora = horaExcursao(e);
-      const mod = "gcv-excursoes-card--pendente";
+      const comTransporte = e.comTransporte === true;
+      let mod = "gcv-excursoes-card--pendente";
+      if (comTransporte) mod += " gcv-excursoes-card--transporte";
       const cap = grupoMaximoValor(e);
       const x = inscritosNoGrupo(e);
       const legendaCap = legendaGrupoNoMaximo(cap, s);
@@ -225,19 +265,10 @@ export function excursionsCarouselTrackSsrHtml(locale) {
         `<span class="gcv-excursoes-card__per">${esc(s.perPerson)}</span>` +
         "</div></div>" +
         '<div class="gcv-excursoes-card__body">' +
-        '<div class="gcv-excursoes-card__block gcv-excursoes-card__block--in">' +
-        `<span class="gcv-excursoes-card__label gcv-excursoes-card__label--in">${esc(s.inclLabel)}</span>` +
-        '<ul class="gcv-excursoes-card__list">' +
-        `<li><span aria-hidden="true">🪪</span> ${esc(s.inclPass)}</li>` +
-        `<li><i class="ti ti-circle-check text-ok" aria-hidden="true"></i> ${esc(s.inclGuide)}</li>` +
-        "</ul></div>" +
-        '<div class="gcv-excursoes-card__block gcv-excursoes-card__block--out">' +
-        `<span class="gcv-excursoes-card__label gcv-excursoes-card__label--out">${esc(s.exclLabel)}</span>` +
-        '<ul class="gcv-excursoes-card__list">' +
-        `<li><i class="ti ti-circle-x text-no" aria-hidden="true"></i> ${esc(s.exclEntries)}</li>` +
-        `<li><i class="ti ti-circle-x text-no" aria-hidden="true"></i> ${esc(s.exclTransport)}</li>` +
-        `<li><i class="ti ti-circle-x text-no" aria-hidden="true"></i> ${esc(s.exclLunch)}</li>` +
-        "</ul></div>" +
+        inclExclBlocksSsr(e, s) +
+        (comTransporte
+          ? `<span class="gcv-excursoes-card__transport-badge"><i class="ti ti-bus" aria-hidden="true"></i> ${esc(s.badgeTransport)}</span>`
+          : "") +
         `<a class="gcv-excursoes-card__cta" href="${esc(hrefWa)}" target="_blank" rel="noopener noreferrer">` +
         '<i class="ti ti-brand-whatsapp" aria-hidden="true"></i> ' +
         esc(s.cta) +

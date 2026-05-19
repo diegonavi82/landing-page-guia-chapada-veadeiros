@@ -44,6 +44,19 @@
         grupoMaximo: 10,
       },
       {
+        dayNum: "5",
+        monthName: "junho",
+        weekday: "Sexta-feira",
+        destino: "Segredo + Vale da Lua",
+        hora: "8:30",
+        valor: 330,
+        confirmada: false,
+        faltamPessoas: 2,
+        pessoasInscritas: 2,
+        grupoMaximo: 4,
+        comTransporte: true,
+      },
+      {
         dayNum: "6",
         monthName: "junho",
         weekday: "Sábado",
@@ -94,6 +107,19 @@
         grupoMaximo: 10,
       },
       {
+        dayNum: "5",
+        monthName: "June",
+        weekday: "Friday",
+        destino: "Segredo + Moon Valley",
+        hora: "8:30",
+        valor: 330,
+        confirmada: false,
+        faltamPessoas: 2,
+        pessoasInscritas: 2,
+        grupoMaximo: 4,
+        comTransporte: true,
+      },
+      {
         dayNum: "6",
         monthName: "June",
         weekday: "Saturday",
@@ -142,6 +168,19 @@
         faltamPessoas: 3,
         pessoasInscritas: 1,
         grupoMaximo: 10,
+      },
+      {
+        dayNum: "5",
+        monthName: "junio",
+        weekday: "Viernes",
+        destino: "Segredo + Valle de la Luna",
+        hora: "8:30",
+        valor: 330,
+        confirmada: false,
+        faltamPessoas: 2,
+        pessoasInscritas: 2,
+        grupoMaximo: 4,
+        comTransporte: true,
       },
       {
         dayNum: "6",
@@ -202,10 +241,13 @@
       statusWait: "Em formação",
       perPerson: "/por pessoa",
       inclLabel: "Incluso",
-      inclPass: "Passaporte individual",
-      inclGuide: "Guia local certificado",
+      inclSpot: "Vaga em Excursão",
+      inclGuideShort: "Guia local",
+      inclTransport: "Transporte",
+      badgeTransport: "Com transporte",
       exclLabel: "Não incluso",
       exclEntries: "Entradas",
+      exclEntry: "Entrada",
       exclTransport: "Transporte",
       exclLunch: "Almoço",
       cta: "Quero participar",
@@ -242,10 +284,13 @@
       statusWait: "Forming group",
       perPerson: "/per person",
       inclLabel: "Included",
-      inclPass: "Individual park passport",
-      inclGuide: "Certified local guide",
+      inclSpot: "Excursion spot",
+      inclGuideShort: "Local guide",
+      inclTransport: "Transport",
+      badgeTransport: "With transport",
       exclLabel: "Not included",
       exclEntries: "Admission fees",
+      exclEntry: "Admission",
       exclTransport: "Transport",
       exclLunch: "Lunch",
       cta: "I want to join",
@@ -282,10 +327,13 @@
       statusWait: "En formación",
       perPerson: "/por persona",
       inclLabel: "Incluye",
-      inclPass: "Pasaporte individual del parque",
-      inclGuide: "Guía local certificado",
+      inclSpot: "Cupo en excursión",
+      inclGuideShort: "Guía local",
+      inclTransport: "Transporte",
+      badgeTransport: "Con transporte",
       exclLabel: "No incluye",
       exclEntries: "Entradas",
+      exclEntry: "Entrada",
       exclTransport: "Transporte",
       exclLunch: "Almuerzo",
       cta: "Quiero participar",
@@ -495,13 +543,73 @@
 
   /**
    * @param {Record<string, unknown>} e
+   * @param {Record<string, string>} s
+   */
+  function inclExclBlocksHtml(e, s) {
+    var comTransporte = e.comTransporte === true;
+    var inclItems =
+      '<li><i class="ti ti-user text-ok" aria-hidden="true"></i> ' +
+      escapeHtml(s.inclSpot) +
+      "</li>" +
+      '<li><i class="ti ti-flag text-ok" aria-hidden="true"></i> ' +
+      escapeHtml(s.inclGuideShort) +
+      "</li>";
+    if (comTransporte) {
+      inclItems +=
+        '<li><i class="ti ti-bus text-ok" aria-hidden="true"></i> ' +
+        escapeHtml(s.inclTransport) +
+        "</li>";
+    }
+    var exclItems;
+    if (comTransporte) {
+      exclItems =
+        '<li><i class="ti ti-ticket text-no" aria-hidden="true"></i> ' +
+        escapeHtml(s.exclEntries) +
+        "</li>" +
+        '<li><i class="ti ti-tools-kitchen-2 text-no" aria-hidden="true"></i> ' +
+        escapeHtml(s.exclLunch) +
+        "</li>";
+    } else {
+      exclItems =
+        '<li><i class="ti ti-ticket text-no" aria-hidden="true"></i> ' +
+        escapeHtml(s.exclEntries) +
+        "</li>" +
+        '<li><i class="ti ti-bus text-no" aria-hidden="true"></i> ' +
+        escapeHtml(s.exclTransport) +
+        "</li>" +
+        '<li><i class="ti ti-tools-kitchen-2 text-no" aria-hidden="true"></i> ' +
+        escapeHtml(s.exclLunch) +
+        "</li>";
+    }
+    return (
+      '<div class="gcv-excursoes-card__block gcv-excursoes-card__block--in">' +
+      '<span class="gcv-excursoes-card__label gcv-excursoes-card__label--in">' +
+      escapeHtml(s.inclLabel) +
+      "</span>" +
+      '<ul class="gcv-excursoes-card__list">' +
+      inclItems +
+      "</ul></div>" +
+      '<div class="gcv-excursoes-card__block gcv-excursoes-card__block--out">' +
+      '<span class="gcv-excursoes-card__label gcv-excursoes-card__label--out">' +
+      escapeHtml(s.exclLabel) +
+      "</span>" +
+      '<ul class="gcv-excursoes-card__list">' +
+      exclItems +
+      "</ul></div>"
+    );
+  }
+
+  /**
+   * @param {Record<string, unknown>} e
    * @param {number} idx
    * @param {string} locale
    * @param {Record<string, string>} s
    */
   function buildCard(e, idx, locale, s) {
     var href = waLinkExcursao(e, locale, s);
+    var comTransporte = e.comTransporte === true;
     var mod = e.confirmada ? "gcv-excursoes-card--confirmada" : "gcv-excursoes-card--pendente";
+    if (comTransporte) mod += " gcv-excursoes-card--transporte";
     var dayNum = e.dayNum ? escapeHtml(String(e.dayNum)) : "—";
     var monthName = escapeHtml(String(e.monthName));
     var hora = horaExcursao(e);
@@ -583,33 +691,12 @@
       "</span>" +
       "</div></div>" +
       '<div class="gcv-excursoes-card__body">' +
-      '<div class="gcv-excursoes-card__block gcv-excursoes-card__block--in">' +
-      '<span class="gcv-excursoes-card__label gcv-excursoes-card__label--in">' +
-      escapeHtml(s.inclLabel) +
-      "</span>" +
-      '<ul class="gcv-excursoes-card__list">' +
-      "<li><span aria-hidden=\"true\">🪪</span> " +
-      escapeHtml(s.inclPass) +
-      "</li>" +
-      '<li><i class="ti ti-circle-check text-ok" aria-hidden="true"></i> ' +
-      escapeHtml(s.inclGuide) +
-      "</li>" +
-      "</ul></div>" +
-      '<div class="gcv-excursoes-card__block gcv-excursoes-card__block--out">' +
-      '<span class="gcv-excursoes-card__label gcv-excursoes-card__label--out">' +
-      escapeHtml(s.exclLabel) +
-      "</span>" +
-      '<ul class="gcv-excursoes-card__list">' +
-      '<li><i class="ti ti-circle-x text-no" aria-hidden="true"></i> ' +
-      escapeHtml(s.exclEntries) +
-      "</li>" +
-      '<li><i class="ti ti-circle-x text-no" aria-hidden="true"></i> ' +
-      escapeHtml(s.exclTransport) +
-      "</li>" +
-      '<li><i class="ti ti-circle-x text-no" aria-hidden="true"></i> ' +
-      escapeHtml(s.exclLunch) +
-      "</li>" +
-      "</ul></div>" +
+      inclExclBlocksHtml(e, s) +
+      (comTransporte
+        ? '<span class="gcv-excursoes-card__transport-badge"><i class="ti ti-bus" aria-hidden="true"></i> ' +
+          escapeHtml(s.badgeTransport) +
+          "</span>"
+        : "") +
       '<a class="gcv-excursoes-card__cta" href="' +
       href +
       '" target="_blank" rel="noopener noreferrer">' +

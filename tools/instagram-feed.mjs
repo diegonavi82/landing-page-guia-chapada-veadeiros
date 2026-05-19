@@ -10,8 +10,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
 export const INSTAGRAM_FEED_JSON = join(__dirname, "instagram-feed.json");
 export const INSTAGRAM_IMG_DIR = join(ROOT, "assets", "img", "instagram");
-/** Quantas fotos a home exibe por visita (grade 4×2). */
+/** Quantas fotos a home exibe por visita — desktop/notebook: grade 4×4. */
 export const INSTAGRAM_HOME_DISPLAY_COUNT = 16;
+/** Celular e dispositivos pequenos: grade 3×3 (o JS sorteia 16; o CSS oculta as extras). */
+export const INSTAGRAM_HOME_DISPLAY_COUNT_MOBILE = 9;
 
 const GRAPH_VERSION = "v21.0";
 

@@ -640,11 +640,15 @@
     var poolUrl = grid.getAttribute("data-gcv-instagram-pool");
     if (!poolUrl) return;
 
-    var count = parseInt(grid.getAttribute("data-gcv-instagram-count") || "16", 10);
-    if (!count || count < 1) count = 16;
+    var countDesktop = parseInt(grid.getAttribute("data-gcv-instagram-count") || "16", 10);
+    if (!countDesktop || countDesktop < 1) countDesktop = 16;
+    var countMobile = parseInt(grid.getAttribute("data-gcv-instagram-count-mobile") || "9", 10);
+    if (!countMobile || countMobile < 1) countMobile = 9;
 
     var openLabel = grid.getAttribute("data-gcv-instagram-open-label") || "Abrir no Instagram";
     var assetBase = grid.getAttribute("data-gcv-instagram-asset-base") || "./assets/img/";
+    var instagramIcon =
+      '<svg class="gcv-instagram-logo" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path fill="currentColor" d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>';
 
     fetch(poolUrl, { credentials: "same-origin" })
       .then(function (res) {
@@ -655,7 +659,7 @@
         var posts = Array.isArray(data) ? data : data && Array.isArray(data.posts) ? data.posts : [];
         if (posts.length < 1) return;
 
-        var picked = shuffleArray(posts.slice()).slice(0, Math.min(count, posts.length));
+        var picked = shuffleArray(posts.slice()).slice(0, Math.min(countDesktop, posts.length));
         var html = picked
           .map(function (p) {
             var permalink = String(p.permalink || p.url || "").trim();
@@ -675,7 +679,9 @@
               '" alt="' +
               alt.replace(/"/g, "&quot;") +
               '" width="400" height="400" loading="lazy" decoding="async" />' +
-              '<span class="gcv-instagram-grid__shade" aria-hidden="true"></span>' +
+              '<span class="gcv-instagram-grid__shade" aria-hidden="true">' +
+              instagramIcon +
+              "</span>" +
               "</a></li>"
             );
           })
@@ -693,7 +699,105 @@
       });
   }
 
+  function initReviewsCarousel() {
+    var root = document.querySelector("[data-gcv-reviews-carousel]");
+    if (!root) return;
+
+    var viewport = root.querySelector("[data-gcv-reviews-viewport]");
+    var track = root.querySelector(".gcv-reviews-carousel__track");
+    var dotsWrap = root.querySelector("[data-gcv-reviews-dots]");
+    if (!viewport || !track || !dotsWrap) return;
+
+    var cards = track.querySelectorAll(".gcv-review-card");
+    var n = cards.length;
+    if (n < 2) {
+      dotsWrap.hidden = true;
+      return;
+    }
+
+    var dotTpl = root.getAttribute("data-gcv-reviews-dot-aria") || "Avaliação {{i}} de {{n}}";
+    var dots = [];
+
+    function dotLabel(i) {
+      return dotTpl.replace("{{i}}", String(i + 1)).replace("{{n}}", String(n));
+    }
+
+    for (var d = 0; d < n; d++) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "gcv-reviews-carousel__dot";
+      btn.setAttribute("role", "tab");
+      btn.setAttribute("aria-label", dotLabel(d));
+      btn.setAttribute("aria-selected", d === 0 ? "true" : "false");
+      if (d === 0) btn.classList.add("is-active");
+      (function (index) {
+        btn.addEventListener("click", function () {
+          scrollToIndex(index, true);
+        });
+      })(d);
+      dotsWrap.appendChild(btn);
+      dots.push(btn);
+    }
+
+    function activeIndex() {
+      var vpCenter = viewport.scrollLeft + viewport.clientWidth / 2;
+      var best = 0;
+      var bestDist = Infinity;
+      for (var i = 0; i < cards.length; i++) {
+        var card = cards[i];
+        var center = card.offsetLeft + card.offsetWidth / 2;
+        var dist = Math.abs(center - vpCenter);
+        if (dist < bestDist) {
+          bestDist = dist;
+          best = i;
+        }
+      }
+      return best;
+    }
+
+    function setActive(i) {
+      dots.forEach(function (dot, j) {
+        var on = j === i;
+        dot.classList.toggle("is-active", on);
+        dot.setAttribute("aria-selected", on ? "true" : "false");
+      });
+    }
+
+    function scrollToIndex(i, smooth) {
+      var card = cards[i];
+      if (!card) return;
+      var target = card.offsetLeft - (viewport.clientWidth - card.offsetWidth) / 2;
+      var max = Math.max(0, track.scrollWidth - viewport.clientWidth);
+      target = Math.max(0, Math.min(target, max));
+      viewport.scrollTo({ left: target, behavior: smooth ? "smooth" : "auto" });
+      setActive(i);
+    }
+
+    var scrollTimer = null;
+    viewport.addEventListener(
+      "scroll",
+      function () {
+        if (scrollTimer) window.clearTimeout(scrollTimer);
+        scrollTimer = window.setTimeout(function () {
+          setActive(activeIndex());
+        }, 80);
+      },
+      { passive: true },
+    );
+
+    viewport.addEventListener("keydown", function (e) {
+      if (e.key === "ArrowRight") {
+        e.preventDefault();
+        scrollToIndex(Math.min(activeIndex() + 1, n - 1), true);
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        scrollToIndex(Math.max(activeIndex() - 1, 0), true);
+      }
+    });
+  }
+
   initHeroCarousel();
+  initReviewsCarousel();
   initInstagramRandomGrid();
   initMapLightbox();
   initPhotoGalleryLightbox();
