@@ -12,6 +12,34 @@ const CONTRATE_NOTICE_RE = /\bContrate\s+um\s+guia\s+local\b(?:\s*[\!\?\.])?/i;
 const METADATA_SIDEBAR_HINT_RE =
   /\b(?:Dist[aâ]ncia|Ingressos|Atrativos|Nível\s+de\s+Dificuldade|Entrada\b|Estacionamento\b|Per[ií]odo\s+recomendado)\b/i;
 
+const COMPRE_PASSEIO_LABEL_RE = /(?:Compre\s+seu\s+passeio!|Buy\s+your\s+tour!|¡Compra\s+tu\s+recorrido!)/i;
+
+const COMPRE_PASSEIO_ANCHOR_RE =
+  /<a\b[^>]*>\s*(?:Compre\s+seu\s+passeio!|Buy\s+your\s+tour!|¡Compra\s+tu\s+recorrido!)\s*<\/a>\s*/gi;
+
+export function stripComprePasseioButtons(html) {
+  return String(html || "")
+    .replace(COMPRE_PASSEIO_ANCHOR_RE, "")
+    .replace(/^Compre\s+seu\s+passeio!\s*/im, "")
+    .replace(/^Buy\s+your\s+tour!\s*/im, "")
+    .replace(/^¡Compra\s+tu\s+recorrido!\s*/im, "")
+    .replace(/^\s*\n+/, "")
+    .trim();
+}
+
+function finalizeSplit(parts) {
+  const ctaLabel = String(parts.ctaHtml || "")
+    .replace(/<[^>]+>/g, "")
+    .trim();
+  const ctaHtml = COMPRE_PASSEIO_LABEL_RE.test(ctaLabel) ? "" : parts.ctaHtml;
+  return {
+    ...parts,
+    ctaHtml,
+    sidebarInfo: stripComprePasseioButtons(parts.sidebarInfo),
+    mainContent: stripComprePasseioButtons(parts.mainContent),
+  };
+}
+
 const BUTTON_ANCHOR_RE = /<a\b[^>]*class=["']([^"']*)["'][^>]*>[\s\S]*?<\/a>/gi;
 
 function anchorClassesLookLikeSiteCta(classes) {
@@ -105,13 +133,12 @@ export function splitPlaintextSidebarBeforeContrateNotice(content) {
     : mainTail;
 
   const ctaHtml = `<a href="${GUIDE_BOOKING_BUTTON_HREF}" class="button" rel="noopener noreferrer">Contrate um guia local!</a>`;
-  const preludeCompre = `<a href="/contato" class="button">Compre seu passeio!</a>\n`;
 
-  return {
+  return finalizeSplit({
     sidebarInfo: sidebarRaw,
     ctaHtml,
-    mainContent: preludeCompre + mainTail,
-  };
+    mainContent: mainTail,
+  });
 }
 
 function headHasLongProseBlock(head) {
@@ -149,15 +176,13 @@ export function splitMetadataBeforeFirstHeading(content) {
     ctaHtml = `<a href="${GUIDE_BOOKING_BUTTON_HREF}" class="button" rel="noopener noreferrer">Contrate um guia local!</a>`;
   }
 
-  const preludeCompre = hadComprePlain ? `<a href="/contato" class="button">Compre seu passeio!</a>\n` : "";
+  const mainContent = body;
 
-  const mainContent = preludeCompre + body;
-
-  if (!sidebarRaw && !ctaHtml && !preludeCompre) {
+  if (!sidebarRaw && !ctaHtml) {
     return null;
   }
 
-  return { sidebarInfo: sidebarRaw, ctaHtml, mainContent };
+  return finalizeSplit({ sidebarInfo: sidebarRaw, ctaHtml, mainContent });
 }
 
 export function splitDetailContent(content) {
@@ -165,7 +190,7 @@ export function splitDetailContent(content) {
 
   const inverted = splitCompreThenContrate(content, buttons);
   if (inverted) {
-    return inverted;
+    return finalizeSplit(inverted);
   }
 
   const plaintextSplit =
@@ -179,7 +204,7 @@ export function splitDetailContent(content) {
     return metadataSplit;
   }
 
-  return splitAtFirstButton(content);
+  return finalizeSplit(splitAtFirstButton(content, buttons));
 }
 
 export function extractFirstImage(content) {
@@ -280,7 +305,8 @@ export function getSidebarLines(sidebarInfo) {
   return plain
     .split(/\n+/)
     .map((block) => block.replace(/[ \t]+/g, " ").trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    .filter((block) => !COMPRE_PASSEIO_LABEL_RE.test(block));
 }
 
 /** Substitui rotas do SPA por ficheiros estáticos relativos. */

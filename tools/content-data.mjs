@@ -183,6 +183,9 @@ export const STRINGS = {
     topbar: "+55 62 98250-6891 | contato@guiachapadaveadeiros.com",
     htmlLang: "pt-BR",
     searchAria: "Busca",
+    searchPlaceholder: "Buscar no site…",
+    searchInputAria: "Digite para buscar páginas",
+    searchNoResults: "Nenhuma página encontrada",
     nav: { home: "Home", revista: "Revista", atrativos: "Atrativos", contact: "Fale Conosco" },
     hero: {
       badge: "Chapada dos Veadeiros · Goiás",
@@ -328,6 +331,9 @@ export const STRINGS = {
     topbar: "+55 62 98250-6891 | contato@guiachapadaveadeiros.com",
     htmlLang: "en",
     searchAria: "Search",
+    searchPlaceholder: "Search the site…",
+    searchInputAria: "Type to search pages",
+    searchNoResults: "No pages found",
     nav: { home: "Home", revista: "Magazine", atrativos: "Attractions", contact: "Contact" },
     hero: {
       badge: "Chapada dos Veadeiros · Brazil",
@@ -473,6 +479,9 @@ export const STRINGS = {
     topbar: "+55 62 98250-6891 | contato@guiachapadaveadeiros.com",
     htmlLang: "es",
     searchAria: "Buscar",
+    searchPlaceholder: "Buscar en el sitio…",
+    searchInputAria: "Escribe para buscar páginas",
+    searchNoResults: "Ninguna página encontrada",
     nav: { home: "Inicio", revista: "Revista", atrativos: "Atractivos", contact: "Contacto" },
     hero: {
       badge: "Chapada dos Veadeiros · Brasil",

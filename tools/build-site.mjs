@@ -139,9 +139,28 @@ function publicJsSrc(file, pageOutRelPath) {
   return `/assets/js/${name}${q}`;
 }
 
-function searchAbsHref(locale) {
-  if (locale === "pt") return `${SITE_ORIGIN}/busca`;
-  return `${SITE_ORIGIN}/${locale}/busca`;
+function plainTextFromHtml(html, maxLen = 5000) {
+  if (!html) return "";
+  return String(html)
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;|&#160;/gi, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxLen);
+}
+
+function textFromStaticHtmlFile(relPath) {
+  const abs = join(ROOT, ...relPath.split("/"));
+  if (!existsSync(abs)) return "";
+  const html = readFileSync(abs, "utf8");
+  const mainMatch = html.match(/<main[^>]*id="conteudo"[^>]*>([\s\S]*?)<\/main>/i);
+  return plainTextFromHtml(mainMatch?.[1] || "", 5000);
 }
 
 const LOCALES = /** @type {const} */ (["pt", "en", "es"]);
@@ -1089,7 +1108,13 @@ function headerHtml(ctx) {
       ${nav("revista", "revista.html", S.nav.revista)}
       ${nav("atrativos", "atrativos.html", S.nav.atrativos)}
       ${nav("contact", "contato.html", S.nav.contact)}
-      <a class="nav-search" href="${esc(searchAbsHref(locale))}" aria-label="${esc(S.searchAria)}">⌕</a>
+      <div class="nav-search-wrap" data-gcv-search data-locale="${esc(locale)}" data-page-out="${esc(cur)}" data-search-index="${esc(`${ap}assets/data/search-index.json${BUILD_ASSET_QUERY}`)}" data-no-results="${esc(S.searchNoResults)}">
+        <button type="button" class="nav-search" aria-label="${esc(S.searchAria)}" aria-expanded="false" aria-controls="nav-search-panel">⌕</button>
+        <div class="nav-search-panel" id="nav-search-panel" hidden>
+          <input type="search" id="nav-search-input" class="nav-search-input" placeholder="${esc(S.searchPlaceholder)}" autocomplete="off" aria-label="${esc(S.searchInputAria)}" />
+          <ul class="nav-search-results" role="listbox" aria-live="polite"></ul>
+        </div>
+      </div>
       ${langLinksHtml(locale, pathKey)}
     </nav>
   </div>
@@ -1918,6 +1943,95 @@ function renderPage(locale, pathKey, { title, desc, ogImageRel, current, mainHtm
   });
 }
 
+function collectSearchEntries(locale) {
+  const S = STRINGS[locale];
+  /** @type {{ title: string; pathKey: string; desc: string; body: string; text: string }[]} */
+  const entries = [];
+  const seen = new Set();
+
+  const add = (title, pathKey, desc = "", body = "") => {
+    const key = pathKey || "__home__";
+    if (seen.has(key)) return;
+    seen.add(key);
+    const cleanTitle = String(title || "").trim();
+    const cleanDesc = String(desc || "").trim();
+    const cleanBody = String(body || "").trim();
+    entries.push({
+      title: cleanTitle,
+      pathKey,
+      desc: cleanDesc,
+      body: cleanBody,
+      text: [cleanTitle, cleanDesc, cleanBody].filter(Boolean).join(" "),
+    });
+  };
+
+  add(S.nav.home, "", S.seo.homeDesc);
+  add(S.nav.revista, "revista.html", S.revistaPage.seoDesc);
+  add(S.atrativosHub.title, "atrativos.html", S.atrativosHub.seoDesc);
+  add(S.contact.title, "contato.html", S.contact.subtitle);
+
+  for (const item of attractionIterate(locale)) {
+    const cms = item.cms;
+    const body = plainTextFromHtml(stripScripts(cms?.content ?? ""), 5000);
+    add(item.title, `atrativos/${item.locSlug}.html`, item.lead, body);
+  }
+
+  const contratar = ARTICLE_CONTRATAR[locale];
+  add(contratar.title, contratar.path, contratar.desc, plainTextFromHtml(contratar.blocks || ""));
+
+  const epoca = ARTICLE_EPOCA[locale];
+  const epocaBody = [
+    plainTextFromHtml(epoca.intro || ""),
+    ...SEASON_ROWS.map((row) => row.text[locale]),
+  ].join(" ");
+  add(epoca.title, epoca.path, epoca.desc, epocaBody);
+
+  for (const A of [ARTICLE_ROTEIRO_4_DIAS, ARTICLE_ONCA_PARDA]) {
+    const art = A[locale];
+    if (!art?.path) continue;
+    const rel = outRelPath(locale, art.path);
+    add(art.title, art.path, art.desc || "", textFromStaticHtmlFile(rel));
+  }
+
+  const posts = CMS?.locales?.[locale]?.postsLite ?? [];
+  const revistaBuilt = new Set();
+  for (const post of posts) {
+    const slug = normalizeRevistaSlug(post);
+    const pk = revistaPathKey(slug);
+    revistaBuilt.add(pk);
+    const desc = ((post.seoDescription && String(post.seoDescription).trim()) || post.excerpt || "").trim();
+    const title = (post.title && String(post.title).trim()) || (post.seoTitle && String(post.seoTitle).trim()) || slug;
+    const body = plainTextFromHtml(stripScripts(post.content ?? ""), 5000);
+    add(title, pk, desc, body);
+  }
+
+  for (const A of [ARTICLE_CONTRATAR, ARTICLE_EPOCA]) {
+    const pk = A.pt.path;
+    if (!revistaBuilt.has(pk)) {
+      const art = A[locale];
+      const extraBody =
+        A === ARTICLE_CONTRATAR
+          ? plainTextFromHtml(art.blocks || "")
+          : [plainTextFromHtml(art.intro || ""), ...SEASON_ROWS.map((row) => row.text[locale])].join(" ");
+      add(art.title, pk, art.desc || "", extraBody);
+    }
+  }
+
+  return entries;
+}
+
+function writeSearchIndexAsset() {
+  const index = {};
+  for (const locale of LOCALES) {
+    index[locale] = collectSearchEntries(locale);
+  }
+  const out = join(ROOT, "assets", "data", "search-index.json");
+  mkdirSync(dirname(out), { recursive: true });
+  writeFileSync(out, JSON.stringify(index), "utf8");
+  const total = Object.values(index).reduce((n, list) => n + list.length, 0);
+  console.log("[build] search-index:", out, total, "entries");
+}
+
 /** --------- run --------- */
 const sitemapUrls = [];
 
@@ -2176,6 +2290,8 @@ writeFileSync(
   `User-agent: *\nAllow: /\n\nSitemap: ${SITE_ORIGIN}/sitemap.xml\n`,
   "utf8",
 );
+
+writeSearchIndexAsset();
 
 console.log("Build OK:", ROOT);
 console.log("Páginas:", sitemapUrls.length, "URLs no sitemap");

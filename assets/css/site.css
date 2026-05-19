@@ -146,17 +146,98 @@ a:hover {
   color: var(--gc-cerrado-dark);
 }
 
-.nav-main a.nav-search {
+.nav-main a.nav-search,
+.nav-main button.nav-search {
   flex-shrink: 0;
-  font-size: 1.125rem;
+  font-size: 2rem;
   line-height: 1;
   padding: 0.45rem;
   color: #64748b;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
 }
 .nav-main a.nav-search:hover,
-.nav-main a.nav-search:focus-visible {
+.nav-main a.nav-search:focus-visible,
+.nav-main button.nav-search:hover,
+.nav-main button.nav-search:focus-visible {
   background: #f8fafc;
   color: #df8350;
+}
+
+.nav-search-wrap {
+  position: relative;
+  flex-shrink: 0;
+  align-self: center;
+}
+.nav-search-wrap.is-open .nav-search {
+  background: #f8fafc;
+  color: #df8350;
+}
+.nav-search-panel {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  width: min(340px, calc(100vw - 2rem));
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 0.5rem;
+  z-index: 120;
+}
+.nav-search-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.55rem 0.75rem;
+  font: inherit;
+  font-size: 0.92rem;
+  color: var(--gc-text);
+  background: #fff;
+}
+.nav-search-input:focus {
+  outline: 2px solid rgba(223, 131, 80, 0.35);
+  border-color: #df8350;
+}
+.nav-search-results {
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  max-height: min(50vh, 320px);
+  overflow-y: auto;
+}
+.nav-search-empty {
+  padding: 0.55rem 0.35rem;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+.nav-search-result {
+  display: block;
+  padding: 0.5rem 0.45rem;
+  border-radius: 8px;
+  text-decoration: none;
+  color: var(--gc-text);
+}
+.nav-search-result:hover,
+.nav-search-result:focus-visible {
+  background: rgba(47, 125, 85, 0.08);
+  color: var(--gc-cerrado-dark);
+}
+.nav-search-result__title {
+  display: block;
+  font-weight: 600;
+  font-size: 0.88rem;
+  line-height: 1.3;
+}
+.nav-search-result__hint {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: #64748b;
 }
 
 .lang-switch {
@@ -238,6 +319,11 @@ a:hover {
   .lang-switch {
     margin-left: 0;
     margin-top: 0.5rem;
+  }
+  .nav-search-panel {
+    right: auto;
+    left: 0;
+    width: min(340px, calc(100vw - 2.5rem));
   }
 }
 
