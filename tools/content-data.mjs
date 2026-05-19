@@ -220,7 +220,10 @@ export const STRINGS = {
       instagramChip: "Instagram",
       instagramHandle: "@guiachapadaveadeiros",
       instagramLead:
-        "Acompanhe fotos recentes, bastidores de trilhas e novidades direto do @guiachapadaveadeiros. Esta versão estática não carrega o feed automaticamente — abra o perfil para ver todas as publicações.",
+        "Acompanhe fotos recentes, bastidores de trilhas e novidades no @guiachapadaveadeiros. Use o botão abaixo para abrir o perfil completo no Instagram.",
+      instagramLeadWithFeed:
+        "Últimas publicações do @guiachapadaveadeiros. Toque em uma foto para abrir no Instagram.",
+      instagramGridAria: "Últimas fotos do Instagram",
       instagramCta: "Ver publicações no Instagram",
       reviewsTitle: "Avaliações dos viajantes",
       reviewsLead: "Experiências reais de quem viveu a Chapada dos Veadeiros.",
@@ -359,7 +362,10 @@ export const STRINGS = {
       instagramChip: "Instagram",
       instagramHandle: "@guiachapadaveadeiros",
       instagramLead:
-        "Trail photos, behind-the-scenes and local tips on @guiachapadaveadeiros. This static build does not load the API feed — open the profile for all posts.",
+        "Trail photos, behind-the-scenes and local tips on @guiachapadaveadeiros. Use the button below to open the full profile on Instagram.",
+      instagramLeadWithFeed:
+        "Latest posts from @guiachapadaveadeiros. Tap a photo to open it on Instagram.",
+      instagramGridAria: "Latest Instagram photos",
       instagramCta: "View posts on Instagram",
       reviewsTitle: "Traveller reviews",
       reviewsLead: "Real experiences from visitors to Chapada dos Veadeiros.",
@@ -498,7 +504,10 @@ export const STRINGS = {
       instagramChip: "Instagram",
       instagramHandle: "@guiachapadaveadeiros",
       instagramLead:
-        "Fotos recientes y novedades en @guiachapadaveadeiros. Esta versión estática no carga el feed automáticamente — abre el perfil para ver todas las publicaciones.",
+        "Fotos recientes y novedades en @guiachapadaveadeiros. Usa el botón de abajo para abrir el perfil completo en Instagram.",
+      instagramLeadWithFeed:
+        "Últimas publicaciones de @guiachapadaveadeiros. Toca una foto para abrirla en Instagram.",
+      instagramGridAria: "Últimas fotos de Instagram",
       instagramCta: "Ver publicaciones en Instagram",
       reviewsTitle: "Opiniones de viajeros",
       reviewsLead: "Experiencias reales de quienes visitaron la Chapada dos Veadeiros.",

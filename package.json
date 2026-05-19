@@ -1,11 +1,13 @@
 {
   "name": "guia-chapada-landing-estatica",
   "private": true,
-  "version": "1.0.4",
+  "version": "1.0.6",
   "description": "Site 100% estático (HTML/CSS/JS) — sem API, sem MySQL.",
   "scripts": {
     "sync:media": "node tools/sync-media.mjs",
     "images:webp": "node tools/to-webp.mjs",
+    "sync:instagram": "node tools/sync-instagram.mjs",
+    "fetch:instagram": "node tools/fetch-instagram-images.mjs",
     "build": "node tools/build-site.mjs",
     "build:file": "node tools/run-build-relative-js.mjs",
     "setup": "npm run sync:media && npm run images:webp && npm run build"

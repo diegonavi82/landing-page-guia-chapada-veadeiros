@@ -458,11 +458,15 @@
       /** Web3Forms — https://docs.web3forms.com/ (ideal para HTML estático + envio por e-mail). */
       function submitWeb3Forms() {
         var locW = resolveLocale();
-        var Lw = bodyLabels[locW] || bodyLabels.pt;
         var tLb = tipoLabel(payload.tipo);
-        var msgBodyPlain = buildPlainBody(Lw, payload, tLb);
+        var fieldLabels = {
+          pt: { assunto: "Assunto", idioma: "Idioma" },
+          en: { assunto: "Subject", idioma: "Language" },
+          es: { assunto: "Asunto", idioma: "Idioma" },
+        };
+        var fL = fieldLabels[locW] || fieldLabels.pt;
         var subjLine = clipForMailto(
-          (subjPrefix[locW] || subjPrefix.pt) + ": " + tLb + " · " + (payload.nome || "").slice(0, 120),
+          "[Guia Chapada Veadeiros] " + tLb + " — " + (payload.nome || "").slice(0, 120),
           220,
         );
         /** @type {Record<string,string|boolean>} */
@@ -470,12 +474,16 @@
           access_key: web3Key,
           name: payload.nome,
           subject: subjLine,
-          message: msgBodyPlain,
+          message: payload.mensagem || "",
         };
-        if (payload.email) w3.email = payload.email;
+        w3[fL.assunto] = tLb;
+        if (payload.email) {
+          w3.email = payload.email;
+          w3.replyto = payload.email;
+        }
         if (payload.telefone) w3.phone = payload.telefone;
         var langTag = locale === "en" ? "en" : locale === "es" ? "es-419" : "pt-BR";
-        w3["idioma_locale"] = langTag;
+        w3[fL.idioma] = langTag;
 
         return fetch("https://api.web3forms.com/submit", {
           method: "POST",
@@ -515,9 +523,18 @@
             showError("");
             showSentPanel("api");
           })
-          .catch(function () {
-            showError("");
-            finishDual();
+          .catch(function (err) {
+            var msg = err && err.message ? String(err.message) : "";
+            if (!msg) {
+              var locf = resolveLocale();
+              msg =
+                locf === "en"
+                  ? errPrefix + "Please try again or email us at " + contactEmail + "."
+                  : locf === "es"
+                    ? errPrefix + "Inténtalo de nuevo o escríbenos a " + contactEmail + "."
+                    : errPrefix + "Tente novamente ou escreva para " + contactEmail + ".";
+            }
+            showError(msg);
           })
           .finally(function () {
             setLoading(false);
@@ -606,7 +623,78 @@
     }
   }
 
+  function shuffleArray(arr) {
+    for (var i = arr.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = arr[i];
+      arr[i] = arr[j];
+      arr[j] = t;
+    }
+    return arr;
+  }
+
+  function initInstagramRandomGrid() {
+    var grid = document.querySelector("[data-gcv-instagram-grid][data-gcv-instagram-random]");
+    if (!grid) return;
+
+    var poolUrl = grid.getAttribute("data-gcv-instagram-pool");
+    if (!poolUrl) return;
+
+    var count = parseInt(grid.getAttribute("data-gcv-instagram-count") || "16", 10);
+    if (!count || count < 1) count = 16;
+
+    var openLabel = grid.getAttribute("data-gcv-instagram-open-label") || "Abrir no Instagram";
+    var assetBase = grid.getAttribute("data-gcv-instagram-asset-base") || "./assets/img/";
+
+    fetch(poolUrl, { credentials: "same-origin" })
+      .then(function (res) {
+        if (!res.ok) throw new Error("pool " + res.status);
+        return res.json();
+      })
+      .then(function (data) {
+        var posts = Array.isArray(data) ? data : data && Array.isArray(data.posts) ? data.posts : [];
+        if (posts.length < 1) return;
+
+        var picked = shuffleArray(posts.slice()).slice(0, Math.min(count, posts.length));
+        var html = picked
+          .map(function (p) {
+            var permalink = String(p.permalink || p.url || "").trim();
+            var image = String(p.image || p.imageRel || "").trim().replace(/^\//, "");
+            var alt = String(p.alt || p.caption || "").trim() || "Publicação no Instagram — Guia Chapada Veadeiros";
+            if (!permalink || !image) return "";
+            var imgSrc = assetBase + image;
+            return (
+              '<li class="gcv-instagram-grid__cell">' +
+              '<a class="gcv-instagram-grid__link" href="' +
+              permalink +
+              '" target="_blank" rel="noopener noreferrer" aria-label="' +
+              openLabel +
+              '">' +
+              '<img class="gcv-instagram-grid__img" src="' +
+              imgSrc +
+              '" alt="' +
+              alt.replace(/"/g, "&quot;") +
+              '" width="400" height="400" loading="lazy" decoding="async" />' +
+              '<span class="gcv-instagram-grid__shade" aria-hidden="true"></span>' +
+              "</a></li>"
+            );
+          })
+          .filter(Boolean)
+          .join("");
+
+        if (!html) return;
+        grid.innerHTML = html;
+        grid.setAttribute("data-gcv-instagram-ready", "1");
+      })
+      .catch(function (err) {
+        if (typeof console !== "undefined" && console.warn) {
+          console.warn("[gcv-instagram]", err);
+        }
+      });
+  }
+
   initHeroCarousel();
+  initInstagramRandomGrid();
   initMapLightbox();
   initPhotoGalleryLightbox();
   initContactForm();

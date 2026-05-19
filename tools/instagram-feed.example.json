@@ -1,0 +1,46 @@
+{
+  "updatedAt": "2026-01-01T12:00:00.000Z",
+  "source": "manual",
+  "posts": [
+    {
+      "permalink": "https://www.instagram.com/p/POSTE_01/",
+      "image": "instagram/post-01.jpg",
+      "alt": "Descrição curta da foto 1"
+    },
+    {
+      "permalink": "https://www.instagram.com/p/POSTE_02/",
+      "image": "instagram/post-02.jpg",
+      "alt": "Descrição curta da foto 2"
+    },
+    {
+      "permalink": "https://www.instagram.com/p/POSTE_03/",
+      "image": "instagram/post-03.jpg",
+      "alt": "Descrição curta da foto 3"
+    },
+    {
+      "permalink": "https://www.instagram.com/p/POSTE_04/",
+      "image": "instagram/post-04.jpg",
+      "alt": "Descrição curta da foto 4"
+    },
+    {
+      "permalink": "https://www.instagram.com/p/POSTE_05/",
+      "image": "instagram/post-05.jpg",
+      "alt": "Descrição curta da foto 5"
+    },
+    {
+      "permalink": "https://www.instagram.com/p/POSTE_06/",
+      "image": "instagram/post-06.jpg",
+      "alt": "Descrição curta da foto 6"
+    },
+    {
+      "permalink": "https://www.instagram.com/p/POSTE_07/",
+      "image": "instagram/post-07.jpg",
+      "alt": "Descrição curta da foto 7"
+    },
+    {
+      "permalink": "https://www.instagram.com/p/POSTE_08/",
+      "image": "instagram/post-08.jpg",
+      "alt": "Descrição curta da foto 8"
+    }
+  ]
+}

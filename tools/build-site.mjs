@@ -33,6 +33,11 @@ import {
   fixAttractionActionHrefs,
 } from "./detail-content.mjs";
 import { premiumRevistaPtBundle, revistaSlugFromPathKey } from "./gcv-premium-revista-pt.mjs";
+import {
+  resolveInstagramFeedForBuild,
+  writeInstagramPoolAsset,
+  INSTAGRAM_HOME_DISPLAY_COUNT,
+} from "./instagram-feed.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
@@ -881,16 +886,56 @@ ${cards}
 </section>`;
 }
 
-function homeInstagramHtml(locale) {
+function instagramGridCellsHtml(posts, ap, openOnIg) {
+  return posts
+    .map((p) => {
+      const imgSrc = `${ap}assets/img/${String(p.image).replace(/^\//, "")}`;
+      return `  <li class="gcv-instagram-grid__cell">
+    <a class="gcv-instagram-grid__link" href="${esc(p.permalink)}" target="_blank" rel="noopener noreferrer" aria-label="${esc(openOnIg)}">
+      <img class="gcv-instagram-grid__img" src="${esc(imgSrc)}" alt="${esc(p.alt || "")}" width="400" height="400" loading="lazy" decoding="async" />
+      <span class="gcv-instagram-grid__shade" aria-hidden="true"></span>
+    </a>
+  </li>`;
+    })
+    .join("\n");
+}
+
+function homeInstagramHtml(locale, ap, posts) {
   const home = STRINGS[locale].home;
-  return `<section class="gcv-home-card gcv-home-instagram">
+  const pool = Array.isArray(posts) ? posts : [];
+  const hasFeed = pool.length > 0;
+  const lead = hasFeed ? home.instagramLeadWithFeed : home.instagramLead;
+  const openOnIg =
+    locale === "en" ? "Open on Instagram" : locale === "es" ? "Abrir en Instagram" : "Abrir no Instagram";
+  const displayCount = Math.min(INSTAGRAM_HOME_DISPLAY_COUNT, pool.length);
+  const pickCount =
+    pool.length >= INSTAGRAM_HOME_DISPLAY_COUNT ? INSTAGRAM_HOME_DISPLAY_COUNT : pool.length;
+  const fallback = pool.slice(0, pickCount);
+  const poolUrl = `${ap}assets/data/instagram-pool.json`;
+  const grid = hasFeed
+    ? `<ul
+  class="gcv-instagram-grid"
+  role="list"
+  aria-label="${esc(home.instagramGridAria)}"
+  data-gcv-instagram-grid
+  data-gcv-instagram-random="1"
+  data-gcv-instagram-count="${pickCount || INSTAGRAM_HOME_DISPLAY_COUNT}"
+  data-gcv-instagram-pool="${esc(poolUrl)}"
+  data-gcv-instagram-asset-base="${esc(`${ap}assets/img/`)}"
+  data-gcv-instagram-open-label="${esc(openOnIg)}"
+>
+${instagramGridCellsHtml(fallback, ap, openOnIg)}
+</ul>`
+    : "";
+  return `<section class="gcv-home-card gcv-home-instagram" data-gcv-instagram-section${hasFeed ? ` data-gcv-instagram-feed="1"` : ""}>
   <div class="gcv-home-card__head">
     <div>
       <span class="gcv-chip-orange">${esc(home.instagramChip)}</span>
     </div>
     <a class="gcv-instagram-handle" href="${esc(INSTAGRAM_URL)}" target="_blank" rel="noopener noreferrer">${esc(home.instagramHandle)}</a>
   </div>
-  <p class="gcv-home-instagram__lead">${esc(home.instagramLead)}</p>
+  <p class="gcv-home-instagram__lead">${esc(lead)}</p>
+  ${grid}
   <p class="gcv-home-instagram__cta-wrap">
     <a class="btn btn-primary" href="${esc(INSTAGRAM_URL)}" target="_blank" rel="noopener noreferrer">${esc(home.instagramCta)}</a>
   </p>
@@ -1194,7 +1239,7 @@ function homeExcursionsSection(locale) {
 `;
 }
 
-function homeMainHtml(locale, ap) {
+function homeMainHtml(locale, ap, instagramPosts) {
   const S = STRINGS[locale];
   const home = S.home;
   const cur = outRelPath(locale, "");
@@ -1344,7 +1389,7 @@ ${featuredCards}
       <button type="button" class="gcv-map-lightbox__close" data-gcv-map-close aria-label="${esc(home.mapLightboxClose)}">×</button>
     </div>
 
-    ${homeInstagramHtml(locale)}
+    ${homeInstagramHtml(locale, ap, instagramPosts)}
     ${homeReviewsRichHtml(locale, ap)}
   </div>
 </div>
@@ -1392,10 +1437,7 @@ function contatoMain(locale, ap) {
   data-accept-language="${esc(acceptLang)}"
   data-error-prefix="${esc(c.errorPrefix)}"
   data-whatsapp-phone="${esc(WHATSAPP_PHONE)}"
-  data-contact-email="${esc(CONTACT_EMAIL)}"
-  data-dual-success-title="${esc(c.successTitleDual)}"
-  data-dual-success-line="${esc(c.successLineDual)}"
-  data-dual-success-thanks="${esc(c.successThanksDual)}"${CONTACT_USE_WEB3FORMS ? `\n  data-contact-provider="web3forms"\n  data-web3forms-access-key="${esc(WEB3FORMS_ACCESS_KEY)}"` : ""}${emitSkipContactApi ? `\n  data-skip-contact-api="true"` : ""}>
+  data-contact-email="${esc(CONTACT_EMAIL)}"${CONTACT_USE_WEB3FORMS ? `\n  data-contact-provider="web3forms"\n  data-web3forms-access-key="${esc(WEB3FORMS_ACCESS_KEY)}"` : `\n  data-dual-success-title="${esc(c.successTitleDual)}"\n  data-dual-success-line="${esc(c.successLineDual)}"\n  data-dual-success-thanks="${esc(c.successThanksDual)}"`}${emitSkipContactApi ? `\n  data-skip-contact-api="true"` : ""}>
 <div id="gcv-contact-error" class="gcv-contact-error" role="alert" hidden></div>
 <div class="gcv-contact-field">
 <label class="gcv-contact-label" for="contato-nome">${esc(c.labelName)}</label>
@@ -1899,9 +1941,27 @@ if (gcvRelativePublicJsEnv()) {
 
 hydrateCmsContratarPostsLiteEnEsOnce();
 
+const INSTAGRAM_FEED_POSTS = await resolveInstagramFeedForBuild();
+if (INSTAGRAM_FEED_POSTS.length > 0) {
+  writeInstagramPoolAsset(INSTAGRAM_FEED_POSTS);
+  console.log(
+    "[build] Instagram: pool com",
+    INSTAGRAM_FEED_POSTS.length,
+    "posts;",
+    "home exibe",
+    Math.min(INSTAGRAM_HOME_DISPLAY_COUNT, INSTAGRAM_FEED_POSTS.length),
+    "aleatórios (JS)",
+  );
+}
+
 for (const locale of LOCALES) {
   const pages = [
-    { key: "", titleKey: "home", current: "home", main: (l) => homeMainHtml(l, assetPrefix(outRelPath(l, ""))) },
+    {
+      key: "",
+      titleKey: "home",
+      current: "home",
+      main: (l) => homeMainHtml(l, assetPrefix(outRelPath(l, "")), INSTAGRAM_FEED_POSTS),
+    },
     { key: "contato.html", current: "contact", main: (l) => contatoMain(l, assetPrefix(outRelPath(l, "contato.html"))) },
     { key: "revista.html", current: "revista", main: (l) => revistaHubMain(l, assetPrefix(outRelPath(l, "revista.html")), "revista.html") },
     { key: "atrativos.html", current: "atrativos", main: (l) => atrativosHubMain(l, assetPrefix(outRelPath(l, "atrativos.html")), "atrativos.html") },
