@@ -139,16 +139,6 @@ function publicJsSrc(file, pageOutRelPath) {
   return `/assets/js/${name}${q}`;
 }
 
-function footerShopHref(locale) {
-  if (locale === "pt") return `${SITE_ORIGIN}/loja`;
-  return `${SITE_ORIGIN}/${locale}/loja`;
-}
-
-function footerLodgingHref(locale) {
-  if (locale === "pt") return `${SITE_ORIGIN}/hospedagem-na-chapada-dos-veadeiros`;
-  return `${SITE_ORIGIN}/${locale}/hospedagem-na-chapada-dos-veadeiros`;
-}
-
 function searchAbsHref(locale) {
   if (locale === "pt") return `${SITE_ORIGIN}/busca`;
   return `${SITE_ORIGIN}/${locale}/busca`;
@@ -971,13 +961,8 @@ function homeReviewsRichHtml(locale, ap) {
     <h2 class="gcv-home-reviews__h2"><span class="gcv-home-reviews__star" aria-hidden="true">★</span> <span class="gcv-home-reviews__h2-main">${esc(home.reviewsTitle)}</span> <span class="gcv-home-reviews__star" aria-hidden="true">★</span></h2>
     <p class="gcv-home-reviews__lead">${esc(home.reviewsLead)}</p>
   </div>
-  <div class="gcv-reviews-carousel" data-gcv-reviews-carousel data-gcv-reviews-dot-aria="${esc(home.reviewsDotAria)}">
-    <div class="gcv-reviews-carousel__viewport" tabindex="0" role="region" aria-label="${esc(home.reviewsCarouselAria)}" data-gcv-reviews-viewport>
-      <div class="gcv-reviews-carousel__track">
+  <div class="gcv-review-grid">
 ${cards}
-      </div>
-    </div>
-    <div class="gcv-reviews-carousel__dots" role="tablist" aria-label="${esc(home.reviewsCarouselAria)}" data-gcv-reviews-dots></div>
   </div>
 </section>`;
 }
@@ -1117,8 +1102,6 @@ function footerHtml(ctx) {
   const F = S.footer;
   const cur = outRelPath(locale, pathKey);
   const contactHref = relBetweenSync(cur, outRelPath(locale, "contato.html"));
-  const shopHref = footerShopHref(locale);
-  const lodgingHref = footerLodgingHref(locale);
   const brandPic = picture(
     ap,
     "imagens/parque-nacional-guia-chapada-veadeiros-saltos-rio-preto-garimpao.jpg",
@@ -1147,8 +1130,8 @@ function footerHtml(ctx) {
       </div>
       <nav class="footer-col footer-nav" aria-label="${esc(F.colPlan)}">
         <h3 class="footer-col-title">${esc(F.colPlan)}</h3>
-        <a href="${esc(shopHref)}">${esc(F.linkShop)}</a>
-        <a href="${esc(lodgingHref)}">${esc(F.linkLodging)}</a>
+        <span>${esc(F.linkShop)}</span>
+        <span>${esc(F.linkLodging)}</span>
         <a href="${esc(contactHref)}">${esc(F.linkContact)}</a>
         <a href="${esc(FOOTER_WA_PLAN_URL)}" rel="noreferrer" target="_blank">${esc(F.linkWhatsapp)}</a>
       </nav>
@@ -1660,7 +1643,6 @@ function atrativosHubMain(locale, ap, pathKey) {
           <h1 class="gcv-home-featured-title">${esc(home.atrativosH1)}</h1>
         </div>
       </div>
-      <p class="section-lead" style="margin-top:1rem">${esc(A.lead)}</p>
       <div class="gcv-photo-card-grid">
 ${cards}
       </div>
@@ -1985,7 +1967,7 @@ for (const locale of LOCALES) {
       desc = S.revistaPage.seoDesc;
     } else if (pk === "atrativos.html") {
       title = `${S.atrativosHub.title} | Guia Chapada Veadeiros`;
-      desc = S.atrativosHub.lead;
+      desc = S.atrativosHub.seoDesc;
     }
     const HERO_SLIDE_OG = "imagens/hero-slide-01-guias-locais-cachoeira.png";
     let ogImageWidth;

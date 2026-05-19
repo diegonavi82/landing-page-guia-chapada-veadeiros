@@ -251,7 +251,8 @@ export const STRINGS = {
     },
     atrativosHub: {
       title: "Atrativos — 17 rotas ligadas ao mapa oficial",
-      lead: "Páginas independentes por atrativo: útil no celular e para SEO em PT, EN e ES.",
+      seoDesc:
+        "Cachoeiras, mirantes e trilhas da Chapada dos Veadeiros — 17 rotas no mapa oficial com guia local.",
     },
     contact: {
       pageKicker: "Guia Chapada",
@@ -395,7 +396,8 @@ export const STRINGS = {
     },
     atrativosHub: {
       title: "Attractions — 17 routes linked to the official map",
-      lead: "One page per attraction — fast on mobile, optimised for PT / EN / ES.",
+      seoDesc:
+        "Waterfalls, lookouts and trails in Chapada dos Veadeiros — 17 routes on the official map with a local guide.",
     },
     contact: {
       pageKicker: "Guia Chapada",
@@ -539,7 +541,8 @@ export const STRINGS = {
     },
     atrativosHub: {
       title: "Atractivos — 17 rutas del mapa oficial",
-      lead: "Una página por atractivo — rápido en el móvil y SEO en tres idiomas.",
+      seoDesc:
+        "Cascadas, miradores y senderos en la Chapada dos Veadeiros — 17 rutas en el mapa oficial con guía local.",
     },
     contact: {
       pageKicker: "Guia Chapada",
