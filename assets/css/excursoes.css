@@ -667,13 +667,21 @@
     align-items: stretch;
   }
 
-  /* Scroll nativo + snap — telemóvel e tablet até ao breakpoint das setas */
+  /* Scroll horizontal — telemóvel e tablet (setas só ≥1024px) */
   .gcv-excursoes__viewport {
     overscroll-behavior-x: contain;
-    scroll-snap-type: x proximity;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: 12px;
     scrollbar-width: thin;
-    touch-action: pan-x;
+    touch-action: pan-x pinch-zoom;
     cursor: grab;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .gcv-excursoes__viewport.is-dragging {
+    cursor: grabbing;
+    scroll-snap-type: none;
   }
 
   .gcv-excursoes__viewport:active {
@@ -693,17 +701,17 @@
     transition: none;
     will-change: auto;
     width: max-content;
+    min-width: 100%;
     padding-block: 4px;
   }
 
   .gcv-excursoes-card {
     scroll-snap-align: center;
-    scroll-snap-stop: always;
-    touch-action: pan-x;
+    touch-action: pan-x pinch-zoom;
   }
 
-  /* Herdar pan-x: o gesto horizontal passa ao viewport mesmo começando no botão/link */
-  .gcv-excursoes-card * {
-    touch-action: inherit;
+  .gcv-excursoes-card a,
+  .gcv-excursoes-card button {
+    touch-action: manipulation;
   }
 }

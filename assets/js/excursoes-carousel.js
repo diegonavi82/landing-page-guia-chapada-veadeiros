@@ -798,9 +798,15 @@
       return trackWidthPx() <= viewportWidthPx();
     }
 
-    /** Mesmo breakpoint do CSS (<1024px): scroll nativo horizontal no viewport. */
+    var MOBILE_SCROLL_MQ =
+      typeof window !== "undefined" && window.matchMedia
+        ? window.matchMedia("(max-width: 1023px)")
+        : null;
+
+    /** Mesmo breakpoint do CSS (<1024px): scroll horizontal no viewport. */
     function useMobileScroll() {
-      return viewportWidthPx() < 1024 && !fitsEntireTrack();
+      var mqOk = MOBILE_SCROLL_MQ ? MOBILE_SCROLL_MQ.matches : viewportWidthPx() < 1024;
+      return mqOk && !fitsEntireTrack();
     }
 
     function computeTranslate(i) {
@@ -894,13 +900,17 @@
     /**
      * @param {{ smoothScroll?: boolean }} [opts]
      */
+    var userDragActive = false;
+
     function apply(opts) {
       opts = opts || {};
       var smoothScroll = !!opts.smoothScroll;
 
       if (useMobileScroll()) {
         track.style.transform = "";
-        scrollMobileToIndex(idx, smoothScroll);
+        if (!userDragActive && opts.snap !== false) {
+          scrollMobileToIndex(idx, smoothScroll);
+        }
         syncDots();
         syncNavButtons();
         return;
@@ -933,6 +943,7 @@
 
     function startAutoplay() {
       stopAutoplay();
+      if (useMobileScroll()) return;
       timer = window.setInterval(nextSlide, 3500);
     }
 
@@ -972,27 +983,92 @@
       { passive: true },
     );
 
-    /** Pausa autoplay enquanto o utilizador arrasta com o dedo — evita lutar com o scroll. */
-    var touchEndTimer = null;
-    function onViewportTouchStart() {
-      if (!useMobileScroll() || fitsEntireTrack()) return;
-      if (touchEndTimer !== null) {
-        window.clearTimeout(touchEndTimer);
-        touchEndTimer = null;
+    /** Arrastar com o dedo (mobile/tablet): atualiza scrollLeft — mais fiável que só overflow nativo. */
+    var mobileDrag = { id: -1, startX: 0, startScroll: 0, moved: false };
+
+    function canMobileDrag() {
+      return useMobileScroll() && !fitsEntireTrack();
+    }
+
+    function finishMobileDrag(e) {
+      if (mobileDrag.id !== e.pointerId) return;
+      var didMove = mobileDrag.moved;
+      mobileDrag = { id: -1, startX: 0, startScroll: 0, moved: false };
+      userDragActive = false;
+      viewport.classList.remove("is-dragging");
+      try {
+        viewport.releasePointerCapture(e.pointerId);
+      } catch (err) {
+        /* */
       }
-      stopAutoplay();
+      if (!canMobileDrag()) return;
+      if (didMove) {
+        syncIdxFromViewportScroll();
+        scrollMobileToIndex(idx, true);
+        viewport.dataset.suppressClick = "1";
+        window.setTimeout(function () {
+          delete viewport.dataset.suppressClick;
+        }, 350);
+      }
     }
-    function onViewportTouchEnd() {
-      if (!useMobileScroll() || fitsEntireTrack()) return;
-      if (touchEndTimer !== null) window.clearTimeout(touchEndTimer);
-      touchEndTimer = window.setTimeout(function () {
-        touchEndTimer = null;
-        if (!fitsEntireTrack()) startAutoplay();
-      }, 2000);
-    }
-    viewport.addEventListener("touchstart", onViewportTouchStart, { passive: true });
-    viewport.addEventListener("touchend", onViewportTouchEnd, { passive: true });
-    viewport.addEventListener("touchcancel", onViewportTouchEnd, { passive: true });
+
+    viewport.addEventListener(
+      "pointerdown",
+      function (e) {
+        if (!canMobileDrag()) return;
+        if (e.pointerType === "mouse" && e.button !== 0) return;
+        mobileDrag = {
+          id: e.pointerId,
+          startX: e.clientX,
+          startScroll: viewport.scrollLeft,
+          moved: false,
+        };
+        userDragActive = true;
+        stopAutoplay();
+        viewport.classList.add("is-dragging");
+        try {
+          viewport.setPointerCapture(e.pointerId);
+        } catch (err) {
+          /* */
+        }
+      },
+      true,
+    );
+
+    viewport.addEventListener(
+      "pointermove",
+      function (e) {
+        if (mobileDrag.id !== e.pointerId) return;
+        var dx = e.clientX - mobileDrag.startX;
+        if (!mobileDrag.moved) {
+          if (Math.abs(dx) < 7) return;
+          mobileDrag.moved = true;
+        }
+        e.preventDefault();
+        var maxL = Math.max(0, viewport.scrollWidth - viewport.clientWidth);
+        viewport.scrollLeft = Math.max(0, Math.min(mobileDrag.startScroll - dx, maxL));
+        if (scrollSyncRaf !== null) return;
+        scrollSyncRaf = window.requestAnimationFrame(function () {
+          scrollSyncRaf = null;
+          syncIdxFromViewportScroll();
+        });
+      },
+      { passive: false },
+    );
+
+    viewport.addEventListener("pointerup", finishMobileDrag);
+    viewport.addEventListener("pointercancel", finishMobileDrag);
+
+    viewport.addEventListener(
+      "click",
+      function (e) {
+        if (viewport.dataset.suppressClick) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+        }
+      },
+      true,
+    );
 
     viewport.addEventListener(
       "wheel",
@@ -1053,6 +1129,7 @@
           /* */
         }
       },
+      false,
     );
 
     viewport.addEventListener("pointermove", function (e) {

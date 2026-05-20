@@ -2119,7 +2119,7 @@ for (const locale of LOCALES) {
     const homeExcursionsHead =
       (locale === "pt" || locale === "en" || locale === "es") && pk === ""
         ? {
-            extraCss: ["assets/css/excursoes.css"],
+            extraCss: [`assets/css/excursoes.css${BUILD_ASSET_QUERY}`],
             extraHead: `    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" crossorigin="anonymous" />`,
             extraFooterScripts: `  <script src="${esc(publicJsSrc("excursoes-carousel.js", outPk))}" defer></script>\n  `,
