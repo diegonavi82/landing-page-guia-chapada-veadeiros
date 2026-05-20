@@ -20,6 +20,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Build (Build_prod)
+        run: |
+          npm ci
+          npm run build
+
       - name: Verificar secrets FTP
         env:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}
@@ -40,20 +51,7 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           protocol: ftps
           port: 21
-          local-dir: ./
+          local-dir: ./Build_prod/
           server-dir: ./
           dangerous-clean-slate: false
-          exclude: |
-            .git/**
-            .git*
-            **/.github/**
-            **/node_modules/**
-            **/package.json
-            **/package-lock.json
-            **/.env
-            **/.env.*
-            **/tools/**
-            **/LEIA-ME.txt
-            **/.cursor/**
-            **/.vscode/**
           log-level: verbose

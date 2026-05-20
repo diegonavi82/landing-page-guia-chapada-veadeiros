@@ -648,7 +648,7 @@
     var openLabel = grid.getAttribute("data-gcv-instagram-open-label") || "Abrir no Instagram";
     var assetBase = grid.getAttribute("data-gcv-instagram-asset-base") || "./assets/img/";
     var instagramIcon =
-      '<svg class="gcv-instagram-logo" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path fill="currentColor" d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>';
+      '<svg class="gcv-instagram-logo" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path fill="currentColor" d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>';
 
     fetch(poolUrl, { credentials: "same-origin" })
       .then(function (res) {
@@ -699,6 +699,15 @@
       });
   }
 
+  function resolvePublicAssetUrl(url) {
+    if (!url) return "";
+    try {
+      return new URL(url, document.baseURI || window.location.href).href;
+    } catch (e) {
+      return url;
+    }
+  }
+
   function initNavSearch() {
     var wrap = document.querySelector("[data-gcv-search]");
     if (!wrap) return;
@@ -707,7 +716,7 @@
     var panel = wrap.querySelector(".nav-search-panel");
     var input = wrap.querySelector(".nav-search-input");
     var results = wrap.querySelector(".nav-search-results");
-    var indexUrl = wrap.getAttribute("data-search-index") || "";
+    var indexUrl = resolvePublicAssetUrl(wrap.getAttribute("data-search-index") || "");
     var locale = wrap.getAttribute("data-locale") || "pt";
     var pageOut = wrap.getAttribute("data-page-out") || "index.html";
     var noResultsText = wrap.getAttribute("data-no-results") || "Nenhuma página encontrada";
@@ -716,11 +725,13 @@
 
     var indexData = null;
     var indexLoading = null;
+    var indexLoadFailed = false;
 
     function loadIndex() {
       if (indexData) return Promise.resolve(indexData);
+      if (indexLoadFailed) return Promise.resolve([]);
       if (indexLoading) return indexLoading;
-      indexLoading = fetch(indexUrl, { credentials: "same-origin" })
+      indexLoading = fetch(indexUrl, { credentials: "omit", cache: "default" })
         .then(function (res) {
           if (!res.ok) throw new Error("search index " + res.status);
           return res.json();
@@ -731,6 +742,7 @@
         })
         .catch(function (err) {
           indexLoading = null;
+          indexLoadFailed = true;
           if (typeof console !== "undefined" && console.warn) console.warn("[gcv-search]", err);
           return [];
         });
@@ -769,7 +781,11 @@
     function setOpen(open) {
       wrap.classList.toggle("is-open", open);
       btn.setAttribute("aria-expanded", open ? "true" : "false");
-      panel.hidden = !open;
+      if (open) {
+        panel.removeAttribute("hidden");
+      } else {
+        panel.setAttribute("hidden", "");
+      }
       if (open) {
         loadIndex().then(function () {
           input.focus();
@@ -847,6 +863,11 @@
         return;
       }
       loadIndex().then(function (entries) {
+        if (indexLoadFailed) {
+          results.innerHTML =
+            '<li class="nav-search-empty" role="presentation">Busca temporariamente indisponível. Recarregue a página.</li>';
+          return;
+        }
         var terms = query.split(/\s+/).filter(Boolean);
         var matches = entries.filter(function (entry) {
           var hay = norm(entry.text || entry.title || "");
@@ -903,5 +924,9 @@
   initMapLightbox();
   initPhotoGalleryLightbox();
   initContactForm();
-  initNavSearch();
+  try {
+    initNavSearch();
+  } catch (err) {
+    if (typeof console !== "undefined" && console.error) console.error("[gcv-search]", err);
+  }
 })();
