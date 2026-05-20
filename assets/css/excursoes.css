@@ -667,21 +667,23 @@
     align-items: stretch;
   }
 
-  /* Scroll horizontal — telemóvel e tablet (setas só ≥1024px) */
+  /* Scroll horizontal no carrossel; vertical segue para a página (não usar pan-x). */
   .gcv-excursoes__viewport {
     overscroll-behavior-x: contain;
+    overscroll-behavior-y: auto;
     scroll-snap-type: x mandatory;
     scroll-padding-inline: 12px;
     scrollbar-width: thin;
-    touch-action: pan-x pinch-zoom;
+    touch-action: manipulation;
     cursor: grab;
-    user-select: none;
-    -webkit-user-select: none;
   }
 
   .gcv-excursoes__viewport.is-dragging {
     cursor: grabbing;
     scroll-snap-type: none;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
   }
 
   .gcv-excursoes__viewport:active {
@@ -707,7 +709,6 @@
 
   .gcv-excursoes-card {
     scroll-snap-align: center;
-    touch-action: pan-x pinch-zoom;
   }
 
   .gcv-excursoes-card a,

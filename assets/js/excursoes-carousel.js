@@ -983,8 +983,20 @@
       { passive: true },
     );
 
-    /** Arrastar com o dedo (mobile/tablet): atualiza scrollLeft — mais fiável que só overflow nativo. */
-    var mobileDrag = { id: -1, startX: 0, startScroll: 0, moved: false };
+    /** Arrastar horizontal só quando o gesto for claramente lateral; vertical rola a página. */
+    var mobileDrag = {
+      id: -1,
+      startX: 0,
+      startY: 0,
+      startScroll: 0,
+      moved: false,
+      axis: null,
+    };
+    var AXIS_LOCK_PX = 10;
+
+    function resetMobileDrag() {
+      mobileDrag = { id: -1, startX: 0, startY: 0, startScroll: 0, moved: false, axis: null };
+    }
 
     function canMobileDrag() {
       return useMobileScroll() && !fitsEntireTrack();
@@ -993,7 +1005,8 @@
     function finishMobileDrag(e) {
       if (mobileDrag.id !== e.pointerId) return;
       var didMove = mobileDrag.moved;
-      mobileDrag = { id: -1, startX: 0, startScroll: 0, moved: false };
+      var wasHorizontal = mobileDrag.axis === "x";
+      resetMobileDrag();
       userDragActive = false;
       viewport.classList.remove("is-dragging");
       try {
@@ -1001,7 +1014,7 @@
       } catch (err) {
         /* */
       }
-      if (!canMobileDrag()) return;
+      if (!canMobileDrag() || !wasHorizontal) return;
       if (didMove) {
         syncIdxFromViewportScroll();
         scrollMobileToIndex(idx, true);
@@ -1020,17 +1033,11 @@
         mobileDrag = {
           id: e.pointerId,
           startX: e.clientX,
+          startY: e.clientY,
           startScroll: viewport.scrollLeft,
           moved: false,
+          axis: null,
         };
-        userDragActive = true;
-        stopAutoplay();
-        viewport.classList.add("is-dragging");
-        try {
-          viewport.setPointerCapture(e.pointerId);
-        } catch (err) {
-          /* */
-        }
       },
       true,
     );
@@ -1039,12 +1046,31 @@
       "pointermove",
       function (e) {
         if (mobileDrag.id !== e.pointerId) return;
+
         var dx = e.clientX - mobileDrag.startX;
-        if (!mobileDrag.moved) {
-          if (Math.abs(dx) < 7) return;
-          mobileDrag.moved = true;
+        var dy = e.clientY - mobileDrag.startY;
+
+        if (!mobileDrag.axis) {
+          if (Math.abs(dx) < AXIS_LOCK_PX && Math.abs(dy) < AXIS_LOCK_PX) return;
+          if (Math.abs(dy) >= Math.abs(dx)) {
+            resetMobileDrag();
+            return;
+          }
+          mobileDrag.axis = "x";
+          userDragActive = true;
+          stopAutoplay();
+          viewport.classList.add("is-dragging");
+          try {
+            viewport.setPointerCapture(e.pointerId);
+          } catch (err) {
+            /* */
+          }
         }
+
+        if (mobileDrag.axis !== "x") return;
+
         e.preventDefault();
+        mobileDrag.moved = true;
         var maxL = Math.max(0, viewport.scrollWidth - viewport.clientWidth);
         viewport.scrollLeft = Math.max(0, Math.min(mobileDrag.startScroll - dx, maxL));
         if (scrollSyncRaf !== null) return;
