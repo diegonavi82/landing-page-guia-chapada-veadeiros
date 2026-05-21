@@ -228,8 +228,11 @@ export const STRINGS = {
         "Últimas publicações do @guiachapadaveadeiros. Toque em uma foto para abrir no Instagram.",
       instagramGridAria: "Últimas fotos do Instagram",
       instagramCta: "Ver publicações no Instagram",
+      floatWaAria: "Conversar no WhatsApp",
+      floatWaMessage: "Guia Chapada Veadeiros - Poderia me ajudar por favor?",
       reviewsTitle: "Avaliações dos viajantes",
       reviewsLead: "Experiências reais de quem viveu a Chapada dos Veadeiros.",
+      reviewGoogleLabel: "Avaliação Google · 5 estrelas",
       reviewsCarouselAria: "Carrossel de avaliações — arraste para o lado",
       reviewsDotAria: "Avaliação {{i}} de {{n}}",
       atrativoGalleryH2: "Galeria de fotos",
@@ -376,8 +379,11 @@ export const STRINGS = {
         "Latest posts from @guiachapadaveadeiros. Tap a photo to open it on Instagram.",
       instagramGridAria: "Latest Instagram photos",
       instagramCta: "View posts on Instagram",
+      floatWaAria: "Chat on WhatsApp",
+      floatWaMessage: "Guia Chapada Veadeiros - Could you help me, please?",
       reviewsTitle: "Traveller reviews",
       reviewsLead: "Real experiences from visitors to Chapada dos Veadeiros.",
+      reviewGoogleLabel: "Google review · 5 stars",
       reviewsCarouselAria: "Reviews carousel — swipe sideways",
       reviewsDotAria: "Review {{i}} of {{n}}",
       atrativoGalleryH2: "Photo gallery",
@@ -524,8 +530,11 @@ export const STRINGS = {
         "Últimas publicaciones de @guiachapadaveadeiros. Toca una foto para abrirla en Instagram.",
       instagramGridAria: "Últimas fotos de Instagram",
       instagramCta: "Ver publicaciones en Instagram",
+      floatWaAria: "WhatsApp",
+      floatWaMessage: "Guia Chapada Veadeiros - ¿Podría ayudarme, por favor?",
       reviewsTitle: "Opiniones de viajeros",
       reviewsLead: "Experiencias reales de quienes visitaron la Chapada dos Veadeiros.",
+      reviewGoogleLabel: "Reseña Google · 5 estrellas",
       reviewsCarouselAria: "Carrusel de opiniones — desliza hacia los lados",
       reviewsDotAria: "Opinión {{i}} de {{n}}",
       atrativoGalleryH2: "Galería de fotos",
@@ -623,87 +632,6 @@ export const STRINGS = {
       homeDesc: "Itinerarios a medida en Chapada dos Veadeiros con guía habilitado: cascadas, senderos, Parque Nacional y mejores épocas.",
     },
   },
-};
-
-export const REVIEWS = {
-  pt: [
-    {
-      name: "Cintia Mariele",
-      city: "Avaliação Google · 5 estrelas",
-      tour: "Dicas de passeio na Chapada",
-      image: "imagens/vale-lua-guia-chapada-veadeiros-sao-jorge-1.jpg",
-      quote:
-        "Diego é um guia incrível! Sempre com as melhores dicas de passeio, muito conhecimento local e super solícito com os grupos. Recomendo demais!",
-    },
-    {
-      name: "Mayla Santos",
-      city: "Avaliação Google · 5 estrelas",
-      tour: "Pontualidade e trilhas",
-      image: "imagens/parque-nacional-guia-chapada-veadeiros-saltos-rio-preto-garimpao.jpg",
-      quote:
-        "O Diego é um guia muito atencioso, solícito, com uma energia incrível! É extremamente pontual — não teve um dia sequer que chegou além do horário combinado —, dirige super bem, conhece a região e os caminhos das cachoeiras, o que facilitou muito cada dia.",
-    },
-    {
-      name: "Paula Altenfelder",
-      city: "Avaliação Google · 5 estrelas",
-      tour: "Transporte + passeio",
-      image: "imagens/cataratas-couros-guia-chapada-veadeiros-alto-paraiso.jpg",
-      quote:
-        "O Diego é um excelente guia, espirituoso, solícito, parceiro, extremamente pontual (sempre estava no horário combinado para o passeio), bem humorado, responsável, ótimo motorista. Um dos poucos guias da Chapada que fazem o pacote completo de transporte e passeio. Nota 10! Recomendo de olhos fechados.",
-    },
-  ],
-  en: [
-    {
-      name: "Cintia Mariele",
-      city: "Google review · 5 stars",
-      tour: "Trip planning tips",
-      image: "imagens/vale-lua-guia-chapada-veadeiros-sao-jorge-1.jpg",
-      quote:
-        "Diego is an amazing guide — always great tips, deep local knowledge and care for the group. Highly recommend!",
-    },
-    {
-      name: "Mayla Santos",
-      city: "Google review · 5 stars",
-      tour: "Punctuality & trails",
-      image: "imagens/parque-nacional-guia-chapada-veadeiros-saltos-rio-preto-garimpao.jpg",
-      quote:
-        "Diego is thoughtful, upbeat and extremely punctual — every day started on time. He drives well and knows every trail and waterfall.",
-    },
-    {
-      name: "Paula Altenfelder",
-      city: "Google review · 5 stars",
-      tour: "Transport + tour package",
-      image: "imagens/cataratas-couros-guia-chapada-veadeiros-alto-paraiso.jpg",
-      quote:
-        "Excellent guide — fun, reliable, always on time, great driver. One of the few in Chapada who does the full transport + tour package. Top marks!",
-    },
-  ],
-  es: [
-    {
-      name: "Cintia Mariele",
-      city: "Reseña Google · 5 estrellas",
-      tour: "Consejos de excursiones",
-      image: "imagens/vale-lua-guia-chapada-veadeiros-sao-jorge-1.jpg",
-      quote:
-        "¡Diego es un guía increíble! Siempre con los mejores consejos, mucho conocimiento local y muy atento con el grupo. ¡Recomiendo muchísimo!",
-    },
-    {
-      name: "Mayla Santos",
-      city: "Reseña Google · 5 estrellas",
-      tour: "Puntualidad y senderos",
-      image: "imagens/parque-nacional-guia-chapada-veadeiros-saltos-rio-preto-garimpao.jpg",
-      quote:
-        "Diego es muy atento, con energía increíble y extremadamente puntual cada día. Conduce genial y conoce caminos y cascadas a fondo.",
-    },
-    {
-      name: "Paula Altenfelder",
-      city: "Reseña Google · 5 estrellas",
-      tour: "Transporte + tour",
-      image: "imagens/cataratas-couros-guia-chapada-veadeiros-alto-paraiso.jpg",
-      quote:
-        "Excelente guía — gracioso, puntual, responsable y buen conductor. Uno de los pocos que hace el paquete completo. ¡Nota 10!",
-    },
-  ],
 };
 
 export const ARTICLE_CONTRATAR = {

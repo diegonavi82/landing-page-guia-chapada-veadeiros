@@ -8,7 +8,6 @@ import { fileURLToPath } from "node:url";
 import {
   HOTSPOTS,
   STRINGS,
-  REVIEWS,
   ARTICLE_CONTRATAR,
   ARTICLE_EPOCA,
   ARTICLE_ONCA_PARDA,
@@ -31,8 +30,14 @@ import {
   stripLegacyFusionGalleryFromHtml,
   getSidebarLines,
   fixAttractionActionHrefs,
+  rewriteGuideLocalCtaToWhatsApp,
 } from "./detail-content.mjs";
 import { premiumRevistaPtBundle, revistaSlugFromPathKey } from "./gcv-premium-revista-pt.mjs";
+import {
+  filterEligibleGoogleReviews,
+  pickRandomReviews,
+  writeGoogleReviewsAsset,
+} from "./google-reviews.mjs";
 import {
   resolveInstagramFeedForBuild,
   writeInstagramPoolAsset,
@@ -101,8 +106,10 @@ const CONTACT_USE_WEB3FORMS = WEB3FORMS_ACCESS_KEY.length > 0;
 /** Fallback mailto/whatsapp só quando não há Web3Forms. */
 const emitSkipContactApi = CONTACT_CLIENT_ONLY && !CONTACT_USE_WEB3FORMS;
 
-/** Ícone nos resultados de busca / aba — caminho relativamente a `/assets/img/` (ex.: `imagens/favicon.png`). */
+/** Ícone nos resultados de busca / aba — caminhos relativamente a `/assets/img/`. */
 const FAVICON_REL = (process.env.FAVICON_REL || "imagens/favicon.png").replace(/^\//, "");
+const FAVICON_48_REL = (process.env.FAVICON_48_REL || "imagens/favicon-48x48.png").replace(/^\//, "");
+const FAVICON_96_REL = (process.env.FAVICON_96_REL || "imagens/favicon-96x96.png").replace(/^\//, "");
 
 function gcvRelativePublicJsEnv() {
   const v = String(process.env.GCV_RELATIVE_JS || "").trim().toLowerCase();
@@ -309,6 +316,22 @@ function waText(locale) {
 
 function waUrl(locale) {
   return `https://api.whatsapp.com/send?phone=${WHATSAPP_PHONE}&text=${encodeURIComponent(waText(locale))}`;
+}
+
+function homeFloatWaUrl(locale) {
+  const msg = STRINGS[locale]?.home?.floatWaMessage || STRINGS.pt.home.floatWaMessage;
+  return `https://api.whatsapp.com/send?phone=${WHATSAPP_PHONE}&text=${encodeURIComponent(msg)}`;
+}
+
+function homeFloatWaHtml(locale) {
+  const home = STRINGS[locale].home;
+  return `<a class="gcv-float-wa" href="${esc(homeFloatWaUrl(locale))}" target="_blank" rel="noopener noreferrer" aria-label="${esc(home.floatWaAria)}">${WA_SVG.replace('class="gcv-hero-wa-icon"', "")}</a>`;
+}
+
+function attractionGuideWaUrl(pageTitle) {
+  const title = String(pageTitle || "").trim();
+  const msg = `*Guia Chapada Veadeiros - Passeio para ${title}*`;
+  return `https://api.whatsapp.com/send?phone=${WHATSAPP_PHONE}&text=${encodeURIComponent(msg)}`;
 }
 
 function getCmsAttraction(locale, baseSlug) {
@@ -975,39 +998,45 @@ ${instagramGridCellsHtml(fallback, ap, openOnIg)}
 </section>`;
 }
 
-function homeReviewsRichHtml(locale, ap) {
-  const home = STRINGS[locale].home;
-  const cards = REVIEWS[locale]
-    .map((r) => {
-      const quote = "quote" in r && r.quote ? r.quote : "text" in r && r.text ? r.text : "";
-      const city = "city" in r && r.city ? r.city : "meta" in r && r.meta ? r.meta : "";
-      const img = "image" in r && r.image ? r.image : null;
-      const tour = "tour" in r && r.tour ? r.tour : "";
-      const avatar = img
-        ? `<div class="gcv-review-card__avatar"><img src="${esc(`${ap}assets/img/${img}`)}" alt="${esc(r.name)}" width="80" height="80" loading="lazy" decoding="async" /></div>`
-        : `<div class="gcv-review-card__avatar gcv-review-card__avatar--fallback" aria-hidden="true">${esc(r.name.charAt(0))}</div>`;
-      return `<article class="gcv-review-card">
+function reviewCardHtml(r, { ap, googleLabel }) {
+  const quote = String(r.quote || "").trim();
+  const img = r.image ? String(r.image).trim() : "";
+  const tour = r.tour ? String(r.tour).trim() : "";
+  const avatar = img
+    ? `<div class="gcv-review-card__avatar"><img src="${esc(`${ap}assets/img/${img}`)}" alt="${esc(r.name)}" width="80" height="80" loading="lazy" decoding="async" /></div>`
+    : `<div class="gcv-review-card__avatar gcv-review-card__avatar--fallback" aria-hidden="true">${esc(String(r.name || "?").charAt(0))}</div>`;
+  return `<article class="gcv-review-card">
   <div class="gcv-review-card__head">
     ${avatar}
     <div class="gcv-review-card__meta">
       <p class="gcv-review-card__stars" aria-hidden="true">★★★★★</p>
       <h3 class="gcv-review-card__name">${esc(r.name)}</h3>
-      <p class="gcv-review-card__city">${esc(city)}</p>
+      <p class="gcv-review-card__city">${esc(googleLabel)}</p>
       ${tour ? `<p class="gcv-review-card__tour">${esc(tour)}</p>` : ""}
     </div>
   </div>
   <blockquote class="gcv-review-card__quote"><span class="gcv-review-card__quo">“</span>${esc(quote)}<span class="gcv-review-card__quo">”</span></blockquote>
 </article>`;
-    })
-    .join("\n");
-  return `<section class="gcv-home-reviews" aria-label="${esc(home.reviewsTitle)}">
+}
+
+function homeReviewsRichHtml(locale, ap, reviewsPool) {
+  const home = STRINGS[locale].home;
+  const displayCount = Math.min(reviewsPool.displayCount ?? 3, reviewsPool.reviews.length);
+  const fallback = pickRandomReviews(reviewsPool.reviews, displayCount);
+  const fallbackCards = fallback.map((r) => reviewCardHtml(r, { ap, googleLabel: home.reviewGoogleLabel })).join("\n");
+  const poolJson = JSON.stringify(reviewsPool).replace(/</g, "\\u003c");
+  const dataUrl = publicDataSrc("google-reviews.json", outRelPath(locale, ""));
+
+  return `<section class="gcv-home-reviews" aria-label="${esc(home.reviewsTitle)}" data-gcv-reviews data-gcv-reviews-count="${displayCount}" data-gcv-reviews-label="${esc(home.reviewGoogleLabel)}" data-gcv-reviews-asset-base="${esc(`${ap}assets/img/`)}">
   <div class="gcv-home-reviews__intro">
     <h2 class="gcv-home-reviews__h2"><span class="gcv-home-reviews__star" aria-hidden="true">★</span> <span class="gcv-home-reviews__h2-main">${esc(home.reviewsTitle)}</span> <span class="gcv-home-reviews__star" aria-hidden="true">★</span></h2>
     <p class="gcv-home-reviews__lead">${esc(home.reviewsLead)}</p>
   </div>
-  <div class="gcv-review-grid">
-${cards}
+  <script type="application/json" id="gcv-reviews-pool">${poolJson}</script>
+  <div class="gcv-review-grid" data-gcv-reviews-grid>
+${fallbackCards}
   </div>
+  <noscript><p class="gcv-home-reviews__noscript"><a href="${esc(dataUrl)}">Ver todas as avaliações</a></p></noscript>
 </section>`;
 }
 
@@ -1063,13 +1092,23 @@ function buildHead(ctx) {
     altLines +
     `\n    <link rel="alternate" hreflang="x-default" href="${esc(xDefault)}" />`;
   const faviconAbs = `${SITE_ORIGIN}/assets/img/${FAVICON_REL}`.replace(/([^:])\/{2,}/g, "$1/");
+  const favicon48Abs = `${SITE_ORIGIN}/assets/img/${FAVICON_48_REL}`.replace(/([^:])\/{2,}/g, "$1/");
+  const favicon96Abs = `${SITE_ORIGIN}/assets/img/${FAVICON_96_REL}`.replace(/([^:])\/{2,}/g, "$1/");
+  const faviconIcoAbs = `${SITE_ORIGIN}/favicon.ico`.replace(/([^:])\/{2,}/g, "$1/");
   const faviconMime = /\.svg$/i.test(FAVICON_REL)
     ? "image/svg+xml"
     : /\.ico$/i.test(FAVICON_REL)
       ? "image/x-icon"
       : "image/png";
-  const faviconSizesAttr = faviconMime === "image/png" ? ' sizes="192x192"' : "";
-  const appleTouchSizesAttr = faviconMime === "image/png" ? ' sizes="180x180"' : "";
+  const faviconLinkTags =
+    faviconMime === "image/png"
+      ? `<link rel="icon" href="${esc(faviconIcoAbs)}" sizes="48x48" />
+    <link rel="icon" href="${esc(favicon48Abs)}" type="image/png" sizes="48x48" />
+    <link rel="icon" href="${esc(favicon96Abs)}" type="image/png" sizes="96x96" />
+    <link rel="icon" href="${esc(faviconAbs)}" type="image/png" sizes="192x192" />
+    <link rel="apple-touch-icon" href="${esc(faviconAbs)}" sizes="180x180" />`
+      : `<link rel="icon" href="${esc(faviconAbs)}" type="${esc(faviconMime)}" />
+    <link rel="apple-touch-icon" href="${esc(faviconAbs)}" />`;
 
   const ogLocale = locale === "pt" ? "pt_BR" : locale === "en" ? "en_US" : "es_ES";
   const ogLocaleAlternate = LOCALES.filter((l) => l !== locale)
@@ -1081,8 +1120,7 @@ function buildHead(ctx) {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light" />
     <meta name="theme-color" content="#0f3d2e" />
-    ${GOOGLE_SITE_VERIFICATION ? `<meta name="google-site-verification" content="${esc(GOOGLE_SITE_VERIFICATION)}" />\n    ` : ""}<link rel="icon" href="${esc(faviconAbs)}" type="${esc(faviconMime)}"${faviconSizesAttr} />
-    <link rel="apple-touch-icon" href="${esc(faviconAbs)}"${appleTouchSizesAttr} />
+    ${GOOGLE_SITE_VERIFICATION ? `<meta name="google-site-verification" content="${esc(GOOGLE_SITE_VERIFICATION)}" />\n    ` : ""}${faviconLinkTags}
     <title>${esc(title)}</title>
     <meta name="description" content="${esc(desc)}" />
     <link rel="canonical" href="${esc(canon)}" />
@@ -1199,7 +1237,7 @@ function footerHtml(ctx) {
 </footer>`;
 }
 
-function wrapPageFixed({ lang, topbar, skipLabel, head, header, main, footer, ap, pageOutRel, extraFooterScripts = "" }) {
+function wrapPageFixed({ lang, topbar, skipLabel, head, header, main, footer, ap, pageOutRel, extraFooterScripts = "", extraAfterFooter = "" }) {
   return `<!DOCTYPE html>
 <html lang="${esc(lang)}">
 <head>
@@ -1213,7 +1251,7 @@ ${head}
 ${main}
   </main>
   ${footer}
-  ${extraFooterScripts}<script src="${esc(publicJsSrc("site.js", pageOutRel))}" defer></script>
+  ${extraAfterFooter}${extraFooterScripts}<script src="${esc(publicJsSrc("site.js", pageOutRel))}" defer></script>
 </body>
 </html>`;
 }
@@ -1276,7 +1314,7 @@ function homeExcursionsSection(locale) {
 `;
 }
 
-function homeMainHtml(locale, ap, instagramPosts) {
+function homeMainHtml(locale, ap, instagramPosts, reviewsPool) {
   const S = STRINGS[locale];
   const home = S.home;
   const cur = outRelPath(locale, "");
@@ -1427,7 +1465,7 @@ ${featuredCards}
     </div>
 
     ${homeInstagramHtml(locale, ap, instagramPosts)}
-    ${homeReviewsRichHtml(locale, ap)}
+    ${homeReviewsRichHtml(locale, ap, reviewsPool)}
   </div>
 </div>
 <script type="application/ld+json">${safeJsonLd(webSiteLd)}</script>
@@ -1747,10 +1785,14 @@ function atrativoDetailMain(locale, localeSlug, ap, pathKey) {
     mainHtml = fixAttractionActionHrefs(mainHtml, contatoHref);
     mainHtml = htmlWithStaticAssetPrefix(mainHtml, ap);
 
+    const waGuideUrl = esc(attractionGuideWaUrl(title));
+
     let ctaHtml = detailParts.ctaHtml;
     ctaHtml = fixAttractionActionHrefs(ctaHtml, contatoHref);
     ctaHtml = rewriteHtmlMediaUrls(ctaHtml);
     ctaHtml = htmlWithStaticAssetPrefix(ctaHtml, ap);
+    ctaHtml = rewriteGuideLocalCtaToWhatsApp(ctaHtml, waGuideUrl);
+    mainHtml = rewriteGuideLocalCtaToWhatsApp(mainHtml, waGuideUrl);
 
     const sidebarLines = getSidebarLines(detailParts.sidebarInfo);
     const sidebarLinesHtml = sidebarLines.map(sidebarInfoLineHtml).join("\n");
@@ -1933,7 +1975,7 @@ function revistaPostMain(locale, post, ap, pathKey) {
 <script type="application/ld+json">${safeJsonLd(jsonLd)}</script>`;
 }
 
-function renderPage(locale, pathKey, { title, desc, ogImageRel, current, mainHtml, extraCss, ogTitle, ogDesc, extraHead, ogType, ogImageWidth, ogImageHeight, extraFooterScripts }) {
+function renderPage(locale, pathKey, { title, desc, ogImageRel, current, mainHtml, extraCss, ogTitle, ogDesc, extraHead, ogType, ogImageWidth, ogImageHeight, extraFooterScripts, extraAfterFooter }) {
   const outR = outRelPath(locale, pathKey);
   const ap = assetPrefix(outR);
   const head = buildHead({
@@ -1965,6 +2007,7 @@ function renderPage(locale, pathKey, { title, desc, ogImageRel, current, mainHtm
     ap,
     pageOutRel: outR,
     extraFooterScripts,
+    extraAfterFooter,
   });
 }
 
@@ -2079,13 +2122,23 @@ if (INSTAGRAM_FEED_POSTS.length > 0) {
   );
 }
 
+const googleReviewsAsset = writeGoogleReviewsAsset(ROOT);
+const GOOGLE_REVIEWS_POOL = googleReviewsAsset.payload;
+console.log(
+  "[build] Google reviews:",
+  googleReviewsAsset.count,
+  "no pool;",
+  GOOGLE_REVIEWS_POOL.displayCount,
+  "sorteadas por visita na home",
+);
+
 for (const locale of LOCALES) {
   const pages = [
     {
       key: "",
       titleKey: "home",
       current: "home",
-      main: (l) => homeMainHtml(l, assetPrefix(outRelPath(l, "")), INSTAGRAM_FEED_POSTS),
+      main: (l) => homeMainHtml(l, assetPrefix(outRelPath(l, "")), INSTAGRAM_FEED_POSTS, GOOGLE_REVIEWS_POOL),
     },
     { key: "contato.html", current: "contact", main: (l) => contatoMain(l, assetPrefix(outRelPath(l, "contato.html"))) },
     { key: "revista.html", current: "revista", main: (l) => revistaHubMain(l, assetPrefix(outRelPath(l, "revista.html")), "revista.html") },
@@ -2133,6 +2186,7 @@ for (const locale of LOCALES) {
       ogImageHeight,
       current: p.current,
       mainHtml: p.main(locale),
+      extraAfterFooter: pk === "" ? `  ${homeFloatWaHtml(locale)}\n` : "",
       ...homeExcursionsHead,
     });
     writePage(locale, pk || "", html);

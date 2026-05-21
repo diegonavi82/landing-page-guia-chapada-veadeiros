@@ -919,8 +919,102 @@
     });
   }
 
+  function initHomeReviews() {
+    var section = document.querySelector("[data-gcv-reviews]");
+    if (!section) return;
+
+    var grid = section.querySelector("[data-gcv-reviews-grid]");
+    var poolEl = document.getElementById("gcv-reviews-pool");
+    if (!grid || !poolEl) return;
+
+    var pool;
+    try {
+      pool = JSON.parse(poolEl.textContent || "{}");
+    } catch (err) {
+      if (typeof console !== "undefined" && console.error) console.error("[gcv-reviews]", err);
+      return;
+    }
+
+    var reviews = Array.isArray(pool.reviews) ? pool.reviews.slice() : [];
+    if (!reviews.length) return;
+
+    var exclude = Array.isArray(pool.excludeNames) ? pool.excludeNames : ["Alan Braz"];
+    reviews = reviews.filter(function (r) {
+      var stars = Number(r.stars || r.rating || 0);
+      if (stars !== 5) return false;
+      var name = String(r.name || "").trim();
+      if (!name || !String(r.quote || "").trim()) return false;
+      return !exclude.some(function (n) {
+        return new RegExp(String(n).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(name);
+      });
+    });
+    if (!reviews.length) return;
+
+    var count = parseInt(section.getAttribute("data-gcv-reviews-count") || "3", 10);
+    if (!count || count < 1) count = 3;
+    count = Math.min(count, reviews.length);
+
+    var label = section.getAttribute("data-gcv-reviews-label") || "Google review · 5 stars";
+    var assetBase = section.getAttribute("data-gcv-reviews-asset-base") || "./assets/img/";
+
+    function escapeHtml(s) {
+      return String(s || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function pickRandom(list, n) {
+      var copy = list.slice();
+      var out = [];
+      for (var i = 0; i < n && copy.length; i++) {
+        var idx = Math.floor(Math.random() * copy.length);
+        out.push(copy.splice(idx, 1)[0]);
+      }
+      return out;
+    }
+
+    function cardHtml(r) {
+      var quote = String(r.quote || "").trim();
+      var img = r.image ? String(r.image).trim() : "";
+      var tour = r.tour ? String(r.tour).trim() : "";
+      var avatar = img
+        ? '<div class="gcv-review-card__avatar"><img src="' +
+          escapeHtml(assetBase + img) +
+          '" alt="' +
+          escapeHtml(r.name) +
+          '" width="80" height="80" loading="lazy" decoding="async" /></div>'
+        : '<div class="gcv-review-card__avatar gcv-review-card__avatar--fallback" aria-hidden="true">' +
+          escapeHtml(String(r.name || "?").charAt(0)) +
+          "</div>";
+      return (
+        '<article class="gcv-review-card">' +
+        '<div class="gcv-review-card__head">' +
+        avatar +
+        '<div class="gcv-review-card__meta">' +
+        '<p class="gcv-review-card__stars" aria-hidden="true">★★★★★</p>' +
+        "<h3 class=\"gcv-review-card__name\">" +
+        escapeHtml(r.name) +
+        "</h3>" +
+        '<p class="gcv-review-card__city">' +
+        escapeHtml(label) +
+        "</p>" +
+        (tour ? '<p class="gcv-review-card__tour">' + escapeHtml(tour) + "</p>" : "") +
+        "</div></div>" +
+        '<blockquote class="gcv-review-card__quote"><span class="gcv-review-card__quo">“</span>' +
+        escapeHtml(quote) +
+        '<span class="gcv-review-card__quo">”</span></blockquote></article>'
+      );
+    }
+
+    var picked = pickRandom(reviews, count);
+    grid.innerHTML = picked.map(cardHtml).join("\n");
+  }
+
   initHeroCarousel();
   initInstagramRandomGrid();
+  initHomeReviews();
   initMapLightbox();
   initPhotoGalleryLightbox();
   initContactForm();

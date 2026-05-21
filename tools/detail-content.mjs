@@ -309,9 +309,37 @@ export function getSidebarLines(sidebarInfo) {
     .filter((block) => !COMPRE_PASSEIO_LABEL_RE.test(block));
 }
 
-/** Substitui rotas do SPA por ficheiros estáticos relativos. */
 export function fixAttractionActionHrefs(html, contatoHref) {
   let out = String(html || "");
   out = out.replace(/\bhref=(["'])\/contato\1/gi, `href=$1${contatoHref}$1`);
   return out;
+}
+
+const GUIDE_LOCAL_CTA_LABEL_RE = /contrate\s+um\s+guia\s+local/i;
+
+/** Reescreve botões "Contrate um guia local!" para abrir WhatsApp com mensagem pré-preenchida. */
+export function rewriteGuideLocalCtaToWhatsApp(html, waUrl) {
+  if (!html || !waUrl) {
+    return html;
+  }
+
+  const safeUrl = String(waUrl);
+
+  return String(html).replace(
+    /<a\b([^>]*?)href=(["'])[^"']*\2([^>]*?)>([\s\S]*?)<\/a>/gi,
+    (full, before, q, after, inner) => {
+      const label = inner.replace(/<[^>]+>/g, "").trim();
+      if (!GUIDE_LOCAL_CTA_LABEL_RE.test(label)) {
+        return full;
+      }
+
+      const attrs = `${before}${after}`
+        .replace(/\s*target=(["'])[^"']*\1/gi, "")
+        .replace(/\s*rel=(["'])[^"']*\1/gi, "")
+        .trim();
+      const spacer = attrs ? ` ${attrs}` : "";
+
+      return `<a href=${q}${safeUrl}${q}${spacer} target="_blank" rel="noopener noreferrer">${inner}</a>`;
+    },
+  );
 }

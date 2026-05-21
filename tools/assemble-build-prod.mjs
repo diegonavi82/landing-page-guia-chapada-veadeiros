@@ -16,6 +16,7 @@ export const DEPLOY_ROOT_ENTRIES = [
   "contato.html",
   "revista.html",
   "atrativos.html",
+  "favicon.ico",
   "sitemap.xml",
   "robots.txt",
   "assets",
