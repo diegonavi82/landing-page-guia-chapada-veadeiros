@@ -1,0 +1,36 @@
+{
+  "updatedAt": "2026-05-21T20:24:54.933Z",
+  "business": "Guia Chapada Veadeiros",
+  "rating": 4.9,
+  "totalOnGoogle": 14,
+  "displayCount": 3,
+  "excludeNames": [
+    "Alan Braz"
+  ],
+  "reviews": [
+    {
+      "id": "cintia-mariele",
+      "name": "Cintia Mariele",
+      "stars": 5,
+      "quote": "Diego é um guia incrível! Sempre com as melhores dicas de passeio, muito conhecimento local e super solícito com os grupos. Recomendo demais!",
+      "image": "imagens/vale-lua-guia-chapada-veadeiros-sao-jorge-1.jpg",
+      "tour": "Dicas de passeio na Chapada"
+    },
+    {
+      "id": "mayla-santos",
+      "name": "Mayla Santos",
+      "stars": 5,
+      "quote": "O Diego é um guia muito atencioso, solícito, com uma energia incrível! Ele é extremamente pontual, não teve um dia sequer que chegou além do horário combinado, dirige super bem, conhece a região e os caminhos das cachoeiras, o que facilitou muito cada dia.",
+      "image": "imagens/parque-nacional-guia-chapada-veadeiros-saltos-rio-preto-garimpao.jpg",
+      "tour": "Pontualidade e trilhas"
+    },
+    {
+      "id": "paula-altenfelder",
+      "name": "Paula Altenfelder",
+      "stars": 5,
+      "quote": "O Diego é um excelente guia, espirituoso, solícito, parceiro, extremamente pontual (sempre estava no horário combinado para o passeio), bem humorado, responsável, ótimo motorista. Um dos poucos guias da Chapada que fazem o pacote completo de transporte e passeio. Nota 10! Recomendo de olhos fechados.",
+      "image": "imagens/cataratas-couros-guia-chapada-veadeiros-alto-paraiso.jpg",
+      "tour": "Transporte + passeio"
+    }
+  ]
+}

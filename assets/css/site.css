@@ -2757,7 +2757,7 @@ table.season th {
   z-index: 2;
 }
 
-/* Botão WhatsApp fixo — apenas telemóvel / tablet (index e páginas que reutilizem a classe) */
+/* Botão WhatsApp fixo — apenas telemóvel / tablet (home e contato) */
 .gcv-float-wa {
   display: none;
 }

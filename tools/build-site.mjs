@@ -318,14 +318,11 @@ function waUrl(locale) {
   return `https://api.whatsapp.com/send?phone=${WHATSAPP_PHONE}&text=${encodeURIComponent(waText(locale))}`;
 }
 
-function homeFloatWaUrl(locale) {
-  const msg = STRINGS[locale]?.home?.floatWaMessage || STRINGS.pt.home.floatWaMessage;
-  return `https://api.whatsapp.com/send?phone=${WHATSAPP_PHONE}&text=${encodeURIComponent(msg)}`;
-}
-
-function homeFloatWaHtml(locale) {
+function floatWaHtml(locale) {
   const home = STRINGS[locale].home;
-  return `<a class="gcv-float-wa" href="${esc(homeFloatWaUrl(locale))}" target="_blank" rel="noopener noreferrer" aria-label="${esc(home.floatWaAria)}">${WA_SVG.replace('class="gcv-hero-wa-icon"', "")}</a>`;
+  const msg = home.floatWaMessage || STRINGS.pt.home.floatWaMessage;
+  const url = `https://api.whatsapp.com/send?phone=${WHATSAPP_PHONE}&text=${encodeURIComponent(msg)}`;
+  return `<a class="gcv-float-wa" href="${esc(url)}" target="_blank" rel="noopener noreferrer" aria-label="${esc(home.floatWaAria)}">${WA_SVG.replace('class="gcv-hero-wa-icon"', "")}</a>`;
 }
 
 function attractionGuideWaUrl(pageTitle) {
@@ -2186,7 +2183,7 @@ for (const locale of LOCALES) {
       ogImageHeight,
       current: p.current,
       mainHtml: p.main(locale),
-      extraAfterFooter: pk === "" ? `  ${homeFloatWaHtml(locale)}\n` : "",
+      extraAfterFooter: pk === "" || pk === "contato.html" ? `  ${floatWaHtml(locale)}\n` : "",
       ...homeExcursionsHead,
     });
     writePage(locale, pk || "", html);
