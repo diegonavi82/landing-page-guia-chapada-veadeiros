@@ -9,9 +9,16 @@ import sharp from "sharp";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
-const SOURCE = join(ROOT, "assets", "img", "imagens", "favicon.png");
 const OUT_DIR = join(ROOT, "assets", "img", "imagens");
+/** Master em alta resolução — não sobrescrever no build (só os tamanhos publicados). */
+const SOURCE = join(OUT_DIR, "favicon-source.png");
 const SIZES = [48, 96, 192];
+
+const RESIZE = {
+  fit: "contain",
+  background: { r: 255, g: 255, b: 255, alpha: 1 },
+  kernel: sharp.kernel.lanczos3,
+};
 
 /** ICO com PNG embutido (Windows Vista+), aceito pelo Google e navegadores. */
 function pngBufferToIco(pngBuffer, size) {
@@ -45,8 +52,8 @@ async function main() {
   for (const size of SIZES) {
     const out = join(OUT_DIR, `favicon-${size}x${size}.png`);
     await sharp(sourceBuffer)
-      .resize(size, size, { fit: "cover" })
-      .png({ compressionLevel: 9 })
+      .resize(size, size, RESIZE)
+      .png({ compressionLevel: 9, adaptiveFiltering: true })
       .toFile(out);
     console.log("[favicons] Gerado:", `favicon-${size}x${size}.png`);
   }
@@ -54,14 +61,14 @@ async function main() {
   // PNG principal corrigido (formato real, 192px — tamanho declarado no HTML)
   const mainPng = join(OUT_DIR, "favicon.png");
   await sharp(sourceBuffer)
-    .resize(192, 192, { fit: "cover" })
-    .png({ compressionLevel: 9 })
+    .resize(192, 192, RESIZE)
+    .png({ compressionLevel: 9, adaptiveFiltering: true })
     .toFile(mainPng);
   console.log("[favicons] Atualizado: favicon.png (192x192 PNG real)");
 
   const icoPng = await sharp(sourceBuffer)
-    .resize(48, 48, { fit: "cover" })
-    .png({ compressionLevel: 9 })
+    .resize(48, 48, RESIZE)
+    .png({ compressionLevel: 9, adaptiveFiltering: true })
     .toBuffer();
   writeFileSync(join(ROOT, "favicon.ico"), pngBufferToIco(icoPng, 48));
   console.log("[favicons] Gerado: favicon.ico (48x48 na raiz)");
