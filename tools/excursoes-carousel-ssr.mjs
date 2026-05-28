@@ -2,7 +2,7 @@
  * HTML estático do track do carrossel (fallback se o JS falhar ou para pintar antes do defer).
  * Mantém as mesmas classes de `assets/js/excursoes-carousel.js` → `buildCard`.
  */
-import { EXCURSOES_CAROUSEL_BY_LOCALE } from "./excursoes-carousel-data.mjs";
+import { excursaoRowsForLocale } from "./excursoes-carousel-data.mjs";
 
 const WA_PHONE = "5562982506891";
 const SAIDA_HORA_PADRAO = "8:45";
@@ -217,7 +217,7 @@ function inclExclBlocksSsr(e, s) {
  * @param {string} locale
  */
 export function excursionsCarouselTrackSsrHtml(locale) {
-  const rows = EXCURSOES_CAROUSEL_BY_LOCALE[locale] || EXCURSOES_CAROUSEL_BY_LOCALE.pt;
+  const rows = excursaoRowsForLocale(locale);
   const s = SSR[locale] || SSR.pt;
   return rows
     .map((e, idx) => {

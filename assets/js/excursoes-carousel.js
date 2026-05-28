@@ -73,7 +73,7 @@
         dayNum: "4",
         monthName: "June",
         weekday: "Thursday",
-        destino: "The Secret waterfall",
+        destino: "Cachoeira do Segredo",
         hora: "9:15",
         valor: 90,
         confirmada: true,
@@ -85,7 +85,7 @@
         dayNum: "5",
         monthName: "June",
         weekday: "Friday",
-        destino: "Couros waterfalls",
+        destino: "Cataratas dos Couros",
         hora: "8:30",
         valor: 120,
         confirmada: false,
@@ -97,7 +97,7 @@
         dayNum: "6",
         monthName: "June",
         weekday: "Saturday",
-        destino: "Janela lookout",
+        destino: "Mirante da Janela",
         hora: "14:30",
         valor: 90,
         confirmada: true,
@@ -109,7 +109,7 @@
         dayNum: "7",
         monthName: "June",
         weekday: "Sunday",
-        destino: "National Park",
+        destino: "Parque Nacional",
         hora: "9:00",
         valor: 100,
         confirmada: false,
@@ -123,7 +123,7 @@
         dayNum: "4",
         monthName: "junio",
         weekday: "Jueves",
-        destino: "Cascada del Secreto",
+        destino: "Cachoeira do Segredo",
         hora: "9:15",
         valor: 90,
         confirmada: true,
@@ -135,7 +135,7 @@
         dayNum: "5",
         monthName: "junio",
         weekday: "Viernes",
-        destino: "Cataratas del Couros",
+        destino: "Cataratas dos Couros",
         hora: "8:30",
         valor: 120,
         confirmada: false,
@@ -147,7 +147,7 @@
         dayNum: "6",
         monthName: "junio",
         weekday: "Sábado",
-        destino: "Mirador de la Ventana",
+        destino: "Mirante da Janela",
         hora: "14:30",
         valor: 90,
         confirmada: true,
@@ -391,6 +391,22 @@
   }
 
   /**
+   * Destinos das saídas sempre em português, em qualquer locale.
+   * @param {Array<Record<string, unknown>>} rows
+   * @param {Array<Record<string, unknown>>} ptRows
+   */
+  function applyPortugueseDestinos(rows, ptRows) {
+    if (!Array.isArray(rows) || !Array.isArray(ptRows)) return rows;
+    return rows.map(function (row, i) {
+      var pt = ptRows[i];
+      if (!pt || !pt.destino) return row;
+      var copy = Object.assign({}, row);
+      copy.destino = pt.destino;
+      return copy;
+    });
+  }
+
+  /**
    * @param {HTMLElement} root
    * @returns {Array<Record<string, unknown>>|null}
    */
@@ -404,7 +420,9 @@
       }
       var all = JSON.parse(node.textContent);
       var loc = detectLocale(root);
+      var ptRows = Array.isArray(all.pt) ? all.pt : null;
       var rows = Object.prototype.hasOwnProperty.call(all, loc) ? all[loc] : all.pt;
+      if (loc !== "pt" && ptRows) rows = applyPortugueseDestinos(rows, ptRows);
       return Array.isArray(rows) && rows.length ? rows : null;
     } catch (err) {
       if (typeof console !== "undefined" && console.warn) console.warn("[gcv-excursoes] payload JSON", err);
@@ -1411,8 +1429,10 @@
     var locale = detectLocale(root);
     var s = STRINGS[locale] || STRINGS.pt;
     var fromPayload = loadExcursaoRowsFromPayload(root);
-    var allExcursoes =
-      fromPayload && fromPayload.length ? fromPayload : EXCURSOES[locale] || EXCURSOES.pt;
+    var ptFallback = EXCURSOES.pt;
+    var fallbackRows = EXCURSOES[locale] || ptFallback;
+    if (locale !== "pt") fallbackRows = applyPortugueseDestinos(fallbackRows, ptFallback);
+    var allExcursoes = fromPayload && fromPayload.length ? fromPayload : fallbackRows;
     var carouselExcursoes = allExcursoes.slice();
 
     var track = root.querySelector(".gcv-excursoes__track");

@@ -178,3 +178,31 @@ export const EXCURSOES_CAROUSEL_BY_LOCALE = {
     },
   ],
 };
+
+/** Destinos das saídas sempre em português, em qualquer locale da página. */
+export function withPortugueseDestinos(rows, ptRows = EXCURSOES_CAROUSEL_BY_LOCALE.pt) {
+  if (!Array.isArray(rows) || !Array.isArray(ptRows)) return rows;
+  return rows.map((row, i) => {
+    const ptDestino = ptRows[i]?.destino;
+    return ptDestino ? { ...row, destino: ptDestino } : row;
+  });
+}
+
+/** Payload do carrossel com destinos PT em en/es (para HTML e SSR). */
+export function excursaoPayloadForSite() {
+  const pt = EXCURSOES_CAROUSEL_BY_LOCALE.pt;
+  /** @type {Record<string, typeof pt>} */
+  const out = { pt };
+  for (const loc of Object.keys(EXCURSOES_CAROUSEL_BY_LOCALE)) {
+    if (loc === "pt") continue;
+    out[loc] = withPortugueseDestinos(EXCURSOES_CAROUSEL_BY_LOCALE[loc], pt);
+  }
+  return out;
+}
+
+/** Linhas de excursão de um locale com destino em português. */
+export function excursaoRowsForLocale(locale) {
+  const pt = EXCURSOES_CAROUSEL_BY_LOCALE.pt;
+  const rows = EXCURSOES_CAROUSEL_BY_LOCALE[locale] || pt;
+  return locale === "pt" ? rows : withPortugueseDestinos(rows, pt);
+}

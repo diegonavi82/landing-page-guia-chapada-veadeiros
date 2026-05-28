@@ -20,7 +20,7 @@ import {
   hotspotsForMap,
   MAP_IMAGE,
 } from "./content-data.mjs";
-import { EXCURSOES_CAROUSEL_BY_LOCALE } from "./excursoes-carousel-data.mjs";
+import { excursaoPayloadForSite } from "./excursoes-carousel-data.mjs";
 import { excursionsCarouselTrackSsrHtml } from "./excursoes-carousel-ssr.mjs";
 import { rewriteHtmlMediaUrls, htmlWithStaticAssetPrefix, toPublicAssetRel } from "./media-url.mjs";
 import {
@@ -367,6 +367,14 @@ function getCmsAttraction(locale, baseSlug) {
   return pages.find((p) => p.baseSlug === baseSlug) ?? null;
 }
 
+/** Nome do atrativo sempre em português (títulos exibidos e SEO de página). */
+function attractionDisplayTitle(baseSlug, h = null) {
+  const hot = h ?? HOTSPOTS.find((x) => x.slug === baseSlug);
+  if (!hot) return "";
+  const cmsPt = getCmsAttraction("pt", baseSlug);
+  return cmsPt?.title ?? hot.title.pt;
+}
+
 function localeSlugForBase(locale, baseSlug) {
   const cms = getCmsAttraction(locale, baseSlug);
   return cms?.slug ?? baseSlug;
@@ -386,20 +394,19 @@ function attractionIterate(locale) {
         if (!h) return null;
         const cms = getCmsAttraction(locale, base);
         const locSlug = cms?.slug ?? base;
-        const title = cms?.title ?? h.title[locale];
+        const title = attractionDisplayTitle(base, h);
         const lead = (cms?.excerpt && String(cms.excerpt).trim()) || h.lead[locale];
         return { h, base, locSlug, title, lead, cms };
       })
       .filter(Boolean);
   }
-  const locKey = locale === "en" ? "en" : locale === "es" ? "es" : "pt-BR";
   return [...HOTSPOTS]
-    .sort((a, b) => a.title[locale].localeCompare(b.title[locale], locKey, { sensitivity: "base" }))
+    .sort((a, b) => a.title.pt.localeCompare(b.title.pt, "pt-BR", { sensitivity: "base" }))
     .map((h) => ({
       h,
       base: h.slug,
       locSlug: h.slug,
-      title: h.title[locale],
+      title: attractionDisplayTitle(h.slug, h),
       lead: h.lead[locale],
       cms: null,
     }));
@@ -957,7 +964,8 @@ function mapHotspotsHtml(locale, fromOutRel, hotspotBaseClass, activeSlug) {
       const cur = activeSlug === hrefSlug;
       const cls = `${hotspotBaseClass}${cur ? ` ${hotspotBaseClass}--current` : ""}`;
       const { l, t, w, h } = spot.box;
-      return `<a href="${esc(href)}" class="${cls}" style="left:${l}%;top:${t}%;width:${w}%;height:${h}%;" aria-label="${esc(spot.title[locale])}" title="${esc(spot.title[locale])}"></a>`;
+      const spotTitle = spot.title.pt;
+      return `<a href="${esc(href)}" class="${cls}" style="left:${l}%;top:${t}%;width:${w}%;height:${h}%;" aria-label="${esc(spotTitle)}" title="${esc(spotTitle)}"></a>`;
     })
     .join("\n");
 }
@@ -1499,7 +1507,7 @@ function homeExcursionsSection(locale) {
   const L = copy[locale];
   if (!L) return "";
   return `    <section id="excursoes-junho" class="gcv-excursoes" data-locale="${esc(locale)}" aria-labelledby="gcv-excursoes-heading">
-      <script type="application/json" id="gcv-excursoes-payload">${safeJsonLd(EXCURSOES_CAROUSEL_BY_LOCALE)}</script>
+      <script type="application/json" id="gcv-excursoes-payload">${safeJsonLd(excursaoPayloadForSite())}</script>
       <div class="gcv-excursoes__head">
         <span class="gcv-excursoes__badge">${esc(L.badge)}</span>
         <h2 id="gcv-excursoes-heading" class="gcv-excursoes__title">${esc(L.title)}</h2>
@@ -1581,18 +1589,20 @@ function homeMainHtml(locale, ap, instagramPosts, reviewsPool) {
     .join("\n");
 
   const atrativosAllHref = relBetweenSync(cur, outRelPath(locale, "atrativos.html"));
+  const featuredPtBySlug = new Map(HOME_FEATURED.pt.map((item) => [item.slug, item]));
   const featuredCards = HOME_FEATURED[locale]
     .map((item) => {
       const p = HOTSPOTS.find((x) => x.slug === item.slug);
       if (!p) return "";
+      const displayTitle = featuredPtBySlug.get(item.slug)?.title ?? attractionDisplayTitle(item.slug, p);
       const hrefSlug = localeSlugForBase(locale, item.slug);
       const href = relBetweenSync(cur, outRelPath(locale, `atrativos/${hrefSlug}.html`));
       return `<a class="gcv-photo-card" href="${esc(href)}">
-  ${picture(ap, p.image, item.title, 640, 400)}
+  ${picture(ap, p.image, displayTitle, 640, 400)}
   <span class="gcv-photo-card__grad" aria-hidden="true"></span>
   <span class="gcv-photo-card__tag">${esc(item.label)}</span>
   <div class="gcv-photo-card__caption">
-  <h3 class="gcv-card-photo-text gcv-photo-card__title">${esc(item.title)}</h3>
+  <h3 class="gcv-card-photo-text gcv-photo-card__title">${esc(displayTitle)}</h3>
   <p class="gcv-card-photo-text gcv-photo-card__meta">${esc(item.meta)}</p>
   </div>
 </a>`;
@@ -2061,7 +2071,7 @@ function atrativoDetailMain(locale, localeSlug, ap, pathKey) {
   const S = STRINGS[locale];
   const cur = outRelPath(locale, pathKey);
   const contatoHref = relBetweenSync(cur, outRelPath(locale, "contato.html"));
-  const title = cms?.title ?? p.title[locale];
+  const title = attractionDisplayTitle(base, p);
   const metaDesc =
     (cms?.seoDescription && String(cms.seoDescription).trim()) ||
     (cms?.excerpt && String(cms.excerpt).trim()) ||
@@ -2710,7 +2720,7 @@ for (const locale of LOCALES) {
     const locSlug = localeSlugForBase(locale, base);
     const pk = `atrativos/${locSlug}.html`;
     const cms = getCmsAttraction(locale, base);
-    const pageTitle = cms?.title ?? hot.title[locale];
+    const pageTitle = attractionDisplayTitle(base, hot);
     const pageDesc =
       (cms?.seoDescription && String(cms.seoDescription).trim()) ||
       (cms?.excerpt && String(cms.excerpt).trim()) ||

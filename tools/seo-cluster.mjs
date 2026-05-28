@@ -688,7 +688,7 @@ export function resolveSatelliteMeta(ref, locale, ctx) {
     const locSlug = localeSlugForBase(locale, ref.slug);
     return {
       pathKey: `atrativos/${locSlug}.html`,
-      title: hot.title[locale],
+      title: hot.title.pt,
       desc: hot.lead[locale],
       kind: "attraction",
     };
