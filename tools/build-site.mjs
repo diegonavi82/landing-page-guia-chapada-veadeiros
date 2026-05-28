@@ -1504,6 +1504,8 @@ function homeExcursionsSection(locale) {
         <span class="gcv-excursoes__badge">${esc(L.badge)}</span>
         <h2 id="gcv-excursoes-heading" class="gcv-excursoes__title">${esc(L.title)}</h2>
       </div>
+      <div class="gcv-excursoes__filters-host" id="gcv-excursoes-filters-host"></div>
+      <p class="gcv-excursoes__filter-empty" id="gcv-excursoes-filter-empty" hidden></p>
       <div class="gcv-excursoes__shell">
         <button type="button" class="gcv-excursoes__nav gcv-excursoes__nav--prev" aria-label="${esc(L.prev)}">
           <i class="ti ti-chevron-left" aria-hidden="true"></i>

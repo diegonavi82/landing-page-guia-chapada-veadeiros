@@ -212,6 +212,32 @@
       exclTransport: "Transporte",
       exclLunch: "Almoço",
       cta: "Quero participar",
+      filterTitle: "Filtrar saídas",
+      filterPeriod: "Período",
+      filterDateFrom: "De",
+      filterDateTo: "Até",
+      filterDateHintStart: "1º passo: escolha a data inicial",
+      filterDateHintEnd: "2º passo: escolha a data final",
+      filterDateRange: "{{from}} → {{to}}",
+      filterCalPrev: "Mês anterior",
+      filterCalNext: "Próximo mês",
+      filterEmbarque: "Embarque",
+      filterEmbarqueAll: "Todos",
+      filterPrice: "Valor por pessoa",
+      filterTransport: "Translado",
+      filterTransportAll: "Todos",
+      filterTransportWith: "Com translado",
+      filterTransportWithout: "Sem translado",
+      filterStatus: "Status",
+      filterStatusAll: "Todos",
+      filterStatusConfirmed: "Confirmada",
+      filterStatusForming: "Formando",
+      filterSpots: "Vagas disponíveis",
+      filterSpotsValue: "{{min}} – {{max}} vagas",
+      filterPriceValue: "R$ {{min}} – R$ {{max}}",
+      filterClear: "Limpar filtros",
+      filterEmpty: "Nenhuma saída encontrada com estes filtros.",
+      filterResults: "{{n}} saída(s)",
       dotAria: "Excursão {{i}} de {{n}}",
       carouselDotsShellAria: "Navegação do carrossel de excursões",
     },
@@ -255,6 +281,32 @@
       exclTransport: "Transport",
       exclLunch: "Lunch",
       cta: "I want to join",
+      filterTitle: "Filter departures",
+      filterPeriod: "Period",
+      filterDateFrom: "From",
+      filterDateTo: "To",
+      filterDateHintStart: "Step 1: pick start date",
+      filterDateHintEnd: "Step 2: pick end date",
+      filterDateRange: "{{from}} → {{to}}",
+      filterCalPrev: "Previous month",
+      filterCalNext: "Next month",
+      filterEmbarque: "Meeting point",
+      filterEmbarqueAll: "All",
+      filterPrice: "Price per person",
+      filterTransport: "Transport",
+      filterTransportAll: "All",
+      filterTransportWith: "With transport",
+      filterTransportWithout: "Without transport",
+      filterStatus: "Status",
+      filterStatusAll: "All",
+      filterStatusConfirmed: "Confirmed",
+      filterStatusForming: "Forming",
+      filterSpots: "Available spots",
+      filterSpotsValue: "{{min}} – {{max}} spots",
+      filterPriceValue: "R$ {{min}} – R$ {{max}}",
+      filterClear: "Clear filters",
+      filterEmpty: "No departures match these filters.",
+      filterResults: "{{n}} departure(s)",
       dotAria: "Excursion {{i}} of {{n}}",
       carouselDotsShellAria: "Excursions carousel navigation",
     },
@@ -298,6 +350,32 @@
       exclTransport: "Transporte",
       exclLunch: "Almuerzo",
       cta: "Quiero participar",
+      filterTitle: "Filtrar salidas",
+      filterPeriod: "Período",
+      filterDateFrom: "Desde",
+      filterDateTo: "Hasta",
+      filterDateHintStart: "1.er paso: elige la fecha inicial",
+      filterDateHintEnd: "2.º paso: elige la fecha final",
+      filterDateRange: "{{from}} → {{to}}",
+      filterCalPrev: "Mes anterior",
+      filterCalNext: "Mes siguiente",
+      filterEmbarque: "Embarque",
+      filterEmbarqueAll: "Todos",
+      filterPrice: "Precio por persona",
+      filterTransport: "Traslado",
+      filterTransportAll: "Todos",
+      filterTransportWith: "Con traslado",
+      filterTransportWithout: "Sin traslado",
+      filterStatus: "Estado",
+      filterStatusAll: "Todos",
+      filterStatusConfirmed: "Confirmada",
+      filterStatusForming: "Formando",
+      filterSpots: "Plazas disponibles",
+      filterSpotsValue: "{{min}} – {{max}} plazas",
+      filterPriceValue: "R$ {{min}} – R$ {{max}}",
+      filterClear: "Limpiar filtros",
+      filterEmpty: "Ninguna salida coincide con estos filtros.",
+      filterResults: "{{n}} salida(s)",
       dotAria: "Excursión {{i}} de {{n}}",
       carouselDotsShellAria: "Navegación del carrusel de excursiones",
     },
@@ -368,6 +446,645 @@
       return Math.max(0, cap - falta);
     }
     return 0;
+  }
+
+  var MONTH_NUM = {
+    janeiro: 1,
+    fevereiro: 2,
+    março: 3,
+    marco: 3,
+    abril: 4,
+    maio: 5,
+    junho: 6,
+    julho: 7,
+    agosto: 8,
+    setembro: 9,
+    outubro: 10,
+    novembro: 11,
+    dezembro: 12,
+    january: 1,
+    february: 2,
+    march: 3,
+    april: 4,
+    may: 5,
+    june: 6,
+    july: 7,
+    august: 8,
+    september: 9,
+    october: 10,
+    november: 11,
+    december: 12,
+    enero: 1,
+    febrero: 2,
+    marzo: 3,
+    mayo: 5,
+    junio: 6,
+    julio: 7,
+    septiembre: 9,
+    octubre: 10,
+    noviembre: 11,
+    diciembre: 12,
+  };
+
+  function excursaoEmbarque(e, s) {
+    return String((e && e.embarque) || (s && s.meetingCity) || "").trim();
+  }
+
+  function excursaoDateIso(e) {
+    if (e && e.dateISO) return String(e.dateISO).slice(0, 10);
+    var day = parseInt(String(e && e.dayNum), 10);
+    var m = MONTH_NUM[String((e && e.monthName) || "").toLowerCase()];
+    if (!Number.isFinite(day) || !m) return "";
+    return "2026-" + String(m).padStart(2, "0") + "-" + String(day).padStart(2, "0");
+  }
+
+  function excursaoValor(e) {
+    var n = parseInt(String(e && e.valor), 10);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function vagasDisponiveis(e) {
+    if (e && e.confirmada) return numOrZero(e.vagasRestantes);
+    return Math.max(0, grupoMaximoValor(e) - inscritosNoGrupo(e));
+  }
+
+  function scanExcursaoBounds(list, s) {
+    var dates = [];
+    var prices = [];
+    var embarques = {};
+    list.forEach(function (e) {
+      var d = excursaoDateIso(e);
+      if (d) dates.push(d);
+      prices.push(excursaoValor(e));
+      var em = excursaoEmbarque(e, s);
+      if (em) embarques[em] = true;
+    });
+    dates.sort();
+    prices.sort(function (a, b) {
+      return a - b;
+    });
+    return {
+      dateMin: dates[0] || "",
+      dateMax: dates[dates.length - 1] || "",
+      priceMin: prices.length ? prices[0] : 0,
+      priceMax: prices.length ? prices[prices.length - 1] : 500,
+      embarques: Object.keys(embarques).sort(),
+    };
+  }
+
+  function matchesExcursaoFilters(e, f, s) {
+    var iso = excursaoDateIso(e);
+    if (f.dateFrom && iso && iso < f.dateFrom) return false;
+    if (f.dateTo && iso && iso > f.dateTo) return false;
+    if (f.embarque && excursaoEmbarque(e, s) !== f.embarque) return false;
+    var price = excursaoValor(e);
+    if (price < f.priceMin || price > f.priceMax) return false;
+    if (f.transport === "com" && e.comTransporte !== true) return false;
+    if (f.transport === "sem" && e.comTransporte === true) return false;
+    if (f.status === "confirmada" && !e.confirmada) return false;
+    if (f.status === "formando" && e.confirmada) return false;
+    var vagas = vagasDisponiveis(e);
+    if (vagas < f.spotsMin || vagas > f.spotsMax) return false;
+    return true;
+  }
+
+  function filterExcursaoList(list, f, s) {
+    return list.filter(function (e) {
+      return matchesExcursaoFilters(e, f, s);
+    });
+  }
+
+  function isoToDate(iso) {
+    var p = String(iso).split("-");
+    return new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
+  }
+
+  function dateToIso(d) {
+    return (
+      d.getFullYear() +
+      "-" +
+      String(d.getMonth() + 1).padStart(2, "0") +
+      "-" +
+      String(d.getDate()).padStart(2, "0")
+    );
+  }
+
+  function compareIso(a, b) {
+    if (a === b) return 0;
+    return a < b ? -1 : 1;
+  }
+
+  function weekdayHeaders(locale) {
+    var loc = locale === "en" ? "en-US" : locale === "es" ? "es-ES" : "pt-BR";
+    var out = [];
+    for (var i = 0; i < 7; i++) {
+      var d = new Date(2026, 0, 4 + i);
+      out.push(
+        new Intl.DateTimeFormat(loc, { weekday: "short" })
+          .format(d)
+          .replace(/\./g, "")
+          .slice(0, 3),
+      );
+    }
+    return out;
+  }
+
+  /**
+   * @param {HTMLElement} fieldEl
+   * @param {{ dateMin: string, dateMax: string }} bounds
+   * @param {Record<string, string>} s
+   * @param {string} locale
+   * @param {Set<string>} excursionDates
+   * @param {() => void} onRangeCommit
+   */
+  function mountExcursaoDateRangePicker(fieldEl, bounds, s, locale, excursionDates, onRangeCommit) {
+    var minIso = bounds.dateMin;
+    var maxIso = bounds.dateMax;
+    var startIso = minIso;
+    var endIso = maxIso;
+    var pickPhase = "start";
+    var isOpen = false;
+    var viewYear = isoToDate(minIso).getFullYear();
+    var viewMonth = isoToDate(minIso).getMonth();
+
+    var locTag = locale === "en" ? "en-US" : locale === "es" ? "es-ES" : "pt-BR";
+    var fmtShort = new Intl.DateTimeFormat(locTag, { day: "numeric", month: "short" });
+
+    fieldEl.className = "gcv-excursoes-filters__field gcv-excursoes-filters__field--period";
+    fieldEl.innerHTML =
+      '<span class="gcv-excursoes-filters__label">' +
+      escapeHtml(s.filterPeriod) +
+      '</span><div class="gcv-exc-datepick" data-gcv-datepick>' +
+      '<button type="button" class="gcv-exc-datepick__trigger" aria-haspopup="dialog" aria-expanded="false">' +
+      '<i class="ti ti-calendar-event" aria-hidden="true"></i>' +
+      '<span class="gcv-exc-datepick__value" data-gcv-date-value></span>' +
+      '<i class="ti ti-chevron-down gcv-exc-datepick__chev" aria-hidden="true"></i>' +
+      "</button>" +
+      '<div class="gcv-exc-datepick__popover" data-gcv-date-popover hidden role="dialog" aria-modal="false">' +
+      '<p class="gcv-exc-datepick__hint" data-gcv-date-hint></p>' +
+      '<div class="gcv-exc-datepick__nav">' +
+      '<button type="button" class="gcv-exc-datepick__nav-btn" data-gcv-date-prev aria-label="' +
+      escapeHtml(s.filterCalPrev) +
+      '"><i class="ti ti-chevron-left" aria-hidden="true"></i></button>' +
+      '<span class="gcv-exc-datepick__month" data-gcv-date-month></span>' +
+      '<button type="button" class="gcv-exc-datepick__nav-btn" data-gcv-date-next aria-label="' +
+      escapeHtml(s.filterCalNext) +
+      '"><i class="ti ti-chevron-right" aria-hidden="true"></i></button>' +
+      "</div>" +
+      '<div class="gcv-exc-datepick__weekdays" data-gcv-date-weekdays></div>' +
+      '<div class="gcv-exc-datepick__grid" data-gcv-date-grid role="grid"></div>' +
+      "</div></div>";
+
+    var root = fieldEl.querySelector("[data-gcv-datepick]");
+    var trigger = fieldEl.querySelector(".gcv-exc-datepick__trigger");
+    var popover = fieldEl.querySelector("[data-gcv-date-popover]");
+    var valueEl = fieldEl.querySelector("[data-gcv-date-value]");
+    var hintEl = fieldEl.querySelector("[data-gcv-date-hint]");
+    var monthEl = fieldEl.querySelector("[data-gcv-date-month]");
+    var weekdaysEl = fieldEl.querySelector("[data-gcv-date-weekdays]");
+    var gridEl = fieldEl.querySelector("[data-gcv-date-grid]");
+    var prevBtn = fieldEl.querySelector("[data-gcv-date-prev]");
+    var nextBtn = fieldEl.querySelector("[data-gcv-date-next]");
+
+    weekdaysEl.innerHTML = weekdayHeaders(locale)
+      .map(function (w) {
+        return '<span class="gcv-exc-datepick__weekday">' + escapeHtml(w) + "</span>";
+      })
+      .join("");
+
+    function fmtDisplay(iso) {
+      return fmtShort.format(isoToDate(iso));
+    }
+
+    function updateValueText() {
+      if (valueEl) {
+        valueEl.textContent = tpl(s.filterDateRange, {
+          from: fmtDisplay(startIso),
+          to: fmtDisplay(endIso),
+        });
+      }
+    }
+
+    function monthTitle() {
+      return new Intl.DateTimeFormat(locTag, { month: "long", year: "numeric" }).format(
+        new Date(viewYear, viewMonth, 1),
+      );
+    }
+
+    function renderCalendar() {
+      if (monthEl) monthEl.textContent = monthTitle();
+      if (hintEl) {
+        hintEl.textContent = pickPhase === "start" ? s.filterDateHintStart : s.filterDateHintEnd;
+      }
+      if (!gridEl) return;
+
+      var first = new Date(viewYear, viewMonth, 1);
+      var startPad = first.getDay();
+      var daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+      var cells = [];
+
+      for (var pad = 0; pad < startPad; pad++) {
+        cells.push('<span class="gcv-exc-datepick__day gcv-exc-datepick__day--empty" aria-hidden="true"></span>');
+      }
+
+      for (var day = 1; day <= daysInMonth; day++) {
+        var iso = dateToIso(new Date(viewYear, viewMonth, day));
+        var disabled = iso < minIso || iso > maxIso;
+        var inRange = !disabled && compareIso(iso, startIso) >= 0 && compareIso(iso, endIso) <= 0;
+        var isStart = iso === startIso;
+        var isEnd = iso === endIso;
+        var hasTrip = excursionDates.has(iso);
+        var cls = "gcv-exc-datepick__day";
+        if (disabled) cls += " gcv-exc-datepick__day--disabled";
+        if (inRange) cls += " gcv-exc-datepick__day--in-range";
+        if (isStart) cls += " gcv-exc-datepick__day--start";
+        if (isEnd) cls += " gcv-exc-datepick__day--end";
+        if (hasTrip) cls += " gcv-exc-datepick__day--has-trip";
+
+        cells.push(
+          '<button type="button" class="' +
+            cls +
+            '" data-gcv-date-day="' +
+            escapeHtml(iso) +
+            '" role="gridcell"' +
+            (disabled ? " disabled" : "") +
+            ">" +
+            '<span class="gcv-exc-datepick__day-num">' +
+            day +
+            "</span>" +
+            (hasTrip ? '<span class="gcv-exc-datepick__day-dot" aria-hidden="true"></span>' : "") +
+            "</button>",
+        );
+      }
+
+      gridEl.innerHTML = cells.join("");
+    }
+
+    function closePopover() {
+      isOpen = false;
+      if (popover) popover.hidden = true;
+      if (trigger) trigger.setAttribute("aria-expanded", "false");
+      if (root) root.classList.remove("is-open");
+    }
+
+    function openPopover() {
+      isOpen = true;
+      if (popover) popover.hidden = false;
+      if (trigger) trigger.setAttribute("aria-expanded", "true");
+      if (root) root.classList.add("is-open");
+      pickPhase = "start";
+      var d = isoToDate(startIso);
+      viewYear = d.getFullYear();
+      viewMonth = d.getMonth();
+      renderCalendar();
+    }
+
+    function onDayPick(iso) {
+      if (iso < minIso || iso > maxIso) return;
+      if (pickPhase === "start") {
+        startIso = iso;
+        endIso = iso;
+        pickPhase = "end";
+        renderCalendar();
+        return;
+      }
+      endIso = iso;
+      if (compareIso(endIso, startIso) < 0) {
+        var tmp = startIso;
+        startIso = endIso;
+        endIso = tmp;
+      }
+      pickPhase = "start";
+      updateValueText();
+      renderCalendar();
+      onRangeCommit();
+      closePopover();
+    }
+
+    if (gridEl) {
+      gridEl.addEventListener("click", function (ev) {
+        var btn = ev.target.closest("[data-gcv-date-day]");
+        if (!btn || btn.disabled) return;
+        ev.stopPropagation();
+        onDayPick(String(btn.getAttribute("data-gcv-date-day")));
+      });
+    }
+
+    if (prevBtn) {
+      prevBtn.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        viewMonth -= 1;
+        if (viewMonth < 0) {
+          viewMonth = 11;
+          viewYear -= 1;
+        }
+        renderCalendar();
+      });
+    }
+
+    if (nextBtn) {
+      nextBtn.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        viewMonth += 1;
+        if (viewMonth > 11) {
+          viewMonth = 0;
+          viewYear += 1;
+        }
+        renderCalendar();
+      });
+    }
+
+    if (trigger) {
+      trigger.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        if (isOpen) closePopover();
+        else openPopover();
+      });
+    }
+
+    fieldEl.addEventListener("click", function (ev) {
+      if (ev.target.closest("[data-gcv-date-day], [data-gcv-date-prev], [data-gcv-date-next]")) return;
+      if (!isOpen) openPopover();
+    });
+
+    document.addEventListener("click", function (ev) {
+      if (!fieldEl.contains(ev.target)) closePopover();
+    });
+
+    document.addEventListener("keydown", function (ev) {
+      if (ev.key === "Escape" && isOpen) closePopover();
+    });
+
+    updateValueText();
+    renderCalendar();
+
+    return {
+      getRange: function () {
+        return { dateFrom: startIso, dateTo: endIso };
+      },
+      reset: function () {
+        startIso = minIso;
+        endIso = maxIso;
+        pickPhase = "start";
+        updateValueText();
+        renderCalendar();
+        closePopover();
+      },
+    };
+  }
+
+  function syncDualRangeFill(minEl, maxEl, fillEl) {
+    if (!minEl || !maxEl || !fillEl) return;
+    var min = parseInt(String(minEl.min), 10) || 0;
+    var max = parseInt(String(minEl.max), 10) || 100;
+    var lo = parseInt(String(minEl.value), 10);
+    var hi = parseInt(String(maxEl.value), 10);
+    if (lo > hi) {
+      var t = lo;
+      lo = hi;
+      hi = t;
+      minEl.value = String(lo);
+      maxEl.value = String(hi);
+    }
+    var span = max - min || 1;
+    var left = ((lo - min) / span) * 100;
+    var width = ((hi - lo) / span) * 100;
+    fillEl.style.left = left + "%";
+    fillEl.style.width = width + "%";
+  }
+
+  /**
+   * @param {HTMLElement} host
+   * @param {Record<string, string>} s
+   * @param {Array<Record<string, unknown>>} list
+   * @param {(filters: Record<string, unknown>, resultsEl?: HTMLElement | null) => void} onChange
+   * @param {string} locale
+   */
+  function mountExcursaoFilters(host, s, list, onChange, locale) {
+    var bounds = scanExcursaoBounds(list, s);
+    var hasTransport = list.some(function (e) {
+      return e.comTransporte === true;
+    });
+    var excursionDates = new Set(
+      list
+        .map(function (e) {
+          return excursaoDateIso(e);
+        })
+        .filter(Boolean),
+    );
+
+    var panel = document.createElement("div");
+    panel.className = "gcv-excursoes-filters";
+    panel.setAttribute("role", "search");
+    panel.setAttribute("aria-label", s.filterTitle);
+
+    var head = document.createElement("div");
+    head.className = "gcv-excursoes-filters__head";
+    head.innerHTML =
+      '<h3 class="gcv-excursoes-filters__title">' +
+      escapeHtml(s.filterTitle) +
+      '</h3><div class="gcv-excursoes-filters__head-actions">' +
+      '<p class="gcv-excursoes-filters__results" data-gcv-filter-results></p>' +
+      '<button type="button" class="gcv-excursoes-filters__clear" data-gcv-filter-clear>' +
+      escapeHtml(s.filterClear) +
+      "</button></div>";
+
+    var grid = document.createElement("div");
+    grid.className = "gcv-excursoes-filters__grid";
+
+    var periodField = document.createElement("div");
+    var embarqueField = document.createElement("div");
+    embarqueField.className = "gcv-excursoes-filters__field gcv-excursoes-filters__field--compact";
+    embarqueField.innerHTML =
+      '<label class="gcv-excursoes-filters__label" for="gcv-exc-filter-embarque">' +
+      escapeHtml(s.filterEmbarque) +
+      '</label><select class="gcv-excursoes-filters__select" id="gcv-exc-filter-embarque" data-gcv-filter="embarque"></select>';
+
+    var statusField = document.createElement("div");
+    statusField.className = "gcv-excursoes-filters__field gcv-excursoes-filters__field--compact";
+    statusField.innerHTML =
+      '<label class="gcv-excursoes-filters__label" for="gcv-exc-filter-status">' +
+      escapeHtml(s.filterStatus) +
+      '</label><select class="gcv-excursoes-filters__select" id="gcv-exc-filter-status" data-gcv-filter="status">' +
+      '<option value="">' +
+      escapeHtml(s.filterStatusAll) +
+      "</option>" +
+      '<option value="confirmada">' +
+      escapeHtml(s.filterStatusConfirmed) +
+      "</option>" +
+      '<option value="formando">' +
+      escapeHtml(s.filterStatusForming) +
+      "</option></select>";
+
+    var transportField = document.createElement("div");
+    transportField.className = "gcv-excursoes-filters__field gcv-excursoes-filters__field--compact";
+    transportField.innerHTML =
+      '<label class="gcv-excursoes-filters__label" for="gcv-exc-filter-transport">' +
+      escapeHtml(s.filterTransport) +
+      '</label><select class="gcv-excursoes-filters__select" id="gcv-exc-filter-transport" data-gcv-filter="transport">' +
+      '<option value="">' +
+      escapeHtml(s.filterTransportAll) +
+      "</option>" +
+      '<option value="com">' +
+      escapeHtml(s.filterTransportWith) +
+      "</option>" +
+      '<option value="sem">' +
+      escapeHtml(s.filterTransportWithout) +
+      "</option></select>";
+
+    var priceField = document.createElement("div");
+    priceField.className = "gcv-excursoes-filters__field gcv-excursoes-filters__field--range";
+    priceField.innerHTML =
+      '<div class="gcv-excursoes-filters__range-head"><span class="gcv-excursoes-filters__label">' +
+      escapeHtml(s.filterPrice) +
+      '</span><span class="gcv-excursoes-filters__range-value" data-gcv-price-label></span></div>' +
+      '<div class="gcv-excursoes-filters__range-track"><span class="gcv-excursoes-filters__range-fill" data-gcv-price-fill></span>' +
+      '<input class="gcv-excursoes-filters__range" type="range" data-gcv-filter="priceMin" aria-label="' +
+      escapeHtml(s.filterPrice) +
+      ' min" />' +
+      '<input class="gcv-excursoes-filters__range" type="range" data-gcv-filter="priceMax" aria-label="' +
+      escapeHtml(s.filterPrice) +
+      ' max" /></div>';
+
+    var spotsField = document.createElement("div");
+    spotsField.className = "gcv-excursoes-filters__field gcv-excursoes-filters__field--range";
+    spotsField.innerHTML =
+      '<div class="gcv-excursoes-filters__range-head"><span class="gcv-excursoes-filters__label">' +
+      escapeHtml(s.filterSpots) +
+      '</span><span class="gcv-excursoes-filters__range-value" data-gcv-spots-label></span></div>' +
+      '<div class="gcv-excursoes-filters__range-track"><span class="gcv-excursoes-filters__range-fill" data-gcv-spots-fill></span>' +
+      '<input class="gcv-excursoes-filters__range" type="range" data-gcv-filter="spotsMin" min="1" max="9" aria-label="' +
+      escapeHtml(s.filterSpots) +
+      ' min" />' +
+      '<input class="gcv-excursoes-filters__range" type="range" data-gcv-filter="spotsMax" min="1" max="9" aria-label="' +
+      escapeHtml(s.filterSpots) +
+      ' max" /></div>';
+
+    grid.appendChild(periodField);
+    grid.appendChild(embarqueField);
+    grid.appendChild(statusField);
+    if (hasTransport) grid.appendChild(transportField);
+    grid.appendChild(priceField);
+    grid.appendChild(spotsField);
+
+    panel.appendChild(head);
+    panel.appendChild(grid);
+    host.innerHTML = "";
+    host.appendChild(panel);
+
+    var datePicker = mountExcursaoDateRangePicker(
+      periodField,
+      bounds,
+      s,
+      locale,
+      excursionDates,
+      function () {
+        emit();
+      },
+    );
+
+    var embarqueEl = panel.querySelector('[data-gcv-filter="embarque"]');
+    var priceMinEl = panel.querySelector('[data-gcv-filter="priceMin"]');
+    var priceMaxEl = panel.querySelector('[data-gcv-filter="priceMax"]');
+    var priceLabelEl = panel.querySelector("[data-gcv-price-label]");
+    var priceFillEl = panel.querySelector("[data-gcv-price-fill]");
+    var transportEl = panel.querySelector('[data-gcv-filter="transport"]');
+    var statusEl = panel.querySelector('[data-gcv-filter="status"]');
+    var spotsMinEl = panel.querySelector('[data-gcv-filter="spotsMin"]');
+    var spotsMaxEl = panel.querySelector('[data-gcv-filter="spotsMax"]');
+    var spotsLabelEl = panel.querySelector("[data-gcv-spots-label]");
+    var spotsFillEl = panel.querySelector("[data-gcv-spots-fill]");
+    var resultsEl = panel.querySelector("[data-gcv-filter-results]");
+    var clearBtn = panel.querySelector("[data-gcv-filter-clear]");
+
+    if (embarqueEl) {
+      var optAll = document.createElement("option");
+      optAll.value = "";
+      optAll.textContent = s.filterEmbarqueAll;
+      embarqueEl.appendChild(optAll);
+      bounds.embarques.forEach(function (em) {
+        var opt = document.createElement("option");
+        opt.value = em;
+        opt.textContent = em;
+        embarqueEl.appendChild(opt);
+      });
+    }
+
+    if (priceMinEl && priceMaxEl) {
+      priceMinEl.min = String(bounds.priceMin);
+      priceMinEl.max = String(bounds.priceMax);
+      priceMinEl.step = "1";
+      priceMinEl.value = String(bounds.priceMin);
+      priceMaxEl.min = String(bounds.priceMin);
+      priceMaxEl.max = String(bounds.priceMax);
+      priceMaxEl.step = "1";
+      priceMaxEl.value = String(bounds.priceMax);
+    }
+
+    if (spotsMinEl && spotsMaxEl) {
+      spotsMinEl.value = "1";
+      spotsMaxEl.value = "9";
+    }
+
+    function updateRangeLabels() {
+      if (priceLabelEl && priceMinEl && priceMaxEl) {
+        priceLabelEl.textContent = tpl(s.filterPriceValue, {
+          min: priceMinEl.value,
+          max: priceMaxEl.value,
+        });
+        syncDualRangeFill(priceMinEl, priceMaxEl, priceFillEl);
+      }
+      if (spotsLabelEl && spotsMinEl && spotsMaxEl) {
+        spotsLabelEl.textContent = tpl(s.filterSpotsValue, {
+          min: spotsMinEl.value,
+          max: spotsMaxEl.value,
+        });
+        syncDualRangeFill(spotsMinEl, spotsMaxEl, spotsFillEl);
+      }
+    }
+
+    function readFilters() {
+      var range = datePicker.getRange();
+      return {
+        dateFrom: range.dateFrom,
+        dateTo: range.dateTo,
+        embarque: embarqueEl ? embarqueEl.value : "",
+        priceMin: priceMinEl ? parseInt(String(priceMinEl.value), 10) : bounds.priceMin,
+        priceMax: priceMaxEl ? parseInt(String(priceMaxEl.value), 10) : bounds.priceMax,
+        transport: transportEl ? transportEl.value : "",
+        status: statusEl ? statusEl.value : "",
+        spotsMin: spotsMinEl ? parseInt(String(spotsMinEl.value), 10) : 1,
+        spotsMax: spotsMaxEl ? parseInt(String(spotsMaxEl.value), 10) : 9,
+      };
+    }
+
+    function emit() {
+      updateRangeLabels();
+      onChange(readFilters(), resultsEl);
+    }
+
+    function reset() {
+      datePicker.reset();
+      if (embarqueEl) embarqueEl.value = "";
+      if (priceMinEl) priceMinEl.value = String(bounds.priceMin);
+      if (priceMaxEl) priceMaxEl.value = String(bounds.priceMax);
+      if (transportEl) transportEl.value = "";
+      if (statusEl) statusEl.value = "";
+      if (spotsMinEl) spotsMinEl.value = "1";
+      if (spotsMaxEl) spotsMaxEl.value = "9";
+      emit();
+    }
+
+    panel.querySelectorAll("[data-gcv-filter]").forEach(function (el) {
+      el.addEventListener("input", emit);
+      el.addEventListener("change", emit);
+    });
+    if (clearBtn) clearBtn.addEventListener("click", reset);
+
+    updateRangeLabels();
+    emit();
+    return { reset: reset, read: readFilters };
   }
 
   /**
@@ -583,7 +1300,7 @@
     var cityRow =
       '<div class="gcv-excursoes-card__row gcv-excursoes-card__row--city">' +
       '<span class="gcv-excursoes-card__loc"><i class="ti ti-map-pin" aria-hidden="true"></i> ' +
-      escapeHtml(s.meetingCity) +
+      escapeHtml(excursaoEmbarque(e, s)) +
       "</span></div>";
 
     var dateStrip =
@@ -694,50 +1411,62 @@
     var locale = detectLocale(root);
     var s = STRINGS[locale] || STRINGS.pt;
     var fromPayload = loadExcursaoRowsFromPayload(root);
-    var excursoes =
+    var allExcursoes =
       fromPayload && fromPayload.length ? fromPayload : EXCURSOES[locale] || EXCURSOES.pt;
+    var carouselExcursoes = allExcursoes.slice();
 
     var track = root.querySelector(".gcv-excursoes__track");
     var viewport = root.querySelector(".gcv-excursoes__viewport");
     var prev = root.querySelector(".gcv-excursoes__nav--prev");
     var next = root.querySelector(".gcv-excursoes__nav--next");
+    var shell = root.querySelector(".gcv-excursoes__shell");
+    var filtersHost = root.querySelector("#gcv-excursoes-filters-host");
+    var emptyEl = root.querySelector("#gcv-excursoes-filter-empty");
 
     if (!track || !viewport) return;
 
     var dotsWrap = ensureDotsShell(root, s);
-
-    var html = "";
-    try {
-      html = excursoes
-        .map(function (e, i) {
-          return buildCard(e, i, locale, s);
-        })
-        .join("");
-    } catch (err) {
-      if (typeof console !== "undefined" && console.error) console.error("[gcv-excursoes] buildCard", err);
-      return;
-    }
-    if (html) {
-      track.innerHTML = html;
-    }
-
     var dots = [];
-    for (var d = 0; d < excursoes.length; d++) {
-      var b = document.createElement("button");
-      b.type = "button";
-      b.className = "gcv-excursoes__dot";
-      b.setAttribute(
-        "aria-label",
-        tpl(s.dotAria, { i: d + 1, n: excursoes.length }),
-      );
-      (function (index) {
-        b.addEventListener("click", function () {
-          go(index, true, true);
-        });
-      })(d);
-      dotsWrap.appendChild(b);
-      dots.push(b);
+
+    function renderTrackAndDots() {
+      var html = "";
+      try {
+        html = carouselExcursoes
+          .map(function (e, i) {
+            return buildCard(e, i, locale, s);
+          })
+          .join("");
+      } catch (err) {
+        if (typeof console !== "undefined" && console.error) console.error("[gcv-excursoes] buildCard", err);
+        html = "";
+      }
+      track.innerHTML = html;
+
+      dotsWrap.innerHTML = "";
+      dots = [];
+      for (var d = 0; d < carouselExcursoes.length; d++) {
+        var b = document.createElement("button");
+        b.type = "button";
+        b.className = "gcv-excursoes__dot";
+        b.setAttribute("aria-label", tpl(s.dotAria, { i: d + 1, n: carouselExcursoes.length }));
+        (function (index) {
+          b.addEventListener("click", function () {
+            go(index, true, true);
+          });
+        })(d);
+        dotsWrap.appendChild(b);
+        dots.push(b);
+      }
+
+      var isEmpty = carouselExcursoes.length === 0;
+      if (emptyEl) {
+        emptyEl.hidden = !isEmpty;
+        emptyEl.textContent = isEmpty ? s.filterEmpty : "";
+      }
+      if (shell) shell.hidden = isEmpty;
     }
+
+    renderTrackAndDots();
 
     var idx = 0;
     var timer = null;
@@ -746,7 +1475,7 @@
     var STEP = CARD + GAP;
 
     function trackWidthPx() {
-      var n = excursoes.length;
+      var n = carouselExcursoes.length;
       return n * CARD + Math.max(0, n - 1) * GAP;
     }
 
@@ -889,7 +1618,8 @@
      * @param {boolean} [smoothScroll]
      */
     function go(i, fromUser, smoothScroll) {
-      idx = ((i % excursoes.length) + excursoes.length) % excursoes.length;
+      if (!carouselExcursoes.length) return;
+      idx = ((i % carouselExcursoes.length) + carouselExcursoes.length) % carouselExcursoes.length;
       apply({ smoothScroll: !!smoothScroll });
       if (fromUser) restartAutoplay();
     }
@@ -1154,6 +1884,18 @@
         startAutoplay();
       }
     }
+
+    if (filtersHost) {
+      mountExcursaoFilters(filtersHost, s, allExcursoes, function (filters, resultsEl) {
+        carouselExcursoes = filterExcursaoList(allExcursoes, filters, s);
+        if (resultsEl) resultsEl.textContent = tpl(s.filterResults, { n: carouselExcursoes.length });
+        idx = 0;
+        renderTrackAndDots();
+        apply({ smoothScroll: false });
+        restartAutoplay();
+      }, locale);
+    }
+
     requestAnimationFrame(function () {
       kick();
       if (viewport.clientWidth < 32) {
