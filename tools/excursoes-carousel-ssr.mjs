@@ -101,7 +101,8 @@ const SSR = {
       "Por favor, me informe sobre disponibilidade e como garantir minha vaga!",
     waFormacao: "⏳ Status: excursão em formação.\n{{falta}}",
     meetingCity: "Alto Paraíso",
-    statusWait: "Em formação",
+    statusOk: "✅ Confirmado",
+    statusWait: "⏳ Formando",
     perPerson: "/por pessoa",
     inclLabel: "Incluso",
     inclSpot: "Vaga em Excursão",
@@ -133,7 +134,8 @@ const SSR = {
       "Could you please confirm availability and how to secure my spot?",
     waFormacao: "⏳ Status: excursion forming.\n{{falta}}",
     meetingCity: "Alto Paraíso",
-    statusWait: "Forming group",
+    statusOk: "✅ Confirmed",
+    statusWait: "⏳ Forming",
     perPerson: "/per person",
     inclLabel: "Included",
     inclSpot: "Excursion spot",
@@ -165,7 +167,8 @@ const SSR = {
       "¿Podrían confirmar disponibilidad y cómo reservar mi plaza?",
     waFormacao: "⏳ Estado: excursión en formación.\n{{falta}}",
     meetingCity: "Alto Paraíso",
-    statusWait: "En formación",
+    statusOk: "✅ Confirmado",
+    statusWait: "⏳ Formando",
     perPerson: "/por persona",
     inclLabel: "Incluye",
     inclSpot: "Cupo en excursión",
@@ -246,7 +249,7 @@ export function excursionsCarouselTrackSsrHtml(locale) {
         "</span></div></div>" +
         '<div class="gcv-excursoes-card__meta-stack">' +
         '<div class="gcv-excursoes-card__row gcv-excursoes-card__row--status">' +
-        '<span class="gcv-excursoes-card__status gcv-excursoes-card__status--wait"><i class="ti ti-users-group" aria-hidden="true"></i> ' +
+        '<span class="gcv-excursoes-card__status gcv-excursoes-card__status--wait">' +
         esc(s.statusWait) +
         "</span>" +
         `<span class="gcv-excursoes-card__cap" title="${esc(labelAria)}" aria-label="${esc(labelAria)}">` +

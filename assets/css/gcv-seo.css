@@ -1,0 +1,261 @@
+/* SEO topic cluster — breadcrumbs, pilares, artigos relacionados */
+
+.gcv-seo-breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  font-size: 0.8125rem;
+  color: #64748b;
+  margin: 0 0 1.25rem;
+  line-height: 1.4;
+}
+
+.gcv-seo-breadcrumb a {
+  color: #0f766e;
+  text-decoration: none;
+}
+
+.gcv-seo-breadcrumb a:hover {
+  text-decoration: underline;
+}
+
+.gcv-seo-breadcrumb__sep {
+  color: #94a3b8;
+  user-select: none;
+}
+
+.gcv-pillar-page {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 2rem 1.25rem 3rem;
+}
+
+.gcv-pillar-page__h1 {
+  font-size: clamp(1.75rem, 4vw, 2.25rem);
+  line-height: 1.15;
+  color: #0f172a;
+  margin: 0 0 1rem;
+}
+
+.gcv-pillar-page__lead {
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  color: #334155;
+  margin: 0 0 2rem;
+}
+
+.gcv-pillar-page section {
+  margin-bottom: 2rem;
+}
+
+.gcv-pillar-page h2 {
+  font-size: 1.25rem;
+  color: #0f3d2e;
+  margin: 0 0 0.75rem;
+}
+
+.gcv-pillar-page p {
+  line-height: 1.65;
+  color: #475569;
+  margin: 0;
+}
+
+.gcv-pillar-satellites {
+  margin-top: 2.5rem;
+  padding-top: 2rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.gcv-pillar-satellites__h2 {
+  font-size: 1.125rem;
+  color: #0f172a;
+  margin: 0 0 1rem;
+}
+
+.gcv-pillar-satellites__grid {
+  display: grid;
+  gap: 0.75rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.gcv-pillar-satellites__grid a {
+  display: block;
+  padding: 0.875rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.gcv-pillar-satellites__grid a:hover {
+  border-color: #0f766e;
+  box-shadow: 0 2px 8px rgba(15, 118, 110, 0.08);
+}
+
+.gcv-pillar-satellites__title {
+  display: block;
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 0.25rem;
+}
+
+.gcv-pillar-satellites__desc {
+  display: block;
+  font-size: 0.875rem;
+  color: #64748b;
+  line-height: 1.45;
+}
+
+.gcv-pillar-faq {
+  margin-top: 2rem;
+  padding: 1.25rem;
+  background: #f8fafc;
+  border-radius: 0.5rem;
+}
+
+.gcv-pillar-faq h2 {
+  margin-top: 0;
+}
+
+.gcv-pillar-faq details {
+  border-bottom: 1px solid #e2e8f0;
+  padding: 0.75rem 0;
+}
+
+.gcv-pillar-faq details:last-child {
+  border-bottom: none;
+}
+
+.gcv-pillar-faq summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: #0f172a;
+  line-height: 1.4;
+}
+
+.gcv-pillar-faq p {
+  margin-top: 0.5rem;
+  padding-left: 0.25rem;
+}
+
+.gcv-pillar-context {
+  font-size: 0.875rem;
+  color: #64748b;
+  margin: 0 0 1rem;
+  padding: 0.625rem 0.875rem;
+  background: #f0fdf4;
+  border-left: 3px solid #0f766e;
+  border-radius: 0 0.25rem 0.25rem 0;
+}
+
+.gcv-pillar-context a {
+  color: #0f766e;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.gcv-pillar-context a:hover {
+  text-decoration: underline;
+}
+
+.gcv-pillar-context__label {
+  color: #475569;
+}
+
+.gcv-related {
+  margin-top: 2.5rem;
+  padding-top: 2rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.gcv-related__h2 {
+  font-size: 1.125rem;
+  color: #0f172a;
+  margin: 0 0 1rem;
+}
+
+.gcv-related__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.625rem;
+}
+
+@media (min-width: 640px) {
+  .gcv-pillar-satellites__grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .gcv-related__list {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.gcv-related__link {
+  display: block;
+  padding: 0.875rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  text-decoration: none;
+  color: inherit;
+  height: 100%;
+  transition: border-color 0.15s;
+}
+
+.gcv-related__link:hover {
+  border-color: #0f766e;
+}
+
+.gcv-related__title {
+  display: block;
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 0.25rem;
+  font-size: 0.9375rem;
+}
+
+.gcv-related__desc {
+  display: block;
+  font-size: 0.8125rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.gcv-pillar-subnav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+}
+
+.gcv-pillar-subnav a {
+  display: inline-block;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #0f766e;
+  background: #ecfdf5;
+  border-radius: 999px;
+  text-decoration: none;
+}
+
+.gcv-pillar-subnav a:hover {
+  background: #d1fae5;
+}
+
+.gcv-pillar-subnav a[aria-current="page"] {
+  background: #0f766e;
+  color: #fff;
+}
+
+.gcv-detail-page .gcv-seo-breadcrumb {
+  max-width: var(--gcv-detail-max, 72rem);
+  margin-left: auto;
+  margin-right: auto;
+  padding: 0 1.25rem;
+}

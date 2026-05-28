@@ -292,7 +292,7 @@
   box-sizing: border-box;
 }
 
-.gcv-excursoes-card__row--falta {
+.gcv-excursoes-card__status {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
@@ -300,18 +300,13 @@
   flex-shrink: 0;
   padding: 0.38rem 0.65rem;
   border-radius: 100px;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.04em;
   line-height: 1.2;
   max-width: 100%;
   box-sizing: border-box;
-  white-space: normal;
-}
-
-.gcv-excursoes-card__status .ti {
-  font-size: 1rem;
+  white-space: nowrap;
 }
 
 .gcv-excursoes-card__status--ok {
@@ -714,5 +709,10 @@
   .gcv-excursoes-card a,
   .gcv-excursoes-card button {
     touch-action: manipulation;
+  }
+
+  .gcv-excursoes-card__status {
+    font-size: 9.5px;
+    padding: 0.34rem 0.55rem;
   }
 }

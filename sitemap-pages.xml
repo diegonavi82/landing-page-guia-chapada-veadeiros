@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <url>
+    <loc>https://www.guiachapadaveadeiros.com/</loc>
+
+    <lastmod>2026-05-28</lastmod>
+
+    <changefreq>weekly</changefreq>
+
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://www.guiachapadaveadeiros.com/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.guiachapadaveadeiros.com/en/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.guiachapadaveadeiros.com/es/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.guiachapadaveadeiros.com/" />
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/imagens/hero-slide-01-guias-locais-cachoeira.png</image:loc>
+      <image:title>Guia Chapada Veadeiros | Passeios com guia local</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://www.guiachapadaveadeiros.com/atrativos.html</loc>
+
+    <lastmod>2026-05-28</lastmod>
+
+    <changefreq>weekly</changefreq>
+
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://www.guiachapadaveadeiros.com/atrativos.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.guiachapadaveadeiros.com/en/atrativos.html" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.guiachapadaveadeiros.com/es/atrativos.html" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.guiachapadaveadeiros.com/atrativos.html" />
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/imagens/hero-slide-01-guias-locais-cachoeira.png</image:loc>
+      <image:title>Atrativos — 17 rotas ligadas ao mapa oficial | Guia Chapada Veadeiros</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://www.guiachapadaveadeiros.com/contato.html</loc>
+
+    <lastmod>2026-05-28</lastmod>
+
+    <changefreq>weekly</changefreq>
+
+    <priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://www.guiachapadaveadeiros.com/contato.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.guiachapadaveadeiros.com/en/contato.html" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.guiachapadaveadeiros.com/es/contato.html" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.guiachapadaveadeiros.com/contato.html" />
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/imagens/hero-slide-01-guias-locais-cachoeira.png</image:loc>
+      <image:title>Contato | Guia Chapada Veadeiros</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://www.guiachapadaveadeiros.com/revista.html</loc>
+
+    <lastmod>2026-05-28</lastmod>
+
+    <changefreq>weekly</changefreq>
+
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://www.guiachapadaveadeiros.com/revista.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.guiachapadaveadeiros.com/en/revista.html" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.guiachapadaveadeiros.com/es/revista.html" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.guiachapadaveadeiros.com/revista.html" />
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/imagens/hero-slide-01-guias-locais-cachoeira.png</image:loc>
+      <image:title>Revista Chapada dos Veadeiros | Guia Chapada Veadeiros</image:title>
+    </image:image>
+  </url>
+</urlset>

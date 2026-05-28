@@ -45,6 +45,36 @@ import {
   INSTAGRAM_HOME_DISPLAY_COUNT_MOBILE,
 } from "./instagram-feed.mjs";
 import { assembleBuildProd, BUILD_PROD_DIR } from "./assemble-build-prod.mjs";
+import {
+  PILLAR_ORDER,
+  PILLAR_CONTENT,
+  getPillarContent,
+  getSatellitesForPillar,
+  getPrimaryPillarForPage,
+  getRelatedPages,
+  pillarPathKey,
+  resolveSatelliteMeta,
+} from "./seo-cluster.mjs";
+import {
+  buildRobotsTxt,
+  buildUrlsetXml,
+  buildSitemapIndexXml,
+  buildRssFeed,
+  breadcrumbNavHtml,
+  breadcrumbListJsonLd,
+  organizationJsonLd,
+  webSiteJsonLd,
+  travelAgencyJsonLd,
+  faqPageJsonLd,
+  itemListJsonLd,
+  collectionPageJsonLd,
+  touristAttractionJsonLd,
+  seoExtraHeadMeta,
+  relatedPagesHtml,
+  pillarContextLinkHtml,
+  isoDateNow,
+  rssPubDate,
+} from "./seo-enhancements.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
@@ -674,6 +704,174 @@ function localePathToUrl(loc, pathKey) {
 
 const SKIP_TO_CONTENT = { pt: "Pular para o conteúdo", en: "Skip to content", es: "Ir al contenido" };
 
+const RELATED_LABELS = {
+  pt: { title: "Conteúdo relacionado", pillarPrefix: "Parte do guia:" },
+  en: { title: "Related content", pillarPrefix: "Part of the guide:" },
+  es: { title: "Contenido relacionado", pillarPrefix: "Parte de la guía:" },
+};
+
+const PILLAR_NAV_LABEL = {
+  pt: "Guias temáticos",
+  en: "Topic guides",
+  es: "Guías temáticas",
+};
+
+const BUILD_LASTMOD = isoDateNow();
+const RSS_ITEMS = [];
+
+/** @type {Map<string, { pathKey: string; priority: number; changefreq: string; ogImageRel?: string; title?: string }>} */
+const SITEMAP_REGISTRY = new Map();
+
+function seoClusterCtx() {
+  return {
+    HOTSPOTS,
+    ARTICLE_CONTRATAR,
+    ARTICLE_EPOCA,
+    ARTICLE_ROTEIRO: ARTICLE_ROTEIRO_4_DIAS,
+    ARTICLE_ONCA: ARTICLE_ONCA_PARDA,
+    STRINGS,
+    localeSlugForBase,
+  };
+}
+
+function registerSitemap(pathKey, meta) {
+  const key = pathKey || "";
+  SITEMAP_REGISTRY.set(key, { pathKey: key, ...meta });
+}
+
+function noteSitemapUrl(locale, pathKey, meta = {}) {
+  const key = pathKey || "";
+  sitemapUrls.push(`${SITE_ORIGIN}${localePathToUrl(locale, pathKey)}`);
+  const prev = SITEMAP_REGISTRY.get(key);
+  if (!prev || (meta.priority != null && meta.priority > (prev.priority ?? 0))) {
+    registerSitemap(key, { ...prev, ...meta, pathKey: key });
+  }
+}
+
+function writeAdvancedSitemapsAndFeed() {
+  /** @type {Record<string, { loc: string; lastmod: string; changefreq: string; priority: number; alternates: { hreflang: string; href: string }[]; images?: { loc: string; title?: string }[] }[]>} */
+  const buckets = { pages: [], atrativos: [], revista: [], guia: [] };
+
+  for (const [pathKey, meta] of SITEMAP_REGISTRY) {
+    const bucket = sitemapBucket(pathKey);
+    const ptLoc = `${SITE_ORIGIN}${localePathToUrl("pt", pathKey)}`;
+    const alternates = [
+      ...LOCALES.map((loc) => ({
+        hreflang: STRINGS[loc].htmlLang,
+        href: `${SITE_ORIGIN}${localePathToUrl(loc, pathKey)}`,
+      })),
+      { hreflang: "x-default", href: ptLoc },
+    ];
+    const entry = {
+      loc: ptLoc,
+      lastmod: BUILD_LASTMOD,
+      changefreq: meta.changefreq || "weekly",
+      priority: meta.priority ?? 0.8,
+      alternates,
+      images: meta.ogImageRel
+        ? [{ loc: `${SITE_ORIGIN}/assets/img/${meta.ogImageRel.replace(/^\//, "")}`, title: meta.title }]
+        : undefined,
+    };
+    buckets[bucket].push(entry);
+  }
+
+  const sitemapFiles = [
+    { name: "sitemap-pages.xml", bucket: "pages" },
+    { name: "sitemap-atrativos.xml", bucket: "atrativos" },
+    { name: "sitemap-revista.xml", bucket: "revista" },
+    { name: "sitemap-guia.xml", bucket: "guia" },
+  ];
+
+  for (const { name, bucket } of sitemapFiles) {
+    const entries = buckets[bucket].sort((a, b) => a.loc.localeCompare(b.loc));
+    if (entries.length === 0) continue;
+    writeFileSync(join(ROOT, name), buildUrlsetXml(entries), "utf8");
+  }
+
+  const allEntries = Object.values(buckets).flat().sort((a, b) => a.loc.localeCompare(b.loc));
+  writeFileSync(join(ROOT, "sitemap-all.xml"), buildUrlsetXml(allEntries), "utf8");
+
+  const indexSitemaps = sitemapFiles
+    .filter(({ bucket }) => buckets[bucket].length > 0)
+    .map(({ name }) => ({ loc: `${SITE_ORIGIN}/${name}`, lastmod: BUILD_LASTMOD }));
+
+  writeFileSync(
+    join(ROOT, "sitemap.xml"),
+    buildSitemapIndexXml(
+      SITE_ORIGIN,
+      indexSitemaps.length > 0 ? indexSitemaps : [{ loc: `${SITE_ORIGIN}/sitemap-all.xml`, lastmod: BUILD_LASTMOD }],
+    ),
+    "utf8",
+  );
+
+  writeFileSync(join(ROOT, "robots.txt"), buildRobotsTxt(SITE_ORIGIN), "utf8");
+
+  const rssSorted = RSS_ITEMS.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+  writeFileSync(join(ROOT, "feed.xml"), buildRssFeed(SITE_ORIGIN, rssSorted), "utf8");
+  console.log("[build] SEO: sitemap index,", allEntries.length, "URLs · RSS", rssSorted.length, "itens");
+}
+
+function sitemapBucket(pathKey) {
+  if (pathKey.startsWith("guia/")) return "guia";
+  if (pathKey.startsWith("atrativos/")) return "atrativos";
+  if (pathKey.startsWith("revista/")) return "revista";
+  return "pages";
+}
+
+function globalJsonLdScripts(locale) {
+  const S = STRINGS[locale];
+  const org = organizationJsonLd(SITE_ORIGIN, PUBLISHER_LOGO_ABS);
+  const site = webSiteJsonLd(SITE_ORIGIN, locale, S.htmlLang, `${SITE_ORIGIN}/`);
+  return `<script type="application/ld+json">${safeJsonLd(org)}</script>
+<script type="application/ld+json">${safeJsonLd(site)}</script>`;
+}
+
+function buildBreadcrumbs(locale, pathKey, items) {
+  const cur = outRelPath(locale, pathKey);
+  const navItems = items.map((item) => ({
+    label: item.label,
+    href: item.pathKey != null ? relBetweenSync(cur, outRelPath(locale, item.pathKey)) : undefined,
+  }));
+  const ldItems = items.map((item) => ({
+    name: item.label,
+    url: item.pathKey != null ? localePathToUrl(locale, item.pathKey) : undefined,
+  }));
+  return {
+    html: breadcrumbNavHtml(navItems, esc),
+    jsonLd: breadcrumbListJsonLd(ldItems, SITE_ORIGIN),
+  };
+}
+
+function renderRelatedBlock(pageId, locale, pathKey) {
+  const related = getRelatedPages(pageId, locale, seoClusterCtx(), 4);
+  if (!related.length) return "";
+  const cur = outRelPath(locale, pathKey);
+  const labels = RELATED_LABELS[locale];
+  return relatedPagesHtml(
+    related.map((r) => ({
+      href: relBetweenSync(cur, outRelPath(locale, r.pathKey)),
+      title: r.title,
+      desc: r.desc,
+    })),
+    { esc, labels },
+  );
+}
+
+function renderPillarContextLink(locale, pathKey, pageId) {
+  const pillarSlug = getPrimaryPillarForPage(pageId);
+  if (!pillarSlug) return "";
+  const content = getPillarContent(pillarSlug, locale);
+  if (!content) return "";
+  const cur = outRelPath(locale, pathKey);
+  const href = relBetweenSync(cur, outRelPath(locale, pillarPathKey(pillarSlug)));
+  return pillarContextLinkHtml({
+    esc,
+    href,
+    label: content.title,
+    prefix: RELATED_LABELS[locale].pillarPrefix,
+  });
+}
+
 function picture(ap, rel, alt, w = 1200, h = 800, opts) {
   const m = rel.match(/^(.*)\.(jpe?g|png)$/i);
   const basePath = m ? m[1] : rel;
@@ -1068,6 +1266,8 @@ function buildHead(ctx) {
     ogType,
     ogImageWidth,
     ogImageHeight,
+    keywords,
+    ogImageAlt,
   } = ctx;
   const ogT = ogTitle ?? title;
   const ogD = ogDesc ?? desc;
@@ -1077,6 +1277,14 @@ function buildHead(ctx) {
     .join("");
   const canon = `${SITE_ORIGIN}${localePathToUrl(locale, pathKey)}`.replace(/([^:])\/{2,}/g, "$1/");
   const ogAbs = ogImageRel ? `${SITE_ORIGIN}/assets/img/${ogImageRel.replace(/^\//, "")}` : "";
+  const feedUrl = `${SITE_ORIGIN}/feed.xml`;
+  const seoExtra = seoExtraHeadMeta({
+    esc,
+    keywords,
+    ogImageAlt: ogImageAlt || ogT,
+    ogType: ogSiteType,
+    feedUrl,
+  });
   const alternates = LOCALES.map((loc) => ({
     hreflang: STRINGS[loc].htmlLang,
     href: `${SITE_ORIGIN}${localePathToUrl(loc, pathKey)}`,
@@ -1121,6 +1329,7 @@ function buildHead(ctx) {
     <title>${esc(title)}</title>
     <meta name="description" content="${esc(desc)}" />
     <link rel="canonical" href="${esc(canon)}" />
+    ${seoExtra}
 ${hreflangBlock}
     <meta property="og:type" content="${esc(ogSiteType)}" />
     <meta property="og:site_name" content="Guia Chapada Veadeiros" />
@@ -1137,7 +1346,8 @@ ${ogLocaleAlternate}
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="${esc(publicCssSrc("site.css", outRelPath(locale, pathKey)))}" />
-    <link rel="stylesheet" href="${esc(publicCssSrc("gcv-detail.css", outRelPath(locale, pathKey)))}" />${cssExtra}${extraHead ? `\n${extraHead}` : ""}`;
+    <link rel="stylesheet" href="${esc(publicCssSrc("gcv-detail.css", outRelPath(locale, pathKey)))}" />
+    <link rel="stylesheet" href="${esc(publicCssSrc("gcv-seo.css", outRelPath(locale, pathKey)))}" />${cssExtra}${extraHead ? `\n${extraHead}` : ""}`;
 }
 
 function headerHtml(ctx) {
@@ -1388,29 +1598,22 @@ function homeMainHtml(locale, ap, instagramPosts, reviewsPool) {
     .filter(Boolean)
     .join("\n");
 
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "TravelAgency",
-    name: "Guia Chapada dos Veadeiros",
-    url: `${SITE_ORIGIN}${locale === "pt" ? "/" : `/${locale}/`}`,
-    description: S.seo.homeDesc,
-    image: `${SITE_ORIGIN}/assets/img/${HERO_SLIDES[locale][0].image}`,
-    areaServed: { "@type": "AdministrativeArea", name: "Chapada dos Veadeiros" },
-  };
+  const jsonLd = travelAgencyJsonLd(
+    SITE_ORIGIN,
+    locale,
+    S.seo.homeDesc,
+    `${SITE_ORIGIN}/assets/img/${HERO_SLIDES[locale][0].image}`,
+  );
 
-  const webSiteLd = {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    name: "Guia Chapada Veadeiros",
-    url: `${SITE_ORIGIN}${locale === "pt" ? "/" : `/${locale}/`}`,
-    inLanguage: S.htmlLang,
-    publisher: {
-      "@type": "Organization",
-      name: "Guia Chapada Veadeiros",
-      url: SITE_ORIGIN,
-      logo: { "@type": "ImageObject", url: PUBLISHER_LOGO_ABS },
-    },
-  };
+  const webSiteLd = webSiteJsonLd(SITE_ORIGIN, locale, S.htmlLang, `${SITE_ORIGIN}/`);
+
+  const guiaHubHref = relBetweenSync(cur, outRelPath(locale, pillarPathKey("chapada-dos-veadeiros")));
+  const guiaHubLabel =
+    locale === "en"
+      ? "Complete Chapada dos Veadeiros guide"
+      : locale === "es"
+        ? "Guía completa de Chapada dos Veadeiros"
+        : "Guia completo da Chapada dos Veadeiros";
 
   return `<div class="official-home-shell gcv-page-pad">
   <div class="gcv-home-max">
@@ -1441,6 +1644,17 @@ ${featuredCards}
 
     ${homeRevistaTeaserHtml(locale, ap, cur)}
 
+    <section class="gcv-home-card" aria-label="${esc(PILLAR_NAV_LABEL[locale])}">
+      <div class="gcv-home-card__head">
+        <div>
+          <span class="gcv-chip-orange">${esc(PILLAR_NAV_LABEL[locale])}</span>
+          <h2 class="gcv-home-featured-title">${esc(guiaHubLabel)}</h2>
+        </div>
+        <a class="gcv-link-cerrado" href="${esc(guiaHubHref)}">${esc(locale === "en" ? "Read guide" : locale === "es" ? "Leer guía" : "Ler guia")} →</a>
+      </div>
+      <p class="section-lead" style="margin:0;color:#475569">${esc(locale === "en" ? "Topic clusters on waterfalls, tours, itineraries, ecotourism and local guides — structured for easy discovery." : locale === "es" ? "Clusters temáticos sobre cascadas, excursiones, rutas, ecoturismo y guías locales." : "Clusters temáticos sobre cachoeiras, passeios, roteiros, ecoturismo e guia local — estruturados para descoberta por buscadores e IA.")}</p>
+    </section>
+
     <div class="gcv-map-promo">
       <div>
         <span class="gcv-chip-orange">${esc(home.mapPromoChip)}</span>
@@ -1466,7 +1680,8 @@ ${featuredCards}
   </div>
 </div>
 <script type="application/ld+json">${safeJsonLd(webSiteLd)}</script>
-<script type="application/ld+json">${safeJsonLd(jsonLd)}</script>`;
+<script type="application/ld+json">${safeJsonLd(jsonLd)}</script>
+${globalJsonLdScripts(locale)}`;
 }
 
 function contactAcceptLanguage(locale) {
@@ -1696,6 +1911,101 @@ ${moreSection}
 </div>`;
 }
 
+function pillarSubnavHtml(locale, pathKey, currentSlug) {
+  const cur = outRelPath(locale, pathKey);
+  const links = PILLAR_ORDER.map((slug) => {
+    const pk = pillarPathKey(slug);
+    const href = relBetweenSync(cur, outRelPath(locale, pk));
+    const content = getPillarContent(slug, locale);
+    const isCurrent = slug === currentSlug;
+    return `<a href="${esc(href)}"${isCurrent ? ' aria-current="page"' : ""}>${esc(content?.title || slug)}</a>`;
+  });
+  return `<nav class="gcv-pillar-subnav" aria-label="${esc(PILLAR_NAV_LABEL[locale])}">${links.join("\n")}</nav>`;
+}
+
+function pillarMainHtml(locale, pillarSlug, ap, pathKey) {
+  const content = getPillarContent(pillarSlug, locale);
+  if (!content) return "";
+  const cur = outRelPath(locale, pathKey);
+  const S = STRINGS[locale];
+  const ctx = seoClusterCtx();
+  const satellites = getSatellitesForPillar(pillarSlug);
+
+  const bc = buildBreadcrumbs(locale, pathKey, [
+    { label: S.nav.home, pathKey: "" },
+    { label: PILLAR_NAV_LABEL[locale], pathKey: pillarPathKey("chapada-dos-veadeiros") },
+    { label: content.title, pathKey: null },
+  ]);
+
+  const sectionsHtml = (content.sections || [])
+    .map((sec) => `<section><h2>${esc(sec.h2)}</h2><p>${esc(sec.body)}</p></section>`)
+    .join("\n");
+
+  const faqHtml =
+    content.faq?.length > 0
+      ? `<section class="gcv-pillar-faq" aria-labelledby="gcv-pillar-faq-title">
+  <h2 id="gcv-pillar-faq-title">${esc(locale === "en" ? "Frequently asked questions" : locale === "es" ? "Preguntas frecuentes" : "Perguntas frequentes")}</h2>
+${content.faq
+  .map(
+    (f) => `<details>
+  <summary>${esc(f.q)}</summary>
+  <p>${esc(f.a)}</p>
+</details>`,
+  )
+  .join("\n")}
+</section>`
+      : "";
+
+  const satelliteCards = satellites
+    .map((ref) => {
+      const meta = resolveSatelliteMeta(ref, locale, ctx);
+      if (!meta) return "";
+      const href = relBetweenSync(cur, outRelPath(locale, meta.pathKey));
+      return `<li><a href="${esc(href)}"><span class="gcv-pillar-satellites__title">${esc(meta.title)}</span><span class="gcv-pillar-satellites__desc">${esc(meta.desc)}</span></a></li>`;
+    })
+    .filter(Boolean)
+    .join("\n");
+
+  const canonUrl = `${SITE_ORIGIN}${localePathToUrl(locale, pathKey)}`;
+  const ogAbs = `${SITE_ORIGIN}/assets/img/${content.ogImage}`;
+
+  const itemListItems = satellites
+    .map((ref) => resolveSatelliteMeta(ref, locale, ctx))
+    .filter(Boolean)
+    .map((meta) => ({
+      name: meta.title,
+      url: `${SITE_ORIGIN}${localePathToUrl(locale, meta.pathKey)}`,
+    }));
+
+  const jsonLdBlocks = [
+    collectionPageJsonLd(content.h1, content.seoDesc, canonUrl),
+    itemListJsonLd(content.title, content.lead, itemListItems),
+  ];
+  if (content.faq?.length) jsonLdBlocks.push(faqPageJsonLd(content.faq));
+
+  const relatedHtml = renderRelatedBlock(`pillar:${pillarSlug}`, locale, pathKey);
+
+  return `<div class="gcv-pillar-page">
+${bc.html}
+${pillarSubnavHtml(locale, pathKey, pillarSlug)}
+${picture(ap, content.ogImage, content.h1, 1200, 675)}
+<h1 class="gcv-pillar-page__h1">${esc(content.h1)}</h1>
+<p class="gcv-pillar-page__lead">${esc(content.lead)}</p>
+${sectionsHtml}
+${faqHtml}
+<section class="gcv-pillar-satellites" aria-labelledby="gcv-pillar-satellites-title">
+  <h2 id="gcv-pillar-satellites-title" class="gcv-pillar-satellites__h2">${esc(locale === "en" ? "Explore in this guide" : locale === "es" ? "Explora en esta guía" : "Explore neste guia")}</h2>
+  <ul class="gcv-pillar-satellites__grid">${satelliteCards}</ul>
+</section>
+${relatedHtml}
+<p style="margin-top:2rem"><a class="btn btn-primary" href="${esc(waUrl(locale))}">${esc(S.hero.ctaWa)}</a></p>
+</div>
+<script type="application/ld+json">${safeJsonLd(bc.jsonLd)}</script>
+${jsonLdBlocks.map((ld) => `<script type="application/ld+json">${safeJsonLd(ld)}</script>`).join("\n")}
+<script type="application/ld+json">${safeJsonLd({ "@context": "https://schema.org", "@type": "WebPage", name: content.h1, description: content.seoDesc, url: canonUrl, primaryImageOfPage: ogAbs, inLanguage: S.htmlLang })}</script>
+${globalJsonLdScripts(locale)}`;
+}
+
 function atrativosHubMain(locale, ap, pathKey) {
   const S = STRINGS[locale];
   const home = S.home;
@@ -1839,22 +2149,38 @@ function atrativoDetailMain(locale, localeSlug, ap, pathKey) {
 
   const gal = attractionPhotoGalleryHtml(locale, ap, base, title);
   const heroImgRel = detailRel || p.image;
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "TouristAttraction",
+  const pageUrl = `${SITE_ORIGIN}${localePathToUrl(locale, `atrativos/${localeSlug}.html`)}`;
+  const pageId = `attraction:${base}`;
+  const primaryPillar = getPrimaryPillarForPage(pageId);
+  const pillarContent = primaryPillar ? getPillarContent(primaryPillar, locale) : null;
+
+  const bc = buildBreadcrumbs(locale, pathKey, [
+    { label: S.nav.home, pathKey: "" },
+    { label: S.nav.atrativos, pathKey: "atrativos.html" },
+    ...(pillarContent ? [{ label: pillarContent.title, pathKey: pillarPathKey(primaryPillar) }] : []),
+    { label: title, pathKey: null },
+  ]);
+
+  const jsonLd = touristAttractionJsonLd({
     name: title,
     description: metaDesc,
     image: `${SITE_ORIGIN}/assets/img/${heroImgRel}`,
-    url: `${SITE_ORIGIN}${localePathToUrl(locale, `atrativos/${localeSlug}.html`)}`,
-  };
+    url: pageUrl,
+  });
+
+  const pillarLink = renderPillarContextLink(locale, pathKey, pageId);
+  const relatedHtml = renderRelatedBlock(pageId, locale, pathKey);
 
   return `<article class="gcv-detail-page">
   <div class="gcv-detail-inner">
+    ${bc.html}
+    ${pillarLink}
     <header class="gcv-detail-title">
       <h1>${esc(title)}</h1>
     </header>
     ${mainColumnHtml}
     ${gal}
+    ${relatedHtml}
     <section class="gcv-detail-region-map" aria-label="${esc(S.home.mapInteractiveTitle)}">
       <h2 class="gcv-detail-region-map__title">${esc(S.home.mapInteractiveTitle)}</h2>
       <p class="gcv-detail-region-map__lead">${esc(S.home.mapEmbeddedLead)}</p>
@@ -1862,7 +2188,9 @@ function atrativoDetailMain(locale, localeSlug, ap, pathKey) {
     </section>
   </div>
 </article>
-<script type="application/ld+json">${safeJsonLd(jsonLd)}</script>`;
+<script type="application/ld+json">${safeJsonLd(bc.jsonLd)}</script>
+<script type="application/ld+json">${safeJsonLd(jsonLd)}</script>
+${globalJsonLdScripts(locale)}`;
 }
 
 function seasonTable(locale) {
@@ -1972,7 +2300,7 @@ function revistaPostMain(locale, post, ap, pathKey) {
 <script type="application/ld+json">${safeJsonLd(jsonLd)}</script>`;
 }
 
-function renderPage(locale, pathKey, { title, desc, ogImageRel, current, mainHtml, extraCss, ogTitle, ogDesc, extraHead, ogType, ogImageWidth, ogImageHeight, extraFooterScripts, extraAfterFooter }) {
+function renderPage(locale, pathKey, { title, desc, ogImageRel, current, mainHtml, extraCss, ogTitle, ogDesc, extraHead, ogType, ogImageWidth, ogImageHeight, extraFooterScripts, extraAfterFooter, keywords, ogImageAlt }) {
   const outR = outRelPath(locale, pathKey);
   const ap = assetPrefix(outR);
   const head = buildHead({
@@ -1989,6 +2317,8 @@ function renderPage(locale, pathKey, { title, desc, ogImageRel, current, mainHtm
     ogType,
     ogImageWidth,
     ogImageHeight,
+    keywords,
+    ogImageAlt,
   });
   const header = headerHtml({ locale, pathKey, ap, current });
   const footer = footerHtml({ locale, pathKey, ap });
@@ -2056,6 +2386,12 @@ function collectSearchEntries(locale) {
     if (!art?.path) continue;
     const rel = outRelPath(locale, art.path);
     add(art.title, art.path, art.desc || "", textFromStaticHtmlFile(rel));
+  }
+
+  for (const slug of PILLAR_ORDER) {
+    const pk = pillarPathKey(slug);
+    const content = getPillarContent(slug, locale);
+    if (content) add(content.title, pk, content.seoDesc, [content.lead, ...(content.sections || []).map((s) => s.body)].join(" "));
   }
 
   const posts = CMS?.locales?.[locale]?.postsLite ?? [];
@@ -2187,7 +2523,8 @@ for (const locale of LOCALES) {
       ...homeExcursionsHead,
     });
     writePage(locale, pk || "", html);
-    sitemapUrls.push(`${SITE_ORIGIN}${localePathToUrl(locale, pk)}`);
+    const pagePriority = pk === "" ? 1.0 : pk === "atrativos.html" || pk === "revista.html" ? 0.85 : 0.6;
+    noteSitemapUrl(locale, pk, { priority: pagePriority, changefreq: "weekly", ogImageRel: og, title });
   }
 
   const revistaBuilt = new Set();
@@ -2212,7 +2549,17 @@ for (const locale of LOCALES) {
         mainHtml: premium.mainHtml,
       });
       writePage(locale, pk, html);
-      sitemapUrls.push(`${SITE_ORIGIN}${localePathToUrl(locale, pk)}`);
+      noteSitemapUrl(locale, pk, { priority: 0.75, changefreq: "weekly", ogImageRel: premium.ogImageRel, title: premium.fullTitle });
+      if (locale === "pt") {
+        RSS_ITEMS.push({
+          title: premium.ogTitle || premium.fullTitle,
+          link: `${SITE_ORIGIN}${localePathToUrl(locale, pk)}`,
+          description: premium.desc,
+          pubDate: rssPubDate(BUILD_LASTMOD),
+          guid: `${SITE_ORIGIN}${localePathToUrl(locale, pk)}`,
+          image: premium.ogImageRel ? `${SITE_ORIGIN}/assets/img/${premium.ogImageRel}` : undefined,
+        });
+      }
       continue;
     }
     const slugNorm = postSlug;
@@ -2231,7 +2578,22 @@ for (const locale of LOCALES) {
         mainHtml: articleContratarMain(locale, apPk, pk),
       });
       writePage(locale, pk, html);
-      sitemapUrls.push(`${SITE_ORIGIN}${localePathToUrl(locale, pk)}`);
+      noteSitemapUrl(locale, pk, {
+        priority: 0.75,
+        changefreq: "weekly",
+        ogImageRel: "uploads/revista/contratar-guia-artigo/hero-mirante-grupo-guia-local-chapada-veadeiros.png",
+        title: A.title,
+      });
+      if (locale === "pt") {
+        RSS_ITEMS.push({
+          title: A.title,
+          link: `${SITE_ORIGIN}${localePathToUrl(locale, pk)}`,
+          description: A.desc,
+          pubDate: rssPubDate(BUILD_LASTMOD),
+          guid: `${SITE_ORIGIN}${localePathToUrl(locale, pk)}`,
+          image: `${SITE_ORIGIN}/assets/img/uploads/revista/contratar-guia-artigo/hero-mirante-grupo-guia-local-chapada-veadeiros.png`,
+        });
+      }
       continue;
     }
     if (slugNorm === "melhor-epoca-visitar-chapada-dos-veadeiros") {
@@ -2247,7 +2609,22 @@ for (const locale of LOCALES) {
         mainHtml: articleEpocaMain(locale, apPk, pk),
       });
       writePage(locale, pk, html);
-      sitemapUrls.push(`${SITE_ORIGIN}${localePathToUrl(locale, pk)}`);
+      noteSitemapUrl(locale, pk, {
+        priority: 0.75,
+        changefreq: "weekly",
+        ogImageRel: "uploads/revista/melhor-epoca/guia-diego-navi-palipalan-via-lactea-chapada-veadeiros.png",
+        title: A.title,
+      });
+      if (locale === "pt") {
+        RSS_ITEMS.push({
+          title: A.title,
+          link: `${SITE_ORIGIN}${localePathToUrl(locale, pk)}`,
+          description: A.desc,
+          pubDate: rssPubDate(BUILD_LASTMOD),
+          guid: `${SITE_ORIGIN}${localePathToUrl(locale, pk)}`,
+          image: `${SITE_ORIGIN}/assets/img/uploads/revista/melhor-epoca/guia-diego-navi-palipalan-via-lactea-chapada-veadeiros.png`,
+        });
+      }
       continue;
     }
     const titleSeo = (post.seoTitle && String(post.seoTitle).trim()) || post.title;
@@ -2263,7 +2640,7 @@ for (const locale of LOCALES) {
       mainHtml: revistaPostMain(locale, post, assetPrefix(outRelPath(locale, pk)), pk),
     });
     writePage(locale, pk, html);
-    sitemapUrls.push(`${SITE_ORIGIN}${localePathToUrl(locale, pk)}`);
+    noteSitemapUrl(locale, pk, { priority: 0.75, changefreq: "weekly", ogImageRel: og, title: titleSeo });
   }
 
   const articleFallbacks = [
@@ -2302,7 +2679,17 @@ for (const locale of LOCALES) {
         mainHtml: premium.mainHtml,
       });
       writePage(locale, pk, html);
-      sitemapUrls.push(`${SITE_ORIGIN}${localePathToUrl(locale, pk)}`);
+      noteSitemapUrl(locale, pk, { priority: 0.75, changefreq: "weekly", ogImageRel: premium.ogImageRel, title: premium.fullTitle });
+      if (locale === "pt") {
+        RSS_ITEMS.push({
+          title: premium.ogTitle || premium.fullTitle,
+          link: `${SITE_ORIGIN}${localePathToUrl(locale, pk)}`,
+          description: premium.desc,
+          pubDate: rssPubDate(BUILD_LASTMOD),
+          guid: `${SITE_ORIGIN}${localePathToUrl(locale, pk)}`,
+          image: premium.ogImageRel ? `${SITE_ORIGIN}/assets/img/${premium.ogImageRel}` : undefined,
+        });
+      }
       continue;
     }
     const html = renderPage(locale, pk, {
@@ -2313,7 +2700,7 @@ for (const locale of LOCALES) {
       mainHtml: af.main(locale),
     });
     writePage(locale, pk, html);
-    sitemapUrls.push(`${SITE_ORIGIN}${localePathToUrl(locale, pk)}`);
+    noteSitemapUrl(locale, pk, { priority: 0.75, changefreq: "weekly", ogImageRel: af.og, title: af.title(locale) });
   }
 
   const attractionBases = CMS?.waterfallBaseSlugs?.length ? CMS.waterfallBaseSlugs : HOTSPOTS.map((h) => h.slug);
@@ -2333,11 +2720,42 @@ for (const locale of LOCALES) {
       title: `${pageTitle} | Guia Chapada Veadeiros`,
       desc: pageDesc,
       ogImageRel: og,
+      ogImageAlt: pageTitle,
       current: "atrativos",
       mainHtml: atrativoDetailMain(locale, locSlug, assetPrefix(outRelPath(locale, pk)), pk),
     });
     writePage(locale, pk, html);
-    sitemapUrls.push(`${SITE_ORIGIN}${localePathToUrl(locale, pk)}`);
+    noteSitemapUrl(locale, pk, { priority: 0.8, changefreq: "weekly", ogImageRel: og, title: pageTitle });
+  }
+
+  for (const slug of PILLAR_ORDER) {
+    const pk = pillarPathKey(slug);
+    const content = getPillarContent(slug, locale);
+    if (!content) continue;
+    const priority = slug === "chapada-dos-veadeiros" ? 0.95 : 0.9;
+    const html = renderPage(locale, pk, {
+      title: `${content.seoTitle} | Guia Chapada Veadeiros`,
+      desc: content.seoDesc,
+      ogImageRel: content.ogImage,
+      ogTitle: content.seoTitle,
+      ogDesc: content.seoDesc,
+      keywords: content.keywords,
+      ogImageAlt: content.h1,
+      current: "revista",
+      mainHtml: pillarMainHtml(locale, slug, assetPrefix(outRelPath(locale, pk)), pk),
+    });
+    writePage(locale, pk, html);
+    noteSitemapUrl(locale, pk, { priority, changefreq: "weekly", ogImageRel: content.ogImage, title: content.title });
+    if (locale === "pt") {
+      RSS_ITEMS.push({
+        title: content.h1,
+        link: `${SITE_ORIGIN}${localePathToUrl(locale, pk)}`,
+        description: content.seoDesc,
+        pubDate: rssPubDate(BUILD_LASTMOD),
+        guid: `${SITE_ORIGIN}${localePathToUrl(locale, pk)}`,
+        image: `${SITE_ORIGIN}/assets/img/${content.ogImage}`,
+      });
+    }
   }
 }
 
@@ -2346,26 +2764,29 @@ const SITEMAP_STATIC_REVISTA_PATHS = [
   "revista/ataque-onca-parda-chapada-veadeiros.html",
   "revista/roteiro-4-dias-chapada-dos-veadeiros.html",
 ];
-for (const locale of LOCALES) {
-  for (const pk of SITEMAP_STATIC_REVISTA_PATHS) {
-    sitemapUrls.push(`${SITE_ORIGIN}${localePathToUrl(locale, pk)}`);
+for (const pk of SITEMAP_STATIC_REVISTA_PATHS) {
+  const art =
+    pk === ARTICLE_ROTEIRO_4_DIAS.pt.path
+      ? ARTICLE_ROTEIRO_4_DIAS.pt
+      : pk === ARTICLE_ONCA_PARDA.pt.path
+        ? ARTICLE_ONCA_PARDA.pt
+        : null;
+  registerSitemap(pk, { priority: 0.75, changefreq: "monthly", title: art?.title });
+  for (const locale of LOCALES) {
+    noteSitemapUrl(locale, pk, { priority: 0.75, changefreq: "monthly", title: art?.title });
+    if (locale === "pt" && art) {
+      RSS_ITEMS.push({
+        title: art.title,
+        link: `${SITE_ORIGIN}${localePathToUrl(locale, pk)}`,
+        description: art.desc,
+        pubDate: rssPubDate(BUILD_LASTMOD),
+        guid: `${SITE_ORIGIN}${localePathToUrl(locale, pk)}`,
+      });
+    }
   }
 }
 
-const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${[...new Set(sitemapUrls)]
-  .sort()
-  .map((loc) => `  <url><loc>${esc(loc)}</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>`)
-  .join("\n")}
-</urlset>`;
-writeFileSync(join(ROOT, "sitemap.xml"), sitemap, "utf8");
-
-writeFileSync(
-  join(ROOT, "robots.txt"),
-  `User-agent: *\nAllow: /\n\nSitemap: ${SITE_ORIGIN}/sitemap.xml\n`,
-  "utf8",
-);
+writeAdvancedSitemapsAndFeed();
 
 writeSearchIndexAsset();
 
