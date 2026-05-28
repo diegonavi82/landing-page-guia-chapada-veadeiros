@@ -1704,9 +1704,7 @@ function contatoMain(locale, ap) {
 
   return `<div class="gcv-contact-page">
 <article class="gcv-contact-article">
-<p class="gcv-contact-kicker">${esc(c.pageKicker)}</p>
 <h1 class="gcv-contact-h1">${esc(c.title)}</h1>
-<p class="gcv-contact-sub">${esc(c.subtitle)}</p>
 <div class="gcv-contact-grid">
 <div class="gcv-contact-form-shell">
 <h2 class="gcv-contact-form-title">${esc(c.formTitle)}</h2>
