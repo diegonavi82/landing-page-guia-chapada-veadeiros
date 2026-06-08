@@ -516,6 +516,32 @@
     return "2026-" + String(m).padStart(2, "0") + "-" + String(day).padStart(2, "0");
   }
 
+  /** Embarque em horário da Chapada (America/Sao_Paulo, UTC-3). */
+  var CHAPADA_TZ = "-03:00";
+
+  function excursaoDepartureEpochMs(e) {
+    var iso = excursaoDateIso(e);
+    var hora = horaExcursao(e);
+    var match = String(hora).match(/^(\d{1,2}):(\d{2})$/);
+    if (!iso || !match) return NaN;
+    return Date.parse(
+      iso + "T" + String(match[1]).padStart(2, "0") + ":" + match[2] + ":00" + CHAPADA_TZ,
+    );
+  }
+
+  function isExcursaoFuture(e, nowMs) {
+    var dep = excursaoDepartureEpochMs(e);
+    if (!Number.isFinite(dep)) return true;
+    return dep > (nowMs != null ? nowMs : Date.now());
+  }
+
+  function filterFutureExcursoes(list, nowMs) {
+    var now = nowMs != null ? nowMs : Date.now();
+    return (list || []).filter(function (e) {
+      return isExcursaoFuture(e, now);
+    });
+  }
+
   function excursaoValor(e) {
     var n = parseInt(String(e && e.valor), 10);
     return Number.isFinite(n) ? n : 0;
@@ -541,19 +567,42 @@
     prices.sort(function (a, b) {
       return a - b;
     });
+    var excursionMax = dates[dates.length - 1] || "";
+    var dateMin = todayIsoChapada();
+    if (excursionMax && compareIso(dateMin, excursionMax) > 0) dateMin = excursionMax;
     return {
-      dateMin: dates[0] || "",
-      dateMax: dates[dates.length - 1] || "",
+      dateMin: dateMin,
+      dateMax: excursionMax || dateMin,
       priceMin: prices.length ? prices[0] : 0,
       priceMax: prices.length ? prices[prices.length - 1] : 500,
       embarques: Object.keys(embarques).sort(),
     };
   }
 
+  /** Piso do filtro de período: hoje (só data, sem hora), em horário da Chapada. */
+  function dateFilterFloorIso(maxIso) {
+    var today = todayIsoChapada();
+    if (!maxIso) return today;
+    if (compareIso(today, maxIso) > 0) return maxIso;
+    return today;
+  }
+
+  function clampIsoRangeToFloor(startIso, endIso, maxIso) {
+    var floor = dateFilterFloorIso(maxIso);
+    var from = startIso || floor;
+    var to = endIso || maxIso || floor;
+    if (compareIso(from, floor) < 0) from = floor;
+    if (compareIso(to, floor) < 0) to = floor;
+    if (maxIso && compareIso(to, maxIso) > 0) to = maxIso;
+    if (compareIso(from, to) > 0) from = to;
+    return { dateFrom: from, dateTo: to };
+  }
+
   function matchesExcursaoFilters(e, f, s) {
     var iso = excursaoDateIso(e);
-    if (f.dateFrom && iso && iso < f.dateFrom) return false;
-    if (f.dateTo && iso && iso > f.dateTo) return false;
+    var range = clampIsoRangeToFloor(f.dateFrom, f.dateTo, f.dateMax || "");
+    if (range.dateFrom && iso && compareIso(iso, range.dateFrom) < 0) return false;
+    if (range.dateTo && iso && compareIso(iso, range.dateTo) > 0) return false;
     if (f.embarque && excursaoEmbarque(e, s) !== f.embarque) return false;
     var price = excursaoValor(e);
     if (price < f.priceMin || price > f.priceMax) return false;
@@ -587,6 +636,31 @@
     );
   }
 
+  /** Data de hoje em America/Sao_Paulo (YYYY-MM-DD). */
+  function todayIsoChapada(nowMs) {
+    var now = nowMs != null ? new Date(nowMs) : new Date();
+    try {
+      var parts = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "America/Sao_Paulo",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).formatToParts(now);
+      var y = "";
+      var m = "";
+      var d = "";
+      for (var i = 0; i < parts.length; i++) {
+        if (parts[i].type === "year") y = parts[i].value;
+        if (parts[i].type === "month") m = parts[i].value;
+        if (parts[i].type === "day") d = parts[i].value;
+      }
+      if (y && m && d) return y + "-" + m + "-" + d;
+    } catch (err) {
+      /* fallback abaixo */
+    }
+    return dateToIso(now);
+  }
+
   function compareIso(a, b) {
     if (a === b) return 0;
     return a < b ? -1 : 1;
@@ -616,14 +690,33 @@
    * @param {() => void} onRangeCommit
    */
   function mountExcursaoDateRangePicker(fieldEl, bounds, s, locale, excursionDates, onRangeCommit) {
-    var minIso = bounds.dateMin;
     var maxIso = bounds.dateMax;
-    var startIso = minIso;
-    var endIso = maxIso;
+    var initial = clampIsoRangeToFloor(bounds.dateMin, bounds.dateMax, maxIso);
+    var startIso = initial.dateFrom;
+    var endIso = initial.dateTo;
     var pickPhase = "start";
     var isOpen = false;
-    var viewYear = isoToDate(minIso).getFullYear();
-    var viewMonth = isoToDate(minIso).getMonth();
+    var viewYear = isoToDate(startIso).getFullYear();
+    var viewMonth = isoToDate(startIso).getMonth();
+
+    function applyRangeClamp() {
+      var clamped = clampIsoRangeToFloor(startIso, endIso, maxIso);
+      startIso = clamped.dateFrom;
+      endIso = clamped.dateTo;
+    }
+
+    function floorIso() {
+      return dateFilterFloorIso(maxIso);
+    }
+
+    function syncPrevNav() {
+      if (!prevBtn) return;
+      var floor = isoToDate(floorIso());
+      var canPrev =
+        viewYear > floor.getFullYear() ||
+        (viewYear === floor.getFullYear() && viewMonth > floor.getMonth());
+      prevBtn.disabled = !canPrev;
+    }
 
     var locTag = locale === "en" ? "en-US" : locale === "es" ? "es-ES" : "pt-BR";
     var fmtShort = new Intl.DateTimeFormat(locTag, { day: "numeric", month: "short" });
@@ -707,7 +800,8 @@
 
       for (var day = 1; day <= daysInMonth; day++) {
         var iso = dateToIso(new Date(viewYear, viewMonth, day));
-        var disabled = iso < minIso || iso > maxIso;
+        var disabled =
+          compareIso(iso, floorIso()) < 0 || (maxIso && compareIso(iso, maxIso) > 0);
         var inRange = !disabled && compareIso(iso, startIso) >= 0 && compareIso(iso, endIso) <= 0;
         var isStart = iso === startIso;
         var isEnd = iso === endIso;
@@ -736,6 +830,7 @@
       }
 
       gridEl.innerHTML = cells.join("");
+      syncPrevNav();
     }
 
     function closePopover() {
@@ -758,10 +853,11 @@
     }
 
     function onDayPick(iso) {
-      if (iso < minIso || iso > maxIso) return;
+      if (compareIso(iso, floorIso()) < 0 || (maxIso && compareIso(iso, maxIso) > 0)) return;
       if (pickPhase === "start") {
         startIso = iso;
         endIso = iso;
+        applyRangeClamp();
         pickPhase = "end";
         renderCalendar();
         return;
@@ -772,6 +868,7 @@
         startIso = endIso;
         endIso = tmp;
       }
+      applyRangeClamp();
       pickPhase = "start";
       updateValueText();
       renderCalendar();
@@ -839,11 +936,13 @@
 
     return {
       getRange: function () {
+        applyRangeClamp();
         return { dateFrom: startIso, dateTo: endIso };
       },
       reset: function () {
-        startIso = minIso;
-        endIso = maxIso;
+        var clamped = clampIsoRangeToFloor(floorIso(), maxIso, maxIso);
+        startIso = clamped.dateFrom;
+        endIso = clamped.dateTo;
         pickPhase = "start";
         updateValueText();
         renderCalendar();
@@ -1064,9 +1163,11 @@
 
     function readFilters() {
       var range = datePicker.getRange();
+      var clamped = clampIsoRangeToFloor(range.dateFrom, range.dateTo, bounds.dateMax);
       return {
-        dateFrom: range.dateFrom,
-        dateTo: range.dateTo,
+        dateFrom: clamped.dateFrom,
+        dateTo: clamped.dateTo,
+        dateMax: bounds.dateMax,
         embarque: embarqueEl ? embarqueEl.value : "",
         priceMin: priceMinEl ? parseInt(String(priceMinEl.value), 10) : bounds.priceMin,
         priceMax: priceMaxEl ? parseInt(String(priceMaxEl.value), 10) : bounds.priceMax,
@@ -1432,7 +1533,13 @@
     var ptFallback = EXCURSOES.pt;
     var fallbackRows = EXCURSOES[locale] || ptFallback;
     if (locale !== "pt") fallbackRows = applyPortugueseDestinos(fallbackRows, ptFallback);
-    var allExcursoes = fromPayload && fromPayload.length ? fromPayload : fallbackRows;
+    var allExcursoes = filterFutureExcursoes(
+      fromPayload && fromPayload.length ? fromPayload : fallbackRows,
+    );
+    if (!allExcursoes.length) {
+      root.hidden = true;
+      return;
+    }
     var carouselExcursoes = allExcursoes.slice();
 
     var track = root.querySelector(".gcv-excursoes__track");

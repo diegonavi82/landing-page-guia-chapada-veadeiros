@@ -1,3 +1,5 @@
+import { filterFutureExcursoes } from "./excursoes-future.mjs";
+
 /**
  * Dados únicos das saídas no carrossel da home ("Próximas saídas").
  * Após mudar algo aqui: `npm run build` (o HTML recebe cópia em JSON para o JS preferir esta fonte).
@@ -189,20 +191,22 @@ export function withPortugueseDestinos(rows, ptRows = EXCURSOES_CAROUSEL_BY_LOCA
 }
 
 /** Payload do carrossel com destinos PT em en/es (para HTML e SSR). */
-export function excursaoPayloadForSite() {
-  const pt = EXCURSOES_CAROUSEL_BY_LOCALE.pt;
+export function excursaoPayloadForSite(nowMs = Date.now()) {
+  const pt = filterFutureExcursoes(EXCURSOES_CAROUSEL_BY_LOCALE.pt, nowMs);
   /** @type {Record<string, typeof pt>} */
   const out = { pt };
   for (const loc of Object.keys(EXCURSOES_CAROUSEL_BY_LOCALE)) {
     if (loc === "pt") continue;
-    out[loc] = withPortugueseDestinos(EXCURSOES_CAROUSEL_BY_LOCALE[loc], pt);
+    const localized = withPortugueseDestinos(EXCURSOES_CAROUSEL_BY_LOCALE[loc], EXCURSOES_CAROUSEL_BY_LOCALE.pt);
+    out[loc] = filterFutureExcursoes(localized, nowMs);
   }
   return out;
 }
 
-/** Linhas de excursão de um locale com destino em português. */
-export function excursaoRowsForLocale(locale) {
+/** Linhas de excursão de um locale com destino em português, só saídas futuras. */
+export function excursaoRowsForLocale(locale, nowMs = Date.now()) {
   const pt = EXCURSOES_CAROUSEL_BY_LOCALE.pt;
   const rows = EXCURSOES_CAROUSEL_BY_LOCALE[locale] || pt;
-  return locale === "pt" ? rows : withPortugueseDestinos(rows, pt);
+  const localized = locale === "pt" ? rows : withPortugueseDestinos(rows, pt);
+  return filterFutureExcursoes(localized, nowMs);
 }
