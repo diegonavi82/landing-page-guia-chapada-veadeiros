@@ -20,7 +20,7 @@ import {
   hotspotsForMap,
   MAP_IMAGE,
 } from "./content-data.mjs";
-import { excursaoPayloadForSite } from "./excursoes-carousel-data.mjs";
+import { excursaoPayloadForSite, excursaoRowsForLocale } from "./excursoes-carousel-data.mjs";
 import { excursionsCarouselTrackSsrHtml } from "./excursoes-carousel-ssr.mjs";
 import { rewriteHtmlMediaUrls, htmlWithStaticAssetPrefix, toPublicAssetRel } from "./media-url.mjs";
 import {
@@ -1506,6 +1506,7 @@ function homeExcursionsSection(locale) {
   };
   const L = copy[locale];
   if (!L) return "";
+  if (!excursaoRowsForLocale(locale).length) return "";
   return `    <section id="excursoes-junho" class="gcv-excursoes" data-locale="${esc(locale)}" aria-labelledby="gcv-excursoes-heading">
       <script type="application/json" id="gcv-excursoes-payload">${safeJsonLd(excursaoPayloadForSite())}</script>
       <div class="gcv-excursoes__head">
@@ -2512,13 +2513,24 @@ for (const locale of LOCALES) {
       ogImageHeight = 900;
     }
     const outPk = outRelPath(locale, pk);
+    const homeHasExcursions =
+      (locale === "pt" || locale === "en" || locale === "es") &&
+      pk === "" &&
+      excursaoRowsForLocale(locale).length > 0;
+    const homeExcursionsHideScript = `  <script>(function(){var r=document.getElementById("excursoes-junho");if(!r)return;var t=r.querySelector(".gcv-excursoes__track");if(!t||!t.querySelector(".gcv-excursoes-card")){r.hidden=true;r.style.display="none";r.setAttribute("aria-hidden","true");}})();</script>\n`;
     const homeExcursionsHead =
       (locale === "pt" || locale === "en" || locale === "es") && pk === ""
         ? {
-            extraCss: [`assets/css/excursoes.css${BUILD_ASSET_QUERY}`],
-            extraHead: `    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" crossorigin="anonymous" />`,
-            extraFooterScripts: `  <script src="${esc(publicJsSrc("excursoes-carousel.js", outPk))}" defer></script>\n  `,
+            extraCss: homeHasExcursions ? [`assets/css/excursoes.css${BUILD_ASSET_QUERY}`] : [],
+            extraHead: homeHasExcursions
+              ? `    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" crossorigin="anonymous" />`
+              : "",
+            extraFooterScripts:
+              homeExcursionsHideScript +
+              (homeHasExcursions
+                ? `  <script src="${esc(publicJsSrc("excursoes-carousel.js", outPk))}" defer></script>\n`
+                : ""),
           }
         : {};
     const html = renderPage(locale, pk, {

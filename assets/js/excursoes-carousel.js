@@ -1523,6 +1523,13 @@
     }
   }
 
+  function hideExcursaoSection(root) {
+    if (!root) return;
+    root.hidden = true;
+    root.setAttribute("aria-hidden", "true");
+    root.style.display = "none";
+  }
+
   function bootExcursaoCarousel() {
     var root = document.getElementById("excursoes-junho");
     if (!root) return;
@@ -1537,9 +1544,11 @@
       fromPayload && fromPayload.length ? fromPayload : fallbackRows,
     );
     if (!allExcursoes.length) {
-      root.hidden = true;
+      hideExcursaoSection(root);
       return;
     }
+    root.removeAttribute("aria-hidden");
+    root.style.display = "";
     var carouselExcursoes = allExcursoes.slice();
 
     var track = root.querySelector(".gcv-excursoes__track");
