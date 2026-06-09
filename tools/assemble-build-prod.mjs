@@ -31,6 +31,7 @@ export const DEPLOY_ROOT_ENTRIES = [
   "guia",
   "en",
   "es",
+  "api",
 ];
 
 export function assembleBuildProd(siteRoot = ROOT, outDir = BUILD_PROD_DIR) {

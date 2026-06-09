@@ -2813,6 +2813,16 @@ writeAdvancedSitemapsAndFeed();
 writeSearchIndexAsset();
 
 const { copied: buildProdEntries } = assembleBuildProd();
+for (const loc of LOCALES) {
+  const homeRel = outRelPath(loc, "");
+  const homeAbs = join(ROOT, ...homeRel.split("/"), "index.html");
+  const homeHtml = existsSync(homeAbs) ? readFileSync(homeAbs, "utf8") : "";
+  const excursionsVisible = homeHtml.includes('id="excursoes-junho"');
+  const futureRows = excursaoRowsForLocale(loc).length;
+  console.log(
+    `[build] home ${loc}: próximas saídas ${excursionsVisible ? "no HTML" : "oculta"} (${futureRows} saída(s) futura(s))`,
+  );
+}
 console.log("[build] Build_prod:", BUILD_PROD_DIR, "—", buildProdEntries, "itens, pronto para FTP");
 console.log("Build OK:", ROOT);
 console.log("Páginas:", sitemapUrls.length, "URLs no sitemap");

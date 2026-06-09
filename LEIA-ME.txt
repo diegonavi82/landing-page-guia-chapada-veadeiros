@@ -9,10 +9,15 @@ Guia Chapada Veadeiros — LANDING PAGE (100% estático)
    npm run build
 
 3) Variáveis opcionais: copie .env.example para .env
-   SITE_ORIGIN, WHATSAPP_PHONE_E164, CONTACT_EMAIL
-   Não há DATABASE_URL neste projeto.
+   SITE_ORIGIN, WHATSAPP_PHONE_E164, CONTACT_EMAIL, WEB3FORMS_ACCESS_KEY
 
-4) Estrutura publicada:
+4) Banco MySQL (Hostinger):
+   - Copie api/config.example.php → api/config.local.php (senha do hPanel)
+   - Envie a pasta api/ pelo FTP junto com o site
+   - Teste: https://www.guiachapadaveadeiros.com/api/health.php
+   - Contatos do formulário vão para a tabela gcv_contact_messages (phpMyAdmin)
+
+5) Estrutura publicada:
    - index.html, contato.html, revista.html, atrativos.html (PT)
    - atrativos/*.html (17 páginas)
    - revista/contratar-guia-...html, revista/melhor-epoca-...html
@@ -20,6 +25,6 @@ Guia Chapada Veadeiros — LANDING PAGE (100% estático)
    - assets/img/imagens e assets/img/uploads (originais + .webp)
    - assets/css/site.css, assets/js/site.js
 
-5) Se sync não achar o monorepo, defina:
+6) Se sync não achar o monorepo, defina:
    set GCV_MEDIA_SOURCE=C:\caminho\frontend\cliente\public
    npm run sync:media

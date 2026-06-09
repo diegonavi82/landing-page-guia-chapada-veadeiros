@@ -455,6 +455,22 @@
         setLoading(false);
       }
 
+      /** Grava no MySQL via API PHP (Hostinger) sem bloquear o envio principal. */
+      function saveToDatabase(payload) {
+        if (!(endpoint || "").trim() || fromFile) return Promise.resolve();
+        var dbUrl =
+          endpoint + (endpoint.indexOf("?") >= 0 ? "&" : "?") + "locale=" + encodeURIComponent(locale);
+        return fetch(dbUrl, {
+          method: "POST",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            "Accept-Language": acceptLanguage,
+          },
+          body: JSON.stringify(payload),
+        }).catch(function () {});
+      }
+
       /** Web3Forms — https://docs.web3forms.com/ (ideal para HTML estático + envio por e-mail). */
       function submitWeb3Forms() {
         var locW = resolveLocale();
@@ -518,10 +534,12 @@
         setLoading(true);
         submitWeb3Forms()
           .then(function () {
-            form.reset();
-            selectOrcamento();
-            showError("");
-            showSentPanel("api");
+            return saveToDatabase(payload).then(function () {
+              form.reset();
+              selectOrcamento();
+              showError("");
+              showSentPanel("api");
+            });
           })
           .catch(function (err) {
             var msg = err && err.message ? String(err.message) : "";
