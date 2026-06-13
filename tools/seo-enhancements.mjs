@@ -86,6 +86,10 @@ export function buildRobotsTxt(siteOrigin) {
 User-agent: *
 Allow: /
 Disallow: /Build_prod/
+Disallow: /api/
+Disallow: /dashboard/
+Disallow: /guia/login.html
+Disallow: /guia/cadastro.html
 
 ${aiBlocks}
 

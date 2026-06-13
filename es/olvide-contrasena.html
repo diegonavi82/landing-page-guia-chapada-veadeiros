@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex,nofollow" />
+<link rel="icon" href="https://www.guiachapadaveadeiros.com/favicon.ico" sizes="48x48" />
+<title>Olvidé Contraseña | Guia Chapada Veadeiros</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/assets/css/site.css?v=1.0.8" />
+<link rel="stylesheet" href="/assets/css/gcv-auth.css?v=1.0.0" />
+</head>
+<body>
+<div class="gcv-auth-page">
+  <div class="gcv-auth-card">
+    <a class="gcv-auth-logo" href="/index.html"><img src="/assets/img/imagens/logo-guia-chapada-veadeiros-oficial.png" alt="Guia Chapada Veadeiros" width="180" height="33" /></a>
+    <div id="gcv-forgot-step1">
+      <h1 class="gcv-auth-title">Olvidé mi contraseña</h1>
+      <p class="gcv-auth-subtitle">Ingresa tu correo para recibir las instrucciones</p>
+      <div id="gcv-auth-error" class="gcv-auth-error" hidden></div>
+      <form id="gcv-forgot-form" novalidate data-locale="es">
+        <div class="gcv-auth-field">
+          <label class="gcv-auth-label" for="forgot-email">Correo electrónico</label>
+          <input class="gcv-auth-input" id="forgot-email" name="email" type="email" autocomplete="email" required />
+        </div>
+        <button class="gcv-auth-btn gcv-auth-btn--primary" type="submit">Enviar instrucciones</button>
+      </form>
+    </div>
+    <div id="gcv-forgot-step2" hidden>
+      <h1 class="gcv-auth-title">Revisa tu correo</h1>
+      <p class="gcv-auth-subtitle">Si este correo está registrado, recibirás un enlace y un código de 6 dígitos.</p>
+      <div id="gcv-auth-error2" class="gcv-auth-error" hidden></div>
+      <form id="gcv-code-form" novalidate data-locale="es">
+        <div class="gcv-auth-code-grid">
+          <input class="gcv-auth-code-input" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" />
+          <input class="gcv-auth-code-input" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" />
+          <input class="gcv-auth-code-input" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" />
+          <input class="gcv-auth-code-input" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" />
+          <input class="gcv-auth-code-input" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" />
+          <input class="gcv-auth-code-input" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" />
+        </div>
+        <button class="gcv-auth-btn gcv-auth-btn--primary" type="submit">Verificar código</button>
+      </form>
+    </div>
+    <div class="gcv-auth-links" style="margin-top:20px;"><a href="/es/login.html">← Volver al inicio de sesión</a></div>
+  </div>
+</div>
+<script src="/assets/js/gcv-auth.js?v=1.0.0" defer></script>
+</body>
+</html>

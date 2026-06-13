@@ -4,6 +4,10 @@
   "version": "1.0.8",
   "description": "Site 100% estático (HTML/CSS/JS) — sem API, sem MySQL.",
   "scripts": {
+    "dev": "node tools/mock-server.mjs",
+    "dev:admin": "node tools/mock-server.mjs admin",
+    "dev:guide": "node tools/mock-server.mjs guide",
+    "dev:client": "node tools/mock-server.mjs client",
     "sync:media": "node tools/sync-media.mjs",
     "images:webp": "node tools/to-webp.mjs",
     "sync:instagram": "node tools/sync-instagram.mjs",

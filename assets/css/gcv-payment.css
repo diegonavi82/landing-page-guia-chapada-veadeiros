@@ -1,0 +1,228 @@
+/* gcv-payment.css — Fluxo de pagamento Pix e Cartão */
+
+.gcv-pay-page {
+  max-width: 520px;
+  margin: 40px auto;
+  padding: 0 16px 60px;
+}
+
+.gcv-pay-steps {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 32px;
+}
+.gcv-pay-step {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: #aaa;
+  position: relative;
+}
+.gcv-pay-step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 15px;
+  left: 50%;
+  width: 100%;
+  height: 2px;
+  background: #e5e7eb;
+  z-index: 0;
+}
+.gcv-pay-step__num {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #e5e7eb;
+  color: #aaa;
+  font-weight: 700;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+  transition: background 0.2s, color 0.2s;
+}
+.gcv-pay-step.active .gcv-pay-step__num { background: #0f3d2e; color: #fff; }
+.gcv-pay-step.done .gcv-pay-step__num   { background: #38a169; color: #fff; }
+.gcv-pay-step.active { color: #0f3d2e; font-weight: 600; }
+
+/* Method selector */
+.gcv-pay-methods {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+.gcv-pay-method {
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.gcv-pay-method:hover { border-color: #0f3d2e; }
+.gcv-pay-method.active { border-color: #0f3d2e; background: #f0f9f5; }
+.gcv-pay-method__icon { font-size: 2rem; margin-bottom: 8px; }
+.gcv-pay-method__name { font-weight: 700; font-size: 0.9375rem; color: #111; }
+.gcv-pay-method__desc { font-size: 0.8125rem; color: #666; margin-top: 2px; }
+
+/* Summary */
+.gcv-pay-summary {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 18px 20px;
+  margin-bottom: 24px;
+}
+.gcv-pay-summary__row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.875rem;
+  padding: 5px 0;
+  color: #555;
+}
+.gcv-pay-summary__row--total {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: #0f3d2e;
+  border-top: 1px solid #e5e7eb;
+  margin-top: 8px;
+  padding-top: 10px;
+}
+
+/* PIX */
+.gcv-pay-pix {
+  text-align: center;
+  padding: 10px 0;
+}
+.gcv-pay-pix__qr {
+  margin: 0 auto 16px;
+  max-width: 220px;
+  border: 3px solid #0f3d2e;
+  border-radius: 8px;
+  padding: 8px;
+  background: #fff;
+}
+.gcv-pay-pix__qr img { width: 100%; display: block; }
+
+.gcv-pay-pix__timer {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #0f3d2e;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 12px;
+}
+.gcv-pay-pix__timer--expiring { color: #e53e3e; }
+
+.gcv-pay-pix__copy {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  background: #f3f4f6;
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin: 0 auto 16px;
+  max-width: 400px;
+  text-align: left;
+}
+.gcv-pay-pix__copy-code {
+  flex: 1;
+  font-size: 0.8125rem;
+  font-family: monospace;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gcv-pay-pix__copy-btn {
+  flex-shrink: 0;
+  background: #0f3d2e;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 5px 12px;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.gcv-pay-pix__instructions { font-size: 0.875rem; color: #555; max-width: 360px; margin: 0 auto; }
+
+/* Card form */
+.gcv-pay-card-form {}
+.gcv-pay-card-field { margin-bottom: 16px; }
+.gcv-pay-card-label {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 5px;
+}
+.gcv-pay-card-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 13px;
+  font-size: 0.9375rem;
+  font-family: inherit;
+  border: 1.5px solid #d1d5db;
+  border-radius: 6px;
+  outline: none;
+  background: #fafafa;
+}
+.gcv-pay-card-input:focus { border-color: #0f3d2e; background: #fff; }
+.gcv-pay-card-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 12px;
+}
+
+.gcv-pay-btn {
+  display: block;
+  width: 100%;
+  padding: 13px;
+  background: #0f3d2e;
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  font-size: 1rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: opacity 0.15s;
+}
+.gcv-pay-btn:hover { opacity: 0.88; }
+.gcv-pay-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.gcv-pay-secure {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: #888;
+  margin-top: 12px;
+}
+
+/* Success */
+.gcv-pay-success {
+  text-align: center;
+  padding: 40px 20px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+}
+.gcv-pay-success__icon { font-size: 3.5rem; margin-bottom: 16px; }
+.gcv-pay-success__title { font-size: 1.375rem; font-weight: 700; color: #0f3d2e; margin-bottom: 8px; }
+.gcv-pay-success__body  { color: #555; max-width: 340px; margin: 0 auto 24px; }
+
+@media (max-width: 480px) {
+  .gcv-pay-card-row { grid-template-columns: 1fr 1fr; }
+  .gcv-pay-card-row > :first-child { grid-column: 1 / -1; }
+  .gcv-pay-methods { grid-template-columns: 1fr; }
+}

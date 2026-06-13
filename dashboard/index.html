@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex,nofollow" />
+<link rel="icon" href="https://www.guiachapadaveadeiros.com/favicon.ico" sizes="48x48" />
+<title>Painel | Guia Chapada Veadeiros</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/assets/css/site.css?v=1.0.8" />
+<link rel="stylesheet" href="/assets/css/gcv-dashboard.css?v=1.0.0" />
+<link rel="stylesheet" href="/assets/css/gcv-tours.css?v=1.0.0" />
+<link rel="stylesheet" href="/assets/css/gcv-payment.css?v=1.0.0" />
+</head>
+<body>
+  <div class="topbar">+55 62 98250-6891 | contato@guiachapadaveadeiros.com</div>
+
+  <!-- Loading state -->
+  <div id="gcv-dash-loading" style="min-height:100vh;display:flex;align-items:center;justify-content:center;font-size:1rem;color:#666;">
+    Carregando...
+  </div>
+
+  <!-- Dashboard layout — hidden until JS renders -->
+  <div id="gcv-dash-app" hidden>
+    <div class="gcv-dash-layout">
+
+      <!-- Sidebar -->
+      <aside class="gcv-dash-sidebar" id="gcv-dash-sidebar">
+        <div class="gcv-dash-user">
+          <div class="gcv-dash-avatar" id="dash-avatar">?</div>
+          <div class="gcv-dash-user-name" id="dash-name">—</div>
+          <div class="gcv-dash-user-role" id="dash-role">—</div>
+        </div>
+        <button class="gcv-dash-mobile-toggle" id="gcv-dash-menu-toggle">☰ Menu</button>
+        <nav id="gcv-dash-nav">
+          <ul class="gcv-dash-nav" id="gcv-dash-nav-list">
+            <!-- Rendered by gcv-dashboard.js -->
+          </ul>
+        </nav>
+        <ul class="gcv-dash-nav" style="margin-top:auto;padding-top:20px;border-top:1px solid rgba(255,255,255,0.1);">
+          <li>
+            <a href="/index.html">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+              Voltar ao site
+            </a>
+          </li>
+          <li>
+            <a href="#" id="gcv-dash-logout">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              Sair
+            </a>
+          </li>
+        </ul>
+      </aside>
+
+      <!-- Main content -->
+      <main class="gcv-dash-main" id="gcv-dash-main">
+
+        <!-- ===== ADMIN SECTIONS ===== -->
+
+        <section class="gcv-dash-section" id="section-pending-guides">
+          <h2 class="gcv-dash-section-title">Guias Pendentes</h2>
+          <div id="pending-guides-list"></div>
+        </section>
+
+        <section class="gcv-dash-section" id="section-pending-tours">
+          <h2 class="gcv-dash-section-title">Passeios Pendentes</h2>
+          <div id="pending-tours-list"></div>
+        </section>
+
+        <section class="gcv-dash-section" id="section-admin-create-tour">
+          <h2 class="gcv-dash-section-title">Criar Passeio</h2>
+          <form class="gcv-dash-form" id="gcv-create-tour-form" novalidate>
+            <div id="admin-guide-field" class="gcv-dash-field" hidden>
+              <label class="gcv-dash-label" for="tour-guide">Guia</label>
+              <select class="gcv-dash-select" id="tour-guide" name="guide_id"></select>
+            </div>
+            <div class="gcv-dash-field-row">
+              <div class="gcv-dash-field">
+                <label class="gcv-dash-label" for="tour-title-pt">Título (PT)</label>
+                <input class="gcv-dash-input" id="tour-title-pt" name="title_pt" type="text" required />
+              </div>
+              <div class="gcv-dash-field">
+                <label class="gcv-dash-label" for="tour-title-en">Title (EN)</label>
+                <input class="gcv-dash-input" id="tour-title-en" name="title_en" type="text" required />
+              </div>
+            </div>
+            <div class="gcv-dash-field">
+              <label class="gcv-dash-label" for="tour-title-es">Título (ES)</label>
+              <input class="gcv-dash-input" id="tour-title-es" name="title_es" type="text" required />
+            </div>
+            <div class="gcv-dash-field">
+              <label class="gcv-dash-label" for="tour-desc-pt">Descrição (PT)</label>
+              <textarea class="gcv-dash-textarea" id="tour-desc-pt" name="description_pt"></textarea>
+            </div>
+            <div class="gcv-dash-field-row">
+              <div class="gcv-dash-field">
+                <label class="gcv-dash-label" for="tour-date">Data de saída</label>
+                <input class="gcv-dash-input" id="tour-date" name="departure_date" type="date" required />
+              </div>
+              <div class="gcv-dash-field">
+                <label class="gcv-dash-label" for="tour-time">Horário</label>
+                <input class="gcv-dash-input" id="tour-time" name="departure_time" type="time" value="08:00" required />
+              </div>
+            </div>
+            <div class="gcv-dash-field-row">
+              <div class="gcv-dash-field">
+                <label class="gcv-dash-label" for="tour-region">Região</label>
+                <select class="gcv-dash-select" id="tour-region" name="region">
+                  <option value="alto-paraiso">Alto Paraíso</option>
+                  <option value="sao-jorge">São Jorge</option>
+                  <option value="cavalcante">Cavalcante</option>
+                  <option value="teresina">Teresina</option>
+                  <option value="sao-joao">São João</option>
+                  <option value="outro">Outro</option>
+                </select>
+              </div>
+              <div class="gcv-dash-field">
+                <label class="gcv-dash-label" for="tour-difficulty">Dificuldade</label>
+                <select class="gcv-dash-select" id="tour-difficulty" name="difficulty">
+                  <option value="easy">Fácil</option>
+                  <option value="medium">Moderada</option>
+                  <option value="hard">Difícil</option>
+                </select>
+              </div>
+            </div>
+            <div class="gcv-dash-field-row">
+              <div class="gcv-dash-field">
+                <label class="gcv-dash-label" for="tour-spots">Vagas</label>
+                <input class="gcv-dash-input" id="tour-spots" name="max_spots" type="number" min="1" max="20" value="10" required />
+              </div>
+              <div class="gcv-dash-field">
+                <label class="gcv-dash-label" for="tour-price">Preço (R$)</label>
+                <input class="gcv-dash-input" id="tour-price" name="price" type="number" min="1" step="0.01" required />
+              </div>
+            </div>
+            <div class="gcv-dash-field">
+              <label class="gcv-dash-label" for="tour-meeting">Ponto de encontro</label>
+              <input class="gcv-dash-input" id="tour-meeting" name="meeting_point" type="text" />
+            </div>
+            <div class="gcv-dash-field">
+              <label class="gcv-dash-label" for="tour-cover">URL da foto de capa</label>
+              <input class="gcv-dash-input" id="tour-cover" name="cover_url" type="url" />
+            </div>
+            <div id="gcv-create-tour-error" class="gcv-dash-alert gcv-dash-alert--warning" hidden></div>
+            <button class="gcv-dash-btn gcv-dash-btn--primary" type="submit">Criar Passeio</button>
+          </form>
+        </section>
+
+        <section class="gcv-dash-section" id="section-admin-bookings">
+          <h2 class="gcv-dash-section-title">Todas as Reservas</h2>
+          <div class="gcv-dash-table-wrap">
+            <table class="gcv-dash-table" id="admin-bookings-table">
+              <thead><tr><th>ID</th><th>Passeio</th><th>Cliente</th><th>Guia</th><th>Vagas</th><th>Total</th><th>Status</th><th>Data</th></tr></thead>
+              <tbody id="admin-bookings-body"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="gcv-dash-section" id="section-admin-settings">
+          <h2 class="gcv-dash-section-title">Configurações</h2>
+          <div class="gcv-dash-form" id="admin-settings-form"></div>
+        </section>
+
+        <section class="gcv-dash-section" id="section-admin-financial">
+          <h2 class="gcv-dash-section-title">Financeiro</h2>
+          <div id="admin-financial-content"></div>
+        </section>
+
+        <!-- ===== GUIDE SECTIONS ===== -->
+
+        <section class="gcv-dash-section" id="section-guide-tours">
+          <h2 class="gcv-dash-section-title">Meus Passeios</h2>
+          <div id="guide-tours-list"></div>
+        </section>
+
+        <section class="gcv-dash-section" id="section-guide-create-tour">
+          <!-- Reuses admin form without guide selector -->
+          <h2 class="gcv-dash-section-title">Criar Passeio</h2>
+          <div class="gcv-dash-alert gcv-dash-alert--info" id="guide-mp-warning" hidden>
+            Conecte sua conta do Mercado Pago antes de criar passeios.
+            <a href="/api/guides/mp-connect-redirect.php" class="gcv-dash-btn gcv-dash-btn--sm gcv-dash-btn--primary" style="margin-left:12px;">Conectar MP</a>
+          </div>
+          <form class="gcv-dash-form" id="gcv-guide-create-tour-form" novalidate></form>
+        </section>
+
+        <section class="gcv-dash-section" id="section-guide-bookings">
+          <h2 class="gcv-dash-section-title">Minhas Reservas</h2>
+          <div class="gcv-dash-table-wrap">
+            <table class="gcv-dash-table">
+              <thead><tr><th>Passeio</th><th>Cliente</th><th>Vagas</th><th>Total</th><th>Status</th></tr></thead>
+              <tbody id="guide-bookings-body"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="gcv-dash-section" id="section-guide-payments">
+          <h2 class="gcv-dash-section-title">Recebimentos</h2>
+          <div id="guide-payments-content"></div>
+        </section>
+
+        <!-- ===== CLIENT SECTIONS ===== -->
+
+        <section class="gcv-dash-section" id="section-client-tours">
+          <h2 class="gcv-dash-section-title">Próximas Excursões</h2>
+          <div class="gcv-tours-grid" id="client-tours-grid"></div>
+        </section>
+
+        <section class="gcv-dash-section" id="section-client-bookings">
+          <h2 class="gcv-dash-section-title">Minhas Reservas</h2>
+          <div class="gcv-dash-table-wrap">
+            <table class="gcv-dash-table">
+              <thead><tr><th>Passeio</th><th>Data</th><th>Vagas</th><th>Total</th><th>Status</th><th>Ação</th></tr></thead>
+              <tbody id="client-bookings-body"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ===== GUIDE PENDING SCREEN ===== -->
+        <section class="gcv-dash-section" id="section-guide-pending">
+          <div class="gcv-dash-pending-screen">
+            <div class="gcv-dash-pending-screen__icon">⏳</div>
+            <h2 class="gcv-dash-pending-screen__title">Cadastro em análise</h2>
+            <p class="gcv-dash-pending-screen__body">Seu cadastro como guia está sendo analisado pelo administrador. Você receberá um email assim que for aprovado.</p>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- Payment modal -->
+  <div class="gcv-modal-overlay" id="gcv-payment-modal" hidden>
+    <div class="gcv-modal" role="dialog" aria-modal="true">
+      <button class="gcv-modal__close" id="gcv-pay-modal-close" aria-label="Fechar">×</button>
+      <div id="gcv-payment-modal-body"></div>
+    </div>
+  </div>
+
+  <script src="/assets/js/gcv-auth.js?v=1.0.0" defer></script>
+  <script src="/assets/js/gcv-dashboard.js?v=1.0.0" defer></script>
+  <script src="/assets/js/gcv-payment.js?v=1.0.0" defer></script>
+  <script src="/assets/js/site.js?v=1.0.8" defer></script>
+</body>
+</html>

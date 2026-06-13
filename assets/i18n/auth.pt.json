@@ -1,0 +1,58 @@
+{
+  "login": {
+    "title": "Entrar",
+    "subtitle": "Acesse sua conta",
+    "email": "Email",
+    "password": "Senha",
+    "btn_login": "Entrar",
+    "btn_google": "Entrar com Google",
+    "forgot": "Esqueci minha senha",
+    "no_account": "Não tem conta?",
+    "create": "Criar conta",
+    "error_invalid": "Email ou senha incorretos",
+    "error_pending": "Conta aguardando aprovação do administrador",
+    "error_suspended": "Conta suspensa. Entre em contato com o suporte."
+  },
+  "register": {
+    "title": "Criar conta",
+    "subtitle": "Junte-se ao Guia Chapada Veadeiros",
+    "name": "Nome completo",
+    "email": "Email",
+    "password": "Senha",
+    "password_confirm": "Confirmar senha",
+    "role_client": "Viajante",
+    "role_guide": "Guia",
+    "cadastur": "Número Cadastur (opcional)",
+    "btn_register": "Criar conta",
+    "btn_google": "Cadastrar com Google",
+    "note_guide": "Guias passam por aprovação antes de publicar passeios",
+    "already": "Já tem conta?",
+    "login": "Entrar",
+    "strength_weak": "Senha fraca",
+    "strength_medium": "Senha média",
+    "strength_strong": "Senha forte",
+    "error_mismatch": "As senhas não coincidem",
+    "error_short": "Senha muito curta (mínimo 8 caracteres)"
+  },
+  "forgot": {
+    "title": "Esqueci minha senha",
+    "subtitle": "Digite seu email para receber as instruções",
+    "email": "Email",
+    "btn_send": "Enviar instruções",
+    "sent_title": "Verifique seu email",
+    "sent_desc": "Se este email estiver cadastrado, você receberá um link e um código de 6 dígitos.",
+    "code_label": "Código de 6 dígitos",
+    "btn_verify": "Verificar código",
+    "back": "Voltar para o login"
+  },
+  "reset": {
+    "title": "Redefinir senha",
+    "subtitle": "Escolha uma nova senha segura",
+    "password": "Nova senha",
+    "password_confirm": "Confirmar nova senha",
+    "btn_reset": "Redefinir senha",
+    "success": "Senha redefinida com sucesso! Faça login.",
+    "error_invalid": "Token inválido ou expirado",
+    "back": "Voltar para o login"
+  }
+}

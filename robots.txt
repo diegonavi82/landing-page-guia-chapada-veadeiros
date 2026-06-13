@@ -4,6 +4,8 @@
 User-agent: *
 Allow: /
 Disallow: /Build_prod/
+Disallow: /api/
+Disallow: /dashboard/
 
 User-agent: GPTBot
 Allow: /

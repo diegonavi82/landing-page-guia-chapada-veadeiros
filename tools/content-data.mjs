@@ -186,7 +186,7 @@ export const STRINGS = {
     searchPlaceholder: "Buscar no site…",
     searchInputAria: "Digite para buscar páginas",
     searchNoResults: "Nenhuma página encontrada",
-    nav: { home: "Home", revista: "Revista", atrativos: "Atrativos", contact: "Fale Conosco" },
+    nav: { home: "Home", revista: "Revista", atrativos: "Atrativos", excursoes: "Excursões", contact: "Fale Conosco" },
     hero: {
       badge: "Chapada dos Veadeiros · Goiás",
       title: "Roteiros sob medida com guia da região",
@@ -337,7 +337,7 @@ export const STRINGS = {
     searchPlaceholder: "Search the site…",
     searchInputAria: "Type to search pages",
     searchNoResults: "No pages found",
-    nav: { home: "Home", revista: "Magazine", atrativos: "Attractions", contact: "Contact" },
+    nav: { home: "Home", revista: "Magazine", atrativos: "Attractions", excursoes: "Excursions", contact: "Contact" },
     hero: {
       badge: "Chapada dos Veadeiros · Brazil",
       title: "Tailor-made itineraries with a local guide",
@@ -488,7 +488,7 @@ export const STRINGS = {
     searchPlaceholder: "Buscar en el sitio…",
     searchInputAria: "Escribe para buscar páginas",
     searchNoResults: "Ninguna página encontrada",
-    nav: { home: "Inicio", revista: "Revista", atrativos: "Atractivos", contact: "Contacto" },
+    nav: { home: "Inicio", revista: "Revista", atrativos: "Atractivos", excursoes: "Excursiones", contact: "Contacto" },
     hero: {
       badge: "Chapada dos Veadeiros · Brasil",
       title: "Itinerarios a medida con guía de la región",

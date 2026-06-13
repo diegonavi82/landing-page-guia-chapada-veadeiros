@@ -1,0 +1,58 @@
+{
+  "login": {
+    "title": "Sign In",
+    "subtitle": "Access your account",
+    "email": "Email",
+    "password": "Password",
+    "btn_login": "Sign In",
+    "btn_google": "Sign in with Google",
+    "forgot": "Forgot my password",
+    "no_account": "Don't have an account?",
+    "create": "Create account",
+    "error_invalid": "Incorrect email or password",
+    "error_pending": "Account awaiting administrator approval",
+    "error_suspended": "Account suspended. Please contact support."
+  },
+  "register": {
+    "title": "Create account",
+    "subtitle": "Join Guia Chapada Veadeiros",
+    "name": "Full name",
+    "email": "Email",
+    "password": "Password",
+    "password_confirm": "Confirm password",
+    "role_client": "Traveler",
+    "role_guide": "Guide",
+    "cadastur": "Cadastur Number (optional)",
+    "btn_register": "Create account",
+    "btn_google": "Sign up with Google",
+    "note_guide": "Guides go through approval before publishing tours",
+    "already": "Already have an account?",
+    "login": "Sign in",
+    "strength_weak": "Weak password",
+    "strength_medium": "Medium password",
+    "strength_strong": "Strong password",
+    "error_mismatch": "Passwords do not match",
+    "error_short": "Password too short (minimum 8 characters)"
+  },
+  "forgot": {
+    "title": "Forgot password",
+    "subtitle": "Enter your email to receive instructions",
+    "email": "Email",
+    "btn_send": "Send instructions",
+    "sent_title": "Check your email",
+    "sent_desc": "If this email is registered, you will receive a link and a 6-digit code.",
+    "code_label": "6-digit code",
+    "btn_verify": "Verify code",
+    "back": "Back to login"
+  },
+  "reset": {
+    "title": "Reset password",
+    "subtitle": "Choose a new secure password",
+    "password": "New password",
+    "password_confirm": "Confirm new password",
+    "btn_reset": "Reset password",
+    "success": "Password reset successfully! Please sign in.",
+    "error_invalid": "Invalid or expired token",
+    "back": "Back to login"
+  }
+}
