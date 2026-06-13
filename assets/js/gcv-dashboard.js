@@ -394,7 +394,6 @@
       }
       currentUser = res.data;
 
-      if (loading) loading.hidden = true;
       if (app) app.hidden = false;
 
       // Fill sidebar

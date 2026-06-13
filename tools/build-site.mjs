@@ -1386,7 +1386,6 @@ function headerHtml(ctx) {
       ${nav("home", "", S.nav.home)}
       ${nav("revista", "revista.html", S.nav.revista)}
       ${nav("atrativos", "atrativos.html", S.nav.atrativos)}
-      ${nav("excursoes", excursoesPathKey, S.nav.excursoes)}
       ${nav("contact", "contato.html", S.nav.contact)}
       <div class="nav-search-wrap" data-gcv-search data-locale="${esc(locale)}" data-page-out="${esc(cur)}" data-search-index="${esc(publicDataSrc("search-index.json", cur))}" data-no-results="${esc(S.searchNoResults)}">
         <button type="button" class="nav-search" aria-label="${esc(S.searchAria)}" aria-expanded="false" aria-controls="nav-search-panel">⌕</button>
