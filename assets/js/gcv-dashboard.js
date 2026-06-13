@@ -387,7 +387,8 @@
     var app     = document.getElementById('gcv-dash-app');
 
     get('/api/auth/me.php', function (err, res) {
-      if (!res.ok) {
+      console.log('[dashboard] me.php:', err, JSON.stringify(res));
+      if (err || !res || !res.ok) {
         window.location.href = '/login.html?redirect=/dashboard/';
         return;
       }

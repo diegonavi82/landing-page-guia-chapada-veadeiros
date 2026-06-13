@@ -8,10 +8,22 @@ Options -Indexes
   Deny from all
 </FilesMatch>
 
-# Bloquear acesso direto a vendor
 <IfModule mod_rewrite.c>
   RewriteEngine On
+
+  # Bloquear acesso direto a vendor
   RewriteRule ^api/vendor/ - [F,L]
+
+  # URLs sem extensão → .html (ex: /login → /login.html)
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteCond %{REQUEST_FILENAME}.html -f
+  RewriteRule ^(.+?)/?$ /$1.html [L]
+
+  # Diretórios com index.html (ex: /dashboard/ → /dashboard/index.html)
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteCond %{REQUEST_FILENAME}/index.html -f
+  RewriteRule ^(.+?)/?$ /$1/index.html [L]
 </IfModule>
 
 # Headers de segurança

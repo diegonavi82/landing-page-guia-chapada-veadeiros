@@ -11,14 +11,13 @@ function auth_session_start(): void {
             'domain'   => '',
             'secure'   => true,
             'httponly' => true,
-            'samesite' => 'Strict',
+            'samesite' => 'Lax',
         ]);
         session_start();
     }
 }
 
 function current_user(): ?array {
-    auth_session_start();
     $sessionId = $_COOKIE['gcv_session'] ?? null;
     if (!$sessionId) return null;
 
@@ -78,7 +77,7 @@ function create_session(int $userId): string {
         'path'     => '/',
         'secure'   => true,
         'httponly' => true,
-        'samesite' => 'Strict',
+        'samesite' => 'Lax',
     ]);
     return $sessionId;
 }
@@ -92,7 +91,7 @@ function destroy_session(): void {
             'path'     => '/',
             'secure'   => true,
             'httponly' => true,
-            'samesite' => 'Strict',
+            'samesite' => 'Lax',
         ]);
     }
 }

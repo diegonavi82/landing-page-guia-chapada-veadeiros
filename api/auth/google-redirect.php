@@ -6,10 +6,14 @@ require_once __DIR__ . '/../helpers/auth.php';
 
 auth_session_start();
 
-$clientId    = $_ENV['GOOGLE_CLIENT_ID']     ?? '';
-$redirectUri = $_ENV['GOOGLE_REDIRECT_URI']  ?? '';
-$state       = bin2hex(random_bytes(16));
-$_SESSION['google_state'] = $state;
+$clientId    = $_ENV['GOOGLE_CLIENT_ID']    ?? '';
+$redirectUri = $_ENV['GOOGLE_REDIRECT_URI'] ?? '';
+$secret      = $_ENV['APP_SECRET']          ?? 'gcv_secret';
+
+// State assinado com HMAC — não depende de sessão PHP
+$ts    = time();
+$hmac  = hash_hmac('sha256', (string)$ts, $secret);
+$state = $ts . '.' . $hmac;
 
 $params = http_build_query([
     'client_id'     => $clientId,
