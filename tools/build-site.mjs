@@ -22,6 +22,7 @@ import {
 } from "./content-data.mjs";
 import { excursaoPayloadForSite, excursaoRowsForLocale } from "./excursoes-carousel-data.mjs";
 import { excursionsCarouselTrackSsrHtml } from "./excursoes-carousel-ssr.mjs";
+import { guiaProfilesForSite } from "./excursoes-guides-profiles.mjs";
 import { rewriteHtmlMediaUrls, htmlWithStaticAssetPrefix, toPublicAssetRel } from "./media-url.mjs";
 import {
   extractFirstImage,
@@ -1510,6 +1511,7 @@ function homeExcursionsSection(locale) {
   if (!excursaoRowsForLocale(locale).length) return "";
   return `    <section id="excursoes-junho" class="gcv-excursoes" data-locale="${esc(locale)}" aria-labelledby="gcv-excursoes-heading">
       <script type="application/json" id="gcv-excursoes-payload">${safeJsonLd(excursaoPayloadForSite())}</script>
+      <script type="application/json" id="gcv-guia-profiles">${safeJsonLd(guiaProfilesForSite())}</script>
       <div class="gcv-excursoes__head">
         <span class="gcv-excursoes__badge">${esc(L.badge)}</span>
         <h2 id="gcv-excursoes-heading" class="gcv-excursoes__title">${esc(L.title)}</h2>

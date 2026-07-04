@@ -557,14 +557,22 @@
 
 .gcv-post-autor {
   display: flex;
-  gap: 18px;
-  align-items: flex-start;
+  flex-direction: column;
+  gap: 0.85rem;
+  align-items: stretch;
   background: #fff;
   border: 1px solid #e5e9f2;
   border-radius: 16px;
   padding: clamp(18px, 3vw, 22px);
   margin: 40px 0;
   box-shadow: 0 4px 16px rgba(16, 24, 40, 0.05);
+}
+
+.gcv-post-autor-top {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  min-width: 0;
 }
 
 /* Retrato 3 × 4 (vertical), não circular — lado esquerdo do cartão */
@@ -587,11 +595,42 @@
   display: block;
 }
 
+.gcv-post-autor-bio,
+.gcv-post-autor-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.gcv-post-autor-bio strong,
 .gcv-post-autor-info strong {
   font-weight: 800;
   color: #12264d;
 }
 
+.gcv-post-autor-signoff {
+  border-top: 1px solid #e5e9f2;
+  padding-top: 0.75rem;
+}
+
+.gcv-post-autor-name {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #12264d;
+  margin: 0 0 0.15rem;
+  line-height: 1.25;
+  text-align: left;
+}
+
+.gcv-post-autor-role {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.35;
+  text-align: left;
+}
+
+.gcv-post-autor-bio p,
 .gcv-post-autor-info p {
   font-size: 0.88rem;
   color: #17251f;
@@ -603,6 +642,7 @@
   -webkit-hyphens: auto;
 }
 
+.gcv-post-autor-bio p + p,
 .gcv-post-autor-info p + p {
   margin-top: 0.75rem;
 }
@@ -631,10 +671,12 @@
 
 .gcv-post-share--after-hero {
   margin: 10px 0 26px;
+  padding-bottom: clamp(16px, 2.5vw, 24px);
 }
 
 .gcv-post-share--footer {
   margin: 28px 0 0;
+  padding-bottom: clamp(24px, 3vw, 40px);
 }
 
 .gcv-post-share a {
@@ -701,14 +743,27 @@
     object-fit: cover;
   }
 
-  .gcv-post-autor {
+  .gcv-post-autor-top {
     flex-direction: column;
     align-items: center;
   }
 
+  .gcv-post-autor-bio,
   .gcv-post-autor-info {
     width: 100%;
     max-width: 36rem;
+  }
+
+  .gcv-post-autor-signoff {
+    width: 100%;
+    max-width: 36rem;
+    margin: 0 auto;
+    text-align: center;
+  }
+
+  .gcv-post-autor-name,
+  .gcv-post-autor-role {
+    text-align: center;
   }
 
   .gcv-post-cta {
@@ -730,7 +785,11 @@
   .gcv-post-share {
     justify-content: center;
     gap: 4px;
-    padding-bottom: 2px; /* espaço p/ barra fina se houver scroll horizontal */
+    padding-bottom: 16px; /* espaço p/ barra fina se houver scroll horizontal */
+  }
+
+  .gcv-post-share--footer {
+    padding-bottom: 24px;
   }
 
   .gcv-post-share a {

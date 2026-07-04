@@ -1,7 +1,93 @@
 (function () {
   "use strict";
 
+  var GUIA_PROFILE_SLUG = {
+    "Diego Navi": "diego-navi",
+    "Martina Motlova": "martina-motlova",
+  };
+
+  var GUIA_PROFILES_FALLBACK = {
+    "diego-navi": {
+      slug: "diego-navi",
+      nome: "Diego Navi",
+      nomeCompleto: "Diego Navi Marques Carvalho",
+      foto: "/assets/img/imagens/guia-diego-navi.webp",
+      idiomas: ["pt", "en", "es"],
+      bio: {
+        pt: [
+          "Diego Navi Marques Carvalho é analista de sistemas formado pela PUC-Rio, brasileiro naturalizado italiano e pai de um pré-adolescente. Nascido e criado no Rio de Janeiro, decidiu trocar a rotina dos escritórios pela natureza da Chapada dos Veadeiros em 2016, onde encontrou sua verdadeira vocação.",
+          "Em 2017, concluiu sua formação como Condutor Local de Visitantes de Ecoturismo da Chapada dos Veadeiros. No mesmo ano, uniu sua experiência na área de tecnologia à paixão pelo turismo de natureza para fundar a Guia Chapada Veadeiros, uma agência virtual criada para orientar visitantes no planejamento de suas viagens, oferecer informações confiáveis sobre os atrativos da região, conectar turistas aos mais experientes guias locais e incentivar um turismo seguro, responsável e de alta qualidade, valorizando a natureza, a cultura e a comunidade da Chapada dos Veadeiros.",
+          "Fluente em português, inglês e espanhol, já conduziu dezenas de grupos com segurança e profissionalismo, recebendo visitantes do Brasil e de diversos países. Frequentador da Chapada dos Veadeiros desde 2009, conhece profundamente a região em todas as épocas do ano. Das cachoeiras mais famosas aos recantos menos explorados, domina trilhas, atrativos, logística, condições climáticas e particularidades de cada destino, proporcionando roteiros personalizados, seguros e memoráveis.",
+          "Com uma visão que une tecnologia, atendimento de excelência e profundo conhecimento da Chapada dos Veadeiros, Diego dedica-se a transformar cada viagem em uma experiência única. Sua missão é ir além de conduzir visitantes: é compartilhar a essência da Chapada, valorizando sua natureza, cultura e as comunidades locais para que cada viajante viva uma experiência autêntica, segura e inesquecível.",
+        ],
+        en: [
+          "Diego Navi Marques Carvalho is a systems analyst graduated from PUC-Rio, a Brazilian national naturalized as Italian and father of a pre-teen. Born and raised in Rio de Janeiro, he left office life behind for the nature of Chapada dos Veadeiros in 2016, where he found his true calling.",
+          "In 2017, he completed his training as a Local Ecotourism Visitor Guide in Chapada dos Veadeiros. That same year, he combined his technology background with his passion for nature tourism to found Guia Chapada Veadeiros, a virtual agency created to help visitors plan their trips, provide reliable information about regional attractions, connect travelers with the most experienced local guides, and promote safe, responsible, high-quality tourism that values the nature, culture and community of Chapada dos Veadeiros.",
+          "Fluent in Portuguese, English and Spanish, he has led dozens of groups safely and professionally, welcoming visitors from Brazil and many countries. A regular visitor to Chapada dos Veadeiros since 2009, he knows the region deeply in every season. From the most famous waterfalls to lesser-known spots, he masters trails, attractions, logistics, weather conditions and the specifics of each destination, delivering personalized, safe and memorable itineraries.",
+          "With a vision that combines technology, excellent service and deep knowledge of Chapada dos Veadeiros, Diego is dedicated to turning every trip into a unique experience. His mission goes beyond guiding visitors: it is to share the essence of the Chapada, valuing its nature, culture and local communities so that every traveler enjoys an authentic, safe and unforgettable experience.",
+        ],
+        es: [
+          "Diego Navi Marques Carvalho es analista de sistemas graduado por la PUC-Rio, brasileño naturalizado italiano y padre de un preadolescente. Nacido y criado en Río de Janeiro, dejó la rutina de oficina por la naturaleza de la Chapada dos Veadeiros en 2016, donde encontró su verdadera vocación.",
+          "En 2017, completó su formación como Conductor Local de Visitantes de Ecoturismo de la Chapada dos Veadeiros. Ese mismo año, unió su experiencia en tecnología con la pasión por el turismo de naturaleza para fundar Guia Chapada Veadeiros, una agencia virtual creada para orientar a los visitantes en la planificación de sus viajes, ofrecer información confiable sobre los atractivos de la región, conectar a los turistas con los guías locales más experimentados e incentivar un turismo seguro, responsable y de alta calidad, valorando la naturaleza, la cultura y la comunidad de la Chapada dos Veadeiros.",
+          "Fluido en portugués, inglés y español, ha guiado decenas de grupos con seguridad y profesionalismo, recibiendo visitantes de Brasil y de diversos países. Frecuentador de la Chapada dos Veadeiros desde 2009, conoce profundamente la región en todas las épocas del año. Desde las cascadas más famosas hasta rincones poco explorados, domina senderos, atractivos, logística, condiciones climáticas y particularidades de cada destino, ofreciendo itinerarios personalizados, seguros y memorables.",
+          "Con una visión que une tecnología, atención de excelencia y profundo conocimiento de la Chapada dos Veadeiros, Diego se dedica a transformar cada viaje en una experiencia única. Su misión va más allá de conducir visitantes: es compartir la esencia de la Chapada, valorando su naturaleza, cultura y las comunidades locales para que cada viajero viva una experiencia auténtica, segura e inolvidable.",
+        ],
+      },
+    },
+    "martina-motlova": {
+      slug: "martina-motlova",
+      nome: "Martina Motlová",
+      nomeCompleto: "Martina Motlová",
+      foto: "/assets/img/imagens/guia-martina-motlova.webp",
+      idiomas: ["cs", "ru", "en", "pt"],
+      bio: {
+        pt: [
+          "Martina Motlová é natural da República Tcheca e vive no Brasil há mais de 15 anos, período em que construiu uma forte conexão com a cultura, a natureza e o povo brasileiro. Guia regional de turismo da América do Sul, é cadastrada no Cadastur e possui ampla experiência no atendimento a viajantes nacionais e internacionais.",
+          "Mãe de dois filhos, Martina une sensibilidade, acolhimento e profissionalismo em cada experiência que proporciona. Além de guia de turismo, é professora de yoga e massagista profissional, conhecimentos que complementam sua atuação e oferecem aos visitantes uma vivência mais consciente, equilibrada e conectada com a natureza.",
+          "Fluente em tcheco, russo, inglês e português, recebe visitantes de diferentes nacionalidades com atenção aos detalhes, segurança e dedicação.",
+        ],
+        en: [
+          "Martina Motlová is originally from the Czech Republic and has lived in Brazil for over 15 years, a period in which she built a strong connection with Brazilian culture, nature and people. A regional tourism guide in South America, she is registered with Cadastur and has extensive experience serving domestic and international travelers.",
+          "A mother of two, Martina brings sensitivity, warmth and professionalism to every experience she provides. In addition to being a tour guide, she is a yoga teacher and professional massage therapist — skills that complement her work and offer visitors a more mindful, balanced experience connected with nature.",
+          "Fluent in Czech, Russian, English and Portuguese, she welcomes visitors from different countries with attention to detail, safety and dedication.",
+        ],
+        es: [
+          "Martina Motlová es natural de la República Checa y vive en Brasil desde hace más de 15 años, período en el que construyó una fuerte conexión con la cultura, la naturaleza y el pueblo brasileño. Guía regional de turismo de América del Sur, está registrada en Cadastur y tiene amplia experiencia atendiendo a viajeros nacionales e internacionales.",
+          "Madre de dos hijos, Martina une sensibilidad, acogida y profesionalismo en cada experiencia que ofrece. Además de guía de turismo, es profesora de yoga y masajista profesional, conocimientos que complementan su trabajo y brindan a los visitantes una vivencia más consciente, equilibrada y conectada con la naturaleza.",
+          "Fluida en checo, ruso, inglés y portugués, recibe visitantes de distintas nacionalidades con atención al detalle, seguridad y dedicación.",
+        ],
+      },
+    },
+  };
+
   var WA_PHONE = "5562982506891";
+
+  var GUIA_IDIOMAS = {
+    "Diego Navi": ["pt", "en", "es"],
+    "Martina Motlova": ["cs", "ru", "en", "pt"],
+  };
+
+  var IDIOMA_FLAG = {
+    pt: "br",
+    en: "us",
+    es: "es",
+    cs: "cz",
+    ru: "ru",
+  };
+
+  var IDIOMA_LABEL = {
+    pt: { pt: "Português", en: "Portuguese", es: "Portugués" },
+    en: { pt: "Inglês", en: "English", es: "Inglés" },
+    es: { pt: "Espanhol", en: "Spanish", es: "Español" },
+    cs: { pt: "Tcheco", en: "Czech", es: "Checo" },
+    ru: { pt: "Russo", en: "Russian", es: "Ruso" },
+  };
+
+  var IDIOMAS_ARIA = {
+    pt: "Idiomas",
+    en: "Languages",
+    es: "Idiomas",
+  };
 
   var SAIDA_HORA_PADRAO = "8:45";
 
@@ -204,14 +290,18 @@
       inclLabel: "Incluso",
       inclSpot: "Vaga em Excursão",
       inclGuideShort: "Guia local",
+      inclEntries: "Ingresso",
       inclTransport: "Transporte",
       badgeTransport: "Com transporte",
       exclLabel: "Não incluso",
-      exclEntries: "Entradas",
+      exclEntries: "Ingresso",
       exclEntry: "Entrada",
       exclTransport: "Transporte",
       exclLunch: "Almoço",
       cta: "Quero participar",
+      guiaAbout: "Sobre {{nome}}",
+      guiaModalClose: "Fechar",
+      guiaModalBack: "Voltar",
       filterTitle: "Filtrar saídas",
       filterPeriod: "Período",
       filterDateFrom: "De",
@@ -273,14 +363,18 @@
       inclLabel: "Included",
       inclSpot: "Excursion spot",
       inclGuideShort: "Local guide",
+      inclEntries: "Admission",
       inclTransport: "Transport",
       badgeTransport: "With transport",
       exclLabel: "Not included",
-      exclEntries: "Admission fees",
+      exclEntries: "Admission",
       exclEntry: "Admission",
       exclTransport: "Transport",
       exclLunch: "Lunch",
       cta: "I want to join",
+      guiaAbout: "About {{nome}}",
+      guiaModalClose: "Close",
+      guiaModalBack: "Back",
       filterTitle: "Filter departures",
       filterPeriod: "Period",
       filterDateFrom: "From",
@@ -342,14 +436,18 @@
       inclLabel: "Incluye",
       inclSpot: "Cupo en excursión",
       inclGuideShort: "Guía local",
+      inclEntries: "Entrada",
       inclTransport: "Transporte",
       badgeTransport: "Con transporte",
       exclLabel: "No incluye",
-      exclEntries: "Entradas",
+      exclEntries: "Entrada",
       exclEntry: "Entrada",
       exclTransport: "Transporte",
       exclLunch: "Almuerzo",
       cta: "Quiero participar",
+      guiaAbout: "Acerca de {{nome}}",
+      guiaModalClose: "Cerrar",
+      guiaModalBack: "Volver",
       filterTitle: "Filtrar salidas",
       filterPeriod: "Período",
       filterDateFrom: "Desde",
@@ -390,20 +488,77 @@
     return "pt";
   }
 
-  /**
-   * Destinos das saídas sempre em português, em qualquer locale.
-   * @param {Array<Record<string, unknown>>} rows
-   * @param {Array<Record<string, unknown>>} ptRows
-   */
   function applyPortugueseDestinos(rows, ptRows) {
     if (!Array.isArray(rows) || !Array.isArray(ptRows)) return rows;
     return rows.map(function (row, i) {
       var pt = ptRows[i];
-      if (!pt || !pt.destino) return row;
+      if (!pt) return row;
       var copy = Object.assign({}, row);
-      copy.destino = pt.destino;
+      if (pt.destino) copy.destino = pt.destino;
+      if (pt.atrativoPath) copy.atrativoPath = pt.atrativoPath;
+      if (pt.destinoSub) copy.destinoSub = pt.destinoSub;
+      if (pt.inclEntradas) copy.inclEntradas = pt.inclEntradas;
+      if (pt.valorIngresso != null) copy.valorIngresso = pt.valorIngresso;
       return copy;
     });
+  }
+
+  var INGRESSO_GRATIS = { pt: "grátis", en: "free", es: "gratis" };
+
+  function formatIngressoWithValor(label, valor, locale) {
+    var loc = locale === "en" || locale === "es" ? locale : "pt";
+    if (valor == null || valor === "") return String(label);
+    var n = Number(valor);
+    if (!Number.isFinite(n) || n <= 0) {
+      return label + " (" + INGRESSO_GRATIS[loc] + ")";
+    }
+    return label + " (R$ " + n + ")";
+  }
+
+  function atrativoHref(e, locale) {
+    var path = e && e.atrativoPath;
+    if (!path || String(path).trim() === "") return "";
+    var p = String(path).trim();
+    if (locale === "en") return "en/" + p;
+    if (locale === "es") return "es/" + p;
+    return p;
+  }
+
+  function cardImgHtml(e, locale) {
+    if (!e.cardImg) return "";
+    var href = atrativoHref(e, locale);
+    var inner =
+      '<div class="gcv-excursoes-card__img-wrap"><img class="gcv-excursoes-card__img" src="' +
+      escapeHtml(String(e.cardImg)) +
+      '" alt="' +
+      escapeHtml(String(e.destino)) +
+      '" loading="lazy" width="230" height="230"></div>';
+    if (!href) return inner;
+    return (
+      '<a class="gcv-excursoes-card__atrativo-link gcv-excursoes-card__atrativo-link--img" href="' +
+      escapeHtml(href) +
+      '">' +
+      inner +
+      "</a>"
+    );
+  }
+
+  function destSubHtml(e) {
+    var sub = e && e.destinoSub;
+    if (!sub) return "";
+    return (
+      '<span class="gcv-excursoes-card__dest-sub">' + escapeHtml(String(sub)) + "</span>"
+    );
+  }
+
+  function destTitleHtml(e, locale) {
+    var label = escapeHtml(String(e.destino));
+    var href = atrativoHref(e, locale);
+    var sub = destSubHtml(e);
+    var main = href
+      ? '<a class="gcv-excursoes-card__atrativo-link" href="' + escapeHtml(href) + '">' + label + "</a>"
+      : label;
+    return '<h3 class="gcv-excursoes-card__dest">' + main + sub + "</h3>";
   }
 
   /**
@@ -1338,12 +1493,106 @@
     );
   }
 
+  function guiaFlagsLimitedHtml(codes, locale, flagClass) {
+    var loc = locale === "en" || locale === "es" ? locale : "pt";
+    var max = 3;
+    var shown = codes.slice(0, max);
+    var html = shown
+      .map(function (c) {
+        var cc = IDIOMA_FLAG[c] || "";
+        if (!cc) return "";
+        var title = (IDIOMA_LABEL[c] && IDIOMA_LABEL[c][loc]) || c;
+        return (
+          '<span class="fi fi-' +
+          cc +
+          " " +
+          flagClass +
+          '" title="' +
+          escapeHtml(title) +
+          '" aria-hidden="true"></span>'
+        );
+      })
+      .join("");
+    if (codes.length > max) {
+      html += '<span class="gcv-excursoes-card__guide-flag-more" aria-hidden="true">...</span>';
+    }
+    return html;
+  }
+
+  function guiaLangsHtml(nome, locale) {
+    var codes = GUIA_IDIOMAS[nome];
+    if (!codes || !codes.length) return "";
+    var loc = locale === "en" || locale === "es" ? locale : "pt";
+    var labels = codes.map(function (c) {
+      return (IDIOMA_LABEL[c] && IDIOMA_LABEL[c][loc]) || c;
+    });
+    var aria = (IDIOMAS_ARIA[loc] || IDIOMAS_ARIA.pt) + ": " + labels.join(", ");
+    var flags = guiaFlagsLimitedHtml(codes, locale, "gcv-excursoes-card__guide-flag");
+    return (
+      '<span class="gcv-excursoes-card__guide-langs" role="img" aria-label="' +
+      escapeHtml(aria) +
+      '">' +
+      '<i class="ti ti-message-language gcv-excursoes-card__guide-langs-icon" aria-hidden="true"></i>' +
+      flags +
+      "</span>"
+    );
+  }
+
+  function guiaChipInnerHtml(nome, foto, locale, altInPhoto) {
+    var langs = guiaLangsHtml(nome, locale);
+    var info =
+      '<div class="gcv-excursoes-card__guide-info">' +
+      '<span class="gcv-excursoes-card__guide-label">Guia</span>' +
+      '<span class="gcv-excursoes-card__guide-name">' +
+      escapeHtml(nome) +
+      "</span>" +
+      langs +
+      "</div>";
+    if (foto) {
+      return (
+        '<img class="gcv-excursoes-card__guide-photo" src="' +
+        escapeHtml(foto) +
+        '" alt="' +
+        (altInPhoto ? escapeHtml(altInPhoto) : "") +
+        '" loading="lazy" width="230" height="90">' +
+        info
+      );
+    }
+    return (
+      '<div class="gcv-excursoes-card__guide-icon"><i class="ti ti-user" aria-hidden="true"></i></div>' + info
+    );
+  }
+
+  function guiaChipHtml(e, locale, s) {
+    var nome = e && e.guiaNome ? String(e.guiaNome) : null;
+    if (!nome) return "";
+    var foto = e.guiaFoto ? String(e.guiaFoto) : null;
+    var slug = GUIA_PROFILE_SLUG[nome];
+    if (slug) {
+      return (
+        '<button type="button" class="gcv-excursoes-card__guide gcv-excursoes-card__guide--btn" data-guia-profile="' +
+        escapeHtml(slug) +
+        '" aria-label="' +
+        escapeHtml(tpl(s.guiaAbout, { nome: nome })) +
+        '">' +
+        guiaChipInnerHtml(nome, foto, locale, null) +
+        "</button>"
+      );
+    }
+    return (
+      '<div class="gcv-excursoes-card__guide">' + guiaChipInnerHtml(nome, foto, locale, nome) + "</div>"
+    );
+  }
+
   /**
    * @param {Record<string, unknown>} e
    * @param {Record<string, string>} s
    */
-  function inclExclBlocksHtml(e, s) {
+  function inclExclBlocksHtml(e, s, locale) {
     var comTransporte = e.comTransporte === true;
+    var inclEntradas = e.inclEntradas === true;
+    var ingressoIncl = escapeHtml(formatIngressoWithValor(s.inclEntries, e.valorIngresso, locale));
+    var ingressoExcl = escapeHtml(formatIngressoWithValor(s.exclEntries, e.valorIngresso, locale));
     var inclItems =
       '<li><i class="ti ti-user text-ok" aria-hidden="true"></i> ' +
       escapeHtml(s.inclSpot) +
@@ -1351,6 +1600,12 @@
       '<li><i class="ti ti-flag text-ok" aria-hidden="true"></i> ' +
       escapeHtml(s.inclGuideShort) +
       "</li>";
+    if (inclEntradas) {
+      inclItems +=
+        '<li><i class="ti ti-ticket text-ok" aria-hidden="true"></i> ' +
+        ingressoIncl +
+        "</li>";
+    }
     if (comTransporte) {
       inclItems +=
         '<li><i class="ti ti-bus text-ok" aria-hidden="true"></i> ' +
@@ -1359,20 +1614,26 @@
     }
     var exclItems;
     if (comTransporte) {
-      exclItems =
-        '<li><i class="ti ti-ticket text-no" aria-hidden="true"></i> ' +
-        escapeHtml(s.exclEntries) +
-        "</li>" +
-        '<li><i class="ti ti-tools-kitchen-2 text-no" aria-hidden="true"></i> ' +
-        escapeHtml(s.exclLunch) +
-        "</li>";
+      exclItems = inclEntradas
+        ? '<li><i class="ti ti-tools-kitchen-2 text-no" aria-hidden="true"></i> ' +
+          escapeHtml(s.exclLunch) +
+          "</li>"
+        : '<li><i class="ti ti-ticket text-no" aria-hidden="true"></i> ' +
+          ingressoExcl +
+          "</li>" +
+          '<li><i class="ti ti-tools-kitchen-2 text-no" aria-hidden="true"></i> ' +
+          escapeHtml(s.exclLunch) +
+          "</li>";
     } else {
+      var transportLabel = e.badge4x4 ? escapeHtml(s.exclTransport) + " (4×4)" : escapeHtml(s.exclTransport);
       exclItems =
-        '<li><i class="ti ti-ticket text-no" aria-hidden="true"></i> ' +
-        escapeHtml(s.exclEntries) +
-        "</li>" +
+        (inclEntradas
+          ? ""
+          : '<li><i class="ti ti-ticket text-no" aria-hidden="true"></i> ' +
+            ingressoExcl +
+            "</li>") +
         '<li><i class="ti ti-bus text-no" aria-hidden="true"></i> ' +
-        escapeHtml(s.exclTransport) +
+        transportLabel +
         "</li>" +
         '<li><i class="ti ti-tools-kitchen-2 text-no" aria-hidden="true"></i> ' +
         escapeHtml(s.exclLunch) +
@@ -1465,6 +1726,9 @@
     var metaStack =
       '<div class="gcv-excursoes-card__meta-stack">' + statusLine + faltaLine + "</div>";
 
+    var cardImgBlock = cardImgHtml(e, locale);
+    var destBlock = destTitleHtml(e, locale);
+
     return (
       '<article class="gcv-excursoes-card ' +
       mod +
@@ -1476,9 +1740,8 @@
       '<div class="gcv-excursoes-card__head">' +
       dateStrip +
       metaStack +
-      '<h3 class="gcv-excursoes-card__dest">' +
-      escapeHtml(String(e.destino)) +
-      "</h3>" +
+      cardImgBlock +
+      destBlock +
       '<div class="gcv-excursoes-card__price-row">' +
       '<span class="gcv-excursoes-card__price">R$&nbsp;' +
       e.valor +
@@ -1488,7 +1751,8 @@
       "</span>" +
       "</div></div>" +
       '<div class="gcv-excursoes-card__body">' +
-      inclExclBlocksHtml(e, s) +
+      guiaChipHtml(e, locale, s) +
+      inclExclBlocksHtml(e, s, locale) +
       (comTransporte
         ? '<span class="gcv-excursoes-card__transport-badge"><i class="ti ti-bus" aria-hidden="true"></i> ' +
           escapeHtml(s.badgeTransport) +
@@ -1499,8 +1763,7 @@
       '" target="_blank" rel="noopener noreferrer">' +
       '<i class="ti ti-brand-whatsapp" aria-hidden="true"></i> ' +
       escapeHtml(s.cta) +
-      "</a>" +
-      "</div></article>"
+      "</a></div></article>"
     );
   }
 
@@ -1515,8 +1778,157 @@
     return el;
   }
 
+  function loadGuiaProfiles() {
+    var el = document.getElementById("gcv-guia-profiles");
+    if (!el) return GUIA_PROFILES_FALLBACK;
+    try {
+      var data = JSON.parse(el.textContent || "{}");
+      if (data && typeof data === "object") return data;
+    } catch (err) {
+      /* fallback */
+    }
+    return GUIA_PROFILES_FALLBACK;
+  }
+
+  function guiaModalFlagsHtml(idiomas, locale) {
+    if (!Array.isArray(idiomas) || !idiomas.length) return "";
+    return guiaFlagsLimitedHtml(idiomas, locale, "gcv-guia-modal__flag");
+  }
+
+  function ensureGuiaModal() {
+    var modal = document.getElementById("gcv-guia-modal");
+    if (modal) return modal;
+    modal = document.createElement("div");
+    modal.id = "gcv-guia-modal";
+    modal.className = "gcv-guia-modal";
+    modal.hidden = true;
+    modal.setAttribute("aria-hidden", "true");
+    modal.setAttribute("role", "dialog");
+    modal.setAttribute("aria-modal", "true");
+    modal.setAttribute("aria-labelledby", "gcv-guia-modal-title");
+    modal.innerHTML =
+      '<button type="button" class="gcv-guia-modal__backdrop" data-gcv-guia-close aria-label=""></button>' +
+      '<div class="gcv-guia-modal__panel">' +
+      '<button type="button" class="gcv-guia-modal__close" data-gcv-guia-close aria-label="">×</button>' +
+      '<div class="gcv-guia-modal__hero">' +
+      '<img class="gcv-guia-modal__photo" src="" alt="" width="160" height="160" decoding="async">' +
+      '<div class="gcv-guia-modal__head">' +
+      '<h2 id="gcv-guia-modal-title" class="gcv-guia-modal__name"></h2>' +
+      '<p class="gcv-guia-modal__fullname"></p>' +
+      '<div class="gcv-guia-modal__langs"></div>' +
+      "</div></div>" +
+      '<div class="gcv-guia-modal__bio"></div>' +
+      "</div>";
+    document.body.appendChild(modal);
+    return modal;
+  }
+
+  function closeGuiaModal(modal) {
+    if (!modal) return;
+    modal.hidden = true;
+    modal.setAttribute("aria-hidden", "true");
+    modal.classList.remove("is-open");
+    document.documentElement.classList.remove("gcv-guia-modal-open");
+    var trigger = modal._gcvGuiaTrigger;
+    if (trigger && typeof trigger.focus === "function") {
+      try {
+        trigger.focus();
+      } catch (err) {
+        /* */
+      }
+    }
+    modal._gcvGuiaTrigger = null;
+  }
+
+  function openGuiaModal(slug, trigger, locale, s, profiles) {
+    var profile = profiles[slug];
+    if (!profile) return;
+    var modal = ensureGuiaModal();
+    var loc = locale === "en" || locale === "es" ? locale : "pt";
+    var bio = (profile.bio && profile.bio[loc]) || (profile.bio && profile.bio.pt) || [];
+    var closeLabel = (s && s.guiaModalClose) || "Fechar";
+
+    modal.querySelectorAll("[data-gcv-guia-close]").forEach(function (btn) {
+      btn.setAttribute("aria-label", closeLabel);
+    });
+
+    var photo = modal.querySelector(".gcv-guia-modal__photo");
+    if (photo) {
+      photo.src = profile.foto || "";
+      photo.alt = profile.nome || "";
+    }
+    var title = modal.querySelector(".gcv-guia-modal__name");
+    if (title) title.textContent = profile.nome || "";
+    var full = modal.querySelector(".gcv-guia-modal__fullname");
+    if (full) full.textContent = profile.nomeCompleto || "";
+    var langs = modal.querySelector(".gcv-guia-modal__langs");
+    if (langs) {
+      langs.innerHTML =
+        '<i class="ti ti-message-language gcv-guia-modal__langs-icon" aria-hidden="true"></i>' +
+        guiaModalFlagsHtml(profile.idiomas, locale);
+    }
+    var bioEl = modal.querySelector(".gcv-guia-modal__bio");
+    if (bioEl) {
+      var backLabel = (s && s.guiaModalBack) || "Voltar";
+      bioEl.innerHTML =
+        bio
+          .map(function (p) {
+            return "<p>" + escapeHtml(String(p)) + "</p>";
+          })
+          .join("") +
+        '<div class="gcv-guia-modal__actions">' +
+        '<button type="button" class="gcv-guia-modal__back" data-gcv-guia-close>' +
+        '<i class="ti ti-arrow-left" aria-hidden="true"></i> ' +
+        escapeHtml(backLabel) +
+        "</button></div>";
+    }
+
+    modal._gcvGuiaTrigger = trigger || null;
+    modal.hidden = false;
+    modal.setAttribute("aria-hidden", "false");
+    modal.classList.add("is-open");
+    document.documentElement.classList.add("gcv-guia-modal-open");
+    var closeBtn = modal.querySelector(".gcv-guia-modal__close");
+    if (closeBtn && typeof closeBtn.focus === "function") closeBtn.focus();
+  }
+
+  function initGuiaProfiles() {
+    var profiles = loadGuiaProfiles();
+    var modal = ensureGuiaModal();
+    var section = document.getElementById("excursoes-junho");
+    var locale = section ? detectLocale(section) : detectLocale(document.documentElement);
+    var s = STRINGS[locale] || STRINGS.pt;
+
+    if (!modal._gcvGuiaBound) {
+      modal._gcvGuiaBound = true;
+      modal.addEventListener("click", function (e) {
+        if (e.target.closest("[data-gcv-guia-close]")) {
+          closeGuiaModal(modal);
+        }
+      });
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape" && modal.classList.contains("is-open")) {
+          closeGuiaModal(modal);
+        }
+      });
+      document.addEventListener("click", function (e) {
+        var btn = e.target.closest("[data-guia-profile]");
+        if (!btn) return;
+        var sec = btn.closest("#excursoes-junho");
+        var loc = sec ? detectLocale(sec) : locale;
+        var strings = STRINGS[loc] || STRINGS.pt;
+        var slug = btn.getAttribute("data-guia-profile");
+        if (!slug) return;
+        e.preventDefault();
+        e.stopPropagation();
+        openGuiaModal(slug, btn, loc, strings, profiles);
+      });
+    }
+  }
+
   function init() {
     try {
+      initGuiaProfiles();
       bootExcursaoCarousel();
     } catch (err) {
       if (typeof console !== "undefined" && console.error) console.error("[gcv-excursoes]", err);

@@ -1,4 +1,5 @@
 /* Carrossel de excursões — Guia Chapada Veadeiros */
+@import url("https://cdn.jsdelivr.net/gh/lipis/flag-icons@7.2.3/css/flag-icons.min.css");
 #excursoes-junho.gcv-excursoes[hidden] {
   display: none !important;
 }
@@ -729,6 +730,7 @@
   align-items: flex-start;
   justify-content: flex-start;
   box-sizing: border-box;
+  padding-bottom: 2px;
 }
 
 .gcv-excursoes-card__status {
@@ -919,10 +921,21 @@
 .gcv-excursoes-card__dest {
   margin: 0;
   font-size: 1.05rem;
-  font-weight: 800;
+  font-weight: 900;
   line-height: 1.25;
   color: #0f172a;
   min-height: calc(17px * 1.25 * 2);
+  text-align: center;
+  letter-spacing: -0.01em;
+}
+
+.gcv-excursoes-card__dest-sub {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.15;
+  color: #64748b;
+  margin-top: 0;
 }
 
 .gcv-excursoes-card__price-row {
@@ -1070,6 +1083,156 @@
   font-size: 1.1rem;
 }
 
+.gcv-excursoes-card__atrativo-link {
+  color: inherit;
+  text-decoration: none;
+  display: block;
+}
+
+.gcv-excursoes-card__atrativo-link:hover .gcv-excursoes-card__dest,
+.gcv-excursoes-card__atrativo-link:focus-visible .gcv-excursoes-card__dest {
+  color: #047857;
+}
+
+.gcv-excursoes-card__atrativo-link--img:hover .gcv-excursoes-card__img,
+.gcv-excursoes-card__atrativo-link--img:focus-visible .gcv-excursoes-card__img {
+  opacity: 0.9;
+}
+
+.gcv-excursoes-card__dest .gcv-excursoes-card__atrativo-link {
+  display: inline;
+}
+
+.gcv-excursoes-card__img-wrap {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: 10px;
+  flex-shrink: 0;
+  margin: 0.15rem 0 0.35rem;
+}
+
+.gcv-excursoes-card__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+
+.gcv-excursoes-card__badge-4x4 {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: #1e293b;
+  color: #f8fafc;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  align-self: flex-start;
+}
+
+.gcv-excursoes-card__badge-4x4 .ti {
+  font-size: 0.85rem;
+}
+
+.gcv-excursoes-card__guide {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  overflow: hidden;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  min-height: 64px;
+}
+
+.gcv-excursoes-card__guide-photo {
+  width: 70px;
+  height: 70px;
+  flex-shrink: 0;
+  object-fit: contain;
+  object-position: center top;
+  display: block;
+  background: #f1f5f9;
+}
+
+.gcv-excursoes-card__guide-icon {
+  width: 70px;
+  height: 70px;
+  flex-shrink: 0;
+  background: #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  color: #94a3b8;
+}
+
+.gcv-excursoes-card__guide-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.1rem;
+  padding: 0.5rem 0.75rem;
+  background: #f8fafc;
+  min-width: 0;
+}
+
+.gcv-excursoes-card__guide-label {
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #94a3b8;
+}
+
+.gcv-excursoes-card__guide-name {
+  font-weight: 700;
+  color: #1e293b;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gcv-excursoes-card__guide-langs {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.2rem;
+  margin-top: 0.1rem;
+  line-height: 1;
+  min-width: 0;
+}
+
+.gcv-excursoes-card__guide-langs-icon {
+  font-size: 0.9rem;
+  color: #64748b;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.gcv-excursoes-card__guide-flag {
+  font-size: 0.95rem;
+  line-height: 1;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.1);
+  flex-shrink: 0;
+}
+
+.gcv-excursoes-card__guide-flag-more {
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #64748b;
+  flex-shrink: 0;
+}
+
 .gcv-excursoes__dots {
   display: flex;
   justify-content: center;
@@ -1167,5 +1330,218 @@
 
   .gcv-exc-datepick__popover {
     width: min(100vw - 2rem, 290px);
+  }
+}
+
+/* Chip do guia clicável */
+.gcv-excursoes-card__guide--btn {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.gcv-excursoes-card__guide--btn:hover {
+  border-color: #86efac;
+  background: #f0fdf4;
+  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.15);
+}
+
+.gcv-excursoes-card__guide--btn:focus-visible {
+  outline: 2px solid #22c55e;
+  outline-offset: 2px;
+}
+
+/* Modal perfil do guia */
+html.gcv-guia-modal-open {
+  overflow: hidden;
+}
+
+.gcv-guia-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  display: none;
+}
+
+.gcv-guia-modal.is-open {
+  display: block;
+}
+
+.gcv-guia-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: rgba(6, 10, 18, 0.94);
+  cursor: pointer;
+}
+
+.gcv-guia-modal__panel {
+  position: relative;
+  z-index: 1;
+  width: min(92vw, 520px);
+  max-height: min(88vh, 760px);
+  margin: max(48px, env(safe-area-inset-top)) auto max(24px, env(safe-area-inset-bottom));
+  padding: 1.25rem 1.25rem 1.5rem;
+  overflow: auto;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+}
+
+.gcv-guia-modal__close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: #f1f5f9;
+  color: #334155;
+  cursor: pointer;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.gcv-guia-modal__close:hover {
+  background: #e2e8f0;
+}
+
+.gcv-guia-modal__hero {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  padding-right: 2rem;
+}
+
+.gcv-guia-modal__photo {
+  width: 96px;
+  height: 96px;
+  flex-shrink: 0;
+  object-fit: contain;
+  object-position: center top;
+  border-radius: 12px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+}
+
+.gcv-guia-modal__head {
+  min-width: 0;
+  flex: 1;
+}
+
+.gcv-guia-modal__name {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.2;
+}
+
+.gcv-guia-modal__fullname {
+  margin: 0.2rem 0 0;
+  font-size: 0.82rem;
+  color: #64748b;
+  line-height: 1.35;
+}
+
+.gcv-guia-modal__langs {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 0.25rem;
+  margin-top: 0.45rem;
+  min-width: 0;
+}
+
+.gcv-guia-modal__langs-icon {
+  font-size: 0.95rem;
+  color: #64748b;
+  line-height: 1;
+}
+
+.gcv-guia-modal__flag {
+  font-size: 1rem;
+  line-height: 1;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.1);
+  flex-shrink: 0;
+}
+
+.gcv-guia-modal__bio {
+  color: #334155;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.gcv-guia-modal__bio p {
+  margin: 0 0 0.85rem;
+}
+
+.gcv-guia-modal__bio p:last-child {
+  margin-bottom: 0;
+}
+
+.gcv-guia-modal__actions {
+  margin-top: 1rem;
+}
+
+.gcv-guia-modal__back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  width: 100%;
+  margin: 0;
+  padding: 0.65rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #334155;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.gcv-guia-modal__back:hover {
+  background: #f0fdf4;
+  border-color: #86efac;
+  color: #166534;
+}
+
+.gcv-guia-modal__back:focus-visible {
+  outline: 2px solid #22c55e;
+  outline-offset: 2px;
+}
+
+@media (max-width: 480px) {
+  .gcv-guia-modal__panel {
+    width: min(96vw, 520px);
+    padding: 1rem 1rem 1.25rem;
+  }
+
+  .gcv-guia-modal__hero {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding-right: 0;
+  }
+
+  .gcv-guia-modal__langs {
+    justify-content: center;
   }
 }

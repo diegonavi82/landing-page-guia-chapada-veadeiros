@@ -52,20 +52,28 @@ function shareBar(h, pageUrl, shareTitle, placement) {
     </aside>`;
 }
 
-function authorCard(h, innerHtml) {
-  const { ap, esc, picture } = h;
-  const alt =
-    "Diego Navi, condutor de ecoturismo credenciado Cadastur na Chapada dos Veadeiros, com lenço verde, óculos espelhados azuis e mochila de trilha";
+const AUTHOR_PHOTO_IMG = "imagens/guia-diego-navi.png";
+const AUTHOR_PHOTO_ALT_PT =
+  "Diego Navi, condutor de ecoturismo credenciado Cadastur na Chapada dos Veadeiros";
+
+function authorCard(h, bioHtml, signoffHtml) {
+  const { ap, picture } = h;
   return `<div class="gcv-post-autor">
-      <div class="gcv-post-autor-avatar">${picture(ap, "uploads/revista/contratar-guia-artigo/diego-navi-marques-carvalho-guia-chapada-veadeiros.jpg", alt, 276, 368)}</div>
-      <div class="gcv-post-autor-info">${innerHtml}</div>
+      <div class="gcv-post-autor-top">
+      <div class="gcv-post-autor-avatar">${picture(ap, AUTHOR_PHOTO_IMG, AUTHOR_PHOTO_ALT_PT, 276, 368)}</div>
+      <div class="gcv-post-autor-bio">${bioHtml}</div>
+      </div>
+      <div class="gcv-post-autor-signoff">${signoffHtml}</div>
     </div>`;
 }
 
+const AUTHOR_SIGNOFF = `<p class="gcv-post-autor-name">Diego Navi Marques Carvalho</p>
+      <p class="gcv-post-autor-role">Guia local e Fundador da Guia Chapada Veadeiros</p>`;
+
 const AUTHOR_BIO = `<p>
-        Brasileiro, pai, nascido no Rio de Janeiro, descendência italiana, analista de sistemas pela
-        PUC-RIO, <strong>Diego Navi</strong> trocou o escritório pelo cerrado e fundou a Guia Chapada Veadeiros em 2017. Fluente
-        em inglês e espanhol, conduziu centenas de grupos com segurança pela Chapada dos Veadeiros em todas as
+        Brasileiro, nascido no Rio de Janeiro em 1982, naturalizado italiano, pai, analista de sistemas formado pela
+        PUC-Rio, <strong>Diego Navi</strong> trocou o escritório pelo cerrado e fundou a <strong>Guia Chapada Veadeiros</strong> em 2017. Fluente
+        em inglês e espanhol, conduziu dezenas de grupos com segurança pela Chapada dos Veadeiros em todas as
         épocas do ano e conhece cada cachoeira, cada trilha e cada cantinho deste portal da Terra desde 2009.
       </p>`;
 
@@ -124,7 +132,7 @@ function buildContratar(h) {
       name: "Diego Navi",
       url: `${h.SITE_ORIGIN}/`,
       jobTitle: "Analista de sistemas e condutor de ecoturismo credenciado (Cadastur)",
-      image: absImg(h.SITE_ORIGIN, "uploads/revista/contratar-guia-artigo/diego-navi-marques-carvalho-guia-chapada-veadeiros.jpg"),
+      image: absImg(h.SITE_ORIGIN, AUTHOR_PHOTO_IMG),
     },
     publisher: {
       "@type": "Organization",
@@ -437,7 +445,7 @@ function buildContratar(h) {
               <a href="${esc(WHATSAPP_CONTRATAR)}" class="gcv-post-cta-btn" target="_blank" rel="noopener noreferrer">💬 Falar no WhatsApp</a>
             </div>
 
-            ${authorCard(h, AUTHOR_BIO)}
+            ${authorCard(h, AUTHOR_BIO, AUTHOR_SIGNOFF)}
 
             ${shareBar(h, canon, shareTitle, "footer")}
           </div>
@@ -522,7 +530,7 @@ function buildEpoca(h) {
       "@type": "Person",
       name: "Diego Navi",
       jobTitle: "Analista de sistemas e condutor de ecoturismo credenciado (Cadastur)",
-      image: absImg(h.SITE_ORIGIN, "uploads/revista/contratar-guia-artigo/diego-navi-marques-carvalho-guia-chapada-veadeiros.jpg"),
+      image: absImg(h.SITE_ORIGIN, AUTHOR_PHOTO_IMG),
     },
     publisher: {
       "@type": "Organization",
@@ -851,7 +859,7 @@ function buildEpoca(h) {
               <a href="${esc(WA_EPOCA)}" class="gcv-post-cta-btn" target="_blank" rel="noopener noreferrer">💬 Planejar minha visita no WhatsApp</a>
             </div>
 
-            ${authorCard(h, AUTHOR_BIO)}
+            ${authorCard(h, AUTHOR_BIO, AUTHOR_SIGNOFF)}
 
             ${shareBar(h, canon, shareTitle, "footer")}
           </div>
