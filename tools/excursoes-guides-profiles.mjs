@@ -38,22 +38,22 @@ export const GUIA_PROFILES = {
     nome: "Martina Motlová",
     nomeCompleto: "Martina Motlová",
     foto: "/assets/img/imagens/guia-martina-motlova.webp",
-    idiomas: ["cs", "ru", "en", "pt"],
+    idiomas: ["cs", "en", "pt"],
     bio: {
       pt: [
         "Martina Motlová é natural da República Tcheca e vive no Brasil há mais de 15 anos, período em que construiu uma forte conexão com a cultura, a natureza e o povo brasileiro. Guia regional de turismo da América do Sul, é cadastrada no Cadastur e possui ampla experiência no atendimento a viajantes nacionais e internacionais.",
         "Mãe de dois filhos, Martina une sensibilidade, acolhimento e profissionalismo em cada experiência que proporciona. Além de guia de turismo, é professora de yoga e massagista profissional, conhecimentos que complementam sua atuação e oferecem aos visitantes uma vivência mais consciente, equilibrada e conectada com a natureza.",
-        "Fluente em tcheco, russo, inglês e português, recebe visitantes de diferentes nacionalidades com atenção aos detalhes, segurança e dedicação.",
+        "Fluente em tcheco, inglês e português, recebe visitantes de diferentes nacionalidades com atenção aos detalhes, segurança e dedicação.",
       ],
       en: [
         "Martina Motlová is originally from the Czech Republic and has lived in Brazil for over 15 years, a period in which she built a strong connection with Brazilian culture, nature and people. A regional tourism guide in South America, she is registered with Cadastur and has extensive experience serving domestic and international travelers.",
         "A mother of two, Martina brings sensitivity, warmth and professionalism to every experience she provides. In addition to being a tour guide, she is a yoga teacher and professional massage therapist — skills that complement her work and offer visitors a more mindful, balanced experience connected with nature.",
-        "Fluent in Czech, Russian, English and Portuguese, she welcomes visitors from different countries with attention to detail, safety and dedication.",
+        "Fluent in Czech, English and Portuguese, she welcomes visitors from different countries with attention to detail, safety and dedication.",
       ],
       es: [
         "Martina Motlová es natural de la República Checa y vive en Brasil desde hace más de 15 años, período en el que construyó una fuerte conexión con la cultura, la naturaleza y el pueblo brasileño. Guía regional de turismo de América del Sur, está registrada en Cadastur y tiene amplia experiencia atendiendo a viajeros nacionales e internacionales.",
         "Madre de dos hijos, Martina une sensibilidad, acogida y profesionalismo en cada experiencia que ofrece. Además de guía de turismo, es profesora de yoga y masajista profesional, conocimientos que complementan su trabajo y brindan a los visitantes una vivencia más consciente, equilibrada y conectada con la naturaleza.",
-        "Fluida en checo, ruso, inglés y portugués, recibe visitantes de distintas nacionalidades con atención al detalle, seguridad y dedicación.",
+        "Fluida en checo, inglés y portugués, recibe visitantes de distintas nacionalidades con atención al detalle, seguridad y dedicación.",
       ],
     },
   },

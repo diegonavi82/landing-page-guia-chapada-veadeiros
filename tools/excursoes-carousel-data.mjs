@@ -3,7 +3,7 @@ import { filterFutureExcursoes } from "./excursoes-future.mjs";
 /** Idiomas falados por guia (códigos ISO simplificados). */
 export const GUIA_IDIOMAS = {
   "Diego Navi": ["pt", "en", "es"],
-  "Martina Motlova": ["cs", "ru", "en", "pt"],
+  "Martina Motlova": ["cs", "en", "pt"],
 };
 
 export const IDIOMA_FLAG = {
@@ -30,6 +30,50 @@ export const IDIOMAS_ARIA = {
 
 const INGRESSO_GRATIS = { pt: "grátis", en: "free", es: "gratis" };
 
+/** Destinos do card (um ou vários passeios no mesmo dia). */
+export function getDestinos(e) {
+  if (!e) return [];
+  if (Array.isArray(e.destinos) && e.destinos.length) return e.destinos;
+  if (e.destino) {
+    return [
+      {
+        destino: e.destino,
+        cardImg: e.cardImg,
+        atrativoPath: e.atrativoPath,
+        valorIngresso: e.valorIngresso,
+        destinoSub: e.destinoSub,
+      },
+    ];
+  }
+  return [];
+}
+
+/** 1–4 — define o layout da faixa de mídia (linhas iguais, foto + título). */
+export function destinosSpotsCount(e) {
+  const n = getDestinos(e).length;
+  return Math.min(4, Math.max(1, n));
+}
+
+export function destinosSpotsClass(e) {
+  return `gcv-excursoes-card--spots-${destinosSpotsCount(e)}`;
+}
+
+export function destinosForCard(e) {
+  return getDestinos(e).slice(0, 4);
+}
+
+export function isDestinosDuo(e) {
+  return destinosSpotsCount(e) > 1;
+}
+
+function ingressoValorPart(valor, locale = "pt") {
+  const loc = locale === "en" || locale === "es" ? locale : "pt";
+  if (valor == null || valor === "") return INGRESSO_GRATIS[loc];
+  const n = Number(valor);
+  if (!Number.isFinite(n) || n <= 0) return INGRESSO_GRATIS[loc];
+  return `R$ ${n}`;
+}
+
 /** Texto do ingresso com valor ao lado, ex.: "Ingresso (R$ 70)" ou "Ingresso (grátis)". */
 export function formatIngressoWithValor(label, valor, locale = "pt") {
   const loc = locale === "en" || locale === "es" ? locale : "pt";
@@ -41,12 +85,49 @@ export function formatIngressoWithValor(label, valor, locale = "pt") {
   return `${label} (R$ ${n})`;
 }
 
+/** Vários passeios: "Ingressos (R$ 50 + R$ 50)" na ordem dos destinos. */
+export function formatIngressosMultiplos(destinos, labelPlural, locale = "pt") {
+  const parts = (destinos || []).map((d) => ingressoValorPart(d.valorIngresso, locale));
+  if (!parts.length) return String(labelPlural);
+  return `${labelPlural} (${parts.join(" + ")})`;
+}
+
 /**
  * Dados únicos das saídas no carrossel da home ("Próximas saídas").
  * Após mudar algo aqui: `npm run build` (o HTML recebe cópia em JSON para o JS preferir esta fonte).
  */
 export const EXCURSOES_CAROUSEL_BY_LOCALE = {
   pt: [
+    {
+      dayNum: "18",
+      monthName: "julho",
+      weekday: "Sábado",
+      dateISO: "2026-07-18",
+      embarque: "Alto Paraíso",
+      destino: "Mirante da Janela + Vale da Lua",
+      hora: "7:30",
+      valor: 140,
+      confirmada: true,
+      pessoasInscritas: 2,
+      grupoMaximo: 10,
+      vagasRestantes: 8,
+      guiaNome: "Diego Navi",
+      guiaFoto: "/assets/img/imagens/guia-diego-navi.webp",
+      destinos: [
+        {
+          destino: "Mirante da Janela",
+          cardImg: "/assets/img/imagens/mirante-janela-guia-chapada-veadeiros-sao-jorge-parque-nacional-3.jpg",
+          atrativoPath: "atrativos/mirante-janela-cachoeira-abismo-guia-chapada-veadeiros-sao-jorge.html",
+          valorIngresso: 50,
+        },
+        {
+          destino: "Vale da Lua",
+          cardImg: "/assets/img/imagens/vale-lua-guia-chapada-veadeiros-sao-jorge-1.jpg",
+          atrativoPath: "atrativos/vale-lua-guia-chapada-veadeiros-sao-jorge.html",
+          valorIngresso: 50,
+        },
+      ],
+    },
     {
       dayNum: "19",
       monthName: "julho",
@@ -98,7 +179,7 @@ export const EXCURSOES_CAROUSEL_BY_LOCALE = {
       pessoasInscritas: 2,
       grupoMaximo: 8,
       vagasRestantes: 6,
-      cardImg: "/assets/img/imagens/cachoeira-macaco-chapada-veadeiros-macacao-3.webp",
+      cardImg: "/assets/img/imagens/cachoeira-macaco-chapada-veadeiros-macacao-4.jpg",
       atrativoPath: "atrativos/cachoeira-macacao-guia-chapada-veadeiros-sao-joao-alianca.html",
       guiaNome: "Diego Navi",
       guiaFoto: "/assets/img/imagens/guia-diego-navi.webp",
@@ -119,7 +200,7 @@ export const EXCURSOES_CAROUSEL_BY_LOCALE = {
       pessoasInscritas: 2,
       grupoMaximo: 10,
       vagasRestantes: 8,
-      cardImg: "/assets/img/imagens/mirante-janela-guia-chapada-veadeiros-sao-jorge-parque-nacional-3.webp",
+      cardImg: "/assets/img/imagens/mirante-janela-guia-chapada-veadeiros-sao-jorge-parque-nacional-3.jpg",
       atrativoPath: "atrativos/mirante-janela-cachoeira-abismo-guia-chapada-veadeiros-sao-jorge.html",
       guiaNome: "Diego Navi",
       guiaFoto: "/assets/img/imagens/guia-diego-navi.webp",
@@ -127,6 +208,22 @@ export const EXCURSOES_CAROUSEL_BY_LOCALE = {
     },
   ],
   en: [
+    {
+      dayNum: "18",
+      monthName: "July",
+      weekday: "Saturday",
+      dateISO: "2026-07-18",
+      embarque: "Alto Paraíso",
+      destino: "Mirante da Janela + Vale da Lua",
+      hora: "7:30",
+      valor: 140,
+      confirmada: true,
+      pessoasInscritas: 2,
+      grupoMaximo: 10,
+      vagasRestantes: 8,
+      guiaNome: "Diego Navi",
+      guiaFoto: "/assets/img/imagens/guia-diego-navi.webp",
+    },
     {
       dayNum: "19",
       monthName: "July",
@@ -175,7 +272,7 @@ export const EXCURSOES_CAROUSEL_BY_LOCALE = {
       pessoasInscritas: 2,
       grupoMaximo: 8,
       vagasRestantes: 6,
-      cardImg: "/assets/img/imagens/cachoeira-macaco-chapada-veadeiros-macacao-3.webp",
+      cardImg: "/assets/img/imagens/cachoeira-macaco-chapada-veadeiros-macacao-4.jpg",
       atrativoPath: "atrativos/cachoeira-macacao-guia-chapada-veadeiros-sao-joao-alianca.html",
       guiaNome: "Diego Navi",
       guiaFoto: "/assets/img/imagens/guia-diego-navi.webp",
@@ -194,13 +291,29 @@ export const EXCURSOES_CAROUSEL_BY_LOCALE = {
       pessoasInscritas: 2,
       grupoMaximo: 10,
       vagasRestantes: 8,
-      cardImg: "/assets/img/imagens/mirante-janela-guia-chapada-veadeiros-sao-jorge-parque-nacional-3.webp",
+      cardImg: "/assets/img/imagens/mirante-janela-guia-chapada-veadeiros-sao-jorge-parque-nacional-3.jpg",
       atrativoPath: "atrativos/mirante-janela-cachoeira-abismo-guia-chapada-veadeiros-sao-jorge.html",
       guiaNome: "Diego Navi",
       guiaFoto: "/assets/img/imagens/guia-diego-navi.webp",
     },
   ],
   es: [
+    {
+      dayNum: "18",
+      monthName: "julio",
+      weekday: "Sábado",
+      dateISO: "2026-07-18",
+      embarque: "Alto Paraíso",
+      destino: "Mirante da Janela + Vale da Lua",
+      hora: "7:30",
+      valor: 140,
+      confirmada: true,
+      pessoasInscritas: 2,
+      grupoMaximo: 10,
+      vagasRestantes: 8,
+      guiaNome: "Diego Navi",
+      guiaFoto: "/assets/img/imagens/guia-diego-navi.webp",
+    },
     {
       dayNum: "19",
       monthName: "julio",
@@ -249,7 +362,7 @@ export const EXCURSOES_CAROUSEL_BY_LOCALE = {
       pessoasInscritas: 2,
       grupoMaximo: 8,
       vagasRestantes: 6,
-      cardImg: "/assets/img/imagens/cachoeira-macaco-chapada-veadeiros-macacao-3.webp",
+      cardImg: "/assets/img/imagens/cachoeira-macaco-chapada-veadeiros-macacao-4.jpg",
       atrativoPath: "atrativos/cachoeira-macacao-guia-chapada-veadeiros-sao-joao-alianca.html",
       guiaNome: "Diego Navi",
       guiaFoto: "/assets/img/imagens/guia-diego-navi.webp",
@@ -268,7 +381,7 @@ export const EXCURSOES_CAROUSEL_BY_LOCALE = {
       pessoasInscritas: 2,
       grupoMaximo: 10,
       vagasRestantes: 8,
-      cardImg: "/assets/img/imagens/mirante-janela-guia-chapada-veadeiros-sao-jorge-parque-nacional-3.webp",
+      cardImg: "/assets/img/imagens/mirante-janela-guia-chapada-veadeiros-sao-jorge-parque-nacional-3.jpg",
       atrativoPath: "atrativos/mirante-janela-cachoeira-abismo-guia-chapada-veadeiros-sao-jorge.html",
       guiaNome: "Diego Navi",
       guiaFoto: "/assets/img/imagens/guia-diego-navi.webp",
@@ -288,6 +401,7 @@ export function withPortugueseDestinos(rows, ptRows = EXCURSOES_CAROUSEL_BY_LOCA
     if (pt.destinoSub) copy.destinoSub = pt.destinoSub;
     if (pt.inclEntradas) copy.inclEntradas = pt.inclEntradas;
     if (pt.valorIngresso != null) copy.valorIngresso = pt.valorIngresso;
+    if (Array.isArray(pt.destinos) && pt.destinos.length) copy.destinos = pt.destinos;
     return copy;
   });
 }

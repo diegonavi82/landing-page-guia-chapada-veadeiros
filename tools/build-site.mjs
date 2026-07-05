@@ -1529,7 +1529,6 @@ function homeExcursionsSection(locale) {
           <i class="ti ti-chevron-right" aria-hidden="true"></i>
         </button>
       </div>
-      <div class="gcv-excursoes__dots" role="tablist" aria-label="${esc(L.dots)}"></div>
     </section>
 
 `;

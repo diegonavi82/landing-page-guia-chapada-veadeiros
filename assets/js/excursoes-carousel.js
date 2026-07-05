@@ -39,22 +39,22 @@
       nome: "Martina Motlová",
       nomeCompleto: "Martina Motlová",
       foto: "/assets/img/imagens/guia-martina-motlova.webp",
-      idiomas: ["cs", "ru", "en", "pt"],
+      idiomas: ["cs", "en", "pt"],
       bio: {
         pt: [
           "Martina Motlová é natural da República Tcheca e vive no Brasil há mais de 15 anos, período em que construiu uma forte conexão com a cultura, a natureza e o povo brasileiro. Guia regional de turismo da América do Sul, é cadastrada no Cadastur e possui ampla experiência no atendimento a viajantes nacionais e internacionais.",
           "Mãe de dois filhos, Martina une sensibilidade, acolhimento e profissionalismo em cada experiência que proporciona. Além de guia de turismo, é professora de yoga e massagista profissional, conhecimentos que complementam sua atuação e oferecem aos visitantes uma vivência mais consciente, equilibrada e conectada com a natureza.",
-          "Fluente em tcheco, russo, inglês e português, recebe visitantes de diferentes nacionalidades com atenção aos detalhes, segurança e dedicação.",
+          "Fluente em tcheco, inglês e português, recebe visitantes de diferentes nacionalidades com atenção aos detalhes, segurança e dedicação.",
         ],
         en: [
           "Martina Motlová is originally from the Czech Republic and has lived in Brazil for over 15 years, a period in which she built a strong connection with Brazilian culture, nature and people. A regional tourism guide in South America, she is registered with Cadastur and has extensive experience serving domestic and international travelers.",
           "A mother of two, Martina brings sensitivity, warmth and professionalism to every experience she provides. In addition to being a tour guide, she is a yoga teacher and professional massage therapist — skills that complement her work and offer visitors a more mindful, balanced experience connected with nature.",
-          "Fluent in Czech, Russian, English and Portuguese, she welcomes visitors from different countries with attention to detail, safety and dedication.",
+          "Fluent in Czech, English and Portuguese, she welcomes visitors from different countries with attention to detail, safety and dedication.",
         ],
         es: [
           "Martina Motlová es natural de la República Checa y vive en Brasil desde hace más de 15 años, período en el que construyó una fuerte conexión con la cultura, la naturaleza y el pueblo brasileño. Guía regional de turismo de América del Sur, está registrada en Cadastur y tiene amplia experiencia atendiendo a viajeros nacionales e internacionales.",
           "Madre de dos hijos, Martina une sensibilidad, acogida y profesionalismo en cada experiencia que ofrece. Además de guía de turismo, es profesora de yoga y masajista profesional, conocimientos que complementan su trabajo y brindan a los visitantes una vivencia más consciente, equilibrada y conectada con la naturaleza.",
-          "Fluida en checo, ruso, inglés y portugués, recibe visitantes de distintas nacionalidades con atención al detalle, seguridad y dedicación.",
+          "Fluida en checo, inglés y portugués, recibe visitantes de distintas nacionalidades con atención al detalle, seguridad y dedicación.",
         ],
       },
     },
@@ -64,7 +64,7 @@
 
   var GUIA_IDIOMAS = {
     "Diego Navi": ["pt", "en", "es"],
-    "Martina Motlova": ["cs", "ru", "en", "pt"],
+    "Martina Motlova": ["cs", "en", "pt"],
   };
 
   var IDIOMA_FLAG = {
@@ -295,6 +295,7 @@
       badgeTransport: "Com transporte",
       exclLabel: "Não incluso",
       exclEntries: "Ingresso",
+      exclEntriesMany: "Ingressos",
       exclEntry: "Entrada",
       exclTransport: "Transporte",
       exclLunch: "Almoço",
@@ -314,7 +315,7 @@
       filterEmbarque: "Embarque",
       filterEmbarqueAll: "Todos",
       filterPrice: "Valor por pessoa",
-      filterTransport: "Translado",
+      filterTransport: "Precisa de transporte?",
       filterTransportAll: "Todos",
       filterTransportWith: "Com translado",
       filterTransportWithout: "Sem translado",
@@ -368,6 +369,7 @@
       badgeTransport: "With transport",
       exclLabel: "Not included",
       exclEntries: "Admission",
+      exclEntriesMany: "Admissions",
       exclEntry: "Admission",
       exclTransport: "Transport",
       exclLunch: "Lunch",
@@ -387,7 +389,7 @@
       filterEmbarque: "Meeting point",
       filterEmbarqueAll: "All",
       filterPrice: "Price per person",
-      filterTransport: "Transport",
+      filterTransport: "Need transport?",
       filterTransportAll: "All",
       filterTransportWith: "With transport",
       filterTransportWithout: "Without transport",
@@ -441,6 +443,7 @@
       badgeTransport: "Con transporte",
       exclLabel: "No incluye",
       exclEntries: "Entrada",
+      exclEntriesMany: "Entradas",
       exclEntry: "Entrada",
       exclTransport: "Transporte",
       exclLunch: "Almuerzo",
@@ -460,7 +463,7 @@
       filterEmbarque: "Embarque",
       filterEmbarqueAll: "Todos",
       filterPrice: "Precio por persona",
-      filterTransport: "Traslado",
+      filterTransport: "¿Necesita transporte?",
       filterTransportAll: "Todos",
       filterTransportWith: "Con traslado",
       filterTransportWithout: "Sin traslado",
@@ -499,11 +502,20 @@
       if (pt.destinoSub) copy.destinoSub = pt.destinoSub;
       if (pt.inclEntradas) copy.inclEntradas = pt.inclEntradas;
       if (pt.valorIngresso != null) copy.valorIngresso = pt.valorIngresso;
+      if (Array.isArray(pt.destinos) && pt.destinos.length) copy.destinos = pt.destinos;
       return copy;
     });
   }
 
   var INGRESSO_GRATIS = { pt: "grátis", en: "free", es: "gratis" };
+
+  function ingressoValorPart(valor, locale) {
+    var loc = locale === "en" || locale === "es" ? locale : "pt";
+    if (valor == null || valor === "") return INGRESSO_GRATIS[loc];
+    var n = Number(valor);
+    if (!Number.isFinite(n) || n <= 0) return INGRESSO_GRATIS[loc];
+    return "R$ " + n;
+  }
 
   function formatIngressoWithValor(label, valor, locale) {
     var loc = locale === "en" || locale === "es" ? locale : "pt";
@@ -515,13 +527,117 @@
     return label + " (R$ " + n + ")";
   }
 
-  function atrativoHref(e, locale) {
-    var path = e && e.atrativoPath;
+  function formatIngressosMultiplos(destinos, labelPlural, locale) {
+    var parts = (destinos || []).map(function (d) {
+      return ingressoValorPart(d.valorIngresso, locale);
+    });
+    if (!parts.length) return String(labelPlural);
+    return labelPlural + " (" + parts.join(" + ") + ")";
+  }
+
+  function getDestinos(e) {
+    if (!e) return [];
+    if (Array.isArray(e.destinos) && e.destinos.length) return e.destinos;
+    if (e.destino) {
+      return [
+        {
+          destino: e.destino,
+          cardImg: e.cardImg,
+          atrativoPath: e.atrativoPath,
+          valorIngresso: e.valorIngresso,
+          destinoSub: e.destinoSub,
+        },
+      ];
+    }
+    return [];
+  }
+
+  function destinosSpotsCount(e) {
+    var n = getDestinos(e).length;
+    return Math.min(4, Math.max(1, n));
+  }
+
+  function destinosForCard(e) {
+    return getDestinos(e).slice(0, 4);
+  }
+
+  function destinosSpotsClass(e) {
+    return "gcv-excursoes-card--spots-" + destinosSpotsCount(e);
+  }
+
+  function isDestinosDuo(e) {
+    return destinosSpotsCount(e) > 1;
+  }
+
+  function atrativoHrefFrom(path, locale) {
     if (!path || String(path).trim() === "") return "";
     var p = String(path).trim();
     if (locale === "en") return "en/" + p;
     if (locale === "es") return "es/" + p;
     return p;
+  }
+
+  function atrativoHref(e, locale) {
+    return atrativoHrefFrom(e && e.atrativoPath, locale);
+  }
+
+  function cardSpotRowHtml(d, locale) {
+    var href = atrativoHrefFrom(d.atrativoPath, locale);
+    var imgInner =
+      '<div class="gcv-excursoes-card__img-wrap gcv-excursoes-card__spot-img-wrap">' +
+      '<img class="gcv-excursoes-card__img" src="' +
+      escapeHtml(String(d.cardImg)) +
+      '" alt="' +
+      escapeHtml(String(d.destino)) +
+      '" loading="lazy" decoding="async"></div>';
+    var photoInner = href
+      ? '<a class="gcv-excursoes-card__atrativo-link gcv-excursoes-card__atrativo-link--img" href="' +
+        escapeHtml(href) +
+        '">' +
+        imgInner +
+        "</a>"
+      : '<div class="gcv-excursoes-card__atrativo-link--img">' + imgInner + "</div>";
+    var label = escapeHtml(String(d.destino));
+    var titleMain = href
+      ? '<a class="gcv-excursoes-card__atrativo-link" href="' + escapeHtml(href) + '">' + label + "</a>"
+      : label;
+    var sub = d.destinoSub
+      ? '<span class="gcv-excursoes-card__dest-sub">' + escapeHtml(String(d.destinoSub)) + "</span>"
+      : "";
+    var destMod = sub ? " gcv-excursoes-card__spot-dest--has-sub" : "";
+    var title =
+      '<h3 class="gcv-excursoes-card__dest gcv-excursoes-card__spot-dest' +
+      destMod +
+      '">' +
+      titleMain +
+      sub +
+      "</h3>";
+    return (
+      '<div class="gcv-excursoes-card__spot">' +
+      '<div class="gcv-excursoes-card__spot-photo">' +
+      photoInner +
+      "</div>" +
+      title +
+      "</div>"
+    );
+  }
+
+  function cardSpotsBlockHtml(e, locale) {
+    var dests = destinosForCard(e);
+    var n = destinosSpotsCount(e);
+    var inner =
+      '<div class="gcv-excursoes-card__spots gcv-excursoes-card__spots--count-' +
+      n +
+      '" data-spots="' +
+      n +
+      '">' +
+      dests
+        .map(function (d) {
+          return cardSpotRowHtml(d, locale);
+        })
+        .join("") +
+      "</div>";
+    return '<div class="gcv-excursoes-card__media">' + inner + "</div>";
   }
 
   function cardImgHtml(e, locale) {
@@ -558,7 +674,8 @@
     var main = href
       ? '<a class="gcv-excursoes-card__atrativo-link" href="' + escapeHtml(href) + '">' + label + "</a>"
       : label;
-    return '<h3 class="gcv-excursoes-card__dest">' + main + sub + "</h3>";
+    var destMod = sub ? " gcv-excursoes-card__dest--has-sub" : "";
+    return '<h3 class="gcv-excursoes-card__dest' + destMod + '">' + main + sub + "</h3>";
   }
 
   /**
@@ -761,8 +878,13 @@
     if (f.embarque && excursaoEmbarque(e, s) !== f.embarque) return false;
     var price = excursaoValor(e);
     if (price < f.priceMin || price > f.priceMax) return false;
-    if (f.transport === "com" && e.comTransporte !== true) return false;
-    if (f.transport === "sem" && e.comTransporte === true) return false;
+    var transportCom = !!f.transportCom;
+    var transportSem = !!f.transportSem;
+    if (!transportCom && !transportSem) return false;
+    if (transportCom && transportSem) {
+      /* ambos marcados: mostra todos */
+    } else if (transportCom && e.comTransporte !== true) return false;
+    else if (transportSem && e.comTransporte === true) return false;
     if (f.status === "confirmada" && !e.confirmada) return false;
     if (f.status === "formando" && e.confirmada) return false;
     var vagas = vagasDisponiveis(e);
@@ -1135,9 +1257,6 @@
    */
   function mountExcursaoFilters(host, s, list, onChange, locale) {
     var bounds = scanExcursaoBounds(list, s);
-    var hasTransport = list.some(function (e) {
-      return e.comTransporte === true;
-    });
     var excursionDates = new Set(
       list
         .map(function (e) {
@@ -1190,20 +1309,24 @@
       "</option></select>";
 
     var transportField = document.createElement("div");
-    transportField.className = "gcv-excursoes-filters__field gcv-excursoes-filters__field--compact";
+    transportField.className =
+      "gcv-excursoes-filters__field gcv-excursoes-filters__field--transport";
     transportField.innerHTML =
-      '<label class="gcv-excursoes-filters__label" for="gcv-exc-filter-transport">' +
+      '<span class="gcv-excursoes-filters__label">' +
       escapeHtml(s.filterTransport) +
-      '</label><select class="gcv-excursoes-filters__select" id="gcv-exc-filter-transport" data-gcv-filter="transport">' +
-      '<option value="">' +
-      escapeHtml(s.filterTransportAll) +
-      "</option>" +
-      '<option value="com">' +
+      '</span><div class="gcv-excursoes-filters__checks" role="group" aria-label="' +
+      escapeHtml(s.filterTransport) +
+      '">' +
+      '<label class="gcv-excursoes-filters__check gcv-excursoes-filters__check--com">' +
+      '<input class="gcv-excursoes-filters__checkbox" type="checkbox" data-gcv-transport-com value="1" />' +
+      "<span>" +
       escapeHtml(s.filterTransportWith) +
-      "</option>" +
-      '<option value="sem">' +
+      "</span></label>" +
+      '<label class="gcv-excursoes-filters__check gcv-excursoes-filters__check--sem">' +
+      '<input class="gcv-excursoes-filters__checkbox" type="checkbox" data-gcv-transport-sem value="1" checked />' +
+      "<span>" +
       escapeHtml(s.filterTransportWithout) +
-      "</option></select>";
+      "</span></label></div>";
 
     var priceField = document.createElement("div");
     priceField.className = "gcv-excursoes-filters__field gcv-excursoes-filters__field--range";
@@ -1233,12 +1356,22 @@
       escapeHtml(s.filterSpots) +
       ' max" /></div>';
 
-    grid.appendChild(periodField);
-    grid.appendChild(embarqueField);
-    grid.appendChild(statusField);
-    if (hasTransport) grid.appendChild(transportField);
-    grid.appendChild(priceField);
-    grid.appendChild(spotsField);
+    var rowPrimary = document.createElement("div");
+    rowPrimary.className = "gcv-excursoes-filters__row gcv-excursoes-filters__row--primary";
+
+    var rowSecondary = document.createElement("div");
+    rowSecondary.className = "gcv-excursoes-filters__row gcv-excursoes-filters__row--secondary";
+
+    rowPrimary.appendChild(periodField);
+    rowPrimary.appendChild(embarqueField);
+    rowPrimary.appendChild(statusField);
+    rowPrimary.appendChild(transportField);
+
+    rowSecondary.appendChild(priceField);
+    rowSecondary.appendChild(spotsField);
+
+    grid.appendChild(rowPrimary);
+    grid.appendChild(rowSecondary);
 
     panel.appendChild(head);
     panel.appendChild(grid);
@@ -1261,7 +1394,8 @@
     var priceMaxEl = panel.querySelector('[data-gcv-filter="priceMax"]');
     var priceLabelEl = panel.querySelector("[data-gcv-price-label]");
     var priceFillEl = panel.querySelector("[data-gcv-price-fill]");
-    var transportEl = panel.querySelector('[data-gcv-filter="transport"]');
+    var transportComEl = panel.querySelector("[data-gcv-transport-com]");
+    var transportSemEl = panel.querySelector("[data-gcv-transport-sem]");
     var statusEl = panel.querySelector('[data-gcv-filter="status"]');
     var spotsMinEl = panel.querySelector('[data-gcv-filter="spotsMin"]');
     var spotsMaxEl = panel.querySelector('[data-gcv-filter="spotsMax"]');
@@ -1326,7 +1460,8 @@
         embarque: embarqueEl ? embarqueEl.value : "",
         priceMin: priceMinEl ? parseInt(String(priceMinEl.value), 10) : bounds.priceMin,
         priceMax: priceMaxEl ? parseInt(String(priceMaxEl.value), 10) : bounds.priceMax,
-        transport: transportEl ? transportEl.value : "",
+        transportCom: transportComEl ? transportComEl.checked : false,
+        transportSem: transportSemEl ? transportSemEl.checked : true,
         status: statusEl ? statusEl.value : "",
         spotsMin: spotsMinEl ? parseInt(String(spotsMinEl.value), 10) : 1,
         spotsMax: spotsMaxEl ? parseInt(String(spotsMaxEl.value), 10) : 9,
@@ -1343,11 +1478,32 @@
       if (embarqueEl) embarqueEl.value = "";
       if (priceMinEl) priceMinEl.value = String(bounds.priceMin);
       if (priceMaxEl) priceMaxEl.value = String(bounds.priceMax);
-      if (transportEl) transportEl.value = "";
+      if (transportComEl) transportComEl.checked = false;
+      if (transportSemEl) transportSemEl.checked = true;
       if (statusEl) statusEl.value = "";
       if (spotsMinEl) spotsMinEl.value = "1";
       if (spotsMaxEl) spotsMaxEl.value = "9";
       emit();
+    }
+
+    function onTransportCheckChange(changedEl) {
+      if (!transportComEl || !transportSemEl) return;
+      if (!transportComEl.checked && !transportSemEl.checked) {
+        changedEl.checked = true;
+        return;
+      }
+      emit();
+    }
+
+    if (transportComEl) {
+      transportComEl.addEventListener("change", function () {
+        onTransportCheckChange(transportComEl);
+      });
+    }
+    if (transportSemEl) {
+      transportSemEl.addEventListener("change", function () {
+        onTransportCheckChange(transportSemEl);
+      });
     }
 
     panel.querySelectorAll("[data-gcv-filter]").forEach(function (el) {
@@ -1588,11 +1744,22 @@
    * @param {Record<string, unknown>} e
    * @param {Record<string, string>} s
    */
+  function ingressoExclItemsHtml(e, s, locale, inclEntradas) {
+    if (inclEntradas) return "";
+    var dests = getDestinos(e);
+    if (dests.length > 1) {
+      var multiLabel = escapeHtml(formatIngressosMultiplos(dests, s.exclEntriesMany, locale));
+      return '<li><i class="ti ti-ticket text-no" aria-hidden="true"></i> ' + multiLabel + "</li>";
+    }
+    var ingressoExcl = escapeHtml(formatIngressoWithValor(s.exclEntries, e.valorIngresso, locale));
+    return '<li><i class="ti ti-ticket text-no" aria-hidden="true"></i> ' + ingressoExcl + "</li>";
+  }
+
   function inclExclBlocksHtml(e, s, locale) {
     var comTransporte = e.comTransporte === true;
     var inclEntradas = e.inclEntradas === true;
     var ingressoIncl = escapeHtml(formatIngressoWithValor(s.inclEntries, e.valorIngresso, locale));
-    var ingressoExcl = escapeHtml(formatIngressoWithValor(s.exclEntries, e.valorIngresso, locale));
+    var ingressoExclItems = ingressoExclItemsHtml(e, s, locale, inclEntradas);
     var inclItems =
       '<li><i class="ti ti-user text-ok" aria-hidden="true"></i> ' +
       escapeHtml(s.inclSpot) +
@@ -1618,20 +1785,14 @@
         ? '<li><i class="ti ti-tools-kitchen-2 text-no" aria-hidden="true"></i> ' +
           escapeHtml(s.exclLunch) +
           "</li>"
-        : '<li><i class="ti ti-ticket text-no" aria-hidden="true"></i> ' +
-          ingressoExcl +
-          "</li>" +
+        : ingressoExclItems +
           '<li><i class="ti ti-tools-kitchen-2 text-no" aria-hidden="true"></i> ' +
           escapeHtml(s.exclLunch) +
           "</li>";
     } else {
       var transportLabel = e.badge4x4 ? escapeHtml(s.exclTransport) + " (4×4)" : escapeHtml(s.exclTransport);
       exclItems =
-        (inclEntradas
-          ? ""
-          : '<li><i class="ti ti-ticket text-no" aria-hidden="true"></i> ' +
-            ingressoExcl +
-            "</li>") +
+        ingressoExclItems +
         '<li><i class="ti ti-bus text-no" aria-hidden="true"></i> ' +
         transportLabel +
         "</li>" +
@@ -1668,6 +1829,8 @@
     var comTransporte = e.comTransporte === true;
     var mod = e.confirmada ? "gcv-excursoes-card--confirmada" : "gcv-excursoes-card--pendente";
     if (comTransporte) mod += " gcv-excursoes-card--transporte";
+    if (isDestinosDuo(e)) mod += " gcv-excursoes-card--multi";
+    mod += " " + destinosSpotsClass(e);
     var dayNum = e.dayNum ? escapeHtml(String(e.dayNum)) : "—";
     var monthName = escapeHtml(String(e.monthName));
     var hora = horaExcursao(e);
@@ -1726,8 +1889,7 @@
     var metaStack =
       '<div class="gcv-excursoes-card__meta-stack">' + statusLine + faltaLine + "</div>";
 
-    var cardImgBlock = cardImgHtml(e, locale);
-    var destBlock = destTitleHtml(e, locale);
+    var cardImgBlock = cardSpotsBlockHtml(e, locale);
 
     return (
       '<article class="gcv-excursoes-card ' +
@@ -1741,7 +1903,6 @@
       dateStrip +
       metaStack +
       cardImgBlock +
-      destBlock +
       '<div class="gcv-excursoes-card__price-row">' +
       '<span class="gcv-excursoes-card__price">R$&nbsp;' +
       e.valor +
@@ -1765,17 +1926,6 @@
       escapeHtml(s.cta) +
       "</a></div></article>"
     );
-  }
-
-  function ensureDotsShell(root, s) {
-    var el = root.querySelector(".gcv-excursoes__dots");
-    if (el) return el;
-    el = document.createElement("div");
-    el.className = "gcv-excursoes__dots";
-    el.setAttribute("role", "tablist");
-    el.setAttribute("aria-label", s.carouselDotsShellAria || "Carousel");
-    root.appendChild(el);
-    return el;
   }
 
   function loadGuiaProfiles() {
@@ -1973,10 +2123,14 @@
 
     if (!track || !viewport) return;
 
-    var dotsWrap = ensureDotsShell(root, s);
-    var dots = [];
+    var dotsEl = root.querySelector(".gcv-excursoes__dots");
+    if (dotsEl) dotsEl.remove();
 
-    function renderTrackAndDots() {
+    var VISIBLE_PER_PAGE = 4;
+    var CARD = 230;
+    var GAP = 16;
+
+    function renderTrackOnly() {
       var html = "";
       try {
         html = carouselExcursoes
@@ -1990,22 +2144,6 @@
       }
       track.innerHTML = html;
 
-      dotsWrap.innerHTML = "";
-      dots = [];
-      for (var d = 0; d < carouselExcursoes.length; d++) {
-        var b = document.createElement("button");
-        b.type = "button";
-        b.className = "gcv-excursoes__dot";
-        b.setAttribute("aria-label", tpl(s.dotAria, { i: d + 1, n: carouselExcursoes.length }));
-        (function (index) {
-          b.addEventListener("click", function () {
-            go(index, true, true);
-          });
-        })(d);
-        dotsWrap.appendChild(b);
-        dots.push(b);
-      }
-
       var isEmpty = carouselExcursoes.length === 0;
       if (emptyEl) {
         emptyEl.hidden = !isEmpty;
@@ -2014,16 +2152,19 @@
       if (shell) shell.hidden = isEmpty;
     }
 
-    renderTrackAndDots();
+    var hasSsrTrack = !!track.querySelector(".gcv-excursoes-card[data-ssr-fallback]");
+    if (!hasSsrTrack) {
+      renderTrackOnly();
+    }
 
-    var idx = 0;
-    var timer = null;
-    var CARD = 230;
-    var GAP = 16;
-    var STEP = CARD + GAP;
+    function cardCount() {
+      return track.querySelectorAll(".gcv-excursoes-card").length;
+    }
 
     function trackWidthPx() {
-      var n = carouselExcursoes.length;
+      var sw = track.scrollWidth;
+      if (sw > 0) return sw;
+      var n = cardCount();
       return n * CARD + Math.max(0, n - 1) * GAP;
     }
 
@@ -2031,199 +2172,111 @@
       return Math.max(viewport.clientWidth || 0, 1);
     }
 
-    /** Quando todos os cards cabem na área visível, não há “scroll” — só centralizamos a faixa. */
+    function maxScrollLeft() {
+      return Math.max(0, viewport.scrollWidth - viewport.clientWidth);
+    }
+
     function fitsEntireTrack() {
-      return trackWidthPx() <= viewportWidthPx();
+      return trackWidthPx() <= viewportWidthPx() + 1;
     }
 
-    var MOBILE_SCROLL_MQ =
-      typeof window !== "undefined" && window.matchMedia
-        ? window.matchMedia("(max-width: 1023px)")
-        : null;
-
-    /** Mesmo breakpoint do CSS (<1024px): scroll horizontal no viewport. */
-    function useMobileScroll() {
-      var mqOk = MOBILE_SCROLL_MQ ? MOBILE_SCROLL_MQ.matches : viewportWidthPx() < 1024;
-      return mqOk && !fitsEntireTrack();
+    function canScrollTrack() {
+      return !fitsEntireTrack() && cardCount() > 1;
     }
 
-    function computeTranslate(i) {
-      var vw = viewportWidthPx();
-      var tw = trackWidthPx();
-      if (tw <= vw) {
-        return (vw - tw) / 2;
-      }
-
-      var maxScroll = tw - vw;
-      var raw = i * STEP;
-      return -Math.min(raw, maxScroll);
-    }
-
-    /**
-     * Alinha o centro do card ao centro do viewport (mobile scroll).
-     * Usa scrollLeft — compatível com gesto de arrastar no celular.
-     */
-    function scrollMobileToIndex(i, smooth) {
+    function firstVisibleCardIndex() {
       var cards = track.querySelectorAll(".gcv-excursoes-card");
-      var el = cards[i];
-      if (!el) return;
-      var vp = viewport;
-      var vpW = vp.clientWidth || 0;
-      if (vpW < 1) return;
+      var sl = viewport.scrollLeft;
+      for (var i = 0; i < cards.length; i++) {
+        if (cards[i].offsetLeft + cards[i].offsetWidth > sl + 0.5) return i;
+      }
+      return Math.max(0, cards.length - 1);
+    }
 
-      var vr = vp.getBoundingClientRect();
-      var er = el.getBoundingClientRect();
-      var delta = er.left + er.width / 2 - (vr.left + vr.width / 2);
-      var target = vp.scrollLeft + delta;
-      var maxL = Math.max(0, vp.scrollWidth - vpW);
-      target = Math.max(0, Math.min(target, maxL));
+    function maxPageStart() {
+      return Math.max(0, cardCount() - VISIBLE_PER_PAGE);
+    }
+
+    function scrollToCardIndex(startIdx, smooth) {
+      var cards = track.querySelectorAll(".gcv-excursoes-card");
+      var el = cards[startIdx];
+      if (!el) return;
+      var target = Math.max(0, Math.min(el.offsetLeft, maxScrollLeft()));
       try {
-        vp.scrollTo({
+        viewport.scrollTo({
           left: target,
           behavior: smooth ? "smooth" : "auto",
         });
       } catch (err) {
-        vp.scrollLeft = target;
-      }
-    }
-
-    var scrollSyncRaf = null;
-    function syncIdxFromViewportScroll() {
-      if (!useMobileScroll()) return;
-      var cards = track.querySelectorAll(".gcv-excursoes-card");
-      if (!cards.length) return;
-      var rectVP = viewport.getBoundingClientRect();
-      var mid = rectVP.left + rectVP.width / 2;
-      var best = 0;
-      var bestDist = Infinity;
-      for (var i = 0; i < cards.length; i++) {
-        var r = cards[i].getBoundingClientRect();
-        var c = r.left + r.width / 2;
-        var d = Math.abs(c - mid);
-        if (d < bestDist) {
-          bestDist = d;
-          best = i;
-        }
-      }
-      if (best !== idx) {
-        idx = best;
-        syncDots();
-      }
-    }
-
-    function syncDots() {
-      var hideDots = fitsEntireTrack();
-      dotsWrap.hidden = hideDots;
-      dotsWrap.setAttribute("aria-hidden", hideDots ? "true" : "false");
-      for (var i = 0; i < dots.length; i++) {
-        dots[i].setAttribute("aria-current", i === idx ? "true" : "false");
-        dots[i].disabled = hideDots;
+        viewport.scrollLeft = target;
       }
     }
 
     function syncNavButtons() {
-      var hide = fitsEntireTrack();
+      var hide = !canScrollTrack();
+      var first = firstVisibleCardIndex();
+      var atStart = viewport.scrollLeft <= 1;
+      var atEnd = first >= maxPageStart() || viewport.scrollLeft >= maxScrollLeft() - 1;
       if (prev) {
         prev.hidden = hide;
         prev.setAttribute("aria-hidden", hide ? "true" : "false");
-        prev.disabled = hide;
+        prev.disabled = hide || atStart;
       }
       if (next) {
         next.hidden = hide;
         next.setAttribute("aria-hidden", hide ? "true" : "false");
-        next.disabled = hide;
+        next.disabled = hide || atEnd;
       }
     }
 
-    /**
-     * @param {{ smoothScroll?: boolean }} [opts]
-     */
-    var userDragActive = false;
-
-    function apply(opts) {
-      opts = opts || {};
-      var smoothScroll = !!opts.smoothScroll;
-
-      if (useMobileScroll()) {
-        track.style.transform = "";
-        if (!userDragActive && opts.snap !== false) {
-          scrollMobileToIndex(idx, smoothScroll);
-        }
-        syncDots();
-        syncNavButtons();
-        return;
-      }
-
-      viewport.scrollLeft = 0;
-      var x = computeTranslate(idx);
-      track.style.transform = "translateX(" + x + "px)";
-      syncDots();
+    function syncCarouselUi() {
+      track.style.transform = "";
       syncNavButtons();
     }
 
-    /**
-     * @param {boolean} [fromUser]
-     * @param {boolean} [smoothScroll]
-     */
-    function go(i, fromUser, smoothScroll) {
-      if (!carouselExcursoes.length) return;
-      idx = ((i % carouselExcursoes.length) + carouselExcursoes.length) % carouselExcursoes.length;
-      apply({ smoothScroll: !!smoothScroll });
-      if (fromUser) restartAutoplay();
+    function arrowNext() {
+      if (!canScrollTrack()) return;
+      var first = firstVisibleCardIndex();
+      var nextStart = Math.min(first + VISIBLE_PER_PAGE, maxPageStart());
+      if (nextStart === first) return;
+      scrollToCardIndex(nextStart, true);
     }
 
-    function nextSlide() {
-      go(idx + 1, false, false);
-    }
-
-    function prevSlide() {
-      go(idx - 1, false, false);
-    }
-
-    function startAutoplay() {
-      stopAutoplay();
-      if (useMobileScroll()) return;
-      timer = window.setInterval(nextSlide, 3500);
-    }
-
-    function stopAutoplay() {
-      if (timer !== null) {
-        window.clearInterval(timer);
-        timer = null;
-      }
-    }
-
-    function restartAutoplay() {
-      stopAutoplay();
-      if (!fitsEntireTrack()) startAutoplay();
+    function arrowPrev() {
+      if (!canScrollTrack()) return;
+      var first = firstVisibleCardIndex();
+      var prevStart = Math.max(first - VISIBLE_PER_PAGE, 0);
+      if (prevStart === first && viewport.scrollLeft <= 1) return;
+      scrollToCardIndex(prevStart, true);
     }
 
     if (prev) {
       prev.addEventListener("click", function () {
-        go(idx - 1, true, true);
+        arrowPrev();
       });
     }
     if (next) {
       next.addEventListener("click", function () {
-        go(idx + 1, true, true);
+        arrowNext();
       });
     }
 
+    var scrollSyncRaf = null;
     viewport.addEventListener(
       "scroll",
       function () {
-        if (!useMobileScroll()) return;
+        if (!canScrollTrack()) return;
         if (scrollSyncRaf !== null) return;
         scrollSyncRaf = window.requestAnimationFrame(function () {
           scrollSyncRaf = null;
-          syncIdxFromViewportScroll();
+          syncNavButtons();
         });
       },
       { passive: true },
     );
 
-    /** Arrastar horizontal só quando o gesto for claramente lateral; vertical rola a página. */
-    var mobileDrag = {
+    /** Arrastar livre (mouse, touch e caneta) — sem encaixe em nós fixos. */
+    var trackDrag = {
       id: -1,
       startX: 0,
       startY: 0,
@@ -2233,30 +2286,28 @@
     };
     var AXIS_LOCK_PX = 10;
 
-    function resetMobileDrag() {
-      mobileDrag = { id: -1, startX: 0, startY: 0, startScroll: 0, moved: false, axis: null };
+    function resetTrackDrag() {
+      trackDrag = { id: -1, startX: 0, startY: 0, startScroll: 0, moved: false, axis: null };
     }
 
-    function canMobileDrag() {
-      return useMobileScroll() && !fitsEntireTrack();
+    function canDrag() {
+      return canScrollTrack();
     }
 
-    function finishMobileDrag(e) {
-      if (mobileDrag.id !== e.pointerId) return;
-      var didMove = mobileDrag.moved;
-      var wasHorizontal = mobileDrag.axis === "x";
-      resetMobileDrag();
-      userDragActive = false;
+    function finishTrackDrag(e) {
+      if (trackDrag.id !== e.pointerId) return;
+      var didMove = trackDrag.moved;
+      var wasHorizontal = trackDrag.axis === "x";
+      resetTrackDrag();
       viewport.classList.remove("is-dragging");
       try {
         viewport.releasePointerCapture(e.pointerId);
       } catch (err) {
         /* */
       }
-      if (!canMobileDrag() || !wasHorizontal) return;
+      if (!canDrag() || !wasHorizontal) return;
       if (didMove) {
-        syncIdxFromViewportScroll();
-        scrollMobileToIndex(idx, true);
+        syncNavButtons();
         viewport.dataset.suppressClick = "1";
         window.setTimeout(function () {
           delete viewport.dataset.suppressClick;
@@ -2267,9 +2318,9 @@
     viewport.addEventListener(
       "pointerdown",
       function (e) {
-        if (!canMobileDrag()) return;
+        if (!canDrag()) return;
         if (e.pointerType === "mouse" && e.button !== 0) return;
-        mobileDrag = {
+        trackDrag = {
           id: e.pointerId,
           startX: e.clientX,
           startY: e.clientY,
@@ -2284,20 +2335,18 @@
     viewport.addEventListener(
       "pointermove",
       function (e) {
-        if (mobileDrag.id !== e.pointerId) return;
+        if (trackDrag.id !== e.pointerId) return;
 
-        var dx = e.clientX - mobileDrag.startX;
-        var dy = e.clientY - mobileDrag.startY;
+        var dx = e.clientX - trackDrag.startX;
+        var dy = e.clientY - trackDrag.startY;
 
-        if (!mobileDrag.axis) {
+        if (!trackDrag.axis) {
           if (Math.abs(dx) < AXIS_LOCK_PX && Math.abs(dy) < AXIS_LOCK_PX) return;
           if (Math.abs(dy) >= Math.abs(dx)) {
-            resetMobileDrag();
+            resetTrackDrag();
             return;
           }
-          mobileDrag.axis = "x";
-          userDragActive = true;
-          stopAutoplay();
+          trackDrag.axis = "x";
           viewport.classList.add("is-dragging");
           try {
             viewport.setPointerCapture(e.pointerId);
@@ -2306,23 +2355,23 @@
           }
         }
 
-        if (mobileDrag.axis !== "x") return;
+        if (trackDrag.axis !== "x") return;
 
         e.preventDefault();
-        mobileDrag.moved = true;
-        var maxL = Math.max(0, viewport.scrollWidth - viewport.clientWidth);
-        viewport.scrollLeft = Math.max(0, Math.min(mobileDrag.startScroll - dx, maxL));
+        trackDrag.moved = true;
+        var maxL = maxScrollLeft();
+        viewport.scrollLeft = Math.max(0, Math.min(trackDrag.startScroll - dx, maxL));
         if (scrollSyncRaf !== null) return;
         scrollSyncRaf = window.requestAnimationFrame(function () {
           scrollSyncRaf = null;
-          syncIdxFromViewportScroll();
+          syncNavButtons();
         });
       },
       { passive: false },
     );
 
-    viewport.addEventListener("pointerup", finishMobileDrag);
-    viewport.addEventListener("pointercancel", finishMobileDrag);
+    viewport.addEventListener("pointerup", finishTrackDrag);
+    viewport.addEventListener("pointercancel", finishTrackDrag);
 
     viewport.addEventListener(
       "click",
@@ -2335,112 +2384,25 @@
       true,
     );
 
-    viewport.addEventListener(
-      "wheel",
-      function (ev) {
-        if (fitsEntireTrack() || useMobileScroll()) return;
-        var dx = ev.deltaX;
-        if (ev.shiftKey && Math.abs(ev.deltaY) > Math.abs(dx)) {
-          dx = ev.deltaY;
-        }
-        var dy = ev.deltaY;
-        if (Math.abs(dx) < 12 && Math.abs(dy) >= Math.abs(dx) && !ev.shiftKey) return;
-        ev.preventDefault();
-        if (dx > 0) {
-          nextSlide();
-        } else {
-          prevSlide();
-        }
-        restartAutoplay();
-      },
-      { passive: false },
-    );
-
-    /** Deslize horizontal no modo transform (telas largas / track maior que o viewport) — trackpad não cobre toque. */
-    var swipePtr = { id: -1, startX: 0, locked: false };
-    var SWIPE_TH = 48;
-    var SWIPE_LOCK = 10;
-
-    function onSwipePtrEnd(e) {
-      if (swipePtr.id !== e.pointerId) return;
-      var dx = e.clientX - swipePtr.startX;
-      try {
-        viewport.releasePointerCapture(e.pointerId);
-      } catch (err) {
-        /* */
-      }
-      var wasLocked = swipePtr.locked;
-      swipePtr = { id: -1, startX: 0, locked: false };
-      if (useMobileScroll() || fitsEntireTrack()) return;
-      if (wasLocked && Math.abs(dx) >= SWIPE_TH) {
-        if (dx < 0) {
-          go(idx + 1, true, true);
-        } else {
-          go(idx - 1, true, true);
-        }
-      }
-    }
-
-    viewport.addEventListener(
-      "pointerdown",
-      function (e) {
-        if (useMobileScroll() || fitsEntireTrack()) return;
-        if (e.pointerType === "mouse" && e.button !== 0) return;
-        if (e.target.closest("button, a")) return;
-        swipePtr = { id: e.pointerId, startX: e.clientX, locked: false };
-        try {
-          viewport.setPointerCapture(e.pointerId);
-        } catch (err) {
-          /* */
-        }
-      },
-      false,
-    );
-
-    viewport.addEventListener("pointermove", function (e) {
-      if (swipePtr.id !== e.pointerId) return;
-      if (!swipePtr.locked && Math.abs(e.clientX - swipePtr.startX) >= SWIPE_LOCK) {
-        swipePtr.locked = true;
-      }
-    });
-
-    viewport.addEventListener("pointerup", onSwipePtrEnd);
-    viewport.addEventListener("pointercancel", onSwipePtrEnd);
-
-    root.addEventListener("mouseenter", stopAutoplay);
-    root.addEventListener("mouseleave", function () {
-      if (!fitsEntireTrack()) startAutoplay();
-    });
-    root.addEventListener("focusin", stopAutoplay);
-    root.addEventListener("focusout", function (ev) {
-      if (!root.contains(ev.relatedTarget) && !fitsEntireTrack()) startAutoplay();
-    });
-
     window.addEventListener(
       "resize",
       function () {
-        apply({ smoothScroll: false });
+        syncCarouselUi();
       },
       { passive: true },
     );
 
     function kick() {
-      apply({ smoothScroll: false });
-      if (fitsEntireTrack()) {
-        stopAutoplay();
-      } else {
-        startAutoplay();
-      }
+      syncCarouselUi();
     }
 
     if (filtersHost) {
       mountExcursaoFilters(filtersHost, s, allExcursoes, function (filters, resultsEl) {
         carouselExcursoes = filterExcursaoList(allExcursoes, filters, s);
         if (resultsEl) resultsEl.textContent = tpl(s.filterResults, { n: carouselExcursoes.length });
-        idx = 0;
-        renderTrackAndDots();
-        apply({ smoothScroll: false });
-        restartAutoplay();
+        renderTrackOnly();
+        viewport.scrollLeft = 0;
+        syncCarouselUi();
       }, locale);
     }
 
