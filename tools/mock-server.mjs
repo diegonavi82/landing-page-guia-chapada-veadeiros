@@ -12,6 +12,468 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, "..");
 const PORT = 3000;
+const PIX_STORE_DIR = path.join(ROOT, "api", "storage", "pix_reservations");
+const WAITLIST_STORE = path.join(ROOT, "api", "storage", "excursao_waitlist", "index.json");
+
+/** @type {Record<string, { status: string, amount: number, expires_at: string, trips?: unknown[], locale?: string }>} */
+const pixMem = {};
+
+/** @type {Record<string, Array<Record<string, string>>>} */
+const waitlistMem = {};
+
+function ensurePixDir() {
+  fs.mkdirSync(PIX_STORE_DIR, { recursive: true });
+}
+
+function pixRead(id) {
+  const safe = String(id || "").toUpperCase();
+  if (pixMem[safe]) return pixMem[safe];
+  ensurePixDir();
+  const fp = path.join(PIX_STORE_DIR, `${safe}.json`);
+  if (!fs.existsSync(fp)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(fp, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+function pixWrite(id, data) {
+  const safe = String(id || "").toUpperCase();
+  pixMem[safe] = data;
+  ensurePixDir();
+  fs.writeFileSync(path.join(PIX_STORE_DIR, `${safe}.json`), JSON.stringify(data, null, 2));
+}
+
+function pixEffectiveStatus(rec) {
+  if (!rec) return "PENDING";
+  if (rec.status === "PAID") return "PAID";
+  const exp = Date.parse(rec.expires_at || "");
+  if (Number.isFinite(exp) && Date.now() > exp) return "EXPIRED";
+  return "PENDING";
+}
+
+function handlePixApi(urlPath, req, res) {
+  if (urlPath === "/api/register_pix_reservation.php" && req.method === "POST") {
+    let body = "";
+    req.on("data", (c) => (body += c));
+    req.on("end", () => {
+      try {
+        const data = JSON.parse(body || "{}");
+        const id = String(data.reservation_id || "").toUpperCase();
+        const expiresIn = Math.max(60, parseInt(String(data.expires_in), 10) || 480);
+        const prev = pixRead(id);
+        if (prev && prev.status === "PAID") {
+          console.log("[mock] Pix reserva reaberta (substitui PAID):", id);
+        }
+        const rec = {
+          reservation_id: id,
+          status: "PENDING",
+          amount: Number(data.amount) || 0,
+          locale: data.locale || "pt",
+          trips: data.trips || [],
+          expires_at: new Date(Date.now() + expiresIn * 1000).toISOString(),
+          created_at: new Date().toISOString(),
+        };
+        const clientEmail = String(data.email || "").trim().toLowerCase();
+        if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clientEmail)) {
+          rec.email = clientEmail;
+        }
+        pixWrite(id, rec);
+        console.log("[mock] Pix reserva registrada:", id);
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ success: true, status: "PENDING", reservation_id: id }));
+      } catch {
+        res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ success: false }));
+      }
+    });
+    return true;
+  }
+
+  if (urlPath === "/api/excursao-reserva/lookup.php" && req.method === "POST") {
+    let body = "";
+    req.on("data", (c) => (body += c));
+    req.on("end", () => {
+      try {
+        const data = JSON.parse(body || "{}");
+        const id = String(data.reservation_id || data.code || "").toUpperCase();
+        const email = String(data.email || "").trim().toLowerCase();
+        if (!/^GCV-[A-Z0-9]{6}$/.test(id)) {
+          res.writeHead(422, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: false, message: "Invalid reservation code" }));
+          return;
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          res.writeHead(422, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: false, message: "Invalid email" }));
+          return;
+        }
+        const rec = pixRead(id);
+        if (!rec) {
+          res.writeHead(404, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: false, message: "Not found" }));
+          return;
+        }
+        const storedEmail = String(rec.email || "").trim().toLowerCase();
+        if (!storedEmail) {
+          rec.email = email;
+          pixWrite(id, rec);
+        } else if (storedEmail !== email) {
+          res.writeHead(403, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: false, message: "Email does not match this reservation" }));
+          return;
+        }
+        const status = pixEffectiveStatus(rec);
+        if (status === "EXPIRED" && rec.status !== "EXPIRED") {
+          rec.status = "EXPIRED";
+          pixWrite(id, rec);
+        }
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(
+          JSON.stringify({
+            ok: true,
+            reservation_id: id,
+            status,
+            amount: rec.amount,
+            locale: rec.locale,
+            trips: rec.trips || [],
+            paid_at: rec.paid_at || null,
+            created_at: rec.created_at || null,
+            expires_at: rec.expires_at || null,
+          }),
+        );
+      } catch {
+        res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: false, message: "Invalid JSON" }));
+      }
+    });
+    return true;
+  }
+
+  if (urlPath === "/api/excursao-reserva/recover-by-email.php" && req.method === "POST") {
+    let body = "";
+    req.on("data", (c) => (body += c));
+    req.on("end", () => {
+      try {
+        const data = JSON.parse(body || "{}");
+        const email = String(data.email || "")
+          .trim()
+          .toLowerCase();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          res.writeHead(422, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: false, message: "Invalid email" }));
+          return;
+        }
+        const matches = [];
+        ensurePixDir();
+        for (const fp of fs.readdirSync(PIX_STORE_DIR)) {
+          if (!/^GCV-[A-Z0-9]{6}\.json$/i.test(fp)) continue;
+          try {
+            const rec = JSON.parse(fs.readFileSync(path.join(PIX_STORE_DIR, fp), "utf8"));
+            if (String(rec.email || "").trim().toLowerCase() === email) {
+              matches.push(rec.reservation_id || fp.replace(/\.json$/i, ""));
+            }
+          } catch {
+            /* */
+          }
+        }
+        if (matches.length) {
+          console.log("[mock] recover-by-email:", email, "→", matches.join(", "));
+        } else {
+          console.log("[mock] recover-by-email:", email, "→ (nenhuma reserva)");
+        }
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: true, message: "If reservations exist for this email, we sent the codes." }));
+      } catch {
+        res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: false, message: "Invalid JSON" }));
+      }
+    });
+    return true;
+  }
+
+  if (urlPath === "/api/check_pix_status.php" && req.method === "GET") {
+    const u = new URL(req.url, "http://localhost");
+    const id = String(u.searchParams.get("reservation_id") || "").toUpperCase();
+    const rec = pixRead(id);
+    if (!rec) {
+      res.writeHead(404, { "Content-Type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify({ success: false, message: "Not found" }));
+      return true;
+    }
+    const status = pixEffectiveStatus(rec);
+    if (status === "EXPIRED" && rec.status !== "EXPIRED") {
+      rec.status = "EXPIRED";
+      pixWrite(id, rec);
+    }
+    res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+    res.end(
+      JSON.stringify({
+        success: true,
+        status,
+        reservation_id: id,
+        amount: rec.amount,
+        trips: rec.trips,
+        locale: rec.locale,
+      }),
+    );
+    return true;
+  }
+
+  if (urlPath === "/api/confirm_pix_payment.php" && req.method === "POST") {
+    let body = "";
+    req.on("data", (c) => (body += c));
+    req.on("end", () => {
+      const u = new URL(req.url, "http://localhost");
+      const secret = u.searchParams.get("secret") || "";
+      if (secret !== "dev-local") {
+        res.writeHead(403, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ success: false, message: "Forbidden" }));
+        return;
+      }
+      try {
+        const data = JSON.parse(body || "{}");
+        const id = String(data.reservation_id || "").toUpperCase();
+        const rec = pixRead(id);
+        if (!rec) {
+          res.writeHead(404, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ success: false }));
+          return;
+        }
+        if (pixEffectiveStatus(rec) === "EXPIRED") {
+          res.writeHead(409, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ success: false, status: "EXPIRED" }));
+          return;
+        }
+        rec.status = "PAID";
+        rec.paid_at = new Date().toISOString();
+        rec.paid_source = "webhook";
+        pixWrite(id, rec);
+        console.log("[mock] Pix confirmado (webhook):", id);
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ success: true, status: "PAID", reservation_id: id }));
+      } catch {
+        res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ success: false }));
+      }
+    });
+    return true;
+  }
+
+  if (urlPath === "/api/pix_webhook.php" && req.method === "POST") {
+    let body = "";
+    req.on("data", (c) => (body += c));
+    req.on("end", () => {
+      const u = new URL(req.url, "http://localhost");
+      const secret = u.searchParams.get("secret") || "";
+      if (secret !== "dev-local") {
+        res.writeHead(403, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ success: false, message: "Forbidden" }));
+        return;
+      }
+      try {
+        const data = JSON.parse(body || "{}");
+        const id = String(data.reservation_id || "").toUpperCase();
+        const rec = pixRead(id);
+        if (!rec) {
+          res.writeHead(404, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ success: false, message: "Not found" }));
+          return;
+        }
+        if (pixEffectiveStatus(rec) === "EXPIRED") {
+          res.writeHead(404, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ success: false, message: "Not found or expired" }));
+          return;
+        }
+        rec.status = "PAID";
+        rec.paid_at = new Date().toISOString();
+        rec.paid_source = "webhook";
+        pixWrite(id, rec);
+        console.log("[mock] Pix webhook PAID:", id);
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ success: true, status: "PAID", reservation_id: id }));
+      } catch {
+        res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ success: false }));
+      }
+    });
+    return true;
+  }
+
+  if (urlPath === "/api/openpix_webhook.php" && req.method === "POST") {
+    let body = "";
+    req.on("data", (c) => (body += c));
+    req.on("end", () => {
+      try {
+        const data = JSON.parse(body || "{}");
+        const event = String(data.event || "").toUpperCase();
+        const paidEvents = [
+          "OPENPIX:CHARGE_COMPLETED",
+          "OPENPIX:CHARGE_COMPLETED_NOT_SAME_CUSTOMER_PAYER",
+          "OPENPIX:TRANSACTION_RECEIVED",
+        ];
+        if (!paidEvents.includes(event)) {
+          res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ success: true, ignored: true, event }));
+          return;
+        }
+        const candidates = [
+          data.charge?.correlationID,
+          data.charge?.comment,
+          data.charge?.identifier,
+          data.charge?.transactionID,
+          data.charge?.paymentMethods?.pix?.txId,
+          data.pix?.infoPagador,
+          data.pix?.transactionID,
+          data.pix?.charge?.correlationID,
+          JSON.stringify(data),
+        ].filter(Boolean);
+        let id = "";
+        for (const raw of candidates) {
+          const text = String(raw).toUpperCase();
+          const m1 = text.match(/GCV-[A-Z0-9]{6}/);
+          if (m1) {
+            id = m1[0];
+            break;
+          }
+          const m2 = text.match(/GCV([A-Z0-9]{6})/);
+          if (m2) {
+            id = "GCV-" + m2[1];
+            break;
+          }
+        }
+        if (!/^GCV-[A-Z0-9]{6}$/.test(id)) {
+          res.writeHead(422, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ success: false, message: "Could not map OpenPix payload to reservation" }));
+          return;
+        }
+        const rec = pixRead(id);
+        if (!rec) {
+          res.writeHead(404, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ success: false, message: "Reservation not found", reservation_id: id }));
+          return;
+        }
+        if (pixEffectiveStatus(rec) === "EXPIRED") {
+          res.writeHead(409, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ success: false, status: "EXPIRED", reservation_id: id }));
+          return;
+        }
+        if (rec.status !== "PAID") {
+          rec.status = "PAID";
+          rec.paid_at = new Date().toISOString();
+          rec.paid_source = "openpix";
+          rec.openpix_event = event;
+          pixWrite(id, rec);
+        }
+        console.log("[mock] OpenPix webhook PAID:", id, "| event:", event);
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ success: true, status: "PAID", reservation_id: id, event }));
+      } catch {
+        res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ success: false, message: "Invalid JSON" }));
+      }
+    });
+    return true;
+  }
+
+  return false;
+}
+
+function waitlistReadAll() {
+  if (Object.keys(waitlistMem).length) return { ...waitlistMem };
+  try {
+    fs.mkdirSync(path.dirname(WAITLIST_STORE), { recursive: true });
+    if (fs.existsSync(WAITLIST_STORE)) {
+      return JSON.parse(fs.readFileSync(WAITLIST_STORE, "utf8"));
+    }
+  } catch {
+    /* */
+  }
+  return {};
+}
+
+function waitlistWriteAll(data) {
+  Object.keys(waitlistMem).forEach((k) => delete waitlistMem[k]);
+  Object.assign(waitlistMem, data);
+  try {
+    fs.mkdirSync(path.dirname(WAITLIST_STORE), { recursive: true });
+    fs.writeFileSync(WAITLIST_STORE, JSON.stringify(data, null, 2));
+  } catch {
+    /* */
+  }
+}
+
+function handleWaitlistApi(urlPath, req, res) {
+  if (urlPath === "/api/excursao-waitlist/register.php" && req.method === "POST") {
+    let body = "";
+    req.on("data", (c) => (body += c));
+    req.on("end", () => {
+      try {
+        const data = JSON.parse(body || "{}");
+        const email = String(data.email || "").trim().toLowerCase();
+        const cartId = String(data.cart_id || "").trim().toLowerCase();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(cartId)) {
+          res.writeHead(422, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: false, message: "Invalid data" }));
+          return;
+        }
+        const all = waitlistReadAll();
+        const rows = Array.isArray(all[cartId]) ? all[cartId] : [];
+        if (!rows.some((r) => r && r.email === email)) {
+          rows.push({
+            email,
+            locale: data.locale || "pt",
+            destino: data.destino || "",
+            date_label: data.date_label || "",
+            created_at: new Date().toISOString(),
+          });
+        }
+        all[cartId] = rows;
+        waitlistWriteAll(all);
+        console.log("[mock] Lista de espera:", cartId, "→", email);
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: true, message: "registered", cart_id: cartId }));
+      } catch {
+        res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: false }));
+      }
+    });
+    return true;
+  }
+
+  if (urlPath === "/api/excursao-waitlist/notify.php" && req.method === "POST") {
+    let body = "";
+    req.on("data", (c) => (body += c));
+    req.on("end", () => {
+      try {
+        const data = JSON.parse(body || "{}");
+        const cartId = String(data.cart_id || "").trim().toLowerCase();
+        const vagas = parseInt(String(data.vagas_available), 10) || 0;
+        if (vagas < 1) {
+          res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: true, sent: 0 }));
+          return;
+        }
+        const all = waitlistReadAll();
+        const rows = Array.isArray(all[cartId]) ? all[cartId] : [];
+        delete all[cartId];
+        waitlistWriteAll(all);
+        rows.forEach((r) => {
+          console.log("[mock] Aviso de vaga enviado para:", r.email, "| passeio:", cartId);
+        });
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: true, sent: rows.length, waitlist_size: rows.length }));
+      } catch {
+        res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: false }));
+      }
+    });
+    return true;
+  }
+
+  return false;
+}
 
 // Papel passado via argumento: node mock-server.mjs guide
 const ROLE = process.argv[2] || "guide";
@@ -144,6 +606,34 @@ const server = http.createServer((req, res) => {
 
   // Mock API
   if (urlPath.startsWith("/api/")) {
+    if (handlePixApi(urlPath, req, res)) return;
+    if (handleWaitlistApi(urlPath, req, res)) return;
+    if (urlPath === "/api/excursao-receipt/" || urlPath === "/api/excursao-receipt/index.php") {
+      if (req.method === "POST") {
+        let body = "";
+        req.on("data", (chunk) => {
+          body += chunk;
+        });
+        req.on("end", () => {
+          try {
+            const data = JSON.parse(body || "{}");
+            const email = String(data.email || "").trim();
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+              res.writeHead(422, { "Content-Type": "application/json; charset=utf-8" });
+              res.end(JSON.stringify({ ok: false, message: "Invalid email" }));
+              return;
+            }
+            console.log("[mock] Recibo Pix enviado para:", email, "| código:", data.code || "—");
+            res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+            res.end(JSON.stringify({ ok: true, message: "Sent (mock)", code: data.code || "" }));
+          } catch (err) {
+            res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+            res.end(JSON.stringify({ ok: false, message: "Invalid JSON" }));
+          }
+        });
+        return;
+      }
+    }
     const handler = API_ROUTES[urlPath];
     if (handler) {
       const body = JSON.stringify(handler());
@@ -184,6 +674,7 @@ server.listen(PORT, () => {
   console.log("");
   console.log("  ✅  Mock server rodando em http://localhost:" + PORT);
   console.log("  👤  Usuário mockado: " + user.name + " (" + user.role + " / " + user.status + ")");
+  console.log("  📬  Lista de espera: POST /api/excursao-waitlist/register.php");
   console.log("");
   console.log("  Trocar de papel:");
   console.log("    node tools/mock-server.mjs guide          → Guia ativo");

@@ -1,10 +1,12 @@
 /**
- * Saídas passadas (data + hora de embarque) não devem aparecer em "Próximas saídas".
- * Horário de referência: America/Sao_Paulo (UTC-3, sem horário de verão desde 2019).
+ * Saídas só ficam reserváveis com mais de 2 h até o embarque (America/Sao_Paulo, UTC-3).
+ * Após esse prazo — ou após a hora de saída — somem de "Próximas saídas" e do carrinho.
  */
 
 const CHAPADA_TZ_OFFSET = "-03:00";
 const SAIDA_HORA_PADRAO = "8:45";
+/** Reserva permitida apenas se faltarem MAIS de 2 horas para o embarque. */
+export const BOOKING_CUTOFF_MS = 2 * 60 * 60 * 1000;
 
 const MONTH_NUM = {
   janeiro: 1,
@@ -70,13 +72,18 @@ export function excursaoDepartureEpochMs(e) {
   return Date.parse(`${iso}T${hh}:${mm}:00${CHAPADA_TZ_OFFSET}`);
 }
 
-export function isExcursaoFuture(e, nowMs = Date.now()) {
+export function isExcursaoBookable(e, nowMs = Date.now()) {
   const dep = excursaoDepartureEpochMs(e);
   if (!Number.isFinite(dep)) return true;
-  return dep > nowMs;
+  return dep > nowMs + BOOKING_CUTOFF_MS;
+}
+
+/** @deprecated alias — usa o corte de 2 h antes do embarque */
+export function isExcursaoFuture(e, nowMs = Date.now()) {
+  return isExcursaoBookable(e, nowMs);
 }
 
 export function filterFutureExcursoes(rows, nowMs = Date.now()) {
   if (!Array.isArray(rows)) return rows;
-  return rows.filter((e) => isExcursaoFuture(e, nowMs));
+  return rows.filter((e) => isExcursaoBookable(e, nowMs));
 }

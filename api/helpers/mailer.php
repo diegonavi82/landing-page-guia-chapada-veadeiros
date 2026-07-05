@@ -7,7 +7,7 @@ use PHPMailer\PHPMailer\Exception;
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
-function send_mail(string $to, string $subject, string $bodyHtml, string $toName = ''): bool {
+function send_mail(string $to, string $subject, string $bodyHtml, string $toName = '', bool $wrapLayout = true): bool {
     $mail = new PHPMailer(true);
     try {
         $mail->isSMTP();
@@ -25,8 +25,8 @@ function send_mail(string $to, string $subject, string $bodyHtml, string $toName
         $mail->addAddress($to, $toName);
         $mail->isHTML(true);
         $mail->Subject = $subject;
-        $mail->Body    = email_layout($subject, $bodyHtml);
-        $mail->AltBody = strip_tags($bodyHtml);
+        $mail->Body    = $wrapLayout ? email_layout($subject, $bodyHtml) : $bodyHtml;
+        $mail->AltBody = strip_tags(preg_replace('/<style\b[^>]*>.*?<\/style>/is', '', $bodyHtml) ?? $bodyHtml);
         $mail->send();
         return true;
     } catch (Exception $e) {

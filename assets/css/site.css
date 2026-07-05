@@ -303,7 +303,7 @@ a:hover {
 
 @media (max-width: 860px) {
   .logo-link {
-    max-width: min(320px, calc(100% - 5.75rem));
+    max-width: min(320px, calc(100% - 11.5rem));
   }
   .nav-toggle {
     display: block;
@@ -2760,6 +2760,12 @@ table.season th {
 /* Botão WhatsApp fixo — apenas telemóvel / tablet (home e contato) */
 .gcv-float-wa {
   display: none;
+}
+
+@media (max-width: 1024px) {
+  html.gcv-exc-cart-has-items .gcv-float-wa {
+    display: none !important;
+  }
 }
 
 @media (max-width: 1024px) {

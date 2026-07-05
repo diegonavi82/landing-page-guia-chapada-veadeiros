@@ -11,4 +11,15 @@ return [
     'db_charset' => 'utf8mb4',
     /** E-mails que recebem cópia ao salvar um contato (opcional). */
     'notify_emails' => ['contato@guiachapadaveadeiros.com'],
+    /**
+     * Segredo para pix_webhook.php confirmar pagamentos (OpenPix, banco, etc.).
+     * Em localhost com mock-server use: dev-local
+     */
+    'pix_webhook_secret' => '',
+    /**
+     * Chave pública OpenPix/Woovi (base64) para validar x-webhook-signature.
+     * Painel OpenPix → API → Webhooks → Public Key (copie o valor base64).
+     * Se vazio, o webhook aceita requisições sem validar assinatura (não recomendado em produção).
+     */
+    'openpix_webhook_public_key' => '',
 ];

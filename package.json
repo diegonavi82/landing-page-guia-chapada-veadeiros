@@ -1,7 +1,7 @@
 {
   "name": "guia-chapada-landing-estatica",
   "private": true,
-  "version": "1.0.8",
+  "version": "1.0.12",
   "description": "Site 100% estático (HTML/CSS/JS) — sem API, sem MySQL.",
   "scripts": {
     "dev": "node tools/mock-server.mjs",
@@ -14,6 +14,7 @@
     "fetch:instagram": "node tools/fetch-instagram-images.mjs",
     "favicons": "node tools/generate-favicons.mjs",
     "build": "node tools/generate-favicons.mjs && node tools/build-site.mjs",
+    "vendor:qrcode": "esbuild node_modules/qrcode/lib/browser.js --bundle --format=iife --global-name=QRCode --outfile=assets/js/qrcode.min.js --minify",
     "preview": "npx --yes serve . -l 3000",
     "preview:prod": "npx --yes serve Build_prod -l 3000",
     "build:file": "node tools/run-build-relative-js.mjs",
@@ -22,6 +23,7 @@
   },
   "devDependencies": {
     "linkedom": "^0.18.12",
+    "qrcode": "^1.5.4",
     "sharp": "^0.33.5"
   }
 }

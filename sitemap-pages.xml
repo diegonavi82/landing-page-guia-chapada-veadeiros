@@ -37,6 +37,40 @@
     </image:image>
   </url>
   <url>
+    <loc>https://www.guiachapadaveadeiros.com/confirmacao.html</loc>
+
+    <lastmod>2026-07-05</lastmod>
+
+    <changefreq>weekly</changefreq>
+
+    <priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://www.guiachapadaveadeiros.com/confirmacao.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.guiachapadaveadeiros.com/en/confirmacao.html" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.guiachapadaveadeiros.com/es/confirmacao.html" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.guiachapadaveadeiros.com/confirmacao.html" />
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/imagens/hero-slide-01-guias-locais-cachoeira.png</image:loc>
+      <image:title>Confirmação de pagamento | Guia Chapada Veadeiros</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://www.guiachapadaveadeiros.com/consultar-reserva.html</loc>
+
+    <lastmod>2026-07-05</lastmod>
+
+    <changefreq>weekly</changefreq>
+
+    <priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://www.guiachapadaveadeiros.com/consultar-reserva.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.guiachapadaveadeiros.com/en/consultar-reserva.html" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.guiachapadaveadeiros.com/es/consultar-reserva.html" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.guiachapadaveadeiros.com/consultar-reserva.html" />
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/imagens/hero-slide-01-guias-locais-cachoeira.png</image:loc>
+      <image:title>Consultar reserva | Guia Chapada Veadeiros</image:title>
+    </image:image>
+  </url>
+  <url>
     <loc>https://www.guiachapadaveadeiros.com/contato.html</loc>
 
     <lastmod>2026-07-05</lastmod>

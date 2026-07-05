@@ -116,14 +116,20 @@ const SSR = {
     waFormacao: "⏳ Status: excursão em formação.\n{{falta}}",
     meetingCity: "Alto Paraíso",
     statusOk: "✅ Confirmado",
-    statusWait: "⏳ Formando",
+    statusWait: "⏳ Em formação",
     spotsNone: "Não restam vagas",
     spotsOne: "Resta 1 vaga",
     spotsMany: "Restam {{n}} vagas",
     spotsNoneHtml: "Não restam vagas",
     spotsOneHtml: "Resta <strong>1</strong> vaga",
     spotsManyHtml: "Restam <strong>{{n}}</strong> vagas",
-    perPerson: "/por pessoa",
+    bookPeople: "Pessoas",
+    bookTotal: "Total",
+    bookPay: "Pagar com Pix",
+    bookAddCart: "Adicionar ao carrinho",
+    bookQtyMinus: "Menos uma pessoa",
+    bookQtyPlus: "Mais uma pessoa",
+    bookQtyAria: "Número de pessoas",
     inclLabel: "Incluso",
     inclSpot: "Vaga em Excursão",
     inclGuideShort: "Guia local",
@@ -166,7 +172,13 @@ const SSR = {
     spotsNoneHtml: "No spots left",
     spotsOneHtml: "<strong>1</strong> spot left",
     spotsManyHtml: "<strong>{{n}}</strong> spots left",
-    perPerson: "/per person",
+    bookPeople: "People",
+    bookTotal: "Total",
+    bookPay: "Pay with Pix",
+    bookAddCart: "Add to cart",
+    bookQtyMinus: "Remove one person",
+    bookQtyPlus: "Add one person",
+    bookQtyAria: "Number of people",
     inclLabel: "Included",
     inclSpot: "Excursion spot",
     inclGuideShort: "Local guide",
@@ -209,7 +221,13 @@ const SSR = {
     spotsNoneHtml: "No quedan plazas",
     spotsOneHtml: "Queda <strong>1</strong> plaza",
     spotsManyHtml: "Quedan <strong>{{n}}</strong> plazas",
-    perPerson: "/por persona",
+    bookPeople: "Personas",
+    bookTotal: "Total",
+    bookPay: "Pagar con Pix",
+    bookAddCart: "Añadir al carrito",
+    bookQtyMinus: "Quitar una persona",
+    bookQtyPlus: "Añadir una persona",
+    bookQtyAria: "Número de personas",
     inclLabel: "Incluye",
     inclSpot: "Cupo en excursión",
     inclGuideShort: "Guía local",
@@ -424,6 +442,107 @@ function inclExclBlocksSsr(e, s, locale) {
   );
 }
 
+function excursaoValor(e) {
+  const n = parseInt(String(e && e.valor), 10);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function vagasDisponiveis(e) {
+  if (e && e.confirmada) return numOrZero(e.vagasRestantes);
+  return Math.max(0, grupoMaximoValor(e) - inscritosNoGrupo(e));
+}
+
+function excursaoDateLabelSsr(e, locale) {
+  if (locale === "en") return `${e.monthName} ${e.dayNum}, 2026`;
+  if (locale === "es") return `${e.dayNum} de ${e.monthName} de 2026`;
+  return `${e.dayNum} de ${e.monthName}/2026`;
+}
+
+function excursaoCartIdSsr(e) {
+  const iso = String((e && e.dateISO) || "").slice(0, 10);
+  const destRaw =
+    (e && e.destino) ||
+    getDestinos(e)
+      .map((d) => d.destino)
+      .join("-") ||
+    "excursao";
+  const dest = String(destRaw)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+  if (iso) return `${iso}-${dest}`;
+  const d = e && e.dayNum != null ? String(e.dayNum) : "0";
+  const m = e && e.monthName ? String(e.monthName).toLowerCase().replace(/\s+/g, "-") : "x";
+  return `${d}-${m}-${dest}`;
+}
+
+function excursaoPixDesc(e, locale) {
+  const destinos = getDestinos(e);
+  const dest = destinos.map((d) => d.destino).join(" + ") || String(e.destino || "");
+  const date = e.dayNum ? `${e.dayNum} ${e.monthName}` : "";
+  const prefix = locale === "en" ? "Tour" : locale === "es" ? "Excursion" : "Excursao";
+  return `${prefix} ${date} - ${dest}`.trim().slice(0, 73);
+}
+
+function bookingBlockSsr(e, s, locale) {
+  const unit = excursaoValor(e);
+  const maxQty = Math.max(0, vagasDisponiveis(e));
+  const desc = excursaoPixDesc(e, locale);
+  const cartId = excursaoCartIdSsr(e);
+  const dateLabel = excursaoDateLabelSsr(e, locale);
+  const destino = String(e.destino || "");
+
+  if (maxQty < 1) {
+    const waitLabel =
+      locale === "en"
+        ? "Notify me if a spot opens"
+        : locale === "es"
+          ? "Avísame si se libera plaza"
+          : "Avise-me se abrir vaga";
+    return (
+      '<div class="gcv-excursoes-card__book gcv-excursoes-card__book--soldout"' +
+      ` data-cart-id="${esc(cartId)}" data-cart-destino="${esc(destino)}" data-cart-date="${esc(dateLabel)}">` +
+      `<span class="gcv-excursoes-card__price gcv-excursoes-card__price--soldout">${esc(s.spotsNone)}</span>` +
+      `<button type="button" class="gcv-excursoes-card__waitlist" data-gcv-exc-waitlist>` +
+      `<i class="ti ti-bell" aria-hidden="true"></i> ${esc(waitLabel)}</button></div>`
+    );
+  }
+
+  return (
+    '<div class="gcv-excursoes-card__book"' +
+    ` data-pix-unit="${unit}" data-pix-desc="${esc(desc)}" data-pix-max="${maxQty}"` +
+    ` data-cart-id="${esc(cartId)}" data-cart-destino="${esc(destino)}" data-cart-date="${esc(dateLabel)}">` +
+    '<div class="gcv-excursoes-card__book-row">' +
+    `<span class="gcv-excursoes-card__book-label">${esc(s.bookPeople)}</span>` +
+    '<div class="gcv-excursoes-card__qty">' +
+    `<button type="button" class="gcv-excursoes-card__qty-btn" data-gcv-exc-qty-min aria-label="${esc(s.bookQtyMinus)}">−</button>` +
+    `<input type="number" class="gcv-excursoes-card__qty-input" value="1" min="1" max="${maxQty}" aria-label="${esc(s.bookQtyAria)}" inputmode="numeric" />` +
+    `<button type="button" class="gcv-excursoes-card__qty-btn" data-gcv-exc-qty-plus aria-label="${esc(s.bookQtyPlus)}">+</button>` +
+    "</div>" +
+    '<div class="gcv-excursoes-card__book-total">' +
+    `<span class="gcv-excursoes-card__book-total-label">${esc(s.bookTotal)}</span>` +
+    `<span class="gcv-excursoes-card__price" data-gcv-exc-total>R$&nbsp;${unit}</span></div></div>` +
+    '<div class="gcv-excursoes-card__book-actions">' +
+    `<button type="button" class="gcv-excursoes-card__pay" data-gcv-exc-pay><i class="ti ti-qrcode" aria-hidden="true"></i> ${esc(s.bookPay)}</button>` +
+    `<button type="button" class="gcv-excursoes-card__cart-add" data-gcv-exc-cart-add><i class="ti ti-shopping-cart" aria-hidden="true"></i> ${esc(s.bookAddCart)}</button>` +
+    "</div></div>"
+  );
+}
+
+function priceRowSsr(e, s, locale) {
+  return bookingBlockSsr(e, s, locale);
+}
+
+/**
+ * @param {string} hora
+ */
+function dateheroTimeHtmlSsr(hora) {
+  return (
+    '<span class="gcv-excursoes-card__datehero-time">' +
+    `<span class="gcv-excursoes-card__time">${esc(hora)}</span></span>`
+  );
+}
+
 /**
  * @param {string} locale
  */
@@ -432,7 +551,6 @@ export function excursionsCarouselTrackSsrHtml(locale) {
   const s = SSR[locale] || SSR.pt;
   return rows
     .map((e, idx) => {
-      const hrefWa = waLinkExcursao(e, locale, s);
       const hora = horaExcursao(e);
       const comTransporte = e.comTransporte === true;
       let mod = e.confirmada ? "gcv-excursoes-card--confirmada" : "gcv-excursoes-card--pendente";
@@ -450,9 +568,9 @@ export function excursionsCarouselTrackSsrHtml(locale) {
         ? confirmadoVagasAvisoSsr(e, s)
         : `<p class="gcv-excursoes-card__falta">${esc(faltaConfirmarTexto(e.faltamPessoas, s))}</p>`;
       return (
-        `<article class="gcv-excursoes-card ${mod}" data-excursao-index="${idx}"` +
+        `<article class="gcv-excursoes-card ${mod}" data-excursao-index="${idx}" data-cart-id="${esc(excursaoCartIdSsr(e))}" data-excursao-date-iso="${esc(String(e.dateISO || "").slice(0, 10))}" data-excursao-hora="${esc(hora)}"` +
         (e.confirmada ? ' data-excursao-status="confirmada"' : ' data-excursao-status="formacao"') +
-        ' data-ssr-fallback="1">' +
+        ' data-ssr-fallback="1" aria-selected="false">' +
         '<div class="gcv-excursoes-card__head">' +
         '<div class="gcv-excursoes-card__datestrip">' +
         '<div class="gcv-excursoes-card__datehero">' +
@@ -461,13 +579,12 @@ export function excursionsCarouselTrackSsrHtml(locale) {
         `<span class="gcv-excursoes-card__month">${esc(String(e.monthName))}</span>` +
         `<span class="gcv-excursoes-card__weekday">${esc(String(e.weekday))}</span>` +
         "</div>" +
-        '<div class="gcv-excursoes-card__datehero-time">' +
-        `<span class="gcv-excursoes-card__time">${esc(hora)}</span>` +
-        "</div></div>" +
+        `<div class="gcv-excursoes-card__datehero-slot" data-gcv-exc-datehero-slot>${dateheroTimeHtmlSsr(hora)}</div></div>` +
         '<div class="gcv-excursoes-card__row gcv-excursoes-card__row--city">' +
+        '<div class="gcv-excursoes-card__city-block">' +
         '<span class="gcv-excursoes-card__loc"><i class="ti ti-map-pin" aria-hidden="true"></i> ' +
         esc(String(e.embarque || s.meetingCity)) +
-        "</span></div></div>" +
+        "</span></div></div></div>" +
         '<div class="gcv-excursoes-card__meta-stack">' +
         '<div class="gcv-excursoes-card__row gcv-excursoes-card__row--status">' +
         statusHtml +
@@ -482,20 +599,15 @@ export function excursionsCarouselTrackSsrHtml(locale) {
         faltaHtml +
         "</div></div>" +
         cardSpotsBlockSsr(e, locale) +
-        '<div class="gcv-excursoes-card__price-row">' +
-        `<span class="gcv-excursoes-card__price">R$&nbsp;${esc(String(e.valor))}</span>` +
-        `<span class="gcv-excursoes-card__per">${esc(s.perPerson)}</span>` +
-        "</div></div>" +
+        "</div>" +
         '<div class="gcv-excursoes-card__body">' +
         guiaChipSsr(e, locale) +
         inclExclBlocksSsr(e, s, locale) +
         (comTransporte
           ? `<span class="gcv-excursoes-card__transport-badge"><i class="ti ti-bus" aria-hidden="true"></i> ${esc(s.badgeTransport)}</span>`
           : "") +
-        `<a class="gcv-excursoes-card__cta" href="${esc(hrefWa)}" target="_blank" rel="noopener noreferrer">` +
-        '<i class="ti ti-brand-whatsapp" aria-hidden="true"></i> ' +
-        esc(s.cta) +
-        "</a></div></article>"
+        bookingBlockSsr(e, s, locale) +
+        "</div></article>"
       );
     })
     .join("\n");

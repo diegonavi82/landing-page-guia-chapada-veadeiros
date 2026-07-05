@@ -99,6 +99,46 @@ export function formatIngressosMultiplos(destinos, labelPlural, locale = "pt") {
 export const EXCURSOES_CAROUSEL_BY_LOCALE = {
   pt: [
     {
+      dayNum: "16",
+      monthName: "julho",
+      weekday: "Quinta-feira",
+      dateISO: "2026-07-16",
+      embarque: "Alto Paraíso",
+      destino: "Loquinhas",
+      hora: "8:30",
+      valor: 1,
+      confirmada: false,
+      pessoasInscritas: 0,
+      grupoMaximo: 8,
+      quorumMin: 4,
+      faltamPessoas: 4,
+      guiaNome: "Diego Navi",
+      guiaFoto: "/assets/img/imagens/guia-diego-navi.webp",
+      cardImg: "/assets/img/imagens/cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso.jpg",
+      atrativoPath: "atrativos/cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso.html",
+      valorIngresso: 0,
+    },
+    {
+      dayNum: "17",
+      monthName: "julho",
+      weekday: "Sexta-feira",
+      dateISO: "2026-07-17",
+      embarque: "Alto Paraíso",
+      destino: "Loquinhas",
+      hora: "8:30",
+      valor: 1,
+      confirmada: false,
+      pessoasInscritas: 0,
+      grupoMaximo: 4,
+      quorumMin: 4,
+      faltamPessoas: 4,
+      guiaNome: "Diego Navi",
+      guiaFoto: "/assets/img/imagens/guia-diego-navi.webp",
+      cardImg: "/assets/img/imagens/cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso.jpg",
+      atrativoPath: "atrativos/cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso.html",
+      valorIngresso: 0,
+    },
+    {
       dayNum: "18",
       monthName: "julho",
       weekday: "Sábado",
@@ -108,9 +148,9 @@ export const EXCURSOES_CAROUSEL_BY_LOCALE = {
       hora: "7:30",
       valor: 140,
       confirmada: true,
-      pessoasInscritas: 2,
-      grupoMaximo: 10,
-      vagasRestantes: 8,
+      pessoasInscritas: 4,
+      grupoMaximo: 8,
+      vagasRestantes: 4,
       guiaNome: "Diego Navi",
       guiaFoto: "/assets/img/imagens/guia-diego-navi.webp",
       destinos: [
@@ -209,6 +249,44 @@ export const EXCURSOES_CAROUSEL_BY_LOCALE = {
   ],
   en: [
     {
+      dayNum: "16",
+      monthName: "July",
+      weekday: "Thursday",
+      dateISO: "2026-07-16",
+      embarque: "Alto Paraíso",
+      destino: "Loquinhas",
+      hora: "8:30",
+      valor: 1,
+      confirmada: false,
+      pessoasInscritas: 0,
+      grupoMaximo: 8,
+      quorumMin: 4,
+      faltamPessoas: 4,
+      guiaNome: "Diego Navi",
+      guiaFoto: "/assets/img/imagens/guia-diego-navi.webp",
+      cardImg: "/assets/img/imagens/cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso.jpg",
+      atrativoPath: "atrativos/cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso.html",
+    },
+    {
+      dayNum: "17",
+      monthName: "July",
+      weekday: "Friday",
+      dateISO: "2026-07-17",
+      embarque: "Alto Paraíso",
+      destino: "Loquinhas",
+      hora: "8:30",
+      valor: 1,
+      confirmada: false,
+      pessoasInscritas: 0,
+      grupoMaximo: 4,
+      quorumMin: 4,
+      faltamPessoas: 4,
+      guiaNome: "Diego Navi",
+      guiaFoto: "/assets/img/imagens/guia-diego-navi.webp",
+      cardImg: "/assets/img/imagens/cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso.jpg",
+      atrativoPath: "atrativos/cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso.html",
+    },
+    {
       dayNum: "18",
       monthName: "July",
       weekday: "Saturday",
@@ -218,9 +296,9 @@ export const EXCURSOES_CAROUSEL_BY_LOCALE = {
       hora: "7:30",
       valor: 140,
       confirmada: true,
-      pessoasInscritas: 2,
-      grupoMaximo: 10,
-      vagasRestantes: 8,
+      pessoasInscritas: 4,
+      grupoMaximo: 8,
+      vagasRestantes: 4,
       guiaNome: "Diego Navi",
       guiaFoto: "/assets/img/imagens/guia-diego-navi.webp",
     },
@@ -299,6 +377,44 @@ export const EXCURSOES_CAROUSEL_BY_LOCALE = {
   ],
   es: [
     {
+      dayNum: "16",
+      monthName: "julio",
+      weekday: "Jueves",
+      dateISO: "2026-07-16",
+      embarque: "Alto Paraíso",
+      destino: "Loquinhas",
+      hora: "8:30",
+      valor: 1,
+      confirmada: false,
+      pessoasInscritas: 0,
+      grupoMaximo: 8,
+      quorumMin: 4,
+      faltamPessoas: 4,
+      guiaNome: "Diego Navi",
+      guiaFoto: "/assets/img/imagens/guia-diego-navi.webp",
+      cardImg: "/assets/img/imagens/cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso.jpg",
+      atrativoPath: "atrativos/cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso.html",
+    },
+    {
+      dayNum: "17",
+      monthName: "julio",
+      weekday: "Viernes",
+      dateISO: "2026-07-17",
+      embarque: "Alto Paraíso",
+      destino: "Loquinhas",
+      hora: "8:30",
+      valor: 1,
+      confirmada: false,
+      pessoasInscritas: 0,
+      grupoMaximo: 4,
+      quorumMin: 4,
+      faltamPessoas: 4,
+      guiaNome: "Diego Navi",
+      guiaFoto: "/assets/img/imagens/guia-diego-navi.webp",
+      cardImg: "/assets/img/imagens/cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso.jpg",
+      atrativoPath: "atrativos/cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso.html",
+    },
+    {
       dayNum: "18",
       monthName: "julio",
       weekday: "Sábado",
@@ -308,9 +424,9 @@ export const EXCURSOES_CAROUSEL_BY_LOCALE = {
       hora: "7:30",
       valor: 140,
       confirmada: true,
-      pessoasInscritas: 2,
-      grupoMaximo: 10,
-      vagasRestantes: 8,
+      pessoasInscritas: 4,
+      grupoMaximo: 8,
+      vagasRestantes: 4,
       guiaNome: "Diego Navi",
       guiaFoto: "/assets/img/imagens/guia-diego-navi.webp",
     },
@@ -406,15 +522,40 @@ export function withPortugueseDestinos(rows, ptRows = EXCURSOES_CAROUSEL_BY_LOCA
   });
 }
 
+function horaExcursaoSort(e) {
+  return String((e && e.hora) || "").trim();
+}
+
+function excursaoDepartureEpochMsSort(e) {
+  var iso = String((e && e.dateISO) || "").slice(0, 10);
+  var match = horaExcursaoSort(e).match(/^(\d{1,2}):(\d{2})$/);
+  if (!iso || !match) return Number.POSITIVE_INFINITY;
+  return Date.parse(
+    iso +
+      "T" +
+      String(parseInt(match[1], 10)).padStart(2, "0") +
+      ":" +
+      match[2] +
+      ":00-03:00",
+  );
+}
+
+/** Ordem cronológica: data + hora (mais cedo primeiro). */
+export function sortExcursaoByDeparture(list) {
+  return (list || []).slice().sort(function (a, b) {
+    return excursaoDepartureEpochMsSort(a) - excursaoDepartureEpochMsSort(b);
+  });
+}
+
 /** Payload do carrossel com destinos PT em en/es (para HTML e SSR). */
 export function excursaoPayloadForSite(nowMs = Date.now()) {
-  const pt = filterFutureExcursoes(EXCURSOES_CAROUSEL_BY_LOCALE.pt, nowMs);
+  const pt = sortExcursaoByDeparture(filterFutureExcursoes(EXCURSOES_CAROUSEL_BY_LOCALE.pt, nowMs));
   /** @type {Record<string, typeof pt>} */
   const out = { pt };
   for (const loc of Object.keys(EXCURSOES_CAROUSEL_BY_LOCALE)) {
     if (loc === "pt") continue;
     const localized = withPortugueseDestinos(EXCURSOES_CAROUSEL_BY_LOCALE[loc], EXCURSOES_CAROUSEL_BY_LOCALE.pt);
-    out[loc] = filterFutureExcursoes(localized, nowMs);
+    out[loc] = sortExcursaoByDeparture(filterFutureExcursoes(localized, nowMs));
   }
   return out;
 }
@@ -424,5 +565,5 @@ export function excursaoRowsForLocale(locale, nowMs = Date.now()) {
   const pt = EXCURSOES_CAROUSEL_BY_LOCALE.pt;
   const rows = EXCURSOES_CAROUSEL_BY_LOCALE[locale] || pt;
   const localized = locale === "pt" ? rows : withPortugueseDestinos(rows, pt);
-  return filterFutureExcursoes(localized, nowMs);
+  return sortExcursaoByDeparture(filterFutureExcursoes(localized, nowMs));
 }

@@ -1387,6 +1387,7 @@ function headerHtml(ctx) {
       ${nav("home", "", S.nav.home)}
       ${nav("revista", "revista.html", S.nav.revista)}
       ${nav("atrativos", "atrativos.html", S.nav.atrativos)}
+      ${nav("reservas", "consultar-reserva.html", S.nav.reservas)}
       ${nav("contact", "contato.html", S.nav.contact)}
       <div class="nav-search-wrap" data-gcv-search data-locale="${esc(locale)}" data-page-out="${esc(cur)}" data-search-index="${esc(publicDataSrc("search-index.json", cur))}" data-no-results="${esc(S.searchNoResults)}">
         <button type="button" class="nav-search" aria-label="${esc(S.searchAria)}" aria-expanded="false" aria-controls="nav-search-panel">⌕</button>
@@ -1437,6 +1438,7 @@ function footerHtml(ctx) {
         <h3 class="footer-col-title">${esc(F.colPlan)}</h3>
         <span>${esc(F.linkShop)}</span>
         <span>${esc(F.linkLodging)}</span>
+        <a href="${esc(relBetweenSync(cur, outRelPath(locale, "consultar-reserva.html")))}">${esc(S.nav.reservas)}</a>
         <a href="${esc(contactHref)}">${esc(F.linkContact)}</a>
         <a href="${esc(FOOTER_WA_PLAN_URL)}" rel="noreferrer" target="_blank">${esc(F.linkWhatsapp)}</a>
       </nav>
@@ -1528,6 +1530,98 @@ function homeExcursionsSection(locale) {
         <button type="button" class="gcv-excursoes__nav gcv-excursoes__nav--next" aria-label="${esc(L.next)}">
           <i class="ti ti-chevron-right" aria-hidden="true"></i>
         </button>
+      </div>
+    </section>
+
+`;
+}
+
+function reservaLookupCopy(locale) {
+  const loc = locale === "en" || locale === "es" ? locale : "pt";
+  const copy = {
+    pt: {
+      homeTitle: "Já fez sua reserva?",
+      homeLead: "Consulte o status do Pix com o código GCV-XXXXXX e o e-mail usado no checkout.",
+      title: "Consultar reserva",
+      lead: "Informe o código da reserva (GCV-XXXXXX) e o mesmo e-mail usado no pagamento Pix.",
+      code: "Código da reserva",
+      email: "E-mail",
+      submit: "Consultar",
+      recoverToggle: "Não sei meu código — enviar por e-mail",
+      recoverBack: "Tenho o código",
+      recoverHint: "Enviaremos os códigos de reserva vinculados a este e-mail (se houver).",
+      recoverSubmit: "Enviar códigos por e-mail",
+      recoverSent: "Se houver reservas neste e-mail, enviamos os códigos em instantes. Verifique também o spam.",
+    },
+    en: {
+      homeTitle: "Already booked?",
+      homeLead: "Check your Pix status with code GCV-XXXXXX and the email used at checkout.",
+      title: "Look up reservation",
+      lead: "Enter your reservation code (GCV-XXXXXX) and the same email used for the Pix payment.",
+      code: "Reservation code",
+      email: "Email",
+      submit: "Look up",
+      recoverToggle: "I don't know my code — email it to me",
+      recoverBack: "I have the code",
+      recoverHint: "We'll email any reservation codes linked to this address (if any exist).",
+      recoverSubmit: "Email my codes",
+      recoverSent: "If reservations exist for this email, we sent the codes shortly. Check spam too.",
+    },
+    es: {
+      homeTitle: "¿Ya reservó?",
+      homeLead: "Consulte el estado del Pix con el código GCV-XXXXXX y el correo usado en el checkout.",
+      title: "Consultar reserva",
+      lead: "Indique el código de reserva (GCV-XXXXXX) y el mismo correo usado en el pago Pix.",
+      code: "Código de reserva",
+      email: "Correo electrónico",
+      submit: "Consultar",
+      recoverToggle: "No sé mi código — enviar por correo",
+      recoverBack: "Tengo el código",
+      recoverHint: "Enviaremos los códigos de reserva vinculados a este correo (si existen).",
+      recoverSubmit: "Enviar códigos por correo",
+      recoverSent: "Si hay reservas en este correo, enviamos los códigos en breve. Revise también el spam.",
+    },
+  };
+  return copy[loc];
+}
+
+function reservaLookupWidgetHtml(locale, opts = {}) {
+  const c = reservaLookupCopy(locale);
+  const prefix = opts.idPrefix || "gcv-reserva";
+  const codeId = `${prefix}-code`;
+  const emailId = `${prefix}-email`;
+  const recoverEmailId = `${prefix}-recover-email`;
+  return `<div class="gcv-reserva-lookup" data-gcv-reserva-lookup data-locale="${esc(locale)}">
+    <form class="gcv-reserva-form gcv-reserva-form--lookup" data-gcv-reserva-form-lookup novalidate>
+      <label for="${esc(codeId)}">${esc(c.code)}</label>
+      <input id="${esc(codeId)}" name="code" type="text" required autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="GCV-XXXXXX" pattern="GCV-[A-Z0-9]{6}" />
+      <label for="${esc(emailId)}">${esc(c.email)}</label>
+      <input id="${esc(emailId)}" name="email" type="email" required autocomplete="email" inputmode="email" placeholder="seu@email.com" />
+      <button type="submit" class="gcv-reserva-btn">${esc(c.submit)}</button>
+    </form>
+    <div class="gcv-reserva-recover">
+      <button type="button" class="gcv-reserva-recover__toggle" data-gcv-reserva-toggle-recover>${esc(c.recoverToggle)}</button>
+      <form class="gcv-reserva-form gcv-reserva-form--recover" data-gcv-reserva-form-recover hidden novalidate>
+        <p class="gcv-reserva-recover__hint">${esc(c.recoverHint)}</p>
+        <label for="${esc(recoverEmailId)}">${esc(c.email)}</label>
+        <input id="${esc(recoverEmailId)}" name="email" type="email" required autocomplete="email" inputmode="email" placeholder="seu@email.com" />
+        <button type="submit" class="gcv-reserva-btn gcv-reserva-btn--secondary">${esc(c.recoverSubmit)}</button>
+      </form>
+    </div>
+    <div class="gcv-reserva-lookup__result" data-gcv-reserva-result aria-live="polite"></div>
+  </div>`;
+}
+
+function homeReservasSection(locale) {
+  const c = reservaLookupCopy(locale);
+  return `    <section id="gcv-home-reservas" class="gcv-home-reservas" aria-labelledby="gcv-home-reservas-heading">
+      <div class="gcv-home-reservas__card">
+        <div class="gcv-home-reservas__head">
+          <span class="gcv-chip-orange">${esc(locale === "en" ? "My booking" : locale === "es" ? "Mi reserva" : "Minha reserva")}</span>
+          <h2 id="gcv-home-reservas-heading" class="gcv-home-reservas__title">${esc(c.homeTitle)}</h2>
+          <p class="gcv-home-reservas__lead">${esc(c.homeLead)}</p>
+        </div>
+${reservaLookupWidgetHtml(locale, { idPrefix: "gcv-home-reserva" })}
       </div>
     </section>
 
@@ -1703,6 +1797,34 @@ function contactAcceptLanguage(locale) {
   if (locale === "en") return "en-US,en;q=0.9,pt-BR;q=0.6";
   if (locale === "es") return "es-419,es;q=0.9,pt-BR;q=0.5";
   return "pt-BR,pt;q=0.9,en;q=0.3";
+}
+
+function confirmacaoMain(locale) {
+  const titles = {
+    pt: "Confirmação de pagamento",
+    en: "Payment confirmation",
+    es: "Confirmación de pago",
+  };
+  const loading = {
+    pt: "Carregando confirmação…",
+    en: "Loading confirmation…",
+    es: "Cargando confirmación…",
+  };
+  const loc = locale === "en" || locale === "es" ? locale : "pt";
+  return `<main id="conteudo">
+  <section class="gcv-confirmacao-wrap" style="max-width:640px;margin:2rem auto 3rem;padding:0 1rem">
+    <div id="gcv-confirmacao"><p>${esc(loading[loc])}</p></div>
+  </section>
+</main>`;
+}
+
+function consultarReservaMain(locale) {
+  const c = reservaLookupCopy(locale);
+  return `  <section class="gcv-reserva-page">
+    <h1>${esc(c.title)}</h1>
+    <p class="gcv-reserva-page__lead">${esc(c.lead)}</p>
+${reservaLookupWidgetHtml(locale, { idPrefix: "gcv-reserva" })}
+  </section>`;
 }
 
 function contatoMain(locale, ap) {
@@ -2487,6 +2609,18 @@ for (const locale of LOCALES) {
       main: (l) => homeMainHtml(l, assetPrefix(outRelPath(l, "")), INSTAGRAM_FEED_POSTS, GOOGLE_REVIEWS_POOL),
     },
     { key: "contato.html", current: "contact", main: (l) => contatoMain(l, assetPrefix(outRelPath(l, "contato.html"))) },
+    {
+      key: "confirmacao.html",
+      current: "home",
+      main: (l) => confirmacaoMain(l),
+      extraFooterScripts: `  <script src="${esc(publicJsSrc("qrcode.min.js", "confirmacao.html"))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix-receipt.js", "confirmacao.html"))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-reserva-voucher.js", "confirmacao.html"))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-bookings.js", "confirmacao.html"))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-confirmacao.js", "confirmacao.html"))}" defer></script>\n`,
+    },
+    {
+      key: "consultar-reserva.html",
+      current: "reservas",
+      main: (l) => consultarReservaMain(l),
+      extraFooterScripts: `  <script src="${esc(publicJsSrc("qrcode.min.js", "consultar-reserva.html"))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix-receipt.js", "consultar-reserva.html"))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-reserva-voucher.js", "consultar-reserva.html"))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-consultar-reserva.js", "consultar-reserva.html"))}" defer></script>\n`,
+    },
     { key: "revista.html", current: "revista", main: (l) => revistaHubMain(l, assetPrefix(outRelPath(l, "revista.html")), "revista.html") },
     { key: "atrativos.html", current: "atrativos", main: (l) => atrativosHubMain(l, assetPrefix(outRelPath(l, "atrativos.html")), "atrativos.html") },
   ];
@@ -2500,6 +2634,32 @@ for (const locale of LOCALES) {
     if (pk === "contato.html") {
       title = `${S.contact.title} | Guia Chapada Veadeiros`;
       desc = S.contact.subtitle;
+    } else if (pk === "confirmacao.html") {
+      title =
+        locale === "en"
+          ? "Payment confirmation | Guia Chapada Veadeiros"
+          : locale === "es"
+            ? "Confirmación de pago | Guia Chapada Veadeiros"
+            : "Confirmação de pagamento | Guia Chapada Veadeiros";
+      desc =
+        locale === "en"
+          ? "Your excursion Pix payment confirmation."
+          : locale === "es"
+            ? "Confirmación de pago Pix de excursión."
+            : "Confirmação do pagamento Pix da excursão.";
+    } else if (pk === "consultar-reserva.html") {
+      title =
+        locale === "en"
+          ? "Look up reservation | Guia Chapada Veadeiros"
+          : locale === "es"
+            ? "Consultar reserva | Guia Chapada Veadeiros"
+            : "Consultar reserva | Guia Chapada Veadeiros";
+      desc =
+        locale === "en"
+          ? "Look up your excursion Pix reservation with code and email."
+          : locale === "es"
+            ? "Consulte su reserva Pix con código y correo."
+            : "Consulte sua reserva Pix com código e e-mail.";
     } else if (pk === "revista.html") {
       title = `${S.revistaPage.seoTitle} | Guia Chapada Veadeiros`;
       desc = S.revistaPage.seoDesc;
@@ -2531,10 +2691,11 @@ for (const locale of LOCALES) {
             extraFooterScripts:
               homeExcursionsHideScript +
               (homeHasExcursions
-                ? `  <script src="${esc(publicJsSrc("excursoes-carousel.js", outPk))}" defer></script>\n`
+                ? `  <script src="${esc(publicJsSrc("qrcode.min.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix-receipt.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix-polling.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-bookings.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-waitlist.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-cart.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("excursoes-carousel.js", outPk))}" defer></script>\n`
                 : ""),
           }
         : {};
+    const homeConsultarScript = "";
     const html = renderPage(locale, pk, {
       title,
       desc,
@@ -2544,7 +2705,9 @@ for (const locale of LOCALES) {
       current: p.current,
       mainHtml: p.main(locale),
       extraAfterFooter: pk === "" || pk === "contato.html" ? `  ${floatWaHtml(locale)}\n` : "",
-      ...homeExcursionsHead,
+      extraFooterScripts: (p.extraFooterScripts || homeExcursionsHead.extraFooterScripts || "") + homeConsultarScript,
+      extraCss: homeExcursionsHead.extraCss,
+      extraHead: homeExcursionsHead.extraHead,
     });
     writePage(locale, pk || "", html);
     const pagePriority = pk === "" ? 1.0 : pk === "atrativos.html" || pk === "revista.html" ? 0.85 : 0.6;
