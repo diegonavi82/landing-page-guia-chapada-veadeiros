@@ -36,6 +36,8 @@ function gcv_sicoob_api_cfg(): array
         'cert_pass' => (string)($cfg['cert_pass'] ?? ''),
         'scope' => trim((string)($cfg['scope'] ?? 'pix.read webhook.read')),
         'sandbox' => $sandbox,
+        /** Token fixo do portal Sandbox Sicoob (sem certificado — só homologação). */
+        'sandbox_access_token' => trim((string)($cfg['sandbox_access_token'] ?? '')),
         'token_url' => trim((string)($cfg['token_url'] ?? '')),
         'api_base' => trim((string)($cfg['api_base'] ?? '')),
         'webhook_base_url' => rtrim(trim((string)($cfg['webhook_base_url'] ?? 'https://www.guiachapadaveadeiros.com/api/sicoob_webhook')), '/'),
@@ -43,11 +45,20 @@ function gcv_sicoob_api_cfg(): array
     return $cached;
 }
 
+function gcv_sicoob_uses_static_sandbox_token(): bool
+{
+    $cfg = gcv_sicoob_api_cfg();
+    return $cfg['sandbox'] && $cfg['sandbox_access_token'] !== '';
+}
+
 function gcv_sicoob_is_configured(): bool
 {
     $cfg = gcv_sicoob_api_cfg();
     if ($cfg['client_id'] === '') {
         return false;
+    }
+    if (gcv_sicoob_uses_static_sandbox_token()) {
+        return true;
     }
     if ($cfg['cert_pfx'] !== '') {
         return is_readable(gcv_sicoob_resolve_path($cfg['cert_pfx']));
@@ -98,7 +109,7 @@ function gcv_sicoob_api_base(): string
         return rtrim($cfg['api_base'], '/');
     }
     if ($cfg['sandbox']) {
-        return 'https://api-homol.sicoob.com.br/cooperado/pix/api/v2';
+        return 'https://sandbox.sicoob.com.br/sicoob/sandbox/pix/api/v2';
     }
     return 'https://apis.sisbr.com.br/cooperado/pix/api/v2';
 }
@@ -166,6 +177,10 @@ function gcv_sicoob_access_token(): ?string
 {
     if (!gcv_sicoob_is_configured() || !function_exists('curl_init')) {
         return null;
+    }
+
+    if (gcv_sicoob_uses_static_sandbox_token()) {
+        return gcv_sicoob_api_cfg()['sandbox_access_token'];
     }
 
     $cached = gcv_sicoob_read_token_cache();
@@ -258,7 +273,7 @@ function gcv_sicoob_api_get(string $path, array $query = []): ?array
             'client_id: ' . $cfg['client_id'],
         ],
     ]);
-    if (!gcv_sicoob_apply_mtls($ch)) {
+    if (!gcv_sicoob_uses_static_sandbox_token() && !gcv_sicoob_apply_mtls($ch)) {
         curl_close($ch);
         return null;
     }
@@ -413,7 +428,7 @@ function gcv_sicoob_register_webhook(): array
             'client_id: ' . $cfg['client_id'],
         ],
     ]);
-    if (!gcv_sicoob_apply_mtls($ch)) {
+    if (!gcv_sicoob_uses_static_sandbox_token() && !gcv_sicoob_apply_mtls($ch)) {
         curl_close($ch);
         return ['success' => false, 'message' => 'Certificado mTLS indisponível'];
     }
@@ -427,6 +442,13 @@ function gcv_sicoob_register_webhook(): array
             'success' => true,
             'webhookUrl' => $webhookUrl,
             'message' => 'Webhook registrado. Sicoob chamará ' . $webhookUrl . '/pix',
+        ];
+    }
+
+    if (gcv_sicoob_uses_static_sandbox_token()) {
+        return [
+            'success' => false,
+            'message' => 'HTTP ' . $code . ' (sandbox): webhook real exige app de produção + certificado',
         ];
     }
 

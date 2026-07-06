@@ -46,7 +46,12 @@ return [
         'cert_pass' => '',
         /** Escopos mínimos: pix.read (+ webhook.read para registrar webhook) */
         'scope' => 'pix.read webhook.read webhook.write',
+        /** true = homologação (sandbox.sicoob.com.br); false = produção */
         'sandbox' => false,
+        /** Só sandbox: token fixo do portal Developers (não use em produção) */
+        'sandbox_access_token' => '',
+        /** Opcional — padrão sandbox: …/sicoob/sandbox/pix/api/v2 */
+        'api_base' => '',
         /** URL base registrada no Sicoob (sem /pix — o banco adiciona) */
         'webhook_base_url' => 'https://www.guiachapadaveadeiros.com/api/sicoob_webhook',
         /** IPs permitidos no webhook (vazio = aceita qualquer — preencha em produção se souber) */

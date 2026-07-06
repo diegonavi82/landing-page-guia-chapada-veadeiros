@@ -4705,7 +4705,9 @@
       var cards = track.querySelectorAll(".gcv-excursoes-card");
       var el = cards[startIdx];
       if (!el) return;
-      var target = Math.max(0, Math.min(el.offsetLeft, maxScrollLeft()));
+      // Índice 0 = início real do trilho (scrollLeft 0), não offsetLeft do card (padding do track).
+      var target =
+        startIdx === 0 ? 0 : Math.max(0, Math.min(el.offsetLeft, maxScrollLeft()));
       try {
         viewport.scrollTo({
           left: target,
