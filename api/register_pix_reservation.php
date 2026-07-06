@@ -69,6 +69,35 @@ $record = [
     'ip' => substr((string)($_SERVER['REMOTE_ADDR'] ?? ''), 0, 45),
 ];
 
+$inclExclRaw = $data['incl_excl'] ?? $data['inclExcl'] ?? null;
+if (is_array($inclExclRaw)) {
+    $incl = [];
+    $excl = [];
+    if (is_array($inclExclRaw['incl'] ?? null)) {
+        foreach ($inclExclRaw['incl'] as $item) {
+            $s = trim((string) $item);
+            if ($s !== '') {
+                $incl[] = mb_substr($s, 0, 240);
+            }
+        }
+    }
+    if (is_array($inclExclRaw['excl'] ?? null)) {
+        foreach ($inclExclRaw['excl'] as $item) {
+            $s = trim((string) $item);
+            if ($s !== '') {
+                $excl[] = mb_substr($s, 0, 240);
+            }
+        }
+    }
+    if ($incl || $excl) {
+        $record['incl_excl'] = ['incl' => $incl, 'excl' => $excl];
+    }
+}
+
+if (is_array($data['packages'] ?? null) && $data['packages']) {
+    $record['packages'] = $data['packages'];
+}
+
 $clientEmail = trim((string)($data['email'] ?? ''));
 if ($clientEmail !== '' && filter_var($clientEmail, FILTER_VALIDATE_EMAIL)) {
     $record['email'] = strtolower($clientEmail);

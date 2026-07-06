@@ -105,6 +105,10 @@
     return;
   }
 
+  if (window.GcvPixReceipt && typeof window.GcvPixReceipt.saveReservationCode === "function") {
+    window.GcvPixReceipt.saveReservationCode(id);
+  }
+
   var api =
     (window.location.pathname.indexOf("/en/") >= 0 || window.location.pathname.indexOf("/es/") >= 0
       ? "../api/"
@@ -164,7 +168,7 @@
       var loc = detectLocale();
       var voucherData =
         window.GcvReservaVoucher && typeof window.GcvReservaVoucher.normalizeFromPixStatus === "function"
-          ? window.GcvReservaVoucher.normalizeFromPixStatus(data, id)
+          ? window.GcvReservaVoucher.normalizeFromPixStatus(data, id, loc)
           : null;
 
       var html =

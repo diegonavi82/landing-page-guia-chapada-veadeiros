@@ -7,15 +7,18 @@
   var STORAGE_KEY = "gcv-excursao-pix-seats";
   var CART_STORAGE_KEY = "gcv-excursao-cart";
   var DATA_RESET_KEY = "gcv-exc-pix-data-reset";
-  var DATA_RESET_VERSION = "jul18-mirante-v2";
+  var DATA_RESET_VERSION = "jul07-caracol-removed-v1";
   var CART_ID_MIGRATION_KEY = "gcv-exc-cart-id-migration";
   var CART_ID_MIGRATION_VERSION = "dateiso-v1";
+  var SEAT_RESET_KEY = "gcv-exc-pix-seat-reset";
+  var SEAT_RESET_VERSION = "agvnxu-caracol-v1";
   var COMMITTED_RES_KEY = "gcv-exc-pix-committed-reservations";
   var RESET_CART_IDS = [
     "2026-07-18-mirante-da-janela-vale-da-lua",
     "18-julho-mirante-da-janela-vale-da-lua",
     "18-july-mirante-da-janela-vale-da-lua",
     "18-julio-mirante-da-janela-vale-da-lua",
+    "2026-07-07-caracol",
   ];
   var MONTH_NUM = {
     janeiro: 1,
@@ -113,6 +116,12 @@
   }
 
   function destSlugFromExcursao(e) {
+    if (e && e.cartSlug) {
+      return String(e.cartSlug)
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "");
+    }
     var destRaw =
       (e && e.destino) ||
       getDestinos(e)
@@ -284,6 +293,21 @@
     }
   }
 
+  function unmarkReservationCommitted(reservationId) {
+    var rid = String(reservationId || "")
+      .trim()
+      .toUpperCase();
+    if (!rid) return;
+    var committed = readCommittedReservations().filter(function (code) {
+      return code !== rid;
+    });
+    try {
+      global.localStorage.setItem(COMMITTED_RES_KEY, JSON.stringify(committed));
+    } catch (err) {
+      /* */
+    }
+  }
+
   function reservationAlreadyCommitted(reservationId) {
     var rid = String(reservationId || "")
       .trim()
@@ -300,6 +324,30 @@
     var result = recordTrips(trips, baseAvailByCartId);
     if (result && result.ok) markReservationCommitted(reservationId);
     return result;
+  }
+
+  /**
+   * Desfaz vagas Pix de uma reserva cancelada/removida (dev/admin).
+   */
+  function releaseTripsForReservation(reservationId, trips) {
+    var rid = String(reservationId || "")
+      .trim()
+      .toUpperCase();
+    if (!rid || !reservationAlreadyCommitted(rid)) return { ok: false, error: "not_committed" };
+    if (!Array.isArray(trips) || !trips.length) return { ok: false, error: "empty" };
+
+    var map = readMap();
+    for (var i = 0; i < trips.length; i++) {
+      var trip = trips[i];
+      var cartId = normalizeCartId(String((trip && trip.cartId) || "").trim());
+      var qty = Math.max(0, parseInt(String(trip && trip.qty), 10) || 0);
+      if (!cartId || qty < 1) continue;
+      map[cartId] = Math.max(0, numOrZero(map[cartId]) - qty);
+      if (map[cartId] <= 0) delete map[cartId];
+    }
+    writeMap(map);
+    unmarkReservationCommitted(rid);
+    return { ok: true };
   }
 
   function version() {
@@ -392,8 +440,30 @@
     }
   }
 
+  function runSeatResets() {
+    try {
+      if (global.localStorage.getItem(SEAT_RESET_KEY) === SEAT_RESET_VERSION) return;
+      if (reservationAlreadyCommitted("GCV-AGVNXU")) {
+        releaseTripsForReservation("GCV-AGVNXU", [{ cartId: "2026-07-07-caracol", qty: 1 }]);
+      } else {
+        var map = readMap();
+        var caracolId = "2026-07-07-caracol";
+        if (map[caracolId]) {
+          map[caracolId] = Math.max(0, numOrZero(map[caracolId]) - 1);
+          if (map[caracolId] <= 0) delete map[caracolId];
+          writeMap(map);
+        }
+      }
+      unmarkReservationCommitted("GCV-AGVNXU");
+      global.localStorage.setItem(SEAT_RESET_KEY, SEAT_RESET_VERSION);
+    } catch (err) {
+      /* */
+    }
+  }
+
   migrateCartIdsInStorage();
   runDataResets();
+  runSeatResets();
 
   global.GcvExcBookings = {
     cartIdFromExcursao: cartIdFromExcursao,
@@ -405,6 +475,7 @@
     applyToRows: applyToRows,
     recordTrips: recordTrips,
     recordTripsForReservation: recordTripsForReservation,
+    releaseTripsForReservation: releaseTripsForReservation,
     reservationAlreadyCommitted: reservationAlreadyCommitted,
     version: version,
   };

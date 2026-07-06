@@ -65,7 +65,7 @@ if ($status === 'EXPIRED' && ($res['status'] ?? '') !== 'EXPIRED') {
     gcv_pix_write_reservation($res);
 }
 
-echo json_encode([
+$payload = [
     'ok' => true,
     'reservation_id' => $reservationId,
     'status' => $status,
@@ -75,4 +75,11 @@ echo json_encode([
     'paid_at' => $res['paid_at'] ?? null,
     'created_at' => $res['created_at'] ?? null,
     'expires_at' => $res['expires_at'] ?? null,
-]);
+];
+if (!empty($res['incl_excl']) && is_array($res['incl_excl'])) {
+    $payload['incl_excl'] = $res['incl_excl'];
+}
+if (!empty($res['packages']) && is_array($res['packages'])) {
+    $payload['packages'] = $res['packages'];
+}
+echo json_encode($payload);

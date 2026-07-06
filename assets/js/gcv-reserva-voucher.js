@@ -13,6 +13,7 @@
       amount: "Valor total",
       trips: "Passeios",
       embarque: "Embarque",
+      guia: "Guia",
       person: "pessoa",
       people: "pessoas",
       statusPENDING: "Aguardando pagamento",
@@ -29,6 +30,10 @@
       openVoucher: "Ver comprovante",
       found: "Reserva encontrada.",
       qrHint: "Apresente este QR ao guia para validar sua reserva.",
+      included: "O que está incluso",
+      excluded: "O que não está incluso",
+      inclDefault: "Passeio com guia local",
+      exclDefault: "Transporte, ingresso e almoço",
     },
     en: {
       title: "Your reservation",
@@ -38,6 +43,7 @@
       amount: "Total",
       trips: "Tours",
       embarque: "Meeting point",
+      guia: "Guide",
       person: "person",
       people: "people",
       statusPENDING: "Awaiting payment",
@@ -54,6 +60,10 @@
       openVoucher: "View voucher",
       found: "Reservation found.",
       qrHint: "Show this QR to your guide to validate your reservation.",
+      included: "Included",
+      excluded: "Not included",
+      inclDefault: "Tour with local guide",
+      exclDefault: "Transport, admission and lunch",
     },
     es: {
       title: "Su reserva",
@@ -63,6 +73,7 @@
       amount: "Valor total",
       trips: "Paseos",
       embarque: "Embarque",
+      guia: "Guía",
       person: "persona",
       people: "personas",
       statusPENDING: "Esperando pago",
@@ -79,6 +90,10 @@
       openVoucher: "Ver comprobante",
       found: "Reserva encontrada.",
       qrHint: "Presente este QR al guía para validar su reserva.",
+      included: "Qué está incluido",
+      excluded: "Qué no está incluido",
+      inclDefault: "Paseo con guía local",
+      exclDefault: "Transporte, entrada y almuerzo",
     },
   };
 
@@ -125,24 +140,143 @@
     return "pending";
   }
 
-  function normalizeFromLookup(body) {
+  function slugDestino(dest) {
+    return String(dest || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+  }
+
+  function cartIdFromTrip(t) {
+    if (!t) return "";
+    if (t.cartId) return String(t.cartId);
+    var iso = t.dateIso || t.dateISO || "";
+    var dest = slugDestino(t.destino);
+    return iso && dest ? iso + "-" + dest : "";
+  }
+
+  function cartIdFromRow(e) {
+    if (!e) return "";
+    var iso = e.dateISO || e.dateIso || "";
+    var dest = slugDestino(e.destino);
+    return iso && dest ? iso + "-" + dest : "";
+  }
+
+  function loadExcursaoRows(loc) {
+    var el = document.getElementById("gcv-excursoes-payload");
+    if (!el || !el.textContent) return [];
+    try {
+      var data = JSON.parse(el.textContent);
+      var key = loc === "en" ? "en" : loc === "es" ? "es" : "pt";
+      if (Array.isArray(data[key]) && data[key].length) return data[key];
+      if (Array.isArray(data.pt)) return data.pt;
+    } catch (err) {
+      /* */
+    }
+    return [];
+  }
+
+  function enrichTrips(trips, loc) {
+    if (!Array.isArray(trips) || !trips.length) return [];
+    var rows = loadExcursaoRows(loc);
+    if (!rows.length && loc !== "pt") rows = loadExcursaoRows("pt");
+    if (!rows.length) return trips.slice();
+    return trips.map(function (t) {
+      if (!t || t.guiaNome) return t;
+      var cid = cartIdFromTrip(t);
+      for (var i = 0; i < rows.length; i++) {
+        var row = rows[i];
+        if (!row || !row.guiaNome) continue;
+        if (cid && cartIdFromRow(row) === cid) {
+          return Object.assign({}, t, { guiaNome: String(row.guiaNome) });
+        }
+        var iso = t.dateIso || t.dateISO || "";
+        if (iso && row.dateISO === iso && String(t.destino || "") === String(row.destino || "")) {
+          return Object.assign({}, t, { guiaNome: String(row.guiaNome) });
+        }
+      }
+      return t;
+    });
+  }
+
+  function normalizeFromLookup(body, loc) {
     if (!body) return null;
+    var locale = loc === "en" || loc === "es" ? loc : "pt";
     return {
       code: body.reservation_id || body.code || "",
       amount: body.amount,
       status: body.status || "PENDING",
-      trips: Array.isArray(body.trips) ? body.trips : [],
+      trips: enrichTrips(Array.isArray(body.trips) ? body.trips : [], locale),
+      inclExcl: body.incl_excl || body.inclExcl || null,
+      packages: Array.isArray(body.packages) ? body.packages : null,
     };
   }
 
-  function normalizeFromPixStatus(data, id) {
+  function normalizeFromPixStatus(data, id, loc) {
     if (!data) return null;
+    var locale = loc === "en" || loc === "es" ? loc : data.locale === "en" || data.locale === "es" ? data.locale : "pt";
     return {
       code: id || data.reservation_id || "",
       amount: data.amount,
       status: data.status || "PENDING",
-      trips: Array.isArray(data.trips) ? data.trips : [],
+      trips: enrichTrips(Array.isArray(data.trips) ? data.trips : [], locale),
+      inclExcl: data.incl_excl || data.inclExcl || null,
+      packages: Array.isArray(data.packages) ? data.packages : null,
     };
+  }
+
+  function rsReceipt(loc, key) {
+    if (global.GcvPixReceipt && typeof global.GcvPixReceipt.rs === "function") {
+      var fromReceipt = global.GcvPixReceipt.rs(loc, key);
+      if (fromReceipt) return fromReceipt;
+    }
+    return rs(loc, key);
+  }
+
+  function resolveCoverage(data) {
+    var receiptData = {
+      inclExcl: data.inclExcl || null,
+      packages: data.packages || null,
+    };
+    var incl = [];
+    var excl = [];
+    if (global.GcvPixReceipt && typeof global.GcvPixReceipt.resolveInclExcl === "function") {
+      var cov = global.GcvPixReceipt.resolveInclExcl(receiptData);
+      incl = cov.incl || [];
+      excl = cov.excl || [];
+    } else if (receiptData.inclExcl) {
+      incl = (receiptData.inclExcl.incl || []).slice();
+      excl = (receiptData.inclExcl.excl || []).slice();
+    }
+    return { incl: incl, excl: excl };
+  }
+
+  function buildCoverageHtml(data, loc) {
+    var cov = resolveCoverage(data);
+    var incl =
+      cov.incl.length > 0 ? cov.incl : [rsReceipt(loc, "inclDefault")];
+    var excl = cov.excl.length > 0 ? cov.excl : [rsReceipt(loc, "exclDefault")];
+
+    var html =
+      '<section class="gcv-reserva-voucher__coverage">' +
+      '<div class="gcv-reserva-voucher__coverage-grid">' +
+      '<div class="gcv-reserva-voucher__cov gcv-reserva-voucher__cov--in">' +
+      "<h3>" +
+      escapeHtml(rsReceipt(loc, "included")) +
+      "</h3><ul>";
+    incl.forEach(function (item) {
+      html += "<li>" + escapeHtml(item) + "</li>";
+    });
+    html +=
+      '</ul></div><div class="gcv-reserva-voucher__cov gcv-reserva-voucher__cov--out">' +
+      "<h3>" +
+      escapeHtml(rsReceipt(loc, "excluded")) +
+      "</h3><ul>";
+    excl.forEach(function (item) {
+      html += "<li>" + escapeHtml(item) + "</li>";
+    });
+    html += "</ul></div></div></section>";
+    return html;
   }
 
   function toReceiptData(data) {
@@ -150,6 +284,8 @@
       code: data.code,
       amount: data.amount,
       trips: data.trips,
+      inclExcl: data.inclExcl || null,
+      packages: data.packages || null,
     };
   }
 
@@ -170,48 +306,112 @@
     return origin + path + "?id=" + encodeURIComponent(code || "");
   }
 
-  function buildQrPayload(data, loc) {
-    var trips = (data.trips || []).map(function (t) {
-      return {
-        date: t.dateIso || t.dateShort || t.dateLabel || "",
-        destino: t.destino || "",
-        embarque: t.embarque || "",
-        hora: t.hora || "",
-        qty: parseInt(String(t.qty), 10) || 1,
-        cartId: t.cartId || "",
+  function ensureQrLib() {
+    if (
+      global.QRCode &&
+      (typeof global.QRCode.toDataURL === "function" || typeof global.QRCode.toCanvas === "function")
+    ) {
+      return Promise.resolve(true);
+    }
+    return new Promise(function (resolve) {
+      var existing = document.querySelector('script[data-gcv-qrcode-lib="1"]');
+      if (existing) {
+        existing.addEventListener("load", function () {
+          resolve(!!(global.QRCode && global.QRCode.toCanvas));
+        });
+        existing.addEventListener("error", function () {
+          resolve(false);
+        });
+        return;
+      }
+      var script = document.createElement("script");
+      script.src = assetUrl("assets/js/qrcode.min.js");
+      script.defer = true;
+      script.setAttribute("data-gcv-qrcode-lib", "1");
+      script.onload = function () {
+        resolve(
+          !!(
+            global.QRCode &&
+            (global.QRCode.toDataURL || global.QRCode.toCanvas)
+          ),
+        );
       };
+      script.onerror = function () {
+        resolve(false);
+      };
+      document.head.appendChild(script);
     });
-    return JSON.stringify({
-      v: 1,
-      provider: "Guia Chapada Veadeiros",
-      code: data.code,
-      status: String(data.status || "PENDING").toUpperCase(),
-      amount: Number(data.amount) || 0,
-      currency: "BRL",
-      trips: trips,
-      verify: verifyUrl(data.code, loc),
+  }
+
+  function buildQrPayload(data, loc) {
+    var lines = [
+      "GCV:1",
+      data.code,
+      String(data.status || "PENDING").toUpperCase(),
+      String(Number(data.amount) || 0),
+    ];
+    (data.trips || []).forEach(function (t) {
+      lines.push(
+        [
+          t.dateIso || t.dateShort || t.dateLabel || "",
+          t.destino || "",
+          t.embarque || "",
+          t.hora || "",
+          t.guiaNome || "",
+          String(parseInt(String(t.qty), 10) || 1),
+        ].join("|"),
+      );
     });
+    lines.push(verifyUrl(data.code, loc));
+    return lines.join("\n");
+  }
+
+  function qrRenderOptions() {
+    return {
+      width: 128,
+      margin: 1,
+      errorCorrectionLevel: "L",
+      color: { dark: "#064e3b", light: "#ffffff" },
+    };
+  }
+
+  function replaceCanvasWithQrImg(canvas, dataUrl) {
+    if (!canvas || !canvas.parentNode) return;
+    var img = document.createElement("img");
+    img.src = dataUrl;
+    img.className = "gcv-reserva-voucher__qr-img";
+    img.width = 128;
+    img.height = 128;
+    img.setAttribute("alt", "QR code");
+    canvas.parentNode.replaceChild(img, canvas);
   }
 
   function renderVoucherQr(card, data, loc) {
     if (!card) return Promise.resolve(false);
-    var canvas = card.querySelector(".gcv-reserva-voucher__qr");
-    if (!canvas || typeof global.QRCode === "undefined" || !global.QRCode.toCanvas) {
-      return Promise.resolve(false);
-    }
-    var payload = buildQrPayload(data, loc);
-    return global.QRCode.toCanvas(canvas, payload, {
-      width: 112,
-      margin: 1,
-      errorCorrectionLevel: "M",
-      color: { dark: "#064e3b", light: "#ffffff" },
-    })
-      .then(function () {
-        return true;
-      })
-      .catch(function () {
-        return false;
-      });
+    var slot = card.querySelector("[data-gcv-voucher-qr-slot]") || card.querySelector(".gcv-reserva-voucher__qr-wrap");
+    if (!slot) return Promise.resolve(false);
+
+    return ensureQrLib().then(function (ok) {
+      if (!ok || typeof global.QRCode.toDataURL !== "function") return false;
+      var payload = buildQrPayload(data, loc);
+      var opts = qrRenderOptions();
+      return global.QRCode.toDataURL(payload, opts)
+        .then(function (url) {
+          var existing = slot.querySelector(".gcv-reserva-voucher__qr-img, .gcv-reserva-voucher__qr, canvas");
+          var img = document.createElement("img");
+          img.src = url;
+          img.className = "gcv-reserva-voucher__qr-img";
+          img.width = 128;
+          img.height = 128;
+          img.setAttribute("alt", "QR code");
+          if (existing) existing.replaceWith(img);
+          else slot.insertBefore(img, slot.firstChild);
+          return true;
+        })
+        .catch(function () {
+          return false;
+        });
+    });
   }
 
   function waitImages(el) {
@@ -238,7 +438,7 @@
       '<header class="gcv-reserva-voucher__card-head">' +
       '<img class="gcv-reserva-voucher__logo" src="' +
       escapeHtml(logo) +
-      '" alt="Guia Chapada Veadeiros" width="168" height="31" decoding="async" />' +
+      '" alt="Guia Chapada Veadeiros" width="280" height="52" decoding="async" />' +
       '<span class="gcv-reserva-voucher__badge gcv-reserva-voucher__badge--' +
       escapeHtml(statusClass(data.status)) +
       '">' +
@@ -278,19 +478,28 @@
         if (t.embarque) sub.push(rs(loc, "embarque") + ": " + t.embarque);
         if (t.hora) sub.push(t.hora);
         sub.push(qty + " " + qtyLabel);
-        html += '<span class="gcv-reserva-voucher__trip-sub">' + escapeHtml(sub.join(" · ")) + "</span></li>";
+        html += '<span class="gcv-reserva-voucher__trip-sub">' + escapeHtml(sub.join(" · ")) + "</span>";
+        if (t.guiaNome) {
+          html +=
+            '<span class="gcv-reserva-voucher__trip-guia">' +
+            escapeHtml(rs(loc, "guia") + ": " + t.guiaNome) +
+            "</span>";
+        }
+        html += "</li>";
       });
       html += "</ul></section>";
     }
+
+    html += buildCoverageHtml(data, loc);
 
     html += '<div class="gcv-reserva-voucher__qr-wrap">';
     if (qrDataUrl) {
       html +=
         '<img class="gcv-reserva-voucher__qr-img" src="' +
         escapeHtml(qrDataUrl) +
-        '" width="112" height="112" alt="QR code" />';
+        '" width="128" height="128" alt="QR code" />';
     } else {
-      html += '<canvas class="gcv-reserva-voucher__qr" width="112" height="112" role="img" aria-label="QR code"></canvas>';
+      html += '<div class="gcv-reserva-voucher__qr-slot" data-gcv-voucher-qr-slot aria-hidden="true"></div>';
     }
     html +=
       '<p class="gcv-reserva-voucher__qr-hint">' +
@@ -320,10 +529,10 @@
       escapeHtml(data.code) +
       '</title><style>' +
       "*{box-sizing:border-box}body{margin:0;padding:12mm;font-family:Inter,Arial,sans-serif;color:#0f172a;background:#fff}" +
-      ".gcv-reserva-voucher__card{border:1px solid #cbd5e1;border-radius:10px;padding:14px;max-width:360px;margin:0 auto}" +
-      ".gcv-reserva-voucher__card-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px}" +
-      ".gcv-reserva-voucher__logo{display:block;max-height:28px;width:auto;max-width:62%;object-fit:contain}" +
-      ".gcv-reserva-voucher__badge{font-size:10px;font-weight:700;padding:4px 8px;border-radius:999px;background:#ecfdf5;color:#065f46;flex-shrink:0}" +
+      ".gcv-reserva-voucher__card{border:1px solid #e2e8f0;border-radius:10px;padding:14px;max-width:360px;margin:0 auto;background:#fff}" +
+      ".gcv-reserva-voucher__card-head{display:flex;flex-direction:column;align-items:stretch;gap:8px;margin-bottom:12px}" +
+      ".gcv-reserva-voucher__logo{display:block;width:100%;max-height:52px;object-fit:contain;object-position:left center}" +
+      ".gcv-reserva-voucher__badge{font-size:10px;font-weight:700;padding:4px 8px;border-radius:999px;background:#ecfdf5;color:#065f46;align-self:flex-start}" +
       ".gcv-reserva-voucher__meta{margin:0 0 12px;display:grid;gap:6px;font-size:11px}" +
       ".gcv-reserva-voucher__meta dt{margin:0;color:#64748b;font-weight:600}" +
       ".gcv-reserva-voucher__meta dd{margin:2px 0 0;font-size:13px}" +
@@ -331,9 +540,17 @@
       ".gcv-reserva-voucher__trips ul{margin:0;padding:0;list-style:none}" +
       ".gcv-reserva-voucher__trip{padding:8px 0;border-top:1px solid #e2e8f0;font-size:11px;line-height:1.35}" +
       ".gcv-reserva-voucher__trip-date,.gcv-reserva-voucher__trip-dest{display:block;font-weight:600}" +
+      ".gcv-reserva-voucher__trip-guia{display:block;font-weight:600;color:#064e3b;margin-top:3px}" +
       ".gcv-reserva-voucher__trip-sub{display:block;color:#64748b;margin-top:2px}" +
+      ".gcv-reserva-voucher__coverage{margin:10px 0 8px}" +
+      ".gcv-reserva-voucher__coverage-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}" +
+      ".gcv-reserva-voucher__cov{border:1px solid #e2e8f0;border-radius:8px;padding:8px;font-size:9px;line-height:1.35;background:#fff}" +
+      ".gcv-reserva-voucher__cov h3{margin:0 0 4px;font-size:9px;color:#064e3b}" +
+      ".gcv-reserva-voucher__cov ul{margin:0;padding:0;list-style:none}" +
+      ".gcv-reserva-voucher__cov--in li{color:#065f46}" +
+      ".gcv-reserva-voucher__cov--out li{color:#991b1b}" +
       ".gcv-reserva-voucher__qr-wrap{display:flex;flex-direction:column;align-items:center;margin:10px 0 8px;padding-top:8px;border-top:1px dashed #e2e8f0}" +
-      ".gcv-reserva-voucher__qr-img,.gcv-reserva-voucher__qr{display:block;width:112px;height:112px}" +
+      ".gcv-reserva-voucher__qr-img,.gcv-reserva-voucher__qr{display:block;width:128px;height:128px}" +
       ".gcv-reserva-voucher__qr-hint{margin:6px 0 0;font-size:9px;color:#64748b;text-align:center;line-height:1.35}" +
       ".gcv-reserva-voucher__card-foot{margin-top:12px;padding-top:10px;border-top:1px solid #e2e8f0;font-size:9px;color:#64748b;line-height:1.4}" +
       "@page{size:100mm auto;margin:8mm}@media print{body{padding:0}}" +
@@ -420,20 +637,24 @@
 
   function openModal(data, locale) {
     if (!data || !data.code) return;
-    currentData = data;
     currentLocale = locale === "en" || locale === "es" ? locale : "pt";
+    currentData = Object.assign({}, data, {
+      trips: enrichTrips(data.trips || [], currentLocale),
+    });
 
     var modal = ensureModal();
     updateModalLabels(currentLocale);
-    modal.querySelector("[data-gcv-voucher-body]").innerHTML = buildCardHtml(data, currentLocale);
+    modal.querySelector("[data-gcv-voucher-body]").innerHTML = buildCardHtml(currentData, currentLocale);
     modal.hidden = false;
     modal.setAttribute("aria-hidden", "false");
     setBodyScrollLock(true);
     showToast("", true);
 
     var card = modal.querySelector("[data-gcv-voucher-card]");
-    renderVoucherQr(card, data, currentLocale).then(function () {
-      if (card && card.focus) card.focus();
+    global.requestAnimationFrame(function () {
+      renderVoucherQr(card, currentData, currentLocale).then(function () {
+        if (card && card.focus) card.focus();
+      });
     });
   }
 
@@ -476,31 +697,20 @@
   }
 
   function getQrDataUrl() {
-    var canvas = modalEl && modalEl.querySelector(".gcv-reserva-voucher__qr");
-    if (!canvas || typeof canvas.toDataURL !== "function") return "";
-    try {
-      return canvas.toDataURL("image/png");
-    } catch (err) {
-      return "";
-    }
+    var img = modalEl && modalEl.querySelector(".gcv-reserva-voucher__qr-img");
+    if (img && img.src) return img.src;
+    return "";
   }
 
   function prepareCardCloneForExport(el) {
     var clone = el.cloneNode(true);
-    var srcCanvas = el.querySelector(".gcv-reserva-voucher__qr");
-    var dstCanvas = clone.querySelector(".gcv-reserva-voucher__qr");
-    if (srcCanvas && dstCanvas && typeof srcCanvas.toDataURL === "function") {
-      try {
-        var img = document.createElement("img");
-        img.src = srcCanvas.toDataURL("image/png");
-        img.width = 112;
-        img.height = 112;
-        img.className = "gcv-reserva-voucher__qr-img";
-        img.setAttribute("alt", "QR code");
-        dstCanvas.parentNode.replaceChild(img, dstCanvas);
-      } catch (err) {
-        /* */
-      }
+    var srcImg = el.querySelector(".gcv-reserva-voucher__qr-img");
+    var dstSlot = clone.querySelector("[data-gcv-voucher-qr-slot], .gcv-reserva-voucher__qr-wrap");
+    if (srcImg && dstSlot) {
+      var imgCopy = srcImg.cloneNode(true);
+      var placeholder = dstSlot.querySelector(".gcv-reserva-voucher__qr-slot, .gcv-reserva-voucher__qr-img, canvas");
+      if (placeholder) placeholder.replaceWith(imgCopy);
+      else dstSlot.insertBefore(imgCopy, dstSlot.firstChild);
     }
     return clone;
   }

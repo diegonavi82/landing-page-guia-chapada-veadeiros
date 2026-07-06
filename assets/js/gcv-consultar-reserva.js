@@ -4,6 +4,9 @@
 (function () {
   "use strict";
 
+  var WHATSAPP_PHONE = "5562982506891";
+  var WHATSAPP_DISPLAY = "+55 62 98250-6891";
+
   var STRINGS = {
     pt: {
       statusPENDING: "Aguardando pagamento",
@@ -13,7 +16,9 @@
       emailMismatch: "E-mail não confere com esta reserva.",
       error: "Não foi possível consultar. Tente novamente.",
       serviceError: "Serviço indisponível. Recarregue a página ou tente em instantes.",
-      recoverSent: "Se houver reservas neste e-mail, enviamos os códigos em instantes. Verifique também o spam.",
+      recoverSent: "Código enviado por e-mail.",
+      recoverNotFound:
+        "Não há reserva para este e-mail. Envie seu comprovante de pagamento para {{link}} para receber informações de sua reserva.",
       recoverError: "Não foi possível enviar agora. Tente novamente.",
       recoverToggle: "Não sei meu código — enviar por e-mail",
       recoverBack: "Tenho o código",
@@ -25,6 +30,8 @@
       backExc: "← Voltar às excursões",
       person: "pessoa",
       people: "pessoas",
+      savedCodesLabel: "Suas reservas salvas",
+      pickCode: "Usar código",
     },
     en: {
       statusPENDING: "Awaiting payment",
@@ -34,7 +41,9 @@
       emailMismatch: "Email does not match this reservation.",
       error: "Could not look up the reservation. Please try again.",
       serviceError: "Service unavailable. Reload the page or try again shortly.",
-      recoverSent: "If reservations exist for this email, we sent the codes shortly. Check spam too.",
+      recoverSent: "Code sent by email.",
+      recoverNotFound:
+        "There is no reservation for this email. Send your payment receipt to {{link}} to receive your reservation details.",
       recoverError: "Could not send right now. Please try again.",
       recoverToggle: "I don't know my code — email it to me",
       recoverBack: "I have the code",
@@ -46,6 +55,8 @@
       backExc: "← Back to tours",
       person: "person",
       people: "people",
+      savedCodesLabel: "Your saved reservations",
+      pickCode: "Use code",
     },
     es: {
       statusPENDING: "Esperando pago",
@@ -55,7 +66,9 @@
       emailMismatch: "El correo no coincide con esta reserva.",
       error: "No se pudo consultar. Inténtelo de nuevo.",
       serviceError: "Servicio no disponible. Recargue la página o intente de nuevo.",
-      recoverSent: "Si hay reservas en este correo, enviamos los códigos en breve. Revise también el spam.",
+      recoverSent: "Código enviado por correo.",
+      recoverNotFound:
+        "No hay reserva para este correo. Envíe su comprobante de pago a {{link}} para recibir información de su reserva.",
       recoverError: "No se pudo enviar ahora. Inténtelo de nuevo.",
       recoverToggle: "No sé mi código — enviar por correo",
       recoverBack: "Tengo el código",
@@ -67,6 +80,8 @@
       backExc: "← Volver a las excursiones",
       person: "persona",
       people: "personas",
+      savedCodesLabel: "Sus reservas guardadas",
+      pickCode: "Usar código",
     },
   };
 
@@ -80,6 +95,23 @@
   function s(loc, key) {
     var pack = STRINGS[loc] || STRINGS.pt;
     return pack[key] || STRINGS.pt[key] || "";
+  }
+
+  function recoverNotFoundHtml(loc) {
+    var waText =
+      loc === "en"
+        ? "Hello! I would like to send my payment receipt for my reservation."
+        : loc === "es"
+          ? "¡Hola! Quiero enviar mi comprobante de pago de mi reserva."
+          : "Olá! Gostaria de enviar o comprovante de pagamento da minha reserva.";
+    var waHref = "https://wa.me/" + WHATSAPP_PHONE + "?text=" + encodeURIComponent(waText);
+    var link =
+      '<a href="' +
+      escapeHtml(waHref) +
+      '" rel="noopener noreferrer" target="_blank">' +
+      escapeHtml(WHATSAPP_DISPLAY) +
+      "</a>";
+    return String(s(loc, "recoverNotFound")).replace("{{link}}", link);
   }
 
   function apiBase() {
@@ -136,6 +168,140 @@
     var v = Number(n);
     if (!Number.isFinite(v)) v = 0;
     return "R$ " + v.toFixed(2).replace(".", ",");
+  }
+
+  function saveCodeToStorage(code, email) {
+    if (!window.GcvPixReceipt || typeof window.GcvPixReceipt.saveReservationCode !== "function") return;
+    window.GcvPixReceipt.saveReservationCode(code, email ? { email: email } : undefined);
+  }
+
+  function bindCodeAutosave(codeInput, emailInput, onUpdate) {
+    if (!codeInput || codeInput._gcvCodeAutosaveBound) return;
+    codeInput._gcvCodeAutosaveBound = true;
+    codeInput.addEventListener("input", function () {
+      var v = String(codeInput.value || "")
+        .toUpperCase()
+        .replace(/[^A-Z0-9-]/g, "");
+      if (codeInput.value !== v) codeInput.value = v;
+    });
+    codeInput.addEventListener("blur", function () {
+      var code = codeInput.value;
+      var email = emailInput ? String(emailInput.value || "").trim() : "";
+      if (window.GcvPixReceipt && window.GcvPixReceipt.isValidReservationCode(code)) {
+        saveCodeToStorage(code, email);
+        if (typeof onUpdate === "function") onUpdate();
+      }
+    });
+  }
+
+  function ensureSavedCodesUi(root, lookupForm, loc) {
+    if (!lookupForm || lookupForm._gcvSavedCodesUi) return lookupForm._gcvSavedCodesUi;
+    var codeInput = lookupForm.querySelector('[name="code"]');
+    if (!codeInput) return null;
+
+    var listId = (codeInput.id || "gcv-reserva-code") + "-saved-list";
+    var datalist = document.getElementById(listId);
+    if (!datalist) {
+      datalist = document.createElement("datalist");
+      datalist.id = listId;
+      document.body.appendChild(datalist);
+    }
+    codeInput.setAttribute("list", listId);
+    codeInput.setAttribute("autocomplete", "on");
+
+    var wrap = document.createElement("div");
+    wrap.className = "gcv-reserva-saved";
+    wrap.setAttribute("data-gcv-reserva-saved", "");
+    wrap.hidden = true;
+    wrap.innerHTML =
+      '<p class="gcv-reserva-saved__label">' +
+      escapeHtml(s(loc, "savedCodesLabel")) +
+      '</p><div class="gcv-reserva-saved__list" data-gcv-reserva-saved-list></div>';
+
+    var codeLabel = lookupForm.querySelector('label[for="' + codeInput.id + '"]');
+    if (codeLabel && codeLabel.parentNode) {
+      codeLabel.parentNode.insertBefore(wrap, codeLabel.nextSibling);
+    } else {
+      lookupForm.insertBefore(wrap, codeInput);
+    }
+
+    lookupForm._gcvSavedCodesUi = { wrap: wrap, datalist: datalist, listEl: wrap.querySelector("[data-gcv-reserva-saved-list]") };
+    return lookupForm._gcvSavedCodesUi;
+  }
+
+  function refreshSavedCodesUi(root, lookupForm, loc) {
+    var ui = ensureSavedCodesUi(root, lookupForm, loc);
+    if (!ui) return;
+    var codes =
+      window.GcvPixReceipt && typeof window.GcvPixReceipt.readSavedReservationCodes === "function"
+        ? window.GcvPixReceipt.readSavedReservationCodes()
+        : [];
+
+    while (ui.datalist.firstChild) ui.datalist.removeChild(ui.datalist.firstChild);
+    codes.forEach(function (item) {
+      var opt = document.createElement("option");
+      opt.value = item.code;
+      ui.datalist.appendChild(opt);
+    });
+
+    if (!codes.length) {
+      ui.wrap.hidden = true;
+      ui.listEl.innerHTML = "";
+      return;
+    }
+
+    ui.wrap.hidden = false;
+    ui.listEl.innerHTML = codes
+      .map(function (item) {
+        return (
+          '<button type="button" class="gcv-reserva-saved__chip" data-gcv-reserva-pick-code="' +
+          escapeHtml(item.code) +
+          '" title="' +
+          escapeHtml(s(loc, "pickCode")) +
+          '">' +
+          escapeHtml(item.code) +
+          "</button>"
+        );
+      })
+      .join("");
+  }
+
+  function applySavedCodePick(root, lookupForm, loc, code) {
+    var codeInput = lookupForm.querySelector('[name="code"]');
+    var emailInput = lookupForm.querySelector('[name="email"]');
+    if (codeInput) codeInput.value = String(code || "").toUpperCase();
+    if (emailInput && window.GcvPixReceipt && typeof window.GcvPixReceipt.getSavedEmailForCode === "function") {
+      var savedEmail = window.GcvPixReceipt.getSavedEmailForCode(code);
+      if (savedEmail && !String(emailInput.value || "").trim()) emailInput.value = savedEmail;
+    }
+    if (!emailInput || !String(emailInput.value || "").trim()) {
+      if (window.GcvPixReceipt && typeof window.GcvPixReceipt.readSavedEmail === "function") {
+        var fallbackEmail = window.GcvPixReceipt.readSavedEmail();
+        if (fallbackEmail && emailInput) emailInput.value = fallbackEmail;
+      }
+    }
+    refreshSavedCodesUi(root, lookupForm, loc);
+  }
+
+  function prefillLookupForm(root, lookupForm, loc, preCode, preEmail) {
+    var codeInput = lookupForm.querySelector('[name="code"]');
+    var emailInput = lookupForm.querySelector('[name="email"]');
+    var code = preCode ? String(preCode).toUpperCase() : "";
+    if (!code && window.GcvPixReceipt && typeof window.GcvPixReceipt.getLastReservationCode === "function") {
+      code = window.GcvPixReceipt.getLastReservationCode();
+    }
+    if (codeInput && code) codeInput.value = code;
+
+    var email = preEmail ? String(preEmail).trim() : "";
+    if (!email && code && window.GcvPixReceipt && typeof window.GcvPixReceipt.getSavedEmailForCode === "function") {
+      email = window.GcvPixReceipt.getSavedEmailForCode(code);
+    }
+    if (!email && window.GcvPixReceipt && typeof window.GcvPixReceipt.readSavedEmail === "function") {
+      email = window.GcvPixReceipt.readSavedEmail();
+    }
+    if (emailInput && email) emailInput.value = email;
+
+    refreshSavedCodesUi(root, lookupForm, loc);
   }
 
   function renderResult(data, loc) {
@@ -232,8 +398,95 @@
 
   function openVoucherPopup(body, loc) {
     if (!window.GcvReservaVoucher || typeof window.GcvReservaVoucher.openModal !== "function") return;
-    var data = window.GcvReservaVoucher.normalizeFromLookup(body);
+    var data = window.GcvReservaVoucher.normalizeFromLookup(body, loc);
     if (data) window.GcvReservaVoucher.openModal(data, loc);
+  }
+
+  function performLookup(root, lookupForm, loc, code, email) {
+    var result = root.querySelector("[data-gcv-reserva-result]");
+    code = String(code || "")
+      .trim()
+      .toUpperCase();
+    email = String(email || "").trim();
+    if (window.GcvPixReceipt && window.GcvPixReceipt.isValidReservationCode(code)) {
+      saveCodeToStorage(code, email);
+      refreshSavedCodesUi(root, lookupForm, loc);
+    }
+    var submitBtn = lookupForm.querySelector('[type="submit"]');
+    if (submitBtn) submitBtn.disabled = true;
+    if (result) result.innerHTML = '<p class="gcv-reserva-loading">…</p>';
+
+    return fetch(lookupApiUrl(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ reservation_id: code, email: email }),
+    })
+      .then(function (res) {
+        return res.json().then(function (body) {
+          return { ok: res.ok, status: res.status, body: body };
+        });
+      })
+      .then(function (pack) {
+        var body = pack.body || {};
+        if (body.ok) {
+          saveCodeToStorage(code, email);
+          refreshSavedCodesUi(root, lookupForm, loc);
+          if (window.GcvExcBookings && typeof window.GcvExcBookings.recordTripsForReservation === "function") {
+            window.GcvExcBookings.recordTripsForReservation(
+              body.reservation_id,
+              (body.trips || []).map(function (t) {
+                return { cartId: t.cartId, qty: t.qty };
+              }),
+            );
+          }
+          storeLookupResult(root, body);
+          if (result) {
+            if (window.GcvReservaVoucher && typeof window.GcvReservaVoucher.inlineSummaryHtml === "function") {
+              result.innerHTML = window.GcvReservaVoucher.inlineSummaryHtml(
+                window.GcvReservaVoucher.normalizeFromLookup(body, loc),
+                loc,
+              );
+            } else {
+              result.innerHTML = renderResult(body, loc);
+            }
+          }
+          openVoucherPopup(body, loc);
+          return;
+        }
+        var msg = s(loc, "error");
+        if (pack.status === 404 || body.message === "Not found") msg = s(loc, "notFound");
+        else if (pack.status === 403 || body.message === "Email does not match this reservation") {
+          msg = s(loc, "emailMismatch");
+        } else if (body.message === "Invalid reservation code") msg = s(loc, "notFound");
+        else if (body.error && String(body.error).indexOf("implementado") >= 0) {
+          msg = s(loc, "serviceError");
+        }
+        if (result) {
+          result.innerHTML = '<p class="gcv-reserva-error" role="alert">' + escapeHtml(msg) + "</p>";
+        }
+      })
+      .catch(function () {
+        if (result) {
+          result.innerHTML =
+            '<p class="gcv-reserva-error" role="alert">' + escapeHtml(s(loc, "error")) + "</p>";
+        }
+      })
+      .finally(function () {
+        if (submitBtn) submitBtn.disabled = false;
+      });
+  }
+
+  function stripAutoLookupParams() {
+    if (!window.history || typeof window.history.replaceState !== "function") return;
+    try {
+      var url = new URL(window.location.href);
+      url.searchParams.delete("email");
+      url.searchParams.delete("auto");
+      var qs = url.searchParams.toString();
+      window.history.replaceState({}, "", url.pathname + (qs ? "?" + qs : "") + url.hash);
+    } catch (_err) {
+      /* ignore */
+    }
   }
 
   function initWidget(root) {
@@ -251,7 +504,7 @@
     if (window.GcvReservaVoucher && typeof window.GcvReservaVoucher.bindInlineButtons === "function") {
       window.GcvReservaVoucher.bindInlineButtons(root, loc, function (code) {
         var body = getLookupResult(root, code);
-        return body && window.GcvReservaVoucher.normalizeFromLookup(body);
+        return body && window.GcvReservaVoucher.normalizeFromLookup(body, loc);
       });
     }
 
@@ -264,72 +517,31 @@
     }
 
     if (lookupForm) {
+      var codeField = lookupForm.querySelector('[name="code"]');
+      var emailField = lookupForm.querySelector('[name="email"]');
+      bindCodeAutosave(codeField, emailField, function () {
+        refreshSavedCodesUi(root, lookupForm, loc);
+      });
+      root.addEventListener("click", function (e) {
+        var chip = e.target.closest("[data-gcv-reserva-pick-code]");
+        if (!chip || !root.contains(chip)) return;
+        applySavedCodePick(root, lookupForm, loc, chip.getAttribute("data-gcv-reserva-pick-code"));
+        if (codeField) codeField.focus();
+      });
+    }
+
+    if (lookupForm) {
       lookupForm.addEventListener("submit", function (e) {
         e.preventDefault();
         var codeInput = lookupForm.querySelector('[name="code"]');
         var emailInput = lookupForm.querySelector('[name="email"]');
-        var code = codeInput ? String(codeInput.value || "").trim().toUpperCase() : "";
-        var email = emailInput ? String(emailInput.value || "").trim() : "";
-        var submitBtn = lookupForm.querySelector('[type="submit"]');
-        if (submitBtn) submitBtn.disabled = true;
-        if (result) result.innerHTML = '<p class="gcv-reserva-loading">…</p>';
-
-        fetch(lookupApiUrl(), {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Accept: "application/json" },
-          body: JSON.stringify({ reservation_id: code, email: email }),
-        })
-          .then(function (res) {
-            return res.json().then(function (body) {
-              return { ok: res.ok, status: res.status, body: body };
-            });
-          })
-          .then(function (pack) {
-            var body = pack.body || {};
-            if (body.ok) {
-              if (window.GcvExcBookings && typeof window.GcvExcBookings.recordTripsForReservation === "function") {
-                window.GcvExcBookings.recordTripsForReservation(
-                  body.reservation_id,
-                  (body.trips || []).map(function (t) {
-                    return { cartId: t.cartId, qty: t.qty };
-                  }),
-                );
-              }
-              storeLookupResult(root, body);
-              if (result) {
-                if (window.GcvReservaVoucher && typeof window.GcvReservaVoucher.inlineSummaryHtml === "function") {
-                  result.innerHTML = window.GcvReservaVoucher.inlineSummaryHtml(
-                    window.GcvReservaVoucher.normalizeFromLookup(body),
-                    loc,
-                  );
-                } else {
-                  result.innerHTML = renderResult(body, loc);
-                }
-              }
-              openVoucherPopup(body, loc);
-              return;
-            }
-            var msg = s(loc, "error");
-            if (pack.status === 404 || body.message === "Not found") msg = s(loc, "notFound");
-            else if (pack.status === 403 || body.message === "Email does not match this reservation") {
-              msg = s(loc, "emailMismatch");
-            } else if (body.message === "Invalid reservation code") msg = s(loc, "notFound");
-            else if (body.error && String(body.error).indexOf("implementado") >= 0) {
-              msg = s(loc, "serviceError");
-            }
-            if (result) {
-              result.innerHTML = '<p class="gcv-reserva-error" role="alert">' + escapeHtml(msg) + "</p>";
-            }
-          })
-          .catch(function () {
-            if (result) {
-              result.innerHTML =
-                '<p class="gcv-reserva-error" role="alert">' + escapeHtml(s(loc, "error")) + "</p>";
-            }
-          })
-          .finally(function () {
-            if (submitBtn) submitBtn.disabled = false;
-          });
+        performLookup(
+          root,
+          lookupForm,
+          loc,
+          codeInput ? codeInput.value : "",
+          emailInput ? emailInput.value : "",
+        );
       });
     }
 
@@ -355,8 +567,18 @@
           .then(function (pack) {
             if (pack.ok && pack.body && pack.body.ok) {
               if (result) {
+                if (pack.body.found === true) {
+                  if (email && window.GcvPixReceipt && typeof window.GcvPixReceipt.saveEmail === "function") {
+                    window.GcvPixReceipt.saveEmail(email);
+                  }
+                  result.innerHTML =
+                    '<p class="gcv-reserva-result gcv-reserva-result--sent">' +
+                    escapeHtml(s(loc, "recoverSent")) +
+                    "</p>";
+                  return;
+                }
                 result.innerHTML =
-                  '<p class="gcv-reserva-result gcv-reserva-result--sent">' + escapeHtml(s(loc, "recoverSent")) + "</p>";
+                  '<p class="gcv-reserva-error" role="alert">' + recoverNotFoundHtml(loc) + "</p>";
               }
               return;
             }
@@ -380,11 +602,12 @@
     var params = new URLSearchParams(window.location.search);
     var preCode = params.get("id") || params.get("code") || "";
     var preEmail = params.get("email") || "";
-    if (lookupForm && preCode) {
-      var codeField = lookupForm.querySelector('[name="code"]');
-      var emailField = lookupForm.querySelector('[name="email"]');
-      if (codeField) codeField.value = preCode.toUpperCase();
-      if (emailField && preEmail) emailField.value = preEmail;
+    if (lookupForm) {
+      prefillLookupForm(root, lookupForm, loc, preCode, preEmail);
+      if (preCode && preEmail) {
+        performLookup(root, lookupForm, loc, preCode, preEmail);
+        stripAutoLookupParams();
+      }
     }
   }
 

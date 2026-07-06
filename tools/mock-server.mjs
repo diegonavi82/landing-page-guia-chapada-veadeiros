@@ -8,6 +8,9 @@ import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { sendDevMail, buildRecoverEmailHtml, recoverEmailSubject } from "./mock-mail.mjs";
+import { excursaoRowsForLocale } from "./excursoes-carousel-data.mjs";
+import { buildPixReceiptEmailHtml, receiptEmailSubject } from "./pix-receipt-html.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, "..");
@@ -23,6 +26,53 @@ const waitlistMem = {};
 
 function ensurePixDir() {
   fs.mkdirSync(PIX_STORE_DIR, { recursive: true });
+}
+
+function slugDestino(dest) {
+  return String(dest || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function cartIdFromTrip(t) {
+  if (!t) return "";
+  if (t.cartId) return String(t.cartId);
+  const iso = t.dateIso || t.dateISO || "";
+  const dest = slugDestino(t.destino);
+  return iso && dest ? `${iso}-${dest}` : "";
+}
+
+function cartIdFromRow(e) {
+  if (!e) return "";
+  const iso = e.dateISO || e.dateIso || "";
+  const dest = slugDestino(e.destino);
+  return iso && dest ? `${iso}-${dest}` : "";
+}
+
+/** @param {unknown[]} trips @param {string} locale */
+function enrichTripsGuia(trips, locale = "pt") {
+  if (!Array.isArray(trips) || !trips.length) return trips;
+  const rows = [];
+  for (const loc of [locale, "pt", "en", "es"]) {
+    rows.push(...excursaoRowsForLocale(loc));
+  }
+  return trips.map((t) => {
+    if (!t || typeof t !== "object" || t.guiaNome) return t;
+    const trip = /** @type {Record<string, unknown>} */ (t);
+    const cid = cartIdFromTrip(trip);
+    for (const row of rows) {
+      if (!row?.guiaNome) continue;
+      if (cid && cartIdFromRow(row) === cid) {
+        return { ...trip, guiaNome: String(row.guiaNome) };
+      }
+      const iso = String(trip.dateIso || trip.dateISO || "");
+      if (iso && row.dateISO === iso && String(trip.destino || "") === String(row.destino || "")) {
+        return { ...trip, guiaNome: String(row.guiaNome) };
+      }
+    }
+    return t;
+  });
 }
 
 function pixRead(id) {
@@ -75,6 +125,9 @@ function handlePixApi(urlPath, req, res) {
           expires_at: new Date(Date.now() + expiresIn * 1000).toISOString(),
           created_at: new Date().toISOString(),
         };
+        if (data.incl_excl && typeof data.incl_excl === "object") rec.incl_excl = data.incl_excl;
+        else if (data.inclExcl && typeof data.inclExcl === "object") rec.incl_excl = data.inclExcl;
+        if (Array.isArray(data.packages) && data.packages.length) rec.packages = data.packages;
         const clientEmail = String(data.email || "").trim().toLowerCase();
         if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clientEmail)) {
           rec.email = clientEmail;
@@ -129,6 +182,7 @@ function handlePixApi(urlPath, req, res) {
           rec.status = "EXPIRED";
           pixWrite(id, rec);
         }
+        const trips = enrichTripsGuia(rec.trips || [], rec.locale || "pt");
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
         res.end(
           JSON.stringify({
@@ -137,10 +191,12 @@ function handlePixApi(urlPath, req, res) {
             status,
             amount: rec.amount,
             locale: rec.locale,
-            trips: rec.trips || [],
+            trips,
             paid_at: rec.paid_at || null,
             created_at: rec.created_at || null,
             expires_at: rec.expires_at || null,
+            incl_excl: rec.incl_excl || undefined,
+            packages: rec.packages || undefined,
           }),
         );
       } catch {
@@ -166,25 +222,60 @@ function handlePixApi(urlPath, req, res) {
           return;
         }
         const matches = [];
+        const recs = [];
         ensurePixDir();
         for (const fp of fs.readdirSync(PIX_STORE_DIR)) {
           if (!/^GCV-[A-Z0-9]{6}\.json$/i.test(fp)) continue;
           try {
             const rec = JSON.parse(fs.readFileSync(path.join(PIX_STORE_DIR, fp), "utf8"));
             if (String(rec.email || "").trim().toLowerCase() === email) {
-              matches.push(rec.reservation_id || fp.replace(/\.json$/i, ""));
+              const code = rec.reservation_id || fp.replace(/\.json$/i, "");
+              matches.push(code);
+              recs.push(rec);
             }
           } catch {
             /* */
           }
         }
-        if (matches.length) {
-          console.log("[mock] recover-by-email:", email, "→", matches.join(", "));
-        } else {
+
+        const locale = ["pt", "en", "es"].includes(String(data.locale || "")) ? data.locale : "pt";
+
+        const finish = (payload) => {
+          res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify(payload));
+        };
+
+        if (!matches.length) {
           console.log("[mock] recover-by-email:", email, "→ (nenhuma reserva)");
+          finish({ ok: true, found: false });
+          return;
         }
-        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-        res.end(JSON.stringify({ ok: true, message: "If reservations exist for this email, we sent the codes." }));
+
+        console.log("[mock] recover-by-email:", email, "→", matches.join(", "));
+
+        (async () => {
+          try {
+            await sendDevMail({
+              to: email,
+              subject: recoverEmailSubject(locale),
+              html: buildRecoverEmailHtml(recs, email, locale),
+            });
+            for (const rec of recs) {
+              const code = String(rec.reservation_id || "").toUpperCase();
+              if (!/^GCV-[A-Z0-9]{6}$/.test(code)) continue;
+              await sendDevMail({
+                to: email,
+                subject: receiptEmailSubject(code, locale),
+                html: buildPixReceiptEmailHtml(rec, locale),
+                fullDocument: true,
+              });
+              console.log("[mock] recibo enviado:", code, "→", email);
+            }
+            finish({ ok: true, found: true });
+          } catch {
+            finish({ ok: true, found: true });
+          }
+        })();
       } catch {
         res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
         res.end(JSON.stringify({ ok: false, message: "Invalid JSON" }));
@@ -214,8 +305,10 @@ function handlePixApi(urlPath, req, res) {
         status,
         reservation_id: id,
         amount: rec.amount,
-        trips: rec.trips,
+        trips: enrichTripsGuia(rec.trips || [], rec.locale || "pt"),
         locale: rec.locale,
+        incl_excl: rec.incl_excl || undefined,
+        packages: rec.packages || undefined,
       }),
     );
     return true;
@@ -624,8 +717,30 @@ const server = http.createServer((req, res) => {
               return;
             }
             console.log("[mock] Recibo Pix enviado para:", email, "| código:", data.code || "—");
-            res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-            res.end(JSON.stringify({ ok: true, message: "Sent (mock)", code: data.code || "" }));
+            sendDevMail({
+              to: email,
+              subject: "Recibo Pix — " + (data.code || "Guia Chapada Veadeiros"),
+              html:
+                "<p>Recibo da reserva <strong>" +
+                String(data.code || "").replace(/</g, "") +
+                "</strong>.</p><p><em>(Mock localhost — conteúdo completo do recibo HTML omitido.)</em></p>",
+            })
+              .then(function (mail) {
+                res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+                res.end(
+                  JSON.stringify({
+                    ok: true,
+                    message: "Sent (mock)",
+                    code: data.code || "",
+                    dev: mail && mail.via === "outbox" ? { outbox: true, file: mail.file } : undefined,
+                  }),
+                );
+              })
+              .catch(function () {
+                res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+                res.end(JSON.stringify({ ok: true, message: "Sent (mock)", code: data.code || "" }));
+              });
+            return;
           } catch (err) {
             res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
             res.end(JSON.stringify({ ok: false, message: "Invalid JSON" }));
@@ -675,6 +790,7 @@ server.listen(PORT, () => {
   console.log("  ✅  Mock server rodando em http://localhost:" + PORT);
   console.log("  👤  Usuário mockado: " + user.name + " (" + user.role + " / " + user.status + ")");
   console.log("  📬  Lista de espera: POST /api/excursao-waitlist/register.php");
+  console.log("  ✉   E-mail dev: api/.env (SMTP) ou api/storage/dev-outbox/");
   console.log("");
   console.log("  Trocar de papel:");
   console.log("    node tools/mock-server.mjs guide          → Guia ativo");

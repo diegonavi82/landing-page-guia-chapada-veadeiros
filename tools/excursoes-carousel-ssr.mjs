@@ -461,6 +461,7 @@ function excursaoDateLabelSsr(e, locale) {
 function excursaoCartIdSsr(e) {
   const iso = String((e && e.dateISO) || "").slice(0, 10);
   const destRaw =
+    (e && e.cartSlug) ||
     (e && e.destino) ||
     getDestinos(e)
       .map((d) => d.destino)

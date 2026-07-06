@@ -14,6 +14,8 @@ export const BUILD_PROD_DIR = join(ROOT, "Build_prod");
 export const DEPLOY_ROOT_ENTRIES = [
   "index.html",
   "contato.html",
+  "consultar-reserva.html",
+  "confirmacao.html",
   "revista.html",
   "atrativos.html",
   "excursoes.html",

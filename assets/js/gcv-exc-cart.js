@@ -19,6 +19,131 @@
     return pack[key] || "";
   }
 
+  function policyUi() {
+    if (global.GcvExcCartPolicies && typeof global.GcvExcCartPolicies.uiStrings === "function") {
+      return global.GcvExcCartPolicies.uiStrings(_locale);
+    }
+    return {
+      agreePrefix: "Li e concordo com a",
+      policyCancel: "Política de Cancelamento",
+      policySecurity: "Política de Segurança",
+      modalClose: "Fechar",
+      agreeRequired:
+        "Para pagar com Pix, leia e aceite a Política de Cancelamento e a Política de Segurança.",
+    };
+  }
+
+  function cartPoliciesAccepted() {
+    var cancel = document.querySelector('[data-gcv-cart-agree="cancel"]');
+    var security = document.querySelector('[data-gcv-cart-agree="security"]');
+    return !!(cancel && cancel.checked && security && security.checked);
+  }
+
+  function syncCartCheckoutState() {
+    var checkoutBtn = document.querySelector("[data-gcv-cart-checkout]");
+    if (!checkoutBtn) return;
+    var ok = cartPoliciesAccepted();
+    checkoutBtn.disabled = !ok;
+    checkoutBtn.setAttribute("aria-disabled", ok ? "false" : "true");
+  }
+
+  function ensurePolicyModal() {
+    var modal = document.getElementById("gcv-exc-cart-policy-modal");
+    if (modal) return modal;
+    modal = document.createElement("div");
+    modal.id = "gcv-exc-cart-policy-modal";
+    modal.className = "gcv-exc-cart-policy-modal";
+    modal.hidden = true;
+    modal.setAttribute("aria-hidden", "true");
+    modal.innerHTML =
+      '<button type="button" class="gcv-exc-cart-policy-modal__backdrop" data-gcv-cart-policy-close tabindex="-1" aria-hidden="true"></button>' +
+      '<div class="gcv-exc-cart-policy-modal__sheet" role="dialog" aria-modal="true" aria-labelledby="gcv-exc-cart-policy-title">' +
+      '<div class="gcv-exc-cart-policy-modal__head">' +
+      '<h2 id="gcv-exc-cart-policy-title" class="gcv-exc-cart-policy-modal__title"></h2>' +
+      '<button type="button" class="gcv-exc-cart-policy-modal__close" data-gcv-cart-policy-close aria-label="">×</button>' +
+      "</div>" +
+      '<div class="gcv-exc-cart-policy-modal__body" id="gcv-exc-cart-policy-body"></div>' +
+      '<div class="gcv-exc-cart-policy-modal__foot">' +
+      '<button type="button" class="gcv-exc-cart-policy-modal__done" data-gcv-cart-policy-close></button>' +
+      "</div></div>";
+    document.body.appendChild(modal);
+    return modal;
+  }
+
+  function openPolicyModal(type) {
+    var modal = ensurePolicyModal();
+    var ui = policyUi();
+    var titleEl = modal.querySelector("#gcv-exc-cart-policy-title");
+    var bodyEl = modal.querySelector("#gcv-exc-cart-policy-body");
+    var closeBtn = modal.querySelector(".gcv-exc-cart-policy-modal__close");
+    var doneBtn = modal.querySelector(".gcv-exc-cart-policy-modal__done");
+    var title =
+      global.GcvExcCartPolicies && typeof global.GcvExcCartPolicies.docTitle === "function"
+        ? global.GcvExcCartPolicies.docTitle(type, _locale)
+        : type === "security"
+          ? ui.policySecurity
+          : ui.policyCancel;
+    var html =
+      global.GcvExcCartPolicies && typeof global.GcvExcCartPolicies.renderPolicyHtml === "function"
+        ? global.GcvExcCartPolicies.renderPolicyHtml(type, _locale)
+        : "";
+    if (titleEl) titleEl.textContent = title;
+    if (bodyEl) bodyEl.innerHTML = html ? '<article class="gcv-exc-policy-doc">' + html + "</article>" : "";
+    if (closeBtn) closeBtn.setAttribute("aria-label", ui.modalClose || "Fechar");
+    if (doneBtn) doneBtn.textContent = ui.modalClose || "Fechar";
+    modal.hidden = false;
+    modal.setAttribute("aria-hidden", "false");
+    modal.classList.add("is-open");
+    document.documentElement.classList.add("gcv-exc-cart-policy-open");
+    if (bodyEl) bodyEl.scrollTop = 0;
+  }
+
+  function closePolicyModal() {
+    var modal = document.getElementById("gcv-exc-cart-policy-modal");
+    if (!modal) return;
+    modal.hidden = true;
+    modal.setAttribute("aria-hidden", "true");
+    modal.classList.remove("is-open");
+    document.documentElement.classList.remove("gcv-exc-cart-policy-open");
+  }
+
+  function renderPolicyCheckboxLabel(type) {
+    var ui = policyUi();
+    var linkLabel =
+      global.GcvExcCartPolicies && typeof global.GcvExcCartPolicies.policyLinkLabel === "function"
+        ? global.GcvExcCartPolicies.policyLinkLabel(type, _locale)
+        : type === "security"
+          ? ui.policySecurity
+          : ui.policyCancel;
+    return (
+      escapeHtml(ui.agreePrefix) +
+      ' <button type="button" class="gcv-exc-cart-policy__link" data-gcv-cart-policy-open="' +
+      escapeHtml(type) +
+      '">' +
+      escapeHtml(linkLabel) +
+      "</button>"
+    );
+  }
+
+  function ensureCartPoliciesBlock(foot) {
+    if (!foot || foot.querySelector("#gcv-exc-cart-policies")) return;
+    var policies = document.createElement("div");
+    policies.id = "gcv-exc-cart-policies";
+    policies.className = "gcv-exc-cart-panel__policies";
+    policies.innerHTML =
+      '<label class="gcv-exc-cart-policy">' +
+      '<input type="checkbox" class="gcv-exc-cart-policy__input" data-gcv-cart-agree="cancel" />' +
+      '<span class="gcv-exc-cart-policy__text" data-gcv-cart-policy-label="cancel"></span>' +
+      "</label>" +
+      '<label class="gcv-exc-cart-policy">' +
+      '<input type="checkbox" class="gcv-exc-cart-policy__input" data-gcv-cart-agree="security" />' +
+      '<span class="gcv-exc-cart-policy__text" data-gcv-cart-policy-label="security"></span>' +
+      "</label>";
+    var checkout = foot.querySelector("[data-gcv-cart-checkout]");
+    if (checkout) foot.insertBefore(policies, checkout);
+    else foot.appendChild(policies);
+  }
+
   function itemDepartureMs(it) {
     var stored = parseInt(String(it && it.departureMs), 10);
     if (Number.isFinite(stored)) return stored;
@@ -335,6 +460,7 @@
           qty: parseInt(String(it.qty), 10) || 1,
           cartId: it.id || "",
           valorUnit: parseInt(String(it.valorUnit), 10) || 0,
+          guiaNome: it.guiaNome || "",
         };
       }),
       packages: items.map(function (it) {
@@ -348,6 +474,7 @@
           cartId: it.id || "",
           valorUnit: parseInt(String(it.valorUnit), 10) || 0,
           inclExcl: it.inclExcl || null,
+          guiaNome: it.guiaNome || "",
         };
       }),
     };
@@ -406,7 +533,16 @@
       '<div class="gcv-exc-cart-panel__body" id="gcv-exc-cart-body"></div>' +
       '<div class="gcv-exc-cart-panel__foot" id="gcv-exc-cart-foot" hidden>' +
       '<p class="gcv-exc-cart-panel__total"><span data-gcv-cart-total-label></span> <strong data-gcv-cart-total-val></strong></p>' +
-      '<button type="button" class="gcv-exc-cart-panel__checkout" data-gcv-cart-checkout></button>' +
+      '<div class="gcv-exc-cart-panel__policies" id="gcv-exc-cart-policies">' +
+      '<label class="gcv-exc-cart-policy">' +
+      '<input type="checkbox" class="gcv-exc-cart-policy__input" data-gcv-cart-agree="cancel" />' +
+      '<span class="gcv-exc-cart-policy__text" data-gcv-cart-policy-label="cancel"></span>' +
+      "</label>" +
+      '<label class="gcv-exc-cart-policy">' +
+      '<input type="checkbox" class="gcv-exc-cart-policy__input" data-gcv-cart-agree="security" />' +
+      '<span class="gcv-exc-cart-policy__text" data-gcv-cart-policy-label="security"></span>' +
+      "</label></div>" +
+      '<button type="button" class="gcv-exc-cart-panel__checkout" data-gcv-cart-checkout disabled aria-disabled="true"></button>' +
       '<button type="button" class="gcv-exc-cart-panel__back" data-gcv-cart-close></button>' +
       "</div></div></div>";
     document.body.appendChild(root);
@@ -421,31 +557,49 @@
     if (actions) return actions;
     actions = document.createElement("div");
     actions.className = "header-actions";
-    header.appendChild(actions);
+    var toggle = header.querySelector(".nav-toggle");
+    var nav = header.querySelector(".nav-main");
+    if (toggle) header.insertBefore(actions, toggle);
+    else if (nav) header.insertBefore(actions, nav);
+    else header.appendChild(actions);
     return actions;
   }
 
   function mountCartFabInHeader() {
+    var btn = document.getElementById("gcv-exc-cart-float");
     var fab = document.getElementById("gcv-exc-cart-fab");
+    if (fab) fab.hidden = true;
+    if (!btn) return;
     var header = document.querySelector(".site-header .header-inner");
-    if (!fab || !header) return;
+    if (!header) return;
 
     function place() {
       var nav = header.querySelector(".nav-main");
       var toggle = header.querySelector(".nav-toggle");
+      var actions = ensureHeaderActions(header);
       var mobile = window.matchMedia("(max-width: 860px)").matches;
 
       if (mobile) {
-        var actions = ensureHeaderActions(header);
         if (toggle && toggle.parentElement !== actions) actions.appendChild(toggle);
-        if (fab.parentElement !== actions) actions.insertBefore(fab, toggle || null);
-      } else if (nav) {
-        var lang = nav.querySelector(".lang-switch");
-        if (fab.parentElement !== nav) {
-          if (lang) nav.insertBefore(fab, lang);
-          else nav.appendChild(fab);
-        }
+        if (btn.parentElement !== actions) actions.insertBefore(btn, toggle || null);
+        return;
       }
+
+      if (toggle && toggle.parentElement === actions) {
+        if (nav && nav.parentElement === header) header.insertBefore(toggle, nav);
+        else header.appendChild(toggle);
+      }
+
+      if (nav) {
+        var lang = nav.querySelector(".lang-switch");
+        if (btn.parentElement !== nav) {
+          if (lang) nav.insertBefore(btn, lang);
+          else nav.appendChild(btn);
+        }
+        return;
+      }
+
+      if (btn.parentElement !== actions) actions.appendChild(btn);
     }
 
     place();
@@ -457,6 +611,13 @@
       if (_cartMountMq.addEventListener) _cartMountMq.addEventListener("change", rebounce);
       else if (_cartMountMq.addListener) _cartMountMq.addListener(rebounce);
     }
+  }
+
+  function bootstrapCartHeaderShell() {
+    if (!document.querySelector(".site-header .header-inner")) return;
+    var root = ensureCartUi();
+    mountCartFabInHeader();
+    if (!root._gcvCartBound) renderCartUi();
   }
 
   function closeCartPanel() {
@@ -494,11 +655,7 @@
     var title = root.querySelector("#gcv-exc-cart-title");
 
     if (fab) {
-      fab.setAttribute(
-        "aria-label",
-        count > 0 ? s("cartFabAria") + " (" + count + ")" : s("cartFabAria"),
-      );
-      fab.hidden = count <= 0;
+      fab.hidden = true;
     }
     if (fabLabel) fabLabel.textContent = s("cartFabLabel") || s("cartTitle") || "Carrinho";
     if (fabTotal) {
@@ -589,6 +746,7 @@
 
     if (foot) {
       foot.hidden = false;
+      ensureCartPoliciesBlock(foot);
       if (!foot.querySelector(".gcv-exc-cart-panel__back")) {
         var backEl = document.createElement("button");
         backEl.type = "button";
@@ -600,10 +758,15 @@
       var totalVal = foot.querySelector("[data-gcv-cart-total-val]");
       var checkoutBtn = foot.querySelector("[data-gcv-cart-checkout]");
       var backBtn = foot.querySelector(".gcv-exc-cart-panel__back");
+      var cancelLabel = foot.querySelector('[data-gcv-cart-policy-label="cancel"]');
+      var securityLabel = foot.querySelector('[data-gcv-cart-policy-label="security"]');
       if (totalLabel) totalLabel.textContent = s("bookTotal");
       if (totalVal) totalVal.textContent = formatBrl(cartTotal(items));
       if (checkoutBtn) checkoutBtn.textContent = s("cartCheckout");
       if (backBtn) backBtn.textContent = s("cartBack");
+      if (cancelLabel) cancelLabel.innerHTML = renderPolicyCheckboxLabel("cancel");
+      if (securityLabel) securityLabel.innerHTML = renderPolicyCheckboxLabel("security");
+      syncCartCheckoutState();
     }
   }
 
@@ -632,6 +795,7 @@
       if (item.inclExcl) existing.inclExcl = item.inclExcl;
       if (item.embarque) existing.embarque = item.embarque;
       if (item.hora) existing.hora = item.hora;
+      if (item.guiaNome) existing.guiaNome = item.guiaNome;
       if (item.departureMs) existing.departureMs = item.departureMs;
     } else {
       items.push({
@@ -647,6 +811,7 @@
         embarque: item.embarque || "",
         hora: item.hora || "",
         departureMs: item.departureMs || null,
+        guiaNome: item.guiaNome || "",
       });
     }
     saveItems(items);
@@ -702,9 +867,19 @@
         closeCartPanel();
         return;
       }
+      var policyOpen = e.target.closest("[data-gcv-cart-policy-open]");
+      if (policyOpen) {
+        e.preventDefault();
+        openPolicyModal(policyOpen.getAttribute("data-gcv-cart-policy-open"));
+        return;
+      }
       var checkout = e.target.closest("[data-gcv-cart-checkout]");
       if (checkout) {
         e.preventDefault();
+        if (checkout.disabled || !cartPoliciesAccepted()) {
+          showCartToast(policyUi().agreeRequired, "warning");
+          return;
+        }
         purgeExpiredAndPersist({ notify: true });
         var items = loadItems();
         if (!items.length || typeof _onPay !== "function") return;
@@ -738,7 +913,26 @@
       }
     });
 
+    document.addEventListener("change", function (e) {
+      if (e.target && e.target.matches("[data-gcv-cart-agree]")) {
+        syncCartCheckoutState();
+      }
+    });
+
+    document.addEventListener("click", function (e) {
+      if (e.target.closest("[data-gcv-cart-policy-close]")) {
+        e.preventDefault();
+        closePolicyModal();
+        return;
+      }
+    });
+
     document.addEventListener("keydown", function (e) {
+      var policyModal = document.getElementById("gcv-exc-cart-policy-modal");
+      if (e.key === "Escape" && policyModal && policyModal.classList.contains("is-open")) {
+        closePolicyModal();
+        return;
+      }
       var panel = document.getElementById("gcv-exc-cart-panel");
       if (e.key === "Escape" && panel && panel.classList.contains("is-open")) {
         closeCartPanel();
@@ -824,6 +1018,12 @@
     show: showExcToastPopup,
     hide: hideExcToastPopup,
   };
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", bootstrapCartHeaderShell);
+  } else {
+    bootstrapCartHeaderShell();
+  }
 
   global.GcvExcCart = {
     init: function (opts) {

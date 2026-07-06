@@ -1382,6 +1382,7 @@ function headerHtml(ctx) {
         { eager: true, fetchPriority: "high" },
       )}
     </a>
+    <div class="header-actions"></div>
     <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="nav-main">Menu</button>
     <nav class="nav-main" id="nav-main" aria-label="Principal">
       ${nav("home", "", S.nav.home)}
@@ -1455,6 +1456,8 @@ function footerHtml(ctx) {
   </div>
 </footer>`;
 }
+
+const VOUCHER_PAYLOAD_SCRIPT = `  <script type="application/json" id="gcv-excursoes-payload">${safeJsonLd(excursaoPayloadForSite())}</script>\n`;
 
 function wrapPageFixed({ lang, topbar, skipLabel, head, header, main, footer, ap, pageOutRel, extraFooterScripts = "", extraAfterFooter = "" }) {
   return `<!DOCTYPE html>
@@ -1543,7 +1546,6 @@ function reservaLookupCopy(locale) {
       homeTitle: "Já fez sua reserva?",
       homeLead: "Consulte o status do Pix com o código GCV-XXXXXX e o e-mail usado no checkout.",
       title: "Consultar reserva",
-      lead: "Informe o código da reserva (GCV-XXXXXX) e o mesmo e-mail usado no pagamento Pix.",
       code: "Código da reserva",
       email: "E-mail",
       submit: "Consultar",
@@ -1551,13 +1553,14 @@ function reservaLookupCopy(locale) {
       recoverBack: "Tenho o código",
       recoverHint: "Enviaremos os códigos de reserva vinculados a este e-mail (se houver).",
       recoverSubmit: "Enviar códigos por e-mail",
-      recoverSent: "Se houver reservas neste e-mail, enviamos os códigos em instantes. Verifique também o spam.",
+      recoverSent: "Código enviado por e-mail.",
+      recoverNotFound:
+        "Não há reserva para este e-mail. Envie seu comprovante de pagamento para {{link}} para receber informações de sua reserva.",
     },
     en: {
       homeTitle: "Already booked?",
       homeLead: "Check your Pix status with code GCV-XXXXXX and the email used at checkout.",
       title: "Look up reservation",
-      lead: "Enter your reservation code (GCV-XXXXXX) and the same email used for the Pix payment.",
       code: "Reservation code",
       email: "Email",
       submit: "Look up",
@@ -1565,13 +1568,14 @@ function reservaLookupCopy(locale) {
       recoverBack: "I have the code",
       recoverHint: "We'll email any reservation codes linked to this address (if any exist).",
       recoverSubmit: "Email my codes",
-      recoverSent: "If reservations exist for this email, we sent the codes shortly. Check spam too.",
+      recoverSent: "Code sent by email.",
+      recoverNotFound:
+        "There is no reservation for this email. Send your payment receipt to {{link}} to receive your reservation details.",
     },
     es: {
       homeTitle: "¿Ya reservó?",
       homeLead: "Consulte el estado del Pix con el código GCV-XXXXXX y el correo usado en el checkout.",
       title: "Consultar reserva",
-      lead: "Indique el código de reserva (GCV-XXXXXX) y el mismo correo usado en el pago Pix.",
       code: "Código de reserva",
       email: "Correo electrónico",
       submit: "Consultar",
@@ -1579,7 +1583,9 @@ function reservaLookupCopy(locale) {
       recoverBack: "Tengo el código",
       recoverHint: "Enviaremos los códigos de reserva vinculados a este correo (si existen).",
       recoverSubmit: "Enviar códigos por correo",
-      recoverSent: "Si hay reservas en este correo, enviamos los códigos en breve. Revise también el spam.",
+      recoverSent: "Código enviado por correo.",
+      recoverNotFound:
+        "No hay reserva para este correo. Envíe su comprobante de pago a {{link}} para recibir información de su reserva.",
     },
   };
   return copy[loc];
@@ -1822,7 +1828,6 @@ function consultarReservaMain(locale) {
   const c = reservaLookupCopy(locale);
   return `  <section class="gcv-reserva-page">
     <h1>${esc(c.title)}</h1>
-    <p class="gcv-reserva-page__lead">${esc(c.lead)}</p>
 ${reservaLookupWidgetHtml(locale, { idPrefix: "gcv-reserva" })}
   </section>`;
 }
@@ -2613,12 +2618,14 @@ for (const locale of LOCALES) {
       key: "confirmacao.html",
       current: "home",
       main: (l) => confirmacaoMain(l),
+      extraAfterFooter: VOUCHER_PAYLOAD_SCRIPT,
       extraFooterScripts: `  <script src="${esc(publicJsSrc("qrcode.min.js", "confirmacao.html"))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix-receipt.js", "confirmacao.html"))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-reserva-voucher.js", "confirmacao.html"))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-bookings.js", "confirmacao.html"))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-confirmacao.js", "confirmacao.html"))}" defer></script>\n`,
     },
     {
       key: "consultar-reserva.html",
       current: "reservas",
       main: (l) => consultarReservaMain(l),
+      extraAfterFooter: VOUCHER_PAYLOAD_SCRIPT,
       extraFooterScripts: `  <script src="${esc(publicJsSrc("qrcode.min.js", "consultar-reserva.html"))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix-receipt.js", "consultar-reserva.html"))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-reserva-voucher.js", "consultar-reserva.html"))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-consultar-reserva.js", "consultar-reserva.html"))}" defer></script>\n`,
     },
     { key: "revista.html", current: "revista", main: (l) => revistaHubMain(l, assetPrefix(outRelPath(l, "revista.html")), "revista.html") },
@@ -2691,7 +2698,7 @@ for (const locale of LOCALES) {
             extraFooterScripts:
               homeExcursionsHideScript +
               (homeHasExcursions
-                ? `  <script src="${esc(publicJsSrc("qrcode.min.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix-receipt.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix-polling.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-bookings.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-waitlist.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-cart.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("excursoes-carousel.js", outPk))}" defer></script>\n`
+                ? `  <script src="${esc(publicJsSrc("qrcode.min.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix-receipt.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix-polling.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-bookings.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-waitlist.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-cart-policies.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-cart.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("excursoes-carousel.js", outPk))}" defer></script>\n`
                 : ""),
           }
         : {};
@@ -2704,7 +2711,8 @@ for (const locale of LOCALES) {
       ogImageHeight,
       current: p.current,
       mainHtml: p.main(locale),
-      extraAfterFooter: pk === "" || pk === "contato.html" ? `  ${floatWaHtml(locale)}\n` : "",
+      extraAfterFooter:
+        (pk === "" || pk === "contato.html" ? `  ${floatWaHtml(locale)}\n` : "") + (p.extraAfterFooter || ""),
       extraFooterScripts: (p.extraFooterScripts || homeExcursionsHead.extraFooterScripts || "") + homeConsultarScript,
       extraCss: homeExcursionsHead.extraCss,
       extraHead: homeExcursionsHead.extraHead,

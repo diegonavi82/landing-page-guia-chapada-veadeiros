@@ -653,6 +653,46 @@
   color: #64748b;
 }
 
+.gcv-reserva-saved {
+  margin: -0.35rem 0 0.85rem;
+}
+
+.gcv-reserva-saved__label {
+  margin: 0 0 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+}
+
+.gcv-reserva-saved__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.gcv-reserva-saved__chip {
+  margin: 0;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid #a7f3d0;
+  border-radius: 999px;
+  background: #ecfdf5;
+  color: #065f46;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+
+.gcv-reserva-saved__chip:hover,
+.gcv-reserva-saved__chip:focus-visible {
+  background: #d1fae5;
+  border-color: #059669;
+  outline: none;
+}
+
 .gcv-reserva-form input {
   width: 100%;
   box-sizing: border-box;
@@ -745,6 +785,13 @@
   background: #fef2f2;
   color: #991b1b;
   border: 1px solid #fecaca;
+}
+
+.gcv-reserva-error a {
+  color: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .gcv-reserva-loading {
@@ -937,8 +984,8 @@ html.gcv-reserva-voucher-open {
   z-index: 1;
   display: flex;
   flex-direction: column;
-  width: min(100%, 22rem);
-  max-height: min(calc(100dvh - 16px), 36rem);
+  width: min(100%, 24rem);
+  max-height: min(calc(100dvh - 16px), 40rem);
   background: #fff;
   border-radius: 0.85rem;
   box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25);
@@ -981,29 +1028,33 @@ html.gcv-reserva-voucher-open {
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 0.65rem 0.75rem 0.5rem;
+  background: #fff;
 }
 
 .gcv-reserva-voucher__card {
-  border: 1px solid #cbd5e1;
+  border: 1px solid #e2e8f0;
   border-radius: 0.65rem;
   padding: 0.75rem;
-  background: linear-gradient(180deg, #f8fafc 0%, #fff 40%);
+  background: #fff;
 }
 
 .gcv-reserva-voucher__card-head {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.45rem;
   margin-bottom: 0.65rem;
+  background: #fff;
 }
 
 .gcv-reserva-voucher__logo {
   display: block;
-  max-height: 2rem;
-  width: auto;
-  max-width: 62%;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  max-height: 3.75rem;
   object-fit: contain;
+  object-position: left center;
 }
 
 .gcv-reserva-voucher__brand {
@@ -1017,6 +1068,7 @@ html.gcv-reserva-voucher-open {
 
 .gcv-reserva-voucher__badge {
   flex-shrink: 0;
+  align-self: flex-start;
   font-size: 0.62rem;
   font-weight: 800;
   padding: 0.2rem 0.45rem;
@@ -1093,10 +1145,61 @@ html.gcv-reserva-voucher-open {
   color: #0f172a;
 }
 
+.gcv-reserva-voucher__trip-guia {
+  display: block;
+  font-weight: 600;
+  color: #064e3b;
+  margin-top: 0.2rem;
+}
+
 .gcv-reserva-voucher__trip-sub {
   display: block;
   color: #64748b;
   margin-top: 0.1rem;
+}
+
+.gcv-reserva-voucher__coverage {
+  margin: 0.45rem 0 0.35rem;
+}
+
+.gcv-reserva-voucher__coverage-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+}
+
+.gcv-reserva-voucher__cov {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.45rem;
+  padding: 0.4rem 0.45rem;
+  font-size: 0.58rem;
+  line-height: 1.35;
+  background: #fff;
+}
+
+.gcv-reserva-voucher__cov h3 {
+  margin: 0 0 0.25rem;
+  font-size: 0.58rem;
+  font-weight: 800;
+  color: #064e3b;
+}
+
+.gcv-reserva-voucher__cov ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gcv-reserva-voucher__cov li + li {
+  margin-top: 0.12rem;
+}
+
+.gcv-reserva-voucher__cov--in li {
+  color: #065f46;
+}
+
+.gcv-reserva-voucher__cov--out li {
+  color: #991b1b;
 }
 
 .gcv-reserva-voucher__qr-wrap {
@@ -1109,11 +1212,17 @@ html.gcv-reserva-voucher-open {
 }
 
 .gcv-reserva-voucher__qr,
-.gcv-reserva-voucher__qr-img {
+.gcv-reserva-voucher__qr-img,
+.gcv-reserva-voucher__qr-slot {
   display: block;
-  width: 7rem;
-  height: 7rem;
+  width: 8rem;
+  height: 8rem;
   border-radius: 0.35rem;
+  background: #fff;
+}
+
+.gcv-reserva-voucher__qr-slot {
+  min-height: 8rem;
 }
 
 .gcv-reserva-voucher__qr-hint {
@@ -1216,11 +1325,32 @@ html.gcv-reserva-voucher-open {
   cursor: pointer;
 }
 
+.gcv-reserva-dev {
+  margin-top: 0.55rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 0.45rem;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: #1e40af;
+}
+
+.gcv-reserva-dev--hint {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #92400e;
+}
+
 @media (max-width: 360px) {
   .gcv-reserva-voucher__panel {
     width: 100%;
     max-height: calc(100dvh - 8px);
     border-radius: 0.65rem;
+  }
+
+  .gcv-reserva-voucher__coverage-grid {
+    grid-template-columns: 1fr;
   }
 
   .gcv-reserva-voucher__actions {

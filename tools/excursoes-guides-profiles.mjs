@@ -2,6 +2,7 @@
 export const GUIA_PROFILE_SLUG = {
   "Diego Navi": "diego-navi",
   "Martina Motlova": "martina-motlova",
+  "Gyovanna Torres": "gyovanna-torres",
 };
 
 /** Perfis completos dos guias (popup na home). */
@@ -54,6 +55,30 @@ export const GUIA_PROFILES = {
         "Martina Motlová es natural de la República Checa y vive en Brasil desde hace más de 15 años, período en el que construyó una fuerte conexión con la cultura, la naturaleza y el pueblo brasileño. Guía regional de turismo de América del Sur, está registrada en Cadastur y tiene amplia experiencia atendiendo a viajeros nacionales e internacionales.",
         "Madre de dos hijos, Martina une sensibilidad, acogida y profesionalismo en cada experiencia que ofrece. Además de guía de turismo, es profesora de yoga y masajista profesional, conocimientos que complementan su trabajo y brindan a los visitantes una vivencia más consciente, equilibrada y conectada con la naturaleza.",
         "Fluida en checo, inglés y portugués, recibe visitantes de distintas nacionalidades con atención al detalle, seguridad y dedicación.",
+      ],
+    },
+  },
+  "gyovanna-torres": {
+    slug: "gyovanna-torres",
+    nome: "Gyovanna Torres",
+    nomeCompleto: "Gyovanna Torres",
+    foto: "/assets/img/imagens/guia-gyovanna-torres.png",
+    idiomas: ["pt"],
+    bio: {
+      pt: [
+        "Gyovanna Torres é guia local de ecoturismo na Chapada dos Veadeiros, com experiência em trilhas, cachoeiras e mirantes da região de Alto Paraíso e entorno.",
+        "Conduz grupos com atenção à segurança, ao ritmo dos visitantes e ao respeito à natureza, compartilhando histórias e orientações práticas ao longo do passeio.",
+        "Fala português.",
+      ],
+      en: [
+        "Gyovanna Torres is a local ecotourism guide in Chapada dos Veadeiros, experienced in trails, waterfalls and viewpoints around Alto Paraíso and the surrounding area.",
+        "She leads groups with a focus on safety, a comfortable pace and respect for nature, sharing stories and practical guidance throughout the tour.",
+        "Speaks Portuguese.",
+      ],
+      es: [
+        "Gyovanna Torres es guía local de ecoturismo en la Chapada dos Veadeiros, con experiencia en senderos, cascadas y miradores en la región de Alto Paraíso y alrededores.",
+        "Conduce grupos con atención a la seguridad, al ritmo de los visitantes y al respeto por la naturaleza, compartiendo historias y orientaciones prácticas durante el paseo.",
+        "Habla portugués.",
       ],
     },
   },

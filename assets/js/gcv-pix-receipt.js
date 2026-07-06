@@ -5,6 +5,9 @@
   "use strict";
 
   var EMAIL_STORAGE_KEY = "gcv-receipt-email";
+  var RESERVATION_CODES_KEY = "gcv-reserva-codes";
+  var RESERVATION_CODES_MAX = 30;
+  var RESERVATION_CODE_RE = /^GCV-[A-Z0-9]{6}$/;
 
   function receiptApiUrl() {
     var base = "/api/";
@@ -40,6 +43,7 @@
       colDate: "Data",
       colDay: "Dia",
       colDest: "Destino",
+      colGuide: "Guia",
       colDeparture: "Saída",
       colUnit: "Valor individual",
       colPeople: "Pessoas",
@@ -51,19 +55,17 @@
       finNote: "Guarde este recibo junto ao comprovante do seu banco. A confirmação da vaga é feita após validação do pagamento.",
       included: "O que está incluso",
       excluded: "O que não está incluso",
-      inclDefault: "Passeio guiado em excursão com guia local.",
-      exclTransport: "Transporte / Traslado",
-      exclLunch: "Almoço / Alimentação",
-      exclEntries: "Entradas em parques e atrativos",
+      inclDefault: "Passeio com guia local",
+      exclDefault: "Transporte, ingresso e almoço",
       observations: "Observações importantes",
       obs1: "Este documento comprova a intenção de reserva vinculada ao código {{code}}; a vaga é confirmada após validação do Pix.",
       obs2: "Compareça ao ponto de embarque com antecedência mínima de 15 minutos do horário informado.",
       obs3: "Em caso de dúvidas, envie o comprovante do banco pelo WhatsApp informando o código de reserva.",
+      obs4: "Cancelamento: O pagamento reserva a disponibilidade do guia. Em caso de cancelamento pelo cliente, não haverá reembolso.",
       emitted: "Emitido em",
       validity: "Válido como comprovante de pagamento Pix para os passeios listados.",
       contact: "Contato",
       refLabel: "Código de reserva",
-      refHint: "Informe este código no Pix e ao enviar o comprovante pelo WhatsApp.",
       emailLabel: "E-mail para receber o recibo",
       emailPlaceholder: "seu@email.com",
       emailRequiredHint: "Obrigatório — enviaremos o recibo por e-mail após a confirmação do Pix.",
@@ -89,6 +91,7 @@
       colDate: "Date",
       colDay: "Day",
       colDest: "Destination",
+      colGuide: "Guide",
       colDeparture: "Meeting point",
       colUnit: "Price per person",
       colPeople: "People",
@@ -100,19 +103,17 @@
       finNote: "Keep this receipt with your bank proof. Your spot is confirmed after payment validation.",
       included: "Included",
       excluded: "Not included",
-      inclDefault: "Guided group excursion with a local guide.",
-      exclTransport: "Transport / Transfer",
-      exclLunch: "Lunch / Meals",
-      exclEntries: "Park and attraction entry fees",
+      inclDefault: "Tour with local guide",
+      exclDefault: "Transport, admission and lunch",
       observations: "Important notes",
       obs1: "This document is linked to reservation code {{code}}; your spot is confirmed after Pix validation.",
       obs2: "Arrive at the meeting point at least 15 minutes before the scheduled time.",
       obs3: "If you have questions, send your bank receipt via WhatsApp with the reservation code.",
+      obs4: "Cancellation: Payment reserves the guide's availability. If the client cancels, no refund will be issued.",
       emitted: "Issued on",
       validity: "Valid as Pix payment proof for the tours listed below.",
       contact: "Contact",
       refLabel: "Reservation code",
-      refHint: "Use this code in Pix and when sending proof via WhatsApp.",
       emailLabel: "Email to receive the receipt",
       emailPlaceholder: "you@email.com",
       emailRequiredHint: "Required — we'll email your receipt after Pix payment is confirmed.",
@@ -138,6 +139,7 @@
       colDate: "Fecha",
       colDay: "Día",
       colDest: "Destino",
+      colGuide: "Guía",
       colDeparture: "Salida",
       colUnit: "Valor individual",
       colPeople: "Personas",
@@ -149,19 +151,17 @@
       finNote: "Guarde este recibo con el comprobante del banco. La plaza se confirma tras validar el pago.",
       included: "Incluido",
       excluded: "No incluido",
-      inclDefault: "Paseo guiado en excursión con guía local.",
-      exclTransport: "Transporte / Traslado",
-      exclLunch: "Almuerzo / Alimentación",
-      exclEntries: "Entradas a parques y atrativos",
+      inclDefault: "Paseo con guía local",
+      exclDefault: "Transporte, entrada y almuerzo",
       observations: "Observaciones importantes",
       obs1: "Este documento está vinculado al código {{code}}; la plaza se confirma tras validar el Pix.",
       obs2: "Presente en el punto de salida al menos 15 minutos antes del horario indicado.",
       obs3: "Ante dudas, envíe el comprobante del banco por WhatsApp con el código de reserva.",
+      obs4: "Cancelación: El pago reserva la disponibilidad del guía. En caso de cancelación por parte del cliente, no habrá reembolso.",
       emitted: "Emitido el",
       validity: "Válido como comprobante de pago Pix para los paseos listados.",
       contact: "Contacto",
       refLabel: "Código de reserva",
-      refHint: "Use este código en el Pix y al enviar el comprobante por WhatsApp.",
       emailLabel: "Correo para recibir el recibo",
       emailPlaceholder: "tu@correo.com",
       emailRequiredHint: "Obligatorio — enviaremos el recibo por correo tras confirmar el Pix.",
@@ -357,6 +357,7 @@
         dateShort: dateShort,
         weekday: trip.weekday || weekdayFromIso(dateIso, "pt"),
         destino: trip.destino || "",
+        guiaNome: trip.guiaNome || "",
         embarque: trip.embarque || "",
         hora: trip.hora || "",
         valorUnit: unit,
@@ -396,9 +397,7 @@
     var emitted = emissionLabel(loc);
     var coverage = resolveInclExcl(data);
     var inclItems = coverage.incl.length ? coverage.incl : [rs(loc, "inclDefault")];
-    var exclItems = coverage.excl.length
-      ? coverage.excl
-      : [rs(loc, "exclTransport"), rs(loc, "exclLunch"), rs(loc, "exclEntries")];
+    var exclItems = coverage.excl.length ? coverage.excl : [rs(loc, "exclDefault")];
 
     var totalSeats = trips.reduce(function (n, t) {
       return n + t.qty;
@@ -422,6 +421,9 @@
           "</td>" +
           "<td>" +
           escapeHtml(t.destino) +
+          "</td>" +
+          "<td>" +
+          escapeHtml(t.guiaNome || "—") +
           "</td>" +
           "<td><span class=\"pin\">📍</span> " +
           escapeHtml(t.embarque) +
@@ -505,6 +507,8 @@
       "</th><th>" +
       escapeHtml(rs(loc, "colDest")) +
       "</th><th>" +
+      escapeHtml(rs(loc, "colGuide")) +
+      "</th><th>" +
       escapeHtml(rs(loc, "colDeparture")) +
       "</th><th>" +
       escapeHtml(rs(loc, "colUnit")) +
@@ -559,6 +563,9 @@
       "</li>" +
       "<li>" +
       escapeHtml(rs(loc, "obs3")) +
+      "</li>" +
+      "<li>" +
+      escapeHtml(rs(loc, "obs4")) +
       "</li></ul></section>" +
       '<footer class="foot"><div><p>📅 ' +
       escapeHtml(rs(loc, "emitted")) +
@@ -711,6 +718,88 @@
     }
   }
 
+  function normalizeReservationCode(code) {
+    return String(code || "")
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9-]/g, "");
+  }
+
+  function isValidReservationCode(code) {
+    return RESERVATION_CODE_RE.test(normalizeReservationCode(code));
+  }
+
+  function readSavedReservationCodes() {
+    try {
+      var raw = global.localStorage.getItem(RESERVATION_CODES_KEY);
+      var arr = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(arr)) return [];
+      return arr
+        .map(function (item) {
+          if (!item) return null;
+          if (typeof item === "string") {
+            var codeOnly = normalizeReservationCode(item);
+            return codeOnly && RESERVATION_CODE_RE.test(codeOnly) ? { code: codeOnly, savedAt: "" } : null;
+          }
+          var code = normalizeReservationCode(item.code);
+          if (!RESERVATION_CODE_RE.test(code)) return null;
+          return {
+            code: code,
+            email: item.email ? String(item.email).trim().toLowerCase() : "",
+            savedAt: item.savedAt ? String(item.savedAt) : "",
+          };
+        })
+        .filter(Boolean);
+    } catch (err) {
+      return [];
+    }
+  }
+
+  function writeSavedReservationCodes(list) {
+    try {
+      global.localStorage.setItem(RESERVATION_CODES_KEY, JSON.stringify(list || []));
+    } catch (err) {
+      /* */
+    }
+  }
+
+  /**
+   * @param {string} code
+   * @param {{ email?: string }} [opts]
+   */
+  function saveReservationCode(code, opts) {
+    var normalized = normalizeReservationCode(code);
+    if (!RESERVATION_CODE_RE.test(normalized)) return false;
+    var email =
+      opts && opts.email && isValidEmail(opts.email) ? String(opts.email).trim().toLowerCase() : "";
+    var list = readSavedReservationCodes().filter(function (item) {
+      return item.code !== normalized;
+    });
+    list.unshift({
+      code: normalized,
+      email: email,
+      savedAt: new Date().toISOString(),
+    });
+    if (list.length > RESERVATION_CODES_MAX) list.length = RESERVATION_CODES_MAX;
+    writeSavedReservationCodes(list);
+    if (email) saveEmail(email);
+    return true;
+  }
+
+  function getLastReservationCode() {
+    var list = readSavedReservationCodes();
+    return list.length ? list[0].code : "";
+  }
+
+  function getSavedEmailForCode(code) {
+    var normalized = normalizeReservationCode(code);
+    var list = readSavedReservationCodes();
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].code === normalized && list[i].email) return list[i].email;
+    }
+    return "";
+  }
+
   function isValidEmail(email) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || "").trim());
   }
@@ -812,6 +901,12 @@
     receiptApiUrl: receiptApiUrl,
     readSavedEmail: readSavedEmail,
     saveEmail: saveEmail,
+    normalizeReservationCode: normalizeReservationCode,
+    isValidReservationCode: isValidReservationCode,
+    readSavedReservationCodes: readSavedReservationCodes,
+    saveReservationCode: saveReservationCode,
+    getLastReservationCode: getLastReservationCode,
+    getSavedEmailForCode: getSavedEmailForCode,
     isValidEmail: isValidEmail,
     buildWhatsAppUrl: buildWhatsAppUrl,
     formatBrl: formatBrl,
@@ -819,5 +914,6 @@
     isoToShort: isoToShort,
     consultarReservaPageUrl: consultarReservaPageUrl,
     confirmacaoPageUrl: confirmacaoPageUrl,
+    resolveInclExcl: resolveInclExcl,
   };
 })(typeof window !== "undefined" ? window : globalThis);

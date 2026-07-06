@@ -7,6 +7,7 @@ header('Content-Type: application/json; charset=utf-8');
 require_once dirname(__DIR__) . '/helpers/db.php';
 require_once dirname(__DIR__) . '/helpers/mailer.php';
 require_once dirname(__DIR__) . '/helpers/pix_reservation_store.php';
+require_once dirname(__DIR__) . '/helpers/pix_receipt_html.php';
 
 gcv_pix_cors_headers();
 
@@ -40,12 +41,12 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
 
 $genericOk = [
     'ok' => true,
-    'message' => 'If reservations exist for this email, we sent the codes.',
+    'found' => true,
 ];
 
 $reservations = gcv_pix_find_all_by_email($email, 15);
 if (!$reservations) {
-    echo json_encode($genericOk);
+    echo json_encode(['ok' => true, 'found' => false]);
     exit;
 }
 
@@ -123,7 +124,7 @@ foreach ($reservations as $res) {
     }
     $st = gcv_pix_effective_status($res);
     $amount = isset($res['amount']) ? 'R$ ' . number_format((float)$res['amount'], 2, ',', '.') : '';
-    $lookupUrl = $appUrl . $lookupBase . '?id=' . rawurlencode($code) . '&email=' . rawurlencode($email);
+    $lookupUrl = $appUrl . $lookupBase . '?id=' . rawurlencode($code) . '&email=' . rawurlencode($email) . '&auto=1';
     $confirmUrl = $appUrl . $confirmBase . '?id=' . rawurlencode($code);
     $safeCode = htmlspecialchars($code, ENT_QUOTES, 'UTF-8');
     $rowsHtml .= '<div style="margin:0 0 16px;padding:14px 16px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;">'
@@ -142,7 +143,7 @@ foreach ($reservations as $res) {
 }
 
 if ($rowsHtml === '') {
-    echo json_encode($genericOk);
+    echo json_encode(['ok' => true, 'found' => false]);
     exit;
 }
 
@@ -153,7 +154,20 @@ $body = '<p style="margin:0 0 12px;font-size:16px;">' . htmlspecialchars($L['hel
 
 $sent = send_mail($email, $L['subject'], $body);
 if (!$sent) {
-    error_log('recover-by-email: falha ao enviar para ' . $email);
+    error_log('recover-by-email: falha ao enviar códigos para ' . $email);
+}
+
+foreach ($reservations as $res) {
+    $code = gcv_pix_safe_id((string)($res['reservation_id'] ?? ''));
+    if ($code === '') {
+        continue;
+    }
+    $receiptHtml = gcv_build_pix_receipt_email_html($res, $locale);
+    $receiptSubject = gcv_pix_receipt_email_subject($code, $locale);
+    $receiptSent = send_mail($email, $receiptSubject, $receiptHtml, '', false);
+    if (!$receiptSent) {
+        error_log('recover-by-email: falha ao enviar recibo ' . $code . ' para ' . $email);
+    }
 }
 
 echo json_encode($genericOk);
