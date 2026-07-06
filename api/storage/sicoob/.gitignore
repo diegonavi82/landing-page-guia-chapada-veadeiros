@@ -1,0 +1,7 @@
+*.json
+*.pem
+*.key
+*.pfx
+*.p12
+*.cer
+!.gitkeep

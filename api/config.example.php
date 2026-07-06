@@ -27,4 +27,29 @@ return [
      * quando o webhook atrasa ou falha. Painel → API → App ID.
      */
     'openpix_app_id' => '',
+
+    /**
+     * PIX Sicoob — confirmação automática (webhook + consulta API).
+     * Cadastro: developers.sicoob.com.br (certificado e-CNPJ A1 + Client ID).
+     * Webhook: PUT /webhook/{chave} com webhookUrl abaixo, ou POST api/sicoob_setup_webhook.php
+     */
+    'sicoob' => [
+        'client_id' => '',
+        /** Opcional — alguns ambientes exigem; muitos usam só mTLS */
+        'client_secret' => '',
+        /** Chave Pix CNPJ (só dígitos) — mesma do QR Code do site */
+        'pix_key' => '24354289000105',
+        /** Certificado A1: use .pfx OU par .pem + .key (paths relativos a api/) */
+        'cert_pfx' => 'storage/sicoob/client.pfx',
+        'cert_pem' => '',
+        'cert_key' => '',
+        'cert_pass' => '',
+        /** Escopos mínimos: pix.read (+ webhook.read para registrar webhook) */
+        'scope' => 'pix.read webhook.read webhook.write',
+        'sandbox' => false,
+        /** URL base registrada no Sicoob (sem /pix — o banco adiciona) */
+        'webhook_base_url' => 'https://www.guiachapadaveadeiros.com/api/sicoob_webhook',
+        /** IPs permitidos no webhook (vazio = aceita qualquer — preencha em produção se souber) */
+        'webhook_ips' => [],
+    ],
 ];
