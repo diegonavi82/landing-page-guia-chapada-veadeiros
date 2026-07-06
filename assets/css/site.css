@@ -717,14 +717,17 @@ table.season th {
 }
 
 .gcv-page-pad {
-  padding: 0 0.75rem 2.5rem;
+  padding-top: 0;
+  padding-right: 0.75rem;
+  padding-bottom: 2.5rem;
+  padding-left: 0.75rem;
 }
 @media (min-width: 640px) {
   .gcv-page-pad {
-    padding-left: 1rem;
+    padding-top: 0;
     padding-right: 1rem;
     padding-bottom: 3.5rem;
-    padding-top: 0;
+    padding-left: 1rem;
   }
 }
 

@@ -1638,6 +1638,58 @@ function homeMainHtml(locale, ap, instagramPosts, reviewsPool) {
   const S = STRINGS[locale];
   const home = S.home;
   const cur = outRelPath(locale, "");
+  const slides = HERO_SLIDES[locale];
+  const n = slides.length;
+  const roleDesc = locale === "en" ? "Carousel" : locale === "es" ? "Carrusel" : "Carrossel";
+  const dotsNav =
+    locale === "en" ? "Highlight navigation" : locale === "es" ? "Navegación de destacados" : "Navegação dos destaques";
+
+  const slidesHtml = slides
+    .map((slide, i) => {
+      const anim = buildHeroAnim(slide.title, slide.lead, slide.sub || "");
+      const contactHref = relBetweenSync(cur, outRelPath(locale, "contato.html"));
+      const plainChip =
+        slide.ctaKind === "whatsapp" || slide.ctaKind === "contact" || slide.ctaKind === "none";
+      const badgeClass = `gcv-hero-line gcv-hero-badge${plainChip ? " gcv-hero-plain-chip" : ""}`;
+      const titleWords = staggerWords(slide.title, anim.titleStartMs, 72);
+      const leadWords = staggerWords(slide.lead, anim.leadStartMs, 42);
+      const subTrim = (slide.sub || "").trim();
+      const subHtml = subTrim ? `<p class="gcv-hero__sub">${staggerWords(subTrim, anim.subStartMs, 42)}</p>` : "";
+      const ctaHtml =
+        slide.ctaKind === "none"
+          ? ""
+          : slide.ctaKind === "whatsapp"
+            ? `<a class="gcv-hero-line gcv-hero-plain-chip gcv-hero-cta" href="${esc(waUrl(locale))}" target="_blank" rel="noopener noreferrer" style="animation-delay:${anim.ctaStartMs}ms">${WA_SVG}${esc(slide.ctaLabel)}</a>`
+            : `<a class="gcv-hero-line gcv-hero-plain-chip gcv-hero-cta" href="${esc(contactHref)}" style="animation-delay:${anim.ctaStartMs}ms">${esc(slide.ctaLabel)}</a>`;
+
+      /** 1.º slide visível no HTML — sem JS (.gcv-hero__slide só ganha opacity com .is-active). */
+      const first = i === 0;
+
+      return `<div class="gcv-hero__slide${first ? " is-active" : ""}" data-gcv-hero-slide aria-hidden="${first ? "false" : "true"}">
+  ${heroPictureBg(ap, slide.image, true)}
+  <div class="gcv-hero__gradient" aria-hidden="true"></div>
+  <div class="gcv-hero-overlay-text">
+    <span class="${badgeClass}" style="animation-delay:${anim.badgeMs}ms">${esc(slide.badge)}</span>
+    <h1>${titleWords}</h1>
+    <p class="gcv-hero-lead">${leadWords}</p>
+    ${subHtml}
+    ${ctaHtml}
+  </div>
+</div>`;
+    })
+    .join("\n");
+
+  const dotsHtml = slides
+    .map((_, i) => {
+      const label =
+        locale === "en" ? `Highlight ${i + 1} of ${n}` : locale === "es" ? `Destacado ${i + 1} de ${n}` : `Destaque ${i + 1} de ${n}`;
+      const first = i === 0;
+
+      return `<button type="button" class="gcv-hero__dot${first ? " is-active" : ""}" data-gcv-hero-dot role="tab" aria-selected="${first ? "true" : "false"}" aria-label="${esc(
+        label,
+      )}"></button>`;
+    })
+    .join("\n");
 
   const atrativosAllHref = relBetweenSync(cur, outRelPath(locale, "atrativos.html"));
   const featuredPtBySlug = new Map(HOME_FEATURED.pt.map((item) => [item.slug, item]));
@@ -1680,6 +1732,17 @@ function homeMainHtml(locale, ap, instagramPosts, reviewsPool) {
 
   return `<div class="official-home-shell gcv-page-pad">
   <div class="gcv-home-max">
+    <section class="gcv-hero" data-gcv-hero role="region" aria-roledescription="${esc(roleDesc)}">
+      <div class="gcv-hero__viewport">
+${slidesHtml}
+      </div>
+      <button type="button" class="gcv-hero__arrow gcv-hero__prev" data-gcv-hero-prev aria-label="${esc(home.heroCarouselPrev)}">‹</button>
+      <button type="button" class="gcv-hero__arrow gcv-hero__next" data-gcv-hero-next aria-label="${esc(home.heroCarouselNext)}">›</button>
+      <div class="gcv-hero__dots" role="tablist" aria-label="${esc(dotsNav)}">
+${dotsHtml}
+      </div>
+    </section>
+
 ${homeExcursionsSection(locale)}
     <section class="gcv-home-card">
       <div class="gcv-home-card__head">

@@ -97,10 +97,10 @@ export const HERO_SLIDES = {
     },
     {
       image: "imagens/hero-slide-02-em-breve-cachoeira.png",
-      badge: "Em breve",
+      badge: "Novidade",
       title: "Seu próximo destino começa aqui",
-      lead: "Em breve iniciaremos a plataforma de vendas online para você escolher seu próprio roteiro, num fluxo digital limpo, seguro e pensado para quem viaja com excelência.",
-      sub: "Seja avisado em primeira mão quando abrirmos as reservas e garanta prioridade para montar seu roteiro",
+      lead: "Nosso sistema de venda de ingressos para excursões está na fase final de testes. As primeiras saídas já estão sendo disponibilizadas. Reserve agora e garanta sua vaga antes que as turmas sejam preenchidas.",
+      sub: "Participe das primeiras excursões com reserva online, confirmação automática e atendimento especializado da Guia Chapada Veadeiros.",
       ctaKind: "none",
     },
   ],
