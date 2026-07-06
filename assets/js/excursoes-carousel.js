@@ -2946,19 +2946,27 @@
   function ensurePixModalScrollBody(modal) {
     if (!modal) return;
     var panel = modal.querySelector(".gcv-pix-modal__panel");
-    if (!panel || panel.querySelector(".gcv-pix-modal__body")) return;
-    var payZone = panel.querySelector(".gcv-pix-modal__pay-zone");
-    if (!payZone) return;
-    var body = document.createElement("div");
-    body.className = "gcv-pix-modal__body";
-    panel.insertBefore(body, payZone);
-    var title = panel.querySelector(".gcv-pix-modal__title");
-    var node = title ? title.nextElementSibling : panel.firstElementChild;
-    while (node && node !== payZone) {
-      var next = node.nextElementSibling;
-      body.appendChild(node);
-      node = next;
+    if (!panel || panel.querySelector(".gcv-pix-modal__scroll")) return;
+
+    var closeBtn = panel.querySelector(".gcv-pix-modal__close");
+    var legacyBody = panel.querySelector(".gcv-pix-modal__body");
+    if (legacyBody) {
+      while (legacyBody.firstChild) {
+        legacyBody.parentNode.insertBefore(legacyBody.firstChild, legacyBody);
+      }
+      legacyBody.remove();
     }
+
+    var scroll = document.createElement("div");
+    scroll.className = "gcv-pix-modal__scroll";
+    var toMove = [];
+    Array.prototype.forEach.call(panel.children, function (child) {
+      if (child !== closeBtn) toMove.push(child);
+    });
+    toMove.forEach(function (child) {
+      scroll.appendChild(child);
+    });
+    panel.appendChild(scroll);
   }
 
   function upgradePixModalPayZone(modal) {
@@ -3991,18 +3999,14 @@
     var closeBtn = modal.querySelector(".gcv-pix-modal__close");
     if (closeBtn && typeof closeBtn.focus === "function") closeBtn.focus();
 
-    window.requestAnimationFrame(function () {
-      var emailInputAuto = modal.querySelector("#gcv-pix-modal-email");
-      var savedEmail =
-        emailInputAuto && emailInputAuto.value ? String(emailInputAuto.value).trim() : "";
-      if (
-        !modal._gcvPixCheckoutActive &&
-        window.GcvPixReceipt &&
-        window.GcvPixReceipt.isValidEmail(savedEmail)
-      ) {
-        activatePixCheckout(modal, s);
-      }
-    });
+    var savedEmail = getModalEmailInputValue(modal);
+    if (
+      !modal._gcvPixCheckoutActive &&
+      window.GcvPixReceipt &&
+      window.GcvPixReceipt.isValidEmail(savedEmail)
+    ) {
+      activatePixCheckout(modal, s);
+    }
   }
 
   function initPixModal() {
