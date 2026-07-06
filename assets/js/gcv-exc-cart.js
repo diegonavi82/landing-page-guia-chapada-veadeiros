@@ -480,23 +480,67 @@
     };
   }
 
+  function createCartTriggerButton(id, variantClass) {
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "gcv-exc-cart-float " + variantClass;
+    btn.id = id;
+    btn.hidden = true;
+    btn.setAttribute("aria-label", "");
+    btn.innerHTML =
+      '<i class="ti ti-shopping-cart" aria-hidden="true"></i>' +
+      '<span class="gcv-exc-cart-float__badge" id="' +
+      id +
+      '-badge" hidden>0</span>';
+    return btn;
+  }
+
+  function ensureCartTriggerButtons(root) {
+    var panel = root.querySelector("#gcv-exc-cart-panel");
+    var insertBeforePanel = function (node) {
+      if (panel) root.insertBefore(node, panel);
+      else root.appendChild(node);
+    };
+
+    var headerBtn = document.getElementById("gcv-exc-cart-float-header");
+    if (!headerBtn) {
+      var legacy = document.getElementById("gcv-exc-cart-float");
+      if (legacy) {
+        legacy.id = "gcv-exc-cart-float-header";
+        legacy.classList.add("gcv-exc-cart-float--header");
+        var legacyBadge = document.getElementById("gcv-exc-cart-float-badge");
+        if (legacyBadge) legacyBadge.id = "gcv-exc-cart-float-header-badge";
+        headerBtn = legacy;
+      } else {
+        headerBtn = createCartTriggerButton("gcv-exc-cart-float-header", "gcv-exc-cart-float--header");
+        insertBeforePanel(headerBtn);
+      }
+    }
+
+    if (!document.getElementById("gcv-exc-cart-float-dock")) {
+      insertBeforePanel(
+        createCartTriggerButton("gcv-exc-cart-float-dock", "gcv-exc-cart-float--dock"),
+      );
+    }
+  }
+
+  function syncCartTriggerBtn(btn, badge, count) {
+    if (!btn) return;
+    btn.setAttribute(
+      "aria-label",
+      count > 0 ? s("cartFabAria") + " (" + count + ")" : s("cartFabAria"),
+    );
+    btn.hidden = count <= 0;
+    if (badge) {
+      badge.textContent = String(count);
+      badge.hidden = count <= 0;
+    }
+  }
+
   function ensureCartUi() {
     var root = document.getElementById("gcv-exc-cart-root");
     if (root) {
-      if (!document.getElementById("gcv-exc-cart-float")) {
-        var floatBtn = document.createElement("button");
-        floatBtn.type = "button";
-        floatBtn.className = "gcv-exc-cart-float";
-        floatBtn.id = "gcv-exc-cart-float";
-        floatBtn.hidden = true;
-        floatBtn.setAttribute("aria-label", "");
-        floatBtn.innerHTML =
-          '<i class="ti ti-shopping-cart" aria-hidden="true"></i>' +
-          '<span class="gcv-exc-cart-float__badge" id="gcv-exc-cart-float-badge" hidden>0</span>';
-        var panel = root.querySelector("#gcv-exc-cart-panel");
-        if (panel) root.insertBefore(floatBtn, panel);
-        else root.appendChild(floatBtn);
-      }
+      ensureCartTriggerButtons(root);
       mountCartFabInHeader();
       var fab = document.getElementById("gcv-exc-cart-fab");
       if (fab && !document.getElementById("gcv-exc-cart-fab-total")) {
@@ -518,10 +562,6 @@
       '<span class="gcv-exc-cart-fab__label"></span>' +
       '<span class="gcv-exc-cart-fab__total" id="gcv-exc-cart-fab-total" hidden></span>' +
       '<span class="gcv-exc-cart-fab__badge" id="gcv-exc-cart-badge" hidden>0</span>' +
-      "</button>" +
-      '<button type="button" class="gcv-exc-cart-float" id="gcv-exc-cart-float" hidden aria-label="">' +
-      '<i class="ti ti-shopping-cart" aria-hidden="true"></i>' +
-      '<span class="gcv-exc-cart-float__badge" id="gcv-exc-cart-float-badge" hidden>0</span>' +
       "</button>" +
       '<div class="gcv-exc-cart-panel" id="gcv-exc-cart-panel" hidden aria-hidden="true">' +
       '<button type="button" class="gcv-exc-cart-panel__backdrop" data-gcv-cart-close aria-label=""></button>' +
@@ -546,6 +586,7 @@
       '<button type="button" class="gcv-exc-cart-panel__back" data-gcv-cart-close></button>' +
       "</div></div></div>";
     document.body.appendChild(root);
+    ensureCartTriggerButtons(root);
     mountCartFabInHeader();
     return root;
   }
@@ -566,7 +607,7 @@
   }
 
   function mountCartFabInHeader() {
-    var btn = document.getElementById("gcv-exc-cart-float");
+    var btn = document.getElementById("gcv-exc-cart-float-header");
     var fab = document.getElementById("gcv-exc-cart-fab");
     if (fab) fab.hidden = true;
     if (!btn) return;
@@ -667,19 +708,14 @@
       badge.hidden = count <= 0;
       badge.setAttribute("title", people > count ? people + " pessoas" : "");
     }
-    var floatBtn = document.getElementById("gcv-exc-cart-float");
-    var floatBadge = document.getElementById("gcv-exc-cart-float-badge");
-    if (floatBtn) {
-      floatBtn.setAttribute(
-        "aria-label",
-        count > 0 ? s("cartFabAria") + " (" + count + ")" : s("cartFabAria"),
-      );
-      floatBtn.hidden = count <= 0;
-    }
-    if (floatBadge) {
-      floatBadge.textContent = String(count);
-      floatBadge.hidden = count <= 0;
-    }
+    var floatBtn = document.getElementById("gcv-exc-cart-float-header");
+    var floatBadge = document.getElementById("gcv-exc-cart-float-header-badge");
+    syncCartTriggerBtn(floatBtn, floatBadge, count);
+    syncCartTriggerBtn(
+      document.getElementById("gcv-exc-cart-float-dock"),
+      document.getElementById("gcv-exc-cart-float-dock-badge"),
+      count,
+    );
     document.documentElement.classList.toggle("gcv-exc-cart-has-items", count > 0);
     if (title) title.textContent = s("cartTitle");
 
@@ -855,7 +891,11 @@
     root._gcvCartBound = true;
 
     document.addEventListener("click", function (e) {
-      if (e.target.closest("#gcv-exc-cart-fab") || e.target.closest("#gcv-exc-cart-float")) {
+      if (
+        e.target.closest("#gcv-exc-cart-fab") ||
+        e.target.closest("#gcv-exc-cart-float-header") ||
+        e.target.closest("#gcv-exc-cart-float-dock")
+      ) {
         e.preventDefault();
         openCartPanel();
         return;

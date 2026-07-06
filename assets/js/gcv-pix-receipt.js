@@ -34,8 +34,7 @@
   var STRINGS = {
     pt: {
       receiptTitle: "Recibo de confirmação de pagamento Pix — excursão",
-      receiptDocTitle:
-        "RECIBO DE CONFIRMAÇÃO DE RECEBIMENTO DE PAGAMENTO DE PROPOSTA COMERCIAL PARA PASSEIO",
+      receiptDocTitle: "RECIBO DE CONFIRMAÇÃO DE PAGAMENTO",
       receiptIntro:
         "Recebemos a quantia de {{amount}} ({{amountWords}}), referente ao pagamento via Pix de passeio(s) em excursão, identificado pelo código de reserva {{code}}, conforme roteiro abaixo.",
       contractor: "Contratada",
@@ -61,7 +60,6 @@
       obs1: "Este documento comprova a intenção de reserva vinculada ao código {{code}}; a vaga é confirmada após validação do Pix.",
       obs2: "Compareça ao ponto de embarque com antecedência mínima de 15 minutos do horário informado.",
       obs3: "Em caso de dúvidas, envie o comprovante do banco pelo WhatsApp informando o código de reserva.",
-      obs4: "Cancelamento: O pagamento reserva a disponibilidade do guia. Em caso de cancelamento pelo cliente, não haverá reembolso.",
       emitted: "Emitido em",
       validity: "Válido como comprovante de pagamento Pix para os passeios listados.",
       contact: "Contato",
@@ -83,7 +81,7 @@
     },
     en: {
       receiptTitle: "Pix payment receipt — excursion",
-      receiptDocTitle: "PAYMENT RECEIPT — COMMERCIAL TOUR PROPOSAL",
+      receiptDocTitle: "PAYMENT CONFIRMATION RECEIPT",
       receiptIntro:
         "We acknowledge payment of {{amount}} ({{amountWords}}) via Pix for the excursion(s) below, reservation code {{code}}.",
       contractor: "Provider",
@@ -109,7 +107,6 @@
       obs1: "This document is linked to reservation code {{code}}; your spot is confirmed after Pix validation.",
       obs2: "Arrive at the meeting point at least 15 minutes before the scheduled time.",
       obs3: "If you have questions, send your bank receipt via WhatsApp with the reservation code.",
-      obs4: "Cancellation: Payment reserves the guide's availability. If the client cancels, no refund will be issued.",
       emitted: "Issued on",
       validity: "Valid as Pix payment proof for the tours listed below.",
       contact: "Contact",
@@ -131,7 +128,7 @@
     },
     es: {
       receiptTitle: "Recibo de pago Pix — excursión",
-      receiptDocTitle: "RECIBO DE CONFIRMACIÓN DE PAGO — PROPUESTA COMERCIAL DE PASEO",
+      receiptDocTitle: "RECIBO DE CONFIRMACIÓN DE PAGO",
       receiptIntro:
         "Recibimos {{amount}} ({{amountWords}}) vía Pix por la(s) excursión(es) abajo, código de reserva {{code}}.",
       contractor: "Contratada",
@@ -157,7 +154,6 @@
       obs1: "Este documento está vinculado al código {{code}}; la plaza se confirma tras validar el Pix.",
       obs2: "Presente en el punto de salida al menos 15 minutos antes del horario indicado.",
       obs3: "Ante dudas, envíe el comprobante del banco por WhatsApp con el código de reserva.",
-      obs4: "Cancelación: El pago reserva la disponibilidad del guía. En caso de cancelación por parte del cliente, no habrá reembolso.",
       emitted: "Emitido el",
       validity: "Válido como comprobante de pago Pix para los paseos listados.",
       contact: "Contacto",
@@ -563,9 +559,6 @@
       "</li>" +
       "<li>" +
       escapeHtml(rs(loc, "obs3")) +
-      "</li>" +
-      "<li>" +
-      escapeHtml(rs(loc, "obs4")) +
       "</li></ul></section>" +
       '<footer class="foot"><div><p>📅 ' +
       escapeHtml(rs(loc, "emitted")) +
@@ -603,8 +596,8 @@
       ".brand strong{font-size:.78rem;letter-spacing:.04em;color:#064e3b}",
       ".doc-title{margin:0;max-width:420px;font-size:.72rem;line-height:1.35;text-align:right;color:#064e3b;font-weight:800}",
       ".intro{font-size:.82rem;line-height:1.55;color:#334155;margin:0 0 18px}",
-      ".party{display:flex;justify-content:flex-end;margin-bottom:18px}",
-      ".party-box{border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px;min-width:260px;background:#f8fafc}",
+      ".party{display:flex;justify-content:flex-start;margin-bottom:18px}",
+      ".party-box{padding:0;min-width:260px}",
       ".party-box h2{margin:0 0 8px;font-size:.72rem;color:#064e3b}",
       ".party-box p{margin:0 0 4px;font-size:.78rem}",
       ".itinerary h2{margin:0 0 8px;font-size:.82rem;color:#064e3b}",

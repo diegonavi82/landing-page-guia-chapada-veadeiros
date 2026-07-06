@@ -7,7 +7,7 @@
   var STORAGE_KEY = "gcv-excursao-pix-seats";
   var CART_STORAGE_KEY = "gcv-excursao-cart";
   var DATA_RESET_KEY = "gcv-exc-pix-data-reset";
-  var DATA_RESET_VERSION = "jul07-caracol-removed-v1";
+  var DATA_RESET_VERSION = "jul18-4of10-v1";
   var CART_ID_MIGRATION_KEY = "gcv-exc-cart-id-migration";
   var CART_ID_MIGRATION_VERSION = "dateiso-v1";
   var SEAT_RESET_KEY = "gcv-exc-pix-seat-reset";
@@ -212,10 +212,14 @@
 
     copy._pixBookedExtra = extra;
     copy.pessoasInscritas = total;
-    if (total >= quorum) {
+    copy.vagasRestantes = Math.max(0, cap - total);
+
+    if (e.confirmada) {
       copy.confirmada = true;
       copy.faltamPessoas = 0;
-      copy.vagasRestantes = Math.max(0, cap - total);
+    } else if (total >= quorum) {
+      copy.confirmada = true;
+      copy.faltamPessoas = 0;
     } else {
       copy.confirmada = false;
       copy.faltamPessoas = Math.max(0, quorum - total);

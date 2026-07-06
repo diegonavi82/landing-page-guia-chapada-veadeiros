@@ -102,7 +102,43 @@
   var currentData = null;
   var currentLocale = "pt";
 
-  var LOGO_REL = "assets/img/imagens/logo-guia-chapada-veadeiros-oficial.webp";
+  var LOGO_REL = "assets/img/imagens/logo-guia-chapada-veadeiros-oficial.png";
+  var _logoDataUrlCache = "";
+
+  var EXC_STRINGS = {
+    pt: {
+      inclSpot: "Vaga em Excursão",
+      inclGuideShort: "Guia local",
+      inclEntries: "Ingresso",
+      inclLanterna: "Lanterna",
+      exclEntries: "Ingresso",
+      exclEntriesMany: "Ingressos",
+      exclTransport: "Transporte",
+      exclLunch: "Almoço",
+    },
+    en: {
+      inclSpot: "Excursion spot",
+      inclGuideShort: "Local guide",
+      inclEntries: "Admission",
+      inclLanterna: "Flashlight",
+      exclEntries: "Admission",
+      exclEntriesMany: "Admissions",
+      exclTransport: "Transport",
+      exclLunch: "Lunch",
+    },
+    es: {
+      inclSpot: "Cupo en excursión",
+      inclGuideShort: "Guía local",
+      inclEntries: "Entrada",
+      inclLanterna: "Linterna",
+      exclEntries: "Entrada",
+      exclEntriesMany: "Entradas",
+      exclTransport: "Transporte",
+      exclLunch: "Almuerzo",
+    },
+  };
+
+  var INGRESSO_GRATIS = { pt: "grátis", en: "free", es: "gratis" };
 
   function rs(loc, key) {
     var pack = STRINGS[loc] || STRINGS.pt;
@@ -233,32 +269,192 @@
     return rs(loc, key);
   }
 
-  function resolveCoverage(data) {
-    var receiptData = {
-      inclExcl: data.inclExcl || null,
-      packages: data.packages || null,
-    };
-    var incl = [];
-    var excl = [];
-    if (global.GcvPixReceipt && typeof global.GcvPixReceipt.resolveInclExcl === "function") {
-      var cov = global.GcvPixReceipt.resolveInclExcl(receiptData);
-      incl = cov.incl || [];
-      excl = cov.excl || [];
-    } else if (receiptData.inclExcl) {
-      incl = (receiptData.inclExcl.incl || []).slice();
-      excl = (receiptData.inclExcl.excl || []).slice();
+  function excStrings(loc) {
+    return EXC_STRINGS[loc] || EXC_STRINGS.pt;
+  }
+
+  function ingressoValorPart(valor, locale) {
+    var loc = locale === "en" || locale === "es" ? locale : "pt";
+    if (valor == null || valor === "") return INGRESSO_GRATIS[loc];
+    var n = Number(valor);
+    if (!Number.isFinite(n) || n <= 0) return INGRESSO_GRATIS[loc];
+    return "R$ " + n;
+  }
+
+  function formatIngressoWithValor(label, valor, locale) {
+    var loc = locale === "en" || locale === "es" ? locale : "pt";
+    if (valor == null || valor === "") return String(label);
+    var n = Number(valor);
+    if (!Number.isFinite(n) || n <= 0) {
+      return label + " (" + INGRESSO_GRATIS[loc] + ")";
+    }
+    return label + " (R$ " + n + ")";
+  }
+
+  function formatIngressosMultiplos(destinos, labelPlural, locale) {
+    var parts = (destinos || []).map(function (d) {
+      return ingressoValorPart(d.valorIngresso, locale);
+    });
+    if (!parts.length) return String(labelPlural);
+    return labelPlural + " (" + parts.join(" + ") + ")";
+  }
+
+  function getDestinosFromRow(e) {
+    if (!e) return [];
+    if (Array.isArray(e.destinos) && e.destinos.length) return e.destinos;
+    if (e.destino) {
+      return [
+        {
+          destino: e.destino,
+          valorIngresso: e.valorIngresso,
+        },
+      ];
+    }
+    return [];
+  }
+
+  function excursaoCartIdFromRow(e) {
+    if (global.GcvExcBookings && typeof global.GcvExcBookings.cartIdFromExcursao === "function") {
+      return global.GcvExcBookings.cartIdFromExcursao(e);
+    }
+    var iso = e && (e.dateISO || e.dateIso) ? String(e.dateISO || e.dateIso).slice(0, 10) : "";
+    var dest = String((e && e.destino) || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+    if (iso && dest) return iso + "-" + dest;
+    return "";
+  }
+
+  function normalizeCartId(cartId) {
+    if (global.GcvExcBookings && typeof global.GcvExcBookings.normalizeCartId === "function") {
+      return global.GcvExcBookings.normalizeCartId(cartId);
+    }
+    return String(cartId || "")
+      .trim()
+      .toLowerCase();
+  }
+
+  function lookupExcursaoRowByCartId(cartId, loc) {
+    if (!cartId) return null;
+    var canon = normalizeCartId(cartId);
+    var rows = loadExcursaoRows(loc);
+    if (!rows.length && loc !== "pt") rows = loadExcursaoRows("pt");
+    for (var i = 0; i < rows.length; i++) {
+      var rowId = excursaoCartIdFromRow(rows[i]);
+      if (rowId === cartId || rowId === canon || normalizeCartId(rowId) === canon) return rows[i];
+    }
+    return null;
+  }
+
+  function lookupExcursaoRowForTrip(trip, loc) {
+    if (!trip) return null;
+    var byId = lookupExcursaoRowByCartId(trip.cartId || cartIdFromTrip(trip), loc);
+    if (byId) return byId;
+    var iso = String(trip.dateIso || trip.dateISO || "").slice(0, 10);
+    var dest = String(trip.destino || "").trim();
+    if (!iso && !dest) return null;
+    var rows = loadExcursaoRows(loc);
+    if (!rows.length && loc !== "pt") rows = loadExcursaoRows("pt");
+    for (var i = 0; i < rows.length; i++) {
+      if (iso && rows[i].dateISO === iso && (!dest || String(rows[i].destino || "") === dest)) {
+        return rows[i];
+      }
+    }
+    return null;
+  }
+
+  function ingressoExclLabelsFromRow(e, strings, locale, inclEntradas) {
+    if (inclEntradas) return [];
+    var dests = getDestinosFromRow(e);
+    if (dests.length > 1) {
+      return [formatIngressosMultiplos(dests, strings.exclEntriesMany, locale)];
+    }
+    return [formatIngressoWithValor(strings.exclEntries, e.valorIngresso, locale)];
+  }
+
+  function inclExclListsFromRow(e, loc) {
+    if (!e) return null;
+    var strings = excStrings(loc);
+    var comTransporte = e.comTransporte === true;
+    var inclEntradas = e.inclEntradas === true;
+    var incl = [strings.inclSpot, strings.inclGuideShort];
+    if (inclEntradas) incl.push(formatIngressoWithValor(strings.inclEntries, e.valorIngresso, loc));
+    if (comTransporte) incl.push(strings.inclTransport);
+    if (e.inclLanterna) incl.push(strings.inclLanterna);
+
+    var excl;
+    if (comTransporte) {
+      excl = ingressoExclLabelsFromRow(e, strings, loc, inclEntradas);
+      if (e.exclAlmoco !== false) excl.push(strings.exclLunch);
+    } else {
+      excl = ingressoExclLabelsFromRow(e, strings, loc, inclEntradas);
+      excl.push(e.badge4x4 ? strings.exclTransport + " (4×4)" : strings.exclTransport);
+      if (e.exclAlmoco !== false) excl.push(strings.exclLunch);
     }
     return { incl: incl, excl: excl };
   }
 
-  function buildCoverageHtml(data, loc) {
-    var cov = resolveCoverage(data);
-    var incl =
-      cov.incl.length > 0 ? cov.incl : [rsReceipt(loc, "inclDefault")];
-    var excl = cov.excl.length > 0 ? cov.excl : [rsReceipt(loc, "exclDefault")];
+  function lookupInclExclByCartId(cartId, loc) {
+    return inclExclListsFromRow(lookupExcursaoRowByCartId(cartId, loc), loc);
+  }
 
-    var html =
-      '<section class="gcv-reserva-voucher__coverage">' +
+  function lookupInclExclForTrip(trip, loc) {
+    return inclExclListsFromRow(lookupExcursaoRowForTrip(trip, loc), loc);
+  }
+
+  function tripTitle(trip) {
+    if (!trip) return "";
+    if (trip.title) return String(trip.title);
+    return [trip.dateLabel || trip.dateShort, trip.destino].filter(Boolean).join(" · ");
+  }
+
+  function normalizeCoveragePackage(pack, loc) {
+    if (!pack) return null;
+    var inclExcl = pack.inclExcl;
+    if (!inclExcl || !inclExcl.incl || !inclExcl.incl.length) {
+      inclExcl =
+        lookupInclExclForTrip(pack, loc) ||
+        lookupInclExclByCartId(pack.cartId || cartIdFromTrip(pack), loc);
+    }
+    if (!inclExcl || !inclExcl.incl || !inclExcl.incl.length) return null;
+    return {
+      title: tripTitle(pack),
+      inclExcl: inclExcl,
+    };
+  }
+
+  function resolveCoveragePackages(data, loc) {
+    var packages = [];
+    if (data && Array.isArray(data.packages) && data.packages.length) {
+      packages = data.packages
+        .map(function (pack) {
+          return normalizeCoveragePackage(pack, loc);
+        })
+        .filter(Boolean);
+    }
+    if (!packages.length && data && Array.isArray(data.trips) && data.trips.length) {
+      packages = data.trips
+        .map(function (trip) {
+          return normalizeCoveragePackage(trip, loc);
+        })
+        .filter(Boolean);
+    }
+    if (!packages.length && data && data.inclExcl && data.inclExcl.incl && data.inclExcl.incl.length) {
+      packages = [{ title: "", inclExcl: data.inclExcl }];
+    }
+    return packages;
+  }
+
+  function buildCoveragePackHtml(pack, loc, showTitle) {
+    if (!pack || !pack.inclExcl || !pack.inclExcl.incl || !pack.inclExcl.incl.length) return "";
+    var incl = pack.inclExcl.incl;
+    var excl = pack.inclExcl.excl || [];
+    var html = '<div class="gcv-reserva-voucher__coverage-pack">';
+    if (showTitle && pack.title) {
+      html += '<p class="gcv-reserva-voucher__coverage-trip">' + escapeHtml(pack.title) + "</p>";
+    }
+    html +=
       '<div class="gcv-reserva-voucher__coverage-grid">' +
       '<div class="gcv-reserva-voucher__cov gcv-reserva-voucher__cov--in">' +
       "<h3>" +
@@ -275,8 +471,33 @@
     excl.forEach(function (item) {
       html += "<li>" + escapeHtml(item) + "</li>";
     });
-    html += "</ul></div></div></section>";
+    html += "</ul></div></div></div>";
     return html;
+  }
+
+  function buildCoverageHtml(data, loc) {
+    var packages = resolveCoveragePackages(data, loc);
+    if (!packages.length) {
+      packages = [
+        {
+          title: "",
+          inclExcl: {
+            incl: [rsReceipt(loc, "inclDefault")],
+            excl: [rsReceipt(loc, "exclDefault")],
+          },
+        },
+      ];
+    }
+    var showTitle = packages.length > 1;
+    return (
+      '<section class="gcv-reserva-voucher__coverage">' +
+      packages
+        .map(function (pack) {
+          return buildCoveragePackHtml(pack, loc, showTitle);
+        })
+        .join("") +
+      "</section>"
+    );
   }
 
   function toReceiptData(data) {
@@ -290,11 +511,120 @@
   }
 
   function assetUrl(rel) {
-    var base = "/";
-    if (global.location.pathname.indexOf("/en/") >= 0 || global.location.pathname.indexOf("/es/") >= 0) {
-      base = "../";
+    return absoluteAssetUrl(rel);
+  }
+
+  function absoluteAssetUrl(rel) {
+    rel = String(rel || "").replace(/^\//, "");
+    var origin = global.location.origin || "";
+    if (!origin || origin === "null" || origin.indexOf("file:") === 0) {
+      return "https://www.guiachapadaveadeiros.com/" + rel;
     }
-    return base + String(rel || "").replace(/^\//, "");
+    return origin + "/" + rel;
+  }
+
+  function rasterizeImageElement(img) {
+    if (!img || !img.naturalWidth || !img.naturalHeight) return "";
+    if (img.src && img.src.indexOf("data:") === 0) return img.src;
+    try {
+      var canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      canvas.getContext("2d").drawImage(img, 0, 0);
+      return canvas.toDataURL("image/png");
+    } catch (err) {
+      return "";
+    }
+  }
+
+  function fetchImageAsDataUrl(url) {
+    if (!url || url.indexOf("data:") === 0) return Promise.resolve(url || "");
+    return fetch(url, { mode: "cors", credentials: "same-origin" })
+      .then(function (res) {
+        if (!res.ok) throw new Error("fetch image");
+        return res.blob();
+      })
+      .then(function (blob) {
+        return new Promise(function (resolve, reject) {
+          var reader = new FileReader();
+          reader.onload = function () {
+            resolve(typeof reader.result === "string" ? reader.result : "");
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      })
+      .catch(function () {
+        return "";
+      });
+  }
+
+  function loadImageElement(url) {
+    return new Promise(function (resolve) {
+      var img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = function () {
+        resolve(img);
+      };
+      img.onerror = function () {
+        resolve(null);
+      };
+      img.src = url;
+    });
+  }
+
+  function ensureImageDataUrl(img) {
+    if (!img) return Promise.resolve("");
+    if (img.getAttribute("data-gcv-embedded-src")) {
+      return Promise.resolve(img.getAttribute("data-gcv-embedded-src"));
+    }
+    var raster = rasterizeImageElement(img);
+    if (raster) {
+      img.setAttribute("data-gcv-embedded-src", raster);
+      return Promise.resolve(raster);
+    }
+    var url = img.currentSrc || img.src || "";
+    if (!url) return Promise.resolve("");
+    return fetchImageAsDataUrl(url).then(function (dataUrl) {
+      if (!dataUrl) {
+        return loadImageElement(url).then(function (loaded) {
+          var fromEl = loaded ? rasterizeImageElement(loaded) : "";
+          if (fromEl) img.setAttribute("data-gcv-embedded-src", fromEl);
+          return fromEl;
+        });
+      }
+      img.setAttribute("data-gcv-embedded-src", dataUrl);
+      return dataUrl;
+    });
+  }
+
+  function ensureCardImagesEmbedded(card) {
+    if (!card) return Promise.resolve();
+    var imgs = card.querySelectorAll("img");
+    return Promise.all(
+      Array.prototype.map.call(imgs, function (img) {
+        return ensureImageDataUrl(img);
+      }),
+    );
+  }
+
+  function preloadLogoDataUrl() {
+    if (_logoDataUrlCache) return Promise.resolve(_logoDataUrlCache);
+    var url = absoluteAssetUrl(LOGO_REL);
+    return fetchImageAsDataUrl(url).then(function (dataUrl) {
+      if (!dataUrl) {
+        return loadImageElement(url).then(function (img) {
+          _logoDataUrlCache = img ? rasterizeImageElement(img) : "";
+          return _logoDataUrlCache;
+        });
+      }
+      _logoDataUrlCache = dataUrl;
+      return _logoDataUrlCache;
+    });
+  }
+
+  function logoSrcForCard() {
+    return _logoDataUrlCache || absoluteAssetUrl(LOGO_REL);
   }
 
   function verifyUrl(code, loc) {
@@ -432,7 +762,7 @@
 
   function buildCardHtml(data, loc, qrDataUrl) {
     var trips = data.trips || [];
-    var logo = assetUrl(LOGO_REL);
+    var logo = logoSrcForCard();
     var html =
       '<article class="gcv-reserva-voucher__card" data-gcv-voucher-card tabindex="-1">' +
       '<header class="gcv-reserva-voucher__card-head">' +
@@ -543,6 +873,8 @@
       ".gcv-reserva-voucher__trip-guia{display:block;font-weight:600;color:#064e3b;margin-top:3px}" +
       ".gcv-reserva-voucher__trip-sub{display:block;color:#64748b;margin-top:2px}" +
       ".gcv-reserva-voucher__coverage{margin:10px 0 8px}" +
+      ".gcv-reserva-voucher__coverage-pack+.gcv-reserva-voucher__coverage-pack{margin-top:8px;padding-top:8px;border-top:1px dashed #e2e8f0}" +
+      ".gcv-reserva-voucher__coverage-trip{margin:0 0 6px;font-size:10px;font-weight:700;color:#064e3b}" +
       ".gcv-reserva-voucher__coverage-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}" +
       ".gcv-reserva-voucher__cov{border:1px solid #e2e8f0;border-radius:8px;padding:8px;font-size:9px;line-height:1.35;background:#fff}" +
       ".gcv-reserva-voucher__cov h3{margin:0 0 4px;font-size:9px;color:#064e3b}" +
@@ -651,9 +983,18 @@
     showToast("", true);
 
     var card = modal.querySelector("[data-gcv-voucher-card]");
-    global.requestAnimationFrame(function () {
-      renderVoucherQr(card, currentData, currentLocale).then(function () {
-        if (card && card.focus) card.focus();
+    preloadLogoDataUrl().then(function (logoDataUrl) {
+      if (logoDataUrl && card) {
+        var logoImg = card.querySelector(".gcv-reserva-voucher__logo");
+        if (logoImg) {
+          logoImg.src = logoDataUrl;
+          logoImg.setAttribute("data-gcv-embedded-src", logoDataUrl);
+        }
+      }
+      global.requestAnimationFrame(function () {
+        renderVoucherQr(card, currentData, currentLocale).then(function () {
+          if (card && card.focus) card.focus();
+        });
       });
     });
   }
@@ -704,13 +1045,17 @@
 
   function prepareCardCloneForExport(el) {
     var clone = el.cloneNode(true);
-    var srcImg = el.querySelector(".gcv-reserva-voucher__qr-img");
-    var dstSlot = clone.querySelector("[data-gcv-voucher-qr-slot], .gcv-reserva-voucher__qr-wrap");
-    if (srcImg && dstSlot) {
-      var imgCopy = srcImg.cloneNode(true);
-      var placeholder = dstSlot.querySelector(".gcv-reserva-voucher__qr-slot, .gcv-reserva-voucher__qr-img, canvas");
-      if (placeholder) placeholder.replaceWith(imgCopy);
-      else dstSlot.insertBefore(imgCopy, dstSlot.firstChild);
+    var srcImgs = el.querySelectorAll("img");
+    var dstImgs = clone.querySelectorAll("img");
+    for (var i = 0; i < dstImgs.length; i++) {
+      var srcImg = srcImgs[i];
+      var dstImg = dstImgs[i];
+      if (!dstImg) continue;
+      var embedded =
+        (srcImg && srcImg.getAttribute("data-gcv-embedded-src")) ||
+        (srcImg ? rasterizeImageElement(srcImg) : "") ||
+        (dstImg.src && dstImg.src.indexOf("data:") === 0 ? dstImg.src : "");
+      if (embedded) dstImg.setAttribute("src", embedded);
     }
     return clone;
   }
@@ -804,6 +1149,9 @@
     renderVoucherQr(card, currentData, currentLocale)
       .then(function () {
         return waitImages(card);
+      })
+      .then(function () {
+        return ensureCardImagesEmbedded(card);
       })
       .then(function () {
         return domToPng(card);
@@ -905,6 +1253,12 @@
       var data = typeof getData === "function" ? getData(btn.getAttribute("data-gcv-open-voucher")) : currentData;
       if (data) openModal(data, loc);
     });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", preloadLogoDataUrl);
+  } else {
+    preloadLogoDataUrl();
   }
 
   global.GcvReservaVoucher = {

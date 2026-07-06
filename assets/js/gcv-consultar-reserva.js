@@ -30,8 +30,6 @@
       backExc: "← Voltar às excursões",
       person: "pessoa",
       people: "pessoas",
-      savedCodesLabel: "Suas reservas salvas",
-      pickCode: "Usar código",
     },
     en: {
       statusPENDING: "Awaiting payment",
@@ -55,8 +53,6 @@
       backExc: "← Back to tours",
       person: "person",
       people: "people",
-      savedCodesLabel: "Your saved reservations",
-      pickCode: "Use code",
     },
     es: {
       statusPENDING: "Esperando pago",
@@ -80,8 +76,6 @@
       backExc: "← Volver a las excursiones",
       person: "persona",
       people: "personas",
-      savedCodesLabel: "Sus reservas guardadas",
-      pickCode: "Usar código",
     },
   };
 
@@ -175,7 +169,7 @@
     window.GcvPixReceipt.saveReservationCode(code, email ? { email: email } : undefined);
   }
 
-  function bindCodeAutosave(codeInput, emailInput, onUpdate) {
+  function bindCodeAutosave(codeInput, emailInput) {
     if (!codeInput || codeInput._gcvCodeAutosaveBound) return;
     codeInput._gcvCodeAutosaveBound = true;
     codeInput.addEventListener("input", function () {
@@ -189,107 +183,14 @@
       var email = emailInput ? String(emailInput.value || "").trim() : "";
       if (window.GcvPixReceipt && window.GcvPixReceipt.isValidReservationCode(code)) {
         saveCodeToStorage(code, email);
-        if (typeof onUpdate === "function") onUpdate();
       }
     });
   }
 
-  function ensureSavedCodesUi(root, lookupForm, loc) {
-    if (!lookupForm || lookupForm._gcvSavedCodesUi) return lookupForm._gcvSavedCodesUi;
-    var codeInput = lookupForm.querySelector('[name="code"]');
-    if (!codeInput) return null;
-
-    var listId = (codeInput.id || "gcv-reserva-code") + "-saved-list";
-    var datalist = document.getElementById(listId);
-    if (!datalist) {
-      datalist = document.createElement("datalist");
-      datalist.id = listId;
-      document.body.appendChild(datalist);
-    }
-    codeInput.setAttribute("list", listId);
-    codeInput.setAttribute("autocomplete", "on");
-
-    var wrap = document.createElement("div");
-    wrap.className = "gcv-reserva-saved";
-    wrap.setAttribute("data-gcv-reserva-saved", "");
-    wrap.hidden = true;
-    wrap.innerHTML =
-      '<p class="gcv-reserva-saved__label">' +
-      escapeHtml(s(loc, "savedCodesLabel")) +
-      '</p><div class="gcv-reserva-saved__list" data-gcv-reserva-saved-list></div>';
-
-    var codeLabel = lookupForm.querySelector('label[for="' + codeInput.id + '"]');
-    if (codeLabel && codeLabel.parentNode) {
-      codeLabel.parentNode.insertBefore(wrap, codeLabel.nextSibling);
-    } else {
-      lookupForm.insertBefore(wrap, codeInput);
-    }
-
-    lookupForm._gcvSavedCodesUi = { wrap: wrap, datalist: datalist, listEl: wrap.querySelector("[data-gcv-reserva-saved-list]") };
-    return lookupForm._gcvSavedCodesUi;
-  }
-
-  function refreshSavedCodesUi(root, lookupForm, loc) {
-    var ui = ensureSavedCodesUi(root, lookupForm, loc);
-    if (!ui) return;
-    var codes =
-      window.GcvPixReceipt && typeof window.GcvPixReceipt.readSavedReservationCodes === "function"
-        ? window.GcvPixReceipt.readSavedReservationCodes()
-        : [];
-
-    while (ui.datalist.firstChild) ui.datalist.removeChild(ui.datalist.firstChild);
-    codes.forEach(function (item) {
-      var opt = document.createElement("option");
-      opt.value = item.code;
-      ui.datalist.appendChild(opt);
-    });
-
-    if (!codes.length) {
-      ui.wrap.hidden = true;
-      ui.listEl.innerHTML = "";
-      return;
-    }
-
-    ui.wrap.hidden = false;
-    ui.listEl.innerHTML = codes
-      .map(function (item) {
-        return (
-          '<button type="button" class="gcv-reserva-saved__chip" data-gcv-reserva-pick-code="' +
-          escapeHtml(item.code) +
-          '" title="' +
-          escapeHtml(s(loc, "pickCode")) +
-          '">' +
-          escapeHtml(item.code) +
-          "</button>"
-        );
-      })
-      .join("");
-  }
-
-  function applySavedCodePick(root, lookupForm, loc, code) {
-    var codeInput = lookupForm.querySelector('[name="code"]');
-    var emailInput = lookupForm.querySelector('[name="email"]');
-    if (codeInput) codeInput.value = String(code || "").toUpperCase();
-    if (emailInput && window.GcvPixReceipt && typeof window.GcvPixReceipt.getSavedEmailForCode === "function") {
-      var savedEmail = window.GcvPixReceipt.getSavedEmailForCode(code);
-      if (savedEmail && !String(emailInput.value || "").trim()) emailInput.value = savedEmail;
-    }
-    if (!emailInput || !String(emailInput.value || "").trim()) {
-      if (window.GcvPixReceipt && typeof window.GcvPixReceipt.readSavedEmail === "function") {
-        var fallbackEmail = window.GcvPixReceipt.readSavedEmail();
-        if (fallbackEmail && emailInput) emailInput.value = fallbackEmail;
-      }
-    }
-    refreshSavedCodesUi(root, lookupForm, loc);
-  }
-
-  function prefillLookupForm(root, lookupForm, loc, preCode, preEmail) {
+  function prefillLookupForm(lookupForm, preCode, preEmail) {
     var codeInput = lookupForm.querySelector('[name="code"]');
     var emailInput = lookupForm.querySelector('[name="email"]');
     var code = preCode ? String(preCode).toUpperCase() : "";
-    if (!code && window.GcvPixReceipt && typeof window.GcvPixReceipt.getLastReservationCode === "function") {
-      code = window.GcvPixReceipt.getLastReservationCode();
-    }
     if (codeInput && code) codeInput.value = code;
 
     var email = preEmail ? String(preEmail).trim() : "";
@@ -300,8 +201,6 @@
       email = window.GcvPixReceipt.readSavedEmail();
     }
     if (emailInput && email) emailInput.value = email;
-
-    refreshSavedCodesUi(root, lookupForm, loc);
   }
 
   function renderResult(data, loc) {
@@ -410,7 +309,6 @@
     email = String(email || "").trim();
     if (window.GcvPixReceipt && window.GcvPixReceipt.isValidReservationCode(code)) {
       saveCodeToStorage(code, email);
-      refreshSavedCodesUi(root, lookupForm, loc);
     }
     var submitBtn = lookupForm.querySelector('[type="submit"]');
     if (submitBtn) submitBtn.disabled = true;
@@ -430,7 +328,6 @@
         var body = pack.body || {};
         if (body.ok) {
           saveCodeToStorage(code, email);
-          refreshSavedCodesUi(root, lookupForm, loc);
           if (window.GcvExcBookings && typeof window.GcvExcBookings.recordTripsForReservation === "function") {
             window.GcvExcBookings.recordTripsForReservation(
               body.reservation_id,
@@ -519,15 +416,7 @@
     if (lookupForm) {
       var codeField = lookupForm.querySelector('[name="code"]');
       var emailField = lookupForm.querySelector('[name="email"]');
-      bindCodeAutosave(codeField, emailField, function () {
-        refreshSavedCodesUi(root, lookupForm, loc);
-      });
-      root.addEventListener("click", function (e) {
-        var chip = e.target.closest("[data-gcv-reserva-pick-code]");
-        if (!chip || !root.contains(chip)) return;
-        applySavedCodePick(root, lookupForm, loc, chip.getAttribute("data-gcv-reserva-pick-code"));
-        if (codeField) codeField.focus();
-      });
+      bindCodeAutosave(codeField, emailField);
     }
 
     if (lookupForm) {
@@ -603,7 +492,7 @@
     var preCode = params.get("id") || params.get("code") || "";
     var preEmail = params.get("email") || "";
     if (lookupForm) {
-      prefillLookupForm(root, lookupForm, loc, preCode, preEmail);
+      prefillLookupForm(lookupForm, preCode, preEmail);
       if (preCode && preEmail) {
         performLookup(root, lookupForm, loc, preCode, preEmail);
         stripAutoLookupParams();

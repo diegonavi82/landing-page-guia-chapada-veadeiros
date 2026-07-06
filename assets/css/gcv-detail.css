@@ -1162,6 +1162,20 @@ html.gcv-reserva-voucher-open {
   margin: 0.45rem 0 0.35rem;
 }
 
+.gcv-reserva-voucher__coverage-pack + .gcv-reserva-voucher__coverage-pack {
+  margin-top: 0.45rem;
+  padding-top: 0.4rem;
+  border-top: 1px dashed #e2e8f0;
+}
+
+.gcv-reserva-voucher__coverage-trip {
+  margin: 0 0 0.3rem;
+  font-size: 0.62rem;
+  font-weight: 800;
+  color: #064e3b;
+  line-height: 1.35;
+}
+
 .gcv-reserva-voucher__coverage-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

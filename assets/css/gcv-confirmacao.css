@@ -1,0 +1,418 @@
+/* Página confirmacao.html — confirmação de pagamento Pix */
+
+.gcv-confirmacao-page {
+  background: linear-gradient(165deg, #ecfdf5 0%, #f8fafc 42%, #fff 100%);
+  min-height: calc(100vh - 12rem);
+}
+
+.gcv-confirmacao-wrap {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: clamp(1.5rem, 4vw, 2.75rem) 1rem 3.5rem;
+}
+
+.gcv-confirmacao-root {
+  width: 100%;
+}
+
+/* Loading */
+.gcv-confirmacao-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 3rem 1.5rem;
+  text-align: center;
+  color: #64748b;
+  font-size: 0.92rem;
+}
+
+.gcv-confirmacao-loading__spinner {
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 3px solid #d1fae5;
+  border-top-color: #059669;
+  border-radius: 50%;
+  animation: gcv-confirmacao-spin 0.75s linear infinite;
+}
+
+@keyframes gcv-confirmacao-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Card principal */
+.gcv-confirmacao-card {
+  position: relative;
+  overflow: hidden;
+  margin: 0;
+  padding: clamp(1.5rem, 4vw, 2rem);
+  border-radius: 1.25rem;
+  background: #fff;
+  border: 1px solid rgba(6, 78, 59, 0.1);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 12px 40px rgba(6, 78, 59, 0.1);
+}
+
+.gcv-confirmacao-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  background: linear-gradient(90deg, #059669, #34d399, #059669);
+}
+
+.gcv-confirmacao-card--pending::before {
+  background: linear-gradient(90deg, #d97706, #fbbf24, #d97706);
+}
+
+.gcv-confirmacao-card--error::before {
+  background: linear-gradient(90deg, #b91c1c, #f87171, #b91c1c);
+}
+
+.gcv-confirmacao-card__head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.65rem;
+  margin-bottom: 1.35rem;
+}
+
+.gcv-confirmacao-card__icon {
+  display: grid;
+  place-items: center;
+  width: 4rem;
+  height: 4rem;
+  border-radius: 50%;
+  font-size: 1.65rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.gcv-confirmacao-card--success .gcv-confirmacao-card__icon {
+  background: linear-gradient(145deg, #d1fae5, #a7f3d0);
+  color: #047857;
+  box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.12);
+}
+
+.gcv-confirmacao-card--pending .gcv-confirmacao-card__icon {
+  background: linear-gradient(145deg, #fef3c7, #fde68a);
+  color: #b45309;
+  box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.12);
+}
+
+.gcv-confirmacao-card--error .gcv-confirmacao-card__icon {
+  background: linear-gradient(145deg, #fee2e2, #fecaca);
+  color: #b91c1c;
+  box-shadow: 0 0 0 6px rgba(239, 68, 68, 0.1);
+}
+
+.gcv-confirmacao-card__title {
+  margin: 0;
+  font-size: clamp(1.35rem, 4vw, 1.65rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #064e3b;
+  line-height: 1.2;
+}
+
+.gcv-confirmacao-card--pending .gcv-confirmacao-card__title {
+  color: #92400e;
+}
+
+.gcv-confirmacao-card--error .gcv-confirmacao-card__title {
+  color: #991b1b;
+}
+
+.gcv-confirmacao-card__subtitle {
+  margin: 0;
+  max-width: 28rem;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: #64748b;
+}
+
+/* Meta — código, status, valor */
+.gcv-confirmacao-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin-bottom: 1.15rem;
+}
+
+.gcv-confirmacao-meta__item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 0.75rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.gcv-confirmacao-meta__item--wide {
+  grid-column: 1 / -1;
+}
+
+.gcv-confirmacao-meta__label {
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #94a3b8;
+}
+
+.gcv-confirmacao-meta__value {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #0f172a;
+  word-break: break-word;
+}
+
+.gcv-confirmacao-meta__value--code {
+  font-family: ui-monospace, "Cascadia Code", "Segoe UI Mono", monospace;
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+  color: #064e3b;
+}
+
+.gcv-confirmacao-meta__value--amount {
+  font-size: 1.15rem;
+  color: #047857;
+}
+
+.gcv-confirmacao-meta__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  width: fit-content;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.gcv-confirmacao-meta__badge--paid {
+  background: #d1fae5;
+  color: #047857;
+}
+
+.gcv-confirmacao-meta__badge--pending {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+/* CTA comprovante */
+.gcv-confirmacao-voucher {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.85rem;
+  margin-bottom: 1.15rem;
+  padding: 1rem 1.1rem;
+  border-radius: 0.9rem;
+  background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%);
+  border: 1px solid #a7f3d0;
+}
+
+.gcv-confirmacao-voucher__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  text-align: center;
+}
+
+.gcv-confirmacao-voucher__text strong {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #065f46;
+}
+
+.gcv-confirmacao-voucher__text span {
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: #047857;
+}
+
+.gcv-confirmacao-voucher__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  width: 100%;
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border: none;
+  border-radius: 0.65rem;
+  background: linear-gradient(180deg, #059669, #047857);
+  color: #fff;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.28);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+
+.gcv-confirmacao-voucher__btn:hover,
+.gcv-confirmacao-voucher__btn:focus-visible {
+  filter: brightness(1.05);
+  box-shadow: 0 6px 18px rgba(5, 150, 105, 0.34);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.gcv-confirmacao-voucher__btn-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+/* Lista de passeios */
+.gcv-confirmacao-trips {
+  margin-bottom: 1.15rem;
+}
+
+.gcv-confirmacao-trips__title {
+  margin: 0 0 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #94a3b8;
+}
+
+.gcv-confirmacao-trips__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.gcv-confirmacao-trips__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 0.7rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  color: #334155;
+}
+
+.gcv-confirmacao-trips__dot {
+  flex-shrink: 0;
+  width: 0.45rem;
+  height: 0.45rem;
+  margin-top: 0.45rem;
+  border-radius: 50%;
+  background: #10b981;
+}
+
+.gcv-confirmacao-trips__dest {
+  font-weight: 700;
+  color: #064e3b;
+}
+
+/* Nota informativa */
+.gcv-confirmacao-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  margin: 0 0 1.25rem;
+  padding: 0.8rem 0.9rem;
+  border-radius: 0.7rem;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: #92400e;
+}
+
+.gcv-confirmacao-note::before {
+  content: "ℹ";
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 50%;
+  background: #fef3c7;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #b45309;
+}
+
+/* Ações */
+.gcv-confirmacao-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.gcv-confirmacao-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 0.65rem;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-decoration: none;
+  text-align: center;
+  line-height: 1.25;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.gcv-confirmacao-btn--primary {
+  background: #064e3b;
+  color: #fff;
+  border: 1px solid #064e3b;
+}
+
+.gcv-confirmacao-btn--primary:hover {
+  background: #047857;
+  border-color: #047857;
+  color: #fff;
+}
+
+.gcv-confirmacao-btn--ghost {
+  background: #fff;
+  color: #064e3b;
+  border: 1px solid #cbd5e1;
+}
+
+.gcv-confirmacao-btn--ghost:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  color: #064e3b;
+}
+
+/* Legado — inline do voucher (fallback) */
+.gcv-reserva-inline {
+  margin: 0 0 1rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font-size: inherit;
+  color: inherit;
+}
+
+@media (max-width: 480px) {
+  .gcv-confirmacao-meta {
+    grid-template-columns: 1fr;
+  }
+
+  .gcv-confirmacao-actions {
+    grid-template-columns: 1fr;
+  }
+}

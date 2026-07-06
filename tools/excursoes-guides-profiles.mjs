@@ -1,7 +1,7 @@
 /** Slug do perfil por nome exibido no card. */
 export const GUIA_PROFILE_SLUG = {
   "Diego Navi": "diego-navi",
-  "Martina Motlova": "martina-motlova",
+  "Martina Motlová": "martina-motlova",
   "Gyovanna Torres": "gyovanna-torres",
 };
 

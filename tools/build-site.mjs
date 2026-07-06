@@ -1817,9 +1817,9 @@ function confirmacaoMain(locale) {
     es: "Cargando confirmación…",
   };
   const loc = locale === "en" || locale === "es" ? locale : "pt";
-  return `<main id="conteudo">
-  <section class="gcv-confirmacao-wrap" style="max-width:640px;margin:2rem auto 3rem;padding:0 1rem">
-    <div id="gcv-confirmacao"><p>${esc(loading[loc])}</p></div>
+  return `<main id="conteudo" class="gcv-confirmacao-page">
+  <section class="gcv-confirmacao-wrap">
+    <div id="gcv-confirmacao" class="gcv-confirmacao-root" role="status" aria-live="polite">${loading[loc] ? `<div class="gcv-confirmacao-loading"><div class="gcv-confirmacao-loading__spinner" aria-hidden="true"></div><p>${esc(loading[loc])}</p></div>` : ""}</div>
   </section>
 </main>`;
 }
@@ -2714,7 +2714,10 @@ for (const locale of LOCALES) {
       extraAfterFooter:
         (pk === "" || pk === "contato.html" ? `  ${floatWaHtml(locale)}\n` : "") + (p.extraAfterFooter || ""),
       extraFooterScripts: (p.extraFooterScripts || homeExcursionsHead.extraFooterScripts || "") + homeConsultarScript,
-      extraCss: homeExcursionsHead.extraCss,
+      extraCss: [
+        ...(pk === "confirmacao.html" ? [`assets/css/gcv-confirmacao.css${BUILD_ASSET_QUERY}`] : []),
+        ...(homeExcursionsHead.extraCss || []),
+      ],
       extraHead: homeExcursionsHead.extraHead,
     });
     writePage(locale, pk || "", html);

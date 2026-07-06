@@ -3,7 +3,7 @@ import { filterFutureExcursoes } from "./excursoes-future.mjs";
 /** Idiomas falados por guia (códigos ISO simplificados). */
 export const GUIA_IDIOMAS = {
   "Diego Navi": ["pt", "en", "es"],
-  "Martina Motlova": ["cs", "en", "pt"],
+  "Martina Motlová": ["cs", "en", "pt"],
   "Gyovanna Torres": ["pt"],
 };
 
@@ -119,6 +119,8 @@ export const EXCURSOES_CAROUSEL_BY_LOCALE = {
       cardImg: "/assets/img/imagens/mirante-janela-guia-chapada-veadeiros-sao-jorge-parque-nacional-3.jpg",
       atrativoPath: "atrativos/mirante-janela-cachoeira-abismo-guia-chapada-veadeiros-sao-jorge.html",
       valorIngresso: 50,
+      inclLanterna: true,
+      exclAlmoco: false,
     },
     {
       dayNum: "16",
@@ -171,8 +173,8 @@ export const EXCURSOES_CAROUSEL_BY_LOCALE = {
       valor: 140,
       confirmada: true,
       pessoasInscritas: 4,
-      grupoMaximo: 8,
-      vagasRestantes: 4,
+      grupoMaximo: 10,
+      vagasRestantes: 6,
       guiaNome: "Diego Navi",
       guiaFoto: "/assets/img/imagens/guia-diego-navi.webp",
       destinos: [
@@ -224,7 +226,7 @@ export const EXCURSOES_CAROUSEL_BY_LOCALE = {
       grupoMaximo: 10,
       vagasRestantes: 8,
       cardImg: "/assets/img/imagens/bocaina-farias-guia-chapada-veadeiros.webp",
-      guiaNome: "Martina Motlova",
+      guiaNome: "Martina Motlová",
       guiaFoto: "/assets/img/imagens/guia-martina-motlova.webp",
       valorIngresso: 60,
     },
@@ -339,8 +341,8 @@ export const EXCURSOES_CAROUSEL_BY_LOCALE = {
       valor: 140,
       confirmada: true,
       pessoasInscritas: 4,
-      grupoMaximo: 8,
-      vagasRestantes: 4,
+      grupoMaximo: 10,
+      vagasRestantes: 6,
       guiaNome: "Diego Navi",
       guiaFoto: "/assets/img/imagens/guia-diego-navi.webp",
     },
@@ -376,7 +378,7 @@ export const EXCURSOES_CAROUSEL_BY_LOCALE = {
       grupoMaximo: 10,
       vagasRestantes: 8,
       cardImg: "/assets/img/imagens/bocaina-farias-guia-chapada-veadeiros.webp",
-      guiaNome: "Martina Motlova",
+      guiaNome: "Martina Motlová",
       guiaFoto: "/assets/img/imagens/guia-martina-motlova.webp",
     },
     {
@@ -487,8 +489,8 @@ export const EXCURSOES_CAROUSEL_BY_LOCALE = {
       valor: 140,
       confirmada: true,
       pessoasInscritas: 4,
-      grupoMaximo: 8,
-      vagasRestantes: 4,
+      grupoMaximo: 10,
+      vagasRestantes: 6,
       guiaNome: "Diego Navi",
       guiaFoto: "/assets/img/imagens/guia-diego-navi.webp",
     },
@@ -524,7 +526,7 @@ export const EXCURSOES_CAROUSEL_BY_LOCALE = {
       grupoMaximo: 10,
       vagasRestantes: 8,
       cardImg: "/assets/img/imagens/bocaina-farias-guia-chapada-veadeiros.webp",
-      guiaNome: "Martina Motlova",
+      guiaNome: "Martina Motlová",
       guiaFoto: "/assets/img/imagens/guia-martina-motlova.webp",
     },
     {
@@ -578,6 +580,8 @@ export function withPortugueseDestinos(rows, ptRows = EXCURSOES_CAROUSEL_BY_LOCA
     if (pt.atrativoPath) copy.atrativoPath = pt.atrativoPath;
     if (pt.destinoSub) copy.destinoSub = pt.destinoSub;
     if (pt.inclEntradas) copy.inclEntradas = pt.inclEntradas;
+    if (pt.inclLanterna) copy.inclLanterna = pt.inclLanterna;
+    if (pt.exclAlmoco === false) copy.exclAlmoco = false;
     if (pt.valorIngresso != null) copy.valorIngresso = pt.valorIngresso;
     if (Array.isArray(pt.destinos) && pt.destinos.length) copy.destinos = pt.destinos;
     return copy;

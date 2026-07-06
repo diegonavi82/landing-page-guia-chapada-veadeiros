@@ -3,7 +3,7 @@
 
   var GUIA_PROFILE_SLUG = {
     "Diego Navi": "diego-navi",
-    "Martina Motlova": "martina-motlova",
+    "Martina Motlová": "martina-motlova",
     "Gyovanna Torres": "gyovanna-torres",
   };
 
@@ -89,7 +89,7 @@
 
   var GUIA_IDIOMAS = {
     "Diego Navi": ["pt", "en", "es"],
-    "Martina Motlova": ["cs", "en", "pt"],
+    "Martina Motlová": ["cs", "en", "pt"],
     "Gyovanna Torres": ["pt"],
   };
 
@@ -378,6 +378,7 @@
       inclGuideShort: "Guia local",
       inclEntries: "Ingresso",
       inclTransport: "Transporte",
+      inclLanterna: "Lanterna",
       badgeTransport: "Com transporte",
       exclLabel: "Não incluso:",
       exclEntries: "Ingresso",
@@ -511,6 +512,7 @@
       inclGuideShort: "Local guide",
       inclEntries: "Admission",
       inclTransport: "Transport",
+      inclLanterna: "Flashlight",
       badgeTransport: "With transport",
       exclLabel: "Not included:",
       exclEntries: "Admission",
@@ -644,6 +646,7 @@
       inclGuideShort: "Guía local",
       inclEntries: "Entrada",
       inclTransport: "Transporte",
+      inclLanterna: "Linterna",
       badgeTransport: "Con transporte",
       exclLabel: "No incluido:",
       exclEntries: "Entrada",
@@ -2052,12 +2055,15 @@
         '" data-cart-date="' +
         escapeHtml(dateLabel) +
         '">' +
+        '<div class="gcv-excursoes-card__book-row">' +
         '<span class="gcv-excursoes-card__price gcv-excursoes-card__price--soldout">' +
         escapeHtml(s.spotsNone) +
-        '</span><button type="button" class="gcv-excursoes-card__waitlist" data-gcv-exc-waitlist>' +
+        "</span></div>" +
+        '<div class="gcv-excursoes-card__book-actions">' +
+        '<button type="button" class="gcv-excursoes-card__waitlist" data-gcv-exc-waitlist>' +
         '<i class="ti ti-bell" aria-hidden="true"></i> ' +
         escapeHtml(waitLabel) +
-        "</button></div>"
+        "</button></div></div>"
       );
     }
 
@@ -2101,10 +2107,6 @@
       formatBrlAmount(unit) +
       "</span></div></div>" +
       '<div class="gcv-excursoes-card__book-actions">' +
-      '<button type="button" class="gcv-excursoes-card__pay" data-gcv-exc-pay>' +
-      '<i class="ti ti-qrcode" aria-hidden="true"></i> ' +
-      escapeHtml(s.bookPay) +
-      "</button>" +
       '<button type="button" class="gcv-excursoes-card__cart-add" data-gcv-exc-cart-add>' +
       '<i class="ti ti-shopping-cart" aria-hidden="true"></i> ' +
       escapeHtml(s.bookAddCart) +
@@ -2356,15 +2358,16 @@
     var incl = [s.inclSpot, s.inclGuideShort];
     if (inclEntradas) incl.push(formatIngressoWithValor(s.inclEntries, e.valorIngresso, locale));
     if (comTransporte) incl.push(s.inclTransport);
+    if (e.inclLanterna) incl.push(s.inclLanterna);
 
     var excl;
     if (comTransporte) {
       excl = ingressoExclLabels(e, s, locale, inclEntradas);
-      excl.push(s.exclLunch);
+      if (e.exclAlmoco !== false) excl.push(s.exclLunch);
     } else {
       excl = ingressoExclLabels(e, s, locale, inclEntradas);
       excl.push(e.badge4x4 ? s.exclTransport + " (4×4)" : s.exclTransport);
-      excl.push(s.exclLunch);
+      if (e.exclAlmoco !== false) excl.push(s.exclLunch);
     }
     return { incl: incl, excl: excl };
   }
@@ -2723,16 +2726,26 @@
         escapeHtml(s.inclTransport) +
         "</li>";
     }
+    if (e.inclLanterna) {
+      inclItems +=
+        '<li><i class="ti ti-bulb text-ok" aria-hidden="true"></i> ' +
+        escapeHtml(s.inclLanterna) +
+        "</li>";
+    }
     var exclItems;
     if (comTransporte) {
       exclItems = inclEntradas
-        ? '<li><i class="ti ti-tools-kitchen-2 text-no" aria-hidden="true"></i> ' +
-          escapeHtml(s.exclLunch) +
-          "</li>"
+        ? e.exclAlmoco === false
+          ? ""
+          : '<li><i class="ti ti-tools-kitchen-2 text-no" aria-hidden="true"></i> ' +
+            escapeHtml(s.exclLunch) +
+            "</li>"
         : ingressoExclItems +
-          '<li><i class="ti ti-tools-kitchen-2 text-no" aria-hidden="true"></i> ' +
-          escapeHtml(s.exclLunch) +
-          "</li>";
+          (e.exclAlmoco === false
+            ? ""
+            : '<li><i class="ti ti-tools-kitchen-2 text-no" aria-hidden="true"></i> ' +
+              escapeHtml(s.exclLunch) +
+              "</li>");
     } else {
       var transportLabel = e.badge4x4 ? escapeHtml(s.exclTransport) + " (4×4)" : escapeHtml(s.exclTransport);
       exclItems =
@@ -2740,9 +2753,11 @@
         '<li><i class="ti ti-bus text-no" aria-hidden="true"></i> ' +
         transportLabel +
         "</li>" +
-        '<li><i class="ti ti-tools-kitchen-2 text-no" aria-hidden="true"></i> ' +
-        escapeHtml(s.exclLunch) +
-        "</li>";
+        (e.exclAlmoco === false
+          ? ""
+          : '<li><i class="ti ti-tools-kitchen-2 text-no" aria-hidden="true"></i> ' +
+            escapeHtml(s.exclLunch) +
+            "</li>");
     }
     return (
       '<div class="gcv-excursoes-card__block gcv-excursoes-card__block--in">' +
@@ -2935,6 +2950,24 @@
       }
     }
     modal._gcvGuiaTrigger = null;
+  }
+
+  function ensurePixModalScrollBody(modal) {
+    if (!modal) return;
+    var panel = modal.querySelector(".gcv-pix-modal__panel");
+    if (!panel || panel.querySelector(".gcv-pix-modal__body")) return;
+    var payZone = panel.querySelector(".gcv-pix-modal__pay-zone");
+    if (!payZone) return;
+    var body = document.createElement("div");
+    body.className = "gcv-pix-modal__body";
+    panel.insertBefore(body, payZone);
+    var title = panel.querySelector(".gcv-pix-modal__title");
+    var node = title ? title.nextElementSibling : panel.firstElementChild;
+    while (node && node !== payZone) {
+      var next = node.nextElementSibling;
+      body.appendChild(node);
+      node = next;
+    }
   }
 
   function upgradePixModalPayZone(modal) {
@@ -3616,6 +3649,7 @@
     }
     syncPostpayActions(modal);
     upgradePixModalPayZone(modal);
+    ensurePixModalScrollBody(modal);
     hidePixWaitingBlock(modal);
     syncPixRefBlock(modal);
   }
@@ -4158,11 +4192,10 @@
 
       var minBtn = e.target.closest("[data-gcv-exc-qty-min]");
       var plusBtn = e.target.closest("[data-gcv-exc-qty-plus]");
-      var payBtn = e.target.closest("[data-gcv-exc-pay]");
       var cartBtn = e.target.closest("[data-gcv-exc-cart-add]");
       var block =
-        (minBtn || plusBtn || payBtn || cartBtn) &&
-        (minBtn || plusBtn || payBtn || cartBtn).closest(".gcv-excursoes-card__book");
+        (minBtn || plusBtn || cartBtn) &&
+        (minBtn || plusBtn || cartBtn).closest(".gcv-excursoes-card__book");
       if (block) {
         var sec = block.closest("#excursoes-junho");
         var loc = sec ? detectLocale(sec) : detectLocale(document.documentElement);
@@ -4178,40 +4211,6 @@
           if (input) input.value = String(next);
           updateBookTotal(block);
           syncCartFromBook(block);
-          return;
-        }
-
-        if (payBtn) {
-          e.preventDefault();
-          e.stopPropagation();
-          var payExcursao = excursaoFromBookBlock(block);
-          if (payExcursao && !isExcursaoBookable(payExcursao)) {
-            refreshExcursaoCarouselNow();
-            return;
-          }
-          var payData = updateBookTotal(block);
-          if (payData.maxQty < 1 || payData.qty > payData.maxQty) {
-            refreshExcursaoCarouselNow();
-            return;
-          }
-          var peopleWord = strings.bookPeople.toLowerCase();
-          var line =
-            payData.dateLabel +
-            " · " +
-            payData.destino +
-            (payData.qty > 1 ? " · " + payData.qty + " " + peopleWord : "");
-          var payDetail = {
-            pixDesc: (payData.destino + (payData.qty > 1 ? " x" + payData.qty : "")).slice(0, 73),
-            lines: [line],
-            qty: payData.qty,
-            cartId: payData.cartId,
-          };
-          if (payExcursao) {
-            payDetail.inclExcl = inclExclLists(payExcursao, strings, loc);
-            payDetail.trips = [tripMetaFromExcursao(payExcursao, strings, loc, payData.qty)];
-            payDetail.trips[0].valorUnit = payData.unit;
-          }
-          openPixModal(payData.total, payDetail, payBtn, loc, strings);
           return;
         }
 
@@ -4303,7 +4302,7 @@
     return true;
   }
 
-  function ensureCartMarkButton(card, badge, unselectLabel) {
+  function ensureCartMarkButton(card, badge) {
     var mark = card.querySelector(".gcv-excursoes-card__cart-mark");
     if (!mark) {
       mark = document.createElement("button");
@@ -4317,7 +4316,7 @@
       card.replaceChild(btn, mark);
       mark = btn;
     }
-    mark.setAttribute("aria-label", unselectLabel || badge);
+    mark.setAttribute("aria-label", badge);
     mark.innerHTML =
       '<span class="gcv-excursoes-card__cart-mark-text">' + escapeHtml(badge) + "</span>";
     return mark;
@@ -4372,7 +4371,6 @@
     }
     var strings = STRINGS[loc] || STRINGS.pt;
     var badge = strings.cartSelectedBadge || "Selecionado";
-    var unselectLabel = strings.cartUnselectAria || badge;
     var ids = {};
     if (window.GcvExcCart && typeof window.GcvExcCart.items === "function") {
       window.GcvExcCart.items().forEach(function (it) {
@@ -4399,18 +4397,16 @@
       var mark = card.querySelector(".gcv-excursoes-card__cart-mark");
       var head = card.querySelector(".gcv-excursoes-card__head");
       if (inCart) {
-        ensureCartMarkButton(card, badge, unselectLabel);
+        ensureCartMarkButton(card, badge);
         syncDateheroCheck(card, true);
         if (head) {
           head.setAttribute("data-gcv-exc-unselect", "");
-          head.setAttribute("title", unselectLabel);
         }
       } else {
         if (mark) mark.remove();
         syncDateheroCheck(card, false);
         if (head) {
           head.removeAttribute("data-gcv-exc-unselect");
-          head.removeAttribute("title");
         }
       }
       setCartAddButtonState(card.querySelector("[data-gcv-exc-cart-add]"), inCart, dayBlocked, strings);

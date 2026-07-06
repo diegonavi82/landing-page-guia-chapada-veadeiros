@@ -135,6 +135,7 @@ const SSR = {
     inclGuideShort: "Guia local",
     inclEntries: "Ingresso",
     inclTransport: "Transporte",
+    inclLanterna: "Lanterna",
     badgeTransport: "Com transporte",
     exclLabel: "Não incluso",
     exclEntries: "Ingresso",
@@ -184,6 +185,7 @@ const SSR = {
     inclGuideShort: "Local guide",
     inclEntries: "Admission",
     inclTransport: "Transport",
+    inclLanterna: "Flashlight",
     badgeTransport: "With transport",
     exclLabel: "Not included",
     exclEntries: "Admission",
@@ -233,6 +235,7 @@ const SSR = {
     inclGuideShort: "Guía local",
     inclEntries: "Entrada",
     inclTransport: "Transporte",
+    inclLanterna: "Linterna",
     badgeTransport: "Con transporte",
     exclLabel: "No incluye",
     exclEntries: "Entrada",
@@ -419,18 +422,23 @@ function inclExclBlocksSsr(e, s, locale) {
   if (comTransporte) {
     inclItems += `<li><i class="ti ti-bus text-ok" aria-hidden="true"></i> ${esc(s.inclTransport)}</li>`;
   }
+  if (e.inclLanterna) {
+    inclItems += `<li><i class="ti ti-bulb text-ok" aria-hidden="true"></i> ${esc(s.inclLanterna)}</li>`;
+  }
   let exclItems;
+  const lunchItem = `<li><i class="ti ti-tools-kitchen-2 text-no" aria-hidden="true"></i> ${esc(s.exclLunch)}</li>`;
   if (comTransporte) {
     exclItems = inclEntradas
-      ? `<li><i class="ti ti-tools-kitchen-2 text-no" aria-hidden="true"></i> ${esc(s.exclLunch)}</li>`
-      : ingressoExclItems +
-        `<li><i class="ti ti-tools-kitchen-2 text-no" aria-hidden="true"></i> ${esc(s.exclLunch)}</li>`;
+      ? e.exclAlmoco === false
+        ? ""
+        : lunchItem
+      : ingressoExclItems + (e.exclAlmoco === false ? "" : lunchItem);
   } else {
     const transportLabel = e.badge4x4 ? `${esc(s.exclTransport)} (4×4)` : esc(s.exclTransport);
     exclItems =
       ingressoExclItems +
       `<li><i class="ti ti-bus text-no" aria-hidden="true"></i> ${transportLabel}</li>` +
-      `<li><i class="ti ti-tools-kitchen-2 text-no" aria-hidden="true"></i> ${esc(s.exclLunch)}</li>`;
+      (e.exclAlmoco === false ? "" : lunchItem);
   }
   return (
     '<div class="gcv-excursoes-card__block gcv-excursoes-card__block--in">' +
@@ -503,9 +511,11 @@ function bookingBlockSsr(e, s, locale) {
     return (
       '<div class="gcv-excursoes-card__book gcv-excursoes-card__book--soldout"' +
       ` data-cart-id="${esc(cartId)}" data-cart-destino="${esc(destino)}" data-cart-date="${esc(dateLabel)}">` +
-      `<span class="gcv-excursoes-card__price gcv-excursoes-card__price--soldout">${esc(s.spotsNone)}</span>` +
+      '<div class="gcv-excursoes-card__book-row">' +
+      `<span class="gcv-excursoes-card__price gcv-excursoes-card__price--soldout">${esc(s.spotsNone)}</span></div>` +
+      '<div class="gcv-excursoes-card__book-actions">' +
       `<button type="button" class="gcv-excursoes-card__waitlist" data-gcv-exc-waitlist>` +
-      `<i class="ti ti-bell" aria-hidden="true"></i> ${esc(waitLabel)}</button></div>`
+      `<i class="ti ti-bell" aria-hidden="true"></i> ${esc(waitLabel)}</button></div></div>`
     );
   }
 
@@ -524,7 +534,6 @@ function bookingBlockSsr(e, s, locale) {
     `<span class="gcv-excursoes-card__book-total-label">${esc(s.bookTotal)}</span>` +
     `<span class="gcv-excursoes-card__price" data-gcv-exc-total>R$&nbsp;${unit}</span></div></div>` +
     '<div class="gcv-excursoes-card__book-actions">' +
-    `<button type="button" class="gcv-excursoes-card__pay" data-gcv-exc-pay><i class="ti ti-qrcode" aria-hidden="true"></i> ${esc(s.bookPay)}</button>` +
     `<button type="button" class="gcv-excursoes-card__cart-add" data-gcv-exc-cart-add><i class="ti ti-shopping-cart" aria-hidden="true"></i> ${esc(s.bookAddCart)}</button>` +
     "</div></div>"
   );
