@@ -2842,17 +2842,8 @@
       capGrupoHtml(e, s) +
       "</div>";
 
-    var faltaLine =
-      '<div class="gcv-excursoes-card__row gcv-excursoes-card__row--falta">' +
-      (isLotado || e.confirmada
-        ? confirmadoVagasAvisoHtml(e, s)
-        : '<p class="gcv-excursoes-card__falta">' +
-          escapeHtml(faltaConfirmarTexto(e.faltamPessoas, s)) +
-          "</p>") +
-      "</div>";
-
     var metaStack =
-      '<div class="gcv-excursoes-card__meta-stack">' + statusLine + faltaLine + "</div>";
+      '<div class="gcv-excursoes-card__meta-stack">' + statusLine + "</div>";
 
     var cardImgBlock = cardSpotsBlockHtml(e, locale);
 
@@ -3439,6 +3430,14 @@
     }
     clearPixTimer(modal);
     commitPixBookings(modal, loc);
+    if (window.GcvExcCart && modal._gcvReceiptData && Array.isArray(modal._gcvReceiptData.trips)) {
+      modal._gcvReceiptData.trips.forEach(function (trip) {
+        var cartId = trip && trip.cartId;
+        if (cartId && typeof window.GcvExcCart.remove === "function") {
+          window.GcvExcCart.remove(cartId);
+        }
+      });
+    }
     modal.classList.add("gcv-pix-modal--paid");
     var payZone = modal.querySelector(".gcv-pix-modal__pay-zone");
     if (payZone) payZone.hidden = true;
@@ -3574,7 +3573,7 @@
   function registerAndPollPix(modal, reservationCode, valor, loc, receiptData) {
     if (!window.GcvPixPolling) return;
     initPixPollingHandlers();
-    window.GcvPixPolling.registerPixReservation({
+    var payload = {
       reservation_id: reservationCode,
       amount: Number(valor),
       locale: loc,
@@ -3583,13 +3582,26 @@
       incl_excl: receiptData && receiptData.inclExcl ? receiptData.inclExcl : undefined,
       packages: receiptData && receiptData.packages ? receiptData.packages : undefined,
       email: getModalReceiptEmail(modal) || undefined,
-    }).then(function (reg) {
-      if (reg && String(reg.status || "").toUpperCase() === "PAID") {
-        console.warn("[gcv-pix] Reserva já consta como paga; confirmação só via banco.");
+    };
+    function startPollingIfReady(reg) {
+      if (!reg || !reg.success) return;
+      if (String(reg.status || "").toUpperCase() === "PAID") {
+        window.GcvPixPolling.checkPixStatus();
+        return;
       }
-    }).finally(function () {
       window.GcvPixPolling.startPixPolling(modal, reservationCode);
-    });
+    }
+    window.GcvPixPolling.registerPixReservation(payload)
+      .then(function (reg) {
+        if (reg && reg.success) {
+          startPollingIfReady(reg);
+          return;
+        }
+        return window.GcvPixPolling.registerPixReservation(payload).then(startPollingIfReady);
+      })
+      .catch(function () {
+        window.GcvPixPolling.startPixPolling(modal, reservationCode);
+      });
   }
 
   function ensurePixModalExtras(modal, s) {
@@ -3972,11 +3984,25 @@
 
     modal._gcvPixTrigger = trigger || null;
     modal.hidden = false;
+    modal.removeAttribute("hidden");
     modal.setAttribute("aria-hidden", "false");
     modal.classList.add("is-open");
     document.documentElement.classList.add("gcv-pix-modal-open");
     var closeBtn = modal.querySelector(".gcv-pix-modal__close");
     if (closeBtn && typeof closeBtn.focus === "function") closeBtn.focus();
+
+    window.requestAnimationFrame(function () {
+      var emailInputAuto = modal.querySelector("#gcv-pix-modal-email");
+      var savedEmail =
+        emailInputAuto && emailInputAuto.value ? String(emailInputAuto.value).trim() : "";
+      if (
+        !modal._gcvPixCheckoutActive &&
+        window.GcvPixReceipt &&
+        window.GcvPixReceipt.isValidEmail(savedEmail)
+      ) {
+        activatePixCheckout(modal, s);
+      }
+    });
   }
 
   function initPixModal() {

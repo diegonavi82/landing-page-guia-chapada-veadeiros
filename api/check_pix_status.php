@@ -5,6 +5,7 @@ declare(strict_types=1);
 header('Content-Type: application/json; charset=utf-8');
 
 require_once __DIR__ . '/helpers/pix_reservation_store.php';
+require_once __DIR__ . '/helpers/openpix_api.php';
 
 gcv_pix_cors_headers();
 
@@ -34,6 +35,13 @@ if (!$res) {
 }
 
 $status = gcv_pix_effective_status($res);
+if ($status === 'PENDING') {
+    $confirmed = gcv_openpix_try_confirm_reservation($res);
+    if ($confirmed) {
+        $res = $confirmed;
+        $status = 'PAID';
+    }
+}
 if ($status === 'EXPIRED' && ($res['status'] ?? '') !== 'EXPIRED') {
     $res['status'] = 'EXPIRED';
     gcv_pix_write_reservation($res);

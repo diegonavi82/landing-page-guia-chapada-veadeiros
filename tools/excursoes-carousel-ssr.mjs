@@ -574,9 +574,6 @@ export function excursionsCarouselTrackSsrHtml(locale) {
       const statusHtml = e.confirmada
         ? `<span class="gcv-excursoes-card__status gcv-excursoes-card__status--ok">${esc(s.statusOk)}</span>`
         : `<span class="gcv-excursoes-card__status gcv-excursoes-card__status--wait">${esc(s.statusWait)}</span>`;
-      const faltaHtml = e.confirmada
-        ? confirmadoVagasAvisoSsr(e, s)
-        : `<p class="gcv-excursoes-card__falta">${esc(faltaConfirmarTexto(e.faltamPessoas, s))}</p>`;
       return (
         `<article class="gcv-excursoes-card ${mod}" data-excursao-index="${idx}" data-cart-id="${esc(excursaoCartIdSsr(e))}" data-excursao-date-iso="${esc(String(e.dateISO || "").slice(0, 10))}" data-excursao-hora="${esc(hora)}"` +
         (e.confirmada ? ' data-excursao-status="confirmada"' : ' data-excursao-status="formacao"') +
@@ -604,10 +601,7 @@ export function excursionsCarouselTrackSsrHtml(locale) {
         `<span class="gcv-excursoes-card__cap-x">${x}</span>` +
         '<span class="gcv-excursoes-card__cap-slash">/</span>' +
         `<span class="gcv-excursoes-card__cap-y">${cap}</span>` +
-        "</span></span></div>" +
-        '<div class="gcv-excursoes-card__row gcv-excursoes-card__row--falta">' +
-        faltaHtml +
-        "</div></div>" +
+        "</span></span></div></div>" +
         cardSpotsBlockSsr(e, locale) +
         "</div>" +
         '<div class="gcv-excursoes-card__body">' +

@@ -74,6 +74,11 @@ function gcv_openpix_array_get(array $data, array $path): mixed
 function gcv_openpix_string_candidates(array $data): array
 {
     $paths = [
+        ['transaction', 'correlationID'],
+        ['transaction', 'comment'],
+        ['transaction', 'transactionID'],
+        ['transaction', 'endToEndId'],
+        ['transaction', 'infoPagador'],
         ['charge', 'correlationID'],
         ['charge', 'comment'],
         ['charge', 'identifier'],

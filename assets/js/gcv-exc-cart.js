@@ -916,7 +916,9 @@
       var checkout = e.target.closest("[data-gcv-cart-checkout]");
       if (checkout) {
         e.preventDefault();
-        if (checkout.disabled || !cartPoliciesAccepted()) {
+        e.stopPropagation();
+        syncCartCheckoutState();
+        if (!cartPoliciesAccepted()) {
           showCartToast(policyUi().agreeRequired, "warning");
           return;
         }
@@ -925,8 +927,12 @@
         if (!items.length || typeof _onPay !== "function") return;
         var total = cartTotal(items);
         var detail = cartPayDetail(items);
+        var payFn = _onPay;
+        var triggerEl = checkout;
         closeCartPanel();
-        _onPay(total, detail, checkout);
+        global.requestAnimationFrame(function () {
+          payFn(total, detail, triggerEl);
+        });
         return;
       }
       var rem = e.target.closest("[data-gcv-cart-remove]");

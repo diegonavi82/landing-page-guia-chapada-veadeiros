@@ -22,4 +22,9 @@ return [
      * Se vazio, o webhook aceita requisições sem validar assinatura (não recomendado em produção).
      */
     'openpix_webhook_public_key' => '',
+    /**
+     * App ID OpenPix/Woovi (Authorization header) para consultar pagamentos via API
+     * quando o webhook atrasa ou falha. Painel → API → App ID.
+     */
+    'openpix_app_id' => '',
 ];
