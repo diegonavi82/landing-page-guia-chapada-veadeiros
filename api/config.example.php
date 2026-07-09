@@ -42,10 +42,11 @@ return [
         'client_secret' => '',
         /** Chave Pix CNPJ (só dígitos) — mesma do QR Code do site */
         'pix_key' => '24354289000105',
-        /** Certificado A1 (.pfx) — path relativo a api/ */
+        /** Preferir PEM (OpenSSL 3 / Hostinger rejeita PFX com criptografia legada) */
+        'cert_pem' => 'storage/sicoob/client-cert.pem',
+        'cert_key' => 'storage/sicoob/client-key.pem',
+        /** Certificado A1 (.pfx) — fallback; converter com -legacy se der erro unsupported */
         'cert_pfx' => 'storage/sicoob/Chave_GUIA_CHAPADA_VEADEIROS_SITE.pfx',
-        'cert_pem' => '',
-        'cert_key' => '',
         'cert_pass' => '',
         /**
          * Escopos: recebimentos (pix.read + webhook) e pagamentos a guias (pixpagamentos_*).

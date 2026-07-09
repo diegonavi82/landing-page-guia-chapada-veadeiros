@@ -61,14 +61,14 @@ function gcv_sicoob_is_configured(): bool
     if (gcv_sicoob_uses_static_sandbox_token()) {
         return true;
     }
+    if ($cfg['cert_pem'] !== '' && $cfg['cert_key'] !== '') {
+        return is_readable(gcv_sicoob_resolve_path($cfg['cert_pem']))
+            && is_readable(gcv_sicoob_resolve_path($cfg['cert_key']));
+    }
     if ($cfg['cert_pfx'] !== '') {
         return is_readable(gcv_sicoob_resolve_path($cfg['cert_pfx']));
     }
-    if ($cfg['cert_pem'] === '' || $cfg['cert_key'] === '') {
-        return false;
-    }
-    return is_readable(gcv_sicoob_resolve_path($cfg['cert_pem']))
-        && is_readable(gcv_sicoob_resolve_path($cfg['cert_key']));
+    return false;
 }
 
 function gcv_sicoob_resolve_path(string $rel): string
@@ -123,10 +123,110 @@ function gcv_sicoob_format_dt(int $timestamp): string
     return $dt->format('Y-m-d\TH:i:s.00P');
 }
 
+/**
+ * Extrai cert.pem + key.pem a partir do .pfx (Hostinger/cURL costuma falhar com P12 direto).
+ *
+ * @return array{cert: string, key: string}|null
+ */
+function gcv_sicoob_ensure_pem_from_pfx(): ?array
+{
+    $cfg = gcv_sicoob_api_cfg();
+    if ($cfg['cert_pfx'] === '') {
+        return null;
+    }
+    $pfxPath = gcv_sicoob_resolve_path($cfg['cert_pfx']);
+    if (!is_readable($pfxPath)) {
+        return null;
+    }
+
+    $dir = gcv_sicoob_storage_dir();
+    $certPem = $dir . '/client-cert.pem';
+    $keyPem = $dir . '/client-key.pem';
+    $metaPath = $dir . '/pem_from_pfx.json';
+
+    $pfxMtime = (string)@filemtime($pfxPath);
+    $metaRaw = is_readable($metaPath) ? (string)file_get_contents($metaPath) : '';
+    $meta = $metaRaw !== '' ? json_decode($metaRaw, true) : null;
+    if (
+        is_array($meta)
+        && ($meta['pfx_mtime'] ?? '') === $pfxMtime
+        && is_readable($certPem)
+        && is_readable($keyPem)
+        && filesize($certPem) > 0
+        && filesize($keyPem) > 0
+    ) {
+        return ['cert' => $certPem, 'key' => $keyPem];
+    }
+
+    if (!function_exists('openssl_pkcs12_read')) {
+        return null;
+    }
+
+    $pfxBin = file_get_contents($pfxPath);
+    if ($pfxBin === false || $pfxBin === '') {
+        return null;
+    }
+
+    $certs = [];
+    $ok = @openssl_pkcs12_read($pfxBin, $certs, $cfg['cert_pass']);
+    if (!$ok || empty($certs['cert']) || empty($certs['pkey'])) {
+        $certs = [];
+        $ok = @openssl_pkcs12_read($pfxBin, $certs, '');
+    }
+    if (!$ok || empty($certs['cert']) || empty($certs['pkey'])) {
+        return null;
+    }
+
+    $certBody = (string)$certs['cert'];
+    if (!empty($certs['extracerts']) && is_array($certs['extracerts'])) {
+        foreach ($certs['extracerts'] as $extra) {
+            if (is_string($extra) && $extra !== '') {
+                $certBody .= "\n" . $extra;
+            }
+        }
+    }
+
+    if (@file_put_contents($certPem, $certBody, LOCK_EX) === false) {
+        return null;
+    }
+    if (@file_put_contents($keyPem, (string)$certs['pkey'], LOCK_EX) === false) {
+        return null;
+    }
+    @chmod($certPem, 0640);
+    @chmod($keyPem, 0640);
+    @file_put_contents($metaPath, json_encode([
+        'pfx_mtime' => $pfxMtime,
+        'generated_at' => gmdate('c'),
+    ], JSON_UNESCAPED_UNICODE), LOCK_EX);
+
+    return ['cert' => $certPem, 'key' => $keyPem];
+}
+
 /** @param resource|\CurlHandle $ch */
 function gcv_sicoob_apply_mtls($ch): bool
 {
     $cfg = gcv_sicoob_api_cfg();
+
+    if ($cfg['cert_pem'] !== '' && $cfg['cert_key'] !== '') {
+        $pem = gcv_sicoob_resolve_path($cfg['cert_pem']);
+        $key = gcv_sicoob_resolve_path($cfg['cert_key']);
+        if (is_readable($pem) && is_readable($key)) {
+            curl_setopt($ch, CURLOPT_SSLCERT, $pem);
+            curl_setopt($ch, CURLOPT_SSLKEY, $key);
+            if ($cfg['cert_pass'] !== '') {
+                curl_setopt($ch, CURLOPT_SSLKEYPASSWD, $cfg['cert_pass']);
+            }
+            return true;
+        }
+    }
+
+    $fromPfx = gcv_sicoob_ensure_pem_from_pfx();
+    if ($fromPfx) {
+        curl_setopt($ch, CURLOPT_SSLCERT, $fromPfx['cert']);
+        curl_setopt($ch, CURLOPT_SSLKEY, $fromPfx['key']);
+        return true;
+    }
+
     if ($cfg['cert_pfx'] !== '') {
         $path = gcv_sicoob_resolve_path($cfg['cert_pfx']);
         if (!is_readable($path)) {
@@ -140,17 +240,7 @@ function gcv_sicoob_apply_mtls($ch): bool
         return true;
     }
 
-    $pem = gcv_sicoob_resolve_path($cfg['cert_pem']);
-    $key = gcv_sicoob_resolve_path($cfg['cert_key']);
-    if (!is_readable($pem) || !is_readable($key)) {
-        return false;
-    }
-    curl_setopt($ch, CURLOPT_SSLCERT, $pem);
-    curl_setopt($ch, CURLOPT_SSLKEY, $key);
-    if ($cfg['cert_pass'] !== '') {
-        curl_setopt($ch, CURLOPT_SSLKEYPASSWD, $cfg['cert_pass']);
-    }
-    return true;
+    return false;
 }
 
 /** @return array<string, mixed>|null */
@@ -175,6 +265,103 @@ function gcv_sicoob_write_token_cache(array $data): void
     file_put_contents($path, json_encode($data, JSON_UNESCAPED_UNICODE), LOCK_EX);
 }
 
+/** @return array{ok: bool, http: int, error?: string, body?: string, token?: string, pem_ok?: bool} */
+function gcv_sicoob_fetch_token_detailed(): array
+{
+    if (!gcv_sicoob_is_configured() || !function_exists('curl_init')) {
+        return ['ok' => false, 'http' => 0, 'error' => 'not_configured'];
+    }
+
+    if (gcv_sicoob_uses_static_sandbox_token()) {
+        $t = gcv_sicoob_api_cfg()['sandbox_access_token'];
+        return $t !== ''
+            ? ['ok' => true, 'http' => 200, 'token' => $t, 'pem_ok' => true]
+            : ['ok' => false, 'http' => 0, 'error' => 'empty_sandbox_token'];
+    }
+
+    $cfg = gcv_sicoob_api_cfg();
+    $scope = trim((string)$cfg['scope']);
+    if ($scope === '') {
+        $scope = 'cob.read cob.write pix.read pix.write webhook.read webhook.write';
+    }
+
+    $post = [
+        'grant_type' => 'client_credentials',
+        'client_id' => $cfg['client_id'],
+        'scope' => $scope,
+    ];
+    if ($cfg['client_secret'] !== '') {
+        $post['client_secret'] = $cfg['client_secret'];
+    }
+
+    $pemOk = gcv_sicoob_ensure_pem_from_pfx() !== null
+        || ($cfg['cert_pem'] !== '' && is_readable(gcv_sicoob_resolve_path($cfg['cert_pem'])));
+
+    $ch = curl_init(gcv_sicoob_token_url());
+    if ($ch === false) {
+        return ['ok' => false, 'http' => 0, 'error' => 'curl_init_failed', 'pem_ok' => $pemOk];
+    }
+
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => http_build_query($post),
+        CURLOPT_TIMEOUT => 25,
+        CURLOPT_CONNECTTIMEOUT => 12,
+        CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded', 'Accept: application/json'],
+        CURLOPT_SSLVERSION => CURL_SSLVERSION_TLSv1_2,
+    ]);
+    if (!gcv_sicoob_apply_mtls($ch)) {
+        curl_close($ch);
+        return ['ok' => false, 'http' => 0, 'error' => 'mtls_cert_unavailable', 'pem_ok' => $pemOk];
+    }
+
+    $body = curl_exec($ch);
+    $errno = curl_errno($ch);
+    $err = curl_error($ch);
+    $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($body === false) {
+        return [
+            'ok' => false,
+            'http' => $code,
+            'error' => 'curl_error_' . $errno,
+            'body' => $err,
+            'pem_ok' => $pemOk,
+        ];
+    }
+
+    if ($code < 200 || $code >= 300) {
+        return [
+            'ok' => false,
+            'http' => $code,
+            'error' => 'http_' . $code,
+            'body' => mb_substr((string)$body, 0, 500),
+            'pem_ok' => $pemOk,
+        ];
+    }
+
+    $json = json_decode((string)$body, true);
+    if (!is_array($json) || empty($json['access_token'])) {
+        return [
+            'ok' => false,
+            'http' => $code,
+            'error' => 'no_access_token',
+            'body' => mb_substr((string)$body, 0, 500),
+            'pem_ok' => $pemOk,
+        ];
+    }
+
+    $expiresIn = (int)($json['expires_in'] ?? 300);
+    gcv_sicoob_write_token_cache([
+        'access_token' => (string)$json['access_token'],
+        'expires_at' => gmdate('c', time() + max(60, $expiresIn)),
+    ]);
+
+    return ['ok' => true, 'http' => $code, 'token' => (string)$json['access_token'], 'pem_ok' => $pemOk];
+}
+
 function gcv_sicoob_access_token(): ?string
 {
     if (!gcv_sicoob_is_configured() || !function_exists('curl_init')) {
@@ -193,54 +380,8 @@ function gcv_sicoob_access_token(): ?string
         }
     }
 
-    $cfg = gcv_sicoob_api_cfg();
-    $post = [
-        'grant_type' => 'client_credentials',
-        'client_id' => $cfg['client_id'],
-        'scope' => $cfg['scope'],
-    ];
-    if ($cfg['client_secret'] !== '') {
-        $post['client_secret'] = $cfg['client_secret'];
-    }
-
-    $ch = curl_init(gcv_sicoob_token_url());
-    if ($ch === false) {
-        return null;
-    }
-
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_POST => true,
-        CURLOPT_POSTFIELDS => http_build_query($post),
-        CURLOPT_TIMEOUT => 20,
-        CURLOPT_CONNECTTIMEOUT => 10,
-        CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded', 'Accept: application/json'],
-    ]);
-    if (!gcv_sicoob_apply_mtls($ch)) {
-        curl_close($ch);
-        return null;
-    }
-
-    $body = curl_exec($ch);
-    $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-
-    if ($body === false || $code < 200 || $code >= 300) {
-        return null;
-    }
-
-    $json = json_decode($body, true);
-    if (!is_array($json) || empty($json['access_token'])) {
-        return null;
-    }
-
-    $expiresIn = (int)($json['expires_in'] ?? 300);
-    gcv_sicoob_write_token_cache([
-        'access_token' => (string)$json['access_token'],
-        'expires_at' => gmdate('c', time() + max(60, $expiresIn)),
-    ]);
-
-    return (string)$json['access_token'];
+    $res = gcv_sicoob_fetch_token_detailed();
+    return !empty($res['ok']) && !empty($res['token']) ? (string)$res['token'] : null;
 }
 
 /**

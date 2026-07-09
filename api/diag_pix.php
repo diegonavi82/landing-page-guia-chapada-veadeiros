@@ -26,20 +26,25 @@ $certPath = $sicoobCfg['cert_pfx'] !== ''
     ? gcv_sicoob_resolve_path($sicoobCfg['cert_pfx'])
     : '';
 
+$tokenDetail = gcv_sicoob_fetch_token_detailed();
+
 $out = [
     'ok' => true,
     'sicoob_configured' => gcv_sicoob_is_configured(),
     'client_id_set' => $sicoobCfg['client_id'] !== '',
     'pix_key' => $sicoobCfg['pix_key'],
     'api_base' => gcv_sicoob_api_base(),
+    'token_url' => gcv_sicoob_token_url(),
     'cert_pfx' => $sicoobCfg['cert_pfx'],
     'cert_readable' => $certPath !== '' && is_readable($certPath),
-    'token_ok' => false,
+    'openssl_pkcs12' => function_exists('openssl_pkcs12_read'),
+    'pem_ok' => !empty($tokenDetail['pem_ok']),
+    'token_ok' => !empty($tokenDetail['ok']),
+    'token_http' => $tokenDetail['http'] ?? 0,
+    'token_error' => $tokenDetail['error'] ?? null,
+    'token_body' => $tokenDetail['body'] ?? null,
     'webhook_url' => $sicoobCfg['webhook_base_url'],
 ];
-
-$token = gcv_sicoob_access_token();
-$out['token_ok'] = $token !== null && $token !== '';
 
 $reservationId = gcv_pix_safe_id((string)($_GET['reservation_id'] ?? ''));
 if (preg_match('/^GCV-[A-Z0-9]{6}$/', $reservationId)) {
