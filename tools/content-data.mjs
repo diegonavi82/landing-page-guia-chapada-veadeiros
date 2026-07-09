@@ -87,11 +87,6 @@ export const MAP_IMAGE = "imagens/cachoeiras-guia-chapada-veadeiros-2022.jpg";
 export const HERO_SLIDES = {
   pt: [
     {
-      kind: "petzen",
-      image: "parceiros/petzen-do-cerrado-hero.png",
-      duration: 10000,
-    },
-    {
       image: "imagens/hero-slide-01-guias-locais-cachoeira.png",
       badge: "Chapada dos Veadeiros",
       title: "Passeios com guias locais",
@@ -109,6 +104,12 @@ export const HERO_SLIDES = {
       sub: "Participe das primeiras excursões com reserva online, confirmação automática e atendimento especializado da Guia Chapada Veadeiros.",
       ctaKind: "none",
       duration: 10000,
+    },
+    {
+      kind: "petzen",
+      image: "parceiros/petzen-do-cerrado-dogs.png",
+      logo: "parceiros/petzen-do-cerrado-logo.png",
+      duration: 16000,
     },
   ],
   en: [

@@ -1636,7 +1636,8 @@ ${reservaLookupWidgetHtml(locale, { idPrefix: "gcv-home-reserva" })}
 
 function heroPetzenSlideHtml(ap, first, durationMs) {
   const duration = durationMs > 0 ? durationMs : 10000;
-  const img = `${ap}assets/img/parceiros/petzen-do-cerrado-hero.png`;
+  const dogs = `${ap}assets/img/parceiros/petzen-do-cerrado-dogs.png`;
+  const logo = `${ap}assets/img/parceiros/petzen-do-cerrado-logo.png`;
   const waHref =
     "https://wa.me/5562996894755?text=Ol%C3%A1!%20Vim%20pelo%20portal%20da%20PETZEN%20DO%20CERRADO%20e%20gostaria%20de%20informa%C3%A7%C3%B5es%20sobre%20hospedagem%20para%20meu%20cachorro%20na%20Chapada%20dos%20Veadeiros.";
   const paw = `<span class="gcv-petzen__paw"><svg viewBox="0 0 24 24" fill="currentColor"><ellipse cx="12" cy="14.5" rx="4.2" ry="5"/><circle cx="5.2" cy="9.2" r="2.1"/><circle cx="9.2" cy="6.2" r="2.15"/><circle cx="14.8" cy="6.2" r="2.15"/><circle cx="18.8" cy="9.2" r="2.1"/></svg></span>`;
@@ -1646,15 +1647,15 @@ function heroPetzenSlideHtml(ap, first, durationMs) {
     <div class="gcv-petzen__glow" aria-hidden="true"></div>
     <div class="gcv-petzen__paws" aria-hidden="true">${paw}${paw}${paw}${paw}${paw}${paw}</div>
     <div class="gcv-petzen__visual">
-      <img class="gcv-petzen__photo" src="${esc(img)}" alt="Cães hospedados na Petzen do Cerrado, Alto Paraíso de Goiás" width="1600" height="900" loading="eager" decoding="async" fetchpriority="high" />
+      <img class="gcv-petzen__photo" src="${esc(dogs)}" alt="Cães hospedados na Petzen do Cerrado, Alto Paraíso de Goiás" width="1600" height="900" loading="eager" decoding="async" fetchpriority="high" />
+      <img class="gcv-petzen__logo" src="${esc(logo)}" alt="Petzen do Cerrado" width="180" height="180" loading="eager" decoding="async" />
     </div>
     <div class="gcv-petzen__vignette" aria-hidden="true"></div>
     <div class="gcv-petzen__content">
-      <h2 class="gcv-petzen__title gcv-petzen__anim">Vai explorar a Chapada?<span>Seu cachorro também merece férias.</span></h2>
+      <h2 class="gcv-petzen__title gcv-petzen__anim">Vai explorar a Chapada?<span>Seu cachorro também merece um descanso.</span></h2>
       <p class="gcv-petzen__subtitle gcv-petzen__anim">Hospedagem exclusiva para cães em Alto Paraíso de Goiás, na Chapada dos Veadeiros.</p>
       <ul class="gcv-petzen__benefits gcv-petzen__anim">
         <li><span class="gcv-petzen__ico" aria-hidden="true">🐾</span><span>Ambiente familiar e seguro</span></li>
-        <li><span class="gcv-petzen__ico" aria-hidden="true">🏡</span><span>Atenção individual para cada hóspede</span></li>
         <li><span class="gcv-petzen__ico" aria-hidden="true">🦴</span><span>Diárias e meio período (12 horas)</span></li>
         <li><span class="gcv-petzen__ico" aria-hidden="true">❤️</span><span>Enquanto você aproveita a Chapada, seu cachorro fica em um lugar seguro, confortável e cheio de carinho.</span></li>
       </ul>
@@ -1677,7 +1678,7 @@ function homeMainHtml(locale, ap, instagramPosts, reviewsPool) {
   const S = STRINGS[locale];
   const home = S.home;
   const cur = outRelPath(locale, "");
-  const slides = HERO_SLIDES[locale];
+  const slides = (HERO_SLIDES[locale] || []).filter((slide) => !slide.hidden);
   const n = slides.length;
   const roleDesc = locale === "en" ? "Carousel" : locale === "es" ? "Carrusel" : "Carrossel";
   const dotsNav =
