@@ -110,6 +110,18 @@ export const HERO_SLIDES = {
       image: "parceiros/petzen-do-cerrado-dogs.png",
       logo: "parceiros/petzen-do-cerrado-logo.png",
       duration: 16000,
+      title: "Vai explorar a Chapada?",
+      titleSpan: "Seu cachorro também merece um descanso.",
+      subtitle: "Hospedagem exclusiva para cães em Alto Paraíso de Goiás, na Chapada dos Veadeiros.",
+      benefits: [
+        "Ambiente familiar e seguro",
+        "Diárias e meio período (12 horas)",
+        "Enquanto você aproveita a Chapada, seu cachorro fica em um lugar seguro, confortável e cheio de carinho.",
+      ],
+      ctaLabel: "Reservar pelo WhatsApp",
+      waText:
+        "Olá! Vim pelo portal da PETZEN DO CERRADO e gostaria de informações sobre hospedagem para meu cachorro na Chapada dos Veadeiros.",
+      photoAlt: "Cães hospedados na Petzen do Cerrado, Alto Paraíso de Goiás",
     },
   ],
   en: [
@@ -132,6 +144,24 @@ export const HERO_SLIDES = {
       ctaKind: "none",
       duration: 10000,
     },
+    {
+      kind: "petzen",
+      image: "parceiros/petzen-do-cerrado-dogs.png",
+      logo: "parceiros/petzen-do-cerrado-logo.png",
+      duration: 16000,
+      title: "Exploring the Chapada?",
+      titleSpan: "Your dog deserves a break too.",
+      subtitle: "Exclusive dog boarding in Alto Paraíso de Goiás, in Chapada dos Veadeiros.",
+      benefits: [
+        "Family-friendly and safe environment",
+        "Full-day and half-day stays (12 hours)",
+        "While you enjoy the Chapada, your dog stays somewhere safe, comfortable, and full of care.",
+      ],
+      ctaLabel: "Book on WhatsApp",
+      waText:
+        "Hi! I came from the PETZEN DO CERRADO portal and would like information about dog boarding in Chapada dos Veadeiros.",
+      photoAlt: "Dogs staying at Petzen do Cerrado, Alto Paraíso de Goiás",
+    },
   ],
   es: [
     {
@@ -152,6 +182,24 @@ export const HERO_SLIDES = {
       sub: "Entérate en primicia cuando abramos reservas y ten prioridad para armar tu viaje",
       ctaKind: "none",
       duration: 10000,
+    },
+    {
+      kind: "petzen",
+      image: "parceiros/petzen-do-cerrado-dogs.png",
+      logo: "parceiros/petzen-do-cerrado-logo.png",
+      duration: 16000,
+      title: "¿Vas a explorar la Chapada?",
+      titleSpan: "Tu perro también merece un descanso.",
+      subtitle: "Hospedaje exclusivo para perros en Alto Paraíso de Goiás, en la Chapada dos Veadeiros.",
+      benefits: [
+        "Ambiente familiar y seguro",
+        "Diarias y medio período (12 horas)",
+        "Mientras disfrutas la Chapada, tu perro queda en un lugar seguro, cómodo y lleno de cariño.",
+      ],
+      ctaLabel: "Reservar por WhatsApp",
+      waText:
+        "¡Hola! Vine por el portal de PETZEN DO CERRADO y me gustaría información sobre hospedaje para mi perro en la Chapada dos Veadeiros.",
+      photoAlt: "Perros hospedados en Petzen do Cerrado, Alto Paraíso de Goiás",
     },
   ],
 };
