@@ -363,7 +363,7 @@ function gcv_sicoob_try_confirm_reservation(array $reservation): ?array
     foreach ($queries as $query) {
         $payload = gcv_sicoob_api_get('/pix', $query);
         foreach (gcv_sicoob_extract_pix_list($payload) as $pixItem) {
-            $match = gcv_sicoob_match_webhook_payload(['pix' => [$pixItem]]);
+            $match = gcv_sicoob_match_webhook_payload(['pix' => [$pixItem]], $reservation);
             if (!$match) {
                 continue;
             }
@@ -381,6 +381,10 @@ function gcv_sicoob_try_confirm_reservation(array $reservation): ?array
             $paid = gcv_sicoob_pix_item_amount_reais($pixItem);
             if ($paid !== null) {
                 $res['sicoob_paid_reais'] = $paid;
+            }
+            $e2e = trim((string)($pixItem['endToEndId'] ?? ''));
+            if ($e2e !== '') {
+                $res['sicoob_end_to_end_id'] = $e2e;
             }
             $res['sicoob_poll_at'] = gmdate('c');
             gcv_pix_write_reservation($res);

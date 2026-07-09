@@ -73,7 +73,129 @@ function gcv_sicoob_amount_matches(array $reservation, array $pixItem): bool
 }
 
 /** @param array<string, mixed> $pixItem */
-function gcv_sicoob_reservation_from_pix_item(array $pixItem): ?string
+function gcv_sicoob_pix_horario_ts(array $pixItem): ?int
+{
+    $raw = trim((string)($pixItem['horario'] ?? $pixItem['data'] ?? ''));
+    if ($raw === '') {
+        return null;
+    }
+    $ts = strtotime($raw);
+    return $ts === false ? null : $ts;
+}
+
+function gcv_sicoob_e2e_already_used(string $endToEndId, string $exceptReservationId = ''): bool
+{
+    $e2e = trim($endToEndId);
+    if ($e2e === '') {
+        return false;
+    }
+    $dir = gcv_pix_storage_dir();
+    foreach (glob($dir . '/GCV-*.json') ?: [] as $path) {
+        $raw = file_get_contents($path);
+        if ($raw === false || $raw === '') {
+            continue;
+        }
+        $data = json_decode($raw, true);
+        if (!is_array($data)) {
+            continue;
+        }
+        $rid = gcv_pix_safe_id((string)($data['reservation_id'] ?? ''));
+        if ($exceptReservationId !== '' && $rid === $exceptReservationId) {
+            continue;
+        }
+        $stored = trim((string)($data['sicoob_end_to_end_id'] ?? ''));
+        if ($stored !== '' && hash_equals($stored, $e2e)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Fallback para Pix estático: quando o banco não devolve txid, casa por valor + janela de tempo.
+ * Só confirma se houver exatamente 1 reserva PENDING candidata (ou a reserva alvo no poll).
+ *
+ * @param array<string, mixed> $pixItem
+ * @param array<string, mixed>|null $preferredReservation
+ */
+function gcv_sicoob_reservation_from_amount_window(array $pixItem, ?array $preferredReservation = null): ?string
+{
+    $paid = gcv_sicoob_pix_item_amount_reais($pixItem);
+    if ($paid === null || $paid <= 0) {
+        return null;
+    }
+    $e2e = trim((string)($pixItem['endToEndId'] ?? ''));
+    if ($e2e !== '' && gcv_sicoob_e2e_already_used($e2e)) {
+        return null;
+    }
+
+    $pixTs = gcv_sicoob_pix_horario_ts($pixItem);
+    if ($pixTs === null) {
+        $pixTs = time();
+    }
+
+    if ($preferredReservation) {
+        $prefId = gcv_pix_safe_id((string)($preferredReservation['reservation_id'] ?? ''));
+        if (
+            $prefId !== ''
+            && gcv_pix_effective_status($preferredReservation) === 'PENDING'
+            && gcv_sicoob_amount_matches($preferredReservation, $pixItem)
+            && gcv_sicoob_reservation_in_pix_window($preferredReservation, $pixTs)
+        ) {
+            return $prefId;
+        }
+    }
+
+    $candidates = [];
+    $dir = gcv_pix_storage_dir();
+    foreach (glob($dir . '/GCV-*.json') ?: [] as $path) {
+        $raw = file_get_contents($path);
+        if ($raw === false || $raw === '') {
+            continue;
+        }
+        $data = json_decode($raw, true);
+        if (!is_array($data)) {
+            continue;
+        }
+        if (gcv_pix_effective_status($data) !== 'PENDING') {
+            continue;
+        }
+        if (!gcv_sicoob_amount_matches($data, $pixItem)) {
+            continue;
+        }
+        if (!gcv_sicoob_reservation_in_pix_window($data, $pixTs)) {
+            continue;
+        }
+        $rid = gcv_pix_safe_id((string)($data['reservation_id'] ?? ''));
+        if ($rid !== '') {
+            $candidates[$rid] = true;
+        }
+    }
+
+    $ids = array_keys($candidates);
+    if (count($ids) === 1) {
+        return $ids[0];
+    }
+    return null;
+}
+
+/** @param array<string, mixed> $reservation */
+function gcv_sicoob_reservation_in_pix_window(array $reservation, int $pixTs): bool
+{
+    $created = strtotime((string)($reservation['created_at'] ?? ''));
+    if ($created === false) {
+        $created = time() - 900;
+    }
+    $expires = strtotime((string)($reservation['expires_at'] ?? ''));
+    if ($expires === false) {
+        $expires = $created + 900;
+    }
+    // margem: Pix pode chegar um pouco antes/depois do created_at do site
+    return $pixTs >= ($created - 180) && $pixTs <= ($expires + 300);
+}
+
+/** @param array<string, mixed> $pixItem */
+function gcv_sicoob_reservation_from_pix_item(array $pixItem, ?array $preferredReservation = null): ?string
 {
     $txid = trim((string)($pixItem['txid'] ?? $pixItem['txId'] ?? ''));
     if ($txid !== '') {
@@ -96,19 +218,20 @@ function gcv_sicoob_reservation_from_pix_item(array $pixItem): ?string
         }
     }
 
-    return null;
+    return gcv_sicoob_reservation_from_amount_window($pixItem, $preferredReservation);
 }
 
 /**
  * @param array<string, mixed> $data
+ * @param array<string, mixed>|null $preferredReservation reserva alvo no polling
  * @return array{reservation: array<string, mixed>, pix: array<string, mixed>}|null
  */
-function gcv_sicoob_match_webhook_payload(array $data): ?array
+function gcv_sicoob_match_webhook_payload(array $data, ?array $preferredReservation = null): ?array
 {
     $items = [];
     if (isset($data['pix']) && is_array($data['pix'])) {
         $items = $data['pix'];
-    } elseif (isset($data['endToEndId']) || isset($data['txid']) || isset($data['txId'])) {
+    } elseif (isset($data['endToEndId']) || isset($data['txid']) || isset($data['txId']) || isset($data['valor'])) {
         $items = [$data];
     }
 
@@ -116,7 +239,7 @@ function gcv_sicoob_match_webhook_payload(array $data): ?array
         if (!is_array($pixItem)) {
             continue;
         }
-        $reservationId = gcv_sicoob_reservation_from_pix_item($pixItem);
+        $reservationId = gcv_sicoob_reservation_from_pix_item($pixItem, $preferredReservation);
         if ($reservationId === null) {
             continue;
         }
@@ -128,6 +251,10 @@ function gcv_sicoob_match_webhook_payload(array $data): ?array
             continue;
         }
         if (!gcv_sicoob_amount_matches($reservation, $pixItem)) {
+            continue;
+        }
+        $e2e = trim((string)($pixItem['endToEndId'] ?? ''));
+        if ($e2e !== '' && gcv_sicoob_e2e_already_used($e2e, $reservationId)) {
             continue;
         }
         return ['reservation' => $reservation, 'pix' => $pixItem];
