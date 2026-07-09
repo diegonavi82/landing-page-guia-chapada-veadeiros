@@ -1141,13 +1141,27 @@
     window.alert(msg);
   }
 
+  /** Janela máxima do filtro/calendário: hoje → hoje + N dias (Chapada). */
+  var FILTER_DATE_WINDOW_DAYS = 30;
+
+  function addDaysToIso(iso, days) {
+    var d = isoToDate(iso);
+    d.setDate(d.getDate() + days);
+    return dateToIso(d);
+  }
+
+  function filterWindowMaxIso(nowMs) {
+    return addDaysToIso(todayIsoChapada(nowMs), FILTER_DATE_WINDOW_DAYS);
+  }
+
   function scanExcursaoBounds(list, s) {
     var dates = [];
     var prices = [];
     var embarques = {};
-    list.forEach(function (e) {
+    var windowMax = filterWindowMaxIso();
+    (list || []).forEach(function (e) {
       var d = excursaoDateIso(e);
-      if (d) dates.push(d);
+      if (d && compareIso(d, windowMax) <= 0) dates.push(d);
       prices.push(excursaoValor(e));
       var em = excursaoEmbarque(e, s);
       if (em) embarques[em] = true;
@@ -1156,12 +1170,13 @@
     prices.sort(function (a, b) {
       return a - b;
     });
-    var excursionMax = dates[dates.length - 1] || "";
     var dateMin = todayIsoChapada();
-    if (excursionMax && compareIso(dateMin, excursionMax) > 0) dateMin = excursionMax;
+    // Sempre: hoje → hoje+30 (não estende além da janela, mesmo com saídas futuras longe)
+    var dateMax = windowMax;
+    if (compareIso(dateMin, dateMax) > 0) dateMax = dateMin;
     return {
       dateMin: dateMin,
-      dateMax: excursionMax || dateMin,
+      dateMax: dateMax,
       priceMin: prices.length ? prices[0] : 0,
       priceMax: prices.length ? prices[prices.length - 1] : 500,
       embarques: Object.keys(embarques).sort(),
@@ -1178,11 +1193,13 @@
 
   function clampIsoRangeToFloor(startIso, endIso, maxIso) {
     var floor = dateFilterFloorIso(maxIso);
+    var ceiling = maxIso || filterWindowMaxIso();
     var from = startIso || floor;
-    var to = endIso || maxIso || floor;
+    var to = endIso || ceiling;
     if (compareIso(from, floor) < 0) from = floor;
     if (compareIso(to, floor) < 0) to = floor;
-    if (maxIso && compareIso(to, maxIso) > 0) to = maxIso;
+    if (compareIso(to, ceiling) > 0) to = ceiling;
+    if (compareIso(from, ceiling) > 0) from = ceiling;
     if (compareIso(from, to) > 0) from = to;
     return { dateFrom: from, dateTo: to };
   }
@@ -1598,7 +1615,13 @@
         .map(function (e) {
           return excursaoDateIso(e);
         })
-        .filter(Boolean),
+        .filter(function (iso) {
+          return (
+            iso &&
+            compareIso(iso, bounds.dateMin) >= 0 &&
+            compareIso(iso, bounds.dateMax) <= 0
+          );
+        }),
     );
 
     var panel = document.createElement("div");
