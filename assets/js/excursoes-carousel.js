@@ -1321,6 +1321,15 @@
       prevBtn.disabled = !canPrev;
     }
 
+    function syncNextNav() {
+      if (!nextBtn) return;
+      var ceiling = isoToDate(maxIso || filterWindowMaxIso());
+      var canNext =
+        viewYear < ceiling.getFullYear() ||
+        (viewYear === ceiling.getFullYear() && viewMonth < ceiling.getMonth());
+      nextBtn.disabled = !canNext;
+    }
+
     var locTag = locale === "en" ? "en-US" : locale === "es" ? "es-ES" : "pt-BR";
     var fmtShort = new Intl.DateTimeFormat(locTag, { day: "numeric", month: "short" });
 
@@ -1434,6 +1443,7 @@
 
       gridEl.innerHTML = cells.join("");
       syncPrevNav();
+      syncNextNav();
     }
 
     function closePopover() {
