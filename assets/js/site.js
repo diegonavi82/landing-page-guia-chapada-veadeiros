@@ -28,7 +28,6 @@
     var idx = 0;
     var timer = null;
     var AUTO_MS = 10000;
-    var FADE_MS = 700;
     var reduceMotion =
       typeof window.matchMedia === "function" &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -61,7 +60,7 @@
       clearTimer();
       if (n < 2 || reduceMotion) return;
       timer = setTimeout(function () {
-        show(idx + 1, true);
+        show(idx + 1);
       }, slideDuration(idx));
     }
 
