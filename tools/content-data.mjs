@@ -87,6 +87,11 @@ export const MAP_IMAGE = "imagens/cachoeiras-guia-chapada-veadeiros-2022.jpg";
 export const HERO_SLIDES = {
   pt: [
     {
+      kind: "petzen",
+      image: "parceiros/petzen-do-cerrado-hero.png",
+      duration: 10000,
+    },
+    {
       image: "imagens/hero-slide-01-guias-locais-cachoeira.png",
       badge: "Chapada dos Veadeiros",
       title: "Passeios com guias locais",
@@ -94,6 +99,7 @@ export const HERO_SLIDES = {
       sub: "Faça seu roteiro ou entre na próxima excursão",
       ctaKind: "whatsapp",
       ctaLabel: "Whatsapp",
+      duration: 10000,
     },
     {
       image: "imagens/hero-slide-02-em-breve-cachoeira.png",
@@ -102,6 +108,7 @@ export const HERO_SLIDES = {
       lead: "Nosso sistema de venda de ingressos para excursões está na fase final de testes. As primeiras saídas já estão sendo disponibilizadas. Reserve agora e garanta sua vaga antes que as turmas sejam preenchidas.",
       sub: "Participe das primeiras excursões com reserva online, confirmação automática e atendimento especializado da Guia Chapada Veadeiros.",
       ctaKind: "none",
+      duration: 10000,
     },
   ],
   en: [
@@ -113,6 +120,7 @@ export const HERO_SLIDES = {
       sub: "Plan your route or join the next group trip",
       ctaKind: "whatsapp",
       ctaLabel: "WhatsApp",
+      duration: 10000,
     },
     {
       image: "imagens/hero-slide-02-em-breve-cachoeira.png",
@@ -121,6 +129,7 @@ export const HERO_SLIDES = {
       lead: "Soon we’ll launch online booking so you can choose your own itinerary—clean, secure digital flow built for quality travel.",
       sub: "Be the first to know when reservations open and get priority to build your trip",
       ctaKind: "none",
+      duration: 10000,
     },
   ],
   es: [
@@ -132,6 +141,7 @@ export const HERO_SLIDES = {
       sub: "Organiza tu ruta o únete a la próxima excursión",
       ctaKind: "whatsapp",
       ctaLabel: "WhatsApp",
+      duration: 10000,
     },
     {
       image: "imagens/hero-slide-02-em-breve-cachoeira.png",
@@ -140,6 +150,7 @@ export const HERO_SLIDES = {
       lead: "Pronto lanzaremos la plataforma de venta online para que elijas tu propio itinerario, con un flujo digital limpio, seguro y pensado para quien viaja con excelencia.",
       sub: "Entérate en primicia cuando abramos reservas y ten prioridad para armar tu viaje",
       ctaKind: "none",
+      duration: 10000,
     },
   ],
 };

@@ -1050,7 +1050,7 @@ table.season th {
   inset: 0;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.45s ease;
+  transition: opacity 0.7s ease;
 }
 .gcv-hero__slide.is-active {
   opacity: 1;
@@ -1595,6 +1595,340 @@ table.season th {
     opacity: 1;
     animation: none;
     transform: none;
+  }
+  .gcv-petzen__photo,
+  .gcv-petzen__anim,
+  .gcv-petzen__paw {
+    animation: none !important;
+  }
+  .gcv-petzen__anim {
+    opacity: 1;
+    transform: none;
+  }
+  .gcv-petzen__paw {
+    opacity: 0.12;
+  }
+}
+
+/* -------- Hero Petzen do Cerrado -------- */
+.gcv-hero__slide--petzen {
+  background: #0f5b66;
+}
+.gcv-petzen {
+  --petzen-cream: #fff6da;
+  --petzen-gold: #f4d18a;
+  --petzen-teal: #0f5b66;
+  --petzen-ink: #14363c;
+  --petzen-wa: #25d366;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  font-family: Nunito, system-ui, sans-serif;
+  color: var(--petzen-ink);
+}
+.gcv-petzen__bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 70% 75% at 32% 48%, var(--petzen-cream) 0%, var(--petzen-gold) 38%, transparent 68%),
+    radial-gradient(ellipse 100% 100% at 50% 50%, #1a7a86 0%, var(--petzen-teal) 72%);
+  pointer-events: none;
+}
+.gcv-petzen__vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 85% 80% at 50% 45%, transparent 45%, rgba(8, 40, 46, 0.38) 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+.gcv-petzen__glow {
+  position: absolute;
+  left: 6%;
+  top: 18%;
+  width: min(42%, 420px);
+  height: 64%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 246, 218, 0.55) 0%, rgba(244, 209, 138, 0.22) 45%, transparent 70%);
+  filter: blur(8px);
+  pointer-events: none;
+  z-index: 1;
+}
+.gcv-petzen__paws {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+}
+.gcv-petzen__paw {
+  position: absolute;
+  width: 1.1rem;
+  height: 1.1rem;
+  opacity: 0;
+  color: rgba(255, 246, 218, 0.55);
+  animation: gcv-petzen-paw 7s ease-in-out infinite;
+}
+.gcv-petzen__paw svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.gcv-petzen__paw:nth-child(1) { left: 58%; top: 18%; animation-delay: 0.2s; }
+.gcv-petzen__paw:nth-child(2) { left: 72%; top: 42%; animation-delay: 1.4s; width: 0.9rem; height: 0.9rem; }
+.gcv-petzen__paw:nth-child(3) { left: 64%; top: 68%; animation-delay: 2.6s; }
+.gcv-petzen__paw:nth-child(4) { left: 86%; top: 28%; animation-delay: 3.8s; width: 0.85rem; height: 0.85rem; }
+.gcv-petzen__paw:nth-child(5) { left: 48%; top: 78%; animation-delay: 5s; width: 1rem; height: 1rem; }
+.gcv-petzen__paw:nth-child(6) { left: 78%; top: 58%; animation-delay: 6.2s; }
+@keyframes gcv-petzen-paw {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translateY(6px) rotate(-12deg) scale(0.85);
+  }
+  18%,
+  55% {
+    opacity: 0.28;
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+  75% {
+    opacity: 0;
+    transform: translateY(-8px) rotate(10deg) scale(0.9);
+  }
+}
+.gcv-petzen__visual {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+.gcv-petzen__photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: left center;
+  filter: drop-shadow(0 10px 22px rgba(8, 40, 46, 0.28));
+  animation: gcv-petzen-float 3.6s ease-in-out infinite;
+}
+@keyframes gcv-petzen-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+.gcv-petzen__content {
+  position: absolute;
+  z-index: 3;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(58%, 34rem);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 2.25rem 3.5rem 3rem 1rem;
+  text-align: left;
+}
+.gcv-petzen__anim {
+  opacity: 0;
+  transform: translateX(80px);
+}
+.gcv-hero__slide--petzen.is-active .gcv-petzen__title {
+  animation: gcv-petzen-in 700ms ease-out 0.3s both;
+}
+.gcv-hero__slide--petzen.is-active .gcv-petzen__subtitle {
+  animation: gcv-petzen-in 700ms ease-out 1.2s both;
+}
+.gcv-hero__slide--petzen.is-active .gcv-petzen__benefits {
+  animation: gcv-petzen-in 700ms ease-out 2.1s both;
+}
+.gcv-hero__slide--petzen.is-active .gcv-petzen__cta-wrap {
+  animation: gcv-petzen-in 700ms ease-out 3.2s both;
+}
+@keyframes gcv-petzen-in {
+  from {
+    opacity: 0;
+    transform: translateX(80px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.gcv-petzen__title {
+  margin: 0;
+  max-width: 18ch;
+  font-size: clamp(1.35rem, 2.6vw, 2.15rem);
+  font-weight: 900;
+  line-height: 1.18;
+  letter-spacing: -0.02em;
+  color: #fff6da;
+  text-shadow: 0 2px 14px rgba(8, 40, 46, 0.45);
+}
+.gcv-petzen__title span {
+  display: block;
+  margin-top: 0.2em;
+  color: #ffe9a8;
+  font-size: 0.92em;
+  font-weight: 800;
+}
+.gcv-petzen__subtitle {
+  margin: 0.85rem 0 0;
+  max-width: 34ch;
+  font-size: clamp(0.88rem, 1.35vw, 1.05rem);
+  font-weight: 600;
+  line-height: 1.45;
+  color: rgba(255, 246, 218, 0.92);
+  text-shadow: 0 1px 8px rgba(8, 40, 46, 0.35);
+}
+.gcv-petzen__benefits {
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.45rem;
+  max-width: 36ch;
+}
+.gcv-petzen__benefits li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  font-size: clamp(0.78rem, 1.15vw, 0.92rem);
+  font-weight: 700;
+  line-height: 1.35;
+  color: rgba(255, 246, 218, 0.95);
+  text-shadow: 0 1px 6px rgba(8, 40, 46, 0.3);
+}
+.gcv-petzen__benefits li:last-child {
+  margin-top: 0.2rem;
+  font-weight: 600;
+  opacity: 0.95;
+}
+.gcv-petzen__benefits .gcv-petzen__ico {
+  flex-shrink: 0;
+  line-height: 1.2;
+}
+.gcv-petzen__cta-wrap {
+  margin-top: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.65rem;
+}
+.gcv-petzen__wa {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  padding: 0.85rem 1.35rem;
+  border-radius: 999px;
+  background: var(--petzen-wa);
+  color: #fff !important;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  box-shadow: 0 8px 22px rgba(15, 91, 102, 0.28), 0 4px 12px rgba(37, 211, 102, 0.28);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.gcv-petzen__wa:hover {
+  transform: scale(1.05);
+  background: #1ebe57;
+  color: #fff !important;
+  box-shadow: 0 10px 26px rgba(15, 91, 102, 0.32), 0 6px 16px rgba(37, 211, 102, 0.35);
+}
+.gcv-petzen__wa-icon {
+  width: 1.2rem;
+  height: 1.2rem;
+  flex-shrink: 0;
+}
+.gcv-petzen__ig {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: rgba(255, 246, 218, 0.88) !important;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: color 0.15s ease, opacity 0.15s ease;
+}
+.gcv-petzen__ig:hover {
+  color: #fff !important;
+}
+.gcv-petzen__ig-icon {
+  width: 1rem;
+  height: 1rem;
+}
+@media (max-width: 639px) {
+  .gcv-hero:has(.gcv-hero__slide--petzen.is-active) {
+    min-height: 640px;
+  }
+  .gcv-petzen {
+    display: flex;
+    flex-direction: column;
+  }
+  .gcv-petzen__glow {
+    left: 50%;
+    top: 8%;
+    width: 70%;
+    height: 38%;
+    transform: translateX(-50%);
+  }
+  .gcv-petzen__visual {
+    position: relative;
+    inset: auto;
+    flex: 0 0 auto;
+    height: 42%;
+    min-height: 210px;
+  }
+  .gcv-petzen__photo {
+    object-position: 18% center;
+  }
+  .gcv-petzen__content {
+    position: relative;
+    inset: auto;
+    width: 100%;
+    flex: 1 1 auto;
+    align-items: center;
+    justify-content: flex-start;
+    text-align: center;
+    padding: 0.75rem 1.25rem 3.5rem;
+    background: linear-gradient(180deg, rgba(15, 91, 102, 0) 0%, rgba(15, 91, 102, 0.55) 12%, rgba(15, 91, 102, 0.92) 100%);
+  }
+  .gcv-petzen__title {
+    max-width: 16ch;
+  }
+  .gcv-petzen__subtitle,
+  .gcv-petzen__benefits {
+    max-width: 34ch;
+  }
+  .gcv-petzen__benefits li {
+    justify-content: center;
+    text-align: left;
+  }
+  .gcv-petzen__cta-wrap {
+    align-items: center;
+    width: 100%;
+  }
+  .gcv-petzen__paw:nth-child(1) { left: 12%; top: 12%; }
+  .gcv-petzen__paw:nth-child(2) { left: 78%; top: 16%; }
+  .gcv-petzen__paw:nth-child(3) { left: 18%; top: 34%; }
+  .gcv-petzen__paw:nth-child(4),
+  .gcv-petzen__paw:nth-child(5),
+  .gcv-petzen__paw:nth-child(6) { display: none; }
+}
+@media (min-width: 640px) and (max-width: 899px) {
+  .gcv-petzen__content {
+    width: min(56%, 28rem);
+    padding: 1.75rem 2.5rem 2.75rem 0.75rem;
+  }
+  .gcv-petzen__title {
+    font-size: clamp(1.25rem, 2.8vw, 1.75rem);
   }
 }
 

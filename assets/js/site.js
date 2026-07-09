@@ -25,19 +25,60 @@
     var n = slides.length;
     if (!n) return;
 
-    var idx = Math.floor(Math.random() * n);
+    var idx = 0;
+    var timer = null;
+    var AUTO_MS = 10000;
+    var FADE_MS = 700;
+    var reduceMotion =
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    function slideDuration(i) {
+      var el = slides[i];
+      if (!el) return AUTO_MS;
+      var custom = parseInt(el.getAttribute("data-gcv-hero-duration"), 10);
+      return custom > 0 ? custom : AUTO_MS;
+    }
+
+    function restartPetzenAnim(slide) {
+      if (!slide || !slide.classList.contains("gcv-hero__slide--petzen")) return;
+      var anims = slide.querySelectorAll(".gcv-petzen__anim");
+      anims.forEach(function (el) {
+        el.style.animation = "none";
+        void el.offsetWidth;
+        el.style.animation = "";
+      });
+    }
+
+    function clearTimer() {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+    }
+
+    function scheduleNext() {
+      clearTimer();
+      if (n < 2 || reduceMotion) return;
+      timer = setTimeout(function () {
+        show(idx + 1, true);
+      }, slideDuration(idx));
+    }
 
     function show(next) {
       idx = ((next % n) + n) % n;
       slides.forEach(function (s, j) {
-        s.classList.toggle("is-active", j === idx);
-        s.setAttribute("aria-hidden", j === idx ? "false" : "true");
+        var active = j === idx;
+        s.classList.toggle("is-active", active);
+        s.setAttribute("aria-hidden", active ? "false" : "true");
+        if (active) restartPetzenAnim(s);
       });
       dots.forEach(function (d, j) {
         d.classList.toggle("is-active", j === idx);
         d.setAttribute("aria-selected", j === idx ? "true" : "false");
       });
       root.setAttribute("aria-label", "Destaque " + (idx + 1) + " de " + n);
+      scheduleNext();
     }
 
     show(idx);
@@ -88,6 +129,13 @@
 
     root.addEventListener("pointerup", onUp);
     root.addEventListener("pointercancel", onUp);
+
+    document.addEventListener("visibilitychange", function () {
+      if (document.hidden) clearTimer();
+      else scheduleNext();
+    });
+
+    void FADE_MS;
   }
 
   function initMapLightbox() {
