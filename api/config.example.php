@@ -32,6 +32,9 @@ return [
      * PIX Sicoob — confirmação automática (webhook + consulta API).
      * Cadastro: developers.sicoob.com.br (certificado e-CNPJ A1 + Client ID).
      * Webhook: PUT /webhook/{chave} com webhookUrl abaixo, ou POST api/sicoob_setup_webhook.php
+     *
+     * Certificado no servidor:
+     *   api/storage/sicoob/Chave_GUIA_CHAPADA_VEADEIROS_SITE.pfx
      */
     'sicoob' => [
         'client_id' => '',
@@ -39,12 +42,12 @@ return [
         'client_secret' => '',
         /** Chave Pix CNPJ (só dígitos) — mesma do QR Code do site */
         'pix_key' => '24354289000105',
-        /** Certificado A1: use .pfx OU par .pem + .key (paths relativos a api/) */
-        'cert_pfx' => 'storage/sicoob/client.pfx',
+        /** Certificado A1 (.pfx) — path relativo a api/ */
+        'cert_pfx' => 'storage/sicoob/Chave_GUIA_CHAPADA_VEADEIROS_SITE.pfx',
         'cert_pem' => '',
         'cert_key' => '',
         'cert_pass' => '',
-        /** Escopos mínimos: pix.read (+ webhook.read para registrar webhook) */
+        /** Escopos mínimos: pix.read (+ webhook.read/write para registrar webhook) */
         'scope' => 'pix.read webhook.read webhook.write',
         /** true = homologação (sandbox.sicoob.com.br); false = produção */
         'sandbox' => false,
