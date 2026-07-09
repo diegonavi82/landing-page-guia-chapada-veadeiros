@@ -395,7 +395,9 @@
       filterDateFrom: "De",
       filterDateTo: "Até",
       filterDateHintStart: "1º passo: escolha a data inicial",
-      filterDateHintEnd: "2º passo: escolha a data final",
+      filterDateHintEnd: "2º passo: escolha a data final (máx. 30 dias)",
+      filterDateHintMaxSpan: "O período da busca pode ter no máximo 30 dias.",
+      filterDateNoTrips: "Não há passeios nos dias escolhidos. Escolha outro período.",
       filterDateRange: "{{from}} → {{to}}",
       filterCalPrev: "Mês anterior",
       filterCalNext: "Próximo mês",
@@ -417,7 +419,7 @@
       filterAvailabilityFull: "Lotados",
       filterPriceValue: "R$ {{min}} – R$ {{max}}",
       filterClear: "Limpar filtros",
-      filterEmpty: "Nenhuma saída encontrada com estes filtros.",
+      filterEmpty: "Não há passeios nos dias escolhidos.",
       filterResults: "{{n}} saída(s)",
       dotAria: "Excursão {{i}} de {{n}}",
       carouselDotsShellAria: "Navegação do carrossel de excursões",
@@ -529,7 +531,9 @@
       filterDateFrom: "From",
       filterDateTo: "To",
       filterDateHintStart: "Step 1: pick start date",
-      filterDateHintEnd: "Step 2: pick end date",
+      filterDateHintEnd: "Step 2: pick end date (max. 30 days)",
+      filterDateHintMaxSpan: "The search period can be at most 30 days.",
+      filterDateNoTrips: "No departures in the selected dates. Choose another period.",
       filterDateRange: "{{from}} → {{to}}",
       filterCalPrev: "Previous month",
       filterCalNext: "Next month",
@@ -551,7 +555,7 @@
       filterAvailabilityFull: "Sold out",
       filterPriceValue: "R$ {{min}} – R$ {{max}}",
       filterClear: "Clear filters",
-      filterEmpty: "No departures match these filters.",
+      filterEmpty: "No departures in the selected dates.",
       filterResults: "{{n}} departure(s)",
       dotAria: "Excursion {{i}} of {{n}}",
       carouselDotsShellAria: "Excursions carousel navigation",
@@ -663,7 +667,9 @@
       filterDateFrom: "Desde",
       filterDateTo: "Hasta",
       filterDateHintStart: "1.er paso: elige la fecha inicial",
-      filterDateHintEnd: "2.º paso: elige la fecha final",
+      filterDateHintEnd: "2.º paso: elige la fecha final (máx. 30 días)",
+      filterDateHintMaxSpan: "El período de búsqueda puede tener como máximo 30 días.",
+      filterDateNoTrips: "No hay paseos en las fechas elegidas. Elige otro período.",
       filterDateRange: "{{from}} → {{to}}",
       filterCalPrev: "Mes anterior",
       filterCalNext: "Mes siguiente",
@@ -685,7 +691,7 @@
       filterAvailabilityFull: "Agotados",
       filterPriceValue: "R$ {{min}} – R$ {{max}}",
       filterClear: "Limpiar filtros",
-      filterEmpty: "Ninguna salida coincide con estos filtros.",
+      filterEmpty: "No hay paseos en las fechas elegidas.",
       filterResults: "{{n}} salida(s)",
       dotAria: "Excursión {{i}} de {{n}}",
       carouselDotsShellAria: "Navegación del carrusel de excursiones",
@@ -1141,7 +1147,7 @@
     window.alert(msg);
   }
 
-  /** Janela máxima do filtro/calendário: hoje → hoje + N dias (Chapada). */
+  /** Período máximo selecionável na busca (dias). O calendário pode ir até a última saída. */
   var FILTER_DATE_WINDOW_DAYS = 30;
 
   function addDaysToIso(iso, days) {
@@ -1150,19 +1156,29 @@
     return dateToIso(d);
   }
 
-  function filterWindowMaxIso(nowMs) {
-    return addDaysToIso(todayIsoChapada(nowMs), FILTER_DATE_WINDOW_DAYS);
+  function daysBetweenIso(fromIso, toIso) {
+    var a = isoToDate(fromIso).getTime();
+    var b = isoToDate(toIso).getTime();
+    return Math.round((b - a) / 86400000);
+  }
+
+  function defaultFilterRangeEnd(floorIso, calendarMaxIso) {
+    var end = addDaysToIso(floorIso, FILTER_DATE_WINDOW_DAYS);
+    if (calendarMaxIso && compareIso(end, calendarMaxIso) > 0) end = calendarMaxIso;
+    if (compareIso(end, floorIso) < 0) end = floorIso;
+    return end;
   }
 
   function scanExcursaoBounds(list, s) {
     var dates = [];
     var prices = [];
+    var spots = [];
     var embarques = {};
-    var windowMax = filterWindowMaxIso();
     (list || []).forEach(function (e) {
       var d = excursaoDateIso(e);
-      if (d && compareIso(d, windowMax) <= 0) dates.push(d);
+      if (d) dates.push(d);
       prices.push(excursaoValor(e));
+      spots.push(vagasDisponiveis(e));
       var em = excursaoEmbarque(e, s);
       if (em) embarques[em] = true;
     });
@@ -1170,15 +1186,21 @@
     prices.sort(function (a, b) {
       return a - b;
     });
+    spots.sort(function (a, b) {
+      return a - b;
+    });
+    var excursionMax = dates[dates.length - 1] || "";
     var dateMin = todayIsoChapada();
-    // Sempre: hoje → hoje+30 (não estende além da janela, mesmo com saídas futuras longe)
-    var dateMax = windowMax;
+    var dateMax = excursionMax || dateMin;
     if (compareIso(dateMin, dateMax) > 0) dateMax = dateMin;
+    var spotsMaxBound = spots.length ? Math.max(spots[spots.length - 1], 1) : 10;
     return {
       dateMin: dateMin,
       dateMax: dateMax,
       priceMin: prices.length ? prices[0] : 0,
       priceMax: prices.length ? prices[prices.length - 1] : 500,
+      spotsMin: 0,
+      spotsMax: spotsMaxBound,
       embarques: Object.keys(embarques).sort(),
     };
   }
@@ -1193,15 +1215,29 @@
 
   function clampIsoRangeToFloor(startIso, endIso, maxIso) {
     var floor = dateFilterFloorIso(maxIso);
-    var ceiling = maxIso || filterWindowMaxIso();
+    var ceiling = maxIso || floor;
     var from = startIso || floor;
-    var to = endIso || ceiling;
+    var to = endIso || defaultFilterRangeEnd(floor, ceiling);
     if (compareIso(from, floor) < 0) from = floor;
     if (compareIso(to, floor) < 0) to = floor;
     if (compareIso(to, ceiling) > 0) to = ceiling;
     if (compareIso(from, ceiling) > 0) from = ceiling;
     if (compareIso(from, to) > 0) from = to;
+    if (daysBetweenIso(from, to) > FILTER_DATE_WINDOW_DAYS) {
+      to = addDaysToIso(from, FILTER_DATE_WINDOW_DAYS);
+      if (compareIso(to, ceiling) > 0) to = ceiling;
+    }
     return { dateFrom: from, dateTo: to };
+  }
+
+  function rangeHasExcursionDates(fromIso, toIso, excursionDates) {
+    if (!excursionDates || !excursionDates.size) return false;
+    var found = false;
+    excursionDates.forEach(function (iso) {
+      if (found || !iso) return;
+      if (compareIso(iso, fromIso) >= 0 && compareIso(iso, toIso) <= 0) found = true;
+    });
+    return found;
   }
 
   function matchesExcursaoFilters(e, f, s) {
@@ -1311,10 +1347,16 @@
    */
   function mountExcursaoDateRangePicker(fieldEl, bounds, s, locale, excursionDates, onRangeCommit) {
     var maxIso = bounds.dateMax;
-    var initial = clampIsoRangeToFloor(bounds.dateMin, bounds.dateMax, maxIso);
+    var floor = dateFilterFloorIso(maxIso);
+    var initial = clampIsoRangeToFloor(
+      floor,
+      defaultFilterRangeEnd(floor, maxIso),
+      maxIso,
+    );
     var startIso = initial.dateFrom;
     var endIso = initial.dateTo;
     var pickPhase = "start";
+    var pickWarn = "";
     var isOpen = false;
     var viewYear = isoToDate(startIso).getFullYear();
     var viewMonth = isoToDate(startIso).getMonth();
@@ -1331,20 +1373,29 @@
 
     function syncPrevNav() {
       if (!prevBtn) return;
-      var floor = isoToDate(floorIso());
+      var floorDate = isoToDate(floorIso());
       var canPrev =
-        viewYear > floor.getFullYear() ||
-        (viewYear === floor.getFullYear() && viewMonth > floor.getMonth());
+        viewYear > floorDate.getFullYear() ||
+        (viewYear === floorDate.getFullYear() && viewMonth > floorDate.getMonth());
       prevBtn.disabled = !canPrev;
     }
 
     function syncNextNav() {
       if (!nextBtn) return;
-      var ceiling = isoToDate(maxIso || filterWindowMaxIso());
+      var ceiling = isoToDate(maxIso || floorIso());
       var canNext =
         viewYear < ceiling.getFullYear() ||
         (viewYear === ceiling.getFullYear() && viewMonth < ceiling.getMonth());
       nextBtn.disabled = !canNext;
+    }
+
+    function dayOutsideCalendar(iso) {
+      return compareIso(iso, floorIso()) < 0 || (maxIso && compareIso(iso, maxIso) > 0);
+    }
+
+    function dayOutsideMaxSpan(iso) {
+      if (pickPhase !== "end") return false;
+      return Math.abs(daysBetweenIso(startIso, iso)) > FILTER_DATE_WINDOW_DAYS;
     }
 
     var locTag = locale === "en" ? "en-US" : locale === "es" ? "es-ES" : "pt-BR";
@@ -1414,7 +1465,13 @@
     function renderCalendar() {
       if (monthEl) monthEl.textContent = monthTitle();
       if (hintEl) {
-        hintEl.textContent = pickPhase === "start" ? s.filterDateHintStart : s.filterDateHintEnd;
+        if (pickWarn) {
+          hintEl.textContent = pickWarn;
+          hintEl.classList.add("gcv-exc-datepick__hint--warn");
+        } else {
+          hintEl.textContent = pickPhase === "start" ? s.filterDateHintStart : s.filterDateHintEnd;
+          hintEl.classList.remove("gcv-exc-datepick__hint--warn");
+        }
       }
       if (!gridEl) return;
 
@@ -1429,8 +1486,7 @@
 
       for (var day = 1; day <= daysInMonth; day++) {
         var iso = dateToIso(new Date(viewYear, viewMonth, day));
-        var disabled =
-          compareIso(iso, floorIso()) < 0 || (maxIso && compareIso(iso, maxIso) > 0);
+        var disabled = dayOutsideCalendar(iso) || dayOutsideMaxSpan(iso);
         var inRange = !disabled && compareIso(iso, startIso) >= 0 && compareIso(iso, endIso) <= 0;
         var isStart = iso === startIso;
         var isEnd = iso === endIso;
@@ -1472,6 +1528,7 @@
 
     function openPopover() {
       isOpen = true;
+      pickWarn = "";
       if (popover) popover.hidden = false;
       if (trigger) trigger.setAttribute("aria-expanded", "true");
       if (root) root.classList.add("is-open");
@@ -1483,22 +1540,41 @@
     }
 
     function onDayPick(iso) {
-      if (compareIso(iso, floorIso()) < 0 || (maxIso && compareIso(iso, maxIso) > 0)) return;
+      if (dayOutsideCalendar(iso) || dayOutsideMaxSpan(iso)) {
+        if (dayOutsideMaxSpan(iso)) {
+          pickWarn = s.filterDateHintMaxSpan;
+          renderCalendar();
+        }
+        return;
+      }
       if (pickPhase === "start") {
         startIso = iso;
         endIso = iso;
-        applyRangeClamp();
+        pickWarn = "";
         pickPhase = "end";
         renderCalendar();
         return;
       }
-      endIso = iso;
-      if (compareIso(endIso, startIso) < 0) {
-        var tmp = startIso;
-        startIso = endIso;
-        endIso = tmp;
+      var from = startIso;
+      var to = iso;
+      if (compareIso(to, from) < 0) {
+        from = iso;
+        to = startIso;
       }
+      if (daysBetweenIso(from, to) > FILTER_DATE_WINDOW_DAYS) {
+        pickWarn = s.filterDateHintMaxSpan;
+        renderCalendar();
+        return;
+      }
+      if (!rangeHasExcursionDates(from, to, excursionDates)) {
+        pickWarn = s.filterDateNoTrips;
+        renderCalendar();
+        return;
+      }
+      startIso = from;
+      endIso = to;
       applyRangeClamp();
+      pickWarn = "";
       pickPhase = "start";
       updateValueText();
       renderCalendar();
@@ -1570,10 +1646,12 @@
         return { dateFrom: startIso, dateTo: endIso };
       },
       reset: function () {
-        var clamped = clampIsoRangeToFloor(floorIso(), maxIso, maxIso);
+        var f = floorIso();
+        var clamped = clampIsoRangeToFloor(f, defaultFilterRangeEnd(f, maxIso), maxIso);
         startIso = clamped.dateFrom;
         endIso = clamped.dateTo;
         pickPhase = "start";
+        pickWarn = "";
         updateValueText();
         renderCalendar();
         closePopover();
@@ -1728,10 +1806,14 @@
       escapeHtml(s.filterSpots) +
       '</span><span class="gcv-excursoes-filters__range-value" data-gcv-spots-label></span></div>' +
       '<div class="gcv-excursoes-filters__range-track"><span class="gcv-excursoes-filters__range-fill" data-gcv-spots-fill></span>' +
-      '<input class="gcv-excursoes-filters__range" type="range" data-gcv-filter="spotsMin" min="0" max="9" aria-label="' +
+      '<input class="gcv-excursoes-filters__range" type="range" data-gcv-filter="spotsMin" min="0" max="' +
+      escapeHtml(String(bounds.spotsMax)) +
+      '" aria-label="' +
       escapeHtml(s.filterSpots) +
       ' min" />' +
-      '<input class="gcv-excursoes-filters__range" type="range" data-gcv-filter="spotsMax" min="1" max="9" aria-label="' +
+      '<input class="gcv-excursoes-filters__range" type="range" data-gcv-filter="spotsMax" min="0" max="' +
+      escapeHtml(String(bounds.spotsMax)) +
+      '" aria-label="' +
       escapeHtml(s.filterSpots) +
       ' max" /></div>';
 
@@ -1811,8 +1893,12 @@
     }
 
     if (spotsMinEl && spotsMaxEl) {
+      spotsMinEl.min = "0";
+      spotsMinEl.max = String(bounds.spotsMax);
       spotsMinEl.value = "0";
-      spotsMaxEl.value = "9";
+      spotsMaxEl.min = "0";
+      spotsMaxEl.max = String(bounds.spotsMax);
+      spotsMaxEl.value = String(bounds.spotsMax);
     }
 
     function syncAvailabilityUi() {
@@ -1856,7 +1942,7 @@
         availabilityOpen: availabilityOpenEl ? availabilityOpenEl.checked : true,
         availabilitySoldout: availabilitySoldoutEl ? availabilitySoldoutEl.checked : false,
         spotsMin: spotsMinEl ? parseInt(String(spotsMinEl.value), 10) : 0,
-        spotsMax: spotsMaxEl ? parseInt(String(spotsMaxEl.value), 10) : 9,
+        spotsMax: spotsMaxEl ? parseInt(String(spotsMaxEl.value), 10) : bounds.spotsMax,
       };
     }
 
@@ -1877,7 +1963,7 @@
       if (availabilityOpenEl) availabilityOpenEl.checked = true;
       if (availabilitySoldoutEl) availabilitySoldoutEl.checked = false;
       if (spotsMinEl) spotsMinEl.value = "0";
-      if (spotsMaxEl) spotsMaxEl.value = "9";
+      if (spotsMaxEl) spotsMaxEl.value = String(bounds.spotsMax);
       emit();
     }
 

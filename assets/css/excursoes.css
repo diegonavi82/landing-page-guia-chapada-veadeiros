@@ -338,6 +338,11 @@
   line-height: 1.25;
 }
 
+.gcv-exc-datepick__hint--warn {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
 .gcv-exc-datepick__nav {
   display: flex;
   align-items: center;
