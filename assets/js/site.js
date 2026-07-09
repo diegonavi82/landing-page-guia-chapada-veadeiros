@@ -81,7 +81,7 @@
       scheduleNext();
     }
 
-    show(idx);
+    show(0);
 
     var prev = root.querySelector("[data-gcv-hero-prev]");
     var nextBtn = root.querySelector("[data-gcv-hero-next]");
@@ -134,8 +134,6 @@
       if (document.hidden) clearTimer();
       else scheduleNext();
     });
-
-    void FADE_MS;
   }
 
   function initMapLightbox() {

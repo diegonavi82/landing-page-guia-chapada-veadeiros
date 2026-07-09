@@ -1634,6 +1634,45 @@ ${reservaLookupWidgetHtml(locale, { idPrefix: "gcv-home-reserva" })}
 `;
 }
 
+function heroPetzenSlideHtml(ap, first, durationMs) {
+  const duration = durationMs > 0 ? durationMs : 10000;
+  const img = `${ap}assets/img/parceiros/petzen-do-cerrado-hero.png`;
+  const waHref =
+    "https://wa.me/5562996894755?text=Ol%C3%A1!%20Vim%20pelo%20portal%20da%20PETZEN%20DO%20CERRADO%20e%20gostaria%20de%20informa%C3%A7%C3%B5es%20sobre%20hospedagem%20para%20meu%20cachorro%20na%20Chapada%20dos%20Veadeiros.";
+  const paw = `<span class="gcv-petzen__paw"><svg viewBox="0 0 24 24" fill="currentColor"><ellipse cx="12" cy="14.5" rx="4.2" ry="5"/><circle cx="5.2" cy="9.2" r="2.1"/><circle cx="9.2" cy="6.2" r="2.15"/><circle cx="14.8" cy="6.2" r="2.15"/><circle cx="18.8" cy="9.2" r="2.1"/></svg></span>`;
+  return `<div class="gcv-hero__slide gcv-hero__slide--petzen${first ? " is-active" : ""}" data-gcv-hero-slide data-gcv-hero-duration="${duration}" aria-hidden="${first ? "false" : "true"}">
+  <div class="gcv-petzen">
+    <div class="gcv-petzen__bg" aria-hidden="true"></div>
+    <div class="gcv-petzen__glow" aria-hidden="true"></div>
+    <div class="gcv-petzen__paws" aria-hidden="true">${paw}${paw}${paw}${paw}${paw}${paw}</div>
+    <div class="gcv-petzen__visual">
+      <img class="gcv-petzen__photo" src="${esc(img)}" alt="Cães hospedados na Petzen do Cerrado, Alto Paraíso de Goiás" width="1600" height="900" loading="eager" decoding="async" fetchpriority="high" />
+    </div>
+    <div class="gcv-petzen__vignette" aria-hidden="true"></div>
+    <div class="gcv-petzen__content">
+      <h2 class="gcv-petzen__title gcv-petzen__anim">Vai explorar a Chapada?<span>Seu cachorro também merece férias.</span></h2>
+      <p class="gcv-petzen__subtitle gcv-petzen__anim">Hospedagem exclusiva para cães em Alto Paraíso de Goiás, na Chapada dos Veadeiros.</p>
+      <ul class="gcv-petzen__benefits gcv-petzen__anim">
+        <li><span class="gcv-petzen__ico" aria-hidden="true">🐾</span><span>Ambiente familiar e seguro</span></li>
+        <li><span class="gcv-petzen__ico" aria-hidden="true">🏡</span><span>Atenção individual para cada hóspede</span></li>
+        <li><span class="gcv-petzen__ico" aria-hidden="true">🦴</span><span>Diárias e meio período (12 horas)</span></li>
+        <li><span class="gcv-petzen__ico" aria-hidden="true">❤️</span><span>Enquanto você aproveita a Chapada, seu cachorro fica em um lugar seguro, confortável e cheio de carinho.</span></li>
+      </ul>
+      <div class="gcv-petzen__cta-wrap gcv-petzen__anim">
+        <a class="gcv-petzen__wa" href="${esc(waHref)}" target="_blank" rel="noopener noreferrer">
+          ${WA_SVG.replace('class="gcv-hero-wa-icon"', 'class="gcv-petzen__wa-icon"')}
+          Reservar pelo WhatsApp
+        </a>
+        <a class="gcv-petzen__ig" href="https://www.instagram.com/petzen.do.cerrado/" target="_blank" rel="noopener noreferrer">
+          ${INSTAGRAM_ICON_SVG.replace('class="gcv-instagram-logo"', 'class="gcv-petzen__ig-icon"')}
+          @petzen.do.cerrado
+        </a>
+      </div>
+    </div>
+  </div>
+</div>`;
+}
+
 function homeMainHtml(locale, ap, instagramPosts, reviewsPool) {
   const S = STRINGS[locale];
   const home = S.home;
@@ -1646,6 +1685,11 @@ function homeMainHtml(locale, ap, instagramPosts, reviewsPool) {
 
   const slidesHtml = slides
     .map((slide, i) => {
+      const first = i === 0;
+      const duration = slide.duration > 0 ? slide.duration : 10000;
+      if (slide.kind === "petzen") {
+        return heroPetzenSlideHtml(ap, first, duration);
+      }
       const anim = buildHeroAnim(slide.title, slide.lead, slide.sub || "");
       const contactHref = relBetweenSync(cur, outRelPath(locale, "contato.html"));
       const plainChip =
@@ -1662,10 +1706,7 @@ function homeMainHtml(locale, ap, instagramPosts, reviewsPool) {
             ? `<a class="gcv-hero-line gcv-hero-plain-chip gcv-hero-cta" href="${esc(waUrl(locale))}" target="_blank" rel="noopener noreferrer" style="animation-delay:${anim.ctaStartMs}ms">${WA_SVG}${esc(slide.ctaLabel)}</a>`
             : `<a class="gcv-hero-line gcv-hero-plain-chip gcv-hero-cta" href="${esc(contactHref)}" style="animation-delay:${anim.ctaStartMs}ms">${esc(slide.ctaLabel)}</a>`;
 
-      /** 1.º slide visível no HTML — sem JS (.gcv-hero__slide só ganha opacity com .is-active). */
-      const first = i === 0;
-
-      return `<div class="gcv-hero__slide${first ? " is-active" : ""}" data-gcv-hero-slide aria-hidden="${first ? "false" : "true"}">
+      return `<div class="gcv-hero__slide${first ? " is-active" : ""}" data-gcv-hero-slide data-gcv-hero-duration="${duration}" aria-hidden="${first ? "false" : "true"}">
   ${heroPictureBg(ap, slide.image, true)}
   <div class="gcv-hero__gradient" aria-hidden="true"></div>
   <div class="gcv-hero-overlay-text">
@@ -1713,11 +1754,16 @@ function homeMainHtml(locale, ap, instagramPosts, reviewsPool) {
     .filter(Boolean)
     .join("\n");
 
+  const ogHeroImage =
+    slides.find((s) => s.kind !== "petzen" && s.image)?.image ||
+    slides[0]?.image ||
+    "imagens/hero-slide-01-guias-locais-cachoeira.png";
+
   const jsonLd = travelAgencyJsonLd(
     SITE_ORIGIN,
     locale,
     S.seo.homeDesc,
-    `${SITE_ORIGIN}/assets/img/${HERO_SLIDES[locale][0].image}`,
+    `${SITE_ORIGIN}/assets/img/${ogHeroImage}`,
   );
 
   const webSiteLd = webSiteJsonLd(SITE_ORIGIN, locale, S.htmlLang, `${SITE_ORIGIN}/`);
@@ -1732,7 +1778,9 @@ function homeMainHtml(locale, ap, instagramPosts, reviewsPool) {
 
   return `<div class="official-home-shell gcv-page-pad">
   <div class="gcv-home-max">
-    <section class="gcv-hero" data-gcv-hero role="region" aria-roledescription="${esc(roleDesc)}">
+    <section class="gcv-hero" data-gcv-hero role="region" aria-roledescription="${esc(roleDesc)}" aria-label="${esc(
+      locale === "en" ? `Highlight 1 of ${n}` : locale === "es" ? `Destacado 1 de ${n}` : `Destaque 1 de ${n}`,
+    )}">
       <div class="gcv-hero__viewport">
 ${slidesHtml}
       </div>
