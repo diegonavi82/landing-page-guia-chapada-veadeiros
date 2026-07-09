@@ -164,6 +164,43 @@
           <div id="admin-financial-content"></div>
         </section>
 
+        <section class="gcv-dash-section" id="section-admin-guides">
+          <h2 class="gcv-dash-section-title">Guias cadastrados</h2>
+          <p class="gcv-dash-hint" style="margin:0 0 1rem;color:#64748b;font-size:0.9rem;">
+            Cadastre e <strong>verifique</strong> a chave PIX do guia. Pagamentos só são permitidos para guias ativos com PIX verificado.
+          </p>
+          <div id="admin-guides-list"></div>
+        </section>
+
+        <section class="gcv-dash-section" id="section-admin-payouts">
+          <h2 class="gcv-dash-section-title">Pagar guias (PIX)</h2>
+          <div class="gcv-dash-alert gcv-dash-alert--info" style="margin-bottom:1rem;">
+            Pagamentos <strong>somente</strong> para chave PIX de guia cadastrado e verificado. Não é possível digitar chave avulsa.
+          </div>
+          <form class="gcv-dash-form" id="admin-payout-form" novalidate>
+            <div class="gcv-dash-field-row">
+              <div class="gcv-dash-field">
+                <label class="gcv-dash-label" for="payout-guide">Guia (PIX verificado)</label>
+                <select class="gcv-dash-select" id="payout-guide" name="guide_user_id" required>
+                  <option value="">Selecione…</option>
+                </select>
+              </div>
+              <div class="gcv-dash-field">
+                <label class="gcv-dash-label" for="payout-amount">Valor (R$)</label>
+                <input class="gcv-dash-input" id="payout-amount" name="amount" type="number" min="1" step="0.01" required />
+              </div>
+            </div>
+            <div class="gcv-dash-field">
+              <label class="gcv-dash-label" for="payout-desc">Descrição</label>
+              <input class="gcv-dash-input" id="payout-desc" name="description" type="text" maxlength="200" placeholder="Ex.: Repasse excursão 18/07" />
+            </div>
+            <button type="submit" class="gcv-dash-btn gcv-dash-btn--primary">Criar rascunho</button>
+          </form>
+          <div id="admin-payout-draft" hidden style="margin-top:1.25rem;padding:1rem;border:1px solid #fbbf24;border-radius:10px;background:#fffbeb;"></div>
+          <h3 style="margin:1.75rem 0 0.75rem;font-size:1.05rem;">Histórico</h3>
+          <div id="admin-payouts-list"></div>
+        </section>
+
         <!-- ===== GUIDE SECTIONS ===== -->
 
         <section class="gcv-dash-section" id="section-guide-tours">

@@ -47,14 +47,21 @@ return [
         'cert_pem' => '',
         'cert_key' => '',
         'cert_pass' => '',
-        /** Escopos mínimos: pix.read (+ webhook.read/write para registrar webhook) */
-        'scope' => 'pix.read webhook.read webhook.write',
+        /**
+         * Escopos: recebimentos (pix.read + webhook) e pagamentos a guias (pixpagamentos_*).
+         * No portal Sicoob marque Pix Recebimentos + Pix Pagamentos.
+         */
+        'scope' => 'pix.read pix.write webhook.read webhook.write cob.read cob.write pixpagamentos_escrita pixpagamentos_consulta pixpagamentos_webhook',
+        /** OAuth produção (portal Developers) */
+        'token_url' => 'https://auth.sicoob.com.br/auth/realms/cooperado/protocol/openid-connect/token',
+        /** Pix Recebimentos */
+        'api_base' => 'https://api.sicoob.com.br/pix/api/v2',
+        /** Pix Pagamentos (repasse a guias) */
+        'pay_api_base' => 'https://api.sicoob.com.br/pix-pagamentos/v2',
         /** true = homologação (sandbox.sicoob.com.br); false = produção */
         'sandbox' => false,
         /** Só sandbox: token fixo do portal Developers (não use em produção) */
         'sandbox_access_token' => '',
-        /** Opcional — padrão sandbox: …/sicoob/sandbox/pix/api/v2 */
-        'api_base' => '',
         /** URL base registrada no Sicoob (sem /pix — o banco adiciona) */
         'webhook_base_url' => 'https://www.guiachapadaveadeiros.com/api/sicoob_webhook',
         /** IPs permitidos no webhook (vazio = aceita qualquer — preencha em produção se souber) */

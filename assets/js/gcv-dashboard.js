@@ -65,6 +65,188 @@
 
   /* ===== ADMIN ===== */
 
+  function loadAdminGuides() {
+    var list = document.getElementById('admin-guides-list');
+    if (!list) return;
+    list.innerHTML = '<p>Carregando…</p>';
+    get('/api/admin/guides.php', function (err, res) {
+      if (err || !res || !res.ok) {
+        list.innerHTML = '<p class="gcv-dash-alert">Erro ao carregar guias.</p>';
+        return;
+      }
+      var guides = (res.data && res.data.guides) || [];
+      if (!guides.length) {
+        list.innerHTML = '<p>Nenhum guia cadastrado.</p>';
+        return;
+      }
+      list.innerHTML = guides.map(function (g) {
+        var ready = g.pix_ready
+          ? '<span class="gcv-badge gcv-badge--active">PIX OK</span>'
+          : '<span class="gcv-badge gcv-badge--pending">PIX pendente</span>';
+        var pixVal = g.pix_key || '';
+        return (
+          '<article class="gcv-dash-card" data-guide-user="' + g.user_id + '" style="margin-bottom:1rem;padding:1rem;border:1px solid #e2e8f0;border-radius:10px;">' +
+          '<div style="display:flex;justify-content:space-between;gap:0.75rem;flex-wrap:wrap;align-items:center;">' +
+          '<div><strong>' + escapeHtml(g.name) + '</strong> ' + statusBadge(g.status) + ' ' + ready +
+          '<div style="font-size:0.85rem;color:#64748b;">' + escapeHtml(g.email) + '</div></div></div>' +
+          '<div class="gcv-dash-field-row" style="margin-top:0.75rem;">' +
+          '<div class="gcv-dash-field"><label class="gcv-dash-label">Chave PIX</label>' +
+          '<input class="gcv-dash-input" data-pix-key type="text" value="' + escapeAttr(pixVal) + '" placeholder="CPF, CNPJ, e-mail, telefone ou aleatória" /></div>' +
+          '<div class="gcv-dash-field"><label class="gcv-dash-label">Titular</label>' +
+          '<input class="gcv-dash-input" data-pix-holder type="text" value="' + escapeAttr(g.pix_holder_name || '') + '" /></div>' +
+          '<div class="gcv-dash-field"><label class="gcv-dash-label">Telefone</label>' +
+          '<input class="gcv-dash-input" data-phone type="text" value="' + escapeAttr(g.phone || '') + '" /></div>' +
+          '</div>' +
+          '<div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.75rem;">' +
+          '<button type="button" class="gcv-dash-btn gcv-dash-btn--sm gcv-dash-btn--primary" data-save-guide>Salvar PIX</button>' +
+          '<button type="button" class="gcv-dash-btn gcv-dash-btn--sm" data-verify-pix' + (pixVal && g.status === 'active' ? '' : ' disabled') + '>Verificar PIX</button>' +
+          '</div></article>'
+        );
+      }).join('');
+
+      list.querySelectorAll('[data-save-guide]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var card = btn.closest('[data-guide-user]');
+          var uid = parseInt(card.getAttribute('data-guide-user'), 10);
+          put('/api/admin/guides.php', {
+            user_id: uid,
+            pix_key: card.querySelector('[data-pix-key]').value,
+            pix_holder_name: card.querySelector('[data-pix-holder]').value,
+            phone: card.querySelector('[data-phone]').value,
+          }, function (e2, r2) {
+            alert(r2 && r2.ok ? 'Salvo. Agora clique em Verificar PIX.' : ((r2 && r2.error) || 'Erro'));
+            if (r2 && r2.ok) loadAdminGuides();
+          });
+        });
+      });
+      list.querySelectorAll('[data-verify-pix]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          if (!confirm('Confirmar que esta chave PIX pertence ao guia? Só após isso será possível pagar.')) return;
+          var card = btn.closest('[data-guide-user]');
+          var uid = parseInt(card.getAttribute('data-guide-user'), 10);
+          put('/api/admin/guides.php', {
+            user_id: uid,
+            pix_key: card.querySelector('[data-pix-key]').value,
+            pix_holder_name: card.querySelector('[data-pix-holder]').value,
+            verify_pix: true,
+          }, function (e2, r2) {
+            alert(r2 && r2.ok ? 'PIX verificado.' : ((r2 && r2.error) || 'Erro'));
+            if (r2 && r2.ok) loadAdminGuides();
+          });
+        });
+      });
+    });
+  }
+
+  function loadAdminPayouts() {
+    var select = document.getElementById('payout-guide');
+    var hist = document.getElementById('admin-payouts-list');
+    var draftBox = document.getElementById('admin-payout-draft');
+    if (hist) hist.innerHTML = '<p>Carregando…</p>';
+    get('/api/admin/guide-payouts.php', function (err, res) {
+      if (err || !res || !res.ok) {
+        if (hist) hist.innerHTML = '<p class="gcv-dash-alert">Erro ao carregar pagamentos.</p>';
+        return;
+      }
+      var eligible = (res.data && res.data.eligible_guides) || [];
+      var payouts = (res.data && res.data.payouts) || [];
+      if (select) {
+        select.innerHTML = '<option value="">Selecione…</option>' + eligible.map(function (g) {
+          return '<option value="' + g.user_id + '">' + escapeHtml(g.name) + ' — ' + escapeHtml(g.pix_key) + '</option>';
+        }).join('');
+        if (!eligible.length) {
+          select.innerHTML = '<option value="">Nenhum guia com PIX verificado</option>';
+        }
+      }
+      if (hist) {
+        if (!payouts.length) {
+          hist.innerHTML = '<p>Nenhum pagamento ainda.</p>';
+        } else {
+          hist.innerHTML =
+            '<div class="gcv-dash-table-wrap"><table class="gcv-dash-table"><thead><tr>' +
+            '<th>ID</th><th>Guia</th><th>Valor</th><th>PIX</th><th>Status</th><th>Quando</th></tr></thead><tbody>' +
+            payouts.map(function (p) {
+              return '<tr><td>' + p.id + '</td><td>' + escapeHtml(p.guide_name || '') +
+                '</td><td>' + fmtMoney(p.amount_cents) + '</td><td style="font-size:0.8rem;">' +
+                escapeHtml(p.pix_key_snapshot || '') + '</td><td>' + statusBadge(p.status) +
+                '</td><td style="font-size:0.8rem;">' + escapeHtml(p.created_at || '') + '</td></tr>';
+            }).join('') + '</tbody></table></div>';
+        }
+      }
+    });
+
+    var form = document.getElementById('admin-payout-form');
+    if (form && !form._gcvBound) {
+      form._gcvBound = true;
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var guideId = parseInt(document.getElementById('payout-guide').value, 10);
+        var amount = parseFloat(document.getElementById('payout-amount').value);
+        var description = document.getElementById('payout-desc').value;
+        if (!guideId || !(amount >= 1)) {
+          alert('Selecione um guia e informe valor ≥ R$ 1,00');
+          return;
+        }
+        post('/api/admin/guide-payouts.php', {
+          action: 'create',
+          guide_user_id: guideId,
+          amount: amount,
+          description: description,
+        }, function (e2, r2) {
+          if (!r2 || !r2.ok) {
+            alert((r2 && r2.error) || 'Erro ao criar rascunho');
+            return;
+          }
+          var d = r2.data || {};
+          if (!draftBox) return;
+          draftBox.hidden = false;
+          draftBox.innerHTML =
+            '<p><strong>Rascunho #' + d.payout_id + '</strong></p>' +
+            '<p>Guia: ' + escapeHtml(d.guide_name || '') + '<br>PIX: <code>' + escapeHtml(d.pix_key || '') +
+            '</code><br>Valor: <strong>' + fmtMoney(d.amount_cents || 0) + '</strong></p>' +
+            '<p style="font-size:0.85rem;color:#92400e;">Digite <strong>PAGAR</strong> para confirmar o envio via Sicoob.</p>' +
+            '<input class="gcv-dash-input" id="payout-confirm-text" type="text" placeholder="PAGAR" style="max-width:160px;margin-bottom:0.5rem;" />' +
+            '<div style="display:flex;gap:0.5rem;flex-wrap:wrap;">' +
+            '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary" id="payout-confirm-btn">Confirmar e enviar PIX</button>' +
+            '<button type="button" class="gcv-dash-btn" id="payout-cancel-btn">Cancelar rascunho</button></div>';
+          document.getElementById('payout-confirm-btn').onclick = function () {
+            var txt = document.getElementById('payout-confirm-text').value;
+            post('/api/admin/guide-payouts.php', {
+              action: 'confirm',
+              payout_id: d.payout_id,
+              confirm_text: txt,
+            }, function (e3, r3) {
+              alert(r3 && r3.ok ? (r3.data.message || 'PIX enviado') : ((r3 && r3.error) || 'Falha'));
+              if (r3 && r3.ok) {
+                draftBox.hidden = true;
+                form.reset();
+              }
+              loadAdminPayouts();
+            });
+          };
+          document.getElementById('payout-cancel-btn').onclick = function () {
+            post('/api/admin/guide-payouts.php', { action: 'cancel', payout_id: d.payout_id }, function () {
+              draftBox.hidden = true;
+              loadAdminPayouts();
+            });
+          };
+        });
+      });
+    }
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function escapeAttr(s) {
+    return escapeHtml(s).replace(/'/g, '&#39;');
+  }
+
   function loadPendingGuides() {
     var list = document.getElementById('pending-guides-list');
     if (!list) return;
@@ -335,6 +517,8 @@
     if (role === 'admin') {
       items = [
         { id: 'section-pending-guides',    icon: '👤', label: 'Guias pendentes',   load: loadPendingGuides  },
+        { id: 'section-admin-guides',      icon: '🧭', label: 'Guias + PIX',       load: loadAdminGuides    },
+        { id: 'section-admin-payouts',     icon: '💸', label: 'Pagar guias',       load: loadAdminPayouts   },
         { id: 'section-pending-tours',     icon: '🗺️', label: 'Passeios pendentes',load: loadPendingTours   },
         { id: 'section-admin-create-tour', icon: '➕', label: 'Criar passeio',     load: function () { loadGuidesList(); initCreateTourForm('gcv-create-tour-form'); document.getElementById('admin-guide-field').hidden = false; } },
         { id: 'section-admin-bookings',    icon: '📋', label: 'Todas as reservas', load: loadAdminBookings  },

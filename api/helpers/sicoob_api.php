@@ -40,6 +40,7 @@ function gcv_sicoob_api_cfg(): array
         'sandbox_access_token' => trim((string)($cfg['sandbox_access_token'] ?? '')),
         'token_url' => trim((string)($cfg['token_url'] ?? '')),
         'api_base' => trim((string)($cfg['api_base'] ?? '')),
+        'pay_api_base' => trim((string)($cfg['pay_api_base'] ?? '')),
         'webhook_base_url' => rtrim(trim((string)($cfg['webhook_base_url'] ?? 'https://www.guiachapadaveadeiros.com/api/sicoob_webhook')), '/'),
     ];
     return $cached;
@@ -97,9 +98,10 @@ function gcv_sicoob_token_url(): string
         return $cfg['token_url'];
     }
     if ($cfg['sandbox']) {
-        return 'https://api-homol.sicoob.com.br/cooperado/pix/token';
+        return 'https://auth.sicoob.com.br/auth/realms/cooperado/protocol/openid-connect/token';
     }
-    return 'https://apis.sisbr.com.br/cooperado/pix/token';
+    // Produção (portal Developers)
+    return 'https://auth.sicoob.com.br/auth/realms/cooperado/protocol/openid-connect/token';
 }
 
 function gcv_sicoob_api_base(): string
@@ -111,7 +113,7 @@ function gcv_sicoob_api_base(): string
     if ($cfg['sandbox']) {
         return 'https://sandbox.sicoob.com.br/sicoob/sandbox/pix/api/v2';
     }
-    return 'https://apis.sisbr.com.br/cooperado/pix/api/v2';
+    return 'https://api.sicoob.com.br/pix/api/v2';
 }
 
 function gcv_sicoob_format_dt(int $timestamp): string
