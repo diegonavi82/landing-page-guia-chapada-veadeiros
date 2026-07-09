@@ -116,6 +116,10 @@ function gcv_pix_reservation_id_from_token(string $token): ?string
     if (preg_match('/^GCV([A-Z0-9]{6})$/', $alnum, $m)) {
         return 'GCV-' . $m[1];
     }
+    // Cobrança Sicoob: GCVXXXXXX + padding (txid 26–35 chars)
+    if (preg_match('/^GCV([A-Z0-9]{6})0+$/', $alnum, $m)) {
+        return 'GCV-' . $m[1];
+    }
     if (preg_match('/GCV[- ]?([A-Z0-9]{6})/', $upper, $m)) {
         return 'GCV-' . $m[1];
     }

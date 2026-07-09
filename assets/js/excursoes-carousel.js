@@ -330,6 +330,7 @@
       pixModalRefLabel: "Código de reserva",
       pixModalEmailContinue: "Continuar para o Pix",
       pixPostpayLocked: "Disponível após confirmação do pagamento",
+      pixModalGenerating: "Gerando Pix…",
       pixModalWaiting: "Aguardando confirmação do pagamento…",
       pixModalWaitingSub: "Detectamos automaticamente quando o Pix for compensado.",
       pixDevSimulateBtn: "Simular confirmação (localhost)",
@@ -466,6 +467,7 @@
       pixModalRefLabel: "Reservation code",
       pixModalEmailContinue: "Continue to Pix",
       pixPostpayLocked: "Available after payment is confirmed",
+      pixModalGenerating: "Generating Pix…",
       pixModalWaiting: "Waiting for payment confirmation…",
       pixModalWaitingSub: "We detect automatically when your Pix is received.",
       pixDevSimulateBtn: "Simulate confirmation (localhost)",
@@ -602,6 +604,7 @@
       pixModalRefLabel: "Código de reserva",
       pixModalEmailContinue: "Continuar al Pix",
       pixPostpayLocked: "Disponible tras confirmar el pago",
+      pixModalGenerating: "Generando Pix…",
       pixModalWaiting: "Esperando confirmación del pago…",
       pixModalWaitingSub: "Detectamos automáticamente cuando se reciba el Pix.",
       pixDevSimulateBtn: "Simular confirmación (localhost)",
@@ -3309,18 +3312,111 @@
     if (!modal) return;
     var refBlock = modal.querySelector("#gcv-pix-modal-ref");
     if (!refBlock) return;
-    var show = !!(modal._gcvPixConfirmed || modal.classList.contains("gcv-pix-modal--paid"));
+    var code =
+      modal._gcvPixReservationId ||
+      (modal._gcvReceiptData && modal._gcvReceiptData.code) ||
+      "";
+    var show = !!code;
     refBlock.hidden = !show;
     var refCodeEl = refBlock.querySelector("#gcv-pix-modal-ref-code");
     if (!refCodeEl) return;
-    if (show) {
-      refCodeEl.textContent =
-        modal._gcvPixReservationId ||
-        (modal._gcvReceiptData && modal._gcvReceiptData.code) ||
-        "";
-    } else {
-      refCodeEl.textContent = "";
+    refCodeEl.textContent = show ? code : "";
+  }
+
+  function applyPixPayloadToModal(modal, payload, locStrings) {
+    if (!modal || !payload) return false;
+    var copyBtn = modal.querySelector("[data-gcv-pix-copy]");
+    if (copyBtn) {
+      copyBtn.textContent = locStrings.pixModalCopy;
+      copyBtn.dataset.pixPayload = payload;
+      copyBtn.dataset.pixCopyDefault = locStrings.pixModalCopy;
+      copyBtn.dataset.pixCopyDone = locStrings.pixModalCopied;
+      copyBtn.disabled = false;
     }
+    var canvas = modal.querySelector(".gcv-pix-modal__qr");
+    if (canvas && window.GcvPix && window.GcvPix.renderQrToCanvas) {
+      canvas.style.display = "";
+      window.GcvPix.renderQrToCanvas(canvas, payload).catch(function () {
+        canvas.style.display = "none";
+      });
+    }
+    return true;
+  }
+
+  function buildStaticPixPayload(pending) {
+    if (!pending || !window.GcvPix || typeof window.GcvPix.buildPayload !== "function") return "";
+    try {
+      return window.GcvPix.buildPayload({
+        amount: pending.valor,
+        description: pending.pixDescWithCode || pending.pixDesc || "",
+        txid: pending.txid,
+      });
+    } catch (err) {
+      return "";
+    }
+  }
+
+  function finalizePixCheckout(modal, s) {
+    if (!modal) return false;
+    var pending = modal._gcvPixPendingCheckout;
+    if (!pending) return false;
+    if (modal._gcvPixPayloadReady) return true;
+
+    var reservationCode =
+      window.GcvPixReceipt && typeof window.GcvPixReceipt.generateCode === "function"
+        ? window.GcvPixReceipt.generateCode()
+        : "GCV-" + Date.now().toString(36).slice(-6).toUpperCase();
+    var txid =
+      window.GcvPixReceipt && typeof window.GcvPixReceipt.pixTxidFromCode === "function"
+        ? window.GcvPixReceipt.pixTxidFromCode(reservationCode)
+        : reservationCode.replace(/[^A-Za-z0-9]/g, "").slice(0, 25);
+    var pixDescWithCode = (reservationCode + " " + (pending.pixDesc || "")).trim().slice(0, 73);
+    pending.reservationCode = reservationCode;
+    pending.txid = txid;
+    pending.pixDescWithCode = pixDescWithCode;
+    if (modal._gcvReceiptData) modal._gcvReceiptData.code = reservationCode;
+    modal._gcvPixReservationId = reservationCode;
+
+    var locStrings = s || STRINGS[pending.loc] || STRINGS.pt;
+
+    var waBtn = modal.querySelector("[data-gcv-pix-wa]");
+    if (waBtn && window.GcvPixReceipt && modal._gcvReceiptData) {
+      waBtn.href = window.GcvPixReceipt.buildWhatsAppUrl(
+        reservationCode,
+        pending.valor,
+        modal._gcvReceiptData.trips,
+        pending.loc,
+      );
+    }
+
+    // QR ainda não — espera resposta do servidor (cobrança dinâmica).
+    // Fallback estático só se a API não devolver brcode.
+    var copyBtn = modal.querySelector("[data-gcv-pix-copy]");
+    if (copyBtn) {
+      copyBtn.disabled = true;
+      copyBtn.textContent = locStrings.pixModalGenerating || "Gerando Pix…";
+    }
+    var canvas = modal.querySelector(".gcv-pix-modal__qr");
+    if (canvas) canvas.style.display = "none";
+
+    syncPixRefBlock(modal);
+    startPixPayTimer(modal, pending.loc, locStrings);
+    registerAndPollPix(
+      modal,
+      pending.reservationCode,
+      pending.valor,
+      pending.loc,
+      pending.receiptData,
+      function onRegistered(reg) {
+        var brcode = reg && reg.brcode ? String(reg.brcode).trim() : "";
+        var payload = brcode || buildStaticPixPayload(pending);
+        if (!payload) return;
+        if (reg && reg.txid) pending.txid = String(reg.txid);
+        modal._gcvPixPayloadReady = true;
+        applyPixPayloadToModal(modal, payload, locStrings);
+      },
+    );
+    return true;
   }
 
   function ensurePixEmailBlock(modal, loc) {
@@ -3399,78 +3495,6 @@
         waBtn.tabIndex = 0;
       }
     }
-  }
-
-  function finalizePixCheckout(modal, s) {
-    if (!modal || !window.GcvPix || typeof window.GcvPix.buildPayload !== "function") return false;
-    var pending = modal._gcvPixPendingCheckout;
-    if (!pending) return false;
-    if (modal._gcvPixPayloadReady) return true;
-
-    var reservationCode =
-      window.GcvPixReceipt && typeof window.GcvPixReceipt.generateCode === "function"
-        ? window.GcvPixReceipt.generateCode()
-        : "GCV-" + Date.now().toString(36).slice(-6).toUpperCase();
-    var txid =
-      window.GcvPixReceipt && typeof window.GcvPixReceipt.pixTxidFromCode === "function"
-        ? window.GcvPixReceipt.pixTxidFromCode(reservationCode)
-        : reservationCode.replace(/[^A-Za-z0-9]/g, "").slice(0, 25);
-    var pixDescWithCode = (reservationCode + " " + (pending.pixDesc || "")).trim().slice(0, 73);
-    pending.reservationCode = reservationCode;
-    pending.txid = txid;
-    pending.pixDescWithCode = pixDescWithCode;
-    if (modal._gcvReceiptData) modal._gcvReceiptData.code = reservationCode;
-    modal._gcvPixReservationId = reservationCode;
-
-    var locStrings = s || STRINGS[pending.loc] || STRINGS.pt;
-    var payload;
-    try {
-      payload = window.GcvPix.buildPayload({
-        amount: pending.valor,
-        description: pending.pixDescWithCode,
-        txid: pending.txid,
-      });
-    } catch (err) {
-      return false;
-    }
-
-    modal._gcvPixPayloadReady = true;
-
-    var waBtn = modal.querySelector("[data-gcv-pix-wa]");
-    if (waBtn && window.GcvPixReceipt && modal._gcvReceiptData) {
-      waBtn.href = window.GcvPixReceipt.buildWhatsAppUrl(
-        reservationCode,
-        pending.valor,
-        modal._gcvReceiptData.trips,
-        pending.loc,
-      );
-    }
-
-    var copyBtn = modal.querySelector("[data-gcv-pix-copy]");
-    if (copyBtn) {
-      copyBtn.textContent = locStrings.pixModalCopy;
-      copyBtn.dataset.pixPayload = payload;
-      copyBtn.dataset.pixCopyDefault = locStrings.pixModalCopy;
-      copyBtn.dataset.pixCopyDone = locStrings.pixModalCopied;
-    }
-
-    var canvas = modal.querySelector(".gcv-pix-modal__qr");
-    if (canvas && window.GcvPix.renderQrToCanvas) {
-      canvas.style.display = "";
-      window.GcvPix.renderQrToCanvas(canvas, payload).catch(function () {
-        canvas.style.display = "none";
-      });
-    }
-
-    startPixPayTimer(modal, pending.loc, locStrings);
-    registerAndPollPix(
-      modal,
-      pending.reservationCode,
-      pending.valor,
-      pending.loc,
-      pending.receiptData,
-    );
-    return true;
   }
 
   function activatePixCheckout(modal, s) {
@@ -3697,9 +3721,10 @@
     });
   }
 
-  function registerAndPollPix(modal, reservationCode, valor, loc, receiptData) {
+  function registerAndPollPix(modal, reservationCode, valor, loc, receiptData, onRegistered) {
     if (!window.GcvPixPolling) return;
     initPixPollingHandlers();
+    var pending = modal && modal._gcvPixPendingCheckout;
     var payload = {
       reservation_id: reservationCode,
       amount: Number(valor),
@@ -3709,9 +3734,18 @@
       incl_excl: receiptData && receiptData.inclExcl ? receiptData.inclExcl : undefined,
       packages: receiptData && receiptData.packages ? receiptData.packages : undefined,
       email: getModalReceiptEmail(modal) || undefined,
+      description: (pending && pending.pixDescWithCode) || reservationCode + " Guia Chapada Veadeiros",
     };
     function startPollingIfReady(reg) {
-      if (!reg || !reg.success) return;
+      if (!reg || !reg.success) {
+        if (typeof onRegistered === "function") {
+          onRegistered({ success: false, brcode: "" });
+        }
+        return;
+      }
+      if (typeof onRegistered === "function") {
+        onRegistered(reg);
+      }
       if (String(reg.status || "").toUpperCase() === "PAID") {
         window.GcvPixPolling.checkPixStatus();
         return;
@@ -3727,6 +3761,9 @@
         return window.GcvPixPolling.registerPixReservation(payload).then(startPollingIfReady);
       })
       .catch(function () {
+        if (typeof onRegistered === "function") {
+          onRegistered({ success: false, brcode: "" });
+        }
         window.GcvPixPolling.startPixPolling(modal, reservationCode);
       });
   }

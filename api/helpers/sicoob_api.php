@@ -245,13 +245,14 @@ function gcv_sicoob_access_token(): ?string
 
 /**
  * @param array<string, string> $query
- * @return array<string, mixed>|null
+ * @param array<string, mixed>|null $jsonBody
+ * @return array{ok: bool, http: int, data: ?array, raw: string}
  */
-function gcv_sicoob_api_get(string $path, array $query = []): ?array
+function gcv_sicoob_api_request(string $method, string $path, array $query = [], ?array $jsonBody = null): array
 {
     $token = gcv_sicoob_access_token();
     if ($token === null) {
-        return null;
+        return ['ok' => false, 'http' => 0, 'data' => null, 'raw' => 'no_token'];
     }
 
     $cfg = gcv_sicoob_api_cfg();
@@ -262,34 +263,183 @@ function gcv_sicoob_api_get(string $path, array $query = []): ?array
 
     $ch = curl_init($url);
     if ($ch === false) {
-        return null;
+        return ['ok' => false, 'http' => 0, 'data' => null, 'raw' => 'curl_init_failed'];
     }
 
-    curl_setopt_array($ch, [
+    $headers = [
+        'Accept: application/json',
+        'Authorization: Bearer ' . $token,
+        'client_id: ' . $cfg['client_id'],
+    ];
+    $opts = [
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT => 15,
-        CURLOPT_CONNECTTIMEOUT => 8,
-        CURLOPT_HTTPHEADER => [
-            'Accept: application/json',
-            'Authorization: Bearer ' . $token,
-            'client_id: ' . $cfg['client_id'],
-        ],
-    ]);
+        CURLOPT_TIMEOUT => 20,
+        CURLOPT_CONNECTTIMEOUT => 10,
+        CURLOPT_CUSTOMREQUEST => strtoupper($method),
+    ];
+    if ($jsonBody !== null) {
+        $body = json_encode($jsonBody, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $headers[] = 'Content-Type: application/json';
+        $opts[CURLOPT_POSTFIELDS] = $body;
+    }
+    $opts[CURLOPT_HTTPHEADER] = $headers;
+    curl_setopt_array($ch, $opts);
+
     if (!gcv_sicoob_uses_static_sandbox_token() && !gcv_sicoob_apply_mtls($ch)) {
         curl_close($ch);
-        return null;
+        return ['ok' => false, 'http' => 0, 'data' => null, 'raw' => 'mtls_failed'];
     }
 
-    $body = curl_exec($ch);
-    $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $raw = curl_exec($ch);
+    $http = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
-    if ($body === false || $code < 200 || $code >= 300) {
+    if ($raw === false) {
+        return ['ok' => false, 'http' => $http, 'data' => null, 'raw' => 'curl_exec_failed'];
+    }
+    $data = json_decode($raw, true);
+    return [
+        'ok' => $http >= 200 && $http < 300,
+        'http' => $http,
+        'data' => is_array($data) ? $data : null,
+        'raw' => (string)$raw,
+    ];
+}
+
+/**
+ * @param array<string, string> $query
+ * @return array<string, mixed>|null
+ */
+function gcv_sicoob_api_get(string $path, array $query = []): ?array
+{
+    $res = gcv_sicoob_api_request('GET', $path, $query, null);
+    return $res['ok'] ? $res['data'] : null;
+}
+
+/**
+ * txid Bacen/Sicoob para cobrança imediata: 26–35 alfanumérico.
+ * Mantém o código GCVXXXXXX no início para matching.
+ */
+function gcv_sicoob_txid_from_reservation_id(string $reservationId): string
+{
+    $alnum = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $reservationId) ?? '');
+    if ($alnum === '') {
+        $alnum = 'GCV' . strtoupper(bin2hex(random_bytes(4)));
+    }
+    if (strlen($alnum) < 26) {
+        $alnum = str_pad($alnum, 26, '0');
+    }
+    return substr($alnum, 0, 35);
+}
+
+/**
+ * Cria cobrança Pix imediata (QR dinâmico) no Sicoob.
+ *
+ * @return array{ok: bool, txid?: string, brcode?: string, location?: string, status?: string, error?: string, http?: int}
+ */
+function gcv_sicoob_create_cob(string $reservationId, float $amount, int $expiresIn = 480, string $payerRequest = ''): array
+{
+    if (!gcv_sicoob_is_configured()) {
+        return ['ok' => false, 'error' => 'sicoob_not_configured'];
+    }
+
+    $cfg = gcv_sicoob_api_cfg();
+    $txid = gcv_sicoob_txid_from_reservation_id($reservationId);
+    $amountStr = number_format(round($amount, 2), 2, '.', '');
+    $expiresIn = max(60, min(3600, $expiresIn));
+    $solicitacao = trim($payerRequest);
+    if ($solicitacao === '') {
+        $solicitacao = $reservationId . ' Guia Chapada Veadeiros';
+    }
+    $solicitacao = mb_substr($solicitacao, 0, 140);
+
+    $body = [
+        'calendario' => ['expiracao' => $expiresIn],
+        'valor' => ['original' => $amountStr],
+        'chave' => $cfg['pix_key'],
+        'solicitacaoPagador' => $solicitacao,
+    ];
+
+    $res = gcv_sicoob_api_request('PUT', '/cob/' . rawurlencode($txid), [], $body);
+    if (!$res['ok'] || !is_array($res['data'])) {
+        return [
+            'ok' => false,
+            'error' => 'cob_create_failed',
+            'http' => $res['http'],
+            'txid' => $txid,
+            'detail' => mb_substr($res['raw'], 0, 400),
+        ];
+    }
+
+    $data = $res['data'];
+    $brcode = '';
+    foreach (['pixCopiaECola', 'brcode', 'qrCode', 'emv'] as $k) {
+        if (!empty($data[$k]) && is_string($data[$k])) {
+            $brcode = trim($data[$k]);
+            break;
+        }
+    }
+    if ($brcode === '' && !empty($data['loc']['location']) && is_string($data['loc']['location'])) {
+        // Alguns retornos só trazem location; o payload EMV completo costuma vir em pixCopiaECola
+    }
+
+    return [
+        'ok' => $brcode !== '',
+        'txid' => (string)($data['txid'] ?? $txid),
+        'brcode' => $brcode,
+        'location' => is_array($data['loc'] ?? null) ? (string)($data['loc']['location'] ?? '') : '',
+        'status' => (string)($data['status'] ?? ''),
+        'error' => $brcode === '' ? 'missing_brcode' : null,
+        'http' => $res['http'],
+    ];
+}
+
+/**
+ * Confirma reserva se a cobrança dinâmica estiver CONCLUIDA.
+ *
+ * @param array<string, mixed> $reservation
+ */
+function gcv_sicoob_try_confirm_via_cob(array $reservation): ?array
+{
+    $reservationId = gcv_pix_safe_id((string)($reservation['reservation_id'] ?? ''));
+    if ($reservationId === '' || gcv_pix_effective_status($reservation) !== 'PENDING') {
+        return null;
+    }
+    $txid = substr(preg_replace('/[^A-Za-z0-9]/', '', (string)($reservation['txid'] ?? '')) ?? '', 0, 35);
+    if ($txid === '' || strlen($txid) < 26) {
+        $txid = gcv_sicoob_txid_from_reservation_id($reservationId);
+    }
+
+    $cob = gcv_sicoob_api_get('/cob/' . rawurlencode($txid));
+    if (!$cob) {
+        return null;
+    }
+    $status = strtoupper((string)($cob['status'] ?? ''));
+    if ($status !== 'CONCLUIDA') {
         return null;
     }
 
-    $data = json_decode($body, true);
-    return is_array($data) ? $data : null;
+    $res = gcv_pix_mark_paid($reservationId, 'sicoob_cob');
+    if (!$res) {
+        return null;
+    }
+    $res['sicoob_cob_status'] = $status;
+    $res['sicoob_poll_at'] = gmdate('c');
+    if (!empty($cob['pix']) && is_array($cob['pix'])) {
+        $first = $cob['pix'][0] ?? null;
+        if (is_array($first)) {
+            $e2e = trim((string)($first['endToEndId'] ?? ''));
+            if ($e2e !== '') {
+                $res['sicoob_end_to_end_id'] = $e2e;
+            }
+            $paid = gcv_sicoob_pix_item_amount_reais($first);
+            if ($paid !== null) {
+                $res['sicoob_paid_reais'] = $paid;
+            }
+        }
+    }
+    gcv_pix_write_reservation($res);
+    return $res;
 }
 
 /** @return list<array<string, mixed>> */
@@ -345,6 +495,12 @@ function gcv_sicoob_try_confirm_reservation(array $reservation): ?array
 
     gcv_sicoob_mark_poll_attempt($reservation);
 
+    // 1) Cobrança dinâmica: status CONCLUIDA no /cob/{txid}
+    $viaCob = gcv_sicoob_try_confirm_via_cob($reservation);
+    if ($viaCob) {
+        return $viaCob;
+    }
+
     $createdTs = strtotime((string)($reservation['created_at'] ?? ''));
     if ($createdTs === false) {
         $createdTs = time() - 900;
@@ -352,7 +508,7 @@ function gcv_sicoob_try_confirm_reservation(array $reservation): ?array
     $start = gcv_sicoob_format_dt(max(0, $createdTs - 120));
     $end = gcv_sicoob_format_dt(time() + 120);
 
-    $txid = substr(preg_replace('/[^A-Za-z0-9]/', '', (string)($reservation['txid'] ?? '')) ?? '', 0, 25);
+    $txid = substr(preg_replace('/[^A-Za-z0-9]/', '', (string)($reservation['txid'] ?? '')) ?? '', 0, 35);
 
     $queries = [];
     if ($txid !== '') {
