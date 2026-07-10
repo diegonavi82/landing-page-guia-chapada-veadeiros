@@ -69,6 +69,9 @@ function gcv_build_pix_receipt_email_html(array $rec, string $locale): string
             'exclDefault' => 'Transporte, ingresso e almoço',
             'emitted' => 'Emitido em',
             'contact' => 'Contato',
+            'buyer' => 'Cliente',
+            'buyerEmail' => 'E-mail',
+            'buyerPhone' => 'Telefone / WhatsApp',
             'confirm' => 'Ver confirmação',
             'lookup' => 'Consultar reserva',
         ],
@@ -92,6 +95,9 @@ function gcv_build_pix_receipt_email_html(array $rec, string $locale): string
             'exclDefault' => 'Transport, admission and lunch',
             'emitted' => 'Issued on',
             'contact' => 'Contact',
+            'buyer' => 'Customer',
+            'buyerEmail' => 'Email',
+            'buyerPhone' => 'Phone / WhatsApp',
             'confirm' => 'View confirmation',
             'lookup' => 'Look up reservation',
         ],
@@ -115,6 +121,9 @@ function gcv_build_pix_receipt_email_html(array $rec, string $locale): string
             'exclDefault' => 'Transporte, entrada y almuerzo',
             'emitted' => 'Emitido el',
             'contact' => 'Contacto',
+            'buyer' => 'Cliente',
+            'buyerEmail' => 'Correo',
+            'buyerPhone' => 'Teléfono / WhatsApp',
             'confirm' => 'Ver confirmación',
             'lookup' => 'Consultar reserva',
         ],
@@ -182,6 +191,28 @@ function gcv_build_pix_receipt_email_html(array $rec, string $locale): string
 
     $received = $st === 'PAID' ? gcv_pix_receipt_format_brl($amount) : gcv_pix_receipt_format_brl(0);
     $receivedLabel = $st === 'PAID' ? $L['finReceived'] : $L['finTotal'];
+    $buyerEmail = trim((string)($rec['email'] ?? $rec['buyer_email'] ?? ''));
+    $buyerPhone = trim((string)($rec['phone'] ?? $rec['telefone'] ?? $rec['buyer_phone'] ?? ''));
+    $buyerBlock = '';
+    if ($buyerEmail !== '' || $buyerPhone !== '') {
+        $buyerBlock =
+            '<div style="margin:0 0 16px;padding:14px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;">'
+            . '<p style="margin:0 0 6px;font-size:11px;font-weight:700;color:#1e3a8a;letter-spacing:.06em;text-transform:uppercase;">'
+            . htmlspecialchars($L['buyer'], ENT_QUOTES, 'UTF-8') . '</p>';
+        if ($buyerEmail !== '') {
+            $buyerBlock .=
+                '<p style="margin:0 0 4px;font-size:13px;color:#334155;"><strong>'
+                . htmlspecialchars($L['buyerEmail'], ENT_QUOTES, 'UTF-8')
+                . ':</strong> ' . htmlspecialchars($buyerEmail, ENT_QUOTES, 'UTF-8') . '</p>';
+        }
+        if ($buyerPhone !== '') {
+            $buyerBlock .=
+                '<p style="margin:0;font-size:13px;color:#334155;"><strong>'
+                . htmlspecialchars($L['buyerPhone'], ENT_QUOTES, 'UTF-8')
+                . ':</strong> ' . htmlspecialchars($buyerPhone, ENT_QUOTES, 'UTF-8') . '</p>';
+        }
+        $buyerBlock .= '</div>';
+    }
 
     $body = '<div style="max-width:640px;margin:0 auto;background:#fff;border:1px solid #d7e2db;border-radius:16px;overflow:hidden;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">'
         . '<div style="background:#0f3d2e;padding:22px 24px;">'
@@ -190,6 +221,7 @@ function gcv_build_pix_receipt_email_html(array $rec, string $locale): string
         . '<h1 style="margin:0;font-size:18px;color:#fff;">' . htmlspecialchars($L['docTitle'], ENT_QUOTES, 'UTF-8') . '</h1></div>'
         . '<div style="padding:22px 24px;">'
         . '<p style="margin:0 0 16px;font-size:14px;line-height:1.55;color:#334155;">' . htmlspecialchars($intro, ENT_QUOTES, 'UTF-8') . '</p>'
+        . $buyerBlock
         . '<h2 style="margin:0 0 8px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#064e3b;">' . htmlspecialchars($L['itinerary'], ENT_QUOTES, 'UTF-8') . '</h2>'
         . '<table style="width:100%;border-collapse:collapse;margin:0 0 16px;border:1px solid #0f3d2e;"><thead><tr style="background:#0f3d2e;color:#fff;">'
         . '<th style="padding:10px 8px;text-align:left;font-size:11px;">' . htmlspecialchars($L['colDate'], ENT_QUOTES, 'UTF-8') . '</th>'
@@ -213,7 +245,6 @@ function gcv_build_pix_receipt_email_html(array $rec, string $locale): string
     $appUrl = rtrim((string)($_ENV['APP_URL'] ?? 'https://www.guiachapadaveadeiros.com'), '/');
     $lookupBase = $loc === 'en' ? '/en/consultar-reserva.html' : ($loc === 'es' ? '/es/consultar-reserva.html' : '/consultar-reserva.html');
     $confirmBase = $loc === 'en' ? '/en/confirmacao.html' : ($loc === 'es' ? '/es/confirmacao.html' : '/confirmacao.html');
-    $buyerEmail = trim((string)($rec['email'] ?? $rec['buyer_email'] ?? ''));
     $lookupUrl = $appUrl . $lookupBase . '?id=' . rawurlencode($code);
     if ($buyerEmail !== '') {
         $lookupUrl .= '&email=' . rawurlencode($buyerEmail) . '&auto=1';

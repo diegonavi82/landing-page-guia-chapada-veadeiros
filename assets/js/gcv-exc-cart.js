@@ -468,6 +468,7 @@
           cartId: it.id || "",
           valorUnit: parseInt(String(it.valorUnit), 10) || 0,
           guiaNome: it.guiaNome || "",
+          dateIso: it.dateIso || "",
         };
       }),
       packages: items.map(function (it) {
@@ -480,8 +481,10 @@
           qty: parseInt(String(it.qty), 10) || 1,
           cartId: it.id || "",
           valorUnit: parseInt(String(it.valorUnit), 10) || 0,
-          inclExcl: it.inclExcl || null,
+          // Não envia inclExcl cacheado: o modal regenera no idioma da página.
+          inclExcl: null,
           guiaNome: it.guiaNome || "",
+          dateIso: it.dateIso || "",
         };
       }),
     };

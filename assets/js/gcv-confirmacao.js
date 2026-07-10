@@ -20,6 +20,8 @@
       amount: "Valor pago",
       trips: "Passeios reservados",
       person: "pessoa(s)",
+      email: "E-mail",
+      phone: "Telefone / WhatsApp",
       note: "Guarde o comprovante do seu banco. Entraremos em contato se necessário.",
       backExc: "Voltar às excursões",
       lookup: "Consultar reserva",
@@ -42,6 +44,8 @@
       amount: "Amount paid",
       trips: "Reserved tours",
       person: "person(s)",
+      email: "Email",
+      phone: "Phone / WhatsApp",
       note: "Keep your bank receipt. We will contact you if needed.",
       backExc: "Back to tours",
       lookup: "Look up reservation",
@@ -64,6 +68,8 @@
       amount: "Valor pagado",
       trips: "Paseos reservados",
       person: "persona(s)",
+      email: "Correo",
+      phone: "Teléfono / WhatsApp",
       note: "Guarde el comprobante del banco. Le contactaremos si es necesario.",
       backExc: "Volver a las excursiones",
       lookup: "Consultar reserva",
@@ -290,6 +296,22 @@
         '<span class="gcv-confirmacao-meta__value--amount">' + escapeHtml(formatAmount(amount)) + "</span>",
         "gcv-confirmacao-meta__item--wide",
       );
+    }
+
+    var buyerEmail =
+      (voucherData && voucherData.email) ||
+      data.email ||
+      "";
+    var buyerPhone =
+      (voucherData && (voucherData.phone || voucherData.telefone)) ||
+      data.phone ||
+      data.telefone ||
+      "";
+    if (buyerEmail) {
+      html += metaItem(s("email"), escapeHtml(buyerEmail), "gcv-confirmacao-meta__item--wide");
+    }
+    if (buyerPhone) {
+      html += metaItem(s("phone"), escapeHtml(buyerPhone), "gcv-confirmacao-meta__item--wide");
     }
 
     html += "</div>" + voucherCtaHtml(voucherData, loc) + tripsHtml(displayTrips);

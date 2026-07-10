@@ -919,6 +919,183 @@
   color: #64748b;
 }
 
+.gcv-pix-modal__field-error {
+  margin: 0.25rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  font-weight: 600;
+  color: #b91c1c;
+}
+
+.gcv-pix-modal__field-error[hidden] {
+  display: none !important;
+}
+
+.gcv-pix-modal__email.is-invalid {
+  border-color: #dc2626;
+}
+
+.gcv-pix-modal__phone-wrap.is-invalid {
+  border-color: #dc2626;
+}
+
+.gcv-pix-modal__phone-label {
+  margin-top: 0.75rem;
+}
+
+.gcv-pix-modal__phone-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.4rem;
+  width: 100%;
+}
+
+.gcv-pix-modal__phone-row .gcv-pix-modal__phone-wrap {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.gcv-pix-modal__phone-wrap {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  overflow: visible;
+  position: relative;
+}
+
+.gcv-pix-modal__phone-prefix {
+  display: inline-flex;
+  align-items: stretch;
+  border-right: 1px solid #e2e8f0;
+  background: #f8fafc;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #0f172a;
+  position: relative;
+  z-index: 3;
+}
+
+.gcv-pix-modal__ddi-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0 0.35rem 0 0.45rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.gcv-pix-modal__ddi-caret {
+  width: 0;
+  height: 0;
+  border-left: 3.5px solid transparent;
+  border-right: 3.5px solid transparent;
+  border-top: 4.5px solid #64748b;
+}
+
+.gcv-pix-modal__phone-flag {
+  width: 1.2rem;
+  height: 0.9rem;
+  border-radius: 2px;
+}
+
+.gcv-pix-modal__phone-dial {
+  font-weight: 800;
+}
+
+.gcv-pix-modal__ddi-dropdown {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: min(18.5rem, calc(100vw - 2.5rem));
+  max-height: 16.5rem;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
+  z-index: 10080;
+  overflow: hidden;
+}
+
+.gcv-pix-modal__ddi-dropdown[hidden] {
+  display: none !important;
+}
+
+.gcv-pix-modal__ddi-search {
+  width: 100%;
+  margin: 0;
+  padding: 0.55rem 0.7rem;
+  border: 0;
+  border-bottom: 1px solid #e2e8f0;
+  font: inherit;
+  font-size: 0.82rem;
+  box-sizing: border-box;
+}
+
+.gcv-pix-modal__ddi-list {
+  overflow-y: auto;
+  max-height: 13.5rem;
+  padding: 0.25rem;
+}
+
+.gcv-pix-modal__ddi-option {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  margin: 0;
+  padding: 0.45rem 0.5rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #0f172a;
+  font: inherit;
+  font-size: 0.82rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.gcv-pix-modal__ddi-option:hover,
+.gcv-pix-modal__ddi-option.is-selected {
+  background: #d1fae5;
+}
+
+.gcv-pix-modal__ddi-option-flag {
+  width: 1.25rem;
+  height: 0.95rem;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.gcv-pix-modal__ddi-option-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gcv-pix-modal__ddi-option-dial {
+  color: #475569;
+  font-weight: 700;
+}
+
+.gcv-pix-modal__phone-wrap .gcv-pix-modal__phone {
+  flex: 1;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+}
+
 .gcv-pix-modal--await-email .gcv-pix-modal__pay-zone {
   opacity: 0.45;
   pointer-events: none;

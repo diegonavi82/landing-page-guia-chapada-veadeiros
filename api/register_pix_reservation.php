@@ -154,6 +154,14 @@ if ($clientEmail !== '' && filter_var($clientEmail, FILTER_VALIDATE_EMAIL)) {
     $record['email'] = strtolower($clientEmail);
 }
 
+$clientPhone = trim((string)($data['phone'] ?? $data['telefone'] ?? ''));
+if ($clientPhone !== '') {
+    $phoneDigits = preg_replace('/\D+/', '', $clientPhone) ?? '';
+    if (strlen($phoneDigits) >= 10 && strlen($phoneDigits) <= 13) {
+        $record['phone'] = $clientPhone;
+    }
+}
+
 if (!gcv_pix_write_reservation($record)) {
     gcv_pix_json_error(500, 'Could not save reservation');
 }

@@ -26,6 +26,8 @@
       amount: "Valor total",
       code: "Código",
       status: "Status",
+      email: "E-mail",
+      phone: "Telefone / WhatsApp",
       viewConfirm: "Ver página de confirmação",
       backExc: "← Voltar às excursões",
       person: "pessoa",
@@ -49,6 +51,8 @@
       amount: "Total",
       code: "Code",
       status: "Status",
+      email: "Email",
+      phone: "Phone / WhatsApp",
       viewConfirm: "Open confirmation page",
       backExc: "← Back to tours",
       person: "person",
@@ -72,6 +76,8 @@
       amount: "Valor total",
       code: "Código",
       status: "Estado",
+      email: "Correo",
+      phone: "Teléfono / WhatsApp",
       viewConfirm: "Ver página de confirmación",
       backExc: "← Volver a las excursiones",
       person: "persona",
@@ -164,9 +170,12 @@
     return "R$ " + v.toFixed(2).replace(".", ",");
   }
 
-  function saveCodeToStorage(code, email) {
+  function saveCodeToStorage(code, email, phone) {
     if (!window.GcvPixReceipt || typeof window.GcvPixReceipt.saveReservationCode !== "function") return;
-    window.GcvPixReceipt.saveReservationCode(code, email ? { email: email } : undefined);
+    var opts = {};
+    if (email) opts.email = email;
+    if (phone) opts.phone = phone;
+    window.GcvPixReceipt.saveReservationCode(code, opts);
   }
 
   function bindCodeAutosave(codeInput, emailInput) {
@@ -229,6 +238,23 @@
         escapeHtml(s(loc, "amount")) +
         ":</strong> " +
         escapeHtml(formatBrl(data.amount)) +
+        "</p>";
+    }
+
+    if (data.email) {
+      html +=
+        "<p><strong>" +
+        escapeHtml(s(loc, "email")) +
+        ":</strong> " +
+        escapeHtml(data.email) +
+        "</p>";
+    }
+    if (data.phone || data.telefone) {
+      html +=
+        "<p><strong>" +
+        escapeHtml(s(loc, "phone")) +
+        ":</strong> " +
+        escapeHtml(data.phone || data.telefone) +
         "</p>";
     }
 
@@ -327,7 +353,7 @@
       .then(function (pack) {
         var body = pack.body || {};
         if (body.ok) {
-          saveCodeToStorage(code, email);
+          saveCodeToStorage(code, email, body.phone || body.telefone || "");
           if (window.GcvExcBookings && typeof window.GcvExcBookings.recordTripsForReservation === "function") {
             window.GcvExcBookings.recordTripsForReservation(
               body.reservation_id,

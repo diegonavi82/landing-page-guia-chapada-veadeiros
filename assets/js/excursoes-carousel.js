@@ -324,13 +324,13 @@
       pixModalCopied: "Código copiado!",
       pixModalClose: "Fechar",
       pixModalHint:
-        "Mantenha esta janela aberta. Assim que o Pix for compensado, confirmamos automaticamente e você receberá o código de reserva. Se demorar, envie o comprovante pelo WhatsApp informando o e-mail usado aqui.",
+        "Mantenha esta janela aberta. Assim que o Pix for compensado, confirmamos automaticamente e você receberá o código de reserva. Se demorar, envie o comprovante pelo WhatsApp informando o e-mail e o telefone usados aqui.",
       pixModalCancelPolicy:
         "Cancelamento: O pagamento reserva a disponibilidade do guia. Em caso de cancelamento pelo cliente, não haverá reembolso.",
       pixModalRefLabel: "Código de reserva",
       pixModalEmailContinue: "Continuar para o Pix",
-      pixModalEmailClear: "Excluir e-mail",
-      pixModalEmailClearHint: "Exclui o e-mail, cancela este Pix e permite informar outro.",
+      pixModalEmailClear: "Excluir dados",
+      pixModalEmailClearHint: "Exclui e-mail e telefone, cancela este Pix e permite informar outros dados.",
       pixPostpayLocked: "Disponível após confirmação do pagamento",
       pixModalGenerating: "Gerando Pix…",
       pixModalWaiting: "Aguardando confirmação do pagamento…",
@@ -463,13 +463,13 @@
       pixModalCopied: "Code copied!",
       pixModalClose: "Close",
       pixModalHint:
-        "Keep this window open. We confirm automatically once Pix clears and you'll receive your reservation code. If it takes too long, send your bank receipt via WhatsApp with the email used here.",
+        "Keep this window open. We confirm automatically once Pix clears and you'll receive your reservation code. If it takes too long, send your bank receipt via WhatsApp with the email and phone used here.",
       pixModalCancelPolicy:
         "Cancellation: Payment reserves the guide's availability. If the client cancels, no refund will be issued.",
       pixModalRefLabel: "Reservation code",
       pixModalEmailContinue: "Continue to Pix",
-      pixModalEmailClear: "Remove email",
-      pixModalEmailClearHint: "Removes the email, cancels this Pix, and lets you enter another.",
+      pixModalEmailClear: "Remove details",
+      pixModalEmailClearHint: "Removes email and phone, cancels this Pix, and lets you enter new details.",
       pixPostpayLocked: "Available after payment is confirmed",
       pixModalGenerating: "Generating Pix…",
       pixModalWaiting: "Waiting for payment confirmation…",
@@ -602,13 +602,13 @@
       pixModalCopied: "¡Código copiado!",
       pixModalClose: "Cerrar",
       pixModalHint:
-        "Mantén esta ventana abierta. Confirmamos automáticamente cuando el Pix se compense y recibirás el código de reserva. Si tarda, envía el comprobante por WhatsApp con el correo usado aquí.",
+        "Mantén esta ventana abierta. Confirmamos automáticamente cuando el Pix se compense y recibirás el código de reserva. Si tarda, envía el comprobante por WhatsApp con el correo y el teléfono usados aquí.",
       pixModalCancelPolicy:
         "Cancelación: El pago reserva la disponibilidad del guía. En caso de cancelación por parte del cliente, no habrá reembolso.",
       pixModalRefLabel: "Código de reserva",
       pixModalEmailContinue: "Continuar al Pix",
-      pixModalEmailClear: "Eliminar correo",
-      pixModalEmailClearHint: "Elimina el correo, cancela este Pix y permite informar otro.",
+      pixModalEmailClear: "Eliminar datos",
+      pixModalEmailClearHint: "Elimina correo y teléfono, cancela este Pix y permite informar otros datos.",
       pixPostpayLocked: "Disponible tras confirmar el pago",
       pixModalGenerating: "Generando Pix…",
       pixModalWaiting: "Esperando confirmación del pago…",
@@ -2581,13 +2581,12 @@
     var packages = [];
     if (detail && Array.isArray(detail.packages) && detail.packages.length) {
       packages = detail.packages.map(function (pack) {
+        var looked = pack.cartId ? lookupInclExclByCartId(pack.cartId, locale, s) : null;
         return {
           title: pack.title || "",
           cartId: pack.cartId || "",
-          inclExcl:
-            pack.inclExcl && pack.inclExcl.incl
-              ? pack.inclExcl
-              : lookupInclExclByCartId(pack.cartId, locale, s),
+          // Sempre regenera no idioma atual (o carrinho pode ter textos de outro idioma).
+          inclExcl: looked || (pack.inclExcl && pack.inclExcl.incl ? pack.inclExcl : null),
         };
       });
     } else if (detail && detail.inclExcl && detail.inclExcl.incl) {
@@ -2681,7 +2680,6 @@
       monthName: trip.monthName || "",
       guiaNome: trip.guiaNome || "",
     };
-    if (out.embarque && out.hora && out.dateIso) return out;
     var cartId = out.cartId;
     if (!cartId) return out.embarque || out.hora ? out : null;
     var root = document.getElementById("excursoes-junho");
@@ -2693,14 +2691,15 @@
         if (!out.embarque) out.embarque = excursaoEmbarque(rows[i], s);
         if (!out.hora) out.hora = horaExcursao(rows[i]);
         if (!out.destino) out.destino = String(rows[i].destino || "");
-        if (!out.dateLabel) out.dateLabel = excursaoDateLabel(rows[i], locale);
+        // Sempre no idioma atual da página (evita misturar EN/PT do carrinho).
+        out.dateLabel = excursaoDateLabel(rows[i], locale);
         if (!out.valorUnit) out.valorUnit = excursaoValor(rows[i]);
         if (!out.weekday) out.weekday = String(rows[i].weekday || "");
         if (!out.dateIso) out.dateIso = excursaoDateIso(rows[i]);
         if (!out.dayNum && rows[i].dayNum != null) out.dayNum = String(rows[i].dayNum);
         if (!out.monthName && rows[i].monthName) out.monthName = String(rows[i].monthName);
         if (!out.guiaNome && rows[i].guiaNome) out.guiaNome = String(rows[i].guiaNome);
-        if (!out.dateShort && out.dateIso) {
+        if (out.dateIso) {
           out.dateShort =
             out.dateIso.slice(8, 10) + "/" + out.dateIso.slice(5, 7) + "/" + out.dateIso.slice(0, 4);
         }
@@ -2753,6 +2752,11 @@
   }
 
   function resolveTripInclExcl(trip, detail, locale, s) {
+    // Preferência: dados vivos no idioma atual (não usar cache do carrinho em outro idioma).
+    if (trip && trip.cartId) {
+      var looked = lookupInclExclByCartId(trip.cartId, locale, s);
+      if (looked && looked.incl && looked.incl.length) return looked;
+    }
     if (detail && Array.isArray(detail.packages) && trip && trip.cartId) {
       for (var i = 0; i < detail.packages.length; i++) {
         var pack = detail.packages[i];
@@ -2763,9 +2767,6 @@
     }
     if (detail && detail.inclExcl && detail.inclExcl.incl) {
       return detail.inclExcl;
-    }
-    if (trip && trip.cartId) {
-      return lookupInclExclByCartId(trip.cartId, locale, s);
     }
     return null;
   }
@@ -3288,6 +3289,349 @@
     return emailInput ? String(emailInput.value || "").trim() : "";
   }
 
+  function getModalPhoneInputValue(modal) {
+    if (!modal) return "";
+    var phoneInput = modal.querySelector("#gcv-pix-modal-phone");
+    return phoneInput ? String(phoneInput.value || "").trim() : "";
+  }
+
+  function getModalReceiptPhone(modal) {
+    return getModalPhoneInputValue(modal);
+  }
+
+  function getModalPhoneIso(modal) {
+    if (!modal) return "br";
+    var hidden = modal.querySelector("#gcv-pix-modal-phone-ddi");
+    var iso = hidden ? String(hidden.value || "").trim().toLowerCase() : "";
+    if (window.GcvPixReceipt && typeof window.GcvPixReceipt.findPhoneCountry === "function") {
+      return window.GcvPixReceipt.findPhoneCountry(iso || "br").iso;
+    }
+    return iso || "br";
+  }
+
+  function clearPixFieldError(modal, field) {
+    if (!modal) return;
+    var errId = field === "phone" ? "gcv-pix-modal-phone-error" : "gcv-pix-modal-email-error";
+    var errEl = modal.querySelector("#" + errId);
+    if (errEl) {
+      errEl.hidden = true;
+      errEl.textContent = "";
+    }
+    if (field === "phone") {
+      var phoneInput = modal.querySelector("#gcv-pix-modal-phone");
+      var phoneWrap = modal.querySelector(".gcv-pix-modal__phone-wrap");
+      if (phoneInput) {
+        phoneInput.classList.remove("is-invalid");
+        phoneInput.removeAttribute("aria-invalid");
+      }
+      if (phoneWrap) phoneWrap.classList.remove("is-invalid");
+    } else {
+      var emailInput = modal.querySelector("#gcv-pix-modal-email");
+      if (emailInput) {
+        emailInput.classList.remove("is-invalid");
+        emailInput.removeAttribute("aria-invalid");
+      }
+    }
+  }
+
+  function setPixFieldError(modal, field, message) {
+    if (!modal) return;
+    var errId = field === "phone" ? "gcv-pix-modal-phone-error" : "gcv-pix-modal-email-error";
+    var errEl = modal.querySelector("#" + errId);
+    if (errEl) {
+      errEl.hidden = !message;
+      errEl.textContent = message || "";
+    }
+    if (field === "phone") {
+      var phoneInput = modal.querySelector("#gcv-pix-modal-phone");
+      var phoneWrap = modal.querySelector(".gcv-pix-modal__phone-wrap");
+      if (phoneInput) {
+        phoneInput.classList.toggle("is-invalid", !!message);
+        if (message) phoneInput.setAttribute("aria-invalid", "true");
+        else phoneInput.removeAttribute("aria-invalid");
+      }
+      if (phoneWrap) phoneWrap.classList.toggle("is-invalid", !!message);
+    } else {
+      var emailInput = modal.querySelector("#gcv-pix-modal-email");
+      if (emailInput) {
+        emailInput.classList.toggle("is-invalid", !!message);
+        if (message) emailInput.setAttribute("aria-invalid", "true");
+        else emailInput.removeAttribute("aria-invalid");
+      }
+    }
+  }
+
+  function validatePixEmailField(modal, options) {
+    var opts = options || {};
+    var loc = modal._gcvPixLocale || "pt";
+    var email = getModalEmailInputValue(modal);
+    var msg = "";
+    if (window.GcvPixReceipt && typeof window.GcvPixReceipt.emailValidationMessage === "function") {
+      msg = window.GcvPixReceipt.emailValidationMessage(email, loc);
+    } else if (!email) {
+      msg = "Preencha para prosseguir";
+    } else if (!window.GcvPixReceipt || !window.GcvPixReceipt.isValidEmail(email)) {
+      msg = "E-mail com formato inválido.";
+    }
+    if (opts.show === false) {
+      if (!msg) clearPixFieldError(modal, "email");
+      return !msg;
+    }
+    if (msg) setPixFieldError(modal, "email", msg);
+    else clearPixFieldError(modal, "email");
+    return !msg;
+  }
+
+  function validatePixPhoneField(modal, options) {
+    var opts = options || {};
+    var loc = modal._gcvPixLocale || "pt";
+    var phone = getModalPhoneInputValue(modal);
+    var iso = getModalPhoneIso(modal);
+    var msg = "";
+    if (window.GcvPixReceipt && typeof window.GcvPixReceipt.phoneValidationMessage === "function") {
+      msg = window.GcvPixReceipt.phoneValidationMessage(phone, iso, loc);
+    } else if (!phone) {
+      msg = "Preencha para prosseguir";
+    } else if (!window.GcvPixReceipt || !window.GcvPixReceipt.isValidPhone(phone, iso)) {
+      msg = "Telefone incompleto — faltam dígitos.";
+    }
+    if (opts.show === false) {
+      if (!msg) clearPixFieldError(modal, "phone");
+      return !msg;
+    }
+    if (msg) setPixFieldError(modal, "phone", msg);
+    else clearPixFieldError(modal, "phone");
+    return !msg;
+  }
+
+  function ensurePixFieldErrorEls(block) {
+    if (!block) return;
+    if (!block.querySelector("#gcv-pix-modal-email-error")) {
+      var emailHint = block.querySelector("#gcv-pix-modal-email-hint");
+      var emailErr = document.createElement("p");
+      emailErr.className = "gcv-pix-modal__field-error";
+      emailErr.id = "gcv-pix-modal-email-error";
+      emailErr.setAttribute("role", "alert");
+      emailErr.hidden = true;
+      if (emailHint && emailHint.parentNode) {
+        emailHint.parentNode.insertBefore(emailErr, emailHint.nextSibling);
+      } else {
+        block.appendChild(emailErr);
+      }
+    }
+    if (!block.querySelector("#gcv-pix-modal-phone-error")) {
+      var phoneHint = block.querySelector("#gcv-pix-modal-phone-hint");
+      var phoneErr = document.createElement("p");
+      phoneErr.className = "gcv-pix-modal__field-error";
+      phoneErr.id = "gcv-pix-modal-phone-error";
+      phoneErr.setAttribute("role", "alert");
+      phoneErr.hidden = true;
+      if (phoneHint && phoneHint.parentNode) {
+        phoneHint.parentNode.insertBefore(phoneErr, phoneHint.nextSibling);
+      } else {
+        block.appendChild(phoneErr);
+      }
+    }
+  }
+
+  function positionPixDdiDropdown(modal) {
+    if (!modal) return;
+    var drop =
+      document.getElementById("gcv-pix-modal-ddi-dropdown") ||
+      modal.querySelector("#gcv-pix-modal-ddi-dropdown");
+    var trigger = modal.querySelector("#gcv-pix-modal-ddi-trigger");
+    if (!drop || !trigger || drop.hidden) return;
+    var rect = trigger.getBoundingClientRect();
+    var width = Math.min(296, Math.max(240, window.innerWidth - 24));
+    var left = Math.min(Math.max(12, rect.left), window.innerWidth - width - 12);
+    var top = rect.bottom + 6;
+    var maxH = Math.min(264, window.innerHeight - top - 12);
+    if (maxH < 160 && rect.top > 180) {
+      top = Math.max(12, rect.top - 6 - Math.min(264, rect.top - 12));
+      maxH = Math.min(264, rect.top - 18);
+    }
+    drop.style.position = "fixed";
+    drop.style.top = Math.round(top) + "px";
+    drop.style.left = Math.round(left) + "px";
+    drop.style.width = Math.round(width) + "px";
+    drop.style.maxHeight = Math.round(maxH) + "px";
+    drop.style.zIndex = "10080";
+    var list = drop.querySelector("#gcv-pix-modal-ddi-list");
+    if (list) list.style.maxHeight = Math.max(120, Math.round(maxH - 44)) + "px";
+  }
+
+  function renderPixDdiOptions(modal, loc, query) {
+    if (!modal || !window.GcvPixReceipt) return;
+    var list =
+      document.querySelector("#gcv-pix-modal-ddi-list") ||
+      modal.querySelector("#gcv-pix-modal-ddi-list");
+    if (!list || typeof window.GcvPixReceipt.buildPhoneDdiListHtml !== "function") return;
+    list.innerHTML = window.GcvPixReceipt.buildPhoneDdiListHtml(
+      loc || modal._gcvPixLocale || "pt",
+      getModalPhoneIso(modal),
+      query || "",
+    );
+  }
+
+  function openPixDdiDropdown(modal, loc) {
+    if (!modal || modal._gcvPixCheckoutActive || modal._gcvPixConfirmed) return;
+    var drop =
+      modal.querySelector("#gcv-pix-modal-ddi-dropdown") ||
+      document.getElementById("gcv-pix-modal-ddi-dropdown");
+    var trigger = modal.querySelector("#gcv-pix-modal-ddi-trigger");
+    var search =
+      (drop && drop.querySelector("#gcv-pix-modal-ddi-search")) ||
+      modal.querySelector("#gcv-pix-modal-ddi-search");
+    if (!drop) return;
+    function show() {
+      if (drop.parentNode !== document.body) {
+        document.body.appendChild(drop);
+      }
+      renderPixDdiOptions(modal, loc || modal._gcvPixLocale || "pt", search ? search.value : "");
+      drop.hidden = false;
+      drop.setAttribute("aria-hidden", "false");
+      if (trigger) trigger.setAttribute("aria-expanded", "true");
+      modal.classList.add("gcv-pix-modal--ddi-open");
+      positionPixDdiDropdown(modal);
+      if (!modal._gcvDdiRepositionBound) {
+        modal._gcvDdiRepositionBound = function () {
+          if (!modal.classList.contains("gcv-pix-modal--ddi-open")) return;
+          positionPixDdiDropdown(modal);
+        };
+        window.addEventListener("resize", modal._gcvDdiRepositionBound);
+        modal.addEventListener("scroll", modal._gcvDdiRepositionBound, true);
+      }
+      if (search && typeof search.focus === "function") {
+        window.setTimeout(function () {
+          search.focus();
+          search.select();
+          positionPixDdiDropdown(modal);
+        }, 20);
+      }
+    }
+    if (window.GcvPixReceipt && typeof window.GcvPixReceipt.ensurePhoneCountries === "function") {
+      window.GcvPixReceipt.ensurePhoneCountries().then(show);
+    } else {
+      show();
+    }
+  }
+
+  function closePixDdiDropdown(modal) {
+    if (!modal) return;
+    var drop =
+      modal.querySelector("#gcv-pix-modal-ddi-dropdown") ||
+      document.getElementById("gcv-pix-modal-ddi-dropdown");
+    var trigger = modal.querySelector("#gcv-pix-modal-ddi-trigger");
+    var prefix = modal.querySelector(".gcv-pix-modal__phone-prefix");
+    if (drop) {
+      drop.hidden = true;
+      drop.setAttribute("aria-hidden", "true");
+      drop.style.position = "";
+      drop.style.top = "";
+      drop.style.left = "";
+      drop.style.width = "";
+      drop.style.maxHeight = "";
+      drop.style.zIndex = "";
+      if (prefix && drop.parentNode !== prefix) {
+        prefix.appendChild(drop);
+      }
+    }
+    if (trigger) trigger.setAttribute("aria-expanded", "false");
+    modal.classList.remove("gcv-pix-modal--ddi-open");
+  }
+
+  function syncPixPhoneDdiUi(modal, loc) {
+    if (!modal || !window.GcvPixReceipt) return;
+    var hidden = modal.querySelector("#gcv-pix-modal-phone-ddi");
+    var flag = modal.querySelector("#gcv-pix-modal-phone-flag");
+    var dialEl = modal.querySelector("#gcv-pix-modal-phone-dial");
+    var phoneInput = modal.querySelector("#gcv-pix-modal-phone");
+    var iso = getModalPhoneIso(modal);
+    var country = window.GcvPixReceipt.findPhoneCountry(iso);
+    if (hidden && hidden.value !== country.iso) hidden.value = country.iso;
+    if (flag) {
+      flag.className = "fi fi-" + country.iso + " gcv-pix-modal__phone-flag";
+      flag.title = window.GcvPixReceipt.phoneCountryLabel
+        ? window.GcvPixReceipt.phoneCountryLabel(country, loc || "pt")
+        : country.iso.toUpperCase();
+    }
+    if (dialEl) dialEl.textContent = "+" + country.dial;
+    if (phoneInput) {
+      phoneInput.placeholder =
+        typeof window.GcvPixReceipt.phonePlaceholderFor === "function"
+          ? window.GcvPixReceipt.phonePlaceholderFor(country.iso)
+          : "(00) 00000-0000";
+      phoneInput.setAttribute("maxlength", String(country.max + 6));
+      if (phoneInput.value) {
+        phoneInput.value = window.GcvPixReceipt.formatPhoneMask(phoneInput.value, country.iso);
+      }
+    }
+    if (typeof window.GcvPixReceipt.savePhoneDdi === "function") {
+      window.GcvPixReceipt.savePhoneDdi(country.iso);
+    }
+    var openDrop =
+      document.getElementById("gcv-pix-modal-ddi-dropdown") ||
+      modal.querySelector("#gcv-pix-modal-ddi-dropdown");
+    if (openDrop && !openDrop.hidden) {
+      var searchEl =
+        openDrop.querySelector("#gcv-pix-modal-ddi-search") ||
+        document.querySelector("#gcv-pix-modal-ddi-search");
+      renderPixDdiOptions(modal, loc, searchEl ? searchEl.value : "");
+    }
+  }
+
+  function setModalPhoneIso(modal, iso, loc) {
+    if (!modal) return;
+    var hidden = modal.querySelector("#gcv-pix-modal-phone-ddi");
+    if (hidden) hidden.value = iso;
+    syncPixPhoneDdiUi(modal, loc || modal._gcvPixLocale || "pt");
+    closePixDdiDropdown(modal);
+    syncPixContinueButton(modal);
+  }
+
+  function buildPixPhoneWrapHtml(loc) {
+    var selectedIso =
+      window.GcvPixReceipt && typeof window.GcvPixReceipt.readSavedPhoneDdi === "function"
+        ? window.GcvPixReceipt.readSavedPhoneDdi()
+        : "br";
+    var country =
+      window.GcvPixReceipt && typeof window.GcvPixReceipt.findPhoneCountry === "function"
+        ? window.GcvPixReceipt.findPhoneCountry(selectedIso)
+        : { iso: "br", dial: "55" };
+    var placeholder =
+      window.GcvPixReceipt && typeof window.GcvPixReceipt.phonePlaceholderFor === "function"
+        ? window.GcvPixReceipt.phonePlaceholderFor(country.iso)
+        : "(00) 00000-0000";
+    var searchPh =
+      loc === "en" ? "Search country or DDI…" : loc === "es" ? "Buscar país o DDI…" : "Buscar país ou DDI…";
+    return (
+      '<div class="gcv-pix-modal__phone-row">' +
+      '<div class="gcv-pix-modal__phone-wrap">' +
+      '<div class="gcv-pix-modal__phone-prefix">' +
+      '<button type="button" class="gcv-pix-modal__ddi-trigger" id="gcv-pix-modal-ddi-trigger" aria-haspopup="listbox" aria-expanded="false" aria-controls="gcv-pix-modal-ddi-dropdown">' +
+      '<span class="fi fi-' +
+      country.iso +
+      ' gcv-pix-modal__phone-flag" id="gcv-pix-modal-phone-flag" aria-hidden="true"></span>' +
+      '<span class="gcv-pix-modal__phone-dial" id="gcv-pix-modal-phone-dial">+' +
+      country.dial +
+      '</span><span class="gcv-pix-modal__ddi-caret" aria-hidden="true"></span></button>' +
+      '<input type="hidden" id="gcv-pix-modal-phone-ddi" value="' +
+      country.iso +
+      '" />' +
+      '<div class="gcv-pix-modal__ddi-dropdown" id="gcv-pix-modal-ddi-dropdown" hidden aria-hidden="true">' +
+      '<input type="search" class="gcv-pix-modal__ddi-search" id="gcv-pix-modal-ddi-search" placeholder="' +
+      searchPh +
+      '" autocomplete="off" />' +
+      '<div class="gcv-pix-modal__ddi-list" id="gcv-pix-modal-ddi-list" role="listbox"></div></div></div>' +
+      '<input type="tel" class="gcv-pix-modal__email gcv-pix-modal__phone" id="gcv-pix-modal-phone" required autocomplete="tel-national" inputmode="numeric" maxlength="20" placeholder="' +
+      placeholder +
+      '" />' +
+      "</div>" +
+      '<button type="button" class="gcv-pix-modal__email-clear gcv-pix-modal__phone-clear" data-gcv-pix-phone-clear hidden disabled aria-label=""></button>' +
+      "</div>"
+    );
+  }
+
   function clearPixPayZone(modal) {
     if (!modal) return;
     var copyBtn = modal.querySelector("[data-gcv-pix-copy]");
@@ -3317,13 +3661,21 @@
       emailInput.disabled = false;
       emailInput.setAttribute("aria-readonly", "true");
     }
+    var phoneInput = modal.querySelector("#gcv-pix-modal-phone");
+    if (phoneInput) {
+      phoneInput.readOnly = true;
+      phoneInput.disabled = false;
+      phoneInput.setAttribute("aria-readonly", "true");
+    }
+    closePixDdiDropdown(modal);
+    var ddiTrigger = modal.querySelector("#gcv-pix-modal-ddi-trigger");
+    if (ddiTrigger) ddiTrigger.disabled = true;
     var continueBtn = modal.querySelector("[data-gcv-pix-email-continue]");
     if (continueBtn) continueBtn.hidden = true;
-    var clearBtn = modal.querySelector("[data-gcv-pix-email-clear]");
-    if (clearBtn) {
-      clearBtn.hidden = false;
-      clearBtn.disabled = false;
-    }
+    modal.querySelectorAll("[data-gcv-pix-email-clear], [data-gcv-pix-phone-clear]").forEach(function (btn) {
+      btn.hidden = false;
+      btn.disabled = false;
+    });
   }
 
   function unlockPixEmailBlock(modal) {
@@ -3336,24 +3688,37 @@
       emailInput.disabled = false;
       emailInput.removeAttribute("aria-readonly");
     }
+    var phoneInput = modal.querySelector("#gcv-pix-modal-phone");
+    if (phoneInput) {
+      phoneInput.readOnly = false;
+      phoneInput.disabled = false;
+      phoneInput.removeAttribute("aria-readonly");
+    }
+    var ddiTrigger = modal.querySelector("#gcv-pix-modal-ddi-trigger");
+    if (ddiTrigger) ddiTrigger.disabled = false;
+    closePixDdiDropdown(modal);
     var continueBtn = modal.querySelector("[data-gcv-pix-email-continue]");
     if (continueBtn) continueBtn.hidden = false;
-    var clearBtn = modal.querySelector("[data-gcv-pix-email-clear]");
-    if (clearBtn) {
-      clearBtn.hidden = true;
-      clearBtn.disabled = true;
-    }
+    modal.querySelectorAll("[data-gcv-pix-email-clear], [data-gcv-pix-phone-clear]").forEach(function (btn) {
+      btn.hidden = true;
+      btn.disabled = true;
+    });
     var emailHint = modal.querySelector("#gcv-pix-modal-email-hint");
     if (emailHint) emailHint.hidden = false;
+    var phoneHint = modal.querySelector("#gcv-pix-modal-phone-hint");
+    if (phoneHint) phoneHint.hidden = false;
+    syncPixContinueButton(modal);
   }
 
-  /** Cancela o Pix gerado e volta à tela de e-mail (sem preencher). */
+  /** Cancela o Pix gerado e volta à tela de e-mail/telefone. */
   function cancelActivePixCheckout(modal, options) {
     if (!modal || modal._gcvPixConfirmed) return false;
     if (!modal._gcvPixCheckoutActive && !modal._gcvPixReservationId) return false;
 
     var opts = options || {};
     var clearEmail = !!opts.clearEmail;
+    var clearPhone = opts.clearPhone !== undefined ? !!opts.clearPhone : clearEmail;
+    var focusField = opts.focusField || (clearEmail ? "email" : clearPhone ? "phone" : "email");
     var pending = modal._gcvPixPendingCheckout;
     var reopen = modal._gcvPixReopen;
 
@@ -3372,7 +3737,12 @@
     modal._gcvPixEmailSent = false;
     modal._gcvPixReservationId = null;
     modal._gcvPixCheckoutEmail = "";
-    if (modal._gcvReceiptData) modal._gcvReceiptData.code = "";
+    modal._gcvPixCheckoutPhone = "";
+    if (modal._gcvReceiptData) {
+      modal._gcvReceiptData.code = "";
+      modal._gcvReceiptData.email = "";
+      modal._gcvReceiptData.phone = "";
+    }
 
     clearPixPayZone(modal);
     unlockPixEmailBlock(modal);
@@ -3414,22 +3784,31 @@
 
     var emailInput = modal.querySelector("#gcv-pix-modal-email");
     if (emailInput && clearEmail) emailInput.value = "";
+    var phoneInput = modal.querySelector("#gcv-pix-modal-phone");
+    if (phoneInput && clearPhone) phoneInput.value = "";
     var statusEl = modal.querySelector("#gcv-pix-modal-email-status");
     if (statusEl) {
       statusEl.hidden = true;
       statusEl.textContent = "";
       statusEl.classList.remove("gcv-pix-modal__email-status--ok", "gcv-pix-modal__email-status--err");
     }
+    clearPixFieldError(modal, "email");
+    clearPixFieldError(modal, "phone");
     var emailHint = modal.querySelector("#gcv-pix-modal-email-hint");
     if (emailHint) emailHint.hidden = false;
+    var phoneHint = modal.querySelector("#gcv-pix-modal-phone-hint");
+    if (phoneHint) phoneHint.hidden = false;
 
     syncPixRefBlock(modal);
     syncPostpayActions(modal);
     syncDevPixSimulateBtn(modal);
+    syncPixContinueButton(modal);
 
-    if (emailInput && typeof emailInput.focus === "function") {
+    var focusEl =
+      focusField === "phone" ? phoneInput || emailInput : emailInput || phoneInput;
+    if (focusEl && typeof focusEl.focus === "function") {
       window.setTimeout(function () {
-        emailInput.focus();
+        focusEl.focus();
       }, 40);
     }
     return true;
@@ -3548,6 +3927,9 @@
 
   function ensurePixEmailBlock(modal, loc) {
     if (!modal) return;
+    if (window.GcvPixReceipt && typeof window.GcvPixReceipt.ensurePhoneCountries === "function") {
+      window.GcvPixReceipt.ensurePhoneCountries();
+    }
     var payZone = modal.querySelector(".gcv-pix-modal__pay-zone");
     var block = modal.querySelector("#gcv-pix-modal-email-block");
     if (!block) {
@@ -3559,10 +3941,17 @@
         '<span class="gcv-pix-modal__email-label-text"></span> ' +
         '<span class="gcv-pix-modal__email-label-required" aria-hidden="true">*</span></label>' +
         '<div class="gcv-pix-modal__email-row">' +
-        '<input type="email" class="gcv-pix-modal__email" id="gcv-pix-modal-email" required autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="email" />' +
+        '<input type="email" class="gcv-pix-modal__email" id="gcv-pix-modal-email" required autocomplete="email" autocapitalize="off" spellcheck="false" inputmode="email" />' +
         '<button type="button" class="gcv-pix-modal__email-clear" data-gcv-pix-email-clear hidden disabled aria-label=""></button>' +
         "</div>" +
         '<p class="gcv-pix-modal__email-hint" id="gcv-pix-modal-email-hint"></p>' +
+        '<p class="gcv-pix-modal__field-error" id="gcv-pix-modal-email-error" role="alert" hidden></p>' +
+        '<label class="gcv-pix-modal__email-label gcv-pix-modal__phone-label" for="gcv-pix-modal-phone">' +
+        '<span class="gcv-pix-modal__phone-label-text"></span> ' +
+        '<span class="gcv-pix-modal__email-label-required" aria-hidden="true">*</span></label>' +
+        buildPixPhoneWrapHtml(loc) +
+        '<p class="gcv-pix-modal__email-hint" id="gcv-pix-modal-phone-hint"></p>' +
+        '<p class="gcv-pix-modal__field-error" id="gcv-pix-modal-phone-error" role="alert" hidden></p>' +
         '<button type="button" class="gcv-pix-modal__email-continue" data-gcv-pix-email-continue></button>' +
         '<p class="gcv-pix-modal__email-status" id="gcv-pix-modal-email-status" hidden></p>';
       if (payZone && payZone.parentNode) {
@@ -3571,10 +3960,77 @@
         modal.querySelector(".gcv-pix-modal__panel").appendChild(block);
       }
     }
+    ensurePixFieldErrorEls(block);
+    if (!block.querySelector("#gcv-pix-modal-phone")) {
+      var phoneLabel = document.createElement("label");
+      phoneLabel.className = "gcv-pix-modal__email-label gcv-pix-modal__phone-label";
+      phoneLabel.setAttribute("for", "gcv-pix-modal-phone");
+      phoneLabel.innerHTML =
+        '<span class="gcv-pix-modal__phone-label-text"></span> ' +
+        '<span class="gcv-pix-modal__email-label-required" aria-hidden="true">*</span>';
+      var phoneWrapTemp = document.createElement("div");
+      phoneWrapTemp.innerHTML = buildPixPhoneWrapHtml(loc);
+      var phoneWrap = phoneWrapTemp.firstChild;
+      var phoneHintNew = document.createElement("p");
+      phoneHintNew.className = "gcv-pix-modal__email-hint";
+      phoneHintNew.id = "gcv-pix-modal-phone-hint";
+      var slot = block.querySelector("#gcv-pix-modal-phone-wrap-slot");
+      if (slot && slot.parentNode) {
+        if (!block.querySelector(".gcv-pix-modal__phone-label")) {
+          slot.parentNode.insertBefore(phoneLabel, slot);
+        }
+        slot.parentNode.replaceChild(phoneWrap, slot);
+        if (!block.querySelector("#gcv-pix-modal-phone-hint")) {
+          phoneWrap.parentNode.insertBefore(phoneHintNew, phoneWrap.nextSibling);
+        }
+      } else {
+        var continueExisting = block.querySelector("[data-gcv-pix-email-continue]");
+        var insertBeforeEl = continueExisting || block.querySelector("#gcv-pix-modal-email-status");
+        if (insertBeforeEl && insertBeforeEl.parentNode) {
+          insertBeforeEl.parentNode.insertBefore(phoneLabel, insertBeforeEl);
+          insertBeforeEl.parentNode.insertBefore(phoneWrap, insertBeforeEl);
+          insertBeforeEl.parentNode.insertBefore(phoneHintNew, insertBeforeEl);
+        }
+      }
+    } else if (!block.querySelector("#gcv-pix-modal-ddi-trigger")) {
+      var oldPhoneRow = block.querySelector(".gcv-pix-modal__phone-row");
+      var oldWrap = block.querySelector(".gcv-pix-modal__phone-wrap");
+      var upgradeTemp = document.createElement("div");
+      upgradeTemp.innerHTML = buildPixPhoneWrapHtml(loc);
+      var newPhoneUi = upgradeTemp.firstChild;
+      if (oldPhoneRow && oldPhoneRow.parentNode && newPhoneUi) {
+        oldPhoneRow.parentNode.replaceChild(newPhoneUi, oldPhoneRow);
+      } else if (oldWrap && oldWrap.parentNode && newPhoneUi) {
+        oldWrap.parentNode.replaceChild(newPhoneUi, oldWrap);
+      }
+    }
+    var phoneWrapEl = block.querySelector(".gcv-pix-modal__phone-wrap");
+    var phoneRowEl = block.querySelector(".gcv-pix-modal__phone-row");
+    if (phoneWrapEl && !phoneRowEl) {
+      phoneRowEl = document.createElement("div");
+      phoneRowEl.className = "gcv-pix-modal__phone-row";
+      phoneWrapEl.parentNode.insertBefore(phoneRowEl, phoneWrapEl);
+      phoneRowEl.appendChild(phoneWrapEl);
+    }
+    if (phoneRowEl && !phoneRowEl.querySelector("[data-gcv-pix-phone-clear]")) {
+      var phoneClearUpgrade = document.createElement("button");
+      phoneClearUpgrade.type = "button";
+      phoneClearUpgrade.className = "gcv-pix-modal__email-clear gcv-pix-modal__phone-clear";
+      phoneClearUpgrade.setAttribute("data-gcv-pix-phone-clear", "");
+      phoneClearUpgrade.hidden = true;
+      phoneClearUpgrade.disabled = true;
+      phoneRowEl.appendChild(phoneClearUpgrade);
+    } else if (phoneWrapEl && phoneWrapEl.querySelector("[data-gcv-pix-phone-clear]") && phoneRowEl) {
+      var nestedClear = phoneWrapEl.querySelector("[data-gcv-pix-phone-clear]");
+      if (nestedClear) phoneRowEl.appendChild(nestedClear);
+    }
     var locStrings = STRINGS[loc] || STRINGS.pt;
     var labelText = block.querySelector(".gcv-pix-modal__email-label-text");
+    var phoneLabelText = block.querySelector(".gcv-pix-modal__phone-label-text");
     var hintEl = block.querySelector("#gcv-pix-modal-email-hint");
+    var phoneHintEl = block.querySelector("#gcv-pix-modal-phone-hint");
     var emailInput = block.querySelector("#gcv-pix-modal-email");
+    var phoneInput = block.querySelector("#gcv-pix-modal-phone");
     var continueBtn = block.querySelector("[data-gcv-pix-email-continue]");
     var clearBtn = block.querySelector("[data-gcv-pix-email-clear]");
     if (!clearBtn) {
@@ -3595,23 +4051,57 @@
     if (window.GcvPixReceipt) {
       if (labelText) labelText.textContent = window.GcvPixReceipt.rs(loc, "emailLabel");
       if (hintEl) hintEl.textContent = window.GcvPixReceipt.rs(loc, "emailRequiredHint");
+      if (phoneLabelText) phoneLabelText.textContent = window.GcvPixReceipt.rs(loc, "phoneLabel");
+      if (phoneHintEl) phoneHintEl.textContent = window.GcvPixReceipt.rs(loc, "phoneRequiredHint");
       if (emailInput) {
         emailInput.placeholder = window.GcvPixReceipt.rs(loc, "emailPlaceholder");
-        emailInput.setAttribute("autocomplete", "off");
+        emailInput.setAttribute("autocomplete", "email");
         emailInput.setAttribute("autocapitalize", "off");
         emailInput.setAttribute("spellcheck", "false");
       }
-    }
-    if (continueBtn) continueBtn.textContent = locStrings.pixModalEmailContinue || "Continuar para o Pix";
-    if (clearBtn) {
-      clearBtn.textContent = "×";
-      clearBtn.setAttribute("aria-label", locStrings.pixModalEmailClear || "Excluir e-mail");
-      clearBtn.title = locStrings.pixModalEmailClearHint || locStrings.pixModalEmailClear || "Excluir e-mail";
-      if (!modal._gcvPixCheckoutActive) {
-        clearBtn.hidden = true;
-        clearBtn.disabled = true;
+      if (phoneInput) {
+        phoneInput.setAttribute("autocomplete", "tel-national");
+        phoneInput.setAttribute("inputmode", "numeric");
       }
     }
+    syncPixPhoneDdiUi(modal, loc);
+    if (continueBtn) continueBtn.textContent = locStrings.pixModalEmailContinue || "Continuar para o Pix";
+    var phoneClearBtn = block.querySelector("[data-gcv-pix-phone-clear]");
+    [clearBtn, phoneClearBtn].forEach(function (btn) {
+      if (!btn) return;
+      btn.textContent = "×";
+      btn.setAttribute("aria-label", locStrings.pixModalEmailClear || "Excluir dados");
+      btn.title = locStrings.pixModalEmailClearHint || locStrings.pixModalEmailClear || "Excluir dados";
+      if (!modal._gcvPixCheckoutActive) {
+        btn.hidden = true;
+        btn.disabled = true;
+      }
+    });
+    syncPixContinueButton(modal);
+  }
+
+  function syncPixContinueButton(modal) {
+    if (!modal) return;
+    var continueBtn = modal.querySelector("[data-gcv-pix-email-continue]");
+    if (!continueBtn) return;
+    if (modal._gcvPixCheckoutActive || modal._gcvPixConfirmed) {
+      continueBtn.disabled = true;
+      return;
+    }
+    var email = getModalEmailInputValue(modal);
+    var phone = getModalPhoneInputValue(modal);
+    var phoneIso = getModalPhoneIso(modal);
+    var emailOk =
+      !!email &&
+      window.GcvPixReceipt &&
+      typeof window.GcvPixReceipt.isValidEmail === "function" &&
+      window.GcvPixReceipt.isValidEmail(email);
+    var phoneOk =
+      !!phone &&
+      window.GcvPixReceipt &&
+      typeof window.GcvPixReceipt.isValidPhone === "function" &&
+      window.GcvPixReceipt.isValidPhone(phone, phoneIso);
+    continueBtn.disabled = !(emailOk && phoneOk);
   }
 
   function pixPostpayIsPaid(modal) {
@@ -3656,36 +4146,35 @@
     if (!modal || modal._gcvPixCheckoutActive) return false;
     var loc = modal._gcvPixLocale || "pt";
     var email = getModalEmailInputValue(modal);
+    var phone = getModalPhoneInputValue(modal);
     var statusEl = modal.querySelector("#gcv-pix-modal-email-status");
-    var rs = function (key, fallback) {
-      if (window.GcvPixReceipt && typeof window.GcvPixReceipt.rs === "function") {
-        return window.GcvPixReceipt.rs(loc, key);
-      }
-      return fallback || "";
-    };
-
-    if (!email) {
-      if (statusEl) {
-        statusEl.hidden = false;
-        statusEl.textContent = rs("emailRequiredBlock", "Informe seu e-mail para gerar o Pix.");
-        statusEl.classList.add("gcv-pix-modal__email-status--err");
-        statusEl.classList.remove("gcv-pix-modal__email-status--ok");
-      }
+    var emailOk = validatePixEmailField(modal, { show: true });
+    var phoneOk = validatePixPhoneField(modal, { show: true });
+    if (!emailOk) {
       var emailInputEmpty = modal.querySelector("#gcv-pix-modal-email");
       if (emailInputEmpty && typeof emailInputEmpty.focus === "function") emailInputEmpty.focus();
+      syncPixContinueButton(modal);
       return false;
     }
-    if (!window.GcvPixReceipt || !window.GcvPixReceipt.isValidEmail(email)) {
-      if (statusEl) {
-        statusEl.hidden = false;
-        statusEl.textContent = rs("emailInvalid", "Informe um e-mail válido.");
-        statusEl.classList.add("gcv-pix-modal__email-status--err");
-        statusEl.classList.remove("gcv-pix-modal__email-status--ok");
-      }
-      var emailInputInvalid = modal.querySelector("#gcv-pix-modal-email");
-      if (emailInputInvalid && typeof emailInputInvalid.focus === "function") emailInputInvalid.focus();
+    if (!phoneOk) {
+      var phoneInputEmpty = modal.querySelector("#gcv-pix-modal-phone");
+      if (phoneInputEmpty && typeof phoneInputEmpty.focus === "function") phoneInputEmpty.focus();
+      syncPixContinueButton(modal);
       return false;
     }
+
+    var phoneIso = getModalPhoneIso(modal);
+    var phoneNormalized =
+      typeof window.GcvPixReceipt.formatPhoneMask === "function"
+        ? window.GcvPixReceipt.formatPhoneMask(phone, phoneIso)
+        : window.GcvPixReceipt.normalizePhone(phone, phoneIso);
+    var phoneStored =
+      typeof window.GcvPixReceipt.formatPhoneIntl === "function"
+        ? window.GcvPixReceipt.formatPhoneIntl(phone, phoneIso)
+        : "+55 " + phoneNormalized;
+    var phoneInputNorm = modal.querySelector("#gcv-pix-modal-phone");
+    if (phoneInputNorm) phoneInputNorm.value = phoneNormalized;
+    if (window.GcvPixReceipt.savePhoneDdi) window.GcvPixReceipt.savePhoneDdi(phoneIso);
 
     if (!finalizePixCheckout(modal, s || STRINGS[loc] || STRINGS.pt)) {
       if (statusEl) {
@@ -3699,11 +4188,26 @@
 
     modal._gcvPixCheckoutActive = true;
     modal._gcvPixCheckoutEmail = email;
+    modal._gcvPixCheckoutPhone = phoneNormalized;
+    if (modal._gcvReceiptData) {
+      modal._gcvReceiptData.email = email;
+      modal._gcvReceiptData.phone = phoneStored;
+    }
+    if (modal._gcvPixPendingCheckout && modal._gcvPixPendingCheckout.receiptData) {
+      modal._gcvPixPendingCheckout.receiptData.email = email;
+      modal._gcvPixPendingCheckout.receiptData.phone = phoneStored;
+    }
+    if (window.GcvPixReceipt.saveEmail) window.GcvPixReceipt.saveEmail(email);
+    if (window.GcvPixReceipt.savePhone) window.GcvPixReceipt.savePhone(phoneStored);
     modal.classList.remove("gcv-pix-modal--await-email");
     modal.classList.add("gcv-pix-modal--checkout-active");
     lockPixEmailBlock(modal);
     var emailHint = modal.querySelector("#gcv-pix-modal-email-hint");
     if (emailHint) emailHint.hidden = true;
+    var phoneHint = modal.querySelector("#gcv-pix-modal-phone-hint");
+    if (phoneHint) phoneHint.hidden = true;
+    clearPixFieldError(modal, "email");
+    clearPixFieldError(modal, "phone");
     if (statusEl) {
       statusEl.hidden = true;
       statusEl.textContent = "";
@@ -3779,6 +4283,13 @@
     ) {
       window.GcvPixReceipt.saveReservationCode(reservationId, {
         email: getModalReceiptEmail(modal) || undefined,
+        phone:
+          (typeof window.GcvPixReceipt.formatPhoneIntl === "function" &&
+            getModalReceiptPhone(modal) &&
+            window.GcvPixReceipt.formatPhoneIntl(getModalReceiptPhone(modal), getModalPhoneIso(modal))) ||
+          getModalReceiptPhone(modal) ||
+          undefined,
+        phoneIso: getModalPhoneIso(modal),
       });
     }
     if (
@@ -3888,6 +4399,13 @@
       incl_excl: receiptData && receiptData.inclExcl ? receiptData.inclExcl : undefined,
       packages: receiptData && receiptData.packages ? receiptData.packages : undefined,
       email: getModalReceiptEmail(modal) || undefined,
+      phone:
+        (window.GcvPixReceipt &&
+          typeof window.GcvPixReceipt.formatPhoneIntl === "function" &&
+          getModalReceiptPhone(modal) &&
+          window.GcvPixReceipt.formatPhoneIntl(getModalReceiptPhone(modal), getModalPhoneIso(modal))) ||
+        getModalReceiptPhone(modal) ||
+        undefined,
       description: (pending && pending.pixDescWithCode) || reservationCode + " Guia Chapada Veadeiros",
     };
     function startPollingIfReady(reg) {
@@ -4051,10 +4569,17 @@
       '<span class="gcv-pix-modal__email-label-text"></span> ' +
       '<span class="gcv-pix-modal__email-label-required" aria-hidden="true">*</span></label>' +
       '<div class="gcv-pix-modal__email-row">' +
-      '<input type="email" class="gcv-pix-modal__email" id="gcv-pix-modal-email" required autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="email" />' +
+      '<input type="email" class="gcv-pix-modal__email" id="gcv-pix-modal-email" required autocomplete="email" autocapitalize="off" spellcheck="false" inputmode="email" />' +
       '<button type="button" class="gcv-pix-modal__email-clear" data-gcv-pix-email-clear hidden disabled aria-label=""></button>' +
       "</div>" +
       '<p class="gcv-pix-modal__email-hint" id="gcv-pix-modal-email-hint"></p>' +
+      '<p class="gcv-pix-modal__field-error" id="gcv-pix-modal-email-error" role="alert" hidden></p>' +
+      '<label class="gcv-pix-modal__email-label gcv-pix-modal__phone-label" for="gcv-pix-modal-phone">' +
+      '<span class="gcv-pix-modal__phone-label-text"></span> ' +
+      '<span class="gcv-pix-modal__email-label-required" aria-hidden="true">*</span></label>' +
+      '<div class="gcv-pix-modal__phone-wrap" id="gcv-pix-modal-phone-wrap-slot"></div>' +
+      '<p class="gcv-pix-modal__email-hint" id="gcv-pix-modal-phone-hint"></p>' +
+      '<p class="gcv-pix-modal__field-error" id="gcv-pix-modal-phone-error" role="alert" hidden></p>' +
       '<button type="button" class="gcv-pix-modal__email-continue" data-gcv-pix-email-continue></button>' +
       '<p class="gcv-pix-modal__email-status" id="gcv-pix-modal-email-status" hidden></p></div>' +
       '<div class="gcv-pix-modal__pay-zone">' +
@@ -4151,6 +4676,7 @@
       window.GcvPixPolling.stopPixPolling();
     }
     clearPixTimer(modal);
+    closePixDdiDropdown(modal);
     modal.hidden = true;
     modal.setAttribute("aria-hidden", "true");
     modal.classList.remove("is-open");
@@ -4279,6 +4805,7 @@
     modal._gcvPixEmailSent = false;
     modal._gcvPixPayloadReady = false;
     modal._gcvPixCheckoutEmail = "";
+    modal._gcvPixCheckoutPhone = "";
     modal._gcvPixPendingCheckout = {
       valor: valor,
       loc: loc,
@@ -4293,6 +4820,12 @@
       emailInputOpen.value = "";
       emailInputOpen.readOnly = false;
       emailInputOpen.disabled = false;
+    }
+    var phoneInputOpen = modal.querySelector("#gcv-pix-modal-phone");
+    if (phoneInputOpen) {
+      phoneInputOpen.value = "";
+      phoneInputOpen.readOnly = false;
+      phoneInputOpen.disabled = false;
     }
     syncPostpayActions(modal);
     syncPixRefBlock(modal);
@@ -4356,9 +4889,31 @@
         openPixModal(ctx.valor, ctx.detail, ctx.trigger, ctx.locale, ctx.strings);
         return;
       }
+      var ddiTriggerBtn = e.target.closest("#gcv-pix-modal-ddi-trigger");
+      if (ddiTriggerBtn) {
+        e.preventDefault();
+        if (modal._gcvPixCheckoutActive || modal._gcvPixConfirmed || ddiTriggerBtn.disabled) return;
+        var dropOpen =
+          document.getElementById("gcv-pix-modal-ddi-dropdown") ||
+          modal.querySelector("#gcv-pix-modal-ddi-dropdown");
+        if (dropOpen && !dropOpen.hidden) {
+          closePixDdiDropdown(modal);
+        } else {
+          openPixDdiDropdown(modal, modal._gcvPixLocale || "pt");
+        }
+        return;
+      }
+      if (
+        modal.classList.contains("gcv-pix-modal--ddi-open") &&
+        !e.target.closest("#gcv-pix-modal-ddi-dropdown") &&
+        !e.target.closest("#gcv-pix-modal-ddi-trigger")
+      ) {
+        closePixDdiDropdown(modal);
+      }
       var continueBtn = e.target.closest("[data-gcv-pix-email-continue]");
       if (continueBtn) {
         e.preventDefault();
+        if (continueBtn.disabled) return;
         var locContinue = modal._gcvPixLocale || "pt";
         activatePixCheckout(modal, STRINGS[locContinue] || STRINGS.pt);
         return;
@@ -4367,7 +4922,22 @@
       if (clearEmailBtn) {
         e.preventDefault();
         if (modal._gcvPixConfirmed) return;
-        cancelActivePixCheckout(modal, { clearEmail: true });
+        cancelActivePixCheckout(modal, {
+          clearEmail: true,
+          clearPhone: true,
+          focusField: "email",
+        });
+        return;
+      }
+      var clearPhoneBtn = e.target.closest("[data-gcv-pix-phone-clear]");
+      if (clearPhoneBtn) {
+        e.preventDefault();
+        if (modal._gcvPixConfirmed) return;
+        cancelActivePixCheckout(modal, {
+          clearEmail: true,
+          clearPhone: true,
+          focusField: "phone",
+        });
         return;
       }
       var devSimBtn = e.target.closest("[data-gcv-pix-dev-simulate]");
@@ -4457,7 +5027,12 @@
       function (e) {
         if (e.key !== "Enter") return;
         var input = e.target;
-        if (!input || input.id !== "gcv-pix-modal-email") return;
+        if (
+          !input ||
+          (input.id !== "gcv-pix-modal-email" && input.id !== "gcv-pix-modal-phone")
+        ) {
+          return;
+        }
         if (modal._gcvPixConfirmed) return;
         if (modal._gcvPixCheckoutActive) return;
         e.preventDefault();
@@ -4471,19 +5046,78 @@
       "input",
       function (e) {
         var input = e.target;
-        if (!input || input.id !== "gcv-pix-modal-email") return;
-        if (modal._gcvPixConfirmed) return;
-        // Com Pix ativo o e-mail fica bloqueado: só exclui pelo botão.
-        if (modal._gcvPixCheckoutActive || input.readOnly) {
-          if (modal._gcvPixCheckoutEmail) input.value = modal._gcvPixCheckoutEmail;
+        if (!input || (input.id !== "gcv-pix-modal-email" && input.id !== "gcv-pix-modal-phone")) {
           return;
         }
+        if (modal._gcvPixConfirmed) return;
+        // Com Pix ativo os campos ficam bloqueados: só exclui pelo botão.
+        if (modal._gcvPixCheckoutActive || input.readOnly) {
+          if (input.id === "gcv-pix-modal-email" && modal._gcvPixCheckoutEmail) {
+            input.value = modal._gcvPixCheckoutEmail;
+          }
+          if (input.id === "gcv-pix-modal-phone" && modal._gcvPixCheckoutPhone) {
+            input.value = modal._gcvPixCheckoutPhone;
+          }
+          return;
+        }
+        if (input.id === "gcv-pix-modal-phone" && window.GcvPixReceipt) {
+          var phoneIsoLive = getModalPhoneIso(modal);
+          var digits =
+            typeof window.GcvPixReceipt.nationalPhoneDigits === "function"
+              ? window.GcvPixReceipt.nationalPhoneDigits(input.value, phoneIsoLive)
+              : String(input.value || "").replace(/\D+/g, "").slice(0, 15);
+          if (typeof window.GcvPixReceipt.formatPhoneMask === "function") {
+            input.value = window.GcvPixReceipt.formatPhoneMask(digits, phoneIsoLive);
+          } else {
+            input.value = digits;
+          }
+        }
+        // Enquanto digita: sem mensagem de erro
+        clearPixFieldError(modal, input.id === "gcv-pix-modal-phone" ? "phone" : "email");
         var statusEl = modal.querySelector("#gcv-pix-modal-email-status");
         if (statusEl) {
           statusEl.hidden = true;
           statusEl.textContent = "";
           statusEl.classList.remove("gcv-pix-modal__email-status--ok", "gcv-pix-modal__email-status--err");
         }
+        syncPixContinueButton(modal);
+      },
+      true,
+    );
+
+    modal.addEventListener(
+      "blur",
+      function (e) {
+        var input = e.target;
+        if (!input) return;
+        if (modal._gcvPixConfirmed || modal._gcvPixCheckoutActive) return;
+        if (input.id === "gcv-pix-modal-email") {
+          validatePixEmailField(modal, { show: true });
+          syncPixContinueButton(modal);
+          return;
+        }
+        if (input.id === "gcv-pix-modal-phone") {
+          if (
+            window.GcvPixReceipt &&
+            typeof window.GcvPixReceipt.formatPhoneMask === "function"
+          ) {
+            input.value = window.GcvPixReceipt.formatPhoneMask(input.value, getModalPhoneIso(modal));
+          }
+          validatePixPhoneField(modal, { show: true });
+          syncPixContinueButton(modal);
+        }
+      },
+      true,
+    );
+
+    document.addEventListener(
+      "input",
+      function (e) {
+        var input = e.target;
+        if (!input || input.id !== "gcv-pix-modal-ddi-search") return;
+        if (!modal.classList.contains("is-open")) return;
+        if (modal._gcvPixCheckoutActive || modal._gcvPixConfirmed) return;
+        renderPixDdiOptions(modal, modal._gcvPixLocale || "pt", input.value);
       },
       true,
     );
@@ -4492,21 +5126,69 @@
       "change",
       function (e) {
         var input = e.target;
-        if (!input || input.id !== "gcv-pix-modal-email") return;
+        if (!input) return;
         if (modal._gcvPixConfirmed) return;
+        if (input.id !== "gcv-pix-modal-email" && input.id !== "gcv-pix-modal-phone") {
+          return;
+        }
         if (modal._gcvPixCheckoutActive) return;
+        if (
+          input.id === "gcv-pix-modal-phone" &&
+          window.GcvPixReceipt &&
+          typeof window.GcvPixReceipt.formatPhoneMask === "function"
+        ) {
+          input.value = window.GcvPixReceipt.formatPhoneMask(input.value, getModalPhoneIso(modal));
+          validatePixPhoneField(modal, { show: true });
+        } else if (input.id === "gcv-pix-modal-email") {
+          validatePixEmailField(modal, { show: true });
+        }
         var statusEl = modal.querySelector("#gcv-pix-modal-email-status");
         if (statusEl) {
           statusEl.hidden = true;
           statusEl.textContent = "";
           statusEl.classList.remove("gcv-pix-modal__email-status--ok", "gcv-pix-modal__email-status--err");
         }
+        syncPixContinueButton(modal);
       },
       true,
     );
 
+    document.addEventListener("click", function (e) {
+      if (!modal.classList.contains("is-open")) return;
+      var ddiOption = e.target.closest("[data-gcv-ddi-iso]");
+      if (ddiOption) {
+        e.preventDefault();
+        if (modal._gcvPixCheckoutActive || modal._gcvPixConfirmed) return;
+        setModalPhoneIso(modal, ddiOption.getAttribute("data-gcv-ddi-iso"), modal._gcvPixLocale || "pt");
+        clearPixFieldError(modal, "phone");
+        var statusDdiPick = modal.querySelector("#gcv-pix-modal-email-status");
+        if (statusDdiPick) {
+          statusDdiPick.hidden = true;
+          statusDdiPick.textContent = "";
+          statusDdiPick.classList.remove("gcv-pix-modal__email-status--ok", "gcv-pix-modal__email-status--err");
+        }
+        syncPixContinueButton(modal);
+        var phoneFocus = modal.querySelector("#gcv-pix-modal-phone");
+        if (phoneFocus && typeof phoneFocus.focus === "function") phoneFocus.focus();
+        return;
+      }
+      if (
+        modal.classList.contains("gcv-pix-modal--ddi-open") &&
+        !e.target.closest("#gcv-pix-modal-ddi-dropdown") &&
+        !e.target.closest("#gcv-pix-modal-ddi-trigger")
+      ) {
+        closePixDdiDropdown(modal);
+      }
+    });
+
     document.addEventListener("keydown", function (e) {
-      if (e.key === "Escape" && modal.classList.contains("is-open")) {
+      if (!modal.classList.contains("is-open")) return;
+      if (e.key === "Escape") {
+        if (modal.classList.contains("gcv-pix-modal--ddi-open")) {
+          e.preventDefault();
+          closePixDdiDropdown(modal);
+          return;
+        }
         closePixModal(modal);
       }
     });

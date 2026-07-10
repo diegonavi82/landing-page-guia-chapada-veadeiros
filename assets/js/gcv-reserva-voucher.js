@@ -14,6 +14,8 @@
       trips: "Passeios",
       embarque: "Embarque",
       guia: "Guia",
+      email: "E-mail",
+      phone: "Telefone / WhatsApp",
       person: "pessoa",
       people: "pessoas",
       statusPENDING: "Aguardando pagamento",
@@ -44,6 +46,8 @@
       trips: "Tours",
       embarque: "Meeting point",
       guia: "Guide",
+      email: "Email",
+      phone: "Phone / WhatsApp",
       person: "person",
       people: "people",
       statusPENDING: "Awaiting payment",
@@ -74,6 +78,8 @@
       trips: "Paseos",
       embarque: "Embarque",
       guia: "Guía",
+      email: "Correo",
+      phone: "Teléfono / WhatsApp",
       person: "persona",
       people: "personas",
       statusPENDING: "Esperando pago",
@@ -242,6 +248,8 @@
       code: body.reservation_id || body.code || "",
       amount: body.amount,
       status: body.status || "PENDING",
+      email: body.email || "",
+      phone: body.phone || body.telefone || "",
       trips: enrichTrips(Array.isArray(body.trips) ? body.trips : [], locale),
       inclExcl: body.incl_excl || body.inclExcl || null,
       packages: Array.isArray(body.packages) ? body.packages : null,
@@ -255,6 +263,8 @@
       code: id || data.reservation_id || "",
       amount: data.amount,
       status: data.status || "PENDING",
+      email: data.email || "",
+      phone: data.phone || data.telefone || "",
       trips: enrichTrips(Array.isArray(data.trips) ? data.trips : [], locale),
       inclExcl: data.incl_excl || data.inclExcl || null,
       packages: Array.isArray(data.packages) ? data.packages : null,
@@ -788,6 +798,23 @@
         "</dt><dd><strong>" +
         escapeHtml(formatBrl(data.amount)) +
         "</strong></dd></div>";
+    }
+
+    if (data.email) {
+      html +=
+        "<div><dt>" +
+        escapeHtml(rs(loc, "email")) +
+        "</dt><dd>" +
+        escapeHtml(data.email) +
+        "</dd></div>";
+    }
+    if (data.phone || data.telefone) {
+      html +=
+        "<div><dt>" +
+        escapeHtml(rs(loc, "phone")) +
+        "</dt><dd>" +
+        escapeHtml(data.phone || data.telefone) +
+        "</dd></div>";
     }
 
     html += "</dl>";

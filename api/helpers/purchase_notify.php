@@ -63,12 +63,16 @@ function gcv_purchase_notify_message(array $rec): string
     $code = strtoupper(trim((string)($rec['reservation_id'] ?? '')));
     $amount = (float)($rec['amount'] ?? 0);
     $buyer = trim((string)($rec['email'] ?? $rec['buyer_email'] ?? ''));
+    $buyerPhone = trim((string)($rec['phone'] ?? $rec['telefone'] ?? $rec['buyer_phone'] ?? ''));
     $brl = 'R$ ' . number_format($amount, 2, ',', '.');
     $msg = "🛒 Nova compra Pix confirmada\n\n";
     $msg .= "Código: {$code}\n";
     $msg .= "Valor: {$brl}\n";
     if ($buyer !== '') {
         $msg .= "Cliente: {$buyer}\n";
+    }
+    if ($buyerPhone !== '') {
+        $msg .= "Telefone: {$buyerPhone}\n";
     }
     $msg .= "\nPasseios:\n" . gcv_purchase_trip_lines($rec);
     return $msg;
@@ -138,6 +142,7 @@ function gcv_notify_admin_purchase(array $rec, bool $force = false): array
 
     $amount = (float)($rec['amount'] ?? 0);
     $buyer = trim((string)($rec['email'] ?? $rec['buyer_email'] ?? ''));
+    $buyerPhone = trim((string)($rec['phone'] ?? $rec['telefone'] ?? $rec['buyer_phone'] ?? ''));
     $brl = 'R$ ' . number_format($amount, 2, ',', '.');
     $tripHtml = nl2br(htmlspecialchars(gcv_purchase_trip_lines($rec), ENT_QUOTES, 'UTF-8'));
     $adminEmail = gcv_admin_notify_email();
@@ -149,6 +154,9 @@ function gcv_notify_admin_purchase(array $rec, bool $force = false): array
         '<p style="margin:0 0 8px;"><strong>Valor:</strong> ' . htmlspecialchars($brl, ENT_QUOTES, 'UTF-8') . '</p>' .
         ($buyer !== ''
             ? '<p style="margin:0 0 8px;"><strong>Cliente:</strong> ' . htmlspecialchars($buyer, ENT_QUOTES, 'UTF-8') . '</p>'
+            : '') .
+        ($buyerPhone !== ''
+            ? '<p style="margin:0 0 8px;"><strong>Telefone:</strong> ' . htmlspecialchars($buyerPhone, ENT_QUOTES, 'UTF-8') . '</p>'
             : '') .
         '<p style="margin:12px 0 4px;"><strong>Passeios:</strong></p>' .
         '<div style="margin:0 0 12px;padding:12px;background:#f8fafc;border-radius:8px;font-size:14px;line-height:1.5;">' .

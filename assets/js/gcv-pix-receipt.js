@@ -5,6 +5,7 @@
   "use strict";
 
   var EMAIL_STORAGE_KEY = "gcv-receipt-email";
+  var PHONE_STORAGE_KEY = "gcv-receipt-phone";
   var RESERVATION_CODES_KEY = "gcv-reserva-codes";
   var RESERVATION_CODES_MAX = 30;
   var RESERVATION_CODE_RE = /^GCV-[A-Z0-9]{6}$/;
@@ -38,6 +39,9 @@
       receiptIntro:
         "Recebemos a quantia de {{amount}} ({{amountWords}}), referente ao pagamento via Pix de passeio(s) em excursão, identificado pelo código de reserva {{code}}, conforme roteiro abaixo.",
       contractor: "Contratada",
+      buyer: "Cliente",
+      buyerEmail: "E-mail",
+      buyerPhone: "Telefone / WhatsApp",
       itinerary: "Roteiro confirmado",
       colDate: "Data",
       colDay: "Dia",
@@ -68,6 +72,15 @@
       emailPlaceholder: "seu@email.com",
       emailRequiredHint: "Obrigatório — enviaremos o recibo por e-mail após a confirmação do Pix.",
       emailRequiredBlock: "Informe seu e-mail para gerar o Pix.",
+      fieldFillToContinue: "Preencha para prosseguir",
+      phoneLabel: "Telefone / WhatsApp",
+      phonePlaceholder: "(00) 00000-0000",
+      phoneRequiredHint: "Obrigatório — selecione o país (DDI) e informe o celular.",
+      phoneRequiredBlock: "Informe seu celular para gerar o Pix.",
+      phoneInvalid: "Informe um celular válido para o país selecionado.",
+      phoneIncomplete: "Telefone incompleto — faltam dígitos.",
+      phoneTooLong: "Telefone com dígitos a mais para o país selecionado.",
+      phoneDdiLabel: "País / DDI",
       btnPrint: "Baixar recibo",
       btnEmail: "Enviar recibo por e-mail",
       downloadOk: "Recibo baixado. Abra o arquivo ou use Ctrl+P para imprimir.",
@@ -76,7 +89,7 @@
       emailSending: "Enviando…",
       emailSent: "Recibo enviado para {{email}}.",
       emailError: "Não foi possível enviar. Use imprimir ou WhatsApp.",
-      emailInvalid: "Informe um e-mail válido.",
+      emailInvalid: "E-mail com formato inválido.",
       perTripSuffix: "por passeio",
     },
     en: {
@@ -85,6 +98,9 @@
       receiptIntro:
         "We acknowledge payment of {{amount}} ({{amountWords}}) via Pix for the excursion(s) below, reservation code {{code}}.",
       contractor: "Provider",
+      buyer: "Customer",
+      buyerEmail: "Email",
+      buyerPhone: "Phone / WhatsApp",
       itinerary: "Confirmed itinerary",
       colDate: "Date",
       colDay: "Day",
@@ -115,6 +131,15 @@
       emailPlaceholder: "you@email.com",
       emailRequiredHint: "Required — we'll email your receipt after Pix payment is confirmed.",
       emailRequiredBlock: "Enter your email to generate the Pix.",
+      fieldFillToContinue: "Fill in to continue",
+      phoneLabel: "Phone / WhatsApp",
+      phonePlaceholder: "(00) 00000-0000",
+      phoneRequiredHint: "Required — select the country (DDI) and enter your mobile number.",
+      phoneRequiredBlock: "Enter your mobile number to generate the Pix.",
+      phoneInvalid: "Enter a valid mobile number for the selected country.",
+      phoneIncomplete: "Incomplete phone number — digits are missing.",
+      phoneTooLong: "Phone number has too many digits for the selected country.",
+      phoneDdiLabel: "Country / DDI",
       btnPrint: "Download receipt",
       btnEmail: "Email receipt",
       downloadOk: "Receipt downloaded. Open the file or use Ctrl+P to print.",
@@ -123,7 +148,7 @@
       emailSending: "Sending…",
       emailSent: "Receipt sent to {{email}}.",
       emailError: "Could not send. Try print or WhatsApp.",
-      emailInvalid: "Enter a valid email.",
+      emailInvalid: "Invalid email format.",
       perTripSuffix: "per tour",
     },
     es: {
@@ -132,6 +157,9 @@
       receiptIntro:
         "Recibimos {{amount}} ({{amountWords}}) vía Pix por la(s) excursión(es) abajo, código de reserva {{code}}.",
       contractor: "Contratada",
+      buyer: "Cliente",
+      buyerEmail: "Correo",
+      buyerPhone: "Teléfono / WhatsApp",
       itinerary: "Itinerario confirmado",
       colDate: "Fecha",
       colDay: "Día",
@@ -162,6 +190,15 @@
       emailPlaceholder: "tu@correo.com",
       emailRequiredHint: "Obligatorio — enviaremos el recibo por correo tras confirmar el Pix.",
       emailRequiredBlock: "Indique su correo para generar el Pix.",
+      fieldFillToContinue: "Complete para continuar",
+      phoneLabel: "Teléfono / WhatsApp",
+      phonePlaceholder: "(00) 00000-0000",
+      phoneRequiredHint: "Obligatorio — seleccione el país (DDI) e indique el celular.",
+      phoneRequiredBlock: "Indique su celular para generar el Pix.",
+      phoneInvalid: "Indique un celular válido para el país seleccionado.",
+      phoneIncomplete: "Teléfono incompleto — faltan dígitos.",
+      phoneTooLong: "El teléfono tiene demasiados dígitos para el país seleccionado.",
+      phoneDdiLabel: "País / DDI",
       btnPrint: "Descargar recibo",
       btnEmail: "Enviar recibo por correo",
       downloadOk: "Recibo descargado. Abra el archivo o use Ctrl+P para imprimir.",
@@ -170,7 +207,7 @@
       emailSending: "Enviando…",
       emailSent: "Recibo enviado a {{email}}.",
       emailError: "No se pudo enviar. Use imprimir o WhatsApp.",
-      emailInvalid: "Indique un correo válido.",
+      emailInvalid: "Formato de correo inválido.",
       perTripSuffix: "por paseo",
     },
   };
@@ -525,6 +562,13 @@
     var amount = Number(data.amount);
     if (!Number.isFinite(amount)) amount = 0;
     var code = data.code || "";
+    var buyerEmail = String((data && data.email) || "").trim();
+    var buyerPhoneRaw = String((data && (data.phone || data.telefone)) || "").trim();
+    var buyerPhone = buyerPhoneRaw
+      ? isValidPhone(buyerPhoneRaw)
+        ? formatPhoneIntl(buyerPhoneRaw)
+        : buyerPhoneRaw
+      : "";
     var logo = siteAssetUrl(COMPANY.logoRel);
     var emitted = emissionLabel(loc);
     var coverage = resolveInclExcl(data);
@@ -661,6 +705,28 @@
       " · " +
       escapeHtml(COMPANY.guide) +
       "</p></td></tr></table>" +
+      (buyerEmail || buyerPhone
+        ? '<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;">' +
+          "<tr><td style=\"padding:14px 16px;\">" +
+          '<p style="margin:0 0 6px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#1e3a8a;font-weight:700;">' +
+          escapeHtml(rs(loc, "buyer")) +
+          "</p>" +
+          (buyerEmail
+            ? '<p style="margin:0 0 4px;font-size:13px;color:#334155;"><strong>' +
+              escapeHtml(rs(loc, "buyerEmail")) +
+              ":</strong> " +
+              escapeHtml(buyerEmail) +
+              "</p>"
+            : "") +
+          (buyerPhone
+            ? '<p style="margin:0;font-size:13px;color:#334155;"><strong>' +
+              escapeHtml(rs(loc, "buyerPhone")) +
+              ":</strong> " +
+              escapeHtml(buyerPhone) +
+              "</p>"
+            : "") +
+          "</td></tr></table>"
+        : "") +
       '<h2 style="margin:0 0 10px;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:#0f3d2e;font-weight:800;">' +
       escapeHtml(rs(loc, "itinerary")) +
       "</h2>" +
@@ -912,6 +978,234 @@
     }
   }
 
+  function readSavedPhone() {
+    try {
+      return global.localStorage.getItem(PHONE_STORAGE_KEY) || "";
+    } catch (err) {
+      return "";
+    }
+  }
+
+  function savePhone(phone) {
+    try {
+      global.localStorage.setItem(PHONE_STORAGE_KEY, phone);
+    } catch (err) {
+      /* */
+    }
+  }
+
+  var PHONE_DDI_STORAGE_KEY = "gcv-receipt-phone-ddi";
+  var PHONE_COUNTRIES = [
+    { iso: "br", dial: "55", name: { pt: "Brasil", en: "Brazil", es: "Brasil" }, min: 11, max: 11, mask: "br" },
+  ];
+  var _phoneCountriesReady = null;
+
+  function phoneDdiDataUrl() {
+    var base = "/assets/data/phone-ddi.json";
+    if (
+      global.location.pathname.indexOf("/en/") >= 0 ||
+      global.location.pathname.indexOf("/es/") >= 0
+    ) {
+      base = "../assets/data/phone-ddi.json";
+    }
+    return base;
+  }
+
+  function ensurePhoneCountries() {
+    if (_phoneCountriesReady) return _phoneCountriesReady;
+    _phoneCountriesReady = fetch(phoneDdiDataUrl(), { cache: "force-cache" })
+      .then(function (res) {
+        if (!res.ok) throw new Error("ddi fetch failed");
+        return res.json();
+      })
+      .then(function (list) {
+        if (Array.isArray(list) && list.length) {
+          PHONE_COUNTRIES = list.filter(function (c) {
+            return c && c.iso && c.dial;
+          });
+        }
+        return PHONE_COUNTRIES;
+      })
+      .catch(function () {
+        return PHONE_COUNTRIES;
+      });
+    return _phoneCountriesReady;
+  }
+
+  function getPhoneCountries() {
+    return PHONE_COUNTRIES.slice();
+  }
+
+  function findPhoneCountry(isoOrDial) {
+    var key = String(isoOrDial || "").trim().toLowerCase().replace(/^\+/, "");
+    if (!key) return PHONE_COUNTRIES[0] || { iso: "br", dial: "55", min: 8, max: 15, mask: "default", name: { pt: "Brasil", en: "Brazil", es: "Brasil" } };
+    for (var i = 0; i < PHONE_COUNTRIES.length; i++) {
+      if (PHONE_COUNTRIES[i].iso === key) return PHONE_COUNTRIES[i];
+    }
+    for (var j = 0; j < PHONE_COUNTRIES.length; j++) {
+      if (PHONE_COUNTRIES[j].dial === key) return PHONE_COUNTRIES[j];
+    }
+    return PHONE_COUNTRIES[0] || { iso: "br", dial: "55", min: 8, max: 15, mask: "default", name: { pt: "Brasil", en: "Brazil", es: "Brasil" } };
+  }
+
+  function readSavedPhoneDdi() {
+    try {
+      return global.localStorage.getItem(PHONE_DDI_STORAGE_KEY) || "br";
+    } catch (err) {
+      return "br";
+    }
+  }
+
+  function savePhoneDdi(iso) {
+    try {
+      global.localStorage.setItem(PHONE_DDI_STORAGE_KEY, findPhoneCountry(iso).iso);
+    } catch (err) {
+      /* */
+    }
+  }
+
+  function digitsOnly(value) {
+    return String(value || "").replace(/\D+/g, "");
+  }
+
+  /** Número nacional sem DDI, limitado ao máximo do país. */
+  function nationalPhoneDigits(phone, iso) {
+    var country = findPhoneCountry(iso || "br");
+    var digits = digitsOnly(phone);
+    if (digits.indexOf(country.dial) === 0 && digits.length > country.dial.length + (country.min - 1)) {
+      digits = digits.slice(country.dial.length);
+    }
+    return digits.slice(0, country.max);
+  }
+
+  function formatPhoneMask(phone, iso) {
+    var country = findPhoneCountry(iso || "br");
+    var d = nationalPhoneDigits(phone, country.iso);
+    if (!d) return "";
+    if (country.mask === "br") {
+      if (d.length <= 2) return "(" + d;
+      if (d.length <= 7) return "(" + d.slice(0, 2) + ") " + d.slice(2);
+      if (d.length <= 10) return "(" + d.slice(0, 2) + ") " + d.slice(2, 6) + "-" + d.slice(6);
+      return "(" + d.slice(0, 2) + ") " + d.slice(2, 7) + "-" + d.slice(7);
+    }
+    if (country.mask === "us") {
+      if (d.length <= 3) return "(" + d;
+      if (d.length <= 6) return "(" + d.slice(0, 3) + ") " + d.slice(3);
+      return "(" + d.slice(0, 3) + ") " + d.slice(3, 6) + "-" + d.slice(6);
+    }
+    if (country.mask === "ar") {
+      if (d.length <= 2) return d;
+      if (d.length <= 6) return d.slice(0, 2) + " " + d.slice(2);
+      return d.slice(0, 2) + " " + d.slice(2, 6) + "-" + d.slice(6);
+    }
+    if (d.length <= 3) return d;
+    if (d.length <= 6) return d.slice(0, 3) + " " + d.slice(3);
+    if (d.length <= 9) return d.slice(0, 3) + " " + d.slice(3, 6) + " " + d.slice(6);
+    return d.slice(0, 3) + " " + d.slice(3, 6) + " " + d.slice(6, 9) + " " + d.slice(9);
+  }
+
+  function isValidPhone(phone, iso) {
+    return !getPhoneValidationIssue(phone, iso);
+  }
+
+  /** null = ok; "empty" | "short" | "long" */
+  function getPhoneValidationIssue(phone, iso) {
+    var country = findPhoneCountry(iso || "br");
+    var len = nationalPhoneDigits(phone, country.iso).length;
+    if (!len) return "empty";
+    if (len < country.min) return "short";
+    if (len > country.max) return "long";
+    return null;
+  }
+
+  function phoneValidationMessage(phone, iso, locale) {
+    var issue = getPhoneValidationIssue(phone, iso);
+    if (!issue) return "";
+    if (issue === "empty") return rs(locale, "fieldFillToContinue");
+    if (issue === "short") return rs(locale, "phoneIncomplete");
+    if (issue === "long") return rs(locale, "phoneTooLong");
+    return rs(locale, "phoneInvalid");
+  }
+
+  function normalizePhone(phone, iso) {
+    return formatPhoneMask(phone, iso);
+  }
+
+  /** Ex.: +55 62 99999-9999 */
+  function formatPhoneIntl(phone, iso) {
+    var country = findPhoneCountry(iso || "br");
+    var d = nationalPhoneDigits(phone, country.iso);
+    if (!d) return "";
+    var national = formatPhoneMask(d, country.iso);
+    return "+" + country.dial + (national ? " " + national : "");
+  }
+
+  function phonePlaceholderFor(iso) {
+    var country = findPhoneCountry(iso || "br");
+    if (country.mask === "br") return "(00) 00000-0000";
+    if (country.mask === "us") return "(000) 000-0000";
+    if (country.mask === "ar") return "11 0000-0000";
+    return "000 000 000";
+  }
+
+  function phoneCountryLabel(country, locale) {
+    var loc = locale === "en" || locale === "es" ? locale : "pt";
+    var name = (country.name && (country.name[loc] || country.name.en || country.name.pt)) || country.iso.toUpperCase();
+    return "+" + country.dial + " " + name;
+  }
+
+  function phoneCountryName(country, locale) {
+    var loc = locale === "en" || locale === "es" ? locale : "pt";
+    return (country.name && (country.name[loc] || country.name.en || country.name.pt)) || country.iso.toUpperCase();
+  }
+
+  function buildPhoneDdiListHtml(locale, selectedIso, query) {
+    var selected = findPhoneCountry(selectedIso || "br").iso;
+    var q = String(query || "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    var loc = locale === "en" || locale === "es" ? locale : "pt";
+    return PHONE_COUNTRIES.filter(function (c) {
+      if (!q) return true;
+      var name = phoneCountryName(c, loc)
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+      return (
+        name.indexOf(q) >= 0 ||
+        ("+" + c.dial).indexOf(q) >= 0 ||
+        c.dial.indexOf(q) >= 0 ||
+        c.iso.indexOf(q) >= 0
+      );
+    })
+      .map(function (c) {
+        return (
+          '<button type="button" class="gcv-pix-modal__ddi-option' +
+          (c.iso === selected ? " is-selected" : "") +
+          '" role="option" data-gcv-ddi-iso="' +
+          c.iso +
+          '" aria-selected="' +
+          (c.iso === selected ? "true" : "false") +
+          '">' +
+          '<span class="fi fi-' +
+          c.iso +
+          ' gcv-pix-modal__ddi-option-flag" aria-hidden="true"></span>' +
+          '<span class="gcv-pix-modal__ddi-option-name">' +
+          phoneCountryName(c, loc) +
+          "</span>" +
+          '<span class="gcv-pix-modal__ddi-option-dial">+' +
+          c.dial +
+          "</span></button>"
+        );
+      })
+      .join("");
+  }
+
+  // Pré-carrega a lista completa de DDIs.
+  ensurePhoneCountries();
+
   function normalizeReservationCode(code) {
     return String(code || "")
       .trim()
@@ -940,6 +1234,7 @@
           return {
             code: code,
             email: item.email ? String(item.email).trim().toLowerCase() : "",
+            phone: item.phone ? String(item.phone).trim() : "",
             savedAt: item.savedAt ? String(item.savedAt) : "",
           };
         })
@@ -959,24 +1254,33 @@
 
   /**
    * @param {string} code
-   * @param {{ email?: string }} [opts]
+   * @param {{ email?: string, phone?: string }} [opts]
    */
   function saveReservationCode(code, opts) {
     var normalized = normalizeReservationCode(code);
     if (!RESERVATION_CODE_RE.test(normalized)) return false;
     var email =
       opts && opts.email && isValidEmail(opts.email) ? String(opts.email).trim().toLowerCase() : "";
+    var phone =
+      opts && opts.phone && isValidPhone(opts.phone, opts.phoneIso || readSavedPhoneDdi())
+        ? formatPhoneIntl(opts.phone, opts.phoneIso || readSavedPhoneDdi())
+        : opts && opts.phone
+          ? String(opts.phone).trim()
+          : "";
+    if (opts && opts.phoneIso) savePhoneDdi(opts.phoneIso);
     var list = readSavedReservationCodes().filter(function (item) {
       return item.code !== normalized;
     });
     list.unshift({
       code: normalized,
       email: email,
+      phone: phone,
       savedAt: new Date().toISOString(),
     });
     if (list.length > RESERVATION_CODES_MAX) list.length = RESERVATION_CODES_MAX;
     writeSavedReservationCodes(list);
     if (email) saveEmail(email);
+    if (phone) savePhone(phone);
     return true;
   }
 
@@ -994,8 +1298,44 @@
     return "";
   }
 
+  function getSavedPhoneForCode(code) {
+    var normalized = normalizeReservationCode(code);
+    var list = readSavedReservationCodes();
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].code === normalized && list[i].phone) return list[i].phone;
+    }
+    return "";
+  }
+
+  /**
+   * Validação prática universal de e-mail (formato local@domínio.tld).
+   * Não verifica se a caixa existe — só a estrutura.
+   */
   function isValidEmail(email) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || "").trim());
+    return !getEmailValidationIssue(email);
+  }
+
+  /** null = ok; "empty" | "format" */
+  function getEmailValidationIssue(email) {
+    var s = String(email || "").trim();
+    if (!s) return "empty";
+    if (s.length > 254) return "format";
+    // Padrão amplamente usado (HTML5-like / RFC 5322 simplificado)
+    if (
+      !/^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/.test(
+        s,
+      )
+    ) {
+      return "format";
+    }
+    return null;
+  }
+
+  function emailValidationMessage(email, locale) {
+    var issue = getEmailValidationIssue(email);
+    if (!issue) return "";
+    if (issue === "empty") return rs(locale, "fieldFillToContinue");
+    return rs(locale, "emailInvalid");
   }
 
   function receiptPngFilename(code) {
@@ -1228,13 +1568,35 @@
     receiptApiUrl: receiptApiUrl,
     readSavedEmail: readSavedEmail,
     saveEmail: saveEmail,
+    readSavedPhone: readSavedPhone,
+    savePhone: savePhone,
+    readSavedPhoneDdi: readSavedPhoneDdi,
+    savePhoneDdi: savePhoneDdi,
+    getPhoneCountries: getPhoneCountries,
+    findPhoneCountry: findPhoneCountry,
+    ensurePhoneCountries: ensurePhoneCountries,
+    phonePlaceholderFor: phonePlaceholderFor,
+    phoneCountryLabel: phoneCountryLabel,
+    phoneCountryName: phoneCountryName,
+    buildPhoneDdiListHtml: buildPhoneDdiListHtml,
+    normalizePhone: normalizePhone,
+    formatPhoneMask: formatPhoneMask,
+    formatPhoneIntl: formatPhoneIntl,
+    nationalPhoneDigits: nationalPhoneDigits,
+    digitsOnly: digitsOnly,
     normalizeReservationCode: normalizeReservationCode,
     isValidReservationCode: isValidReservationCode,
     readSavedReservationCodes: readSavedReservationCodes,
     saveReservationCode: saveReservationCode,
     getLastReservationCode: getLastReservationCode,
     getSavedEmailForCode: getSavedEmailForCode,
+    getSavedPhoneForCode: getSavedPhoneForCode,
     isValidEmail: isValidEmail,
+    isValidPhone: isValidPhone,
+    getEmailValidationIssue: getEmailValidationIssue,
+    getPhoneValidationIssue: getPhoneValidationIssue,
+    emailValidationMessage: emailValidationMessage,
+    phoneValidationMessage: phoneValidationMessage,
     buildWhatsAppUrl: buildWhatsAppUrl,
     formatBrl: formatBrl,
     normalizeTrips: normalizeTrips,

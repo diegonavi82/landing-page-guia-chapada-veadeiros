@@ -71,6 +71,14 @@ $payload = [
     'trips' => $res['trips'] ?? [],
     'paid_at' => $res['paid_at'] ?? null,
 ];
+if (!empty($res['email'])) {
+    $payload['email'] = $res['email'];
+}
+if (!empty($res['phone'])) {
+    $payload['phone'] = $res['phone'];
+} elseif (!empty($res['telefone'])) {
+    $payload['phone'] = $res['telefone'];
+}
 if (!empty($res['incl_excl']) && is_array($res['incl_excl'])) {
     $payload['incl_excl'] = $res['incl_excl'];
 }
