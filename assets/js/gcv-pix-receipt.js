@@ -239,6 +239,134 @@
     return m[3] + "/" + m[2] + "/" + m[1];
   }
 
+  function looksLikeIsoDate(value) {
+    return /^\d{4}-\d{2}-\d{2}$/.test(String(value || "").trim());
+  }
+
+  function looksLikeHumanDate(value) {
+    var s = String(value || "").trim();
+    if (!s || s.length > 48) return false;
+    if (/teste\s*pix|pix\s*test/i.test(s)) return false;
+    if (/[—–-]/.test(s) && /mirante|vale|cachoeira|catarata|window|lookout/i.test(s)) return false;
+    return (
+      /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(s) ||
+      /^\d{1,2}\s+de\s+\S+/i.test(s) ||
+      /^[A-Za-zçÇáàâãéêíóôõúüÁÀÂÃÉÊÍÓÔÕÚÜ]+\s+\d{1,2},?\s+\d{4}$/.test(s) ||
+      /^\d{1,2}\s+[A-Za-zçÇáàâãéêíóôõúüÁÀÂÃÉÊÍÓÔÕÚÜ]+/.test(s)
+    );
+  }
+
+  function monthNameToNum(name) {
+    var map = {
+      janeiro: 1,
+      january: 1,
+      enero: 1,
+      fevereiro: 2,
+      february: 2,
+      febrero: 2,
+      marco: 3,
+      março: 3,
+      march: 3,
+      marzo: 3,
+      abril: 4,
+      april: 4,
+      maio: 5,
+      may: 5,
+      mayo: 5,
+      junho: 6,
+      june: 6,
+      junio: 6,
+      julho: 7,
+      july: 7,
+      julio: 7,
+      agosto: 8,
+      august: 8,
+      setembro: 9,
+      september: 9,
+      septiembre: 9,
+      outubro: 10,
+      october: 10,
+      octubre: 10,
+      novembro: 11,
+      november: 11,
+      noviembre: 11,
+      dezembro: 12,
+      december: 12,
+      diciembre: 12,
+    };
+    var key = String(name || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    return map[key] || 0;
+  }
+
+  function resolveTripIso(trip) {
+    var raw = trip && (trip.dateIso || trip.dateISO || trip.date_iso || "");
+    raw = String(raw || "").trim().slice(0, 10);
+    if (looksLikeIsoDate(raw)) return raw;
+    var day = parseInt(String((trip && trip.dayNum) || ""), 10);
+    var month = monthNameToNum(trip && trip.monthName);
+    var year = parseInt(String((trip && trip.year) || ""), 10);
+    if (!Number.isFinite(year) || year < 2020) {
+      var fromLabel = String((trip && trip.dateLabel) || "").match(/(20\d{2})/);
+      year = fromLabel ? parseInt(fromLabel[1], 10) : new Date().getFullYear();
+    }
+    if (Number.isFinite(day) && day > 0 && month > 0) {
+      return (
+        String(year) +
+        "-" +
+        String(month).padStart(2, "0") +
+        "-" +
+        String(day).padStart(2, "0")
+      );
+    }
+    var cartId = String((trip && trip.cartId) || "");
+    var cartIso = cartId.match(/^(20\d{2}-\d{2}-\d{2})/);
+    return cartIso ? cartIso[1] : "";
+  }
+
+  function resolveTripDateShort(trip, dateIso, locale) {
+    if (trip && trip.dateShort && /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(String(trip.dateShort).trim())) {
+      return String(trip.dateShort).trim();
+    }
+    var fromIso = isoToShort(dateIso);
+    if (fromIso) return fromIso;
+    var label = String((trip && trip.dateLabel) || "").trim();
+    if (looksLikeHumanDate(label)) {
+      if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(label)) return label;
+      var m = label.match(/(\d{1,2}).*?(\d{4})/);
+      var month = monthNameToNum(label.replace(/\d+/g, " ").trim().split(/\s+/)[0]);
+      if (m && month) {
+        return (
+          String(parseInt(m[1], 10)).padStart(2, "0") +
+          "/" +
+          String(month).padStart(2, "0") +
+          "/" +
+          m[2]
+        );
+      }
+      return label;
+    }
+    var day = parseInt(String((trip && trip.dayNum) || ""), 10);
+    var monthName = String((trip && trip.monthName) || "").trim();
+    if (Number.isFinite(day) && day > 0 && monthName) {
+      var yMatch = String(dateIso || "").match(/^(20\d{2})/);
+      var y = yMatch ? yMatch[1] : String(new Date().getFullYear());
+      if (locale === "en") return monthName + " " + day + ", " + y;
+      if (locale === "es") return day + " de " + monthName + " de " + y;
+      return day + " de " + monthName + "/" + y;
+    }
+    return "";
+  }
+
+  function cleanDestino(destino) {
+    return String(destino || "")
+      .replace(/^\s*(TESTE\s*PIX|PIX\s*TEST|PRUEBA\s*PIX)\s*[-:]\s*/i, "")
+      .replace(/^\s*(TESTE\s*PIX|PIX\s*TEST|PRUEBA\s*PIX)\s+/i, "")
+      .trim();
+  }
+
   function weekdayFromIso(iso, locale) {
     if (!iso) return "";
     var d = new Date(iso + "T12:00:00-03:00");
@@ -343,16 +471,24 @@
     return amountWordsPt(amount);
   }
 
-  function normalizeTrips(trips) {
+  function normalizeTrips(trips, locale) {
+    var loc = locale === "en" || locale === "es" ? locale : "pt";
     return (trips || []).map(function (trip) {
       var unit = parseInt(String(trip.valorUnit), 10) || 0;
       var qty = Math.max(1, parseInt(String(trip.qty), 10) || 1);
-      var dateIso = trip.dateIso || "";
-      var dateShort = trip.dateShort || isoToShort(dateIso);
+      var dateIso = resolveTripIso(trip);
+      var dateShort = resolveTripDateShort(trip, dateIso, loc);
+      var weekday = String(trip.weekday || "").trim() || weekdayFromIso(dateIso, loc);
+      var destino = cleanDestino(trip.destino || "");
+      if (!destino && trip.dateLabel && !looksLikeHumanDate(trip.dateLabel)) {
+        destino = cleanDestino(trip.dateLabel);
+      }
       return {
-        dateShort: dateShort,
-        weekday: trip.weekday || weekdayFromIso(dateIso, "pt"),
-        destino: trip.destino || "",
+        dateIso: dateIso,
+        dateShort: dateShort || "—",
+        weekday: weekday || "—",
+        dateLabel: dateShort || String(trip.dateLabel || "").trim(),
+        destino: destino,
         guiaNome: trip.guiaNome || "",
         embarque: trip.embarque || "",
         hora: trip.hora || "",
@@ -385,7 +521,7 @@
 
   function buildReceiptHtml(data, locale) {
     var loc = locale === "en" || locale === "es" ? locale : "pt";
-    var trips = normalizeTrips(data.trips);
+    var trips = normalizeTrips(data.trips, loc);
     var amount = Number(data.amount);
     if (!Number.isFinite(amount)) amount = 0;
     var code = data.code || "";
@@ -409,29 +545,31 @@
       .map(function (t) {
         return (
           "<tr>" +
-          "<td>" +
+          '<td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#0f172a;vertical-align:top;">' +
+          "<strong>" +
           escapeHtml(t.dateShort) +
+          "</strong>" +
+          (t.weekday && t.weekday !== "—"
+            ? '<br><span style="color:#64748b;font-size:11px;">' + escapeHtml(t.weekday) + "</span>"
+            : "") +
           "</td>" +
-          "<td>" +
-          escapeHtml(t.weekday) +
+          '<td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#0f172a;vertical-align:top;">' +
+          escapeHtml(t.destino || "—") +
           "</td>" +
-          "<td>" +
-          escapeHtml(t.destino) +
-          "</td>" +
-          "<td>" +
+          '<td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#0f172a;vertical-align:top;">' +
           escapeHtml(t.guiaNome || "—") +
           "</td>" +
-          "<td><span class=\"pin\">📍</span> " +
-          escapeHtml(t.embarque) +
+          '<td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#0f172a;vertical-align:top;">' +
+          escapeHtml(t.embarque || "—") +
           (t.hora ? " · " + escapeHtml(t.hora) : "") +
           "</td>" +
-          "<td>" +
+          '<td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#0f172a;text-align:right;vertical-align:top;">' +
           escapeHtml(formatBrlInt(t.valorUnit)) +
           "</td>" +
-          "<td>" +
+          '<td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#0f172a;text-align:center;vertical-align:top;">' +
           escapeHtml(String(t.qty).padStart(2, "0")) +
           "</td>" +
-          "<td>" +
+          '<td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#0f172a;text-align:right;font-weight:700;vertical-align:top;">' +
           escapeHtml(formatBrlInt(t.totalDay)) +
           "</td>" +
           "</tr>"
@@ -441,37 +579,67 @@
 
     var inclList = inclItems
       .map(function (x) {
-        return "<li>✓ " + escapeHtml(x) + "</li>";
+        return (
+          '<li style="margin:0 0 4px;padding:0;font-size:12px;color:#065f46;list-style:none;">✓ ' +
+          escapeHtml(x) +
+          "</li>"
+        );
       })
       .join("");
     var exclList = exclItems
       .map(function (x) {
-        return "<li>✕ " + escapeHtml(x) + "</li>";
+        return (
+          '<li style="margin:0 0 4px;padding:0;font-size:12px;color:#991b1b;list-style:none;">✕ ' +
+          escapeHtml(x) +
+          "</li>"
+        );
       })
       .join("");
+
+    var th =
+      'style="padding:10px 8px;background:#0f3d2e;color:#fff;font-size:11px;font-weight:700;text-align:left;"';
+    var thR =
+      'style="padding:10px 8px;background:#0f3d2e;color:#fff;font-size:11px;font-weight:700;text-align:right;"';
+    var thC =
+      'style="padding:10px 8px;background:#0f3d2e;color:#fff;font-size:11px;font-weight:700;text-align:center;"';
 
     return (
       '<!DOCTYPE html><html lang="' +
       (loc === "en" ? "en" : loc === "es" ? "es" : "pt-BR") +
-      '"><head><meta charset="utf-8"><title>' +
-      escapeHtml(rs(loc, "receiptTitle")) +
-      " — " +
+      '"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+      "<title>" +
       escapeHtml(code) +
-      '</title><style>' +
+      " - Reserva</title>" +
+      "<style>" +
       receiptCss() +
-      '</style></head><body><div class="sheet">' +
-      '<header class="head">' +
-      '<div class="brand"><img src="' +
+      "</style></head><body style=\"margin:0;padding:0;background:#eef2f0;font-family:Georgia,'Times New Roman',serif;color:#0f172a;\">" +
+      '<div style="display:none;max-height:0;overflow:hidden;">' +
+      escapeHtml(rs(loc, "receiptIntro").replace(/\{\{.*?\}\}/g, "")) +
+      "</div>" +
+      '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef2f0;padding:24px 12px;">' +
+      '<tr><td align="center">' +
+      '<table role="presentation" width="640" cellpadding="0" cellspacing="0" style="max-width:640px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #d7e2db;box-shadow:0 8px 28px rgba(15,61,46,.08);">' +
+      '<tr><td style="background:linear-gradient(135deg,#0f3d2e 0%,#1a5c45 100%);padding:28px 28px 22px;">' +
+      '<table width="100%" cellpadding="0" cellspacing="0"><tr>' +
+      '<td style="vertical-align:middle;">' +
+      '<img src="' +
       escapeHtml(logo) +
       '" alt="' +
       escapeHtml(COMPANY.name) +
-      '" width="180" height="48"><strong>' +
-      escapeHtml(COMPANY.name) +
-      "</strong></div>" +
-      '<h1 class="doc-title">' +
+      '" width="160" height="42" style="display:block;max-width:160px;height:auto;border:0;">' +
+      "</td>" +
+      '<td align="right" style="vertical-align:middle;">' +
+      '<p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#a7f3d0;">' +
+      escapeHtml(rs(loc, "refLabel")) +
+      "</p>" +
+      '<p style="margin:4px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:20px;font-weight:800;color:#ffffff;letter-spacing:.04em;">' +
+      escapeHtml(code) +
+      "</p></td></tr></table>" +
+      '<h1 style="margin:18px 0 0;font-family:Georgia,serif;font-size:22px;line-height:1.25;color:#ffffff;font-weight:700;">' +
       escapeHtml(rs(loc, "receiptDocTitle")) +
-      "</h1></header>" +
-      '<p class="intro">' +
+      "</h1></td></tr>" +
+      '<tr><td style="padding:24px 28px 8px;font-family:Arial,Helvetica,sans-serif;">' +
+      '<p style="margin:0 0 18px;font-size:14px;line-height:1.55;color:#334155;">' +
       escapeHtml(
         tpl(rs(loc, "receiptIntro"), {
           amount: formatBrl(amount),
@@ -480,109 +648,142 @@
         }),
       ) +
       "</p>" +
-      '<div class="party">' +
-      '<div class="party-box"><h2>🏢 ' +
+      '<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;background:#f8faf8;border:1px solid #d7e2db;border-radius:12px;">' +
+      "<tr><td style=\"padding:14px 16px;\">" +
+      '<p style="margin:0 0 4px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#0f3d2e;font-weight:700;">' +
       escapeHtml(rs(loc, "contractor")) +
-      "</h2>" +
-      "<p><strong>" +
-      escapeHtml(COMPANY.name) +
-      "</strong></p>" +
-      "<p>CNPJ " +
-      escapeHtml(COMPANY.cnpj) +
       "</p>" +
-      "<p>" +
+      '<p style="margin:0 0 2px;font-size:15px;font-weight:800;color:#0f3d2e;">' +
+      escapeHtml(COMPANY.name) +
+      "</p>" +
+      '<p style="margin:0;font-size:12px;color:#475569;">CNPJ ' +
+      escapeHtml(COMPANY.cnpj) +
+      " · " +
       escapeHtml(COMPANY.guide) +
-      "</p></div></div>" +
-      '<section class="itinerary"><h2>' +
+      "</p></td></tr></table>" +
+      '<h2 style="margin:0 0 10px;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:#0f3d2e;font-weight:800;">' +
       escapeHtml(rs(loc, "itinerary")) +
-      '</h2><div class="table-wrap"><table><thead><tr>' +
-      "<th>" +
+      "</h2>" +
+      '<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border-radius:12px;overflow:hidden;border:1px solid #0f3d2e;margin:0 0 8px;">' +
+      "<thead><tr>" +
+      "<th " +
+      th +
+      ">" +
       escapeHtml(rs(loc, "colDate")) +
-      "</th><th>" +
-      escapeHtml(rs(loc, "colDay")) +
-      "</th><th>" +
+      "</th>" +
+      "<th " +
+      th +
+      ">" +
       escapeHtml(rs(loc, "colDest")) +
-      "</th><th>" +
+      "</th>" +
+      "<th " +
+      th +
+      ">" +
       escapeHtml(rs(loc, "colGuide")) +
-      "</th><th>" +
+      "</th>" +
+      "<th " +
+      th +
+      ">" +
       escapeHtml(rs(loc, "colDeparture")) +
-      "</th><th>" +
+      "</th>" +
+      "<th " +
+      thR +
+      ">" +
       escapeHtml(rs(loc, "colUnit")) +
-      "</th><th>" +
+      "</th>" +
+      "<th " +
+      thC +
+      ">" +
       escapeHtml(rs(loc, "colPeople")) +
-      "</th><th>" +
+      "</th>" +
+      "<th " +
+      thR +
+      ">" +
       escapeHtml(rs(loc, "colDayTotal")) +
       "</th></tr></thead><tbody>" +
       tableRows +
-      "</tbody></table></div>" +
-      '<p class="seats-bar">' +
+      "</tbody></table>" +
+      '<p style="margin:0 0 20px;padding:10px 12px;background:#0f3d2e;color:#fff;font-size:12px;font-weight:700;border-radius:0 0 10px 10px;">' +
       escapeHtml(
         tpl(rs(loc, "seatsSummary"), {
           total: String(totalSeats).padStart(2, "0"),
           detail: seatsDetail,
         }),
       ) +
-      "</p></section>" +
-      '<div class="cols"><section class="fin"><h2>💲 ' +
+      "</p>" +
+      '<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px;"><tr>' +
+      '<td width="50%" valign="top" style="padding:0 6px 0 0;">' +
+      '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:14px 16px;">' +
+      '<p style="margin:0 0 8px;font-size:12px;font-weight:800;color:#0f3d2e;">💲 ' +
       escapeHtml(rs(loc, "financial")) +
-      "</h2><ul>" +
-      "<li><span>" +
+      "</p>" +
+      '<p style="margin:0 0 6px;font-size:13px;color:#334155;"><span>' +
       escapeHtml(rs(loc, "finTotal")) +
-      "</span><strong>" +
+      ':</span> <strong style="float:right;color:#0f3d2e;">' +
       escapeHtml(formatBrl(amount)) +
-      "</strong></li>" +
-      "<li><span>" +
+      "</strong></p>" +
+      '<p style="margin:0 0 8px;font-size:13px;color:#334155;"><span>' +
       escapeHtml(rs(loc, "finReceived")) +
-      "</span><strong>" +
+      ':</span> <strong style="float:right;color:#0f3d2e;">' +
       escapeHtml(formatBrl(amount)) +
-      "</strong></li></ul>" +
-      '<p class="fin-note">' +
+      "</strong></p>" +
+      '<p style="margin:0;font-size:11px;line-height:1.45;color:#64748b;">' +
       escapeHtml(rs(loc, "finNote")) +
-      "</p></section>" +
-      '<section class="cov"><h3>✓ ' +
+      "</p></div></td>" +
+      '<td width="50%" valign="top" style="padding:0 0 0 6px;">' +
+      '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px 16px;">' +
+      '<p style="margin:0 0 6px;font-size:12px;font-weight:800;color:#065f46;">✓ ' +
       escapeHtml(rs(loc, "included")) +
-      '</h3><ul class="in">' +
+      "</p><ul style=\"margin:0 0 10px;padding:0;\">" +
       inclList +
-      '</ul><h3>✕ ' +
+      '</ul><p style="margin:0 0 6px;font-size:12px;font-weight:800;color:#991b1b;">✕ ' +
       escapeHtml(rs(loc, "excluded")) +
-      '</h3><ul class="out">' +
+      '</p><ul style="margin:0;padding:0;">' +
       exclList +
-      "</ul></section></div>" +
-      '<section class="obs"><h2>ℹ ' +
+      "</ul></div></td></tr></table>" +
+      '<div style="margin:0 0 18px;padding:14px 16px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;">' +
+      '<p style="margin:0 0 8px;font-size:12px;font-weight:800;color:#1e3a8a;">ℹ ' +
       escapeHtml(rs(loc, "observations")) +
-      "</h2><ul>" +
+      "</p>" +
+      '<ul style="margin:0;padding-left:18px;font-size:12px;line-height:1.5;color:#334155;">' +
       "<li>" +
       escapeHtml(tpl(rs(loc, "obs1"), { code: code })) +
-      "</li>" +
-      "<li>" +
+      "</li><li>" +
       escapeHtml(rs(loc, "obs2")) +
-      "</li>" +
-      "<li>" +
+      "</li><li>" +
       escapeHtml(rs(loc, "obs3")) +
-      "</li></ul></section>" +
-      '<footer class="foot"><div><p>📅 ' +
+      "</li></ul></div>" +
+      '<table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #e2e8f0;padding-top:14px;">' +
+      "<tr><td style=\"font-size:11px;color:#64748b;line-height:1.5;\">" +
+      "📅 " +
       escapeHtml(rs(loc, "emitted")) +
       ": " +
       escapeHtml(emitted) +
-      "</p>" +
-      "<p>" +
+      "<br>" +
       escapeHtml(rs(loc, "validity")) +
-      "</p>" +
-      "<p>" +
+      "<br>" +
       escapeHtml(rs(loc, "contact")) +
       ": " +
       escapeHtml(COMPANY.phone) +
       " · " +
       escapeHtml(COMPANY.email) +
-      "</p></div>" +
-      '<div class="sign"><p class="sign-name">' +
+      '</td><td align="right" style="font-family:Georgia,serif;color:#0f3d2e;">' +
+      '<p style="margin:0;font-size:16px;">' +
       escapeHtml(COMPANY.guideShort) +
-      "</p><p>" +
+      '</p><p style="margin:2px 0 0;font-size:11px;font-family:Arial,Helvetica,sans-serif;color:#64748b;">' +
       escapeHtml(COMPANY.guideTitle) +
-      "</p></div></footer>" +
-      '<p class="ref-code">Código: <strong>' +
+      "</p></td></tr></table>" +
+      '<p style="margin:18px 0 8px;text-align:center;font-size:13px;color:#0f3d2e;">' +
+      escapeHtml(rs(loc, "refLabel")) +
+      ": <strong>" +
       escapeHtml(code) +
-      "</strong></p></div></body></html>"
+      "</strong></p>" +
+      "</td></tr></table></td></tr></table>" +
+      '<!-- gcv-date-cells:' +
+      escapeHtml(trips.map(function (t) {
+        return t.dateShort;
+      }).join("|")) +
+      " --></body></html>"
     );
   }
 
@@ -797,23 +998,156 @@
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || "").trim());
   }
 
+  function receiptPngFilename(code) {
+    var safe = String(code || "recibo").replace(/[^A-Za-z0-9-]/g, "") || "recibo";
+    return "recibo-" + safe + ".png";
+  }
+
+  function blobToBase64(blob) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function () {
+        var result = String(reader.result || "");
+        var comma = result.indexOf(",");
+        resolve(comma >= 0 ? result.slice(comma + 1) : result);
+      };
+      reader.onerror = function () {
+        reject(new Error("read failed"));
+      };
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  /** Gera PNG do recibo via SVG foreignObject (sem dependência externa). */
+  function renderReceiptPngBase64(data, locale) {
+    var loc = locale === "en" || locale === "es" ? locale : "pt";
+    var html = buildReceiptHtml(data, loc);
+    return new Promise(function (resolve) {
+      if (!html || typeof global.Blob === "undefined") {
+        resolve("");
+        return;
+      }
+      try {
+        var iframe = document.createElement("iframe");
+        iframe.setAttribute("title", "Recibo Pix render");
+        iframe.setAttribute("aria-hidden", "true");
+        iframe.style.cssText =
+          "position:fixed;left:-99999px;top:0;width:720px;height:1200px;opacity:0;pointer-events:none;border:0;";
+        document.body.appendChild(iframe);
+        var doc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
+        if (!doc) {
+          if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+          resolve("");
+          return;
+        }
+        doc.open();
+        doc.write(html);
+        doc.close();
+
+        var finish = function (b64) {
+          try {
+            if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+          } catch (err) {
+            /* */
+          }
+          resolve(b64 || "");
+        };
+
+        global.setTimeout(function () {
+          try {
+            var root = doc.body;
+            if (!root) {
+              finish("");
+              return;
+            }
+            var card = root.querySelector("table table") || root.firstElementChild || root;
+            var rect = card.getBoundingClientRect();
+            var w = Math.max(640, Math.ceil(rect.width) || 640);
+            var h = Math.max(400, Math.ceil(rect.height) || 800);
+            var scale = 2;
+            var clone = card.cloneNode(true);
+            var wrap = document.createElement("div");
+            wrap.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
+            wrap.style.cssText = "background:#ffffff;margin:0;padding:0;width:" + w + "px;font-family:Arial,Helvetica,sans-serif;";
+            wrap.appendChild(clone);
+            var svg =
+              '<svg xmlns="http://www.w3.org/2000/svg" width="' +
+              w +
+              '" height="' +
+              h +
+              '"><foreignObject width="100%" height="100%">' +
+              new XMLSerializer().serializeToString(wrap) +
+              "</foreignObject></svg>";
+            var img = new Image();
+            img.onload = function () {
+              try {
+                var canvas = document.createElement("canvas");
+                canvas.width = w * scale;
+                canvas.height = h * scale;
+                var ctx = canvas.getContext("2d");
+                ctx.scale(scale, scale);
+                ctx.fillStyle = "#ffffff";
+                ctx.fillRect(0, 0, w, h);
+                ctx.drawImage(img, 0, 0);
+                canvas.toBlob(function (blob) {
+                  if (!blob) {
+                    finish("");
+                    return;
+                  }
+                  blobToBase64(blob)
+                    .then(finish)
+                    .catch(function () {
+                      finish("");
+                    });
+                }, "image/png");
+              } catch (err) {
+                finish("");
+              }
+            };
+            img.onerror = function () {
+              finish("");
+            };
+            img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+          } catch (err) {
+            finish("");
+          }
+        }, 350);
+      } catch (err) {
+        resolve("");
+      }
+    });
+  }
+
   function sendEmail(email, data, locale) {
     var loc = locale === "en" || locale === "es" ? locale : "pt";
     var html = buildReceiptHtml(data, loc);
-    return fetch(receiptApiUrl(), {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({
-        email: email,
-        locale: loc,
-        code: data.code,
-        amount: data.amount,
-        html: html,
-      }),
-    }).then(function (res) {
-      if (!res.ok) throw new Error("send failed");
-      return res.json();
-    });
+    return renderReceiptPngBase64(data, loc)
+      .catch(function () {
+        return "";
+      })
+      .then(function (pngBase64) {
+        var payload = {
+          email: email,
+          locale: loc,
+          code: data.code,
+          amount: data.amount,
+          trips: normalizeTrips(data.trips, loc),
+          html: html,
+        };
+        if (pngBase64) {
+          payload.attachment_png = pngBase64;
+          payload.attachment_name = receiptPngFilename(data.code);
+        }
+        return fetch(receiptApiUrl(), {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify(payload),
+        });
+      })
+      .then(function (res) {
+        if (!res.ok) throw new Error("send failed");
+        return res.json();
+      });
   }
 
   function buildWhatsAppUrl(code, amount, trips, locale) {
@@ -905,6 +1239,8 @@
     formatBrl: formatBrl,
     normalizeTrips: normalizeTrips,
     isoToShort: isoToShort,
+    resolveTripIso: resolveTripIso,
+    renderReceiptPngBase64: renderReceiptPngBase64,
     consultarReservaPageUrl: consultarReservaPageUrl,
     confirmacaoPageUrl: confirmacaoPageUrl,
     resolveInclExcl: resolveInclExcl,

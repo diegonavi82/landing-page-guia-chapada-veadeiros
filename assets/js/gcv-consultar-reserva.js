@@ -443,10 +443,23 @@
         if (submitBtn) submitBtn.disabled = true;
         if (result) result.innerHTML = '<p class="gcv-reserva-loading">…</p>';
 
+        var controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+        var timeoutId = null;
+        if (controller) {
+          timeoutId = window.setTimeout(function () {
+            try {
+              controller.abort();
+            } catch (_err) {
+              /* ignore */
+            }
+          }, 20000);
+        }
+
         fetch(recoverApiUrl(), {
           method: "POST",
           headers: { "Content-Type": "application/json", Accept: "application/json" },
           body: JSON.stringify({ email: email, locale: loc }),
+          signal: controller ? controller.signal : undefined,
         })
           .then(function (res) {
             return res.json().then(function (body) {
@@ -483,6 +496,7 @@
             }
           })
           .finally(function () {
+            if (timeoutId) window.clearTimeout(timeoutId);
             if (submitBtn) submitBtn.disabled = false;
           });
       });

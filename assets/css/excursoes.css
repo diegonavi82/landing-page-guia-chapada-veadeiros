@@ -3371,8 +3371,13 @@ html.gcv-pix-modal-open body {
 
 .gcv-pix-modal--checkout-active .gcv-pix-modal__email-block,
 .gcv-pix-modal__email-block--locked {
+  /* E-mail permanece editável para trocar/apagar e cancelar o Pix */
+  user-select: text;
+}
+
+.gcv-pix-modal--checkout-active .gcv-pix-modal__email-block .gcv-pix-modal__email-hint,
+.gcv-pix-modal--checkout-active .gcv-pix-modal__email-block .gcv-pix-modal__email-continue {
   pointer-events: none;
-  user-select: none;
 }
 
 .gcv-pix-modal--checkout-active:not(.gcv-pix-modal--paid) #gcv-pix-modal-postpay {
@@ -3437,7 +3442,7 @@ html.gcv-pix-modal-open body {
   font-size: 0.72rem;
   background: #fff;
   color: #064e3b;
-  cursor: not-allowed;
+  cursor: text;
   opacity: 1;
 }
 

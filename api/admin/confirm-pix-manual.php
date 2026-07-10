@@ -78,6 +78,12 @@ if ($status === 'EXPIRED') {
 // Tenta conciliar com a API Sicoob antes de forçar
 $confirmed = gcv_sicoob_try_confirm_reservation($res);
 if ($confirmed) {
+    try {
+        require_once dirname(__DIR__) . '/helpers/purchase_notify.php';
+        gcv_notify_admin_purchase($confirmed);
+    } catch (Throwable $e) {
+        error_log('confirm-pix-manual notify: ' . $e->getMessage());
+    }
     echo json_encode([
         'success' => true,
         'status' => 'PAID',
@@ -108,6 +114,13 @@ if (!$paid) {
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Could not mark paid']);
     exit;
+}
+
+try {
+    require_once dirname(__DIR__) . '/helpers/purchase_notify.php';
+    gcv_notify_admin_purchase($paid);
+} catch (Throwable $e) {
+    error_log('confirm-pix-manual notify: ' . $e->getMessage());
 }
 
 echo json_encode([

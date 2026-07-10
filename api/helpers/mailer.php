@@ -7,7 +7,17 @@ use PHPMailer\PHPMailer\Exception;
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
-function send_mail(string $to, string $subject, string $bodyHtml, string $toName = '', bool $wrapLayout = true): bool {
+/**
+ * @param list<array{path?:string,content?:string,name?:string,type?:string}> $attachments
+ */
+function send_mail(
+    string $to,
+    string $subject,
+    string $bodyHtml,
+    string $toName = '',
+    bool $wrapLayout = true,
+    array $attachments = []
+): bool {
     $mail = new PHPMailer(true);
     try {
         $mail->isSMTP();
@@ -18,6 +28,8 @@ function send_mail(string $to, string $subject, string $bodyHtml, string $toName
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port       = (int)($_ENV['SMTP_PORT'] ?? 587);
         $mail->CharSet    = 'UTF-8';
+        $mail->Timeout    = 12;
+        $mail->SMTPKeepAlive = false;
 
         $from     = $_ENV['SMTP_FROM'] ?? 'contato@guiachapadaveadeiros.com';
         $fromName = 'Guia Chapada Veadeiros';
@@ -27,6 +39,27 @@ function send_mail(string $to, string $subject, string $bodyHtml, string $toName
         $mail->Subject = $subject;
         $mail->Body    = $wrapLayout ? email_layout($subject, $bodyHtml) : $bodyHtml;
         $mail->AltBody = strip_tags(preg_replace('/<style\b[^>]*>.*?<\/style>/is', '', $bodyHtml) ?? $bodyHtml);
+
+        foreach ($attachments as $att) {
+            if (!is_array($att)) {
+                continue;
+            }
+            $name = trim((string)($att['name'] ?? 'anexo'));
+            $type = trim((string)($att['type'] ?? 'application/octet-stream'));
+            if (!empty($att['path']) && is_readable((string)$att['path'])) {
+                $mail->addAttachment((string)$att['path'], $name !== '' ? $name : 'anexo');
+                continue;
+            }
+            if (isset($att['content']) && is_string($att['content']) && $att['content'] !== '') {
+                $mail->addStringAttachment(
+                    $att['content'],
+                    $name !== '' ? $name : 'anexo.bin',
+                    PHPMailer::ENCODING_BASE64,
+                    $type !== '' ? $type : 'application/octet-stream'
+                );
+            }
+        }
+
         $mail->send();
         return true;
     } catch (Exception $e) {

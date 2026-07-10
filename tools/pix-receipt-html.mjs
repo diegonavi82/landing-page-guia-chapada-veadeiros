@@ -24,7 +24,7 @@ function loadEnv() {
 
 const LABELS = {
   pt: {
-    subject: "Recibo Pix — Reserva ",
+    subject: " - Reserva",
     docTitle: "RECIBO DE PAGAMENTO PIX",
     introPaid: "Confirmamos o recebimento de {{amount}} via Pix referente à reserva {{code}}.",
     introPending: "Reserva {{code}} registrada. Valor: {{amount}}. Aguardando confirmação do Pix.",
@@ -114,6 +114,23 @@ function formatBrl(n) {
   return "R$ " + (Number.isFinite(v) ? v : 0).toFixed(2).replace(".", ",");
 }
 
+function tripDateLabel(t) {
+  const short = String(t?.dateShort || "").trim();
+  if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(short)) return short;
+  const iso = String(t?.dateIso || t?.dateISO || "").trim();
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+  const day = String(t?.dayNum || "").trim();
+  const month = String(t?.monthName || "").trim();
+  if (day && month) {
+    const year = (iso.match(/^(20\d{2})/) || [])[1] || String(new Date().getFullYear());
+    return `${day} de ${month}/${year}`;
+  }
+  const label = String(t?.dateLabel || "").trim();
+  if (label && !/teste\s*pix|pix\s*test/i.test(label)) return label;
+  return short || "—";
+}
+
 function pixEffectiveStatus(rec) {
   if (!rec) return "PENDING";
   if (rec.status === "PAID") return "PAID";
@@ -178,7 +195,7 @@ export function buildPixReceiptEmailHtml(rec, locale) {
     const unit = parseInt(String(t.valorUnit), 10) || amount;
     tripRows +=
       "<tr>" +
-      `<td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;">${esc(t.dateLabel || t.dateShort || t.dateIso || "—")}</td>` +
+      `<td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;">${esc(tripDateLabel(t))}</td>` +
       `<td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;">${esc(t.destino || "—")}</td>` +
       `<td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;">${esc(t.guiaNome || "—")}</td>` +
       `<td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;">${esc([t.embarque, t.hora].filter(Boolean).join(" · ") || "—")}</td>` +
@@ -221,6 +238,5 @@ export function buildPixReceiptEmailHtml(rec, locale) {
 }
 
 export function receiptEmailSubject(code, locale) {
-  const L = LABELS[locale] || LABELS.pt;
-  return L.subject + String(code || "").toUpperCase();
+  return String(code || "").toUpperCase() + " - Reserva";
 }

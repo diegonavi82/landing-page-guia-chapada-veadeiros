@@ -2088,11 +2088,13 @@
    * @param {Record<string, string>} s
    */
   function waDateLine(locale, excursao) {
+    var iso = excursaoDateIso(excursao);
+    var year = iso ? iso.slice(0, 4) : "2026";
     var d = String(excursao.dayNum);
     var m = String(excursao.monthName);
-    if (locale === "en") return m + " " + d + ", 2026";
-    if (locale === "es") return d + " de " + m + " de 2026";
-    return d + " de " + m + "/2026";
+    if (locale === "en") return m + " " + d + ", " + year;
+    if (locale === "es") return d + " de " + m + " de " + year;
+    return d + " de " + m + "/" + year;
   }
 
   /**
@@ -2635,8 +2637,13 @@
   }
 
   function tripMetaFromExcursao(e, s, locale, qty) {
+    var dateIso = excursaoDateIso(e);
+    var dateLabel = excursaoDateLabel(e, locale);
     return {
-      dateLabel: excursaoDateLabel(e, locale),
+      dateLabel: dateLabel,
+      dateShort: dateIso
+        ? dateIso.slice(8, 10) + "/" + dateIso.slice(5, 7) + "/" + dateIso.slice(0, 4)
+        : dateLabel,
       destino: String(e.destino || ""),
       embarque: excursaoEmbarque(e, s),
       hora: horaExcursao(e),
@@ -2644,7 +2651,10 @@
       cartId: excursaoCartId(e),
       valorUnit: excursaoValor(e),
       weekday: String((e && e.weekday) || ""),
-      dateIso: excursaoDateIso(e),
+      dateIso: dateIso,
+      dayNum: e && e.dayNum != null ? String(e.dayNum) : "",
+      monthName: e && e.monthName ? String(e.monthName) : "",
+      guiaNome: e && e.guiaNome ? String(e.guiaNome) : "",
     };
   }
 
@@ -2652,6 +2662,7 @@
     if (!trip) return null;
     var out = {
       dateLabel: trip.dateLabel || "",
+      dateShort: trip.dateShort || "",
       destino: trip.destino || "",
       embarque: trip.embarque || "",
       hora: trip.hora || "",
@@ -2659,10 +2670,12 @@
       cartId: trip.cartId || "",
       valorUnit: parseInt(String(trip.valorUnit), 10) || 0,
       weekday: trip.weekday || "",
-      dateIso: trip.dateIso || "",
+      dateIso: trip.dateIso || trip.dateISO || "",
+      dayNum: trip.dayNum != null ? String(trip.dayNum) : "",
+      monthName: trip.monthName || "",
       guiaNome: trip.guiaNome || "",
     };
-    if (out.embarque && out.hora) return out;
+    if (out.embarque && out.hora && out.dateIso) return out;
     var cartId = out.cartId;
     if (!cartId) return out.embarque || out.hora ? out : null;
     var root = document.getElementById("excursoes-junho");
@@ -2678,7 +2691,13 @@
         if (!out.valorUnit) out.valorUnit = excursaoValor(rows[i]);
         if (!out.weekday) out.weekday = String(rows[i].weekday || "");
         if (!out.dateIso) out.dateIso = excursaoDateIso(rows[i]);
+        if (!out.dayNum && rows[i].dayNum != null) out.dayNum = String(rows[i].dayNum);
+        if (!out.monthName && rows[i].monthName) out.monthName = String(rows[i].monthName);
         if (!out.guiaNome && rows[i].guiaNome) out.guiaNome = String(rows[i].guiaNome);
+        if (!out.dateShort && out.dateIso) {
+          out.dateShort =
+            out.dateIso.slice(8, 10) + "/" + out.dateIso.slice(5, 7) + "/" + out.dateIso.slice(0, 4);
+        }
         break;
       }
     }
@@ -2694,6 +2713,7 @@
       trips = detail.packages.map(function (pack) {
         return {
           dateLabel: pack.dateLabel || "",
+          dateShort: pack.dateShort || "",
           destino: pack.destino || "",
           embarque: pack.embarque || "",
           hora: pack.hora || "",
@@ -2701,6 +2721,10 @@
           cartId: pack.cartId || "",
           valorUnit: parseInt(String(pack.valorUnit), 10) || 0,
           guiaNome: pack.guiaNome || "",
+          dateIso: pack.dateIso || pack.dateISO || "",
+          dayNum: pack.dayNum != null ? String(pack.dayNum) : "",
+          monthName: pack.monthName || "",
+          weekday: pack.weekday || "",
         };
       });
     } else if (detail.cartId || detail.embarque || detail.hora) {
@@ -3249,11 +3273,7 @@
   function getModalReceiptEmail(modal) {
     if (!modal) return "";
     var emailInput = modal.querySelector("#gcv-pix-modal-email");
-    var email = emailInput ? String(emailInput.value || "").trim() : "";
-    if (!email && window.GcvPixReceipt && window.GcvPixReceipt.readSavedEmail) {
-      email = window.GcvPixReceipt.readSavedEmail();
-    }
-    return email;
+    return emailInput ? String(emailInput.value || "").trim() : "";
   }
 
   function getModalEmailInputValue(modal) {
@@ -3265,7 +3285,10 @@
   function clearPixPayZone(modal) {
     if (!modal) return;
     var copyBtn = modal.querySelector("[data-gcv-pix-copy]");
-    if (copyBtn) delete copyBtn.dataset.pixPayload;
+    if (copyBtn) {
+      delete copyBtn.dataset.pixPayload;
+      copyBtn.disabled = true;
+    }
     var canvas = modal.querySelector(".gcv-pix-modal__qr");
     if (canvas) {
       canvas.style.display = "none";
@@ -3284,9 +3307,10 @@
     if (block) block.classList.add("gcv-pix-modal__email-block--locked");
     var emailInput = modal.querySelector("#gcv-pix-modal-email");
     if (emailInput) {
-      emailInput.readOnly = true;
-      emailInput.disabled = true;
-      emailInput.setAttribute("aria-readonly", "true");
+      // Mantém editável para trocar/apagar o e-mail e cancelar o Pix.
+      emailInput.readOnly = false;
+      emailInput.disabled = false;
+      emailInput.removeAttribute("aria-readonly");
     }
     var continueBtn = modal.querySelector("[data-gcv-pix-email-continue]");
     if (continueBtn) continueBtn.hidden = true;
@@ -3306,6 +3330,94 @@
     if (continueBtn) continueBtn.hidden = false;
     var emailHint = modal.querySelector("#gcv-pix-modal-email-hint");
     if (emailHint) emailHint.hidden = false;
+  }
+
+  /** Cancela o Pix gerado e volta à tela de e-mail (sem preencher). */
+  function cancelActivePixCheckout(modal, options) {
+    if (!modal || modal._gcvPixConfirmed) return false;
+    if (!modal._gcvPixCheckoutActive && !modal._gcvPixReservationId) return false;
+
+    var opts = options || {};
+    var clearEmail = !!opts.clearEmail;
+    var pending = modal._gcvPixPendingCheckout;
+    var reopen = modal._gcvPixReopen;
+
+    if (window.GcvPixPolling && typeof window.GcvPixPolling.stopPixPolling === "function") {
+      window.GcvPixPolling.stopPixPolling();
+    }
+    clearPixTimer(modal);
+
+    var valor = pending && pending.valor != null ? pending.valor : reopen && reopen.valor;
+    var loc = (pending && pending.loc) || (reopen && reopen.locale) || modal._gcvPixLocale || "pt";
+    var pixDesc = (pending && pending.pixDesc) || "";
+    var receiptData = (pending && pending.receiptData) || modal._gcvReceiptData;
+
+    modal._gcvPixCheckoutActive = false;
+    modal._gcvPixPayloadReady = false;
+    modal._gcvPixEmailSent = false;
+    modal._gcvPixReservationId = null;
+    modal._gcvPixCheckoutEmail = "";
+    if (modal._gcvReceiptData) modal._gcvReceiptData.code = "";
+
+    clearPixPayZone(modal);
+    unlockPixEmailBlock(modal);
+
+    modal.classList.remove("gcv-pix-modal--checkout-active", "gcv-pix-modal--expired", "gcv-pix-modal--paid");
+    modal.classList.add("gcv-pix-modal--await-email");
+
+    modal._gcvPixPendingCheckout = {
+      valor: valor,
+      loc: loc,
+      receiptData: receiptData,
+      pixDesc: pixDesc,
+    };
+
+    hidePixWaitingBlock(modal);
+    var expired = modal.querySelector("#gcv-pix-modal-expired");
+    if (expired) expired.hidden = true;
+    var success = modal.querySelector("#gcv-pix-modal-success");
+    if (success) success.hidden = true;
+    var payZone = modal.querySelector(".gcv-pix-modal__pay-zone");
+    if (payZone) payZone.hidden = false;
+    var scanEl = modal.querySelector(".gcv-pix-modal__scan");
+    if (scanEl) scanEl.hidden = false;
+    var hintEl = modal.querySelector(".gcv-pix-modal__hint");
+    if (hintEl) hintEl.hidden = false;
+    var timerEl = modal.querySelector("#gcv-pix-modal-timer");
+    if (timerEl) {
+      timerEl.hidden = true;
+      timerEl.textContent = "";
+    }
+    var copyBtn = modal.querySelector("[data-gcv-pix-copy]");
+    if (copyBtn) {
+      var locStrings = STRINGS[loc] || STRINGS.pt;
+      copyBtn.textContent = locStrings.pixModalCopy || "Copiar código Pix";
+      copyBtn.disabled = true;
+    }
+    var title = modal.querySelector(".gcv-pix-modal__title");
+    if (title && modal._gcvPixTitleDefault) title.textContent = modal._gcvPixTitleDefault;
+
+    var emailInput = modal.querySelector("#gcv-pix-modal-email");
+    if (emailInput && clearEmail) emailInput.value = "";
+    var statusEl = modal.querySelector("#gcv-pix-modal-email-status");
+    if (statusEl) {
+      statusEl.hidden = true;
+      statusEl.textContent = "";
+      statusEl.classList.remove("gcv-pix-modal__email-status--ok", "gcv-pix-modal__email-status--err");
+    }
+    var emailHint = modal.querySelector("#gcv-pix-modal-email-hint");
+    if (emailHint) emailHint.hidden = false;
+
+    syncPixRefBlock(modal);
+    syncPostpayActions(modal);
+    syncDevPixSimulateBtn(modal);
+
+    if (emailInput && typeof emailInput.focus === "function") {
+      window.setTimeout(function () {
+        emailInput.focus();
+      }, 40);
+    }
+    return true;
   }
 
   function syncPixRefBlock(modal) {
@@ -3431,7 +3543,7 @@
         '<label class="gcv-pix-modal__email-label" for="gcv-pix-modal-email">' +
         '<span class="gcv-pix-modal__email-label-text"></span> ' +
         '<span class="gcv-pix-modal__email-label-required" aria-hidden="true">*</span></label>' +
-        '<input type="email" class="gcv-pix-modal__email" id="gcv-pix-modal-email" required autocomplete="email" inputmode="email" />' +
+        '<input type="email" class="gcv-pix-modal__email" id="gcv-pix-modal-email" required autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="email" />' +
         '<p class="gcv-pix-modal__email-hint" id="gcv-pix-modal-email-hint"></p>' +
         '<button type="button" class="gcv-pix-modal__email-continue" data-gcv-pix-email-continue></button>' +
         '<p class="gcv-pix-modal__email-status" id="gcv-pix-modal-email-status" hidden></p>';
@@ -3451,9 +3563,9 @@
       if (hintEl) hintEl.textContent = window.GcvPixReceipt.rs(loc, "emailRequiredHint");
       if (emailInput) {
         emailInput.placeholder = window.GcvPixReceipt.rs(loc, "emailPlaceholder");
-        if (!emailInput.value && window.GcvPixReceipt.readSavedEmail) {
-          emailInput.value = window.GcvPixReceipt.readSavedEmail();
-        }
+        emailInput.setAttribute("autocomplete", "off");
+        emailInput.setAttribute("autocapitalize", "off");
+        emailInput.setAttribute("spellcheck", "false");
       }
     }
     if (continueBtn) continueBtn.textContent = locStrings.pixModalEmailContinue || "Continuar para o Pix";
@@ -3543,10 +3655,10 @@
     }
 
     modal._gcvPixCheckoutActive = true;
+    modal._gcvPixCheckoutEmail = email;
     modal.classList.remove("gcv-pix-modal--await-email");
     modal.classList.add("gcv-pix-modal--checkout-active");
     lockPixEmailBlock(modal);
-    window.GcvPixReceipt.saveEmail(email);
     var emailHint = modal.querySelector("#gcv-pix-modal-email-hint");
     if (emailHint) emailHint.hidden = true;
     if (statusEl) {
@@ -3566,7 +3678,6 @@
     var email = getModalReceiptEmail(modal);
     if (!window.GcvPixReceipt.isValidEmail(email)) return Promise.resolve();
     modal._gcvPixEmailSent = true;
-    window.GcvPixReceipt.saveEmail(email);
     return window.GcvPixReceipt.sendEmail(email, modal._gcvReceiptData, loc).catch(function () {
       modal._gcvPixEmailSent = false;
     });
@@ -3896,7 +4007,7 @@
       '<label class="gcv-pix-modal__email-label" for="gcv-pix-modal-email">' +
       '<span class="gcv-pix-modal__email-label-text"></span> ' +
       '<span class="gcv-pix-modal__email-label-required" aria-hidden="true">*</span></label>' +
-      '<input type="email" class="gcv-pix-modal__email" id="gcv-pix-modal-email" required autocomplete="email" inputmode="email" />' +
+      '<input type="email" class="gcv-pix-modal__email" id="gcv-pix-modal-email" required autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="email" />' +
       '<p class="gcv-pix-modal__email-hint" id="gcv-pix-modal-email-hint"></p>' +
       '<button type="button" class="gcv-pix-modal__email-continue" data-gcv-pix-email-continue></button>' +
       '<p class="gcv-pix-modal__email-status" id="gcv-pix-modal-email-status" hidden></p></div>' +
@@ -4121,6 +4232,7 @@
     modal._gcvPixCheckoutActive = false;
     modal._gcvPixEmailSent = false;
     modal._gcvPixPayloadReady = false;
+    modal._gcvPixCheckoutEmail = "";
     modal._gcvPixPendingCheckout = {
       valor: valor,
       loc: loc,
@@ -4129,9 +4241,15 @@
     };
     modal.classList.add("gcv-pix-modal--await-email");
     ensurePixEmailBlock(modal, loc);
+    unlockPixEmailBlock(modal);
+    var emailInputOpen = modal.querySelector("#gcv-pix-modal-email");
+    if (emailInputOpen) {
+      emailInputOpen.value = "";
+      emailInputOpen.readOnly = false;
+      emailInputOpen.disabled = false;
+    }
     syncPostpayActions(modal);
     syncPixRefBlock(modal);
-    var emailInputOpen = modal.querySelector("#gcv-pix-modal-email");
     if (emailInputOpen && typeof emailInputOpen.focus === "function") {
       window.setTimeout(function () {
         emailInputOpen.focus();
@@ -4154,15 +4272,6 @@
     document.documentElement.classList.add("gcv-pix-modal-open");
     var closeBtn = modal.querySelector(".gcv-pix-modal__close");
     if (closeBtn && typeof closeBtn.focus === "function") closeBtn.focus();
-
-    var savedEmail = getModalEmailInputValue(modal);
-    if (
-      !modal._gcvPixCheckoutActive &&
-      window.GcvPixReceipt &&
-      window.GcvPixReceipt.isValidEmail(savedEmail)
-    ) {
-      activatePixCheckout(modal, s);
-    }
   }
 
   function initPixModal() {
@@ -4256,7 +4365,6 @@
           if (emailInputResend && typeof emailInputResend.focus === "function") emailInputResend.focus();
           return;
         }
-        window.GcvPixReceipt.saveEmail(email);
         if (statusEl) {
           statusEl.hidden = false;
           statusEl.textContent = window.GcvPixReceipt.rs(loc, "emailSending");
@@ -4297,10 +4405,37 @@
         if (e.key !== "Enter") return;
         var input = e.target;
         if (!input || input.id !== "gcv-pix-modal-email") return;
-        if (modal._gcvPixCheckoutActive || input.disabled) return;
+        if (modal._gcvPixConfirmed) return;
+        if (modal._gcvPixCheckoutActive) return;
         e.preventDefault();
         var locKey = modal._gcvPixLocale || "pt";
         activatePixCheckout(modal, STRINGS[locKey] || STRINGS.pt);
+      },
+      true,
+    );
+
+    modal.addEventListener(
+      "input",
+      function (e) {
+        var input = e.target;
+        if (!input || input.id !== "gcv-pix-modal-email") return;
+        if (modal._gcvPixConfirmed) return;
+
+        var statusEl = modal.querySelector("#gcv-pix-modal-email-status");
+        if (statusEl && !modal._gcvPixCheckoutActive) {
+          statusEl.hidden = true;
+          statusEl.textContent = "";
+          statusEl.classList.remove("gcv-pix-modal__email-status--ok", "gcv-pix-modal__email-status--err");
+        }
+
+        if (!modal._gcvPixCheckoutActive && !modal._gcvPixReservationId) return;
+
+        var current = String(input.value || "").trim().toLowerCase();
+        var locked = String(modal._gcvPixCheckoutEmail || "").trim().toLowerCase();
+        if (current === locked && current !== "") return;
+
+        // E-mail apagado ou alterado → cancela o Pix e volta à tela inicial.
+        cancelActivePixCheckout(modal, { clearEmail: current === "" });
       },
       true,
     );
@@ -4310,10 +4445,8 @@
       function (e) {
         var input = e.target;
         if (!input || input.id !== "gcv-pix-modal-email") return;
-        if (modal._gcvPixCheckoutActive || input.disabled) return;
-        if (window.GcvPixReceipt && window.GcvPixReceipt.isValidEmail(input.value)) {
-          window.GcvPixReceipt.saveEmail(String(input.value).trim());
-        }
+        if (modal._gcvPixConfirmed) return;
+        if (modal._gcvPixCheckoutActive) return;
         var statusEl = modal.querySelector("#gcv-pix-modal-email-status");
         if (statusEl) {
           statusEl.hidden = true;

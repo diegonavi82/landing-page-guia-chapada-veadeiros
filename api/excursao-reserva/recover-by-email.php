@@ -54,7 +54,8 @@ $smtpUser = trim((string)($_ENV['SMTP_USER'] ?? ''));
 $smtpPass = trim((string)($_ENV['SMTP_PASS'] ?? ''));
 if ($smtpUser === '' || $smtpPass === '') {
     error_log('recover-by-email: SMTP não configurado');
-    echo json_encode($genericOk);
+    http_response_code(503);
+    echo json_encode(['ok' => false, 'found' => true, 'message' => 'Email service unavailable']);
     exit;
 }
 
@@ -152,22 +153,13 @@ $body = '<p style="margin:0 0 12px;font-size:16px;">' . htmlspecialchars($L['hel
     . $rowsHtml
     . '<p style="margin:16px 0 0;font-size:13px;line-height:1.5;color:#64748b;">' . htmlspecialchars($L['footer'], ENT_QUOTES, 'UTF-8') . '</p>';
 
+// Um único e-mail-resumo (evitar N SMTP sequenciais que estouram timeout do PHP/host).
 $sent = send_mail($email, $L['subject'], $body);
 if (!$sent) {
     error_log('recover-by-email: falha ao enviar códigos para ' . $email);
-}
-
-foreach ($reservations as $res) {
-    $code = gcv_pix_safe_id((string)($res['reservation_id'] ?? ''));
-    if ($code === '') {
-        continue;
-    }
-    $receiptHtml = gcv_build_pix_receipt_email_html($res, $locale);
-    $receiptSubject = gcv_pix_receipt_email_subject($code, $locale);
-    $receiptSent = send_mail($email, $receiptSubject, $receiptHtml, '', false);
-    if (!$receiptSent) {
-        error_log('recover-by-email: falha ao enviar recibo ' . $code . ' para ' . $email);
-    }
+    http_response_code(502);
+    echo json_encode(['ok' => false, 'found' => true, 'message' => 'Failed to send email']);
+    exit;
 }
 
 echo json_encode($genericOk);

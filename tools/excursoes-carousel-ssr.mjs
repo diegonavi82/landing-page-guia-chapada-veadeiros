@@ -77,12 +77,14 @@ function faltaConfirmarTexto(n, s) {
 function waLinkExcursao(e, locale, s) {
   const legenda = `${legendaGrupoNoMaximo(grupoMaximoValor(e), s)}.`;
   const statusLinha = tpl(s.waFormacao, { falta: faltaConfirmarTexto(e.faltamPessoas, s) });
+  const iso = String((e && e.dateISO) || "").slice(0, 10);
+  const year = /^\d{4}/.test(iso) ? iso.slice(0, 4) : "2026";
   const dataLine =
     locale === "en"
-      ? `${e.monthName} ${e.dayNum}, 2026`
+      ? `${e.monthName} ${e.dayNum}, ${year}`
       : locale === "es"
-        ? `${e.dayNum} de ${e.monthName} de 2026`
-        : `${e.dayNum} de ${e.monthName}/2026`;
+        ? `${e.dayNum} de ${e.monthName} de ${year}`
+        : `${e.dayNum} de ${e.monthName}/${year}`;
   const msg = tpl(s.waHi, {
     data: dataLine,
     destino: String(e.destino),
@@ -461,9 +463,11 @@ function vagasDisponiveis(e) {
 }
 
 function excursaoDateLabelSsr(e, locale) {
-  if (locale === "en") return `${e.monthName} ${e.dayNum}, 2026`;
-  if (locale === "es") return `${e.dayNum} de ${e.monthName} de 2026`;
-  return `${e.dayNum} de ${e.monthName}/2026`;
+  const iso = String((e && e.dateISO) || "").slice(0, 10);
+  const year = /^\d{4}/.test(iso) ? iso.slice(0, 4) : "2026";
+  if (locale === "en") return `${e.monthName} ${e.dayNum}, ${year}`;
+  if (locale === "es") return `${e.dayNum} de ${e.monthName} de ${year}`;
+  return `${e.dayNum} de ${e.monthName}/${year}`;
 }
 
 function excursaoCartIdSsr(e) {

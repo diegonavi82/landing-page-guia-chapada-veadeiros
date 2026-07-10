@@ -36,6 +36,7 @@ if (!$res) {
 }
 
 $status = gcv_pix_effective_status($res);
+$justPaid = false;
 if ($status === 'PENDING') {
     $confirmed = gcv_sicoob_try_confirm_reservation($res);
     if (!$confirmed) {
@@ -44,11 +45,21 @@ if ($status === 'PENDING') {
     if ($confirmed) {
         $res = $confirmed;
         $status = 'PAID';
+        $justPaid = true;
     }
 }
 if ($status === 'EXPIRED' && ($res['status'] ?? '') !== 'EXPIRED') {
     $res['status'] = 'EXPIRED';
     gcv_pix_write_reservation($res);
+}
+
+if ($justPaid) {
+    try {
+        require_once __DIR__ . '/helpers/purchase_notify.php';
+        gcv_notify_admin_purchase($res);
+    } catch (Throwable $e) {
+        error_log('check_pix_status notify: ' . $e->getMessage());
+    }
 }
 
 $payload = [

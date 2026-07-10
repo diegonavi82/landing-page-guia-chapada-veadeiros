@@ -67,6 +67,13 @@ if (!$res) {
     exit;
 }
 
+try {
+    require_once dirname(__DIR__) . '/helpers/purchase_notify.php';
+    gcv_notify_admin_purchase($res);
+} catch (Throwable $e) {
+    error_log('sicoob_webhook purchase notify: ' . $e->getMessage());
+}
+
 echo json_encode([
     'success' => true,
     'status' => 'PAID',
