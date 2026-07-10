@@ -329,6 +329,8 @@
         "Cancelamento: O pagamento reserva a disponibilidade do guia. Em caso de cancelamento pelo cliente, não haverá reembolso.",
       pixModalRefLabel: "Código de reserva",
       pixModalEmailContinue: "Continuar para o Pix",
+      pixModalEmailClear: "Excluir e-mail",
+      pixModalEmailClearHint: "Exclui o e-mail, cancela este Pix e permite informar outro.",
       pixPostpayLocked: "Disponível após confirmação do pagamento",
       pixModalGenerating: "Gerando Pix…",
       pixModalWaiting: "Aguardando confirmação do pagamento…",
@@ -466,6 +468,8 @@
         "Cancellation: Payment reserves the guide's availability. If the client cancels, no refund will be issued.",
       pixModalRefLabel: "Reservation code",
       pixModalEmailContinue: "Continue to Pix",
+      pixModalEmailClear: "Remove email",
+      pixModalEmailClearHint: "Removes the email, cancels this Pix, and lets you enter another.",
       pixPostpayLocked: "Available after payment is confirmed",
       pixModalGenerating: "Generating Pix…",
       pixModalWaiting: "Waiting for payment confirmation…",
@@ -603,6 +607,8 @@
         "Cancelación: El pago reserva la disponibilidad del guía. En caso de cancelación por parte del cliente, no habrá reembolso.",
       pixModalRefLabel: "Código de reserva",
       pixModalEmailContinue: "Continuar al Pix",
+      pixModalEmailClear: "Eliminar correo",
+      pixModalEmailClearHint: "Elimina el correo, cancela este Pix y permite informar otro.",
       pixPostpayLocked: "Disponible tras confirmar el pago",
       pixModalGenerating: "Generando Pix…",
       pixModalWaiting: "Esperando confirmación del pago…",
@@ -3307,13 +3313,17 @@
     if (block) block.classList.add("gcv-pix-modal__email-block--locked");
     var emailInput = modal.querySelector("#gcv-pix-modal-email");
     if (emailInput) {
-      // Mantém editável para trocar/apagar o e-mail e cancelar o Pix.
-      emailInput.readOnly = false;
+      emailInput.readOnly = true;
       emailInput.disabled = false;
-      emailInput.removeAttribute("aria-readonly");
+      emailInput.setAttribute("aria-readonly", "true");
     }
     var continueBtn = modal.querySelector("[data-gcv-pix-email-continue]");
     if (continueBtn) continueBtn.hidden = true;
+    var clearBtn = modal.querySelector("[data-gcv-pix-email-clear]");
+    if (clearBtn) {
+      clearBtn.hidden = false;
+      clearBtn.disabled = false;
+    }
   }
 
   function unlockPixEmailBlock(modal) {
@@ -3328,6 +3338,11 @@
     }
     var continueBtn = modal.querySelector("[data-gcv-pix-email-continue]");
     if (continueBtn) continueBtn.hidden = false;
+    var clearBtn = modal.querySelector("[data-gcv-pix-email-clear]");
+    if (clearBtn) {
+      clearBtn.hidden = true;
+      clearBtn.disabled = true;
+    }
     var emailHint = modal.querySelector("#gcv-pix-modal-email-hint");
     if (emailHint) emailHint.hidden = false;
   }
@@ -3543,7 +3558,10 @@
         '<label class="gcv-pix-modal__email-label" for="gcv-pix-modal-email">' +
         '<span class="gcv-pix-modal__email-label-text"></span> ' +
         '<span class="gcv-pix-modal__email-label-required" aria-hidden="true">*</span></label>' +
+        '<div class="gcv-pix-modal__email-row">' +
         '<input type="email" class="gcv-pix-modal__email" id="gcv-pix-modal-email" required autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="email" />' +
+        '<button type="button" class="gcv-pix-modal__email-clear" data-gcv-pix-email-clear hidden disabled aria-label=""></button>' +
+        "</div>" +
         '<p class="gcv-pix-modal__email-hint" id="gcv-pix-modal-email-hint"></p>' +
         '<button type="button" class="gcv-pix-modal__email-continue" data-gcv-pix-email-continue></button>' +
         '<p class="gcv-pix-modal__email-status" id="gcv-pix-modal-email-status" hidden></p>';
@@ -3558,6 +3576,22 @@
     var hintEl = block.querySelector("#gcv-pix-modal-email-hint");
     var emailInput = block.querySelector("#gcv-pix-modal-email");
     var continueBtn = block.querySelector("[data-gcv-pix-email-continue]");
+    var clearBtn = block.querySelector("[data-gcv-pix-email-clear]");
+    if (!clearBtn) {
+      var row = document.createElement("div");
+      row.className = "gcv-pix-modal__email-row";
+      if (emailInput && emailInput.parentNode === block) {
+        block.insertBefore(row, emailInput);
+        row.appendChild(emailInput);
+      }
+      clearBtn = document.createElement("button");
+      clearBtn.type = "button";
+      clearBtn.className = "gcv-pix-modal__email-clear";
+      clearBtn.setAttribute("data-gcv-pix-email-clear", "");
+      clearBtn.hidden = true;
+      clearBtn.disabled = true;
+      row.appendChild(clearBtn);
+    }
     if (window.GcvPixReceipt) {
       if (labelText) labelText.textContent = window.GcvPixReceipt.rs(loc, "emailLabel");
       if (hintEl) hintEl.textContent = window.GcvPixReceipt.rs(loc, "emailRequiredHint");
@@ -3569,6 +3603,15 @@
       }
     }
     if (continueBtn) continueBtn.textContent = locStrings.pixModalEmailContinue || "Continuar para o Pix";
+    if (clearBtn) {
+      clearBtn.textContent = "×";
+      clearBtn.setAttribute("aria-label", locStrings.pixModalEmailClear || "Excluir e-mail");
+      clearBtn.title = locStrings.pixModalEmailClearHint || locStrings.pixModalEmailClear || "Excluir e-mail";
+      if (!modal._gcvPixCheckoutActive) {
+        clearBtn.hidden = true;
+        clearBtn.disabled = true;
+      }
+    }
   }
 
   function pixPostpayIsPaid(modal) {
@@ -4007,7 +4050,10 @@
       '<label class="gcv-pix-modal__email-label" for="gcv-pix-modal-email">' +
       '<span class="gcv-pix-modal__email-label-text"></span> ' +
       '<span class="gcv-pix-modal__email-label-required" aria-hidden="true">*</span></label>' +
+      '<div class="gcv-pix-modal__email-row">' +
       '<input type="email" class="gcv-pix-modal__email" id="gcv-pix-modal-email" required autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="email" />' +
+      '<button type="button" class="gcv-pix-modal__email-clear" data-gcv-pix-email-clear hidden disabled aria-label=""></button>' +
+      "</div>" +
       '<p class="gcv-pix-modal__email-hint" id="gcv-pix-modal-email-hint"></p>' +
       '<button type="button" class="gcv-pix-modal__email-continue" data-gcv-pix-email-continue></button>' +
       '<p class="gcv-pix-modal__email-status" id="gcv-pix-modal-email-status" hidden></p></div>' +
@@ -4317,6 +4363,13 @@
         activatePixCheckout(modal, STRINGS[locContinue] || STRINGS.pt);
         return;
       }
+      var clearEmailBtn = e.target.closest("[data-gcv-pix-email-clear]");
+      if (clearEmailBtn) {
+        e.preventDefault();
+        if (modal._gcvPixConfirmed) return;
+        cancelActivePixCheckout(modal, { clearEmail: true });
+        return;
+      }
       var devSimBtn = e.target.closest("[data-gcv-pix-dev-simulate]");
       if (devSimBtn) {
         e.preventDefault();
@@ -4420,22 +4473,17 @@
         var input = e.target;
         if (!input || input.id !== "gcv-pix-modal-email") return;
         if (modal._gcvPixConfirmed) return;
-
+        // Com Pix ativo o e-mail fica bloqueado: só exclui pelo botão.
+        if (modal._gcvPixCheckoutActive || input.readOnly) {
+          if (modal._gcvPixCheckoutEmail) input.value = modal._gcvPixCheckoutEmail;
+          return;
+        }
         var statusEl = modal.querySelector("#gcv-pix-modal-email-status");
-        if (statusEl && !modal._gcvPixCheckoutActive) {
+        if (statusEl) {
           statusEl.hidden = true;
           statusEl.textContent = "";
           statusEl.classList.remove("gcv-pix-modal__email-status--ok", "gcv-pix-modal__email-status--err");
         }
-
-        if (!modal._gcvPixCheckoutActive && !modal._gcvPixReservationId) return;
-
-        var current = String(input.value || "").trim().toLowerCase();
-        var locked = String(modal._gcvPixCheckoutEmail || "").trim().toLowerCase();
-        if (current === locked && current !== "") return;
-
-        // E-mail apagado ou alterado → cancela o Pix e volta à tela inicial.
-        cancelActivePixCheckout(modal, { clearEmail: current === "" });
       },
       true,
     );
