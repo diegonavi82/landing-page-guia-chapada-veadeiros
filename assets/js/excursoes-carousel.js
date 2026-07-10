@@ -3792,8 +3792,8 @@
       statusEl.textContent = "";
       statusEl.classList.remove("gcv-pix-modal__email-status--ok", "gcv-pix-modal__email-status--err");
     }
-    clearPixFieldError(modal, "email");
-    clearPixFieldError(modal, "phone");
+    if (clearEmail) clearPixFieldError(modal, "email");
+    if (clearPhone) clearPixFieldError(modal, "phone");
     var emailHint = modal.querySelector("#gcv-pix-modal-email-hint");
     if (emailHint) emailHint.hidden = false;
     var phoneHint = modal.querySelector("#gcv-pix-modal-phone-hint");
@@ -4924,7 +4924,7 @@
         if (modal._gcvPixConfirmed) return;
         cancelActivePixCheckout(modal, {
           clearEmail: true,
-          clearPhone: true,
+          clearPhone: false,
           focusField: "email",
         });
         return;
@@ -4934,7 +4934,7 @@
         e.preventDefault();
         if (modal._gcvPixConfirmed) return;
         cancelActivePixCheckout(modal, {
-          clearEmail: true,
+          clearEmail: false,
           clearPhone: true,
           focusField: "phone",
         });
