@@ -60,7 +60,7 @@ jobs:
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
           FTP_SECURE: "true"
-          FTP_REMOTE_DIR: public_html/
+          FTP_REMOTE_DIR: ./
         run: node tools/ftp-reset-sync-state.mjs
 
       - name: Deploy FTP
@@ -73,9 +73,9 @@ jobs:
           port: 21
           security: loose
           local-dir: ./Build_prod/
-          # FTP Homeinger costuma abrir na HOME → precisa public_html/
-          # Se criar public_html/public_html, mude para: ./
-          server-dir: public_html/
+          # Na Hostinger o FTP desta conta já abre em public_html.
+          # Usar public_html/ aqui criaria public_html/public_html/ (site não atualiza).
+          server-dir: ./
           dangerous-clean-slate: false
           exclude: |
             **/.env
