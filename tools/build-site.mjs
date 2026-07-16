@@ -3076,3 +3076,17 @@ for (const loc of LOCALES) {
 console.log("[build] Build_prod:", BUILD_PROD_DIR, "—", buildProdEntries, "itens, pronto para FTP");
 console.log("Build OK:", ROOT);
 console.log("Páginas:", sitemapUrls.length, "URLs no sitemap");
+
+if (String(process.env.GCV_DEPLOY_FTP || "").trim() === "1") {
+  console.log("[build] GCV_DEPLOY_FTP=1 — enviando Build_prod via FTP…");
+  const { spawnSync } = await import("node:child_process");
+  const r = spawnSync(
+    process.execPath,
+    [join(ROOT, "tools", "deploy-ftp.mjs")],
+    { cwd: ROOT, stdio: "inherit", env: process.env },
+  );
+  if (r.status !== 0) {
+    console.error("[build] Deploy FTP falhou.");
+    process.exit(typeof r.status === "number" ? r.status : 1);
+  }
+}

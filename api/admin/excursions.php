@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../helpers/db.php';
 require_once __DIR__ . '/../helpers/auth.php';
 require_once __DIR__ . '/../helpers/cms_schema.php';
+require_once __DIR__ . '/../helpers/excursion_attractions.php';
 
 header('Content-Type: application/json; charset=utf-8');
 $admin = require_admin();
@@ -21,8 +22,12 @@ function gcv_excursion_validate(array $body, bool $creating): ?string
     if ($creating || array_key_exists('departure_city_id', $body)) {
         if (empty($body['departure_city_id'])) return 'Cidade de saída obrigatória';
     }
-    if ($creating || array_key_exists('attraction_id', $body)) {
-        if (empty($body['attraction_id'])) return 'Atrativo obrigatório';
+    if ($creating || array_key_exists('attraction_ids', $body) || array_key_exists('attraction_id', $body)) {
+        $ids = gcv_excursion_normalize_attraction_ids($body);
+        $attrErr = gcv_excursion_validate_attraction_ids($ids);
+        if ($attrErr) return $attrErr;
+    } elseif ($creating) {
+        return 'Selecione pelo menos 1 atrativo';
     }
     if ($creating || array_key_exists('price_cents', $body)) {
         if (!isset($body['price_cents']) || (int)$body['price_cents'] <= 0) return 'Valor por pessoa obrigatório';
@@ -52,14 +57,26 @@ function gcv_excursion_require_guide_if_published(array $body, ?array $existing 
     return null;
 }
 
+function gcv_excursion_enrich(array $row): array
+{
+    $id = (int)$row['id'];
+    $attrs = gcv_excursion_load_attractions($id);
+    $row['attractions'] = $attrs;
+    $row['attraction_ids'] = array_map(static fn($a) => (int)$a['id'], $attrs);
+    $row['attraction_title'] = gcv_excursion_titles_joined($attrs, 'pt');
+    if (!empty($attrs[0])) {
+        $row['attraction_id'] = (int)$attrs[0]['id'];
+        $row['attraction_slug'] = $attrs[0]['slug'] ?? ($row['attraction_slug'] ?? null);
+    }
+    return $row;
+}
+
 if ($method === 'GET') {
     $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
     if ($id > 0) {
         $stmt = db()->prepare(
-            'SELECT e.*, a.title_pt AS attraction_title, a.slug AS attraction_slug,
-                    c.name AS departure_city_name, u.name AS guide_name
+            'SELECT e.*, c.name AS departure_city_name, u.name AS guide_name
              FROM gcv_excursions e
-             LEFT JOIN gcv_attractions a ON a.id = e.attraction_id
              LEFT JOIN gcv_cities c ON c.id = e.departure_city_id
              LEFT JOIN gcv_users u ON u.id = e.guide_user_id
              WHERE e.id = ?'
@@ -71,19 +88,22 @@ if ($method === 'GET') {
             echo json_encode(['ok' => false, 'error' => 'Excursão não encontrada']);
             exit;
         }
-        echo json_encode(['ok' => true, 'data' => $row]);
+        echo json_encode(['ok' => true, 'data' => gcv_excursion_enrich($row)]);
         exit;
     }
     $rows = db()->query(
         'SELECT e.id, e.status, e.date_iso, e.departure_time, e.price_cents, e.quorum, e.max_people, e.booked_people,
-                e.guide_user_id, a.title_pt AS attraction_title, c.name AS departure_city_name, u.name AS guide_name
+                e.guide_user_id, e.attraction_id, c.name AS departure_city_name, u.name AS guide_name
          FROM gcv_excursions e
-         LEFT JOIN gcv_attractions a ON a.id = e.attraction_id
          LEFT JOIN gcv_cities c ON c.id = e.departure_city_id
          LEFT JOIN gcv_users u ON u.id = e.guide_user_id
          ORDER BY e.date_iso ASC, e.departure_time ASC'
     )->fetchAll();
-    echo json_encode(['ok' => true, 'data' => ['excursions' => $rows]]);
+    $out = [];
+    foreach ($rows as $row) {
+        $out[] = gcv_excursion_enrich($row);
+    }
+    echo json_encode(['ok' => true, 'data' => ['excursions' => $out]]);
     exit;
 }
 
@@ -96,6 +116,7 @@ if ($method === 'POST') {
         echo json_encode(['ok' => false, 'error' => $err]);
         exit;
     }
+    $attrIds = gcv_excursion_normalize_attraction_ids($body);
     $status = (string)($body['status'] ?? 'draft');
     if (!in_array($status, ['draft', 'published', 'cancelled', 'soldout'], true)) $status = 'draft';
     $guideErr = gcv_excursion_require_guide_if_published(array_merge($body, ['status' => $status]));
@@ -117,7 +138,7 @@ if ($method === 'POST') {
         $body['date_iso'],
         $body['departure_time'],
         (int)$body['departure_city_id'],
-        (int)$body['attraction_id'],
+        $attrIds[0],
         !empty($body['guide_user_id']) ? (int)$body['guide_user_id'] : null,
         (int)$body['price_cents'],
         $quorum,
@@ -134,9 +155,16 @@ if ($method === 'POST') {
         (int)$admin['id'],
     ]);
     $id = (int)db()->lastInsertId();
+    try {
+        gcv_excursion_save_attractions($id, $attrIds);
+    } catch (Throwable $e) {
+        http_response_code(400);
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+        exit;
+    }
     $stmt = db()->prepare('SELECT * FROM gcv_excursions WHERE id = ?');
     $stmt->execute([$id]);
-    echo json_encode(['ok' => true, 'data' => $stmt->fetch()]);
+    echo json_encode(['ok' => true, 'data' => gcv_excursion_enrich($stmt->fetch())]);
     exit;
 }
 
@@ -169,6 +197,15 @@ if ($method === 'PUT') {
         echo json_encode(['ok' => false, 'error' => $guideErr]);
         exit;
     }
+
+    $hasAttrPayload = array_key_exists('attraction_ids', $body) || array_key_exists('attraction_id', $body);
+    $attrIds = $hasAttrPayload
+        ? gcv_excursion_normalize_attraction_ids($body)
+        : array_map(static fn($a) => (int)$a['id'], gcv_excursion_load_attractions($id));
+    if ($attrIds === []) {
+        $attrIds = [(int)$ex['attraction_id']];
+    }
+
     $quorum = max(4, (int)($body['quorum'] ?? $ex['quorum']));
     $stmt = db()->prepare(
         'UPDATE gcv_excursions SET
@@ -182,7 +219,7 @@ if ($method === 'PUT') {
         $body['date_iso'] ?? $ex['date_iso'],
         $body['departure_time'] ?? $ex['departure_time'],
         (int)($body['departure_city_id'] ?? $ex['departure_city_id']),
-        (int)($body['attraction_id'] ?? $ex['attraction_id']),
+        $attrIds[0],
         array_key_exists('guide_user_id', $body)
             ? (!empty($body['guide_user_id']) ? (int)$body['guide_user_id'] : null)
             : $ex['guide_user_id'],
@@ -202,9 +239,16 @@ if ($method === 'PUT') {
         (int)$admin['id'],
         $id,
     ]);
+    try {
+        gcv_excursion_save_attractions($id, $attrIds);
+    } catch (Throwable $e) {
+        http_response_code(400);
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+        exit;
+    }
     $stmt = db()->prepare('SELECT * FROM gcv_excursions WHERE id = ?');
     $stmt->execute([$id]);
-    echo json_encode(['ok' => true, 'data' => $stmt->fetch()]);
+    echo json_encode(['ok' => true, 'data' => gcv_excursion_enrich($stmt->fetch())]);
     exit;
 }
 

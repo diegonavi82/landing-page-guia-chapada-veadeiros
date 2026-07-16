@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/user_roles.php';
 
 function auth_session_start(): void {
     if (session_status() === PHP_SESSION_NONE) {
@@ -21,15 +22,45 @@ function current_user(): ?array {
     $sessionId = $_COOKIE['gcv_session'] ?? null;
     if (!$sessionId) return null;
 
-    $stmt = db()->prepare(
-        'SELECT u.id, u.name, u.email, u.role, u.avatar_url, u.lang, u.status, u.email_verified
-         FROM gcv_sessions s
-         JOIN gcv_users u ON u.id = s.user_id
-         WHERE s.session_id = ? AND s.expires_at > NOW()'
-    );
-    $stmt->execute([$sessionId]);
-    $user = $stmt->fetch();
-    return $user ?: null;
+    gcv_auth_ensure_role_schema();
+
+    try {
+        $stmt = db()->prepare(
+            'SELECT u.id, u.name, u.email, u.role AS primary_role, u.avatar_url, u.lang, u.status, u.email_verified,
+                    s.active_role
+             FROM gcv_sessions s
+             JOIN gcv_users u ON u.id = s.user_id
+             WHERE s.session_id = ? AND s.expires_at > NOW()'
+        );
+        $stmt->execute([$sessionId]);
+        $user = $stmt->fetch();
+    } catch (Throwable $e) {
+        // coluna active_role ainda não existe
+        $stmt = db()->prepare(
+            'SELECT u.id, u.name, u.email, u.role AS primary_role, u.avatar_url, u.lang, u.status, u.email_verified
+             FROM gcv_sessions s
+             JOIN gcv_users u ON u.id = s.user_id
+             WHERE s.session_id = ? AND s.expires_at > NOW()'
+        );
+        $stmt->execute([$sessionId]);
+        $user = $stmt->fetch();
+        if ($user) $user['active_role'] = $user['primary_role'];
+    }
+
+    if (!$user) return null;
+
+    $roles = gcv_user_roles((int)$user['id']);
+    $active = gcv_normalize_login_context((string)($user['active_role'] ?? ''));
+    if (!in_array($active, $roles, true)) {
+        // sessão inválida para o papel — usa o primeiro disponível
+        $active = $roles[0] ?? (string)($user['primary_role'] ?? 'client');
+    }
+
+    $user['roles'] = $roles;
+    $user['active_role'] = $active;
+    // Compat: "role" = papel da sessão (layout do painel)
+    $user['role'] = $active;
+    return $user;
 }
 
 function require_auth(): array {
@@ -44,9 +75,12 @@ function require_auth(): array {
 
 function require_role(string $role): array {
     $user = require_auth();
-    if ($user['role'] !== $role && $user['role'] !== 'admin') {
+    $roles = $user['roles'] ?? gcv_user_roles((int)$user['id']);
+    $active = (string)($user['active_role'] ?? $user['role'] ?? '');
+    // Precisa ter o papel E estar logado nessa porta
+    if (!in_array($role, $roles, true) || $active !== $role) {
         http_response_code(403);
-        echo json_encode(['ok' => false, 'error' => 'Acesso negado']);
+        echo json_encode(['ok' => false, 'error' => 'Acesso negado para este perfil. Entre pela porta correta.']);
         exit;
     }
     return $user;
@@ -54,23 +88,33 @@ function require_role(string $role): array {
 
 function require_admin(): array {
     $user = require_auth();
-    if ($user['role'] !== 'admin') {
+    $roles = $user['roles'] ?? gcv_user_roles((int)$user['id']);
+    $active = (string)($user['active_role'] ?? $user['role'] ?? '');
+    if (!in_array('admin', $roles, true) || $active !== 'admin') {
         http_response_code(403);
-        echo json_encode(['ok' => false, 'error' => 'Acesso negado']);
+        echo json_encode(['ok' => false, 'error' => 'Acesso negado. Entre pela Área Admin.']);
         exit;
     }
     return $user;
 }
 
-function create_session(int $userId): string {
+function create_session(int $userId, string $activeRole = 'client'): string {
+    gcv_auth_ensure_role_schema();
+    $activeRole = gcv_normalize_login_context($activeRole);
     $sessionId = bin2hex(random_bytes(64));
     $ip        = $_SERVER['REMOTE_ADDR'] ?? null;
     $ua        = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 300);
     $expires   = date('Y-m-d H:i:s', time() + 86400);
 
-    db()->prepare(
-        'INSERT INTO gcv_sessions (session_id, user_id, ip, user_agent, expires_at) VALUES (?,?,?,?,?)'
-    )->execute([$sessionId, $userId, $ip, $ua, $expires]);
+    try {
+        db()->prepare(
+            'INSERT INTO gcv_sessions (session_id, user_id, active_role, ip, user_agent, expires_at) VALUES (?,?,?,?,?,?)'
+        )->execute([$sessionId, $userId, $activeRole, $ip, $ua, $expires]);
+    } catch (Throwable $e) {
+        db()->prepare(
+            'INSERT INTO gcv_sessions (session_id, user_id, ip, user_agent, expires_at) VALUES (?,?,?,?,?)'
+        )->execute([$sessionId, $userId, $ip, $ua, $expires]);
+    }
 
     setcookie('gcv_session', $sessionId, [
         'expires'  => time() + 86400,

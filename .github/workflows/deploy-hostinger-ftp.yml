@@ -14,7 +14,7 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Checkout
@@ -52,6 +52,13 @@ jobs:
           protocol: ftps
           port: 21
           local-dir: ./Build_prod/
+          # Root FTP Hostinger costuma ser public_html. Se precisar de subpasta, altere aqui.
           server-dir: ./
           dangerous-clean-slate: false
-          log-level: verbose
+          exclude: |
+            **/.env
+            **/.env.*
+            **/config.local.php
+            **/error_log
+            **/assets/img/uploads/**
+          log-level: standard

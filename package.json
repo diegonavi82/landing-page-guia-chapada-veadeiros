@@ -14,6 +14,8 @@
     "fetch:instagram": "node tools/fetch-instagram-images.mjs",
     "favicons": "node tools/generate-favicons.mjs",
     "build": "node tools/generate-favicons.mjs && node tools/build-site.mjs",
+    "deploy": "node tools/deploy-ftp.mjs",
+    "build:deploy": "npm run build && npm run deploy",
     "vendor:qrcode": "esbuild node_modules/qrcode/lib/browser.js --bundle --format=iife --global-name=QRCode --outfile=assets/js/qrcode.min.js --minify",
     "preview": "npx --yes serve . -l 3000",
     "preview:prod": "npx --yes serve Build_prod -l 3000",
@@ -22,6 +24,7 @@
     "setup": "npm run sync:media && npm run images:webp && npm run build"
   },
   "devDependencies": {
+    "basic-ftp": "^5.3.1",
     "linkedom": "^0.18.12",
     "nodemailer": "^6.10.1",
     "qrcode": "^1.5.4",

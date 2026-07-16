@@ -5,6 +5,7 @@ require_once __DIR__ . '/../helpers/db.php';
 require_once __DIR__ . '/../helpers/auth.php';
 require_once __DIR__ . '/../helpers/validator.php';
 require_once __DIR__ . '/../helpers/mailer.php';
+require_once __DIR__ . '/../helpers/user_roles.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -25,11 +26,9 @@ if (!$email) json_response(false, null, 'Email inválido', 422);
 if (!$pass) json_response(false, null, 'Senha muito curta (mínimo 8 caracteres)', 422);
 if (!$role) json_response(false, null, 'Tipo de conta inválido', 422);
 
-// Verificar se email já existe sem revelar ao usuário
 $check = db()->prepare('SELECT id FROM gcv_users WHERE email = ?');
 $check->execute([$email]);
 if ($check->fetch()) {
-    // Resposta genérica por segurança
     json_response(true, ['message' => 'Se este email não estiver cadastrado, você receberá um email de confirmação.']);
 }
 
@@ -58,6 +57,12 @@ try {
     error_log('Register error: ' . $e->getMessage());
     json_response(false, null, 'Erro ao criar conta. Tente novamente.', 500);
 }
+
+gcv_user_grant_role($userId, $role);
+if ($role === 'guide') {
+    gcv_user_grant_role($userId, 'client');
+}
+gcv_user_sync_primary_role($userId);
 
 mail_welcome($email, $name, $lang);
 

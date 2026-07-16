@@ -644,7 +644,14 @@
       var roleMap  = { admin: 'Administrador', guide: 'Guia', client: 'Cliente' };
 
       if (nameEl)   nameEl.textContent   = currentUser.name || '';
-      if (roleEl)   roleEl.textContent   = roleMap[currentUser.role] || currentUser.role;
+      if (roleEl) {
+        var label = roleMap[currentUser.role] || currentUser.role;
+        var extras = (currentUser.roles || []).filter(function (r) { return r !== currentUser.role; });
+        if (extras.length) {
+          label += ' · também: ' + extras.map(function (r) { return roleMap[r] || r; }).join(', ');
+        }
+        roleEl.textContent = label;
+      }
       if (avatarEl) {
         if (currentUser.avatar_url) {
           avatarEl.innerHTML = '<img src="' + currentUser.avatar_url + '" alt="Avatar" />';

@@ -3,7 +3,8 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../helpers/db.php';
 require_once __DIR__ . '/../helpers/auth.php';
-require_once __DIR__ . '/../helpers/mailer.php';
+require_once __DIR__ . '/../helpers/user_roles.php';
+// mailer NÃO é carregado no boot — só quando for enviar e-mail (evita 500 se vendor ausente)
 
 auth_session_start();
 
@@ -152,25 +153,27 @@ try {
             gcv_oauth_fail($appUrl, $loginPath, 'suspended');
         }
 
-        $role = (string)($user['role'] ?? 'client');
+        $userId = (int)$user['id'];
+        // Garante papéis migrados
+        gcv_user_roles($userId);
 
-        // Porta admin: só conta admin já existente
-        if ($context === 'admin' && $role !== 'admin') {
-            gcv_oauth_fail($appUrl, $loginPath, 'admin_only');
-        }
-        // Porta guia: não aceita cliente puro
-        if ($context === 'guide' && $role === 'client') {
-            gcv_oauth_fail($appUrl, '/login.html', 'guide_area');
-        }
-        // Porta cliente: guia deve usar a área do guia
-        if ($context === 'client' && $role === 'guide') {
-            gcv_oauth_fail($appUrl, '/guia/login.html', 'client_area');
+        $ctxErr = gcv_login_context_error($userId, $context, (string)($user['status'] ?? ''));
+        if ($ctxErr) {
+            if ($context === 'admin') {
+                gcv_oauth_fail($appUrl, $loginPath, 'admin_only');
+            }
+            if ($context === 'guide') {
+                gcv_oauth_fail($appUrl, '/login.html', 'guide_area');
+            }
+            if ($context === 'client') {
+                gcv_oauth_fail($appUrl, '/guia/login.html', 'client_area');
+            }
+            gcv_oauth_fail($appUrl, $loginPath, 'oauth_user');
         }
 
         $pdo->prepare(
             'UPDATE gcv_users SET google_id = ?, avatar_url = COALESCE(avatar_url, ?) WHERE id = ?'
-        )->execute([$googleId, $avatarUrl, $user['id']]);
-        $userId = (int)$user['id'];
+        )->execute([$googleId, $avatarUrl, $userId]);
     } else {
         // Conta nova
         if ($context === 'admin') {
@@ -187,8 +190,16 @@ try {
                 $userId = (int)$pdo->lastInsertId();
                 $pdo->prepare('INSERT INTO gcv_guides (user_id, cadastur) VALUES (?, NULL)')->execute([$userId]);
                 $pdo->commit();
+                gcv_user_grant_role($userId, 'guide');
+                gcv_user_grant_role($userId, 'client');
+                gcv_user_sync_primary_role($userId);
                 try {
-                    mail_guide_pending_admin($name, $email);
+                    if (is_readable(__DIR__ . '/../helpers/mailer.php')) {
+                        require_once __DIR__ . '/../helpers/mailer.php';
+                        if (function_exists('mail_guide_pending_admin')) {
+                            mail_guide_pending_admin($name, $email);
+                        }
+                    }
                 } catch (Throwable) {
                 }
             } catch (Throwable $e) {
@@ -200,14 +211,22 @@ try {
                 'INSERT INTO gcv_users (name, email, google_id, avatar_url, role, status, email_verified) VALUES (?,?,?,?,\'client\',\'active\',1)'
             )->execute([$name, $email, $googleId, $avatarUrl]);
             $userId = (int)$pdo->lastInsertId();
+            gcv_user_grant_role($userId, 'client');
+            gcv_user_sync_primary_role($userId);
             try {
-                mail_welcome($email, $name);
+                if (is_readable(__DIR__ . '/../helpers/mailer.php')) {
+                    require_once __DIR__ . '/../helpers/mailer.php';
+                    if (function_exists('mail_welcome')) {
+                        mail_welcome($email, $name);
+                    }
+                }
             } catch (Throwable) {
             }
         }
     }
 
-    create_session($userId);
+    destroy_session();
+    create_session($userId, $context);
     header('Location: ' . $appUrl . '/dashboard/');
     exit;
 } catch (Throwable $e) {

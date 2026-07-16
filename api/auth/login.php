@@ -5,6 +5,7 @@ require_once __DIR__ . '/../helpers/db.php';
 require_once __DIR__ . '/../helpers/auth.php';
 require_once __DIR__ . '/../helpers/validator.php';
 require_once __DIR__ . '/../helpers/rate_limiter.php';
+require_once __DIR__ . '/../helpers/user_roles.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -12,40 +13,64 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     json_response(false, null, 'Método não permitido', 405);
 }
 
-check_rate_limit('login');
+try {
+    check_rate_limit('login');
 
-$data  = body_json();
-$email = validate_email($data['email'] ?? '');
-$pass  = $data['password'] ?? '';
+    $data  = body_json();
+    $email = validate_email($data['email'] ?? '');
+    $pass  = $data['password'] ?? '';
+    $context = gcv_normalize_login_context($data['context'] ?? 'client');
 
-if (!$email || !$pass) {
-    json_response(false, null, 'Email e senha são obrigatórios', 422);
+    if (!$email || !$pass) {
+        json_response(false, null, 'Email e senha são obrigatórios', 422);
+    }
+
+    $stmt = db()->prepare(
+        'SELECT id, name, email, password_hash, role, avatar_url, lang, status FROM gcv_users WHERE email = ?'
+    );
+    $stmt->execute([$email]);
+    $user = $stmt->fetch();
+
+    if (!$user || !password_verify($pass, $user['password_hash'] ?? '')) {
+        json_response(false, null, 'Email ou senha incorretos', 401);
+    }
+
+    if ($user['status'] === 'suspended') {
+        json_response(false, null, 'Conta suspensa. Entre em contato com o suporte.', 403);
+    }
+
+    // Guia pendente só bloqueia na porta guia (ainda vê tela pending); admin/client ok se tiver o papel
+    if ($user['status'] === 'pending' && $context === 'guide') {
+        // permite login — dashboard mostra tela pending
+    } elseif ($user['status'] === 'pending' && $context !== 'guide') {
+        // se pending era guia novo sem outros papéis
+        $roles = gcv_user_roles((int)$user['id']);
+        if ($roles === ['guide'] || $roles === []) {
+            json_response(false, null, 'Conta aguardando aprovação do administrador', 403);
+        }
+    }
+
+    $ctxErr = gcv_login_context_error((int)$user['id'], $context, (string)$user['status']);
+    if ($ctxErr) {
+        json_response(false, null, $ctxErr, 403);
+    }
+
+    reset_rate_limit('login');
+    // Nova sessão neste contexto (substitui cookie anterior)
+    destroy_session();
+    create_session((int)$user['id'], $context);
+
+    $roles = gcv_user_roles((int)$user['id']);
+    json_response(true, [
+        'role'        => $context,
+        'active_role' => $context,
+        'roles'       => $roles,
+        'name'        => $user['name'],
+        'avatar_url'  => $user['avatar_url'],
+        'lang'        => $user['lang'],
+        'status'      => $user['status'],
+    ]);
+} catch (Throwable $e) {
+    error_log('login.php: ' . $e->getMessage());
+    json_response(false, null, 'Erro de conexão com o banco. Tente novamente.', 500);
 }
-
-$stmt = db()->prepare(
-    'SELECT id, name, email, password_hash, role, avatar_url, lang, status FROM gcv_users WHERE email = ?'
-);
-$stmt->execute([$email]);
-$user = $stmt->fetch();
-
-if (!$user || !password_verify($pass, $user['password_hash'] ?? '')) {
-    json_response(false, null, 'Email ou senha incorretos', 401);
-}
-
-if ($user['status'] === 'pending') {
-    json_response(false, null, 'Conta aguardando aprovação do administrador', 403);
-}
-
-if ($user['status'] === 'suspended') {
-    json_response(false, null, 'Conta suspensa. Entre em contato com o suporte.', 403);
-}
-
-reset_rate_limit('login');
-create_session((int)$user['id']);
-
-json_response(true, [
-    'role'       => $user['role'],
-    'name'       => $user['name'],
-    'avatar_url' => $user['avatar_url'],
-    'lang'       => $user['lang'],
-]);

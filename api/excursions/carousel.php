@@ -11,6 +11,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../helpers/db.php';
 require_once __DIR__ . '/../helpers/cms_schema.php';
 require_once __DIR__ . '/../helpers/auth.php';
+require_once __DIR__ . '/../helpers/excursion_attractions.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: public, max-age=60');
@@ -39,13 +40,11 @@ $weekdays = [
 try {
     $rows = db()->query(
         'SELECT e.id, e.status, e.date_iso, e.departure_time, e.price_cents, e.quorum, e.max_people, e.booked_people,
-                e.include_entry, e.cart_slug,
-                a.title_pt, a.title_en, a.title_es, a.slug AS attraction_slug, a.cover_url, a.entry_price_cents,
+                e.include_entry, e.cart_slug, e.attraction_id,
                 c.name AS city_name,
                 u.name AS guide_name,
                 g.nickname AS guide_nickname, g.photo_url AS guide_photo, g.photo_3x4_url AS guide_photo_3x4
          FROM gcv_excursions e
-         INNER JOIN gcv_attractions a ON a.id = e.attraction_id
          INNER JOIN gcv_cities c ON c.id = e.departure_city_id
          LEFT JOIN gcv_users u ON u.id = e.guide_user_id
          LEFT JOIN gcv_guides g ON g.user_id = e.guide_user_id
@@ -55,17 +54,14 @@ try {
          LIMIT 100'
     )->fetchAll();
 } catch (Throwable $e) {
-    // coluna cart_slug pode não existir ainda — tenta sem ela
     try {
         $rows = db()->query(
             'SELECT e.id, e.status, e.date_iso, e.departure_time, e.price_cents, e.quorum, e.max_people, e.booked_people,
-                    e.include_entry, NULL AS cart_slug,
-                    a.title_pt, a.title_en, a.title_es, a.slug AS attraction_slug, a.cover_url, a.entry_price_cents,
+                    e.include_entry, NULL AS cart_slug, e.attraction_id,
                     c.name AS city_name,
                     u.name AS guide_name,
                     g.nickname AS guide_nickname, g.photo_url AS guide_photo, g.photo_3x4_url AS guide_photo_3x4
              FROM gcv_excursions e
-             INNER JOIN gcv_attractions a ON a.id = e.attraction_id
              INNER JOIN gcv_cities c ON c.id = e.departure_city_id
              LEFT JOIN gcv_users u ON u.id = e.guide_user_id
              LEFT JOIN gcv_guides g ON g.user_id = e.guide_user_id
@@ -91,6 +87,7 @@ function gcv_short_city(string $name): string
 
 function gcv_row_to_card(array $r, string $lang, array $months, array $weekdays): array
 {
+    $attrs = gcv_excursion_load_attractions((int)$r['id']);
     $ts = strtotime((string)$r['date_iso'] . ' 12:00:00');
     if ($ts === false) $ts = time();
     $m = (int)date('n', $ts);
@@ -101,17 +98,18 @@ function gcv_row_to_card(array $r, string $lang, array $months, array $weekdays)
     $max = max(1, (int)$r['max_people']);
     $quorum = max(1, (int)$r['quorum']);
     $vagas = max(0, $max - $booked);
-    $titleKey = 'title_' . $lang;
-    $destino = (string)($r[$titleKey] ?: $r['title_pt']);
-    $slug = (string)$r['attraction_slug'];
+    $destino = gcv_excursion_titles_joined($attrs, $lang);
+    $primary = $attrs[0] ?? null;
+    $slug = (string)($primary['slug'] ?? '');
+    $cover = (string)($primary['cover_url'] ?? '');
+    $entryRaw = $primary['entry_price_cents'] ?? null;
     $cartSlug = trim((string)($r['cart_slug'] ?? ''));
     if ($cartSlug === '') {
-        $cartSlug = $slug . '-' . $r['date_iso'] . '-' . str_replace(':', '', $hora);
+        $cartSlug = ($slug !== '' ? $slug : 'excursao') . '-' . $r['date_iso'] . '-' . str_replace(':', '', $hora);
     }
     $guideName = (string)($r['guide_nickname'] ?: $r['guide_name'] ?: '');
     $guidePhoto = (string)($r['guide_photo'] ?: $r['guide_photo_3x4'] ?: '');
-    $cover = (string)($r['cover_url'] ?: '');
-    $entry = $r['entry_price_cents'] !== null ? ((int)$r['entry_price_cents'] / 100) : null;
+    $entry = $entryRaw !== null ? ((int)$entryRaw / 100) : null;
 
     $card = [
         'id' => (int)$r['id'],
@@ -121,6 +119,16 @@ function gcv_row_to_card(array $r, string $lang, array $months, array $weekdays)
         'dateISO' => (string)$r['date_iso'],
         'embarque' => gcv_short_city((string)$r['city_name']),
         'destino' => $destino,
+        'destinos' => array_map(static function ($a) use ($lang) {
+            $key = 'title_' . $lang;
+            $t = trim((string)($a[$key] ?? ''));
+            if ($t === '') $t = (string)($a['title_pt'] ?? '');
+            return [
+                'title' => $t,
+                'slug' => (string)($a['slug'] ?? ''),
+                'path' => !empty($a['slug']) ? ('atrativos/' . $a['slug'] . '.html') : '',
+            ];
+        }, $attrs),
         'cartSlug' => $cartSlug,
         'hora' => $hora,
         'valor' => (int)round(((int)$r['price_cents']) / 100),
@@ -129,7 +137,7 @@ function gcv_row_to_card(array $r, string $lang, array $months, array $weekdays)
         'grupoMaximo' => $max,
         'vagasRestantes' => $vagas,
         'cardImg' => $cover,
-        'atrativoPath' => 'atrativos/' . $slug . '.html',
+        'atrativoPath' => $slug !== '' ? ('atrativos/' . $slug . '.html') : '',
         'status' => (string)$r['status'],
     ];
     if ($guideName !== '') {

@@ -371,6 +371,166 @@
   border-radius: 4px;
   cursor: pointer;
 }
+.gcv-cms-attr-pick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  max-height: 11rem;
+  overflow: auto;
+  padding: 0.35rem 0;
+}
+.gcv-cms-attr-chip {
+  appearance: none;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #0f172a;
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  cursor: pointer;
+  line-height: 1.2;
+  text-align: left;
+}
+.gcv-cms-attr-chip:hover { border-color: #059669; background: #ecfdf5; }
+.gcv-cms-attr-chip.is-active {
+  border-color: #047857;
+  background: #059669;
+  color: #fff;
+  font-weight: 600;
+}
+.gcv-cms-attr-ord {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.25);
+  font-size: 0.72rem;
+  font-weight: 700;
+  margin-right: 0.15rem;
+}
+
+/* Telefone com DDI/bandeira (mesmo padrão do modal PIX) */
+.gcv-cms-phone-row { width: 100%; }
+.gcv-cms-phone-wrap {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #fff;
+  overflow: visible;
+  position: relative;
+}
+.gcv-cms-phone-prefix {
+  position: relative;
+  flex: 0 0 auto;
+  border-right: 1px solid #e2e8f0;
+}
+.gcv-cms-ddi-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 100%;
+  min-height: 2.6rem;
+  padding: 0 0.65rem;
+  border: 0;
+  background: #f8fafc;
+  color: inherit;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  line-height: 1;
+}
+.gcv-cms-ddi-caret {
+  width: 0;
+  height: 0;
+  border-left: 3.5px solid transparent;
+  border-right: 3.5px solid transparent;
+  border-top: 4.5px solid #64748b;
+  flex-shrink: 0;
+}
+.gcv-cms-phone-flag {
+  width: 1.2rem;
+  height: 0.9rem;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.12);
+  flex-shrink: 0;
+}
+.gcv-cms-phone-dial {
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+.gcv-cms-ddi-dropdown {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 4px);
+  left: 0;
+  width: min(20rem, 85vw);
+  max-height: 16rem;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.14);
+  overflow: hidden;
+}
+.gcv-cms-ddi-dropdown[hidden] { display: none !important; }
+.gcv-cms-ddi-search {
+  border: 0;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 0.55rem 0.75rem;
+  font: inherit;
+  outline: none;
+}
+.gcv-cms-ddi-list {
+  overflow: auto;
+  max-height: 12.5rem;
+}
+.gcv-cms-ddi-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0.5rem 0.75rem;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.gcv-cms-ddi-option:hover,
+.gcv-cms-ddi-option.is-selected { background: #ecfdf5; }
+.gcv-cms-ddi-option-name { flex: 1; font-size: 0.86rem; }
+.gcv-cms-ddi-option-dial { font-size: 0.8rem; color: #64748b; font-weight: 700; }
+.gcv-cms-phone-input {
+  flex: 1;
+  border: 0 !important;
+  border-radius: 0 10px 10px 0 !important;
+  box-shadow: none !important;
+  min-width: 0;
+}
+.gcv-cms-photo-preview {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.35rem 0 0.5rem;
+}
+.gcv-cms-photo-preview img {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
 .gcv-auth-page--admin { background: #0b2a20; }
 
 /* Status de ciclo de vida (em formação / confirmada) */

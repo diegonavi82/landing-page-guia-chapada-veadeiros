@@ -86,118 +86,148 @@ function gcv_attraction_from_body(array $body, ?array $existing = null): array
 }
 
 if ($method === 'GET') {
-    $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-    if ($id > 0) {
-        $stmt = db()->prepare('SELECT * FROM gcv_attractions WHERE id = ?');
-        $stmt->execute([$id]);
-        $row = $stmt->fetch();
-        if (!$row) {
-            http_response_code(404);
-            echo json_encode(['ok' => false, 'error' => 'Atrativo não encontrado']);
+    try {
+        $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+        if ($id > 0) {
+            $stmt = db()->prepare('SELECT * FROM gcv_attractions WHERE id = ?');
+            $stmt->execute([$id]);
+            $row = $stmt->fetch();
+            if (!$row) {
+                http_response_code(404);
+                echo json_encode(['ok' => false, 'error' => 'Atrativo não encontrado']);
+                exit;
+            }
+            $row['gallery'] = gcv_attraction_gallery($id);
+            echo json_encode(['ok' => true, 'data' => $row]);
             exit;
         }
-        $row['gallery'] = gcv_attraction_gallery($id);
-        echo json_encode(['ok' => true, 'data' => $row]);
+        $rows = db()->query(
+            'SELECT id, slug, status, title_pt, cover_url, difficulty, entry_price_cents, entry_price_label, city_id, updated_at
+             FROM gcv_attractions ORDER BY title_pt ASC'
+        )->fetchAll();
+        echo json_encode(['ok' => true, 'data' => ['attractions' => $rows]]);
+        exit;
+    } catch (Throwable $e) {
+        error_log('attractions.php GET: ' . $e->getMessage());
+        http_response_code(500);
+        echo json_encode(['ok' => false, 'error' => 'Tabela CMS ausente. Rode /api/_migrate_cms_once.php', 'detail' => $e->getMessage()]);
         exit;
     }
-    $rows = db()->query(
-        'SELECT id, slug, status, title_pt, cover_url, difficulty, entry_price_cents, entry_price_label, city_id, updated_at
-         FROM gcv_attractions ORDER BY title_pt ASC'
-    )->fetchAll();
-    echo json_encode(['ok' => true, 'data' => ['attractions' => $rows]]);
-    exit;
 }
 
 $body = gcv_cms_json_body();
 
 if ($method === 'POST') {
-    $row = gcv_attraction_from_body($body);
-    if ($row['title_pt'] === '') {
-        http_response_code(400);
-        echo json_encode(['ok' => false, 'error' => 'Título (PT) obrigatório']);
+    try {
+        gcv_cms_ensure_schema();
+        $row = gcv_attraction_from_body($body);
+        if ($row['title_pt'] === '') {
+            http_response_code(400);
+            echo json_encode(['ok' => false, 'error' => 'Título (PT) obrigatório']);
+            exit;
+        }
+        $stmt = db()->prepare(
+            'INSERT INTO gcv_attractions (
+              slug, status, title_pt, title_en, title_es, excerpt_pt, excerpt_en, excerpt_es,
+              content_pt, content_en, content_es, seo_title_pt, seo_title_en, seo_title_es,
+              seo_desc_pt, seo_desc_en, seo_desc_es, distance_km, trail_distance_km, difficulty,
+              entry_price_cents, entry_price_label, parking_info, recommended_period, city_id,
+              cover_media_id, cover_url, sidebar_html_pt, sidebar_html_en, sidebar_html_es,
+              published_at, created_by, updated_by
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+        );
+        $stmt->execute([
+            $row['slug'], $row['status'], $row['title_pt'], $row['title_en'], $row['title_es'],
+            $row['excerpt_pt'], $row['excerpt_en'], $row['excerpt_es'],
+            $row['content_pt'], $row['content_en'], $row['content_es'],
+            $row['seo_title_pt'], $row['seo_title_en'], $row['seo_title_es'],
+            $row['seo_desc_pt'], $row['seo_desc_en'], $row['seo_desc_es'],
+            $row['distance_km'], $row['trail_distance_km'], $row['difficulty'],
+            $row['entry_price_cents'], $row['entry_price_label'], $row['parking_info'], $row['recommended_period'], $row['city_id'],
+            $row['cover_media_id'], $row['cover_url'], $row['sidebar_html_pt'], $row['sidebar_html_en'], $row['sidebar_html_es'],
+            $row['published_at'], (int)$admin['id'], (int)$admin['id'],
+        ]);
+        $id = (int)db()->lastInsertId();
+        if (!empty($body['gallery']) && is_array($body['gallery'])) {
+            gcv_save_attraction_gallery($id, $body['gallery']);
+        }
+        $stmt = db()->prepare('SELECT * FROM gcv_attractions WHERE id = ?');
+        $stmt->execute([$id]);
+        $out = $stmt->fetch();
+        $out['gallery'] = gcv_attraction_gallery($id);
+        echo json_encode(['ok' => true, 'data' => $out]);
+        exit;
+    } catch (Throwable $e) {
+        error_log('attractions.php POST: ' . $e->getMessage());
+        http_response_code(500);
+        echo json_encode([
+            'ok' => false,
+            'error' => 'Falha ao salvar atrativo. Abra /api/admin/setup-cms.php (logado) e tente de novo.',
+            'detail' => $e->getMessage(),
+        ]);
         exit;
     }
-    $stmt = db()->prepare(
-        'INSERT INTO gcv_attractions (
-          slug, status, title_pt, title_en, title_es, excerpt_pt, excerpt_en, excerpt_es,
-          content_pt, content_en, content_es, seo_title_pt, seo_title_en, seo_title_es,
-          seo_desc_pt, seo_desc_en, seo_desc_es, distance_km, trail_distance_km, difficulty,
-          entry_price_cents, entry_price_label, parking_info, recommended_period, city_id,
-          cover_media_id, cover_url, sidebar_html_pt, sidebar_html_en, sidebar_html_es,
-          published_at, created_by, updated_by
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
-    );
-    $stmt->execute([
-        $row['slug'], $row['status'], $row['title_pt'], $row['title_en'], $row['title_es'],
-        $row['excerpt_pt'], $row['excerpt_en'], $row['excerpt_es'],
-        $row['content_pt'], $row['content_en'], $row['content_es'],
-        $row['seo_title_pt'], $row['seo_title_en'], $row['seo_title_es'],
-        $row['seo_desc_pt'], $row['seo_desc_en'], $row['seo_desc_es'],
-        $row['distance_km'], $row['trail_distance_km'], $row['difficulty'],
-        $row['entry_price_cents'], $row['entry_price_label'], $row['parking_info'], $row['recommended_period'], $row['city_id'],
-        $row['cover_media_id'], $row['cover_url'], $row['sidebar_html_pt'], $row['sidebar_html_en'], $row['sidebar_html_es'],
-        $row['published_at'], (int)$admin['id'], (int)$admin['id'],
-    ]);
-    $id = (int)db()->lastInsertId();
-    if (!empty($body['gallery']) && is_array($body['gallery'])) {
-        gcv_save_attraction_gallery($id, $body['gallery']);
-    }
-    $stmt = db()->prepare('SELECT * FROM gcv_attractions WHERE id = ?');
-    $stmt->execute([$id]);
-    $out = $stmt->fetch();
-    $out['gallery'] = gcv_attraction_gallery($id);
-    echo json_encode(['ok' => true, 'data' => $out]);
-    exit;
 }
 
 if ($method === 'PUT') {
-    $id = (int)($body['id'] ?? 0);
-    if ($id <= 0) {
-        http_response_code(400);
-        echo json_encode(['ok' => false, 'error' => 'id obrigatório']);
+    try {
+        gcv_cms_ensure_schema();
+        $id = (int)($body['id'] ?? 0);
+        if ($id <= 0) {
+            http_response_code(400);
+            echo json_encode(['ok' => false, 'error' => 'id obrigatório']);
+            exit;
+        }
+        $stmt = db()->prepare('SELECT * FROM gcv_attractions WHERE id = ?');
+        $stmt->execute([$id]);
+        $existing = $stmt->fetch();
+        if (!$existing) {
+            http_response_code(404);
+            echo json_encode(['ok' => false, 'error' => 'Atrativo não encontrado']);
+            exit;
+        }
+        $row = gcv_attraction_from_body($body, $existing);
+        $stmt = db()->prepare(
+            'UPDATE gcv_attractions SET
+              slug=?, status=?, title_pt=?, title_en=?, title_es=?, excerpt_pt=?, excerpt_en=?, excerpt_es=?,
+              content_pt=?, content_en=?, content_es=?, seo_title_pt=?, seo_title_en=?, seo_title_es=?,
+              seo_desc_pt=?, seo_desc_en=?, seo_desc_es=?, distance_km=?, trail_distance_km=?, difficulty=?,
+              entry_price_cents=?, entry_price_label=?, parking_info=?, recommended_period=?, city_id=?,
+              cover_media_id=?, cover_url=?, sidebar_html_pt=?, sidebar_html_en=?, sidebar_html_es=?,
+              published_at=?, updated_by=?
+             WHERE id=?'
+        );
+        $stmt->execute([
+            $row['slug'], $row['status'], $row['title_pt'], $row['title_en'], $row['title_es'],
+            $row['excerpt_pt'], $row['excerpt_en'], $row['excerpt_es'],
+            $row['content_pt'], $row['content_en'], $row['content_es'],
+            $row['seo_title_pt'], $row['seo_title_en'], $row['seo_title_es'],
+            $row['seo_desc_pt'], $row['seo_desc_en'], $row['seo_desc_es'],
+            $row['distance_km'], $row['trail_distance_km'], $row['difficulty'],
+            $row['entry_price_cents'], $row['entry_price_label'], $row['parking_info'], $row['recommended_period'], $row['city_id'],
+            $row['cover_media_id'], $row['cover_url'], $row['sidebar_html_pt'], $row['sidebar_html_en'], $row['sidebar_html_es'],
+            $row['published_at'], (int)$admin['id'], $id,
+        ]);
+        if (array_key_exists('gallery', $body) && is_array($body['gallery'])) {
+            gcv_save_attraction_gallery($id, $body['gallery']);
+        }
+        $stmt = db()->prepare('SELECT * FROM gcv_attractions WHERE id = ?');
+        $stmt->execute([$id]);
+        $out = $stmt->fetch();
+        $out['gallery'] = gcv_attraction_gallery($id);
+        echo json_encode(['ok' => true, 'data' => $out]);
+        exit;
+    } catch (Throwable $e) {
+        error_log('attractions.php PUT: ' . $e->getMessage());
+        http_response_code(500);
+        echo json_encode([
+            'ok' => false,
+            'error' => 'Falha ao atualizar atrativo: ' . $e->getMessage(),
+            'detail' => $e->getMessage(),
+        ]);
         exit;
     }
-    $stmt = db()->prepare('SELECT * FROM gcv_attractions WHERE id = ?');
-    $stmt->execute([$id]);
-    $existing = $stmt->fetch();
-    if (!$existing) {
-        http_response_code(404);
-        echo json_encode(['ok' => false, 'error' => 'Atrativo não encontrado']);
-        exit;
-    }
-    $row = gcv_attraction_from_body($body, $existing);
-    $stmt = db()->prepare(
-        'UPDATE gcv_attractions SET
-          slug=?, status=?, title_pt=?, title_en=?, title_es=?, excerpt_pt=?, excerpt_en=?, excerpt_es=?,
-          content_pt=?, content_en=?, content_es=?, seo_title_pt=?, seo_title_en=?, seo_title_es=?,
-          seo_desc_pt=?, seo_desc_en=?, seo_desc_es=?, distance_km=?, trail_distance_km=?, difficulty=?,
-          entry_price_cents=?, entry_price_label=?, parking_info=?, recommended_period=?, city_id=?,
-          cover_media_id=?, cover_url=?, sidebar_html_pt=?, sidebar_html_en=?, sidebar_html_es=?,
-          published_at=?, updated_by=?
-         WHERE id=?'
-    );
-    $stmt->execute([
-        $row['slug'], $row['status'], $row['title_pt'], $row['title_en'], $row['title_es'],
-        $row['excerpt_pt'], $row['excerpt_en'], $row['excerpt_es'],
-        $row['content_pt'], $row['content_en'], $row['content_es'],
-        $row['seo_title_pt'], $row['seo_title_en'], $row['seo_title_es'],
-        $row['seo_desc_pt'], $row['seo_desc_en'], $row['seo_desc_es'],
-        $row['distance_km'], $row['trail_distance_km'], $row['difficulty'],
-        $row['entry_price_cents'], $row['entry_price_label'], $row['parking_info'], $row['recommended_period'], $row['city_id'],
-        $row['cover_media_id'], $row['cover_url'], $row['sidebar_html_pt'], $row['sidebar_html_en'], $row['sidebar_html_es'],
-        $row['published_at'], (int)$admin['id'], $id,
-    ]);
-    if (array_key_exists('gallery', $body) && is_array($body['gallery'])) {
-        gcv_save_attraction_gallery($id, $body['gallery']);
-    }
-    $stmt = db()->prepare('SELECT * FROM gcv_attractions WHERE id = ?');
-    $stmt->execute([$id]);
-    $out = $stmt->fetch();
-    $out['gallery'] = gcv_attraction_gallery($id);
-    echo json_encode(['ok' => true, 'data' => $out]);
-    exit;
 }
-
 if ($method === 'DELETE') {
     $id = (int)($body['id'] ?? $_GET['id'] ?? 0);
     if ($id <= 0) {

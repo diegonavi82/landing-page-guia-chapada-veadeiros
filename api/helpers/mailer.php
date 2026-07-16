@@ -1,11 +1,11 @@
 <?php
 declare(strict_types=1);
 
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\SMTP;
-use PHPMailer\PHPMailer\Exception;
-
-require_once __DIR__ . '/../vendor/autoload.php';
+$gcvMailerAutoload = __DIR__ . '/../vendor/autoload.php';
+$gcvMailerReady = is_readable($gcvMailerAutoload);
+if ($gcvMailerReady) {
+    require_once $gcvMailerAutoload;
+}
 
 /**
  * @param list<array{path?:string,content?:string,name?:string,type?:string}> $attachments
@@ -18,14 +18,20 @@ function send_mail(
     bool $wrapLayout = true,
     array $attachments = []
 ): bool {
-    $mail = new PHPMailer(true);
+    global $gcvMailerReady;
+    if (empty($gcvMailerReady) || !class_exists(\PHPMailer\PHPMailer\PHPMailer::class)) {
+        error_log('Mailer: api/vendor ausente — rode composer install na pasta do projeto');
+        return false;
+    }
+
+    $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
     try {
         $mail->isSMTP();
         $mail->Host       = $_ENV['SMTP_HOST'] ?? 'smtp.hostinger.com';
         $mail->SMTPAuth   = true;
         $mail->Username   = $_ENV['SMTP_USER'] ?? '';
         $mail->Password   = $_ENV['SMTP_PASS'] ?? '';
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->SMTPSecure = \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port       = (int)($_ENV['SMTP_PORT'] ?? 587);
         $mail->CharSet    = 'UTF-8';
         $mail->Timeout    = 12;
@@ -54,7 +60,7 @@ function send_mail(
                 $mail->addStringAttachment(
                     $att['content'],
                     $name !== '' ? $name : 'anexo.bin',
-                    PHPMailer::ENCODING_BASE64,
+                    \PHPMailer\PHPMailer\PHPMailer::ENCODING_BASE64,
                     $type !== '' ? $type : 'application/octet-stream'
                 );
             }
@@ -62,8 +68,8 @@ function send_mail(
 
         $mail->send();
         return true;
-    } catch (Exception $e) {
-        error_log('Mailer error: ' . $mail->ErrorInfo);
+    } catch (\Throwable $e) {
+        error_log('Mailer error: ' . ($mail->ErrorInfo ?? $e->getMessage()));
         return false;
     }
 }
@@ -166,6 +172,7 @@ function mail_reset_password(string $to, string $name, string $token, string $co
 
 function mail_payment_released(string $to, string $guideName, string $tourTitle, int $amountCents): void {
     $amount = 'R$ ' . number_format($amountCents / 100, 2, ',', '.');
-    $body   = "<p>Olá, <strong>{$guideName}</strong>!</p><p>O pagamento referente ao passeio <strong>\"{$tourTitle}\"</strong> foi liberado na sua conta do Mercado Pago.</p><p><strong>Valor:</strong> {$amount}</p>";
+    $body   = "<p>Olá, <strong>{$guideName}</strong>!</p><p>O pagamento referente ao passeio <strong>\"{$tourTitle}\"</strong> foi liberado via PIX (Sicoob).</p><p><strong>Valor:</strong> {$amount}</p>";
+
     send_mail($to, 'Seu pagamento foi liberado — ' . $tourTitle, $body, $guideName);
 }

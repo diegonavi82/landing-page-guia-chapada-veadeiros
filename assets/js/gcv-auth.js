@@ -135,7 +135,7 @@
       var email = form.querySelector('[name=email]').value.trim();
       var pass  = form.querySelector('[name=password]').value;
 
-      post(BASE + '/login.php', { email: email, password: pass }, function (error, res) {
+      post(BASE + '/login.php', { email: email, password: pass, context: context }, function (error, res) {
         if (btn) btn.disabled = false;
         if (btn) btn.textContent = btnDefault;
         if (error || !res.ok) {
@@ -143,33 +143,17 @@
           return;
         }
 
-        var role = res.data && res.data.role;
-
-        // Validação de contexto: guia na área do cliente → redirecionar
-        if (context === 'client' && (role === 'guide')) {
-          showError(err, 'Esta área é para clientes. <a href="/guia/login.html">Entre pela Área do Guia →</a>');
-          return;
-        }
-        // Cliente na área do guia → redirecionar
-        if (context === 'guide' && role === 'client') {
-          showError(err, 'Esta área é exclusiva para guias. <a href="/login.html">Entre pela Área do Cliente →</a>');
-          return;
-        }
-        // Admin: só role admin
-        if (context === 'admin' && role !== 'admin') {
-          showError(err, 'Acesso restrito à administração.');
-          return;
-        }
-        // Cliente/guia não entram pela porta admin (já bloqueado acima); admin na área cliente/guia segue para o painel
-        if (context === 'client' && role === 'admin') {
+        var active = (res.data && (res.data.active_role || res.data.role)) || context;
+        // Sempre respeita a porta de login
+        if (active === 'admin' || context === 'admin') {
           window.location.href = '/dashboard/';
           return;
         }
-        if (context === 'guide' && role === 'admin') {
+        if (context === 'guide') {
           window.location.href = '/dashboard/';
           return;
         }
-        window.location.href = context === 'admin' ? '/dashboard/' : getRedirect();
+        window.location.href = getRedirect();
       });
     });
   }

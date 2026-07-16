@@ -44,22 +44,29 @@ function gcv_article_row_from_body(array $body, ?array $existing = null): array
 }
 
 if ($method === 'GET') {
-    $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-    if ($id > 0) {
-        $stmt = db()->prepare('SELECT * FROM gcv_articles WHERE id = ?');
-        $stmt->execute([$id]);
-        $row = $stmt->fetch();
-        if (!$row) {
-            http_response_code(404);
-            echo json_encode(['ok' => false, 'error' => 'Artigo não encontrado']);
+    try {
+        $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+        if ($id > 0) {
+            $stmt = db()->prepare('SELECT * FROM gcv_articles WHERE id = ?');
+            $stmt->execute([$id]);
+            $row = $stmt->fetch();
+            if (!$row) {
+                http_response_code(404);
+                echo json_encode(['ok' => false, 'error' => 'Artigo não encontrado']);
+                exit;
+            }
+            echo json_encode(['ok' => true, 'data' => $row]);
             exit;
         }
-        echo json_encode(['ok' => true, 'data' => $row]);
+        $rows = db()->query('SELECT id, slug, status, title_pt, title_en, title_es, cover_url, published_at, updated_at FROM gcv_articles ORDER BY updated_at DESC')->fetchAll();
+        echo json_encode(['ok' => true, 'data' => ['articles' => $rows]]);
+        exit;
+    } catch (Throwable $e) {
+        error_log('articles.php GET: ' . $e->getMessage());
+        http_response_code(500);
+        echo json_encode(['ok' => false, 'error' => 'Tabela CMS ausente. Rode migration_cms.sql ou /api/_migrate_cms_once.php', 'detail' => $e->getMessage()]);
         exit;
     }
-    $rows = db()->query('SELECT id, slug, status, title_pt, title_en, title_es, cover_url, published_at, updated_at FROM gcv_articles ORDER BY updated_at DESC')->fetchAll();
-    echo json_encode(['ok' => true, 'data' => ['articles' => $rows]]);
-    exit;
 }
 
 $body = gcv_cms_json_body();

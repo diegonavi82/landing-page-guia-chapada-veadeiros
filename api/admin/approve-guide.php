@@ -5,6 +5,7 @@ require_once __DIR__ . '/../helpers/db.php';
 require_once __DIR__ . '/../helpers/auth.php';
 require_once __DIR__ . '/../helpers/validator.php';
 require_once __DIR__ . '/../helpers/mailer.php';
+require_once __DIR__ . '/../helpers/user_roles.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -16,15 +17,21 @@ $userId = (int)($data['user_id'] ?? 0);
 
 if (!$userId) json_response(false, null, 'user_id obrigatório', 422);
 
-$stmt = db()->prepare('SELECT id, name, email, role, status FROM gcv_users WHERE id = ? AND role = \'guide\'');
+$stmt = db()->prepare('SELECT id, name, email, role, status FROM gcv_users WHERE id = ?');
 $stmt->execute([$userId]);
 $guide = $stmt->fetch();
 
-if (!$guide) json_response(false, null, 'Guia não encontrado', 404);
+if (!$guide || !gcv_user_has_role($userId, 'guide')) {
+    json_response(false, null, 'Guia não encontrado', 404);
+}
 
 db()->prepare(
     'UPDATE gcv_users SET status = \'active\' WHERE id = ?'
 )->execute([$userId]);
+
+gcv_user_grant_role($userId, 'guide');
+gcv_user_grant_role($userId, 'client');
+gcv_user_sync_primary_role($userId);
 
 db()->prepare(
     'UPDATE gcv_guides SET approved_at = NOW(), approved_by = ? WHERE user_id = ?'

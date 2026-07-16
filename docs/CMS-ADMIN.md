@@ -61,11 +61,14 @@ Sem a chave, o cadastro manual de cidades ainda funciona; só o autocomplete fic
 ## Menu admin (CMS)
 
 - **Revista** — CRUD artigos (HTML + SEO + capa)
-- **Atrativos** — CRUD com preço, trilha, dificuldade, sidebar, galeria
+- **Atrativos** — CRUD + botão **Importar do site** (18 atrativos atuais via `api/data/attractions-seed.json`)
 - **Guias cadastrados** — perfil completo (PIX, docs, cidade base)
 - **Cidades** — base + Places
-- **Excursões** — próximas saídas ligadas a atrativos; **guia obrigatório** ao publicar; quórum mínimo 4
-- Regras Admin/Guia/Cliente: ver `docs/REGRAS-NEGOCIO.md`
+- **Excursões** — novas saídas: **1 a 4 atrativos no mesmo dia** (chips multi-seleção); **guia obrigatório** ao publicar; quórum mínimo 4
+
+Se a lista de atrativos estiver vazia ao abrir Excursões/Atrativos, o painel tenta importar sozinho. Também: `/api/admin/setup-cms.php` (seed) ou `/api/admin/seed-attractions.php`.
+
+Regenerar seed local: `node tools/export-attractions-seed.mjs`
 
 Status **Publicada** → aparece no carrossel da home via `/api/excursions/carousel.php` (o JS prefere MySQL; se vazio, usa o JSON do build).
 
