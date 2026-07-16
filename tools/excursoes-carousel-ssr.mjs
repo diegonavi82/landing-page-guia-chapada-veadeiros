@@ -136,7 +136,7 @@ const SSR = {
     inclSpot: "Vaga em Excursão",
     inclGuideShort: "Guia local",
     inclEntries: "Ingresso",
-    inclTransport: "Transporte",
+    inclTransport: "Translado",
     inclLanterna: "Lanterna",
     badgeTransport: "Com transporte",
     exclLabel: "Não incluso",
@@ -186,7 +186,7 @@ const SSR = {
     inclSpot: "Excursion spot",
     inclGuideShort: "Local guide",
     inclEntries: "Admission",
-    inclTransport: "Transport",
+    inclTransport: "Transfer",
     inclLanterna: "Flashlight",
     badgeTransport: "With transport",
     exclLabel: "Not included",
@@ -236,7 +236,7 @@ const SSR = {
     inclSpot: "Cupo en excursión",
     inclGuideShort: "Guía local",
     inclEntries: "Entrada",
-    inclTransport: "Transporte",
+    inclTransport: "Traslado",
     inclLanterna: "Linterna",
     badgeTransport: "Con transporte",
     exclLabel: "No incluye",
@@ -263,7 +263,14 @@ function atrativoHref(e, locale) {
   return atrativoHrefFrom(e && e.atrativoPath, locale);
 }
 
-function cardSpotRowSsr(d, locale) {
+function cardSpotTransportBadgeSsr(s) {
+  return (
+    `<span class="gcv-excursoes-card__spot-transport" aria-hidden="true">` +
+    `<i class="ti ti-bus" aria-hidden="true"></i> ${esc(s.badgeTransport)}</span>`
+  );
+}
+
+function cardSpotRowSsr(d, locale, transportBadge) {
   const href = atrativoHrefFrom(d.atrativoPath, locale);
   const imgInner =
     `<div class="gcv-excursoes-card__img-wrap gcv-excursoes-card__spot-img-wrap">` +
@@ -278,13 +285,14 @@ function cardSpotRowSsr(d, locale) {
   const sub = d.destinoSub ? `<span class="gcv-excursoes-card__dest-sub">${esc(String(d.destinoSub))}</span>` : "";
   const destMod = sub ? " gcv-excursoes-card__spot-dest--has-sub" : "";
   const title = `<h3 class="gcv-excursoes-card__dest gcv-excursoes-card__spot-dest${destMod}">${titleMain}${sub}</h3>`;
-  return `<div class="gcv-excursoes-card__spot"><div class="gcv-excursoes-card__spot-photo">${photoInner}</div>${title}</div>`;
+  return `<div class="gcv-excursoes-card__spot"><div class="gcv-excursoes-card__spot-photo">${photoInner}${transportBadge || ""}</div>${title}</div>`;
 }
 
-function cardSpotsBlockSsr(e, locale) {
+function cardSpotsBlockSsr(e, locale, s) {
   const dests = destinosForCard(e);
   const n = destinosSpotsCount(e);
-  const inner = `<div class="gcv-excursoes-card__spots gcv-excursoes-card__spots--count-${n}" data-spots="${n}">${dests.map((d) => cardSpotRowSsr(d, locale)).join("")}</div>`;
+  const badge = e.comTransporte === true && s ? cardSpotTransportBadgeSsr(s) : "";
+  const inner = `<div class="gcv-excursoes-card__spots gcv-excursoes-card__spots--count-${n}" data-spots="${n}">${dests.map((d) => cardSpotRowSsr(d, locale, badge)).join("")}</div>`;
   return `<div class="gcv-excursoes-card__media">${inner}</div>`;
 }
 
@@ -606,14 +614,11 @@ export function excursionsCarouselTrackSsrHtml(locale) {
         '<span class="gcv-excursoes-card__cap-slash">/</span>' +
         `<span class="gcv-excursoes-card__cap-y">${cap}</span>` +
         "</span></span></div></div>" +
-        cardSpotsBlockSsr(e, locale) +
+        cardSpotsBlockSsr(e, locale, s) +
         "</div>" +
         '<div class="gcv-excursoes-card__body">' +
         guiaChipSsr(e, locale) +
         inclExclBlocksSsr(e, s, locale) +
-        (comTransporte
-          ? `<span class="gcv-excursoes-card__transport-badge"><i class="ti ti-bus" aria-hidden="true"></i> ${esc(s.badgeTransport)}</span>`
-          : "") +
         bookingBlockSsr(e, s, locale) +
         "</div></article>"
       );

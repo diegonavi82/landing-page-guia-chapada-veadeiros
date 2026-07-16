@@ -7,23 +7,61 @@ require_once __DIR__ . '/../helpers/mailer.php';
 
 auth_session_start();
 
-$appUrl = $_ENV['APP_URL'] ?? 'https://www.guiachapadaveadeiros.com';
-
-$code   = $_GET['code']  ?? '';
-$state  = $_GET['state'] ?? '';
+$appUrl = rtrim((string)($_ENV['APP_URL'] ?? 'https://www.guiachapadaveadeiros.com'), '/');
 $secret = $_ENV['APP_SECRET'] ?? 'gcv_secret';
 
-// Verificar state via HMAC (sem sessão)
-$valid = false;
-if ($state && str_contains($state, '.')) {
-    [$ts, $sig] = explode('.', $state, 2);
-    $expected = hash_hmac('sha256', $ts, $secret);
-    $valid = hash_equals($expected, $sig) && (time() - (int)$ts) < 600;
+$code  = (string)($_GET['code'] ?? '');
+$state = (string)($_GET['state'] ?? '');
+
+/**
+ * @return array{ok:bool,context:string,loginPath:string}
+ */
+function gcv_oauth_parse_state(string $state, string $secret): array
+{
+    $parts = explode('.', $state);
+    // Novo: ts.context.hmac  | Legado: ts.hmac
+    if (count($parts) === 3) {
+        [$ts, $context, $sig] = $parts;
+        $context = strtolower(trim($context));
+        if (!in_array($context, ['client', 'guide', 'admin'], true)) {
+            $context = 'client';
+        }
+        $expected = hash_hmac('sha256', $ts . '.' . $context, $secret);
+        $ok = hash_equals($expected, $sig) && (time() - (int)$ts) < 600;
+        return ['ok' => $ok, 'context' => $context, 'loginPath' => gcv_oauth_login_path($context)];
+    }
+    if (count($parts) === 2) {
+        [$ts, $sig] = $parts;
+        $expected = hash_hmac('sha256', $ts, $secret);
+        $ok = hash_equals($expected, $sig) && (time() - (int)$ts) < 600;
+        return ['ok' => $ok, 'context' => 'client', 'loginPath' => gcv_oauth_login_path('client')];
+    }
+    return ['ok' => false, 'context' => 'client', 'loginPath' => gcv_oauth_login_path('client')];
 }
 
-if (!$code || !$valid) {
-    header('Location: ' . $appUrl . '/login.html?error=oauth_state');
+function gcv_oauth_login_path(string $context): string
+{
+    if ($context === 'admin') {
+        return '/admin/login.html';
+    }
+    if ($context === 'guide') {
+        return '/guia/login.html';
+    }
+    return '/login.html';
+}
+
+function gcv_oauth_fail(string $appUrl, string $loginPath, string $error): never
+{
+    header('Location: ' . $appUrl . $loginPath . '?error=' . rawurlencode($error));
     exit;
+}
+
+$parsed = gcv_oauth_parse_state($state, $secret);
+$context = $parsed['context'];
+$loginPath = $parsed['loginPath'];
+
+if (!$code || !$parsed['ok']) {
+    gcv_oauth_fail($appUrl, $loginPath, 'oauth_state');
 }
 
 $clientId     = $_ENV['GOOGLE_CLIENT_ID']     ?? '';
@@ -47,10 +85,9 @@ try {
                 'grant_type'    => 'authorization_code',
             ]),
         ]);
-        $tokenResponse = json_decode(curl_exec($ch), true);
+        $tokenResponse = json_decode((string)curl_exec($ch), true);
         curl_close($ch);
     } else {
-        // Fallback: file_get_contents
         $ctx = stream_context_create(['http' => [
             'method'  => 'POST',
             'header'  => 'Content-Type: application/x-www-form-urlencoded',
@@ -63,16 +100,14 @@ try {
             ]),
             'ignore_errors' => true,
         ]]);
-        $tokenResponse = json_decode(file_get_contents('https://oauth2.googleapis.com/token', false, $ctx), true);
+        $tokenResponse = json_decode((string)file_get_contents('https://oauth2.googleapis.com/token', false, $ctx), true);
     }
 } catch (Throwable $e) {
-    header('Location: ' . $appUrl . '/login.html?error=oauth_curl&msg=' . urlencode($e->getMessage()));
-    exit;
+    gcv_oauth_fail($appUrl, $loginPath, 'oauth_token');
 }
 
 if (empty($tokenResponse['access_token'])) {
-    header('Location: ' . $appUrl . '/login.html?error=oauth_token');
-    exit;
+    gcv_oauth_fail($appUrl, $loginPath, 'oauth_token');
 }
 
 // Buscar dados do usuário
@@ -84,58 +119,98 @@ try {
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . $tokenResponse['access_token']],
         ]);
-        $googleUser = json_decode(curl_exec($ch), true);
+        $googleUser = json_decode((string)curl_exec($ch), true);
         curl_close($ch);
     } else {
         $ctx = stream_context_create(['http' => [
             'header'        => 'Authorization: Bearer ' . $tokenResponse['access_token'],
             'ignore_errors' => true,
         ]]);
-        $googleUser = json_decode(file_get_contents('https://www.googleapis.com/oauth2/v3/userinfo', false, $ctx), true);
+        $googleUser = json_decode((string)file_get_contents('https://www.googleapis.com/oauth2/v3/userinfo', false, $ctx), true);
     }
 } catch (Throwable $e) {
-    header('Location: ' . $appUrl . '/login.html?error=oauth_userinfo');
-    exit;
+    gcv_oauth_fail($appUrl, $loginPath, 'oauth_userinfo');
 }
 
 if (empty($googleUser['email'])) {
-    header('Location: ' . $appUrl . '/login.html?error=oauth_user');
-    exit;
+    gcv_oauth_fail($appUrl, $loginPath, 'oauth_user');
 }
 
-$googleId  = $googleUser['sub']     ?? '';
-$email     = strtolower($googleUser['email'] ?? '');
-$name      = $googleUser['name']    ?? $email;
+$googleId  = (string)($googleUser['sub'] ?? '');
+$email     = strtolower((string)($googleUser['email'] ?? ''));
+$name      = (string)($googleUser['name'] ?? $email);
 $avatarUrl = $googleUser['picture'] ?? null;
 
 try {
     $pdo  = db();
-    $stmt = $pdo->prepare('SELECT id, status FROM gcv_users WHERE email = ? OR google_id = ?');
+    $stmt = $pdo->prepare('SELECT id, role, status FROM gcv_users WHERE email = ? OR google_id = ? LIMIT 1');
     $stmt->execute([$email, $googleId]);
-    $user = $stmt->fetch();
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($user) {
-        if ($user['status'] === 'suspended') {
-            header('Location: ' . $appUrl . '/login.html?error=suspended');
-            exit;
+        if (($user['status'] ?? '') === 'suspended') {
+            gcv_oauth_fail($appUrl, $loginPath, 'suspended');
         }
+
+        $role = (string)($user['role'] ?? 'client');
+
+        // Porta admin: só conta admin já existente
+        if ($context === 'admin' && $role !== 'admin') {
+            gcv_oauth_fail($appUrl, $loginPath, 'admin_only');
+        }
+        // Porta guia: não aceita cliente puro
+        if ($context === 'guide' && $role === 'client') {
+            gcv_oauth_fail($appUrl, '/login.html', 'guide_area');
+        }
+        // Porta cliente: guia deve usar a área do guia
+        if ($context === 'client' && $role === 'guide') {
+            gcv_oauth_fail($appUrl, '/guia/login.html', 'client_area');
+        }
+
         $pdo->prepare(
             'UPDATE gcv_users SET google_id = ?, avatar_url = COALESCE(avatar_url, ?) WHERE id = ?'
         )->execute([$googleId, $avatarUrl, $user['id']]);
         $userId = (int)$user['id'];
     } else {
-        $pdo->prepare(
-            'INSERT INTO gcv_users (name, email, google_id, avatar_url, role, status, email_verified) VALUES (?,?,?,?,\'client\',\'active\',1)'
-        )->execute([$name, $email, $googleId, $avatarUrl]);
-        $userId = (int)$pdo->lastInsertId();
-        try { mail_welcome($email, $name); } catch (Throwable) {}
+        // Conta nova
+        if ($context === 'admin') {
+            // Nunca cria admin via Google
+            gcv_oauth_fail($appUrl, $loginPath, 'admin_only');
+        }
+
+        if ($context === 'guide') {
+            $pdo->beginTransaction();
+            try {
+                $pdo->prepare(
+                    'INSERT INTO gcv_users (name, email, google_id, avatar_url, role, status, email_verified) VALUES (?,?,?,?,\'guide\',\'pending\',1)'
+                )->execute([$name, $email, $googleId, $avatarUrl]);
+                $userId = (int)$pdo->lastInsertId();
+                $pdo->prepare('INSERT INTO gcv_guides (user_id, cadastur) VALUES (?, NULL)')->execute([$userId]);
+                $pdo->commit();
+                try {
+                    mail_guide_pending_admin($name, $email);
+                } catch (Throwable) {
+                }
+            } catch (Throwable $e) {
+                $pdo->rollBack();
+                throw $e;
+            }
+        } else {
+            $pdo->prepare(
+                'INSERT INTO gcv_users (name, email, google_id, avatar_url, role, status, email_verified) VALUES (?,?,?,?,\'client\',\'active\',1)'
+            )->execute([$name, $email, $googleId, $avatarUrl]);
+            $userId = (int)$pdo->lastInsertId();
+            try {
+                mail_welcome($email, $name);
+            } catch (Throwable) {
+            }
+        }
     }
 
     create_session($userId);
     header('Location: ' . $appUrl . '/dashboard/');
     exit;
-
 } catch (Throwable $e) {
-    header('Location: ' . $appUrl . '/login.html?error=db&msg=' . urlencode($e->getMessage()));
-    exit;
+    error_log('google-callback: ' . $e->getMessage());
+    gcv_oauth_fail($appUrl, $loginPath, 'db');
 }

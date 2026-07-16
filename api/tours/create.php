@@ -50,13 +50,13 @@ if ($user['role'] === 'admin' && !empty($data['guide_id'])) {
     $guideId = (int)$data['guide_id'];
 }
 
-// Verificar se guia tem MP conectado
+// Pagamentos via PIX Sicoob — exige chave PIX no perfil (não Mercado Pago)
 if ($user['role'] === 'guide') {
-    $stmt = db()->prepare('SELECT mp_access_token FROM gcv_guides WHERE user_id = ?');
+    $stmt = db()->prepare('SELECT pix_key FROM gcv_guides WHERE user_id = ?');
     $stmt->execute([$guideId]);
     $guide = $stmt->fetch();
-    if (!$guide || empty($guide['mp_access_token'])) {
-        json_response(false, null, 'Conecte sua conta do Mercado Pago antes de criar passeios', 403);
+    if (!$guide || trim((string)($guide['pix_key'] ?? '')) === '') {
+        json_response(false, null, 'Cadastre sua chave PIX no perfil antes de criar passeios', 403);
     }
 }
 

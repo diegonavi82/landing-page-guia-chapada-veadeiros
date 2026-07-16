@@ -158,7 +158,7 @@
       + '</div>'
       + '<div class="gcv-pay-card-field"><label class="gcv-pay-card-label">Nome no cartão</label><input class="gcv-pay-card-input" id="card-name" type="text" placeholder="NOME SOBRENOME" /></div>'
       + '<button class="gcv-pay-btn" id="gcv-pay-card-btn">Pagar com Cartão</button>'
-      + '<p class="gcv-pay-secure">🔒 Pagamento seguro via Mercado Pago</p>'
+      + '<p class="gcv-pay-secure">Pagamento seguro via PIX (Sicoob)</p>'
       + '</div></div>';
 
     var btn = document.getElementById('gcv-pay-card-btn');

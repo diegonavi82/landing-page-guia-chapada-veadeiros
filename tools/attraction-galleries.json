@@ -734,5 +734,47 @@
       "alt": "Piscina natural no Vale da Lua",
       "title": "Piscina natural no Vale da Lua"
     }
+  ],
+  "cachoeira-ponte-de-pedra-guia-chapada-veadeiros-cavalcante": [
+    {
+      "src": "/imagens/cachoeira-ponte-de-pedra-guia-chapada-veadeiros-cavalcante.jpg",
+      "alt": "Arco de rocha da Ponte de Pedra na Reserva Renascer, Cavalcante, Chapada dos Veadeiros"
+    },
+    {
+      "src": "/imagens/cachoeira-ponte-de-pedra-poco-xamanico-guia-chapada-veadeiros-cavalcante-2.jpg",
+      "alt": "Turista nadando no Poço Xamânico entre paredões rochosos na trilha da Ponte de Pedra, Cavalcante"
+    },
+    {
+      "src": "/imagens/cachoeira-ponte-de-pedra-cachoeira-renascer-guia-chapada-veadeiros-cavalcante-3.jpg",
+      "alt": "Queda d'água da Cachoeira Renascer em rocha alaranjada, no caminho para a Ponte de Pedra"
+    },
+    {
+      "src": "/imagens/cachoeira-ponte-de-pedra-reserva-renascer-vista-aerea-guia-chapada-veadeiros-cavalcante-4.jpg",
+      "alt": "Vista aérea da Reserva Renascer com lago e piscina, base de apoio para a trilha da Ponte de Pedra"
+    },
+    {
+      "src": "/imagens/cachoeira-ponte-de-pedra-reserva-renascer-cozinha-guia-chapada-veadeiros-cavalcante-5.jpg",
+      "alt": "Cozinha da estrutura de hospedagem da Reserva Renascer em Cavalcante"
+    },
+    {
+      "src": "/imagens/cachoeira-ponte-de-pedra-reserva-renascer-refeitorio-guia-chapada-veadeiros-cavalcante-6.jpg",
+      "alt": "Refeitório de madeira da Reserva Renascer, base de apoio da trilha da Ponte de Pedra"
+    },
+    {
+      "src": "/imagens/cachoeira-ponte-de-pedra-queda-dagua-fenda-guia-chapada-veadeiros-cavalcante-7.jpg",
+      "alt": "Ponte de Pedra vista de cima, água caindo em fenda de rocha na Chapada dos Veadeiros"
+    },
+    {
+      "src": "/imagens/cachoeira-ponte-de-pedra-serra-mirante-guia-chapada-veadeiros-cavalcante-8.jpg",
+      "alt": "Serra vista do Mirante Vão do Rio Claro, próximo à Ponte de Pedra, Cavalcante"
+    },
+    {
+      "src": "/imagens/cachoeira-ponte-de-pedra-poco-xamanico-aguas-douradas-guia-chapada-veadeiros-cavalcante-9.jpg",
+      "alt": "Águas douradas e cristalinas do Poço Xamânico na trilha da Ponte de Pedra"
+    },
+    {
+      "src": "/imagens/cachoeira-ponte-de-pedra-poco-xamanico-banho-guia-chapada-veadeiros-cavalcante-10.jpg",
+      "alt": "Turista boiando no Poço Xamânico cercado de rochas na Reserva Renascer, Cavalcante"
+    }
   ]
 }

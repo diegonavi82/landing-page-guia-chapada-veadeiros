@@ -167,7 +167,7 @@ CREATE TABLE gcv_guide_payout_audit (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO gcv_users (name, email, role, status, email_verified)
-VALUES ('Diego Navi', 'diegonavi82@gmail.com', 'admin', 'active', 1);
+VALUES ('Diego Navi', 'diegocsp82@gmail.com', 'admin', 'active', 1);
 
 INSERT INTO gcv_settings (key_name, value, label, type) VALUES
   ('platform_commission_pct', '5',  'Comissão da plataforma (%)', 'percent'),

@@ -31,7 +31,11 @@
 
   function showError(el, msg) {
     if (!el) return;
-    el.textContent = msg;
+    if (typeof msg === 'string' && msg.indexOf('<') !== -1) {
+      el.innerHTML = msg;
+    } else {
+      el.textContent = msg;
+    }
     el.hidden = false;
   }
 
@@ -102,11 +106,24 @@
     if (!form) return;
 
     var context = form.getAttribute('data-context') || 'client';
+    var btnDefault = btn ? (btn.textContent || 'Entrar') : 'Entrar';
 
     // Check error from OAuth redirect
     var params = new URLSearchParams(window.location.search);
-    if (params.get('error')) {
-      showError(err, 'Erro no login com Google. Tente novamente.');
+    var oauthErr = params.get('error');
+    if (oauthErr) {
+      var oauthMsgs = {
+        oauth_state: 'Sessão do Google expirou. Tente novamente.',
+        oauth_token: 'Não foi possível validar o login Google. Tente novamente.',
+        oauth_userinfo: 'Não foi possível ler seus dados no Google.',
+        oauth_user: 'Conta Google sem e-mail disponível.',
+        suspended: 'Esta conta está suspensa. Fale conosco no WhatsApp.',
+        admin_only: 'Acesso restrito à administração. Use a conta admin cadastrada.',
+        guide_area: 'Esta conta é de cliente. Use a <a href="/login.html">Área do Cliente</a>.',
+        client_area: 'Esta conta é de guia. Use a <a href="/guia/login.html">Área do Guia</a>.',
+        db: 'Erro ao entrar. Tente novamente em instantes.'
+      };
+      showError(err, oauthMsgs[oauthErr] || 'Erro no login com Google. Tente novamente.');
     }
 
     form.addEventListener('submit', function (e) {
@@ -120,7 +137,7 @@
 
       post(BASE + '/login.php', { email: email, password: pass }, function (error, res) {
         if (btn) btn.disabled = false;
-        if (btn) btn.textContent = t('login', 'btn_login') || 'Entrar';
+        if (btn) btn.textContent = btnDefault;
         if (error || !res.ok) {
           showError(err, (res && res.error) || t('login', 'error_invalid'));
           return;
@@ -138,7 +155,21 @@
           showError(err, 'Esta área é exclusiva para guias. <a href="/login.html">Entre pela Área do Cliente →</a>');
           return;
         }
-        window.location.href = getRedirect();
+        // Admin: só role admin
+        if (context === 'admin' && role !== 'admin') {
+          showError(err, 'Acesso restrito à administração.');
+          return;
+        }
+        // Cliente/guia não entram pela porta admin (já bloqueado acima); admin na área cliente/guia segue para o painel
+        if (context === 'client' && role === 'admin') {
+          window.location.href = '/dashboard/';
+          return;
+        }
+        if (context === 'guide' && role === 'admin') {
+          window.location.href = '/dashboard/';
+          return;
+        }
+        window.location.href = context === 'admin' ? '/dashboard/' : getRedirect();
       });
     });
   }

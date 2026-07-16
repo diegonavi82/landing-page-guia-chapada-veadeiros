@@ -380,7 +380,7 @@
       inclSpot: "Vaga em Excursão",
       inclGuideShort: "Guia local",
       inclEntries: "Ingresso",
-      inclTransport: "Transporte",
+      inclTransport: "Translado",
       inclLanterna: "Lanterna",
       badgeTransport: "Com transporte",
       exclLabel: "Não incluso:",
@@ -519,7 +519,7 @@
       inclSpot: "Excursion spot",
       inclGuideShort: "Local guide",
       inclEntries: "Admission",
-      inclTransport: "Transport",
+      inclTransport: "Transfer",
       inclLanterna: "Flashlight",
       badgeTransport: "With transport",
       exclLabel: "Not included:",
@@ -658,7 +658,7 @@
       inclSpot: "Cupo en excursión",
       inclGuideShort: "Guía local",
       inclEntries: "Entrada",
-      inclTransport: "Transporte",
+      inclTransport: "Traslado",
       inclLanterna: "Linterna",
       badgeTransport: "Con transporte",
       exclLabel: "No incluido:",
@@ -806,7 +806,16 @@
     return atrativoHrefFrom(e && e.atrativoPath, locale);
   }
 
-  function cardSpotRowHtml(d, locale) {
+  function cardSpotTransportBadgeHtml(s) {
+    return (
+      '<span class="gcv-excursoes-card__spot-transport" aria-hidden="true">' +
+      '<i class="ti ti-bus" aria-hidden="true"></i> ' +
+      escapeHtml(s.badgeTransport) +
+      "</span>"
+    );
+  }
+
+  function cardSpotRowHtml(d, locale, transportBadge) {
     var href = atrativoHrefFrom(d.atrativoPath, locale);
     var imgInner =
       '<div class="gcv-excursoes-card__img-wrap gcv-excursoes-card__spot-img-wrap">' +
@@ -841,15 +850,17 @@
       '<div class="gcv-excursoes-card__spot">' +
       '<div class="gcv-excursoes-card__spot-photo">' +
       photoInner +
+      (transportBadge || "") +
       "</div>" +
       title +
       "</div>"
     );
   }
 
-  function cardSpotsBlockHtml(e, locale) {
+  function cardSpotsBlockHtml(e, locale, s) {
     var dests = destinosForCard(e);
     var n = destinosSpotsCount(e);
+    var badge = e.comTransporte === true && s ? cardSpotTransportBadgeHtml(s) : "";
     var inner =
       '<div class="gcv-excursoes-card__spots gcv-excursoes-card__spots--count-' +
       n +
@@ -858,7 +869,7 @@
       '">' +
       dests
         .map(function (d) {
-          return cardSpotRowHtml(d, locale);
+          return cardSpotRowHtml(d, locale, badge);
         })
         .join("") +
       "</div>";
@@ -1764,7 +1775,7 @@
       escapeHtml(s.filterTransport) +
       '">' +
       '<label class="gcv-excursoes-filters__check gcv-excursoes-filters__check--com">' +
-      '<input class="gcv-excursoes-filters__checkbox" type="checkbox" data-gcv-transport-com value="1" />' +
+      '<input class="gcv-excursoes-filters__checkbox" type="checkbox" data-gcv-transport-com value="1" checked />' +
       "<span>" +
       escapeHtml(s.filterTransportWith) +
       "</span></label>" +
@@ -1945,7 +1956,7 @@
         embarque: embarqueEl ? embarqueEl.value : "",
         priceMin: priceMinEl ? parseInt(String(priceMinEl.value), 10) : bounds.priceMin,
         priceMax: priceMaxEl ? parseInt(String(priceMaxEl.value), 10) : bounds.priceMax,
-        transportCom: transportComEl ? transportComEl.checked : false,
+        transportCom: transportComEl ? transportComEl.checked : true,
         transportSem: transportSemEl ? transportSemEl.checked : true,
         status: statusEl ? statusEl.value : "",
         availabilityOpen: availabilityOpenEl ? availabilityOpenEl.checked : true,
@@ -1966,7 +1977,7 @@
       if (embarqueEl) embarqueEl.value = "";
       if (priceMinEl) priceMinEl.value = String(bounds.priceMin);
       if (priceMaxEl) priceMaxEl.value = String(bounds.priceMax);
-      if (transportComEl) transportComEl.checked = false;
+      if (transportComEl) transportComEl.checked = true;
       if (transportSemEl) transportSemEl.checked = true;
       if (statusEl) statusEl.value = "";
       if (availabilityOpenEl) availabilityOpenEl.checked = true;
@@ -2998,7 +3009,7 @@
     var metaStack =
       '<div class="gcv-excursoes-card__meta-stack">' + statusLine + "</div>";
 
-    var cardImgBlock = cardSpotsBlockHtml(e, locale);
+    var cardImgBlock = cardSpotsBlockHtml(e, locale, s);
 
     var cartId = excursaoCartId(e);
 
@@ -3024,11 +3035,6 @@
       '<div class="gcv-excursoes-card__body">' +
       guiaChipHtml(e, locale, s) +
       inclExclBlocksHtml(e, s, locale) +
-      (comTransporte
-        ? '<span class="gcv-excursoes-card__transport-badge"><i class="ti ti-bus" aria-hidden="true"></i> ' +
-          escapeHtml(s.badgeTransport) +
-          "</span>"
-        : "") +
       bookingBlockHtml(e, s, locale) +
       "</div></article>"
     );
@@ -5616,24 +5622,56 @@
     root.style.display = "none";
   }
 
+  function resolveStaticExcursaoRows(root, locale) {
+    var fromPayload = loadExcursaoRowsFromPayload(root);
+    var ptFallback = EXCURSOES.pt;
+    var fallbackRows = EXCURSOES[locale] || ptFallback;
+    if (locale !== "pt") fallbackRows = applyPortugueseDestinos(fallbackRows, ptFallback);
+    return fromPayload && fromPayload.length ? fromPayload : fallbackRows;
+  }
+
+  function fetchLiveExcursaoRows(locale, cb) {
+    try {
+      var xhr = new XMLHttpRequest();
+      xhr.open("GET", "/api/excursions/carousel.php");
+      xhr.timeout = 8000;
+      xhr.onload = function () {
+        try {
+          var res = JSON.parse(xhr.responseText || "{}");
+          var all = res && res.ok && res.data ? res.data : null;
+          if (!all) return cb(null);
+          var ptRows = Array.isArray(all.pt) ? all.pt : [];
+          var rows = Object.prototype.hasOwnProperty.call(all, locale) ? all[locale] : all.pt;
+          if (locale !== "pt" && ptRows.length) rows = applyPortugueseDestinos(rows, ptRows);
+          if (Array.isArray(rows) && rows.length) return cb(rows);
+        } catch (e) { /* ignore */ }
+        cb(null);
+      };
+      xhr.onerror = function () { cb(null); };
+      xhr.ontimeout = function () { cb(null); };
+      xhr.send();
+    } catch (e) {
+      cb(null);
+    }
+  }
+
   function bootExcursaoCarousel() {
     var root = document.getElementById("excursoes-junho");
     if (!root) return;
 
     var locale = detectLocale(root);
     var s = STRINGS[locale] || STRINGS.pt;
-    var fromPayload = loadExcursaoRowsFromPayload(root);
-    var ptFallback = EXCURSOES.pt;
-    var fallbackRows = EXCURSOES[locale] || ptFallback;
-    if (locale !== "pt") fallbackRows = applyPortugueseDestinos(fallbackRows, ptFallback);
-    var rawRows = fromPayload && fromPayload.length ? fromPayload : fallbackRows;
-    var allExcursoes = sortExcursaoByDeparture(filterFutureExcursoes(applyBookingOverlays(rawRows)));
+    var staticRows = resolveStaticExcursaoRows(root, locale);
+    var sourceRows = staticRows;
+
+    var allExcursoes = sortExcursaoByDeparture(filterFutureExcursoes(applyBookingOverlays(sourceRows)));
     if (!allExcursoes.length) {
       hideExcursaoSection(root);
-      return;
+      // Ainda tenta API: pode haver saídas só no MySQL
+    } else {
+      root.removeAttribute("aria-hidden");
+      root.style.display = "";
     }
-    root.removeAttribute("aria-hidden");
-    root.style.display = "";
     var carouselExcursoes = allExcursoes.slice();
 
     var track = root.querySelector(".gcv-excursoes__track");
@@ -5947,7 +5985,7 @@
       var lastBookingVer = window.GcvExcBookings ? window.GcvExcBookings.version() : 0;
 
       function refreshBookableFromClock() {
-        var source = fromPayload && fromPayload.length ? fromPayload : fallbackRows;
+        var source = sourceRows && sourceRows.length ? sourceRows : staticRows;
         var freshAll = sortExcursaoByDeparture(filterFutureExcursoes(applyBookingOverlays(source)));
         if (window.GcvExcWaitlist && typeof window.GcvExcWaitlist.checkRowsForOpenedSpots === "function") {
           window.GcvExcWaitlist.checkRowsForOpenedSpots(freshAll, excursaoCartId, vagasDisponiveis);
@@ -5993,6 +6031,28 @@
       if (viewport.clientWidth < 32) {
         requestAnimationFrame(kick);
       }
+    });
+
+    // Preferência: MySQL (admin) quando houver saídas publicadas; senão mantém payload/build.
+    fetchLiveExcursaoRows(locale, function (liveRows) {
+      if (!liveRows || !liveRows.length) return;
+      sourceRows = liveRows;
+      var freshAll = sortExcursaoByDeparture(filterFutureExcursoes(applyBookingOverlays(sourceRows)));
+      allExcursoes = freshAll;
+      if (!allExcursoes.length) {
+        hideExcursaoSection(root);
+        return;
+      }
+      root.removeAttribute("aria-hidden");
+      root.style.display = "";
+      if (filtersHost && typeof filterExcursaoList === "function") {
+        // filtros já montados usam activeFilters via closure no refresh; aqui reaplica lista completa
+        carouselExcursoes = allExcursoes.slice();
+      } else {
+        carouselExcursoes = allExcursoes.slice();
+      }
+      renderTrackOnly();
+      syncCarouselUi();
     });
   }
 

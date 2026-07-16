@@ -24,6 +24,7 @@ const CACHOEIRA_SLUGS = [
   "cachoeira-poco-encantado-guia-chapada-veadeiros-teresina-de-goias",
   "cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante",
   "cachoeira-complexo-rio-prata-guia-chapada-veadeiros-cavalcante",
+  "cachoeira-ponte-de-pedra-guia-chapada-veadeiros-cavalcante",
   "cachoeira-macaquinhos-guia-chapada-veadeiros-sao-joao-alianca",
   "cachoeira-label-guia-chapada-veadeiros-sao-joao-alianca",
   "cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso",

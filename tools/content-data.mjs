@@ -37,23 +37,24 @@ export const SEASON_ROWS = [
 ];
 
 export const HOTSPOTS = [
-  { slug: "cachoeira-almecegas-poco-sao-bento-guia-chapada-veadeiros", image: "imagens/cachoeira-almecegas-guia-chapada-veadeiros-alto-paraiso-10.jpg", title: { pt: "Cachoeiras Almécegas e Poço São Bento", en: "Almécegas waterfalls & São Bento pool", es: "Cataratas de Almécegas y pozo São Bento" }, lead: { pt: "Um dos circuitos mais clássicos de Alto Paraíso — poços claros e trilha memorável com guia local.", en: "A classic Alto Paraíso circuit — clear pools and a memorable trail with a local guide.", es: "Un circuito clásico de Alto Paraíso — pozas cristalinas y sendero memorable con guía local." } },
+  { slug: "cachoeira-almecegas-poco-sao-bento-guia-chapada-veadeiros", image: "imagens/cachoeira-almecegas-guia-chapada-veadeiros-alto-paraiso-10.jpg", title: { pt: "Almécegas", en: "Almécegas", es: "Almécegas" }, lead: { pt: "Um dos circuitos mais clássicos de Alto Paraíso — poços claros e trilha memorável com guia local.", en: "A classic Alto Paraíso circuit — clear pools and a memorable trail with a local guide.", es: "Un circuito clásico de Alto Paraíso — pozas cristalinas y sendero memorable con guía local." } },
   { slug: "vale-lua-guia-chapada-veadeiros-sao-jorge", image: "imagens/vale-lua-guia-chapada-veadeiros-sao-jorge-1.jpg", title: { pt: "Vale da Lua", en: "Moon Valley", es: "Valle de la Luna" }, lead: { pt: "Formações de quartzito esculpidas pelo tempo — cenário único em São Jorge.", en: "Quartzite sculpted by time — a one-of-a-kind setting in São Jorge.", es: "Cuarzo tallado por el tiempo — un paisaje único en São Jorge." } },
-  { slug: "cataratas-dos-couros-guia-chapada-veadeiros-alto-paraiso", image: "imagens/cataratas-couros-guia-chapada-veadeiros-alto-paraiso.jpg", title: { pt: "Cataratas dos Couros", en: "Couros waterfalls", es: "Cataratas de Couros" }, lead: { pt: "Grande complexo de quedas e poços — roteiro intenso que pede organização e respeito ao tempo de trilha.", en: "A large complex of falls and pools — an intense hike that needs timing and safety.", es: "Gran complejo de saltos y pozas — trekking intenso que exige planificación y seguridad." } },
-  { slug: "cachoeira-cordovil-poco-esmeralda-guia-chapada-veadeiros", image: "imagens/cachoeira-cordovil-poco-esmeralda-guia-chapada-veadeiros-1.jpg", title: { pt: "Cachoeira Cordovil e Poço Esmeralda", en: "Cordovil waterfall & Esmerald pool", es: "Cascada Cordovil y pozo Esmeralda" }, lead: { pt: "Águas verdes-esmeralda e saltos curtos muito fotogênicos na região de Alto Paraíso.", en: "Emerald waters and photogenic short falls near Alto Paraíso.", es: "Aguas esmeralda y saltos muy fotogénicos cerca de Alto Paraíso." } },
-  { slug: "cachoeira-segredo-guia-chapada-veadeiros-sao-jorge", image: "imagens/cachoeira-segredo-guia-chapada-veadeiros-sao-jorge-10.jpg", title: { pt: "Cachoeira do Segredo", en: "The Secret waterfall", es: "Cascada del Secreto" }, lead: { pt: "Cartão-postal de São Jorge: poço profundo e paisagem de cerrado preservado.", en: "A São Jorge postcard — deep pools and preserved cerrado views.", es: "Postal de São Jorge — pozas profundas y cerrado conservado." } },
-  { slug: "cachoeira-cristais-guia-chapada-veadeiros-alto-paraiso", image: "imagens/cachoeira-cristais-veu-noiva-guia-chapada-veadeiros-alto-paraiso.jpg", title: { pt: "Cachoeira dos Cristais", en: "Cristais waterfall", es: "Cascada de los Cristales" }, lead: { pt: "Acesso ameno e ótimo para famílias — veu compacto e poços rasos para relaxar.", en: "Easy access, great for families — a compact veil and shallow pools.", es: "Acceso fácil, ideal para familias — velo compacto y pozas someras." } },
-  { slug: "cachoeira-poco-encantado-guia-chapada-veadeiros-teresina-de-goias", image: "imagens/cachoeira-poco-encantado-guia-chapada-veadeiros-teresina-4.jpg", title: { pt: "Cachoeira Poço Encantado", en: "Enchanted Pool waterfall", es: "Cascada Pozo Encantado" }, lead: { pt: "Tesouro em Teresina de Goiás — poço translúcido que brilha em dias de sol.", en: "A Teresina gem — translucent pools on sunny days.", es: "Joyas en Teresina de Goiás — pozas translúcidas con sol." } },
-  { slug: "cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante", image: "imagens/cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante.jpg", title: { pt: "Cachoeira Santa Bárbara", en: "Santa Barbara waterfall", es: "Cascada Santa Bárbara" }, lead: { pt: "Um dos destaques de Cavalcante — água volumosa e experiência completa de dia inteiro.", en: "A Cavalcante highlight — big flow and a full-day experience.", es: "Estrella de Cavalcante — gran caudal para una jornada completa." } },
-  { slug: "cachoeira-complexo-rio-prata-guia-chapada-veadeiros-cavalcante", image: "imagens/complexo-cachoeiras-rio-prata-guia-chapada-veadeiros-cavalcante.jpg", title: { pt: "Complexo de Cachoeiras do Rio da Prata", en: "Rio da Prata waterfall complex", es: "Complejo de cascadas del Río da Prata" }, lead: { pt: "Varias quedas e poços em sequência — roteiro clássico com guia em Cavalcante.", en: "Multiple falls in sequence — the classic guided circuit in Cavalcante.", es: "Varios saltos en serie — circuito clásico con guía en Cavalcante." } },
-  { slug: "cachoeira-macaquinhos-guia-chapada-veadeiros-sao-joao-alianca", image: "imagens/cachoeira-macaquinhos-guia-chapada-veadeiros-6.jpg", title: { pt: "Cachoeiras dos Macaquinhos", en: "Macaquinhos waterfalls", es: "Cataratas de los Macaquinhos" }, lead: { pt: "Trilha exigente e recompensas enormes — melhor com suporte de guia credenciado.", en: "A demanding trail with huge rewards — best with a licensed guide.", es: "Sendero exigente con gran recompensa — mejor con guía habilitado." } },
-  { slug: "cachoeira-label-guia-chapada-veadeiros-sao-joao-alianca", image: "imagens/cachoeira-label-guia-chapada-veadeiros.jpg", title: { pt: "Cachoeira do Label", en: "Label waterfall", es: "Cascada del Label" }, lead: { pt: "Queda imponente na região de São João d'Aliança — natureza selvagem e pouca infraestrutura.", en: "A powerful fall near São João d'Aliança — wild nature, minimal infrastructure.", es: "Salto imponente en São João d'Aliança — naturaleza salvaje y poca infraestructura." } },
-  { slug: "cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso", image: "imagens/cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso.jpg", title: { pt: "Cachoeira das Loquinhas", en: "Loquinhas waterfall", es: "Cascada de las Loquinhas" }, lead: { pt: "Poços em degrau e visual cinematográfico — sensível ao volume de chuvas.", en: "Stepped pools and cinematic views — sensitive to rainfall.", es: "Pozas escalonadas y vistas de postal — sensible a las lluvias." } },
-  { slug: "cachoeira-anjos-arcanjos-guia-chapada-veadeiros-alto-paraiso", image: "imagens/cachoeira-arcanjos-anjos-guia-chapada-veadeiros-alto-paraiso.jpg", title: { pt: "Cachoeira Anjos e Arcanjos", en: "Angels & Archangels waterfall", es: "Cascada Ángeles y Arcángeles" }, lead: { pt: "Circuito variado com saltos e poços para diferentes perfis em Alto Paraíso.", en: "Varied falls and pools for different skill levels in Alto Paraíso.", es: "Circuito variado con saltos y pozas para distintos niveles." } },
-  { slug: "mirante-janela-cachoeira-abismo-guia-chapada-veadeiros-sao-jorge", image: "imagens/mirante-janela-guia-chapada-veadeiros-sao-jorge-parque-nacional-1.jpg", title: { pt: "Mirante da Janela e Cachoeira do Abismo", en: "Janela lookout & Abismo waterfall", es: "Mirador de la Ventana y cascada Abismo" }, lead: { pt: "Dentro do Parque Nacional — um dos mirantes mais famosos do Brasil.", en: "Inside the National Park — one of Brazil's most famous lookouts.", es: "Dentro del Parque Nacional — uno de los miradores más famosos de Brasil." } },
-  { slug: "parque-nacional-chapada-veadeiros-saltos-rio-preto-sao-jorge", image: "imagens/parque-nacional-guia-chapada-veadeiros-saltos-rio-preto-garimpao.jpg", title: { pt: "Parque Nacional — Saltos do Rio Preto", en: "National Park — Rio Preto falls", es: "Parque Nacional — Saltos del Río Preto" }, lead: { pt: "Trilha longa até o grande salto — planejamento e respeito às regras do ICMBio.", en: "Long trail to the big falls — plan ahead and follow ICMBio rules.", es: "Sendero largo hasta el gran salto — planificación y normas del ICMBio." } },
-  { slug: "parque-nacional-chapada-veadeiros-canions-carioquinhas-sao-jorge", image: "imagens/parque-nacional-guia-chapada-veadeiros-carrossel-saltos-rio-preto.jpg", title: { pt: "Parque Nacional — Cânions e Cariocas", en: "National Park — canyons route", es: "Parque Nacional — cañones y cariocas" }, lead: { pt: "Geologia impressionante e trechos de rio com segurança reforçada em grupo.", en: "Stunning geology — river sections safest with a guided group.", es: "Geología impactante — tramos de río más seguros en grupo con guía." } },
-  { slug: "cachoeira-macacao-guia-chapada-veadeiros-sao-joao-alianca", image: "imagens/cachoeira-macaco-chapada-veadeiros-macacao-4.jpg", title: { pt: "Cachoeira do Macaco", en: "Monkey waterfall", es: "Cascada del Mono" }, lead: { pt: "Complexo conhecido como Macaquinhos/Macaco — cenário amplo e miradores naturais.", en: "Known as the Macaco complex — wide scenery and natural viewpoints.", es: "Complejo Macaco — escenario amplio y miradores naturales." } },
+  { slug: "cataratas-dos-couros-guia-chapada-veadeiros-alto-paraiso", image: "imagens/cataratas-couros-guia-chapada-veadeiros-alto-paraiso.jpg", title: { pt: "Cataratas dos Couros", en: "Couros Falls", es: "Cataratas de Couros" }, lead: { pt: "Grande complexo de quedas e poços — roteiro intenso que pede organização e respeito ao tempo de trilha.", en: "A large complex of falls and pools — an intense hike that needs timing and safety.", es: "Gran complejo de saltos y pozas — trekking intenso que exige planificación y seguridad." } },
+  { slug: "cachoeira-cordovil-poco-esmeralda-guia-chapada-veadeiros", image: "imagens/cachoeira-cordovil-poco-esmeralda-guia-chapada-veadeiros-1.jpg", title: { pt: "Cordovil", en: "Cordovil", es: "Cordovil" }, lead: { pt: "Águas verdes-esmeralda e saltos curtos muito fotogênicos na região de Alto Paraíso.", en: "Emerald waters and photogenic short falls near Alto Paraíso.", es: "Aguas esmeralda y saltos muy fotogénicos cerca de Alto Paraíso." } },
+  { slug: "cachoeira-segredo-guia-chapada-veadeiros-sao-jorge", image: "imagens/cachoeira-segredo-guia-chapada-veadeiros-sao-jorge-10.jpg", title: { pt: "Segredo", en: "Segredo", es: "Segredo" }, lead: { pt: "Cartão-postal de São Jorge: poço profundo e paisagem de cerrado preservado.", en: "A São Jorge postcard — deep pools and preserved cerrado views.", es: "Postal de São Jorge — pozas profundas y cerrado conservado." } },
+  { slug: "cachoeira-cristais-guia-chapada-veadeiros-alto-paraiso", image: "imagens/cachoeira-cristais-veu-noiva-guia-chapada-veadeiros-alto-paraiso.jpg", title: { pt: "Cristais", en: "Cristais", es: "Cristales" }, lead: { pt: "Acesso ameno e ótimo para famílias — veu compacto e poços rasos para relaxar.", en: "Easy access, great for families — a compact veil and shallow pools.", es: "Acceso fácil, ideal para familias — velo compacto y pozas someras." } },
+  { slug: "cachoeira-poco-encantado-guia-chapada-veadeiros-teresina-de-goias", image: "imagens/cachoeira-poco-encantado-guia-chapada-veadeiros-teresina-4.jpg", title: { pt: "Poço Encantado", en: "Poço Encantado", es: "Pozo Encantado" }, lead: { pt: "Tesouro em Teresina de Goiás — poço translúcido que brilha em dias de sol.", en: "A Teresina gem — translucent pools on sunny days.", es: "Joyas en Teresina de Goiás — pozas translúcidas con sol." } },
+  { slug: "cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante", image: "imagens/cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante.jpg", title: { pt: "Santa Bárbara", en: "Santa Bárbara", es: "Santa Bárbara" }, lead: { pt: "Um dos destaques de Cavalcante — água volumosa e experiência completa de dia inteiro.", en: "A Cavalcante highlight — big flow and a full-day experience.", es: "Estrella de Cavalcante — gran caudal para una jornada completa." } },
+  { slug: "cachoeira-complexo-rio-prata-guia-chapada-veadeiros-cavalcante", image: "imagens/complexo-cachoeiras-rio-prata-guia-chapada-veadeiros-cavalcante.jpg", title: { pt: "Complexo Rio da Prata", en: "Complexo Rio da Prata", es: "Complejo Río da Prata" }, lead: { pt: "Varias quedas e poços em sequência — roteiro clássico com guia em Cavalcante.", en: "Multiple falls in sequence — the classic guided circuit in Cavalcante.", es: "Varios saltos en serie — circuito clásico con guía en Cavalcante." } },
+  { slug: "cachoeira-ponte-de-pedra-guia-chapada-veadeiros-cavalcante", image: "imagens/cachoeira-ponte-de-pedra-guia-chapada-veadeiros-cavalcante.jpg", title: { pt: "Ponte de Pedra", en: "Ponte de Pedra", es: "Ponte de Pedra" }, lead: { pt: "Monumento rochoso raro e trilha selvagem dentro da Reserva Renascer, em Cavalcante.", en: "A rare rock monument and wild trail inside Reserva Renascer, in Cavalcante.", es: "Monumento rocoso raro y sendero salvaje en la Reserva Renascer, en Cavalcante." } },
+  { slug: "cachoeira-macaquinhos-guia-chapada-veadeiros-sao-joao-alianca", image: "imagens/cachoeira-macaquinhos-guia-chapada-veadeiros-6.jpg", title: { pt: "Macaquinhos", en: "Macaquinhos", es: "Macaquinhos" }, lead: { pt: "Trilha exigente e recompensas enormes — melhor com suporte de guia credenciado.", en: "A demanding trail with huge rewards — best with a licensed guide.", es: "Sendero exigente con gran recompensa — mejor con guía habilitado." } },
+  { slug: "cachoeira-label-guia-chapada-veadeiros-sao-joao-alianca", image: "imagens/cachoeira-label-guia-chapada-veadeiros.jpg", title: { pt: "Label", en: "Label", es: "Label" }, lead: { pt: "Queda imponente na região de São João d'Aliança — natureza selvagem e pouca infraestrutura.", en: "A powerful fall near São João d'Aliança — wild nature, minimal infrastructure.", es: "Salto imponente en São João d'Aliança — naturaleza salvaje y poca infraestructura." } },
+  { slug: "cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso", image: "imagens/cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso.jpg", title: { pt: "Loquinhas", en: "Loquinhas", es: "Loquinhas" }, lead: { pt: "Poços em degrau e visual cinematográfico — sensível ao volume de chuvas.", en: "Stepped pools and cinematic views — sensitive to rainfall.", es: "Pozas escalonadas y vistas de postal — sensible a las lluvias." } },
+  { slug: "cachoeira-anjos-arcanjos-guia-chapada-veadeiros-alto-paraiso", image: "imagens/cachoeira-arcanjos-anjos-guia-chapada-veadeiros-alto-paraiso.jpg", title: { pt: "Anjos e Arcanjos", en: "Anjos e Arcanjos", es: "Ángeles y Arcángeles" }, lead: { pt: "Circuito variado com saltos e poços para diferentes perfis em Alto Paraíso.", en: "Varied falls and pools for different skill levels in Alto Paraíso.", es: "Circuito variado con saltos y pozas para distintos niveles." } },
+  { slug: "mirante-janela-cachoeira-abismo-guia-chapada-veadeiros-sao-jorge", image: "imagens/mirante-janela-guia-chapada-veadeiros-sao-jorge-parque-nacional-1.jpg", title: { pt: "Mirante da Janela", en: "Mirante da Janela", es: "Mirador de la Ventana" }, lead: { pt: "Dentro do Parque Nacional — um dos mirantes mais famosos do Brasil.", en: "Inside the National Park — one of Brazil's most famous lookouts.", es: "Dentro del Parque Nacional — uno de los miradores más famosos de Brasil." } },
+  { slug: "parque-nacional-chapada-veadeiros-saltos-rio-preto-sao-jorge", image: "imagens/parque-nacional-guia-chapada-veadeiros-saltos-rio-preto-garimpao.jpg", title: { pt: "Saltos do Rio Preto", en: "Saltos do Rio Preto", es: "Saltos del Río Preto" }, lead: { pt: "Trilha longa até o grande salto — planejamento e respeito às regras do ICMBio.", en: "Long trail to the big falls — plan ahead and follow ICMBio rules.", es: "Sendero largo hasta el gran salto — planificación y normas del ICMBio." } },
+  { slug: "parque-nacional-chapada-veadeiros-canions-carioquinhas-sao-jorge", image: "imagens/parque-nacional-guia-chapada-veadeiros-carrossel-saltos-rio-preto.jpg", title: { pt: "Cânions e Cariocas", en: "Cânions e Cariocas", es: "Cañones y Cariocas" }, lead: { pt: "Geologia impressionante e trechos de rio com segurança reforçada em grupo.", en: "Stunning geology — river sections safest with a guided group.", es: "Geología impactante — tramos de río más seguros en grupo con guía." } },
+  { slug: "cachoeira-macacao-guia-chapada-veadeiros-sao-joao-alianca", image: "imagens/cachoeira-macaco-chapada-veadeiros-macacao-4.jpg", title: { pt: "Macacão", en: "Macacão", es: "Macacão" }, lead: { pt: "Complexo conhecido como Macaquinhos/Macaco — cenário amplo e miradores naturais.", en: "Known as the Macaco complex — wide scenery and natural viewpoints.", es: "Complejo Macaco — escenario amplio y miradores naturales." } },
 ];
 
 /** Caixas % do mapa oficial (espelho de shared/src/waterfallMap.ts). */
@@ -67,6 +68,7 @@ export const MAP_BOX_BY_SLUG = {
   "cachoeira-poco-encantado-guia-chapada-veadeiros-teresina-de-goias": { l: 72.99, t: 37.83, w: 11.13, h: 4.17 },
   "cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante": { l: 46.49, t: 4.5, w: 6.66, h: 6.17 },
   "cachoeira-complexo-rio-prata-guia-chapada-veadeiros-cavalcante": { l: 29.65, t: 5.83, w: 8.57, h: 3.67 },
+  "cachoeira-ponte-de-pedra-guia-chapada-veadeiros-cavalcante": { l: 37.2, t: 34.8, w: 8.2, h: 5.5 },
   "cachoeira-macaquinhos-guia-chapada-veadeiros-sao-joao-alianca": { l: 89.68, t: 67, w: 9.59, h: 4 },
   "cachoeira-label-guia-chapada-veadeiros-sao-joao-alianca": { l: 82.36, t: 84.67, w: 4.98, h: 3.67 },
   "cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso": { l: 66.33, t: 60.33, w: 7.1, h: 3.83 },
@@ -207,32 +209,32 @@ export const HERO_SLIDES = {
 /** Destaques da home (8 cards — mesma ordem do Home.tsx). meta = dificuldade + distância da trilha (não distância de carro). */
 export const HOME_FEATURED = {
   pt: [
-    { slug: "cachoeira-almecegas-poco-sao-bento-guia-chapada-veadeiros", label: "Alto Paraíso", title: "Almécegas e Poço São Bento", meta: "Trilha fácil · 500 m a 3 km" },
+    { slug: "cachoeira-almecegas-poco-sao-bento-guia-chapada-veadeiros", label: "Alto Paraíso", title: "Almécegas", meta: "Trilha fácil · 500 m a 3 km" },
     { slug: "vale-lua-guia-chapada-veadeiros-sao-jorge", label: "São Jorge", title: "Vale da Lua", meta: "Trilha fácil · 1,5 km" },
     { slug: "cataratas-dos-couros-guia-chapada-veadeiros-alto-paraiso", label: "Aventura", title: "Cataratas dos Couros", meta: "Trilha difícil · 6 km · guia obrigatório" },
-    { slug: "cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante", label: "Cavalcante", title: "Cachoeira Santa Bárbara", meta: "Trilha fácil · 3 km" },
-    { slug: "cachoeira-segredo-guia-chapada-veadeiros-sao-jorge", label: "São Jorge", title: "Cachoeira do Segredo", meta: "Trilha mediana · 8 km" },
-    { slug: "cachoeira-cristais-guia-chapada-veadeiros-alto-paraiso", label: "Alto Paraíso", title: "Cachoeira dos Cristais", meta: "Trilha · 2 km · família" },
+    { slug: "cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante", label: "Cavalcante", title: "Santa Bárbara", meta: "Trilha fácil · 3 km" },
+    { slug: "cachoeira-segredo-guia-chapada-veadeiros-sao-jorge", label: "São Jorge", title: "Segredo", meta: "Trilha mediana · 8 km" },
+    { slug: "cachoeira-cristais-guia-chapada-veadeiros-alto-paraiso", label: "Alto Paraíso", title: "Cristais", meta: "Trilha · 2 km · família" },
     { slug: "cachoeira-poco-encantado-guia-chapada-veadeiros-teresina-de-goias", label: "Teresina de Goiás", title: "Poço Encantado", meta: "Trilha fácil · 500 m" },
     { slug: "cachoeira-macaquinhos-guia-chapada-veadeiros-sao-joao-alianca", label: "São João", title: "Macaquinhos", meta: "Trilha difícil · 6 km" },
   ],
   en: [
-    { slug: "cachoeira-almecegas-poco-sao-bento-guia-chapada-veadeiros", label: "Alto Paraíso", title: "Almécegas & São Bento", meta: "Easy trail · 500 m to 3 km" },
+    { slug: "cachoeira-almecegas-poco-sao-bento-guia-chapada-veadeiros", label: "Alto Paraíso", title: "Almécegas", meta: "Easy trail · 500 m to 3 km" },
     { slug: "vale-lua-guia-chapada-veadeiros-sao-jorge", label: "São Jorge", title: "Moon Valley", meta: "Easy trail · 1.5 km" },
-    { slug: "cataratas-dos-couros-guia-chapada-veadeiros-alto-paraiso", label: "Adventure", title: "Couros waterfalls", meta: "Hard trail · 6 km · guide required" },
-    { slug: "cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante", label: "Cavalcante", title: "Santa Barbara fall", meta: "Easy trail · 3 km" },
-    { slug: "cachoeira-segredo-guia-chapada-veadeiros-sao-jorge", label: "São Jorge", title: "Secret waterfall", meta: "Medium trail · 8 km" },
-    { slug: "cachoeira-cristais-guia-chapada-veadeiros-alto-paraiso", label: "Alto Paraíso", title: "Cristais waterfall", meta: "Trail · 2 km · families" },
-    { slug: "cachoeira-poco-encantado-guia-chapada-veadeiros-teresina-de-goias", label: "Teresina de Goiás", title: "Enchanted Pool", meta: "Easy trail · 500 m" },
+    { slug: "cataratas-dos-couros-guia-chapada-veadeiros-alto-paraiso", label: "Adventure", title: "Couros Falls", meta: "Hard trail · 6 km · guide required" },
+    { slug: "cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante", label: "Cavalcante", title: "Santa Bárbara", meta: "Easy trail · 3 km" },
+    { slug: "cachoeira-segredo-guia-chapada-veadeiros-sao-jorge", label: "São Jorge", title: "Segredo", meta: "Medium trail · 8 km" },
+    { slug: "cachoeira-cristais-guia-chapada-veadeiros-alto-paraiso", label: "Alto Paraíso", title: "Cristais", meta: "Trail · 2 km · families" },
+    { slug: "cachoeira-poco-encantado-guia-chapada-veadeiros-teresina-de-goias", label: "Teresina de Goiás", title: "Poço Encantado", meta: "Easy trail · 500 m" },
     { slug: "cachoeira-macaquinhos-guia-chapada-veadeiros-sao-joao-alianca", label: "São João", title: "Macaquinhos", meta: "Hard trail · 6 km" },
   ],
   es: [
-    { slug: "cachoeira-almecegas-poco-sao-bento-guia-chapada-veadeiros", label: "Alto Paraíso", title: "Almécegas y São Bento", meta: "Sendero fácil · 500 m a 3 km" },
+    { slug: "cachoeira-almecegas-poco-sao-bento-guia-chapada-veadeiros", label: "Alto Paraíso", title: "Almécegas", meta: "Sendero fácil · 500 m a 3 km" },
     { slug: "vale-lua-guia-chapada-veadeiros-sao-jorge", label: "São Jorge", title: "Valle de la Luna", meta: "Sendero fácil · 1,5 km" },
     { slug: "cataratas-dos-couros-guia-chapada-veadeiros-alto-paraiso", label: "Aventura", title: "Cataratas de Couros", meta: "Sendero difícil · 6 km · guía obligatorio" },
-    { slug: "cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante", label: "Cavalcante", title: "Cascada Santa Bárbara", meta: "Sendero fácil · 3 km" },
-    { slug: "cachoeira-segredo-guia-chapada-veadeiros-sao-jorge", label: "São Jorge", title: "Cascada del Secreto", meta: "Sendero medio · 8 km" },
-    { slug: "cachoeira-cristais-guia-chapada-veadeiros-alto-paraiso", label: "Alto Paraíso", title: "Cascada de los Cristales", meta: "Sendero · 2 km · familia" },
+    { slug: "cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante", label: "Cavalcante", title: "Santa Bárbara", meta: "Sendero fácil · 3 km" },
+    { slug: "cachoeira-segredo-guia-chapada-veadeiros-sao-jorge", label: "São Jorge", title: "Segredo", meta: "Sendero medio · 8 km" },
+    { slug: "cachoeira-cristais-guia-chapada-veadeiros-alto-paraiso", label: "Alto Paraíso", title: "Cristales", meta: "Sendero · 2 km · familia" },
     { slug: "cachoeira-poco-encantado-guia-chapada-veadeiros-teresina-de-goias", label: "Teresina de Goiás", title: "Pozo Encantado", meta: "Sendero fácil · 500 m" },
     { slug: "cachoeira-macaquinhos-guia-chapada-veadeiros-sao-joao-alianca", label: "São João", title: "Macaquinhos", meta: "Sendero difícil · 6 km" },
   ],
@@ -316,9 +318,9 @@ export const STRINGS = {
       moreStories: "Mais matérias",
     },
     atrativosHub: {
-      title: "Atrativos — 17 rotas ligadas ao mapa oficial",
+      title: "Atrativos — 18 rotas ligadas ao mapa oficial",
       seoDesc:
-        "Cachoeiras, mirantes e trilhas da Chapada dos Veadeiros — 17 rotas no mapa oficial com guia local.",
+        "Cachoeiras, mirantes e trilhas da Chapada dos Veadeiros — 18 rotas no mapa oficial com guia local.",
     },
     contact: {
       pageKicker: "Guia Chapada",
@@ -467,9 +469,9 @@ export const STRINGS = {
       moreStories: "More stories",
     },
     atrativosHub: {
-      title: "Attractions — 17 routes linked to the official map",
+      title: "Attractions — 18 routes linked to the official map",
       seoDesc:
-        "Waterfalls, lookouts and trails in Chapada dos Veadeiros — 17 routes on the official map with a local guide.",
+        "Waterfalls, lookouts and trails in Chapada dos Veadeiros — 18 routes on the official map with a local guide.",
     },
     contact: {
       pageKicker: "Guia Chapada",
@@ -618,9 +620,9 @@ export const STRINGS = {
       moreStories: "Más artículos",
     },
     atrativosHub: {
-      title: "Atractivos — 17 rutas del mapa oficial",
+      title: "Atractivos — 18 rutas del mapa oficial",
       seoDesc:
-        "Cascadas, miradores y senderos en la Chapada dos Veadeiros — 17 rutas en el mapa oficial con guía local.",
+        "Cascadas, miradores y senderos en la Chapada dos Veadeiros — 18 rutas en el mapa oficial con guía local.",
     },
     contact: {
       pageKicker: "Guia Chapada",

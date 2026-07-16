@@ -455,22 +455,61 @@
   function loadGuidePayments() {
     var content = document.getElementById('guide-payments-content');
     if (!content) return;
-    get('/api/guides/profile.php', function (err, res) {
-      if (!res.ok) return;
-      var g = res.data;
-      if (g.mp_access_token) {
-        content.innerHTML = '<div class="gcv-mp-connect">'
-          + '<div class="gcv-mp-connected"><span>✅</span> Mercado Pago conectado</div>'
-          + (g.mp_connected_at ? '<p style="font-size:0.8125rem;color:#666;margin-top:8px;">Conectado em: ' + g.mp_connected_at.substr(0,10) + '</p>' : '')
-          + '</div>';
+    content.innerHTML = 'Carregando…';
+
+    function render(g) {
+      var pixKey = (g && (g.pix_key || '')).trim();
+      var pixType = (g && (g.pix_key_type || '')).trim();
+      var verified = !!(g && g.pix_verified_at);
+      var holder = (g && (g.pix_holder_name || g.full_name || g.name || '')).trim();
+
+      if (pixKey) {
+        content.innerHTML =
+          '<div class="gcv-mp-connect">' +
+          '<div class="gcv-mp-connected"><span>✓</span> Recebimentos via PIX (Sicoob)</div>' +
+          '<p class="gcv-mp-connect__desc" style="margin-top:1rem;text-align:left;">' +
+          'Os clientes pagam com <strong>PIX Sicoob</strong>. Seu repasse é feito pelo admin para a chave PIX cadastrada no perfil.</p>' +
+          '<p style="text-align:left;font-size:0.9rem;margin:0.75rem 0 0;">' +
+          '<strong>Chave:</strong> <code>' + escapeHtml(pixKey) + '</code>' +
+          (pixType ? ' <span class="gcv-cms-muted">(' + escapeHtml(pixType) + ')</span>' : '') +
+          (holder ? '<br><strong>Titular:</strong> ' + escapeHtml(holder) : '') +
+          '<br><strong>Status:</strong> ' + (verified ? 'PIX verificado' : 'Aguardando verificação pelo admin') +
+          '</p>' +
+          '<p style="margin-top:1rem;"><a href="#" class="gcv-dash-btn gcv-dash-btn--sm" data-goto-profile>Editar PIX no perfil</a></p>' +
+          '</div>';
       } else {
-        content.innerHTML = '<div class="gcv-mp-connect">'
-          + '<div class="gcv-mp-connect__icon">💳</div>'
-          + '<h3 class="gcv-mp-connect__title">Conecte o Mercado Pago</h3>'
-          + '<p class="gcv-mp-connect__desc">Para publicar passeios e receber pagamentos, conecte sua conta do Mercado Pago.</p>'
-          + '<a href="/api/guides/mp-connect-redirect.php" class="gcv-dash-btn gcv-dash-btn--primary">Conectar Mercado Pago</a>'
-          + '</div>';
+        content.innerHTML =
+          '<div class="gcv-mp-connect">' +
+          '<div class="gcv-mp-connect__icon" aria-hidden="true">PIX</div>' +
+          '<h3 class="gcv-mp-connect__title">Cadastre sua chave PIX</h3>' +
+          '<p class="gcv-mp-connect__desc">Pagamentos dos clientes são via <strong>PIX Sicoob</strong>. ' +
+          'Para receber seus repasses, cadastre e confirme a chave PIX no perfil. Não usamos Mercado Pago.</p>' +
+          '<a href="#" class="gcv-dash-btn gcv-dash-btn--primary" data-goto-profile>Ir para meu perfil</a>' +
+          '</div>';
       }
+
+      content.querySelectorAll('[data-goto-profile]').forEach(function (a) {
+        a.addEventListener('click', function (e) {
+          e.preventDefault();
+          var link = document.querySelector('.gcv-dash-nav a[data-section="section-guide-profile"]');
+          if (link) link.click();
+          else if (window.GcvDashRoles) window.GcvDashRoles.loadGuideProfile();
+        });
+      });
+    }
+
+    get('/api/guides/me-profile.php', function (err, res) {
+      if (res && res.ok && res.data && res.data.profile) {
+        render(res.data.profile);
+        return;
+      }
+      get('/api/guides/profile.php', function (e2, r2) {
+        if (!r2 || !r2.ok) {
+          content.innerHTML = '<p class="gcv-dash-alert">Erro ao carregar recebimentos.</p>';
+          return;
+        }
+        render(r2.data || {});
+      });
     });
   }
 
@@ -516,8 +555,13 @@
 
     if (role === 'admin') {
       items = [
+        { id: 'section-cms-articles',      icon: '📰', label: 'Revista',           load: function () { if (window.GcvAdminCms) window.GcvAdminCms.open('articles'); } },
+        { id: 'section-cms-attractions',   icon: '🏞️', label: 'Atrativos',         load: function () { if (window.GcvAdminCms) window.GcvAdminCms.open('attractions'); } },
+        { id: 'section-cms-guides',        icon: '🧭', label: 'Guias cadastrados', load: function () { if (window.GcvAdminCms) window.GcvAdminCms.open('guides'); } },
+        { id: 'section-cms-cities',        icon: '📍', label: 'Cidades',           load: function () { if (window.GcvAdminCms) window.GcvAdminCms.open('cities'); } },
+        { id: 'section-cms-excursions',    icon: '🚌', label: 'Excursões',         load: function () { if (window.GcvAdminCms) window.GcvAdminCms.open('excursions'); } },
         { id: 'section-pending-guides',    icon: '👤', label: 'Guias pendentes',   load: loadPendingGuides  },
-        { id: 'section-admin-guides',      icon: '🧭', label: 'Guias + PIX',       load: loadAdminGuides    },
+        { id: 'section-admin-guides',      icon: '💳', label: 'Guias + PIX',       load: loadAdminGuides    },
         { id: 'section-admin-payouts',     icon: '💸', label: 'Pagar guias',       load: loadAdminPayouts   },
         { id: 'section-pending-tours',     icon: '🗺️', label: 'Passeios pendentes',load: loadPendingTours   },
         { id: 'section-admin-create-tour', icon: '➕', label: 'Criar passeio',     load: function () { loadGuidesList(); initCreateTourForm('gcv-create-tour-form'); document.getElementById('admin-guide-field').hidden = false; } },
@@ -527,17 +571,23 @@
       ];
     } else if (role === 'guide' && status === 'active') {
       items = [
-        { id: 'section-guide-tours',        icon: '🗺️', label: 'Meus passeios',  load: loadGuideTours     },
-        { id: 'section-guide-create-tour',  icon: '➕', label: 'Criar passeio',  load: function () { initCreateTourForm('gcv-guide-create-tour-form'); } },
-        { id: 'section-guide-bookings',     icon: '📋', label: 'Minhas reservas', load: function () {} },
-        { id: 'section-guide-payments',     icon: '💳', label: 'Recebimentos',   load: loadGuidePayments  },
+        { id: 'section-guide-home',         icon: '⭐', label: 'Próximas saídas', load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideAgenda(); } },
+        { id: 'section-guide-tours',        icon: '📅', label: 'Agenda',          load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideAgenda(); } },
+        { id: 'section-guide-create-tour',  icon: '➕', label: 'Publicar passeio', load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuidePublish(); } },
+        { id: 'section-guide-profile',      icon: '👤', label: 'Meu perfil',      load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideProfile(); } },
+        { id: 'section-guide-payments',     icon: '💳', label: 'Recebimentos',    load: loadGuidePayments  },
       ];
     } else if (role === 'guide' && status === 'pending') {
-      items = [{ id: 'section-guide-pending', icon: '⏳', label: 'Status', load: function () {} }];
+      items = [
+        { id: 'section-guide-pending', icon: '⏳', label: 'Status', load: function () {} },
+        { id: 'section-guide-profile', icon: '👤', label: 'Meu perfil', load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideProfile(); } },
+      ];
     } else if (role === 'client') {
       items = [
-        { id: 'section-client-tours',    icon: '🌿', label: 'Próximas excursões', load: function () {} },
-        { id: 'section-client-bookings', icon: '📋', label: 'Minhas reservas',    load: loadClientBookings },
+        { id: 'section-client-tours',    icon: '🌿', label: 'Próximos passeios', load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadClientUpcoming(); } },
+        { id: 'section-client-bookings', icon: '📋', label: 'Minhas reservas',   load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadClientBookings(); } },
+        { id: 'section-client-publish',  icon: '➕', label: 'Propor excursão',   load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadClientPublish(); } },
+        { id: 'section-client-profile',  icon: '👤', label: 'Meu perfil',        load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadClientProfile(); } },
       ];
     }
 
@@ -573,10 +623,17 @@
     get('/api/auth/me.php', function (err, res) {
       console.log('[dashboard] me.php:', err, JSON.stringify(res));
       if (err || !res || !res.ok) {
-        window.location.href = '/login.html?redirect=/dashboard/';
+        // Sem sessão: manda para a porta correta (admin se veio de /admin)
+        var fromAdmin = /\/admin\//.test(document.referrer || '') || /admin=1/.test(location.search || '');
+        window.location.href = fromAdmin
+          ? '/admin/login.html?redirect=/dashboard/'
+          : '/login.html?redirect=/dashboard/';
         return;
       }
       currentUser = res.data;
+      if (currentUser.role === 'admin' && window.GcvAdminCms && typeof window.GcvAdminCms.boot === 'function') {
+        window.GcvAdminCms.boot();
+      }
 
       if (app) app.hidden = false;
 
@@ -619,10 +676,9 @@
         });
       }
 
-      // Check MP connected notification
+      // Check PIX/Sicoob notification (legado: mp_connected)
       var params = new URLSearchParams(window.location.search);
-      if (params.get('mp_connected')) {
-        alert('Mercado Pago conectado com sucesso!');
+      if (params.get('mp_connected') || params.get('pix_ok')) {
         window.history.replaceState({}, '', '/dashboard/');
       }
     });

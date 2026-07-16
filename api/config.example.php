@@ -11,8 +11,13 @@ return [
     'db_charset' => 'utf8mb4',
     /** E-mails que recebem cópia ao salvar um contato (opcional). */
     'notify_emails' => ['contato@guiachapadaveadeiros.com'],
-    /** E-mail que recebe aviso de cada compra Pix confirmada. */
-    'purchase_notify_email' => 'diogonavi82@gmail.com',
+    /** E-mails que recebem aviso de cada compra Pix confirmada. */
+    'purchase_notify_emails' => [
+        'diegonavi82@gmail.com',
+        'contato@guiachapadaveadeiros.com',
+    ],
+    /** Compatível: um único e-mail (ou use purchase_notify_emails). */
+    'purchase_notify_email' => 'diegonavi82@gmail.com',
     /**
      * Segredo para pix_webhook.php confirmar pagamentos (OpenPix, banco, etc.).
      * Em localhost com mock-server use: dev-local

@@ -267,6 +267,8 @@ const DETAIL_IMAGE_BY_SLUG = {
     "/imagens/cataratas-couros-guia-chapada-veadeiros-alto-paraiso-11.jpg",
   "cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante":
     "/imagens/cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante.jpg",
+  "cachoeira-ponte-de-pedra-guia-chapada-veadeiros-cavalcante":
+    "/imagens/cachoeira-ponte-de-pedra-guia-chapada-veadeiros-cavalcante.jpg",
   "cachoeira-segredo-guia-chapada-veadeiros-sao-jorge":
     "/imagens/cachoeira-segredo-guia-chapada-veadeiros-sao-jorge-10.jpg",
   "cachoeira-cristais-guia-chapada-veadeiros-alto-paraiso":
@@ -2984,11 +2986,13 @@ for (const locale of LOCALES) {
       (cms?.excerpt && String(cms.excerpt).trim()) ||
       hot.lead[locale];
     const og = toPublicAssetRel(cms?.featuredImage) || hot.image;
+    const pageKeywords = (cms?.keywords && String(cms.keywords).trim()) || undefined;
     const html = renderPage(locale, pk, {
       title: `${pageTitle} | Guia Chapada Veadeiros`,
       desc: pageDesc,
       ogImageRel: og,
       ogImageAlt: pageTitle,
+      keywords: pageKeywords,
       current: "atrativos",
       mainHtml: atrativoDetailMain(locale, locSlug, assetPrefix(outRelPath(locale, pk)), pk),
     });

@@ -5,3 +5,5 @@ api/.env
 Build_prod/
 api/config.local.php
 api/vendor/
+api/_setup_db_once.php
+api/_ensure_admin_once.php

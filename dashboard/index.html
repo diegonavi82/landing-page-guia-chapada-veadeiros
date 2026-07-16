@@ -9,8 +9,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="/assets/css/site.css?v=1.0.8" />
-<link rel="stylesheet" href="/assets/css/gcv-dashboard.css?v=1.0.1" />
+<link rel="stylesheet" href="/assets/css/site.css?v=1.0.39" />
+<link rel="stylesheet" href="/assets/css/gcv-dashboard.css?v=1.0.39" />
 <link rel="stylesheet" href="/assets/css/gcv-tours.css?v=1.0.1" />
 <link rel="stylesheet" href="/assets/css/gcv-payment.css?v=1.0.1" />
 </head>
@@ -54,6 +54,31 @@
       <main class="gcv-dash-main" id="gcv-dash-main">
 
         <!-- ===== ADMIN SECTIONS ===== -->
+
+        <section class="gcv-dash-section" id="section-cms-articles">
+          <h2 class="gcv-dash-section-title">Revista</h2>
+          <div id="cms-articles-root"></div>
+        </section>
+
+        <section class="gcv-dash-section" id="section-cms-attractions">
+          <h2 class="gcv-dash-section-title">Atrativos</h2>
+          <div id="cms-attractions-root"></div>
+        </section>
+
+        <section class="gcv-dash-section" id="section-cms-guides">
+          <h2 class="gcv-dash-section-title">Guias cadastrados</h2>
+          <div id="cms-guides-root"></div>
+        </section>
+
+        <section class="gcv-dash-section" id="section-cms-cities">
+          <h2 class="gcv-dash-section-title">Cidades</h2>
+          <div id="cms-cities-root"></div>
+        </section>
+
+        <section class="gcv-dash-section" id="section-cms-excursions">
+          <h2 class="gcv-dash-section-title">Excursões (próximas saídas)</h2>
+          <div id="cms-excursions-root"></div>
+        </section>
 
         <section class="gcv-dash-section" id="section-pending-guides">
           <h2 class="gcv-dash-section-title">Guias Pendentes</h2>
@@ -203,23 +228,31 @@
 
         <!-- ===== GUIDE SECTIONS ===== -->
 
+        <section class="gcv-dash-section" id="section-guide-home">
+          <h2 class="gcv-dash-section-title">Próximas saídas</h2>
+          <p class="gcv-dash-hint" style="margin:0 0 1rem;color:#64748b;font-size:0.9rem;">
+            Destaque da sua agenda. Quórum mínimo: 4 pessoas — abaixo disso o passeio fica <em>em formação</em>.
+          </p>
+          <div id="guide-upcoming-root"></div>
+        </section>
+
         <section class="gcv-dash-section" id="section-guide-tours">
-          <h2 class="gcv-dash-section-title">Meus Passeios</h2>
+          <h2 class="gcv-dash-section-title">Agenda</h2>
           <div id="guide-tours-list"></div>
         </section>
 
         <section class="gcv-dash-section" id="section-guide-create-tour">
-          <!-- Reuses admin form without guide selector -->
-          <h2 class="gcv-dash-section-title">Criar Passeio</h2>
-          <div class="gcv-dash-alert gcv-dash-alert--info" id="guide-mp-warning" hidden>
-            Conecte sua conta do Mercado Pago antes de criar passeios.
-            <a href="/api/guides/mp-connect-redirect.php" class="gcv-dash-btn gcv-dash-btn--sm gcv-dash-btn--primary" style="margin-left:12px;">Conectar MP</a>
-          </div>
+          <h2 class="gcv-dash-section-title">Publicar passeio</h2>
           <form class="gcv-dash-form" id="gcv-guide-create-tour-form" novalidate></form>
         </section>
 
+        <section class="gcv-dash-section" id="section-guide-profile">
+          <h2 class="gcv-dash-section-title">Meu perfil</h2>
+          <div id="guide-profile-root"></div>
+        </section>
+
         <section class="gcv-dash-section" id="section-guide-bookings">
-          <h2 class="gcv-dash-section-title">Minhas Reservas</h2>
+          <h2 class="gcv-dash-section-title">Reservas das minhas saídas</h2>
           <div class="gcv-dash-table-wrap">
             <table class="gcv-dash-table">
               <thead><tr><th>Passeio</th><th>Cliente</th><th>Vagas</th><th>Total</th><th>Status</th></tr></thead>
@@ -236,18 +269,31 @@
         <!-- ===== CLIENT SECTIONS ===== -->
 
         <section class="gcv-dash-section" id="section-client-tours">
-          <h2 class="gcv-dash-section-title">Próximas Excursões</h2>
-          <div class="gcv-tours-grid" id="client-tours-grid"></div>
+          <h2 class="gcv-dash-section-title">Próximos passeios</h2>
+          <div id="client-tours-grid"></div>
         </section>
 
         <section class="gcv-dash-section" id="section-client-bookings">
-          <h2 class="gcv-dash-section-title">Minhas Reservas</h2>
+          <h2 class="gcv-dash-section-title">Minhas reservas</h2>
+          <p class="gcv-dash-hint" style="margin:0 0 0.75rem;color:#64748b;font-size:0.85rem;">
+            Em formação: pode cancelar. Confirmado: cancelamento sem ressarcimento.
+          </p>
           <div class="gcv-dash-table-wrap">
             <table class="gcv-dash-table">
               <thead><tr><th>Passeio</th><th>Data</th><th>Vagas</th><th>Total</th><th>Status</th><th>Ação</th></tr></thead>
               <tbody id="client-bookings-body"></tbody>
             </table>
           </div>
+        </section>
+
+        <section class="gcv-dash-section" id="section-client-profile">
+          <h2 class="gcv-dash-section-title">Meu perfil</h2>
+          <div id="client-profile-root"></div>
+        </section>
+
+        <section class="gcv-dash-section" id="section-client-publish">
+          <h2 class="gcv-dash-section-title">Propor excursão</h2>
+          <div id="client-publish-root"></div>
         </section>
 
         <!-- ===== GUIDE PENDING SCREEN ===== -->
@@ -271,9 +317,11 @@
     </div>
   </div>
 
-  <script src="/assets/js/gcv-auth.js?v=1.0.1" defer></script>
-  <script src="/assets/js/gcv-dashboard.js?v=1.0.1" defer></script>
-  <script src="/assets/js/gcv-payment.js?v=1.0.1" defer></script>
-  <script src="/assets/js/site.js?v=1.0.8" defer></script>
+  <script src="/assets/js/gcv-auth.js?v=1.0.40" defer></script>
+  <script src="/assets/js/gcv-admin-cms.js?v=1.0.40" defer></script>
+  <script src="/assets/js/gcv-dash-roles.js?v=1.0.40" defer></script>
+  <script src="/assets/js/gcv-dashboard.js?v=1.0.40" defer></script>
+  <script src="/assets/js/gcv-payment.js?v=1.0.40" defer></script>
+  <script src="/assets/js/site.js?v=1.0.40" defer></script>
 </body>
 </html>

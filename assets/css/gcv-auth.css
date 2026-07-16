@@ -256,6 +256,24 @@
   background: linear-gradient(135deg, #1a3a5c 0%, #2a5a8c 100%);
 }
 
+/* Variante admin */
+.gcv-auth-page--admin {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 55%, #0f3d2e 100%);
+}
+
+.gcv-auth-page--admin .gcv-auth-badge {
+  background: #ecfdf5;
+  color: #065f46;
+  border-color: #a7f3d0;
+}
+
+/* Variante cliente */
+.gcv-auth-page--client .gcv-auth-badge {
+  background: #ecfdf5;
+  color: #0f3d2e;
+  border-color: #bbf7d0;
+}
+
 .gcv-auth-badge {
   display: inline-flex;
   align-items: center;

@@ -572,13 +572,49 @@ function handleWaitlistApi(urlPath, req, res) {
 const ROLE = process.argv[2] || "guide";
 
 const MOCK_USERS = {
-  admin: { id: 1, name: "Admin GCV", email: "admin@gcv.com", role: "admin", status: "active", avatar_url: null },
+  admin: { id: 1, name: "Diego Navi", email: "diegocsp82@gmail.com", role: "admin", status: "active", avatar_url: null },
   guide: { id: 2, name: "Diego Guia", email: "guia@gcv.com", role: "guide", status: "active", avatar_url: null },
   "guide-pending": { id: 3, name: "João Pendente", email: "pendente@gcv.com", role: "guide", status: "pending", avatar_url: null },
   client: { id: 4, name: "Maria Cliente", email: "cliente@gcv.com", role: "client", status: "active", avatar_url: null },
 };
 
 const user = MOCK_USERS[ROLE] || MOCK_USERS.guide;
+
+/** Muda o usuário mockado em runtime (login / Google). */
+function setMockUser(next) {
+  Object.keys(user).forEach((k) => {
+    delete user[k];
+  });
+  Object.assign(user, next);
+}
+
+function readJsonBody(req) {
+  return new Promise((resolve, reject) => {
+    let body = "";
+    req.on("data", (chunk) => {
+      body += chunk;
+    });
+    req.on("end", () => {
+      try {
+        resolve(JSON.parse(body || "{}"));
+      } catch (e) {
+        reject(e);
+      }
+    });
+    req.on("error", reject);
+  });
+}
+
+function pickUserByLogin(email, context) {
+  const e = String(email || "").toLowerCase().trim();
+  if (e.includes("admin") || e === "diegocsp82@gmail.com") return MOCK_USERS.admin;
+  if (e.includes("guia") || e.includes("guide") || context === "guide") {
+    if (e.includes("pendente") || e.includes("pending")) return MOCK_USERS["guide-pending"];
+    return MOCK_USERS.guide;
+  }
+  if (context === "admin") return MOCK_USERS.admin;
+  return MOCK_USERS.client;
+}
 
 /** Respostas mock da API */
 const API_ROUTES = {
@@ -599,11 +635,157 @@ const API_ROUTES = {
     data: {
       id: user.id,
       name: user.name,
-      bio: "Guia credenciado CADASTUR com 10 anos de experiência na Chapada dos Veadeiros.",
+      bio: "Guia credenciado com experiência na Chapada dos Veadeiros.",
       phone: "(62) 98250-6891",
-      specialties: "Trilhas, cachoeiras, camping",
-      mp_connected: false,
+      pix_key: "diegonavi82@gmail.com",
+      pix_key_type: "email",
+      pix_verified_at: "2026-07-01 12:00:00",
       status: user.status,
+    },
+  }),
+
+  "/api/guides/me-profile.php": () => ({
+    ok: true,
+    data: {
+      profile: {
+        user_id: user.id,
+        full_name: user.name,
+        nickname: "Navi",
+        email: user.email,
+        cpf: "00000000000",
+        pix_key: "diegonavi82@gmail.com",
+        pix_key_type: "email",
+        phone: "62982506891",
+        phone_ddi: "+55",
+        birth_date: "1982-01-15",
+        base_city_id: 1,
+        id_document_url: "/assets/img/uploads/guias/doc.pdf",
+        photo_3x4_url: "/assets/img/uploads/guias/foto.jpg",
+        bio_pt: "Guia local na Chapada dos Veadeiros.",
+        profile_complete: 1,
+      },
+      missing: [],
+      complete: true,
+      limits: { bio_max: 800, bio_recommended: 600 },
+      pix_key_types: ["cpf", "cnpj", "email", "phone", "random"],
+      base_cities: [
+        { id: 1, name: "Alto Paraíso de Goiás" },
+        { id: 2, name: "São Jorge" },
+        { id: 3, name: "Cavalcante" },
+      ],
+    },
+  }),
+
+  "/api/guides/excursions.php": () => ({
+    ok: true,
+    data: {
+      profile_complete: true,
+      min_quorum: 4,
+      attractions: [
+        { id: 1, title_pt: "Loquinhas", slug: "loquinhas" },
+        { id: 2, title_pt: "Cristais", slug: "cristais" },
+      ],
+      cities: [
+        { id: 1, name: "Alto Paraíso de Goiás" },
+        { id: 2, name: "São Jorge" },
+        { id: 3, name: "Cavalcante" },
+      ],
+      upcoming: [
+        {
+          id: 101,
+          date_iso: "2026-07-23",
+          departure_time: "09:00:00",
+          attraction_title: "Loquinhas + Cristais",
+          departure_city_name: "Alto Paraíso",
+          price_cents: 23000,
+          booked_people: 2,
+          quorum: 4,
+          max_people: 10,
+          status: "published",
+          lifecycle: "em_formacao",
+          lifecycle_label: "Em formação",
+          can_cancel: true,
+        },
+      ],
+      excursions: [
+        {
+          id: 101,
+          date_iso: "2026-07-23",
+          departure_time: "09:00:00",
+          attraction_title: "Loquinhas + Cristais",
+          departure_city_name: "Alto Paraíso",
+          price_cents: 23000,
+          booked_people: 2,
+          quorum: 4,
+          max_people: 10,
+          status: "published",
+          lifecycle: "em_formacao",
+          lifecycle_label: "Em formação",
+          can_cancel: true,
+        },
+      ],
+    },
+  }),
+
+  "/api/bookings/my.php": () => ({
+    ok: true,
+    data: {
+      upcoming: [
+        {
+          id: 1,
+          tour_title: "Trilha da Carioca",
+          departure_date: "2026-07-20",
+          departure_time: "08:00:00",
+          guide_name: "Diego Guia",
+          spots: 2,
+          total_cents: 36000,
+          status: "paid",
+          lifecycle: "em_formacao",
+          lifecycle_label: "Em formação",
+          can_cancel: true,
+          cancel_no_refund: false,
+        },
+      ],
+      bookings: [
+        {
+          id: 1,
+          tour_title: "Trilha da Carioca",
+          departure_date: "2026-07-20",
+          spots: 2,
+          total_cents: 36000,
+          status: "paid",
+          lifecycle: "em_formacao",
+          lifecycle_label: "Em formação",
+          can_cancel: true,
+          cancel_no_refund: false,
+        },
+      ],
+    },
+  }),
+
+  "/api/client/profile.php": () => ({
+    ok: true,
+    data: {
+      profile: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: "62999998888",
+        phone_ddi: "+55",
+        cpf: "",
+        birth_date: "",
+      },
+      limits: { name_max: 120, phone_max: 20, notes_max: 500 },
+    },
+  }),
+
+  "/api/client/excursions.php": () => ({
+    ok: true,
+    data: {
+      min_quorum: 4,
+      attractions: [{ id: 1, title_pt: "Loquinhas", slug: "loquinhas" }],
+      cities: [{ id: 1, name: "Alto Paraíso de Goiás" }],
+      my_proposals: [],
     },
   }),
 
@@ -699,8 +881,146 @@ const server = http.createServer((req, res) => {
 
   // Mock API
   if (urlPath.startsWith("/api/")) {
+    // Login e-mail/senha (3 portas)
+    if (urlPath === "/api/auth/login.php" && req.method === "POST") {
+      readJsonBody(req)
+        .then((data) => {
+          const email = String(data.email || "").trim();
+          const contextHint = email.toLowerCase().includes("admin")
+            ? "admin"
+            : email.toLowerCase().includes("guia")
+              ? "guide"
+              : "client";
+          const next = pickUserByLogin(email, contextHint);
+          setMockUser(next);
+          console.log("[mock] login →", user.email, "(" + user.role + ")");
+          res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: true, data: { ...user } }));
+        })
+        .catch(() => {
+          res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: false, error: "JSON inválido" }));
+        });
+      return;
+    }
+
+    // Google OAuth mock: tela para escolher conta (não entra direto)
+    if (urlPath === "/api/auth/google-redirect.php") {
+      const u = new URL(req.url, "http://localhost:" + PORT);
+      const context = String(u.searchParams.get("context") || "client").toLowerCase();
+      const pick = String(u.searchParams.get("pick") || "").trim();
+
+      const optionsByContext = {
+        admin: [{ key: "admin", label: "Diego Navi (Admin)", email: MOCK_USERS.admin.email }],
+        guide: [
+          { key: "guide", label: "Diego Guia (ativo)", email: MOCK_USERS.guide.email },
+          { key: "guide-pending", label: "João Pendente (aguardando)", email: MOCK_USERS["guide-pending"].email },
+        ],
+        client: [{ key: "client", label: "Maria Cliente", email: MOCK_USERS.client.email }],
+      };
+      const options = optionsByContext[context] || optionsByContext.client;
+
+      if (pick && MOCK_USERS[pick]) {
+        // Admin: só permite conta admin
+        if (context === "admin" && MOCK_USERS[pick].role !== "admin") {
+          res.writeHead(403, { "Content-Type": "text/html; charset=utf-8" });
+          res.end("<p>Esta porta é só para admin. <a href=\"/admin/login.html\">Voltar</a></p>");
+          return;
+        }
+        // Guia: só guide
+        if (context === "guide" && MOCK_USERS[pick].role !== "guide") {
+          res.writeHead(403, { "Content-Type": "text/html; charset=utf-8" });
+          res.end("<p>Use a área do cliente para esta conta. <a href=\"/guia/login.html\">Voltar</a></p>");
+          return;
+        }
+        // Cliente: só client
+        if (context === "client" && MOCK_USERS[pick].role !== "client") {
+          res.writeHead(403, { "Content-Type": "text/html; charset=utf-8" });
+          res.end("<p>Use a porta correta do perfil. <a href=\"/login.html\">Voltar</a></p>");
+          return;
+        }
+        setMockUser(MOCK_USERS[pick]);
+        console.log("[mock] Google pick →", user.email, "(" + user.role + ")");
+        res.writeHead(302, { Location: "/dashboard/" });
+        res.end();
+        return;
+      }
+
+      const title =
+        context === "admin" ? "Admin" : context === "guide" ? "Guia" : "Cliente";
+      const buttons = options
+        .map(
+          (o) =>
+            `<a class="acc" href="/api/auth/google-redirect.php?context=${encodeURIComponent(context)}&pick=${encodeURIComponent(o.key)}">` +
+            `<strong>${o.label}</strong><span>${o.email}</span></a>`,
+        )
+        .join("");
+
+      const html = `<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Escolher conta Google (mock)</title>
+<style>
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+    font-family:system-ui,sans-serif;background:#0b2a20;color:#0f172a}
+  .box{background:#fff;border-radius:14px;padding:1.5rem;width:min(420px,92vw);box-shadow:0 12px 40px rgba(0,0,0,.25)}
+  h1{font-size:1.15rem;margin:0 0 .35rem}
+  p{margin:0 0 1rem;color:#64748b;font-size:.9rem}
+  .acc{display:block;border:1px solid #e2e8f0;border-radius:10px;padding:.85rem 1rem;margin:.5rem 0;
+    text-decoration:none;color:inherit;transition:background .15s}
+  .acc:hover{background:#f0fdf4;border-color:#86efac}
+  .acc strong{display:block;font-size:.95rem}
+  .acc span{font-size:.8rem;color:#64748b}
+  .note{margin-top:1rem;font-size:.75rem;color:#94a3b8}
+</style></head><body>
+  <div class="box">
+    <h1>Escolher conta Google</h1>
+    <p>Mock local — área <strong>${title}</strong>. Em produção o Google mostra suas contas reais.</p>
+    ${buttons}
+    <p class="note">Simulação localhost · sem OAuth real</p>
+  </div>
+</body></html>`;
+
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      res.end(html);
+      return;
+    }
+
     if (handlePixApi(urlPath, req, res)) return;
     if (handleWaitlistApi(urlPath, req, res)) return;
+
+    // Mutações de perfil / agenda (mock)
+    if (
+      (urlPath === "/api/guides/me-profile.php" ||
+        urlPath === "/api/client/profile.php" ||
+        urlPath === "/api/guides/excursions.php" ||
+        urlPath === "/api/client/excursions.php" ||
+        urlPath === "/api/bookings/cancel.php") &&
+      (req.method === "POST" || req.method === "PUT")
+    ) {
+      readJsonBody(req)
+        .then((data) => {
+          console.log("[mock]", req.method, urlPath, data || {});
+          res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(
+            JSON.stringify({
+              ok: true,
+              data: {
+                message:
+                  urlPath.indexOf("cancel") >= 0
+                    ? "Reserva/passeio cancelado (mock)"
+                    : "Salvo (mock)",
+                complete: true,
+              },
+            }),
+          );
+        })
+        .catch(() => {
+          res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: false, error: "JSON inválido" }));
+        });
+      return;
+    }
+
     if (urlPath === "/api/excursao-receipt/" || urlPath === "/api/excursao-receipt/index.php") {
       if (req.method === "POST") {
         let body = "";
@@ -798,6 +1118,10 @@ server.listen(PORT, () => {
   console.log("    node tools/mock-server.mjs admin          → Administrador");
   console.log("    node tools/mock-server.mjs client         → Cliente");
   console.log("");
-  console.log("  Abra: http://localhost:" + PORT + "/dashboard/");
+  console.log("  Abra as 3 portas de login:");
+  console.log("    Cliente → http://localhost:" + PORT + "/login.html");
+  console.log("    Guia    → http://localhost:" + PORT + "/guia/login.html");
+  console.log("    Admin   → http://localhost:" + PORT + "/admin/login.html");
+  console.log("  Ou painel direto: http://localhost:" + PORT + "/dashboard/");
   console.log("");
 });

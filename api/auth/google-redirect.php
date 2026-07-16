@@ -10,10 +10,16 @@ $clientId    = $_ENV['GOOGLE_CLIENT_ID']    ?? '';
 $redirectUri = $_ENV['GOOGLE_REDIRECT_URI'] ?? '';
 $secret      = $_ENV['APP_SECRET']          ?? 'gcv_secret';
 
-// State assinado com HMAC — não depende de sessão PHP
+$context = strtolower(trim((string)($_GET['context'] ?? 'client')));
+if (!in_array($context, ['client', 'guide', 'admin'], true)) {
+    $context = 'client';
+}
+
+// State assinado com HMAC — inclui o contexto da porta de login
 $ts    = time();
-$hmac  = hash_hmac('sha256', (string)$ts, $secret);
-$state = $ts . '.' . $hmac;
+$payload = $ts . '.' . $context;
+$hmac  = hash_hmac('sha256', $payload, $secret);
+$state = $payload . '.' . $hmac;
 
 $params = http_build_query([
     'client_id'     => $clientId,
