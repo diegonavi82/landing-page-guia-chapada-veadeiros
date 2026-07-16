@@ -6,6 +6,7 @@ require_once __DIR__ . '/../helpers/auth.php';
 require_once __DIR__ . '/../helpers/validator.php';
 require_once __DIR__ . '/../helpers/rate_limiter.php';
 require_once __DIR__ . '/../helpers/user_roles.php';
+require_once __DIR__ . '/../helpers/access_policy.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -25,6 +26,11 @@ try {
         json_response(false, null, 'Email e senha são obrigatórios', 422);
     }
 
+    $accessErr = gcv_login_access_error($context, (string)$email);
+    if ($accessErr) {
+        json_response(false, null, $accessErr, 403);
+    }
+
     $stmt = db()->prepare(
         'SELECT id, name, email, password_hash, role, avatar_url, lang, status FROM gcv_users WHERE email = ?'
     );
@@ -39,11 +45,10 @@ try {
         json_response(false, null, 'Conta suspensa. Entre em contato com o suporte.', 403);
     }
 
-    // Guia pendente só bloqueia na porta guia (ainda vê tela pending); admin/client ok se tiver o papel
+    // Guia pendente: só na porta guia (dashboard mostra “em análise”)
     if ($user['status'] === 'pending' && $context === 'guide') {
-        // permite login — dashboard mostra tela pending
+        // ok
     } elseif ($user['status'] === 'pending' && $context !== 'guide') {
-        // se pending era guia novo sem outros papéis
         $roles = gcv_user_roles((int)$user['id']);
         if ($roles === ['guide'] || $roles === []) {
             json_response(false, null, 'Conta aguardando aprovação do administrador', 403);
@@ -55,8 +60,12 @@ try {
         json_response(false, null, $ctxErr, 403);
     }
 
+    // Dupla checagem admin allowlist (após autenticar)
+    if ($context === 'admin' && !gcv_is_admin_allowlisted((string)$user['email'])) {
+        json_response(false, null, 'Acesso à Área Admin restrito.', 403);
+    }
+
     reset_rate_limit('login');
-    // Nova sessão neste contexto (substitui cookie anterior)
     destroy_session();
     create_session((int)$user['id'], $context);
 

@@ -119,6 +119,8 @@
         oauth_user: 'Conta Google sem e-mail disponível.',
         suspended: 'Esta conta está suspensa. Fale conosco no WhatsApp.',
         admin_only: 'Acesso restrito à administração. Use a conta admin cadastrada.',
+        admin_restricted: 'Acesso à Área Admin restrito.',
+        client_closed: 'Área do cliente temporariamente indisponível.',
         guide_area: 'Esta conta é de cliente. Use a <a href="/login.html">Área do Cliente</a>.',
         client_area: 'Esta conta é de guia. Use a <a href="/guia/login.html">Área do Guia</a>.',
         db: 'Erro ao entrar. Tente novamente em instantes.'

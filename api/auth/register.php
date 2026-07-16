@@ -6,6 +6,7 @@ require_once __DIR__ . '/../helpers/auth.php';
 require_once __DIR__ . '/../helpers/validator.php';
 require_once __DIR__ . '/../helpers/mailer.php';
 require_once __DIR__ . '/../helpers/user_roles.php';
+require_once __DIR__ . '/../helpers/access_policy.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -26,6 +27,10 @@ if (!$email) json_response(false, null, 'Email inválido', 422);
 if (!$pass) json_response(false, null, 'Senha muito curta (mínimo 8 caracteres)', 422);
 if (!$role) json_response(false, null, 'Tipo de conta inválido', 422);
 
+if ($role === 'client' && !gcv_client_area_enabled()) {
+    json_response(false, null, 'Cadastro de cliente temporariamente indisponível.', 403);
+}
+
 $check = db()->prepare('SELECT id FROM gcv_users WHERE email = ?');
 $check->execute([$email]);
 if ($check->fetch()) {
@@ -33,7 +38,8 @@ if ($check->fetch()) {
 }
 
 $hash   = password_hash($pass, PASSWORD_BCRYPT, ['cost' => 12]);
-$status = $role === 'client' ? 'active' : 'pending';
+// Guia sempre nasce pending até o admin aprovar
+$status = $role === 'guide' ? 'pending' : 'active';
 
 $pdo = db();
 $pdo->beginTransaction();
@@ -59,7 +65,8 @@ try {
 }
 
 gcv_user_grant_role($userId, $role);
-if ($role === 'guide') {
+// Não concede papel client automaticamente enquanto a área do cliente estiver fechada
+if ($role === 'guide' && gcv_client_area_enabled()) {
     gcv_user_grant_role($userId, 'client');
 }
 gcv_user_sync_primary_role($userId);

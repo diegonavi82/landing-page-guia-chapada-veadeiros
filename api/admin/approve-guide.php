@@ -6,6 +6,7 @@ require_once __DIR__ . '/../helpers/auth.php';
 require_once __DIR__ . '/../helpers/validator.php';
 require_once __DIR__ . '/../helpers/mailer.php';
 require_once __DIR__ . '/../helpers/user_roles.php';
+require_once __DIR__ . '/../helpers/access_policy.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -30,7 +31,9 @@ db()->prepare(
 )->execute([$userId]);
 
 gcv_user_grant_role($userId, 'guide');
-gcv_user_grant_role($userId, 'client');
+if (gcv_client_area_enabled()) {
+    gcv_user_grant_role($userId, 'client');
+}
 gcv_user_sync_primary_role($userId);
 
 db()->prepare(

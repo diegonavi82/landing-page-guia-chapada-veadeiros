@@ -259,8 +259,19 @@ if ($method === 'DELETE') {
         echo json_encode(['ok' => false, 'error' => 'id obrigatório']);
         exit;
     }
-    db()->prepare('UPDATE gcv_excursions SET status="cancelled", updated_by=? WHERE id=?')->execute([(int)$admin['id'], $id]);
-    echo json_encode(['ok' => true]);
+    try {
+        db()->prepare('DELETE FROM gcv_excursion_attractions WHERE excursion_id = ?')->execute([$id]);
+    } catch (Throwable $e) {
+        // junction pode não existir em installs antigos
+    }
+    $stmt = db()->prepare('DELETE FROM gcv_excursions WHERE id = ?');
+    $stmt->execute([$id]);
+    if ($stmt->rowCount() < 1) {
+        http_response_code(404);
+        echo json_encode(['ok' => false, 'error' => 'Excursão não encontrada']);
+        exit;
+    }
+    echo json_encode(['ok' => true, 'deleted' => $id]);
     exit;
 }
 

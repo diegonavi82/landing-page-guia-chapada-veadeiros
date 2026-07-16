@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../helpers/db.php';
 require_once __DIR__ . '/../helpers/auth.php';
 require_once __DIR__ . '/../helpers/user_roles.php';
+require_once __DIR__ . '/../helpers/access_policy.php';
 // mailer NÃO é carregado no boot — só quando for enviar e-mail (evita 500 se vendor ausente)
 
 auth_session_start();
@@ -63,6 +64,11 @@ $loginPath = $parsed['loginPath'];
 
 if (!$code || !$parsed['ok']) {
     gcv_oauth_fail($appUrl, $loginPath, 'oauth_state');
+}
+
+// Área do cliente fechada — bloqueia OAuth client antes do token
+if ($context === 'client' && !gcv_client_area_enabled()) {
+    gcv_oauth_fail($appUrl, $loginPath, 'client_closed');
 }
 
 $clientId     = $_ENV['GOOGLE_CLIENT_ID']     ?? '';
@@ -142,6 +148,14 @@ $email     = strtolower((string)($googleUser['email'] ?? ''));
 $name      = (string)($googleUser['name'] ?? $email);
 $avatarUrl = $googleUser['picture'] ?? null;
 
+$accessErr = gcv_login_access_error($context, $email);
+if ($accessErr) {
+    if ($context === 'admin') {
+        gcv_oauth_fail($appUrl, $loginPath, 'admin_restricted');
+    }
+    gcv_oauth_fail($appUrl, $loginPath, 'client_closed');
+}
+
 try {
     $pdo  = db();
     $stmt = $pdo->prepare('SELECT id, role, status FROM gcv_users WHERE email = ? OR google_id = ? LIMIT 1');
@@ -181,6 +195,10 @@ try {
             gcv_oauth_fail($appUrl, $loginPath, 'admin_only');
         }
 
+        if ($context === 'client') {
+            gcv_oauth_fail($appUrl, $loginPath, 'client_closed');
+        }
+
         if ($context === 'guide') {
             $pdo->beginTransaction();
             try {
@@ -191,7 +209,7 @@ try {
                 $pdo->prepare('INSERT INTO gcv_guides (user_id, cadastur) VALUES (?, NULL)')->execute([$userId]);
                 $pdo->commit();
                 gcv_user_grant_role($userId, 'guide');
-                gcv_user_grant_role($userId, 'client');
+                // Não concede client enquanto a área do cliente estiver fechada
                 gcv_user_sync_primary_role($userId);
                 try {
                     if (is_readable(__DIR__ . '/../helpers/mailer.php')) {
@@ -207,21 +225,7 @@ try {
                 throw $e;
             }
         } else {
-            $pdo->prepare(
-                'INSERT INTO gcv_users (name, email, google_id, avatar_url, role, status, email_verified) VALUES (?,?,?,?,\'client\',\'active\',1)'
-            )->execute([$name, $email, $googleId, $avatarUrl]);
-            $userId = (int)$pdo->lastInsertId();
-            gcv_user_grant_role($userId, 'client');
-            gcv_user_sync_primary_role($userId);
-            try {
-                if (is_readable(__DIR__ . '/../helpers/mailer.php')) {
-                    require_once __DIR__ . '/../helpers/mailer.php';
-                    if (function_exists('mail_welcome')) {
-                        mail_welcome($email, $name);
-                    }
-                }
-            } catch (Throwable) {
-            }
+            gcv_oauth_fail($appUrl, $loginPath, 'client_closed');
         }
     }
 

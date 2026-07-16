@@ -95,6 +95,14 @@ function require_admin(): array {
         echo json_encode(['ok' => false, 'error' => 'Acesso negado. Entre pela Área Admin.']);
         exit;
     }
+    if (!function_exists('gcv_is_admin_allowlisted')) {
+        require_once __DIR__ . '/access_policy.php';
+    }
+    if (!gcv_is_admin_allowlisted((string)($user['email'] ?? ''))) {
+        http_response_code(403);
+        echo json_encode(['ok' => false, 'error' => 'Acesso à Área Admin restrito.']);
+        exit;
+    }
     return $user;
 }
 

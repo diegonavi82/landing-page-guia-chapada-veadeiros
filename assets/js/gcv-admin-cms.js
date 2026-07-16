@@ -812,8 +812,7 @@
     });
     if (!usable.length) {
       return (
-        '<p class="gcv-dash-alert" id="ex-attr-empty">Nenhum atrativo no banco. ' +
-        '<button type="button" class="gcv-dash-btn gcv-dash-btn--sm gcv-dash-btn--primary" id="ex-seed-attrs">Importar atrativos do site</button></p>'
+        '<p class="gcv-dash-alert" id="ex-attr-empty">Nenhum atrativo no banco. Cadastre em <strong>Atrativos</strong> no menu.</p>'
       );
     }
     return (
@@ -840,23 +839,10 @@
     box.innerHTML =
       '<div class="gcv-cms-toolbar">' +
       '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary" id="cms-exc-new">+ Nova saída</button>' +
-      '<button type="button" class="gcv-dash-btn" id="cms-exc-seed-attrs" title="Garante que todos os atrativos do site estejam no banco">Importar atrativos</button>' +
       '</div>' +
       '<div id="cms-exc-form" class="gcv-cms-card" hidden></div>' +
       '<div id="cms-exc-list" class="gcv-cms-list">Carregando…</div>';
     root('cms-exc-new').onclick = function () { openExcursionForm(null); };
-    root('cms-exc-seed-attrs').onclick = function () {
-      var btn = root('cms-exc-seed-attrs');
-      if (btn) btn.disabled = true;
-      seedAttractions(function (err, res) {
-        if (btn) btn.disabled = false;
-        if (!res || !res.ok) {
-          alert((res && res.error) || 'Falha ao importar atrativos');
-          return;
-        }
-        alert(res.message || ('OK — ' + ((res.data && res.data.in_db) || 0) + ' atrativos no banco'));
-      });
-    };
     get('/api/admin/excursions.php', function (err, res) {
       var list = root('cms-exc-list');
       if (!list) return;
@@ -873,13 +859,30 @@
           (e.guide_name ? ' · guia: ' + esc(e.guide_name) : ' · sem guia') +
           (e.attraction_ids && e.attraction_ids.length > 1 ? ' · ' + e.attraction_ids.length + ' atrativos' : '') +
           '</div></div>' +
-          '<button type="button" class="gcv-dash-btn gcv-dash-btn--sm" data-edit-exc="' + e.id + '">Editar</button></article>'
+          '<button type="button" class="gcv-dash-btn gcv-dash-btn--sm" data-edit-exc="' + e.id + '">Editar</button>' +
+          '<button type="button" class="gcv-dash-btn gcv-dash-btn--sm gcv-dash-btn--danger" data-del-exc="' + e.id + '" data-del-label="' + esc(e.date_iso + ' · ' + (e.attraction_title || '')) + '">Excluir</button></article>'
         );
       }).join('') : '<p>Nenhuma excursão. Clique em <strong>+ Nova saída</strong> e escolha de 1 a 4 atrativos.</p>';
       list.querySelectorAll('[data-edit-exc]').forEach(function (btn) {
         btn.onclick = function () {
           get('/api/admin/excursions.php?id=' + btn.getAttribute('data-edit-exc'), function (e, r) {
             if (r && r.ok) openExcursionForm(r.data);
+          });
+        };
+      });
+      list.querySelectorAll('[data-del-exc]').forEach(function (btn) {
+        btn.onclick = function () {
+          var id = btn.getAttribute('data-del-exc');
+          var label = btn.getAttribute('data-del-label') || ('#' + id);
+          if (!confirm('Excluir permanentemente a saída\n' + label + '?\n\nEsta ação não pode ser desfeita.')) return;
+          btn.disabled = true;
+          sendJson('DELETE', '/api/admin/excursions.php', { id: parseInt(id, 10) }, function (e, r) {
+            if (!r || !r.ok) {
+              btn.disabled = false;
+              alert((r && r.error) || 'Erro ao excluir');
+              return;
+            }
+            renderExcursions();
           });
         };
       });
@@ -923,9 +926,13 @@
             '<div class="gcv-dash-field"><label class="gcv-dash-label">Inscritos</label><input class="gcv-dash-input" id="ex-booked" type="number" min="0" value="' + esc(ex && ex.booked_people || 0) + '" /></div>' +
             '</div>' +
             '<div class="gcv-dash-field"><label class="gcv-dash-label">Slug do carrinho (opcional)</label><input class="gcv-dash-input" id="ex-cart" value="' + esc(ex && ex.cart_slug || '') + '" placeholder="ex.: mirante-da-janela-2026-07-09" /></div>' +
-            '<div style="display:flex;gap:0.5rem;margin-top:0.75rem;">' +
+            '<div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.75rem;">' +
             '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary" id="ex-save">Salvar</button>' +
-            '<button type="button" class="gcv-dash-btn" id="ex-cancel">Cancelar</button></div>';
+            '<button type="button" class="gcv-dash-btn" id="ex-cancel">Fechar</button>' +
+            (ex && ex.id
+              ? '<button type="button" class="gcv-dash-btn gcv-dash-btn--danger" id="ex-delete" style="margin-left:auto;">Excluir saída</button>'
+              : '') +
+            '</div>';
 
           var selected = selectedIds.slice();
 
@@ -971,22 +978,6 @@
                 refreshPicker();
               };
             });
-            var seedBtn = root('ex-seed-attrs');
-            if (seedBtn) {
-              seedBtn.onclick = function () {
-                seedBtn.disabled = true;
-                seedBtn.textContent = 'Importando…';
-                seedAttractions(function (err, res) {
-                  if (!res || !res.ok) {
-                    seedBtn.disabled = false;
-                    seedBtn.textContent = 'Importar atrativos do site';
-                    alert((res && res.error) || 'Falha ao importar');
-                    return;
-                  }
-                  openExcursionForm(ex);
-                });
-              };
-            }
           }
 
           bindChips();
@@ -1009,6 +1000,25 @@
 
           if (ex && ex.status) root('ex-status').value = ex.status;
           root('ex-cancel').onclick = function () { form.hidden = true; };
+
+          var delBtn = root('ex-delete');
+          if (delBtn && ex && ex.id) {
+            delBtn.onclick = function () {
+              var label = (ex.date_iso || '') + ' · ' + (ex.attraction_title || '');
+              if (!confirm('Excluir permanentemente a saída\n' + label + '?\n\nEsta ação não pode ser desfeita.')) return;
+              delBtn.disabled = true;
+              sendJson('DELETE', '/api/admin/excursions.php', { id: ex.id }, function (e, r) {
+                if (!r || !r.ok) {
+                  delBtn.disabled = false;
+                  alert((r && r.error) || 'Erro ao excluir');
+                  return;
+                }
+                form.hidden = true;
+                renderExcursions();
+              });
+            };
+          }
+
           root('ex-save').onclick = function () {
             var statusVal = root('ex-status').value;
             var guideId = parseInt(root('ex-guide').value, 10) || null;
