@@ -46,6 +46,7 @@ jobs:
       # Sem o state file, o FTP reenvia o pacote inteiro (Build_prod)
       - name: Forçar reupload completo
         if: contains(github.event.head_commit.message, '[ftp-full]') || github.event_name == 'workflow_dispatch'
+        continue-on-error: true
         env:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
@@ -62,6 +63,7 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           protocol: ftps
           port: 21
+          security: loose
           local-dir: ./Build_prod/
           server-dir: ./
           dangerous-clean-slate: false

@@ -45,7 +45,15 @@ const client = new Client(60_000);
 client.ftp.verbose = false;
 
 try {
-  await client.access({ host, user, password: pass, port, secure });
+  // Hostinger costuma ter FTP_SERVER = IP; o certificado é do hostname → ignore mismatch
+  await client.access({
+    host,
+    user,
+    password: pass,
+    port,
+    secure,
+    secureOptions: { rejectUnauthorized: false },
+  });
   if (remoteRoot && remoteRoot !== "./" && remoteRoot !== ".") {
     await client.cd(remoteRoot);
   }
