@@ -762,7 +762,18 @@
 
   function getDestinos(e) {
     if (!e) return [];
-    if (Array.isArray(e.destinos) && e.destinos.length) return e.destinos;
+    if (Array.isArray(e.destinos) && e.destinos.length) {
+      return e.destinos.map(function (d) {
+        var nome = d.destino || d.title || d.title_pt || "";
+        return Object.assign({}, d, {
+          destino: nome,
+          cardImg: d.cardImg || d.cover_url || e.cardImg || "",
+          atrativoPath:
+            d.atrativoPath || d.path || (d.slug ? "atrativos/" + d.slug + ".html" : e.atrativoPath || ""),
+          valorIngresso: d.valorIngresso != null ? d.valorIngresso : e.valorIngresso,
+        });
+      });
+    }
     if (e.destino) {
       return [
         {

@@ -123,11 +123,23 @@ function gcv_row_to_card(array $r, string $lang, array $months, array $weekdays)
             $key = 'title_' . $lang;
             $t = trim((string)($a[$key] ?? ''));
             if ($t === '') $t = (string)($a['title_pt'] ?? '');
-            return [
+            $slug = (string)($a['slug'] ?? '');
+            $cover = (string)($a['cover_url'] ?? '');
+            $entryRaw = $a['entry_price_cents'] ?? null;
+            $item = [
+                // Campos que o carrossel JS já usa (payload estático)
+                'destino' => $t,
+                'cardImg' => $cover,
+                'atrativoPath' => $slug !== '' ? ('atrativos/' . $slug . '.html') : '',
+                // Aliases (compat)
                 'title' => $t,
-                'slug' => (string)($a['slug'] ?? ''),
-                'path' => !empty($a['slug']) ? ('atrativos/' . $a['slug'] . '.html') : '',
+                'slug' => $slug,
+                'path' => $slug !== '' ? ('atrativos/' . $slug . '.html') : '',
             ];
+            if ($entryRaw !== null) {
+                $item['valorIngresso'] = (int)round(((int)$entryRaw) / 100);
+            }
+            return $item;
         }, $attrs),
         'cartSlug' => $cartSlug,
         'hora' => $hora,
