@@ -47,6 +47,7 @@ function skipRemoteName(name) {
     n === "config.local.php" ||
     n === ".ftpquota" ||
     n === "error_log" ||
+    n === ".gitkeep" ||
     n.startsWith(".env")
   );
 }

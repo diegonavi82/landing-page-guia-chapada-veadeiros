@@ -57,6 +57,8 @@ function deployCopyFilter(src) {
   const name = basename(src);
   if (SKIP_BASENAMES.has(name)) return false;
   if (name.startsWith(".env")) return false;
+  // Arquivos vazios (.gitkeep) quebram FTPS na Hostinger (FTP 425)
+  if (name === ".gitkeep") return false;
   return true;
 }
 

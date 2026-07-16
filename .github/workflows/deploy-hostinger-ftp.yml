@@ -60,5 +60,6 @@ jobs:
             **/.env.*
             **/config.local.php
             **/error_log
+            **/.gitkeep
             **/assets/img/uploads/**
           log-level: standard
