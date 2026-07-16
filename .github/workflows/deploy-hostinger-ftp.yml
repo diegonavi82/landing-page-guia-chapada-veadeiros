@@ -30,6 +30,12 @@ jobs:
         run: |
           npm ci
           npm run build
+          test -f Build_prod/api/helpers/user_roles.php
+          test -f Build_prod/api/helpers/guides_seed.php
+          test -f Build_prod/api/helpers/excursion_attractions.php
+          test -f Build_prod/api/admin/seed-test-excursion.php
+          test -f Build_prod/api/admin/deploy-check.php
+          echo "Build_prod API helpers OK"
 
       - name: Verificar secrets FTP
         env:
