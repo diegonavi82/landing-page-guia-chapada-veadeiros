@@ -2,7 +2,7 @@
  * Monta Build_prod/ com o site completo pronto para upload FTP.
  * Chamado ao final de `npm run build`.
  */
-import { cpSync, existsSync, mkdirSync, rmSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -75,6 +75,14 @@ export function assembleBuildProd(siteRoot = ROOT, outDir = BUILD_PROD_DIR) {
     cpSync(src, join(outDir, entry), { recursive: true, filter: deployCopyFilter });
     copied += 1;
   }
+
+  // Canário: confirma no File Manager / URL se o FTP caiu no public_html certo
+  const canary = join(outDir, "deploy-canary.txt");
+  writeFileSync(
+    canary,
+    `gcv-deploy-ok ${new Date().toISOString()}\n`,
+    "utf8"
+  );
 
   return { outDir, copied };
 }

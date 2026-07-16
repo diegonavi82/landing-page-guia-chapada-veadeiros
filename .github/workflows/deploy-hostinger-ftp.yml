@@ -35,6 +35,7 @@ jobs:
           test -f Build_prod/api/helpers/excursion_attractions.php
           test -f Build_prod/api/admin/seed-test-excursion.php
           test -f Build_prod/api/admin/deploy-check.php
+          test -f Build_prod/deploy-canary.txt
           echo "Build_prod API helpers OK"
 
       - name: Verificar secrets FTP
@@ -49,7 +50,8 @@ jobs:
           if [ -z "$FTP_PASSWORD" ]; then echo "::error::Secret FTP_PASSWORD está vazio ou não existe."; ok=1; fi
           exit $ok
 
-      # Sem o state file, o FTP reenvia o pacote inteiro (Build_prod)
+      # Destino: na Hostinger o login FTP costuma ser a HOME (acima do site).
+      # Por isso usamos public_html/ — se o FTP já abrir dentro de public_html, mude o secret FTP_REMOTE_DIR para ./
       - name: Forçar reupload completo
         if: contains(github.event.head_commit.message, '[ftp-full]') || github.event_name == 'workflow_dispatch'
         continue-on-error: true
@@ -58,7 +60,7 @@ jobs:
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
           FTP_SECURE: "true"
-          FTP_REMOTE_DIR: ./
+          FTP_REMOTE_DIR: public_html/
         run: node tools/ftp-reset-sync-state.mjs
 
       - name: Deploy FTP
@@ -71,7 +73,9 @@ jobs:
           port: 21
           security: loose
           local-dir: ./Build_prod/
-          server-dir: ./
+          # FTP Homeinger costuma abrir na HOME → precisa public_html/
+          # Se criar public_html/public_html, mude para: ./
+          server-dir: public_html/
           dangerous-clean-slate: false
           exclude: |
             **/.env
@@ -80,4 +84,4 @@ jobs:
             **/error_log
             **/.gitkeep
             **/assets/img/uploads/**
-          log-level: standard
+          log-level: verbose
