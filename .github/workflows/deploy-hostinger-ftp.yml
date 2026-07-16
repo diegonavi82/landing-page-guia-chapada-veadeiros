@@ -43,6 +43,17 @@ jobs:
           if [ -z "$FTP_PASSWORD" ]; then echo "::error::Secret FTP_PASSWORD está vazio ou não existe."; ok=1; fi
           exit $ok
 
+      # Sem o state file, o FTP reenvia o pacote inteiro (Build_prod)
+      - name: Forçar reupload completo
+        if: contains(github.event.head_commit.message, '[ftp-full]') || github.event_name == 'workflow_dispatch'
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          FTP_SECURE: "true"
+          FTP_REMOTE_DIR: ./
+        run: node tools/ftp-reset-sync-state.mjs
+
       - name: Deploy FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.4.0
         with:
@@ -52,7 +63,6 @@ jobs:
           protocol: ftps
           port: 21
           local-dir: ./Build_prod/
-          # Root FTP Hostinger costuma ser public_html. Se precisar de subpasta, altere aqui.
           server-dir: ./
           dangerous-clean-slate: false
           exclude: |
