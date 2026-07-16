@@ -5674,6 +5674,21 @@
     return fromPayload && fromPayload.length ? fromPayload : fallbackRows;
   }
 
+  /** Une API (CMS) + payload estático; a API ganha em data+hora iguais. */
+  function mergeExcursaoRows(staticRows, liveRows) {
+    var live = Array.isArray(liveRows) ? liveRows : [];
+    var liveKeys = {};
+    live.forEach(function (e) {
+      liveKeys[String(excursaoDateIso(e) || "") + "|" + String((e && e.hora) || "")] = true;
+    });
+    var merged = live.slice();
+    (staticRows || []).forEach(function (e) {
+      var k = String(excursaoDateIso(e) || "") + "|" + String((e && e.hora) || "");
+      if (!liveKeys[k]) merged.push(e);
+    });
+    return merged;
+  }
+
   function fetchLiveExcursaoRows(locale, cb) {
     try {
       var xhr = new XMLHttpRequest();
@@ -6007,8 +6022,9 @@
       syncCarouselUi();
     }
 
+    var activeFilters = {};
+
     if (filtersHost) {
-      var activeFilters = {};
       mountExcursaoFilters(filtersHost, s, allExcursoes, function (filters, resultsEl) {
         activeFilters = filters;
         carouselExcursoes = filterExcursaoList(allExcursoes, filters, s);
@@ -6077,10 +6093,10 @@
       }
     });
 
-    // Preferência: MySQL (admin) quando houver saídas publicadas; senão mantém payload/build.
+    // CMS (MySQL) + payload do build. Nunca renderiza fora do filtro ativo.
     fetchLiveExcursaoRows(locale, function (liveRows) {
       if (!liveRows || !liveRows.length) return;
-      sourceRows = liveRows;
+      sourceRows = mergeExcursaoRows(staticRows, liveRows);
       var freshAll = sortExcursaoByDeparture(filterFutureExcursoes(applyBookingOverlays(sourceRows)));
       allExcursoes = freshAll;
       if (!allExcursoes.length) {
@@ -6089,19 +6105,21 @@
       }
       root.removeAttribute("aria-hidden");
       root.style.display = "";
+
+      function applyFiltersAndRender(filters, resultsEl) {
+        if (filters) activeFilters = filters;
+        carouselExcursoes = filterExcursaoList(allExcursoes, activeFilters || {}, s);
+        if (resultsEl) resultsEl.textContent = tpl(s.filterResults, { n: carouselExcursoes.length });
+        renderTrackOnly();
+        viewport.scrollLeft = 0;
+        syncCarouselUi();
+      }
+
       if (filtersHost) {
-        // Remonta filtros com bounds/datas da API (ex.: saída longe no calendário)
         filtersHost.innerHTML = "";
-        mountExcursaoFilters(filtersHost, s, allExcursoes, function (filters, resultsEl) {
-          activeFilters = filters;
-          carouselExcursoes = filterExcursaoList(allExcursoes, filters, s);
-          if (resultsEl) resultsEl.textContent = tpl(s.filterResults, { n: carouselExcursoes.length });
-          renderTrackOnly();
-          viewport.scrollLeft = 0;
-          syncCarouselUi();
-        }, locale);
+        mountExcursaoFilters(filtersHost, s, allExcursoes, applyFiltersAndRender, locale);
       } else {
-        carouselExcursoes = allExcursoes.slice();
+        carouselExcursoes = filterExcursaoList(allExcursoes, activeFilters || {}, s);
         renderTrackOnly();
         syncCarouselUi();
       }
