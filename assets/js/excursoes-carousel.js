@@ -1189,6 +1189,41 @@
     return end;
   }
 
+  /**
+   * Janela padrão = hoje → +30 dias.
+   * Se não houver nenhuma saída nesse intervalo (ex.: só em 2027),
+   * desloca o período para a próxima data publicada.
+   */
+  function smartDefaultFilterRange(floorIso, calendarMaxIso, excursionDates) {
+    var floor = floorIso;
+    var ceiling = calendarMaxIso || floor;
+    var defaultEnd = defaultFilterRangeEnd(floor, ceiling);
+    var dates = [];
+    if (excursionDates && typeof excursionDates.forEach === "function") {
+      excursionDates.forEach(function (d) {
+        if (d) dates.push(d);
+      });
+    } else if (Array.isArray(excursionDates)) {
+      dates = excursionDates.filter(Boolean);
+    }
+    dates.sort();
+    var hasInWindow = dates.some(function (d) {
+      return compareIso(d, floor) >= 0 && compareIso(d, defaultEnd) <= 0;
+    });
+    if (hasInWindow || !dates.length) {
+      return clampIsoRangeToFloor(floor, defaultEnd, ceiling);
+    }
+    var next = null;
+    for (var i = 0; i < dates.length; i++) {
+      if (compareIso(dates[i], floor) >= 0) {
+        next = dates[i];
+        break;
+      }
+    }
+    if (!next) return clampIsoRangeToFloor(floor, defaultEnd, ceiling);
+    return clampIsoRangeToFloor(next, defaultFilterRangeEnd(next, ceiling), ceiling);
+  }
+
   function scanExcursaoBounds(list, s) {
     var dates = [];
     var prices = [];
@@ -1368,11 +1403,7 @@
   function mountExcursaoDateRangePicker(fieldEl, bounds, s, locale, excursionDates, onRangeCommit) {
     var maxIso = bounds.dateMax;
     var floor = dateFilterFloorIso(maxIso);
-    var initial = clampIsoRangeToFloor(
-      floor,
-      defaultFilterRangeEnd(floor, maxIso),
-      maxIso,
-    );
+    var initial = smartDefaultFilterRange(floor, maxIso, excursionDates);
     var startIso = initial.dateFrom;
     var endIso = initial.dateTo;
     var pickPhase = "start";
@@ -1667,11 +1698,13 @@
       },
       reset: function () {
         var f = floorIso();
-        var clamped = clampIsoRangeToFloor(f, defaultFilterRangeEnd(f, maxIso), maxIso);
+        var clamped = smartDefaultFilterRange(f, maxIso, excursionDates);
         startIso = clamped.dateFrom;
         endIso = clamped.dateTo;
         pickPhase = "start";
         pickWarn = "";
+        viewYear = isoToDate(startIso).getFullYear();
+        viewMonth = isoToDate(startIso).getMonth();
         updateValueText();
         renderCalendar();
         closePopover();
@@ -6045,14 +6078,22 @@
       }
       root.removeAttribute("aria-hidden");
       root.style.display = "";
-      if (filtersHost && typeof filterExcursaoList === "function") {
-        // filtros já montados usam activeFilters via closure no refresh; aqui reaplica lista completa
-        carouselExcursoes = allExcursoes.slice();
+      if (filtersHost) {
+        // Remonta filtros com bounds/datas da API (ex.: saída longe no calendário)
+        filtersHost.innerHTML = "";
+        mountExcursaoFilters(filtersHost, s, allExcursoes, function (filters, resultsEl) {
+          activeFilters = filters;
+          carouselExcursoes = filterExcursaoList(allExcursoes, filters, s);
+          if (resultsEl) resultsEl.textContent = tpl(s.filterResults, { n: carouselExcursoes.length });
+          renderTrackOnly();
+          viewport.scrollLeft = 0;
+          syncCarouselUi();
+        }, locale);
       } else {
         carouselExcursoes = allExcursoes.slice();
+        renderTrackOnly();
+        syncCarouselUi();
       }
-      renderTrackOnly();
-      syncCarouselUi();
     });
   }
 
