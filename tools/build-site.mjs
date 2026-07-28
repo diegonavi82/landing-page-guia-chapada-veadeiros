@@ -1493,7 +1493,7 @@ function homeExcursionsSection(locale) {
   const copy = {
     pt: {
       badge: "Excursões",
-      title: "Próximas saídas",
+      title: "Excursões",
       prev: "Excursão anterior",
       next: "Próxima excursão",
       dots: "Navegação do carrossel de excursões",

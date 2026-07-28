@@ -160,5 +160,24 @@
         "valorIngresso": 50
       }
     ]
+  },
+  {
+    "dayNum": "30",
+    "monthName": "julho",
+    "weekday": "Quinta-feira",
+    "dateISO": "2026-07-30",
+    "embarque": "São Jorge",
+    "destino": "Mirante da Janela",
+    "hora": "8:45",
+    "valor": 130,
+    "confirmada": true,
+    "pessoasInscritas": 2,
+    "grupoMaximo": 10,
+    "vagasRestantes": 8,
+    "cardImg": "/assets/img/imagens/mirante-janela-guia-chapada-veadeiros-sao-jorge-parque-nacional-3.jpg",
+    "atrativoPath": "atrativos/mirante-janela-cachoeira-abismo-guia-chapada-veadeiros-sao-jorge.html",
+    "guiaNome": "Diego Navi",
+    "guiaFoto": "/assets/img/imagens/guia-diego-navi.webp",
+    "valorIngresso": 50
   }
 ]
