@@ -146,6 +146,7 @@ const SSR = {
     exclTransport: "Transporte",
     exclLunch: "Almoço",
     cta: "Quero participar",
+    guiaPending: "A definir",
     guiaAbout: "Sobre {{nome}}",
     guiaModalClose: "Fechar",
   },
@@ -196,6 +197,7 @@ const SSR = {
     exclTransport: "Transport",
     exclLunch: "Lunch",
     cta: "I want to join",
+    guiaPending: "To be announced",
     guiaAbout: "About {{nome}}",
     guiaModalClose: "Close",
   },
@@ -246,6 +248,7 @@ const SSR = {
     exclTransport: "Transporte",
     exclLunch: "Almuerzo",
     cta: "Quiero participar",
+    guiaPending: "Por definir",
     guiaAbout: "Acerca de {{nome}}",
     guiaModalClose: "Cerrar",
   },
@@ -356,7 +359,10 @@ function guiaLangsSsr(nome, locale) {
 }
 
 function guiaChipInnerSsr(nome, foto, locale, altInPhoto) {
-  const langs = guiaLangsSsr(nome, locale);
+  let langs = guiaLangsSsr(nome, locale);
+  if (!langs) {
+    langs = `<span class="gcv-excursoes-card__guide-langs gcv-excursoes-card__guide-langs--empty" aria-hidden="true"></span>`;
+  }
   const info =
     `<div class="gcv-excursoes-card__guide-info">` +
     `<span class="gcv-excursoes-card__guide-label">Guia</span>` +
@@ -370,13 +376,24 @@ function guiaChipInnerSsr(nome, foto, locale, altInPhoto) {
       info
     );
   }
-  return `<div class="gcv-excursoes-card__guide-icon"><i class="ti ti-user" aria-hidden="true"></i></div>` + info;
+  return (
+    `<div class="gcv-excursoes-card__guide-icon" aria-hidden="true"><i class="ti ti-user" aria-hidden="true"></i></div>` +
+    info
+  );
 }
 
 function guiaChipSsr(e, locale) {
-  const nome = e && e.guiaNome ? String(e.guiaNome) : null;
-  if (!nome) return "";
   const s = SSR[locale] || SSR.pt;
+  const pending = !!(e && (e.guiaPendente === true || e.guiaPending === true));
+  const nome = e && e.guiaNome ? String(e.guiaNome) : null;
+  if (!nome && pending) {
+    return (
+      `<div class="gcv-excursoes-card__guide gcv-excursoes-card__guide--pending">` +
+      guiaChipInnerSsr(s.guiaPending || "A definir", null, locale, "") +
+      `</div>`
+    );
+  }
+  if (!nome) return "";
   const foto = e.guiaFoto ? String(e.guiaFoto) : null;
   const slug = GUIA_PROFILE_SLUG[nome];
   if (slug) {
@@ -478,6 +495,16 @@ function excursaoDateLabelSsr(e, locale) {
   return `${e.dayNum} de ${e.monthName}/${year}`;
 }
 
+/** Data do passeio no topo do card: "1 Agosto 2026" */
+function excursaoCardDateHeadlineSsr(e) {
+  const day = e && e.dayNum != null ? String(e.dayNum) : "";
+  const monthRaw = String((e && e.monthName) || "").trim();
+  const month = monthRaw ? monthRaw.charAt(0).toUpperCase() + monthRaw.slice(1) : "";
+  const iso = String((e && e.dateISO) || "").slice(0, 10);
+  const year = /^\d{4}/.test(iso) ? iso.slice(0, 4) : "";
+  return [day, month, year].filter(Boolean).join(" ");
+}
+
 function excursaoCartIdSsr(e) {
   const iso = String((e && e.dateISO) || "").slice(0, 10);
   const destRaw =
@@ -569,11 +596,20 @@ function dateheroTimeHtmlSsr(hora) {
  * @param {string} locale
  */
 export function excursionsCarouselTrackSsrHtml(locale) {
-  const rows = excursaoRowsForLocale(locale);
+  const allRows = excursaoRowsForLocale(locale);
+  const firstIso = String((allRows[0] && allRows[0].dateISO) || "").slice(0, 10);
+  const rows = firstIso
+    ? allRows.filter((e) => String(e.dateISO || "").slice(0, 10) === firstIso)
+    : allRows;
   const s = SSR[locale] || SSR.pt;
+  const timeLabel = locale === "en" ? "Departure" : locale === "es" ? "Salida" : "Saída";
+  const embarqueLabel = locale === "en" ? "Meeting point" : "Embarque";
+  const toggleAdd =
+    locale === "en" ? "Add to cart" : locale === "es" ? "Agregar al carrito" : "Adicionar ao carrinho";
   return rows
     .map((e, idx) => {
       const hora = horaExcursao(e);
+      const city = String(e.embarque || s.meetingCity);
       const comTransporte = e.comTransporte === true;
       let mod = e.confirmada ? "gcv-excursoes-card--confirmada" : "gcv-excursoes-card--pendente";
       if (comTransporte) mod += " gcv-excursoes-card--transporte";
@@ -591,18 +627,18 @@ export function excursionsCarouselTrackSsrHtml(locale) {
         (e.confirmada ? ' data-excursao-status="confirmada"' : ' data-excursao-status="formacao"') +
         ' data-ssr-fallback="1" aria-selected="false">' +
         '<div class="gcv-excursoes-card__head">' +
-        '<div class="gcv-excursoes-card__datestrip">' +
-        '<div class="gcv-excursoes-card__datehero">' +
-        `<span class="gcv-excursoes-card__day">${esc(String(e.dayNum))}</span>` +
-        '<div class="gcv-excursoes-card__datehero-text">' +
-        `<span class="gcv-excursoes-card__month">${esc(String(e.monthName))}</span>` +
-        `<span class="gcv-excursoes-card__weekday">${esc(String(e.weekday))}</span>` +
-        "</div>" +
-        `<div class="gcv-excursoes-card__datehero-slot" data-gcv-exc-datehero-slot>${dateheroTimeHtmlSsr(hora)}</div></div>` +
-        '<div class="gcv-excursoes-card__row gcv-excursoes-card__row--city">' +
-        '<div class="gcv-excursoes-card__city-block">' +
-        '<span class="gcv-excursoes-card__loc"><i class="ti ti-map-pin" aria-hidden="true"></i> ' +
-        esc(String(e.embarque || s.meetingCity)) +
+        '<div class="gcv-excursoes-card__select-band" data-gcv-exc-card-toggle>' +
+        '<div class="gcv-excursoes-card__select-band-main">' +
+        `<div class="gcv-excursoes-card__card-date">${esc(excursaoCardDateHeadlineSsr(e))}</div>` +
+        '<div class="gcv-excursoes-card__datestrip gcv-excursoes-card__datestrip--time-only">' +
+        '<div class="gcv-excursoes-card__time-city-grid">' +
+        '<div class="gcv-excursoes-card__meta-col gcv-excursoes-card__meta-col--time">' +
+        `<span class="gcv-excursoes-card__time-kicker">${esc(timeLabel)}</span>` +
+        `<span class="gcv-excursoes-card__time-hero">${esc(hora)}</span></div>` +
+        '<div class="gcv-excursoes-card__meta-col gcv-excursoes-card__meta-col--city">' +
+        `<span class="gcv-excursoes-card__time-kicker">${esc(embarqueLabel)}</span>` +
+        `<span class="gcv-excursoes-card__loc gcv-excursoes-card__loc--inline" title="${esc(city)}">` +
+        esc(city) +
         "</span></div></div></div>" +
         '<div class="gcv-excursoes-card__meta-stack">' +
         '<div class="gcv-excursoes-card__row gcv-excursoes-card__row--status">' +
@@ -613,7 +649,9 @@ export function excursionsCarouselTrackSsrHtml(locale) {
         `<span class="gcv-excursoes-card__cap-x">${x}</span>` +
         '<span class="gcv-excursoes-card__cap-slash">/</span>' +
         `<span class="gcv-excursoes-card__cap-y">${cap}</span>` +
-        "</span></span></div></div>" +
+        "</span></span></div></div></div>" +
+        `<button type="button" class="gcv-excursoes-card__quick-add" data-gcv-exc-card-toggle aria-label="${esc(toggleAdd)}" aria-pressed="false" title="${esc(toggleAdd)}">` +
+        '<i class="ti ti-plus" aria-hidden="true"></i></button></div>' +
         cardSpotsBlockSsr(e, locale, s) +
         "</div>" +
         '<div class="gcv-excursoes-card__body">' +

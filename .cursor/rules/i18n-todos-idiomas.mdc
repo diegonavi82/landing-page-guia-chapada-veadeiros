@@ -1,0 +1,20 @@
+---
+description: Sempre aplicar mudanças de texto/conteúdo em pt, en e es
+alwaysApply: true
+---
+
+# Idiomas (pt / en / es)
+
+Sempre que alterar **texto, conteúdo, labels, bios, dados de excursões, HTML ou strings de UI**:
+
+1. Aplicar a mudança nos **três idiomas**: `pt`, `en` e `es`.
+2. Fontes típicas a manter alinhadas:
+   - `tools/excursoes-carousel-data.mjs` (e seed, se houver)
+   - `tools/excursoes-guides-profiles.mjs`
+   - `assets/js/excursoes-carousel.js` (fallback / strings de UI)
+   - `tools/excursoes-carousel-ssr.mjs` (labels SSR)
+   - páginas em `en/` e `es/` quando o HTML for editado à mão
+3. Traduzir de forma natural (não deixar português em `en`/`es`).
+4. Rodar `npm run build` depois, para injetar payloads e sincronizar as homes.
+
+CSS/layout puro sem strings não exige tradução — mas qualquer string visível ao usuário, sim.

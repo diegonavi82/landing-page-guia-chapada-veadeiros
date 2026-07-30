@@ -416,12 +416,56 @@
     return [it.dateLabel, it.destino || shortDestLabel(it)].filter(Boolean).join(" · ");
   }
 
-  function cartItemEmbarque(it) {
+  function cartItemDestinoTitles(it) {
+    if (Array.isArray(it && it.destinos) && it.destinos.length) {
+      return it.destinos
+        .map(function (d) {
+          return String(d || "").trim();
+        })
+        .filter(Boolean);
+    }
+    var single = shortDestLabel(it);
+    return single ? [single] : [];
+  }
+
+  function cartItemDateLine(it) {
+    return String((it && it.dateLabel) || "").trim();
+  }
+
+  function cartItemEmbarqueText(it) {
     var em = String(it.embarque || "").trim();
-    var hora = formatCartHora(it.hora);
+    var hora = String(it.hora || "").trim() || formatCartHora(it.hora);
     if (!em && !hora) return "";
-    var label = s("cartEmbarqueLabel") || "Embarque:";
-    return label + " " + [em, hora].filter(Boolean).join(" ");
+    return [em, hora].filter(Boolean).join(" ");
+  }
+
+  /** Texto plano (PIX / linhas). */
+  function cartItemEmbarque(it) {
+    return cartItemEmbarqueText(it);
+  }
+
+  function cartItemInfoHtml(it) {
+    var dateLine = cartItemDateLine(it);
+    var titles = cartItemDestinoTitles(it);
+    var titlesHtml = titles
+      .map(function (t) {
+        return '<p class="gcv-exc-cart-item__destino">' + escapeHtml(t) + "</p>";
+      })
+      .join("");
+    var embarque = cartItemEmbarqueText(it);
+    return (
+      (dateLine
+        ? '<p class="gcv-exc-cart-item__date">' + escapeHtml(dateLine) + "</p>"
+        : "") +
+      (titlesHtml ||
+        '<p class="gcv-exc-cart-item__destino">' + escapeHtml(shortDestLabel(it)) + "</p>") +
+      (embarque
+        ? '<p class="gcv-exc-cart-item__embarque">' +
+          '<i class="ti ti-map-pin gcv-exc-cart-item__gps" aria-hidden="true"></i> ' +
+          escapeHtml(embarque) +
+          "</p>"
+        : "")
+    );
   }
 
   function cartItemPrice(it) {
@@ -442,10 +486,24 @@
     );
   }
 
+  function cartItemPriceHtml(it) {
+    var qty = parseInt(String(it.qty), 10) || 0;
+    var unit = parseInt(String(it.valorUnit), 10) || 0;
+    var seatsWord = qty === 1 ? s("cartSeatOne") || "Pessoa" : s("cartSeatsMany") || "Pessoas";
+    var suffix = s("cartLineTotal") || "(total)";
+    var totalPart = formatBrl(unit * qty) + " " + suffix;
+    return (
+      escapeHtml(String(qty) + " " + seatsWord + " × " + formatBrl(unit) + " = ") +
+      '<strong class="gcv-exc-cart-item__total">' +
+      escapeHtml(totalPart) +
+      "</strong>"
+    );
+  }
+
   /** Linhas completas para exibir no modal (sem limite de 73 caracteres). */
   function cartDisplayLines(items) {
     return items.map(function (it) {
-      var parts = [cartItemTitle(it)];
+      var parts = [cartItemDateLine(it)].concat(cartItemDestinoTitles(it));
       var emb = cartItemEmbarque(it);
       if (emb) parts.push(emb);
       parts.push(cartItemPrice(it));
@@ -748,22 +806,14 @@
     body.innerHTML = items
       .map(function (it) {
         var id = escapeHtml(it.id);
-        var title = cartItemTitle(it);
-        var embarque = cartItemEmbarque(it);
-        var priceLine = cartItemPrice(it);
         return (
           '<article class="gcv-exc-cart-item" data-cart-id="' +
           id +
           '">' +
           '<div class="gcv-exc-cart-item__info">' +
-          '<p class="gcv-exc-cart-item__title">' +
-          escapeHtml(title) +
-          "</p>" +
-          (embarque
-            ? '<p class="gcv-exc-cart-item__embarque">' + escapeHtml(embarque) + "</p>"
-            : "") +
+          cartItemInfoHtml(it) +
           '<p class="gcv-exc-cart-item__meta">' +
-          escapeHtml(priceLine) +
+          cartItemPriceHtml(it) +
           "</p></div>" +
           '<div class="gcv-exc-cart-item__actions">' +
           '<div class="gcv-excursoes-card__qty gcv-excursoes-card__qty--sm">' +
@@ -843,10 +893,12 @@
       if (item.hora) existing.hora = item.hora;
       if (item.guiaNome) existing.guiaNome = item.guiaNome;
       if (item.departureMs) existing.departureMs = item.departureMs;
+      if (Array.isArray(item.destinos) && item.destinos.length) existing.destinos = item.destinos.slice();
     } else {
       items.push({
         id: item.id,
         destino: item.destino,
+        destinos: Array.isArray(item.destinos) ? item.destinos.slice() : undefined,
         dateLabel: item.dateLabel,
         dateIso: dateIso || item.dateIso || "",
         valorUnit: item.valorUnit,

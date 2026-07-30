@@ -1497,6 +1497,7 @@ function homeExcursionsSection(locale) {
       prev: "Excursão anterior",
       next: "Próxima excursão",
       dots: "Navegação do carrossel de excursões",
+      dateTabs: "Datas com passeios",
     },
     en: {
       badge: "Small-group excursions",
@@ -1504,6 +1505,7 @@ function homeExcursionsSection(locale) {
       prev: "Previous excursion",
       next: "Next excursion",
       dots: "Excursions carousel navigation",
+      dateTabs: "Dates with tours",
     },
     es: {
       badge: "Excursiones en grupo",
@@ -1511,6 +1513,7 @@ function homeExcursionsSection(locale) {
       prev: "Excursión anterior",
       next: "Próxima excursión",
       dots: "Navegación del carrusel de excursiones",
+      dateTabs: "Fechas con paseos",
     },
   };
   const L = copy[locale];
@@ -1525,14 +1528,15 @@ function homeExcursionsSection(locale) {
       </div>
       <div class="gcv-excursoes__filters-host" id="gcv-excursoes-filters-host"></div>
       <p class="gcv-excursoes__filter-empty" id="gcv-excursoes-filter-empty" hidden></p>
-      <div class="gcv-excursoes__shell">
-        <button type="button" class="gcv-excursoes__nav gcv-excursoes__nav--prev" aria-label="${esc(L.prev)}">
+      <div class="gcv-excursoes__shell gcv-excursoes__shell--by-date">
+        <div class="gcv-excursoes__date-tabs" id="gcv-excursoes-date-tabs" role="tablist" aria-label="${esc(L.dateTabs || "Datas com passeios")}"></div>
+        <button type="button" class="gcv-excursoes__nav gcv-excursoes__nav--prev" aria-label="${esc(L.prev)}" hidden aria-hidden="true">
           <i class="ti ti-chevron-left" aria-hidden="true"></i>
         </button>
-        <div class="gcv-excursoes__viewport">
-          <div class="gcv-excursoes__track">${excursionsCarouselTrackSsrHtml(locale)}</div>
+        <div class="gcv-excursoes__viewport gcv-excursoes__viewport--day-list" id="gcv-excursoes-day-panel">
+          <div class="gcv-excursoes__track gcv-excursoes__track--day-list">${excursionsCarouselTrackSsrHtml(locale)}</div>
         </div>
-        <button type="button" class="gcv-excursoes__nav gcv-excursoes__nav--next" aria-label="${esc(L.next)}">
+        <button type="button" class="gcv-excursoes__nav gcv-excursoes__nav--next" aria-label="${esc(L.next)}" hidden aria-hidden="true">
           <i class="ti ti-chevron-right" aria-hidden="true"></i>
         </button>
       </div>
