@@ -196,6 +196,20 @@ function gcv_cms_ensure_core_tables(PDO $pdo): void
           INDEX idx_exa_attr (attraction_id),
           INDEX idx_exa_order (excursion_id, sort_order)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+        // Vagas Pix do carrossel estático (inscritos compartilhados)
+        "CREATE TABLE IF NOT EXISTS gcv_pix_carousel_seats (
+          cart_id VARCHAR(220) NOT NULL,
+          qty SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+          updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          PRIMARY KEY (cart_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+        "CREATE TABLE IF NOT EXISTS gcv_pix_carousel_seat_applied (
+          reservation_id VARCHAR(32) NOT NULL,
+          applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (reservation_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
     ];
 
     foreach ($creates as $sql) {

@@ -90,12 +90,26 @@ function gcv_pix_mark_paid(string $reservationId, string $source = 'manual'): ?a
     if (gcv_pix_effective_status($res) === 'EXPIRED') {
         return null;
     }
+    $wasPaid = strtoupper((string)($res['status'] ?? '')) === 'PAID';
     $res['status'] = 'PAID';
-    $res['paid_at'] = gmdate('c');
-    $res['paid_source'] = $source;
+    $res['paid_at'] = $res['paid_at'] ?? gmdate('c');
+    $res['paid_source'] = $res['paid_source'] ?? $source;
+    if (!$wasPaid) {
+        $res['paid_at'] = gmdate('c');
+        $res['paid_source'] = $source;
+    }
     if (!gcv_pix_write_reservation($res)) {
         return null;
     }
+
+    // Atualiza inscritos compartilhados + confirmação por quórum (idempotente)
+    try {
+        require_once __DIR__ . '/pix_seats_store.php';
+        gcv_pix_seats_apply_reservation($res);
+    } catch (Throwable $e) {
+        /* não bloqueia o PAID se o arquivo de seats falhar */
+    }
+
     return $res;
 }
 

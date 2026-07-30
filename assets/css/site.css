@@ -3217,6 +3217,119 @@ table.season th {
   z-index: 2;
 }
 
+/* Carrinho de excursões — visível em todas as páginas (não depende só de excursoes.css) */
+.gcv-exc-cart-root {
+  display: contents;
+}
+
+.header-actions {
+  display: none;
+  align-items: center;
+  gap: 0.15rem;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+@media (max-width: 860px) {
+  .header-actions {
+    display: flex;
+  }
+}
+
+.gcv-exc-cart-float {
+  display: none;
+}
+
+.gcv-exc-cart-float--header:not([hidden]) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  flex-shrink: 0;
+  width: 2.65rem;
+  height: 2.65rem;
+  margin: 0 0.15rem 0 0.35rem;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #059669 0%, #047857 100%);
+  color: #fff;
+  box-shadow:
+    0 0.2rem 0.75rem rgba(4, 120, 87, 0.32),
+    0 0 0 1px rgba(255, 255, 255, 0.14) inset;
+  cursor: pointer;
+  font-size: 1.35rem;
+  line-height: 1;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  z-index: 200;
+}
+
+.gcv-exc-cart-float--header:not([hidden]):hover {
+  transform: scale(1.05);
+}
+
+.gcv-exc-cart-float--header:focus-visible {
+  outline: 3px solid #064e3b;
+  outline-offset: 2px;
+}
+
+.gcv-exc-cart-float--dock:not([hidden]) {
+  position: fixed;
+  right: max(1rem, env(safe-area-inset-right, 0px));
+  bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+  z-index: 10060;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.35rem;
+  height: 3.35rem;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #059669 0%, #047857 100%);
+  color: #fff;
+  box-shadow:
+    0 0.35rem 1.1rem rgba(4, 120, 87, 0.38),
+    0 0 0 1px rgba(255, 255, 255, 0.14) inset;
+  cursor: pointer;
+  font-size: 1.55rem;
+  line-height: 1;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.gcv-exc-cart-float--dock:not([hidden]):hover {
+  transform: scale(1.05);
+}
+
+.gcv-exc-cart-float--dock:focus-visible {
+  outline: 3px solid #064e3b;
+  outline-offset: 3px;
+}
+
+.gcv-exc-cart-float__badge {
+  position: absolute;
+  top: -0.15rem;
+  right: -0.1rem;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.24rem;
+  border-radius: 999px;
+  background: #f59e0b;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 900;
+  line-height: 1.15rem;
+  text-align: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+@media print {
+  .gcv-exc-cart-float--header,
+  .gcv-exc-cart-float--dock {
+    display: none !important;
+  }
+}
+
 /* Botão WhatsApp fixo — apenas telemóvel / tablet (home e contato) */
 .gcv-float-wa {
   display: none;

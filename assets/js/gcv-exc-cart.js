@@ -5,6 +5,7 @@
   "use strict";
 
   var STORAGE_KEY = "gcv-excursao-cart";
+  var OPEN_CART_FLAG = "gcv-exc-cart-open";
   /** Mesmo corte do carrossel: reserva só com mais de 2 h até o embarque. */
   var BOOKING_CUTOFF_MS = 2 * 60 * 60 * 1000;
   var _strings = {};
@@ -12,11 +13,105 @@
   var _onPay = null;
   var _onChange = null;
   var _resolveDepartureMs = null;
+  var _autoInited = false;
+
+  /** Strings mínimas para páginas sem carrossel (pt/en/es). */
+  var FALLBACK_STRINGS = {
+    pt: {
+      cartTitle: "Carrinho",
+      cartEmpty: "Seu carrinho está vazio",
+      cartCheckout: "Pagar com PIX",
+      cartBack: "Voltar",
+      cartRemove: "Remover",
+      cartFabLabel: "Carrinho",
+      cartClose: "Fechar carrinho",
+      cartSameDayBlocked: "Você já escolheu um passeio para este dia. Remova-o para escolher outro.",
+      cartItemsExpired: "Alguns passeios saíram do carrinho porque o embarque já passou ou está muito próximo.",
+      bookTotal: "Total",
+      bookQtyMinus: "Menos uma pessoa",
+      bookQtyPlus: "Mais uma pessoa",
+      pixModalClose: "Fechar",
+      toastOk: "Entendi",
+    },
+    en: {
+      cartTitle: "Cart",
+      cartEmpty: "Your cart is empty",
+      cartCheckout: "Pay with PIX",
+      cartBack: "Back",
+      cartRemove: "Remove",
+      cartFabLabel: "Cart",
+      cartClose: "Close cart",
+      cartSameDayBlocked: "You already chose a tour for this day. Remove it to pick another.",
+      cartItemsExpired: "Some tours left your cart because departure has passed or is too soon.",
+      bookTotal: "Total",
+      bookQtyMinus: "Remove one person",
+      bookQtyPlus: "Add one person",
+      pixModalClose: "Close",
+      toastOk: "Got it",
+    },
+    es: {
+      cartTitle: "Carrito",
+      cartEmpty: "Tu carrito está vacío",
+      cartCheckout: "Pagar con PIX",
+      cartBack: "Volver",
+      cartRemove: "Quitar",
+      cartFabLabel: "Carrito",
+      cartClose: "Cerrar carrito",
+      cartSameDayBlocked: "Ya elegiste un paseo para este día. Quítalo para elegir otro.",
+      cartItemsExpired: "Algunos paseos salieron del carrito porque el embarque ya pasó o está muy cerca.",
+      bookTotal: "Total",
+      bookQtyMinus: "Quitar una persona",
+      bookQtyPlus: "Añadir una persona",
+      pixModalClose: "Cerrar",
+      toastOk: "Entendido",
+    },
+  };
+
+  function detectPageLocale() {
+    var htmlLang = String((document.documentElement && document.documentElement.lang) || "")
+      .toLowerCase()
+      .slice(0, 2);
+    if (htmlLang === "en" || htmlLang === "es") return htmlLang;
+    var path = String((global.location && global.location.pathname) || "");
+    if (/\/en(\/|$)/.test(path)) return "en";
+    if (/\/es(\/|$)/.test(path)) return "es";
+    return "pt";
+  }
+
+  function homeHrefForLocale(loc) {
+    if (loc === "en") return "/en/";
+    if (loc === "es") return "/es/";
+    return "/";
+  }
+
+  function redirectToHomeForCheckout() {
+    try {
+      global.sessionStorage.setItem(OPEN_CART_FLAG, "1");
+    } catch (err) {
+      /* */
+    }
+    var loc = _locale === "en" || _locale === "es" ? _locale : "pt";
+    global.location.href = homeHrefForLocale(loc) + "#excursoes-junho";
+  }
+
+  function consumeOpenCartFlag() {
+    try {
+      if (global.sessionStorage.getItem(OPEN_CART_FLAG) === "1") {
+        global.sessionStorage.removeItem(OPEN_CART_FLAG);
+        return true;
+      }
+    } catch (err) {
+      /* */
+    }
+    return false;
+  }
 
   function s(key) {
     var loc = _locale === "en" || _locale === "es" ? _locale : "pt";
     var pack = _strings[loc] || _strings.pt || {};
-    return pack[key] || "";
+    if (pack[key]) return pack[key];
+    var fallback = FALLBACK_STRINGS[loc] || FALLBACK_STRINGS.pt;
+    return fallback[key] || "";
   }
 
   function policyUi() {
@@ -151,6 +246,138 @@
     else foot.appendChild(policies);
   }
 
+  function departureMsFromItemFields(it) {
+    var iso = itemDateIso(it);
+    if (!iso) return NaN;
+    var match = String((it && it.hora) || "")
+      .trim()
+      .match(/^(\d{1,2}):(\d{2})$/);
+    var hh = match ? parseInt(match[1], 10) : 12;
+    var mm = match ? parseInt(match[2], 10) : 0;
+    var ms = Date.parse(
+      iso +
+        "T" +
+        String(hh).padStart(2, "0") +
+        ":" +
+        String(mm).padStart(2, "0") +
+        ":00-03:00",
+    );
+    return Number.isFinite(ms) ? ms : NaN;
+  }
+
+  function catalogCartIdFromRow(e) {
+    if (!e) return "";
+    if (global.GcvExcBookings && typeof global.GcvExcBookings.cartIdFromExcursao === "function") {
+      return String(global.GcvExcBookings.cartIdFromExcursao(e) || "")
+        .trim()
+        .toLowerCase();
+    }
+    var iso = String(e.dateISO || e.dateIso || "").slice(0, 10);
+    var destRaw =
+      e.cartSlug ||
+      e.destino ||
+      (Array.isArray(e.destinos)
+        ? e.destinos
+            .map(function (d) {
+              return d && d.destino;
+            })
+            .filter(Boolean)
+            .join("-")
+        : "") ||
+      "excursao";
+    var dest = String(destRaw)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+    if (iso) return iso + "-" + dest;
+    return dest;
+  }
+
+  function departureMsFromCatalogRow(e) {
+    if (!e) return NaN;
+    var stored = parseInt(String(e.departureMs), 10);
+    if (Number.isFinite(stored)) return stored;
+    var iso = String(e.dateISO || e.dateIso || "").slice(0, 10);
+    var match = String(e.hora || "")
+      .trim()
+      .match(/^(\d{1,2}):(\d{2})$/);
+    if (!iso || !match) return NaN;
+    var ms = Date.parse(
+      iso +
+        "T" +
+        String(match[1]).padStart(2, "0") +
+        ":" +
+        match[2] +
+        ":00-03:00",
+    );
+    return Number.isFinite(ms) ? ms : NaN;
+  }
+
+  /**
+   * Catálogo vivo das próximas saídas (mesmo filtro da home).
+   * @returns {null|{ ids: Record<string, number> }} null = catálogo ausente
+   */
+  function readLiveCatalog(nowMs) {
+    var el =
+      document.getElementById("gcv-exc-cart-catalog") ||
+      document.getElementById("gcv-excursoes-payload");
+    if (!el || !el.textContent) return null;
+    var now = nowMs != null ? nowMs : Date.now();
+    try {
+      var data = JSON.parse(el.textContent);
+      var ids = {};
+      var pushRow = function (e) {
+        var id = catalogCartIdFromRow(e);
+        if (!id) return;
+        var dep = departureMsFromCatalogRow(e);
+        // Mesma regra da home: só permanece se ainda há tempo para reservar
+        if (Number.isFinite(dep) && dep <= now + BOOKING_CUTOFF_MS) return;
+        ids[id] = Number.isFinite(dep) ? dep : 1;
+      };
+      if (Array.isArray(data)) {
+        data.forEach(pushRow);
+      } else if (data && typeof data === "object") {
+        // Formato compacto { pt: ["id", ...], en: [...] }
+        var loc = _locale === "en" || _locale === "es" ? _locale : "pt";
+        var pack = data[loc] != null ? data[loc] : data.pt;
+        if (Array.isArray(pack) && pack.length && typeof pack[0] === "string") {
+          pack.forEach(function (id) {
+            var key = String(id || "")
+              .trim()
+              .toLowerCase();
+            if (key) ids[key] = 1;
+          });
+          // Inclui todos os locales para o carrinho sobreviver à troca de idioma
+          ["pt", "en", "es"].forEach(function (L) {
+            (data[L] || []).forEach(function (id) {
+              var key = String(id || "")
+                .trim()
+                .toLowerCase();
+              if (key) ids[key] = 1;
+            });
+          });
+        } else {
+          ["pt", "en", "es"].forEach(function (L) {
+            (data[L] || []).forEach(pushRow);
+          });
+        }
+      }
+      return { ids: ids };
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function normalizeCartItemId(id) {
+    var raw = String(id || "")
+      .trim()
+      .toLowerCase();
+    if (global.GcvExcBookings && typeof global.GcvExcBookings.normalizeCartId === "function") {
+      return global.GcvExcBookings.normalizeCartId(raw);
+    }
+    return raw;
+  }
+
   function itemDepartureMs(it) {
     var stored = parseInt(String(it && it.departureMs), 10);
     if (Number.isFinite(stored)) return stored;
@@ -158,13 +385,24 @@
       var resolved = _resolveDepartureMs(it);
       if (Number.isFinite(resolved)) return resolved;
     }
-    return NaN;
+    // Fallback com dados salvos no item — não depende do carrossel da home
+    return departureMsFromItemFields(it);
   }
 
   function isCartItemBookable(it, nowMs) {
-    var dep = itemDepartureMs(it);
     var now = nowMs != null ? nowMs : Date.now();
-    if (!Number.isFinite(dep)) return false;
+    var catalog = readLiveCatalog(now);
+    var id = normalizeCartItemId(it && it.id);
+    // Se o passeio sumiu das próximas saídas, remove do carrinho
+    if (catalog && id && !catalog.ids[id]) return false;
+    var dep = itemDepartureMs(it);
+    if (catalog && id && Number.isFinite(catalog.ids[id]) && catalog.ids[id] > 1) {
+      dep = catalog.ids[id];
+    }
+    if (!Number.isFinite(dep)) {
+      // Sem data e sem catálogo: manter. Com catálogo já validado acima.
+      return !catalog || !!(catalog.ids && catalog.ids[id]);
+    }
     return dep > now + BOOKING_CUTOFF_MS;
   }
 
@@ -985,7 +1223,12 @@
           return;
         }
         var items = loadItems();
-        if (!items.length || typeof _onPay !== "function") return;
+        if (!items.length) return;
+        if (typeof _onPay !== "function") {
+          // Fora da home: Pix depende do carrossel — volta com carrinho aberto
+          redirectToHomeForCheckout();
+          return;
+        }
         purgeExpiredAndPersist({ notify: true, skipRender: true });
         items = loadItems();
         if (!items.length) return;
@@ -1133,21 +1376,55 @@
     hide: hideExcToastPopup,
   };
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", bootstrapCartHeaderShell);
-  } else {
+  function autoInitCart() {
+    if (_autoInited) return;
+    _autoInited = true;
     bootstrapCartHeaderShell();
+    if (!_strings || !Object.keys(_strings).length) {
+      _strings = FALLBACK_STRINGS;
+    }
+    _locale = detectPageLocale();
+    bindCartUi();
+    purgeExpiredAndPersist({ notify: false });
+    renderCartUi();
+    if (consumeOpenCartFlag()) {
+      openCartPanel();
+    }
+    // Reaplica UI após layout (páginas de atrativo / header mobile)
+    global.requestAnimationFrame(function () {
+      mountCartFabInHeader();
+      renderCartUi();
+    });
+    // Mesma lógica da home: se o passeio expirar / sumir do catálogo, limpa o carrinho
+    global.setInterval(function () {
+      purgeExpiredAndPersist({ notify: true });
+    }, 30000);
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "visible") {
+        purgeExpiredAndPersist({ notify: true });
+      }
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", autoInitCart);
+  } else {
+    autoInitCart();
   }
 
   global.GcvExcCart = {
     init: function (opts) {
-      _strings = (opts && opts.strings) || {};
-      _locale = (opts && opts.locale) || "pt";
+      _strings = (opts && opts.strings) || FALLBACK_STRINGS;
+      _locale = (opts && opts.locale) || detectPageLocale();
       _onPay = opts && opts.onPay;
       _onChange = opts && opts.onChange;
       _resolveDepartureMs = opts && opts.resolveDepartureMs;
       bindCartUi();
       purgeExpiredAndPersist({ notify: false });
+      renderCartUi();
+      if (consumeOpenCartFlag()) {
+        openCartPanel();
+      }
     },
     add: function (item) {
       if (!item || !item.id) return false;

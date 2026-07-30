@@ -13,6 +13,10 @@
   var SEAT_RESET_KEY = "gcv-exc-pix-seat-reset";
   var SEAT_RESET_VERSION = "agvnxu-caracol-v1";
   var COMMITTED_RES_KEY = "gcv-exc-pix-committed-reservations";
+  /** @type {Record<string, number>} vagas Pix confirmadas no servidor (todos os visitantes) */
+  var _serverSeats = {};
+  var _serverSeatsLoaded = false;
+  var _serverSeatsPromise = null;
   var RESET_CART_IDS = [
     "2026-07-18-mirante-da-janela-vale-da-lua",
     "18-julho-mirante-da-janela-vale-da-lua",
@@ -183,11 +187,20 @@
     return d + "-" + m + "-" + dest;
   }
 
+  function serverBookedQty(cartId) {
+    if (!cartId) return 0;
+    var canon = normalizeCartId(cartId);
+    return numOrZero(_serverSeats[canon]);
+  }
+
   function pixBookedQty(cartId) {
     if (!cartId) return 0;
     var map = readMap();
     var canon = normalizeCartId(cartId);
-    return numOrZero(map[canon]);
+    var local = numOrZero(map[canon]);
+    var server = numOrZero(_serverSeats[canon]);
+    // Servidor = verdade compartilhada; local cobre o comprador antes do sync
+    return Math.max(local, server);
   }
 
   function totalInscritos(e) {
@@ -202,29 +215,94 @@
   function applyToExcursao(e) {
     if (!e) return e;
     var cartId = cartIdFromExcursao(e);
-    var extra = pixBookedQty(cartId);
-    if (extra <= 0) return e;
-
-    var copy = Object.assign({}, e);
+    // Linhas do CMS já vêm com booked_people; overlay JSON/local é só para payload estático
+    var fromCms = e.id != null && Number(e.id) > 0;
+    var extra = fromCms ? 0 : pixBookedQty(cartId);
     var cap = grupoMaximo(e);
     var quorum = quorumMinimo(e);
-    var total = baseInscritos(e) + extra;
+    var total = fromCms ? numOrZero(e.pessoasInscritas) : baseInscritos(e) + extra;
+    var confirmada = !!(e.confirmada || total >= quorum);
+    var faltam = confirmada ? 0 : Math.max(0, quorum - total);
+    var vagas = Math.max(0, cap - total);
 
+    var sameCount = numOrZero(e.pessoasInscritas) === total;
+    var sameConfirm = !!e.confirmada === confirmada;
+    var sameVagas = numOrZero(e.vagasRestantes) === vagas;
+    if (extra <= 0 && sameCount && sameConfirm && sameVagas) return e;
+
+    var copy = Object.assign({}, e);
     copy._pixBookedExtra = extra;
     copy.pessoasInscritas = total;
-    copy.vagasRestantes = Math.max(0, cap - total);
-
-    if (e.confirmada) {
-      copy.confirmada = true;
-      copy.faltamPessoas = 0;
-    } else if (total >= quorum) {
-      copy.confirmada = true;
-      copy.faltamPessoas = 0;
-    } else {
-      copy.confirmada = false;
-      copy.faltamPessoas = Math.max(0, quorum - total);
-    }
+    copy.vagasRestantes = vagas;
+    copy.confirmada = confirmada;
+    copy.faltamPessoas = faltam;
     return copy;
+  }
+
+  function setServerSeats(seats) {
+    var next = {};
+    if (seats && typeof seats === "object") {
+      Object.keys(seats).forEach(function (k) {
+        var canon = normalizeCartId(k);
+        var n = numOrZero(seats[k]);
+        if (!canon || n < 1) return;
+        next[canon] = numOrZero(next[canon]) + n;
+      });
+    }
+    var prevKeys = Object.keys(_serverSeats).sort();
+    var nextKeys = Object.keys(next).sort();
+    var changed =
+      prevKeys.length !== nextKeys.length ||
+      prevKeys.some(function (k, i) {
+        return k !== nextKeys[i] || numOrZero(_serverSeats[k]) !== numOrZero(next[k]);
+      });
+    _serverSeats = next;
+    _serverSeatsLoaded = true;
+    if (changed) _version += 1;
+    return changed;
+  }
+
+  /**
+   * Busca vagas Pix confirmadas no servidor (compartilhadas).
+   * @param {{ force?: boolean }} [opts]
+   * @returns {Promise<Record<string, number>>}
+   */
+  function fetchServerSeats(opts) {
+    var force = !!(opts && opts.force);
+    if (!force && _serverSeatsPromise) return _serverSeatsPromise;
+    _serverSeatsPromise = new Promise(function (resolve) {
+      try {
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", "/api/excursions/pix_seats.php");
+        xhr.timeout = 8000;
+        xhr.onload = function () {
+          try {
+            var res = JSON.parse(xhr.responseText || "{}");
+            if (res && (res.success || res.ok) && res.seats && typeof res.seats === "object") {
+              setServerSeats(res.seats);
+              resolve(_serverSeats);
+              return;
+            }
+          } catch (err) {
+            /* */
+          }
+          resolve(_serverSeats);
+        };
+        xhr.onerror = function () {
+          resolve(_serverSeats);
+        };
+        xhr.ontimeout = function () {
+          resolve(_serverSeats);
+        };
+        xhr.send();
+      } catch (err) {
+        resolve(_serverSeats);
+      }
+    }).then(function (seats) {
+      if (force) _serverSeatsPromise = null;
+      return seats;
+    });
+    return _serverSeatsPromise;
   }
 
   function applyToRows(rows) {
@@ -473,6 +551,7 @@
     cartIdFromExcursao: cartIdFromExcursao,
     normalizeCartId: normalizeCartId,
     pixBookedQty: pixBookedQty,
+    serverBookedQty: serverBookedQty,
     totalInscritos: totalInscritos,
     vagasDisponiveis: vagasDisponiveis,
     applyToExcursao: applyToExcursao,
@@ -481,6 +560,8 @@
     recordTripsForReservation: recordTripsForReservation,
     releaseTripsForReservation: releaseTripsForReservation,
     reservationAlreadyCommitted: reservationAlreadyCommitted,
+    fetchServerSeats: fetchServerSeats,
+    setServerSeats: setServerSeats,
     version: version,
   };
 })(typeof window !== "undefined" ? window : globalThis);

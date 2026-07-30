@@ -1011,7 +1011,28 @@
   );
 }
 
-.gcv-excursoes-card__spot-photo > .gcv-excursoes-card__atrativo-link--img {
+.gcv-excursoes-card__atrativo-link--spot {
+  grid-area: 1 / 1;
+  display: grid;
+  grid-template: 1fr / 1fr;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  border-radius: inherit;
+  overflow: hidden;
+}
+
+.gcv-excursoes-card__atrativo-link--spot:focus-visible {
+  outline: 2px solid #22c55e;
+  outline-offset: 2px;
+}
+
+.gcv-excursoes-card__spot-photo > .gcv-excursoes-card__atrativo-link--img,
+.gcv-excursoes-card__atrativo-link--spot .gcv-excursoes-card__atrativo-link--img {
   grid-area: 1 / 1;
   display: grid;
   grid-template: 1fr / 1fr;
@@ -1079,6 +1100,16 @@
   letter-spacing: -0.015em;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
   pointer-events: none;
+}
+
+.gcv-excursoes-card__atrativo-link--spot .gcv-excursoes-card__spot-dest {
+  pointer-events: none;
+  color: #fff;
+}
+
+.gcv-excursoes-card__atrativo-link--spot:hover .gcv-excursoes-card__spot-dest,
+.gcv-excursoes-card__atrativo-link--spot:focus-visible .gcv-excursoes-card__spot-dest {
+  color: #bbf7d0;
 }
 
 .gcv-excursoes-card__spot-dest .gcv-excursoes-card__atrativo-link {
@@ -3969,121 +4000,16 @@ html.gcv-pix-modal-open body {
   }
 }
 
-/* Botão do carrinho — header + flutuante inferior */
+/* Botão do carrinho — estilos base também em site.css (site-wide).
+   Aqui só refinamentos do painel / contexto excursões. */
 .gcv-exc-cart-float {
+  /* fallback se site.css antigo em cache */
   display: none;
 }
 
-.nav-main > .gcv-exc-cart-float--header:not([hidden]),
-.header-actions > .gcv-exc-cart-float--header:not([hidden]) {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  flex-shrink: 0;
-  width: 2.65rem;
-  height: 2.65rem;
-  margin: 0 0.15rem 0 0.35rem;
-  padding: 0;
-  border: none;
-  border-radius: 50%;
-  background: linear-gradient(145deg, #059669 0%, #047857 100%);
-  color: #fff;
-  box-shadow:
-    0 0.2rem 0.75rem rgba(4, 120, 87, 0.32),
-    0 0 0 1px rgba(255, 255, 255, 0.14) inset;
-  cursor: pointer;
-  font-size: 1.35rem;
-  line-height: 1;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-.nav-main > .gcv-exc-cart-float--header:not([hidden]):hover,
-.header-actions > .gcv-exc-cart-float--header:not([hidden]):hover {
-  transform: scale(1.05);
-  box-shadow:
-    0 0.35rem 1rem rgba(4, 120, 87, 0.4),
-    0 0 0 1px rgba(255, 255, 255, 0.18) inset;
-}
-
-.nav-main > .gcv-exc-cart-float--header:focus-visible,
-.header-actions > .gcv-exc-cart-float--header:focus-visible {
-  outline: 3px solid #064e3b;
-  outline-offset: 2px;
-}
-
+.gcv-exc-cart-float--header:not([hidden]),
 .gcv-exc-cart-float--dock:not([hidden]) {
-  position: fixed;
-  right: max(1rem, env(safe-area-inset-right, 0px));
-  bottom: max(1rem, env(safe-area-inset-bottom, 0px));
-  z-index: 8900;
   display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 3.35rem;
-  height: 3.35rem;
-  padding: 0;
-  border: none;
-  border-radius: 50%;
-  background: linear-gradient(145deg, #059669 0%, #047857 100%);
-  color: #fff;
-  box-shadow:
-    0 0.35rem 1.1rem rgba(4, 120, 87, 0.38),
-    0 0 0 1px rgba(255, 255, 255, 0.14) inset;
-  cursor: pointer;
-  font-size: 1.55rem;
-  line-height: 1;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-.gcv-exc-cart-float--dock:not([hidden]):hover {
-  transform: scale(1.05);
-  box-shadow:
-    0 0.45rem 1.25rem rgba(4, 120, 87, 0.45),
-    0 0 0 1px rgba(255, 255, 255, 0.18) inset;
-}
-
-.gcv-exc-cart-float--dock:focus-visible {
-  outline: 3px solid #064e3b;
-  outline-offset: 3px;
-}
-
-.gcv-exc-cart-float__badge {
-  position: absolute;
-  top: -0.15rem;
-  right: -0.1rem;
-  min-width: 1.15rem;
-  height: 1.15rem;
-  padding: 0 0.24rem;
-  border-radius: 999px;
-  background: #f59e0b;
-  color: #fff;
-  font-size: 0.62rem;
-  font-weight: 900;
-  line-height: 1.15rem;
-  text-align: center;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .nav-main > .gcv-exc-cart-float--header:not([hidden]),
-  .header-actions > .gcv-exc-cart-float--header:not([hidden]),
-  .gcv-exc-cart-float--dock:not([hidden]) {
-    transition: none;
-  }
-
-  .nav-main > .gcv-exc-cart-float--header:not([hidden]):hover,
-  .header-actions > .gcv-exc-cart-float--header:not([hidden]):hover,
-  .gcv-exc-cart-float--dock:not([hidden]):hover {
-    transform: none;
-  }
-}
-
-@media print {
-  .gcv-exc-cart-float--header,
-  .gcv-exc-cart-float--dock {
-    display: none !important;
-  }
 }
 
 html.gcv-exc-cart-open {
@@ -5295,9 +5221,20 @@ html.gcv-waitlist-modal-open {
   opacity: 0.55;
   filter: grayscale(0.25);
   position: relative;
-  pointer-events: none;
   user-select: none;
+  -webkit-user-select: none;
   cursor: not-allowed;
+  /* Bloqueia o card inteiro: pointer-events no pai NÃO impede filhos com auto */
+  pointer-events: none !important;
+}
+
+.gcv-excursoes-card--day-blocked *,
+.gcv-excursoes-card--day-blocked *::before,
+.gcv-excursoes-card--day-blocked *::after {
+  pointer-events: none !important;
+  cursor: not-allowed !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
 }
 
 .gcv-excursoes-card--day-blocked::after {
@@ -5306,8 +5243,8 @@ html.gcv-waitlist-modal-open {
   inset: 0;
   border-radius: inherit;
   background: rgba(248, 250, 252, 0.28);
-  pointer-events: none;
-  z-index: 2;
+  pointer-events: none !important;
+  z-index: 20;
 }
 
 .gcv-excursoes-card--day-blocked a,
@@ -5317,9 +5254,12 @@ html.gcv-waitlist-modal-open {
 .gcv-excursoes-card--day-blocked textarea,
 .gcv-excursoes-card--day-blocked [data-guia-profile],
 .gcv-excursoes-card--day-blocked .gcv-excursoes-card__book,
+.gcv-excursoes-card--day-blocked .gcv-excursoes-card__atrativo-link,
+.gcv-excursoes-card--day-blocked .gcv-excursoes-card__select-band,
+.gcv-excursoes-card--day-blocked .gcv-excursoes-card__quick-add,
 .gcv-excursoes-card__book--day-blocked {
   pointer-events: none !important;
-  cursor: not-allowed;
+  cursor: not-allowed !important;
 }
 
 .gcv-excursoes-card--day-blocked .gcv-excursoes-card__cart-add,

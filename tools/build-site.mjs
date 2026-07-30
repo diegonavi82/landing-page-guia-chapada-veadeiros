@@ -2516,9 +2516,73 @@ function revistaPostMain(locale, post, ap, pathKey) {
 <script type="application/ld+json">${safeJsonLd(jsonLd)}</script>`;
 }
 
+/** IDs de carrinho das saídas ainda no catálogo (próximas saídas). */
+function cartCatalogIdsPayload() {
+  const payload = excursaoPayloadForSite();
+  /** @type {Record<string, string[]>} */
+  const out = {};
+  for (const loc of Object.keys(payload)) {
+    const ids = [];
+    const seen = new Set();
+    for (const e of payload[loc] || []) {
+      const iso = String((e && e.dateISO) || "").slice(0, 10);
+      const destRaw =
+        (e && e.cartSlug) ||
+        (e && e.destino) ||
+        (Array.isArray(e && e.destinos)
+          ? e.destinos
+              .map((d) => d && d.destino)
+              .filter(Boolean)
+              .join("-")
+          : "") ||
+        "excursao";
+      const dest = String(destRaw)
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "");
+      const id = (iso ? `${iso}-${dest}` : dest).toLowerCase();
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      ids.push(id);
+    }
+    out[loc] = ids;
+  }
+  return out;
+}
+
+const CART_CATALOG_SCRIPT = `  <script type="application/json" id="gcv-exc-cart-catalog">${safeJsonLd(cartCatalogIdsPayload())}</script>\n`;
+
+/** Carrinho de excursões em todas as páginas (persistência na navegação). */
+function withSitewideExcCart(pageOutRel, { extraCss = [], extraHead = "", extraFooterScripts = "" } = {}) {
+  const css = Array.isArray(extraCss) ? extraCss.slice() : [];
+  if (!css.some((c) => String(c).includes("excursoes.css"))) {
+    css.push(`assets/css/excursoes.css${BUILD_ASSET_QUERY}`);
+  }
+  let head = extraHead || "";
+  if (!head.includes("tabler-icons")) {
+    head =
+      (head ? `${head}\n` : "") +
+      `    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" crossorigin="anonymous" />`;
+  }
+  const ap = assetPrefix(pageOutRel);
+  let scripts = extraFooterScripts || "";
+  if (!scripts.includes("gcv-exc-cart-catalog") && !scripts.includes('id="gcv-exc-cart-catalog"')) {
+    scripts = CART_CATALOG_SCRIPT + scripts;
+  }
+  if (!scripts.includes("gcv-exc-cart.js")) {
+    // Caminhos relativos à página — funcionam em /atrativos/… e em preview local
+    scripts =
+      scripts +
+      `  <script src="${esc(`${ap}assets/js/gcv-exc-cart-policies.js${BUILD_ASSET_QUERY}`)}" defer></script>\n` +
+      `  <script src="${esc(`${ap}assets/js/gcv-exc-cart.js${BUILD_ASSET_QUERY}`)}" defer></script>\n`;
+  }
+  return { extraCss: css, extraHead: head, extraFooterScripts: scripts };
+}
+
 function renderPage(locale, pathKey, { title, desc, ogImageRel, current, mainHtml, extraCss, ogTitle, ogDesc, extraHead, ogType, ogImageWidth, ogImageHeight, extraFooterScripts, extraAfterFooter, keywords, ogImageAlt }) {
   const outR = outRelPath(locale, pathKey);
   const ap = assetPrefix(outR);
+  const cartAssets = withSitewideExcCart(outR, { extraCss, extraHead, extraFooterScripts });
   const head = buildHead({
     title,
     desc,
@@ -2526,10 +2590,10 @@ function renderPage(locale, pathKey, { title, desc, ogImageRel, current, mainHtm
     pathKey,
     ogImageRel,
     ap,
-    extraCss,
+    extraCss: cartAssets.extraCss,
     ogTitle,
     ogDesc,
-    extraHead,
+    extraHead: cartAssets.extraHead,
     ogType,
     ogImageWidth,
     ogImageHeight,
@@ -2549,7 +2613,7 @@ function renderPage(locale, pathKey, { title, desc, ogImageRel, current, mainHtm
     footer,
     ap,
     pageOutRel: outR,
-    extraFooterScripts,
+    extraFooterScripts: cartAssets.extraFooterScripts,
     extraAfterFooter,
   });
 }

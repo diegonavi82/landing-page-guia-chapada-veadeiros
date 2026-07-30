@@ -256,10 +256,10 @@ const SSR = {
 
 function atrativoHrefFrom(path, locale) {
   if (!path || String(path).trim() === "") return "";
-  const p = String(path).trim();
-  if (locale === "en") return `en/${p}`;
-  if (locale === "es") return `es/${p}`;
-  return p;
+  const p = String(path).trim().replace(/^\/+/, "");
+  if (locale === "en") return `/en/${p}`;
+  if (locale === "es") return `/es/${p}`;
+  return `/${p}`;
 }
 
 function atrativoHref(e, locale) {
@@ -275,20 +275,25 @@ function cardSpotTransportBadgeSsr(s) {
 
 function cardSpotRowSsr(d, locale, transportBadge) {
   const href = atrativoHrefFrom(d.atrativoPath, locale);
+  const label = esc(String(d.destino));
   const imgInner =
     `<div class="gcv-excursoes-card__img-wrap gcv-excursoes-card__spot-img-wrap">` +
-    `<img class="gcv-excursoes-card__img" src="${esc(String(d.cardImg))}" alt="${esc(String(d.destino))}" loading="lazy" decoding="async"></div>`;
-  const photoInner = href
-    ? `<a class="gcv-excursoes-card__atrativo-link gcv-excursoes-card__atrativo-link--img" href="${esc(href)}">${imgInner}</a>`
-    : `<div class="gcv-excursoes-card__atrativo-link--img">${imgInner}</div>`;
-  const label = esc(String(d.destino));
-  const titleMain = href
-    ? `<a class="gcv-excursoes-card__atrativo-link" href="${esc(href)}">${label}</a>`
-    : label;
+    `<img class="gcv-excursoes-card__img" src="${esc(String(d.cardImg || ""))}" alt="${label}" loading="lazy" decoding="async"></div>`;
   const sub = d.destinoSub ? `<span class="gcv-excursoes-card__dest-sub">${esc(String(d.destinoSub))}</span>` : "";
   const destMod = sub ? " gcv-excursoes-card__spot-dest--has-sub" : "";
-  const title = `<h3 class="gcv-excursoes-card__dest gcv-excursoes-card__spot-dest${destMod}">${titleMain}${sub}</h3>`;
-  return `<div class="gcv-excursoes-card__spot"><div class="gcv-excursoes-card__spot-photo">${photoInner}${transportBadge || ""}</div>${title}</div>`;
+  const title = `<span class="gcv-excursoes-card__dest gcv-excursoes-card__spot-dest${destMod}">${label}${sub}</span>`;
+  const photo =
+    `<div class="gcv-excursoes-card__spot-photo">` +
+    `<div class="gcv-excursoes-card__atrativo-link--img">${imgInner}</div>` +
+    `${transportBadge || ""}</div>`;
+  if (href) {
+    return (
+      `<div class="gcv-excursoes-card__spot">` +
+      `<a class="gcv-excursoes-card__atrativo-link gcv-excursoes-card__atrativo-link--spot" href="${esc(href)}" title="${label}">` +
+      `${photo}${title}</a></div>`
+    );
+  }
+  return `<div class="gcv-excursoes-card__spot">${photo}${title}</div>`;
 }
 
 function cardSpotsBlockSsr(e, locale, s) {
