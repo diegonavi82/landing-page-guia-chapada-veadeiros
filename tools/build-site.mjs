@@ -1518,8 +1518,12 @@ function homeExcursionsSection(locale) {
   };
   const L = copy[locale];
   if (!L) return "";
-  if (!excursaoRowsForLocale(locale).length) return "";
-  return `    <section id="excursoes-junho" class="gcv-excursoes" data-locale="${esc(locale)}" aria-labelledby="gcv-excursoes-heading">
+  // Sempre renderiza o shell: saídas podem existir só no MySQL (API live).
+  const hasStaticRows = excursaoRowsForLocale(locale).length > 0;
+  const shellHiddenAttrs = hasStaticRows
+    ? ""
+    : ' hidden aria-hidden="true" style="display:none"';
+  return `    <section id="excursoes-junho" class="gcv-excursoes" data-locale="${esc(locale)}" aria-labelledby="gcv-excursoes-heading"${shellHiddenAttrs}>
       <script type="application/json" id="gcv-excursoes-payload">${safeJsonLd(excursaoPayloadForSite())}</script>
       <script type="application/json" id="gcv-guia-profiles">${safeJsonLd(guiaProfilesForSite())}</script>
       <div class="gcv-excursoes__head">
@@ -2822,26 +2826,19 @@ for (const locale of LOCALES) {
       ogImageHeight = 900;
     }
     const outPk = outRelPath(locale, pk);
-    const homeHasExcursions =
-      (locale === "pt" || locale === "en" || locale === "es") &&
-      pk === "" &&
-      excursaoRowsForLocale(locale).length > 0;
+    // Home sempre carrega o carrossel: a API MySQL pode ter saídas mesmo com seed estático vazio.
+    const homeIsLanding = (locale === "pt" || locale === "en" || locale === "es") && pk === "";
     const homeExcursionsHideScript = `  <script>(function(){var r=document.getElementById("excursoes-junho");if(!r)return;var t=r.querySelector(".gcv-excursoes__track");if(!t||!t.querySelector(".gcv-excursoes-card")){r.hidden=true;r.style.display="none";r.setAttribute("aria-hidden","true");}})();</script>\n`;
-    const homeExcursionsHead =
-      (locale === "pt" || locale === "en" || locale === "es") && pk === ""
-        ? {
-            extraCss: homeHasExcursions ? [`assets/css/excursoes.css${BUILD_ASSET_QUERY}`] : [],
-            extraHead: homeHasExcursions
-              ? `    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" crossorigin="anonymous" />`
-              : "",
-            extraFooterScripts:
-              homeExcursionsHideScript +
-              (homeHasExcursions
-                ? `  <script src="${esc(publicJsSrc("qrcode.min.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix-receipt.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix-polling.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-bookings.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-waitlist.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-cart-policies.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-cart.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("excursoes-carousel.js", outPk))}" defer></script>\n`
-                : ""),
-          }
-        : {};
+    const homeExcursionsHead = homeIsLanding
+      ? {
+          extraCss: [`assets/css/excursoes.css${BUILD_ASSET_QUERY}`],
+          extraHead: `    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" crossorigin="anonymous" />`,
+          extraFooterScripts:
+            homeExcursionsHideScript +
+            `  <script src="${esc(publicJsSrc("qrcode.min.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix-receipt.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix-polling.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-bookings.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-waitlist.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-cart-policies.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-cart.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("excursoes-carousel.js", outPk))}" defer></script>\n`,
+        }
+      : {};
     const homeConsultarScript = "";
     const html = renderPage(locale, pk, {
       title,
@@ -3137,8 +3134,9 @@ for (const loc of LOCALES) {
   const homeHtml = existsSync(homeAbs) ? readFileSync(homeAbs, "utf8") : "";
   const excursionsVisible = homeHtml.includes('id="excursoes-junho"');
   const futureRows = excursaoRowsForLocale(loc).length;
+  const hasCarouselJs = homeHtml.includes("excursoes-carousel.js");
   console.log(
-    `[build] home ${loc}: próximas saídas ${excursionsVisible ? "no HTML" : "oculta"} (${futureRows} saída(s) futura(s))`,
+    `[build] home ${loc}: seção ${excursionsVisible ? "no HTML" : "ausente"}; carrossel JS ${hasCarouselJs ? "sim" : "não"}; seed estático ${futureRows} saída(s)`,
   );
 }
 console.log("[build] Build_prod:", BUILD_PROD_DIR, "—", buildProdEntries, "itens, pronto para FTP");

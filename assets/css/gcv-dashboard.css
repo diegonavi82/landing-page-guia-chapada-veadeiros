@@ -551,3 +551,91 @@
 .gcv-guide-upcoming { align-items: center; }
 .gcv-dash-hint { line-height: 1.45; }
 
+/* Toast / feedback (substitui alert nativo) */
+.gcv-dash-toast-host {
+  position: fixed;
+  top: 1.25rem;
+  right: 1.25rem;
+  z-index: 10050;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  max-width: min(22rem, calc(100vw - 2rem));
+  pointer-events: none;
+}
+.gcv-dash-toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 10px 30px rgba(15, 61, 46, 0.18), 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid #0f3d2e;
+  transform: translateY(-8px);
+  opacity: 0;
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+.gcv-dash-toast.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.gcv-dash-toast--success { border-left-color: #2f855a; }
+.gcv-dash-toast--error { border-left-color: #c53030; }
+.gcv-dash-toast--info { border-left-color: #2b6cb0; }
+.gcv-dash-toast--warning { border-left-color: #c05621; }
+.gcv-dash-toast__icon {
+  flex-shrink: 0;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #fff;
+  background: #0f3d2e;
+}
+.gcv-dash-toast--success .gcv-dash-toast__icon { background: #2f855a; }
+.gcv-dash-toast--error .gcv-dash-toast__icon { background: #c53030; }
+.gcv-dash-toast--info .gcv-dash-toast__icon { background: #2b6cb0; }
+.gcv-dash-toast--warning .gcv-dash-toast__icon { background: #c05621; }
+.gcv-dash-toast__body { flex: 1; min-width: 0; }
+.gcv-dash-toast__title {
+  margin: 0 0 0.15rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #0f3d2e;
+  line-height: 1.3;
+}
+.gcv-dash-toast--error .gcv-dash-toast__title { color: #9b2c2c; }
+.gcv-dash-toast__msg {
+  margin: 0;
+  font-size: 0.84rem;
+  color: #4a5568;
+  line-height: 1.4;
+}
+.gcv-dash-toast__close {
+  flex-shrink: 0;
+  border: 0;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.1rem;
+}
+.gcv-dash-toast__close:hover { color: #475569; }
+
+@media (max-width: 640px) {
+  .gcv-dash-toast-host {
+    top: auto;
+    bottom: 1rem;
+    left: 1rem;
+    right: 1rem;
+    max-width: none;
+  }
+}
+

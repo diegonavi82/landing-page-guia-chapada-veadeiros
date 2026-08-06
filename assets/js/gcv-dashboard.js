@@ -48,6 +48,48 @@
     if (link) link.classList.add('active');
   }
 
+  /** Toast estilizado do dashboard (substitui alert nativo). */
+  function showDashToast(opts) {
+    var options = opts || {};
+    var type = options.type || 'success';
+    var title = options.title || (type === 'error' ? 'Algo deu errado' : 'Pronto');
+    var message = options.message || '';
+    var ms = typeof options.duration === 'number' ? options.duration : 4200;
+    var host = document.getElementById('gcv-dash-toast-host');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'gcv-dash-toast-host';
+      host.className = 'gcv-dash-toast-host';
+      host.setAttribute('aria-live', 'polite');
+      document.body.appendChild(host);
+    }
+    var icons = { success: '✓', error: '!', info: 'i', warning: '!' };
+    var el = document.createElement('div');
+    el.className = 'gcv-dash-toast gcv-dash-toast--' + type;
+    el.setAttribute('role', 'status');
+    el.innerHTML =
+      '<span class="gcv-dash-toast__icon" aria-hidden="true">' + (icons[type] || '✓') + '</span>' +
+      '<div class="gcv-dash-toast__body">' +
+      '<p class="gcv-dash-toast__title"></p>' +
+      (message ? '<p class="gcv-dash-toast__msg"></p>' : '') +
+      '</div>' +
+      '<button type="button" class="gcv-dash-toast__close" aria-label="Fechar">×</button>';
+    el.querySelector('.gcv-dash-toast__title').textContent = title;
+    var msgEl = el.querySelector('.gcv-dash-toast__msg');
+    if (msgEl) msgEl.textContent = message;
+    function dismiss() {
+      el.classList.remove('is-visible');
+      setTimeout(function () {
+        if (el.parentNode) el.parentNode.removeChild(el);
+      }, 220);
+    }
+    el.querySelector('.gcv-dash-toast__close').addEventListener('click', dismiss);
+    host.appendChild(el);
+    requestAnimationFrame(function () { el.classList.add('is-visible'); });
+    if (ms > 0) setTimeout(dismiss, ms);
+    return el;
+  }
+
   function el(tag, cls, html) {
     var e = document.createElement(tag);
     if (cls) e.className = cls;
@@ -592,9 +634,41 @@
               payload.guide_payout_planned_cents = payload.guide_net_cents;
             }
           }
+          btn.disabled = true;
           post('/api/admin/excursion-approvals.php', payload, function (e2, r2) {
-            alert((r2 && r2.ok) ? 'Ação aplicada.' : ((r2 && r2.error) || 'Erro'));
-            if (r2 && r2.ok) loadExcursionApprovals();
+            btn.disabled = false;
+            if (!r2 || !r2.ok) {
+              showDashToast({
+                type: 'error',
+                title: 'Não foi possível concluir',
+                message: (r2 && r2.error) || 'Tente novamente em instantes.',
+              });
+              return;
+            }
+            var successByAction = {
+              approve: {
+                title: 'Excursão aprovada',
+                message: 'A saída foi publicada e já pode aparecer no carrossel.',
+              },
+              reject: {
+                title: 'Excursão rejeitada',
+                message: 'O guia verá o status rejeitado com o motivo informado.',
+              },
+              request_changes: {
+                title: 'Alterações solicitadas',
+                message: 'A excursão voltou para rascunho com sua orientação.',
+              },
+              edit_and_approve: {
+                title: 'Editada e aprovada',
+                message: 'Os ajustes foram salvos e a saída foi publicada.',
+              },
+            };
+            var copy = successByAction[action] || {
+              title: 'Ação concluída',
+              message: 'A aprovação foi atualizada com sucesso.',
+            };
+            showDashToast({ type: 'success', title: copy.title, message: copy.message });
+            loadExcursionApprovals();
           });
         });
       });

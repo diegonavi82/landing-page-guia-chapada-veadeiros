@@ -5971,6 +5971,14 @@
     root.style.display = "none";
   }
 
+  function showExcursaoSection(root) {
+    if (!root) return;
+    root.hidden = false;
+    root.removeAttribute("hidden");
+    root.removeAttribute("aria-hidden");
+    root.style.display = "";
+  }
+
   function resolveStaticExcursaoRows(root, locale) {
     var fromPayload = loadExcursaoRowsFromPayload(root);
     var ptFallback = EXCURSOES.pt;
@@ -6033,8 +6041,7 @@
       hideExcursaoSection(root);
       // Ainda tenta API: pode haver saídas só no MySQL
     } else {
-      root.removeAttribute("aria-hidden");
-      root.style.display = "";
+      showExcursaoSection(root);
     }
     var carouselExcursoes = allExcursoes.slice();
 
@@ -6574,8 +6581,7 @@
           if (!allExcursoes.length) {
             hideExcursaoSection(root);
           } else {
-            root.removeAttribute("aria-hidden");
-            root.style.display = "";
+            showExcursaoSection(root);
             carouselExcursoes = filterExcursaoList(allExcursoes, activeFilters, s);
             renderTrackOnly();
             syncCarouselUi();
@@ -6615,8 +6621,7 @@
         if (!allExcursoes.length) {
           hideExcursaoSection(root);
         } else {
-          root.removeAttribute("aria-hidden");
-          root.style.display = "";
+          showExcursaoSection(root);
           carouselExcursoes = filterExcursaoList(allExcursoes, {}, s);
           renderTrackOnly();
           syncCarouselUi();
@@ -6654,8 +6659,7 @@
         hideExcursaoSection(root);
         return;
       }
-      root.removeAttribute("aria-hidden");
-      root.style.display = "";
+      showExcursaoSection(root);
 
       function applyFiltersAndRender(filters, resultsEl) {
         if (filters) activeFilters = filters;
