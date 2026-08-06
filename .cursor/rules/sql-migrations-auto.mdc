@@ -1,0 +1,17 @@
+---
+description: Sempre executar scripts SQL de migration automaticamente no banco
+alwaysApply: true
+---
+
+# Migrations SQL — execução automática
+
+Sempre que criar, alterar ou o usuário pedir para rodar um arquivo `.sql` em `api/database/` (ou qualquer script SQL de schema):
+
+1. **Executar automaticamente** — não pedir para o usuário rodar no phpMyAdmin.
+2. Ordem de execução:
+   1. `npm run db:migrate -- <caminho-do-sql>` (tenta MySQL local/remoto via PHP)
+   2. Se falhar (Hostinger `localhost` inacessível da máquina), rodar `npm run db:migrate:remote` ou `node tools/upload-api-and-migrate.mjs` (FTP → document root real → one-shot HTTP)
+3. Document root FTP real da Hostinger: `domains/guiachapadaveadeiros.com/public_html` (não confundir com `/public_html` da home FTP).
+4. Credenciais: `api/config.local.php` / `api/.env` (DB) e `.env.deploy` ou FileZilla (FTP).
+5. Após rodar, confirmar tabelas/colunas no output e informar o resultado ao usuário.
+6. One-shots em `api/_migrate_*_once.php` / `api/migrate_*_once.php`: apagar do servidor depois do sucesso quando for seguro.

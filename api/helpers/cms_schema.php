@@ -41,6 +41,13 @@ function gcv_cms_ensure_schema(): void
     gcv_cms_ensure_guide_columns($pdo);
     gcv_cms_ensure_excursion_columns($pdo);
     gcv_cms_ensure_client_profiles();
+
+    try {
+        require_once __DIR__ . '/marketplace_schema.php';
+        gcv_marketplace_ensure_schema();
+    } catch (Throwable $e) {
+        error_log('marketplace ensure from cms: ' . $e->getMessage());
+    }
 }
 
 function gcv_cms_ensure_core_tables(PDO $pdo): void

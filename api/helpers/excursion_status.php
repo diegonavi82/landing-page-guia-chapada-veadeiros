@@ -11,6 +11,12 @@ function gcv_resolve_excursion_lifecycle(array $e): string
     if ($status === 'cancelled') {
         return 'cancelada';
     }
+    if ($status === 'rejected') {
+        return 'rejeitada';
+    }
+    if ($status === 'pending_approval') {
+        return 'aguardando_aprovacao';
+    }
     if ($status === 'draft') {
         return 'rascunho';
     }
@@ -41,6 +47,8 @@ function gcv_excursion_lifecycle_label(string $code): string
         'concluida' => 'Concluída',
         'cancelada' => 'Cancelada',
         'rascunho' => 'Rascunho',
+        'aguardando_aprovacao' => 'Aguardando aprovação',
+        'rejeitada' => 'Rejeitada',
         default => $code,
     };
 }

@@ -920,11 +920,13 @@
             (guides.length ? '' : '<p class="gcv-dash-alert" style="margin-top:0.4rem;">Nenhum guia cadastrado. <button type="button" class="gcv-dash-btn gcv-dash-btn--sm gcv-dash-btn--primary" id="ex-seed-diego">Cadastrar Diego Navi</button></p>') +
             '</div>' +
             '<div class="gcv-dash-field-row">' +
-            '<div class="gcv-dash-field"><label class="gcv-dash-label">Valor/pessoa (R$) *</label><input class="gcv-dash-input" id="ex-price" value="' + esc(ex ? centsToMoney(ex.price_cents) : '') + '" /></div>' +
+            '<div class="gcv-dash-field"><label class="gcv-dash-label">Valor/pessoa final (R$) *</label><input class="gcv-dash-input" id="ex-price" value="' + esc(ex ? centsToMoney(ex.price_cents) : '') + '" /></div>' +
+            '<div class="gcv-dash-field"><label class="gcv-dash-label">Repasse previsto ao guia (R$) *</label><input class="gcv-dash-input" id="ex-guide-payout" value="' + esc(ex ? centsToMoney(ex.guide_payout_planned_cents != null ? ex.guide_payout_planned_cents : ex.guide_net_cents) : '') + '" /></div>' +
             '<div class="gcv-dash-field"><label class="gcv-dash-label">Quorum * (mín. 4)</label><input class="gcv-dash-input" id="ex-quorum" type="number" min="4" value="' + esc(ex && ex.quorum || 4) + '" /></div>' +
             '<div class="gcv-dash-field"><label class="gcv-dash-label">Máximo *</label><input class="gcv-dash-input" id="ex-max" type="number" min="1" value="' + esc(ex && ex.max_people || 10) + '" /></div>' +
             '<div class="gcv-dash-field"><label class="gcv-dash-label">Inscritos</label><input class="gcv-dash-input" id="ex-booked" type="number" min="0" value="' + esc(ex && ex.booked_people || 0) + '" /></div>' +
             '</div>' +
+            '<p class="gcv-cms-muted" style="margin:0 0 0.75rem;">Modo ADMINISTRATIVE: você define o preço final e o repasse ao guia. A margem da plataforma é registrada automaticamente.</p>' +
             '<div class="gcv-dash-field"><label class="gcv-dash-label">Slug do carrinho (opcional)</label><input class="gcv-dash-input" id="ex-cart" value="' + esc(ex && ex.cart_slug || '') + '" placeholder="ex.: mirante-da-janela-2026-07-09" /></div>' +
             '<div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.75rem;">' +
             '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary" id="ex-save">Salvar</button>' +
@@ -1049,11 +1051,18 @@
               departure_city_id: parseInt(root('ex-city').value, 10) || 0,
               guide_user_id: guideId,
               price_cents: moneyToCents(root('ex-price').value),
+              guide_payout_planned_cents: moneyToCents(root('ex-guide-payout').value),
+              business_mode: 'ADMINISTRATIVE',
+              created_by_origin: 'ADMIN',
               quorum: quorum,
               max_people: parseInt(root('ex-max').value, 10) || 0,
               booked_people: parseInt(root('ex-booked').value, 10) || 0,
               cart_slug: root('ex-cart').value.trim() || null,
             };
+            if ((statusVal === 'published' || statusVal === 'soldout') && !payload.guide_payout_planned_cents) {
+              alert('Informe o valor previsto de repasse ao guia.');
+              return;
+            }
             sendJson(ex ? 'PUT' : 'POST', '/api/admin/excursions.php', payload, function (e, r) {
               if (!r || !r.ok) { alert((r && r.error) || 'Erro'); return; }
               form.hidden = true;

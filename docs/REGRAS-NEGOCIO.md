@@ -13,8 +13,12 @@ Triangulação: **Admin ↔ Guia ↔ Cliente**.
 | Bio / descrição | recomendado **até 600** caracteres; máximo **800** |
 | Cancelamento (cliente) | Em formação: pode cancelar. Confirmada: **sem ressarcimento** no fluxo atual |
 | Cancelamento (guia) | Pode cancelar passeio **ainda não realizado** (data futura) |
-| Preço | Guia, admin ou cliente (ao propor) define **valor por pessoa** |
+| Preço | Depende do **BusinessMode** (nunca de CreatedBy) |
+| ADMINISTRATIVE | Admin define preço final + repasse previsto ao guia; publica na hora |
+| GUIDE_MARKETPLACE | Guia informa só o **líquido desejado**; backend calcula comissão (padrão 16%) + arredondamento comercial; status `pending_approval` |
 | Guia na excursão | Admin **deve** atribuir guia para publicar |
+| Repasse | Manual (PIX) nesta versão; automático Sicoob preparado (`payout_delay_hours=6`) |
+| Auditoria | CreatedBy = ADMIN/GUIDE/CURSOR/IMPORT/API/AI — só auditoria |
 
 ---
 
@@ -53,8 +57,9 @@ Triangulação: **Admin ↔ Guia ↔ Cliente**.
 ### Agenda / passeios
 
 - Ver **próximas saídas** em que é o guia (destaque: confirmadas vs em formação).
-- **Publicar** passeio: escolhe atrativo já cadastrado pelo admin, data, hora, embarque, vagas, **preço/pessoa**, quórum ≥ 4.
-- Sem atingir quórum → permanece **em formação** (não “confirmada”).
+- **Publicar** passeio (marketplace): escolhe atrativo cadastrado pelo admin, data, hora, embarque, vagas, **valor líquido desejado**, quórum ≥ 4 → fica `pending_approval` até o admin aprovar.
+- Cadastro financeiro obrigatório (CPF/CNPJ + PIX) para receber repasse.
+- Sem atingir quórum (após publicado) → permanece **em formação**.
 - **Cancelar** passeio futuro ainda não realizado.
 - Não altera atrativos do catálogo (só escolhe).
 
@@ -92,7 +97,12 @@ Triangulação: **Admin ↔ Guia ↔ Cliente**.
 | Endpoint | Papel |
 |----------|--------|
 | `GET/PUT /api/guides/me-profile.php` | Perfil guia |
-| `GET/POST/PUT /api/guides/excursions.php` | Agenda / publicar / cancelar |
+| `GET/POST/PUT /api/guides/excursions.php` | Agenda / publicar (marketplace) / cancelar |
+| `GET /api/guides/pricing-preview.php` | Preview de preço (cálculo só no backend) |
+| `GET/PUT /api/guides/financial-profile.php` | Perfil financeiro do guia |
+| `GET/POST /api/admin/excursion-approvals.php` | Aprovar / rejeitar / solicitar alterações |
+| `GET /api/admin/finance-dashboard.php` | Dashboard financeiro + export CSV/XLSX/PDF |
+| Ver também | `docs/MARKETPLACE-FINANCEIRO.md` |
 | `POST /api/guides/media-upload.php` | Upload docs/foto |
 | `GET/PUT /api/client/profile.php` | Perfil cliente |
 | `GET/POST /api/client/excursions.php` | Propor excursão (preço/pessoa) |

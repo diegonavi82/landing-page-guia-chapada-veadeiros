@@ -5,10 +5,15 @@ require_once __DIR__ . '/../helpers/db.php';
 require_once __DIR__ . '/../helpers/auth.php';
 require_once __DIR__ . '/../helpers/cms_schema.php';
 require_once __DIR__ . '/../helpers/excursion_attractions.php';
+require_once __DIR__ . '/../helpers/marketplace_schema.php';
+require_once __DIR__ . '/../helpers/marketplace/constants.php';
+require_once __DIR__ . '/../helpers/marketplace/pricing_service.php';
+require_once __DIR__ . '/../helpers/marketplace/audit_service.php';
 
 header('Content-Type: application/json; charset=utf-8');
 $admin = require_admin();
 gcv_cms_ensure_schema();
+gcv_marketplace_ensure_schema();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 function gcv_excursion_validate(array $body, bool $creating): ?string
@@ -93,10 +98,13 @@ if ($method === 'GET') {
     }
     $rows = db()->query(
         'SELECT e.id, e.status, e.date_iso, e.departure_time, e.price_cents, e.quorum, e.max_people, e.booked_people,
-                e.guide_user_id, e.attraction_id, c.name AS departure_city_name, u.name AS guide_name
+                e.guide_user_id, e.attraction_id, e.business_mode, e.created_by_origin, e.guide_net_cents,
+                e.guide_payout_planned_cents, e.platform_margin_cents, e.commission_pct_applied,
+                c.name AS departure_city_name, u.name AS guide_name
          FROM gcv_excursions e
          LEFT JOIN gcv_cities c ON c.id = e.departure_city_id
          LEFT JOIN gcv_users u ON u.id = e.guide_user_id
+         WHERE e.deleted_at IS NULL
          ORDER BY e.date_iso ASC, e.departure_time ASC'
     )->fetchAll();
     $out = [];
@@ -118,20 +126,59 @@ if ($method === 'POST') {
     }
     $attrIds = gcv_excursion_normalize_attraction_ids($body);
     $status = (string)($body['status'] ?? 'draft');
-    if (!in_array($status, ['draft', 'published', 'cancelled', 'soldout'], true)) $status = 'draft';
+    if (!in_array($status, ['draft', 'published', 'cancelled', 'soldout', 'pending_approval', 'rejected'], true)) {
+        $status = 'draft';
+    }
     $guideErr = gcv_excursion_require_guide_if_published(array_merge($body, ['status' => $status]));
     if ($guideErr) {
         http_response_code(400);
         echo json_encode(['ok' => false, 'error' => $guideErr]);
         exit;
     }
+
+    $createdByOrigin = GcvCreatedBy::normalize(
+        (string)($body['created_by_origin'] ?? $body['CreatedBy'] ?? GcvCreatedBy::ADMIN),
+        GcvCreatedBy::ADMIN
+    );
+    // Admin CMS sempre opera em modo administrativo (regras financeiras)
+    $businessMode = GcvBusinessMode::ADMINISTRATIVE;
+    $guidePayout = isset($body['guide_payout_planned_cents'])
+        ? (int)$body['guide_payout_planned_cents']
+        : (isset($body['guide_net_cents']) ? (int)$body['guide_net_cents'] : 0);
+    if ($status === 'published' && $guidePayout < 0) {
+        http_response_code(400);
+        echo json_encode(['ok' => false, 'error' => 'Informe o valor previsto de repasse ao guia']);
+        exit;
+    }
+
+    $pricing = null;
+    try {
+        if ((int)$body['price_cents'] > 0) {
+            $pricing = gcv_pricing_administrative(
+                (int)$body['price_cents'],
+                max(0, $guidePayout),
+                !empty($body['guide_user_id']) ? (int)$body['guide_user_id'] : null,
+                isset($body['category_key']) ? (string)$body['category_key'] : null,
+                (int)$body['departure_city_id'],
+                null
+            );
+        }
+    } catch (Throwable $e) {
+        http_response_code(400);
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+        exit;
+    }
+
     $quorum = max(4, (int)$body['quorum']);
     $stmt = db()->prepare(
         'INSERT INTO gcv_excursions (
           status, date_iso, departure_time, departure_city_id, attraction_id, guide_user_id,
           price_cents, quorum, max_people, booked_people, include_transport, include_entry, include_lunch,
-          notes_pt, notes_en, notes_es, cart_slug, created_by, updated_by
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+          notes_pt, notes_en, notes_es, cart_slug, created_by, updated_by,
+          business_mode, created_by_origin, guide_net_cents, commission_rule_id, commission_pct_applied,
+          commission_cents, price_before_round_cents, rounding_diff_cents, platform_margin_cents,
+          guide_payout_planned_cents, approved_at, approved_by
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
     );
     $stmt->execute([
         $status,
@@ -153,6 +200,18 @@ if ($method === 'POST') {
         !empty($body['cart_slug']) ? (string)$body['cart_slug'] : null,
         (int)$admin['id'],
         (int)$admin['id'],
+        $businessMode,
+        $createdByOrigin,
+        $pricing ? $pricing['guide_payout_planned_cents'] : $guidePayout,
+        $pricing['commission_rule_id'] ?? null,
+        $pricing['commission_pct'] ?? null,
+        $pricing['platform_margin_cents'] ?? null,
+        (int)$body['price_cents'],
+        0,
+        $pricing['platform_margin_cents'] ?? max(0, (int)$body['price_cents'] - $guidePayout),
+        $pricing ? $pricing['guide_payout_planned_cents'] : $guidePayout,
+        $status === 'published' ? date('Y-m-d H:i:s') : null,
+        $status === 'published' ? (int)$admin['id'] : null,
     ]);
     $id = (int)db()->lastInsertId();
     try {
@@ -162,6 +221,12 @@ if ($method === 'POST') {
         echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
         exit;
     }
+    gcv_audit_log('excursion', $id, 'admin_create', (int)$admin['id'], null, null, [
+        'business_mode' => $businessMode,
+        'created_by_origin' => $createdByOrigin,
+        'price_cents' => (int)$body['price_cents'],
+        'guide_payout_planned_cents' => $guidePayout,
+    ], $createdByOrigin);
     $stmt = db()->prepare('SELECT * FROM gcv_excursions WHERE id = ?');
     $stmt->execute([$id]);
     echo json_encode(['ok' => true, 'data' => gcv_excursion_enrich($stmt->fetch())]);
@@ -190,7 +255,9 @@ if ($method === 'PUT') {
         exit;
     }
     $status = (string)($body['status'] ?? $ex['status']);
-    if (!in_array($status, ['draft', 'published', 'cancelled', 'soldout'], true)) $status = $ex['status'];
+    if (!in_array($status, ['draft', 'published', 'cancelled', 'soldout', 'pending_approval', 'rejected'], true)) {
+        $status = $ex['status'];
+    }
     $guideErr = gcv_excursion_require_guide_if_published(array_merge($body, ['status' => $status]), $ex);
     if ($guideErr) {
         http_response_code(400);
@@ -206,12 +273,20 @@ if ($method === 'PUT') {
         $attrIds = [(int)$ex['attraction_id']];
     }
 
+    $priceCents = (int)($body['price_cents'] ?? $ex['price_cents']);
+    $guidePayout = array_key_exists('guide_payout_planned_cents', $body)
+        ? (int)$body['guide_payout_planned_cents']
+        : (int)($ex['guide_payout_planned_cents'] ?? $ex['guide_net_cents'] ?? 0);
+    $margin = max(0, $priceCents - $guidePayout);
+
     $quorum = max(4, (int)($body['quorum'] ?? $ex['quorum']));
     $stmt = db()->prepare(
         'UPDATE gcv_excursions SET
           status=?, date_iso=?, departure_time=?, departure_city_id=?, attraction_id=?, guide_user_id=?,
           price_cents=?, quorum=?, max_people=?, booked_people=?, include_transport=?, include_entry=?, include_lunch=?,
-          notes_pt=?, notes_en=?, notes_es=?, cart_slug=?, updated_by=?
+          notes_pt=?, notes_en=?, notes_es=?, cart_slug=?, updated_by=?,
+          guide_payout_planned_cents=?, guide_net_cents=?, platform_margin_cents=?,
+          business_mode=COALESCE(business_mode, \'ADMINISTRATIVE\')
          WHERE id=?'
     );
     $stmt->execute([
@@ -223,7 +298,7 @@ if ($method === 'PUT') {
         array_key_exists('guide_user_id', $body)
             ? (!empty($body['guide_user_id']) ? (int)$body['guide_user_id'] : null)
             : $ex['guide_user_id'],
-        (int)($body['price_cents'] ?? $ex['price_cents']),
+        $priceCents,
         $quorum,
         (int)($body['max_people'] ?? $ex['max_people']),
         (int)($body['booked_people'] ?? $ex['booked_people']),
@@ -237,6 +312,9 @@ if ($method === 'PUT') {
             ? (!empty($body['cart_slug']) ? (string)$body['cart_slug'] : null)
             : ($ex['cart_slug'] ?? null),
         (int)$admin['id'],
+        $guidePayout,
+        $guidePayout,
+        $margin,
         $id,
     ]);
     try {
@@ -248,7 +326,9 @@ if ($method === 'PUT') {
     }
     $stmt = db()->prepare('SELECT * FROM gcv_excursions WHERE id = ?');
     $stmt->execute([$id]);
-    echo json_encode(['ok' => true, 'data' => gcv_excursion_enrich($stmt->fetch())]);
+    $after = $stmt->fetch();
+    gcv_audit_diff('excursion', $id, $ex, $after ?: [], (int)$admin['id'], GcvCreatedBy::ADMIN);
+    echo json_encode(['ok' => true, 'data' => gcv_excursion_enrich($after)]);
     exit;
 }
 
@@ -259,19 +339,18 @@ if ($method === 'DELETE') {
         echo json_encode(['ok' => false, 'error' => 'id obrigatório']);
         exit;
     }
-    try {
-        db()->prepare('DELETE FROM gcv_excursion_attractions WHERE excursion_id = ?')->execute([$id]);
-    } catch (Throwable $e) {
-        // junction pode não existir em installs antigos
-    }
-    $stmt = db()->prepare('DELETE FROM gcv_excursions WHERE id = ?');
-    $stmt->execute([$id]);
+    // Soft delete — nunca apagar registros financeiros/históricos
+    $stmt = db()->prepare(
+        "UPDATE gcv_excursions SET status='cancelled', deleted_at=NOW(), updated_by=? WHERE id=? AND deleted_at IS NULL"
+    );
+    $stmt->execute([(int)$admin['id'], $id]);
     if ($stmt->rowCount() < 1) {
         http_response_code(404);
         echo json_encode(['ok' => false, 'error' => 'Excursão não encontrada']);
         exit;
     }
-    echo json_encode(['ok' => true, 'deleted' => $id]);
+    gcv_audit_log('excursion', $id, 'soft_delete', (int)$admin['id'], 'deleted_at', null, date('c'), GcvCreatedBy::ADMIN);
+    echo json_encode(['ok' => true, 'deleted' => $id, 'soft' => true]);
     exit;
 }
 

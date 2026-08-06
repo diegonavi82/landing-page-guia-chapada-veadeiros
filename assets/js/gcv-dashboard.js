@@ -370,15 +370,279 @@
   function loadFinancial() {
     var content = document.getElementById('admin-financial-content');
     if (!content) return;
-    var month = new Date().toISOString().substr(0, 7);
-    get('/api/admin/financial.php?month=' + month, function (err, res) {
-      if (!res.ok) return;
-      var s = res.data.summary;
-      content.innerHTML = '<div class="gcv-dash-stats">'
-        + '<div class="gcv-dash-stat"><div class="gcv-dash-stat__label">Reservas pagas</div><div class="gcv-dash-stat__value">' + (s.paid_bookings||0) + '</div></div>'
-        + '<div class="gcv-dash-stat"><div class="gcv-dash-stat__label">Receita bruta</div><div class="gcv-dash-stat__value">' + fmtMoney(s.gross_cents||0) + '</div></div>'
-        + '<div class="gcv-dash-stat"><div class="gcv-dash-stat__label">Comissão plataforma</div><div class="gcv-dash-stat__value">' + fmtMoney(s.commission_cents||0) + '</div></div>'
-        + '</div>';
+    var today = new Date();
+    var fromDefault = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().substr(0, 10);
+    var toDefault = today.toISOString().substr(0, 10);
+
+    content.innerHTML =
+      '<div class="gcv-dash-field-row" style="margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">' +
+      '<div class="gcv-dash-field"><label class="gcv-dash-label">De</label><input class="gcv-dash-input" id="fin-from" type="date" value="' + fromDefault + '" /></div>' +
+      '<div class="gcv-dash-field"><label class="gcv-dash-label">Até</label><input class="gcv-dash-input" id="fin-to" type="date" value="' + toDefault + '" /></div>' +
+      '<div class="gcv-dash-field"><label class="gcv-dash-label">BusinessMode</label><select class="gcv-dash-select" id="fin-mode"><option value="">Todos</option><option value="ADMINISTRATIVE">ADMINISTRATIVE</option><option value="GUIDE_MARKETPLACE">GUIDE_MARKETPLACE</option></select></div>' +
+      '<div class="gcv-dash-field"><label class="gcv-dash-label">Origem (CreatedBy)</label><select class="gcv-dash-select" id="fin-origin"><option value="">Todas</option><option>ADMIN</option><option>GUIDE</option><option>CURSOR</option><option>IMPORT</option><option>API</option><option>AI</option></select></div>' +
+      '<div class="gcv-dash-field"><label class="gcv-dash-label">CPF guia</label><input class="gcv-dash-input" id="fin-cpf" /></div>' +
+      '<div class="gcv-dash-field"><label class="gcv-dash-label">CNPJ guia</label><input class="gcv-dash-input" id="fin-cnpj" /></div>' +
+      '<div class="gcv-dash-field" style="align-self:flex-end;"><button type="button" class="gcv-dash-btn gcv-dash-btn--primary" id="fin-apply">Filtrar</button></div>' +
+      '</div>' +
+      '<div id="fin-stats"></div>' +
+      '<div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin:1rem 0;">' +
+      '<a class="gcv-dash-btn" id="fin-csv" href="#">Exportar CSV</a>' +
+      '<a class="gcv-dash-btn" id="fin-xlsx" href="#">Exportar XLSX</a>' +
+      '<a class="gcv-dash-btn" id="fin-pdf" target="_blank" href="#">Exportar PDF</a>' +
+      '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary" id="fin-payouts-btn">REGISTRAR REPASSE PIX</button>' +
+      '</div>' +
+      '<div id="fin-breakdowns"></div>' +
+      '<div id="fin-payout-panel" hidden style="margin-top:1rem;padding:1rem;border:1px solid #e2e8f0;border-radius:8px;"></div>';
+
+    function qs() {
+      var p = new URLSearchParams();
+      p.set('from', document.getElementById('fin-from').value || '');
+      p.set('to', document.getElementById('fin-to').value || '');
+      var mode = document.getElementById('fin-mode').value;
+      var origin = document.getElementById('fin-origin').value;
+      var cpf = document.getElementById('fin-cpf').value.trim();
+      var cnpj = document.getElementById('fin-cnpj').value.trim();
+      if (mode) p.set('business_mode', mode);
+      if (origin) p.set('origin', origin);
+      if (cpf) p.set('cpf', cpf);
+      if (cnpj) p.set('cnpj', cnpj);
+      return p.toString();
+    }
+
+    function renderGroup(title, rows) {
+      if (!rows || !rows.length) return '';
+      return '<h3 style="margin:1.25rem 0 0.5rem;">' + title + '</h3>' +
+        '<div class="gcv-dash-table-wrap"><table class="gcv-dash-table"><thead><tr><th>Nome</th><th>Vendas</th><th>Total</th><th>Plataforma</th><th>Guias</th></tr></thead><tbody>' +
+        rows.map(function (r) {
+          return '<tr><td>' + (r.group_label || r.group_id || '—') + '</td><td>' + (r.sales_count || 0) +
+            '</td><td>' + fmtMoney(r.total_sold_cents || 0) + '</td><td>' + fmtMoney(r.platform_revenue_cents || 0) +
+            '</td><td>' + fmtMoney(r.guide_amount_cents || 0) + '</td></tr>';
+        }).join('') + '</tbody></table></div>';
+    }
+
+    function refresh() {
+      var q = qs();
+      document.getElementById('fin-csv').href = '/api/admin/finance-dashboard.php?export=csv&accounting=1&' + q;
+      document.getElementById('fin-xlsx').href = '/api/admin/finance-dashboard.php?export=xlsx&accounting=1&' + q;
+      document.getElementById('fin-pdf').href = '/api/admin/finance-dashboard.php?export=pdf&accounting=1&' + q;
+      get('/api/admin/finance-dashboard.php?' + q, function (err, res) {
+        if (!res || !res.ok) {
+          document.getElementById('fin-stats').innerHTML = '<div class="gcv-dash-alert">Erro ao carregar financeiro.</div>';
+          return;
+        }
+        var s = (res.data && res.data.summary) || {};
+        document.getElementById('fin-stats').innerHTML =
+          '<div class="gcv-dash-stats">' +
+          '<div class="gcv-dash-stat"><div class="gcv-dash-stat__label">Total vendido</div><div class="gcv-dash-stat__value">' + fmtMoney(s.total_sold_cents || 0) + '</div></div>' +
+          '<div class="gcv-dash-stat"><div class="gcv-dash-stat__label">Receita bruta</div><div class="gcv-dash-stat__value">' + fmtMoney(s.gross_revenue_cents || 0) + '</div></div>' +
+          '<div class="gcv-dash-stat"><div class="gcv-dash-stat__label">Receita líquida</div><div class="gcv-dash-stat__value">' + fmtMoney(s.net_revenue_cents || 0) + '</div></div>' +
+          '<div class="gcv-dash-stat"><div class="gcv-dash-stat__label">Comissão plataforma</div><div class="gcv-dash-stat__value">' + fmtMoney(s.platform_commission_cents || 0) + '</div></div>' +
+          '<div class="gcv-dash-stat"><div class="gcv-dash-stat__label">Valor dos guias</div><div class="gcv-dash-stat__value">' + fmtMoney(s.guides_amount_cents || 0) + '</div></div>' +
+          '<div class="gcv-dash-stat"><div class="gcv-dash-stat__label">Já repassado</div><div class="gcv-dash-stat__value">' + fmtMoney(s.paid_out_cents || 0) + '</div></div>' +
+          '<div class="gcv-dash-stat"><div class="gcv-dash-stat__label">Pendente repasse</div><div class="gcv-dash-stat__value">' + fmtMoney(s.pending_payout_cents || 0) + '</div></div>' +
+          '<div class="gcv-dash-stat"><div class="gcv-dash-stat__label">Ticket médio</div><div class="gcv-dash-stat__value">' + fmtMoney(Math.round(s.avg_ticket_cents || 0)) + '</div></div>' +
+          '</div>';
+        document.getElementById('fin-breakdowns').innerHTML =
+          renderGroup('Receita por guia', res.data.by_guide) +
+          renderGroup('Receita por cidade', res.data.by_city) +
+          renderGroup('Receita por passeio', res.data.by_excursion) +
+          renderGroup('Receita por categoria', res.data.by_category);
+      });
+    }
+
+    document.getElementById('fin-apply').onclick = refresh;
+    document.getElementById('fin-payouts-btn').onclick = function () {
+      var panel = document.getElementById('fin-payout-panel');
+      panel.hidden = false;
+      panel.innerHTML = 'Carregando vendas pendentes…';
+      get('/api/admin/sale-payouts.php?payout_status=PAYOUT_PENDING', function (e, r) {
+        if (!r || !r.ok) {
+          panel.innerHTML = '<div class="gcv-dash-alert">Erro ao carregar.</div>';
+          return;
+        }
+        var sales = (r.data && r.data.sales) || [];
+        if (!sales.length) {
+          panel.innerHTML = '<div class="gcv-dash-alert gcv-dash-alert--info">Nenhuma venda pendente de repasse.</div>';
+          return;
+        }
+        panel.innerHTML = '<h3>Registrar repasse PIX</h3>' +
+          '<div class="gcv-dash-field"><label class="gcv-dash-label">Venda</label><select class="gcv-dash-select" id="po-sale">' +
+          sales.map(function (s) {
+            return '<option value="' + s.id + '" data-amount="' + s.guide_amount_cents + '">#' + s.id + ' · ' +
+              (s.reservation_id || '') + ' · ' + (s.guide_name || '') + ' · ' + fmtMoney(s.guide_amount_cents || 0) + '</option>';
+          }).join('') + '</select></div>' +
+          '<div class="gcv-dash-field-row">' +
+          '<div class="gcv-dash-field"><label class="gcv-dash-label">Valor pago (R$)</label><input class="gcv-dash-input" id="po-amount" type="number" step="0.01" /></div>' +
+          '<div class="gcv-dash-field"><label class="gcv-dash-label">Data</label><input class="gcv-dash-input" id="po-date" type="date" /></div>' +
+          '<div class="gcv-dash-field"><label class="gcv-dash-label">Hora</label><input class="gcv-dash-input" id="po-time" type="time" /></div>' +
+          '</div>' +
+          '<div class="gcv-dash-field-row">' +
+          '<div class="gcv-dash-field"><label class="gcv-dash-label">Chave PIX</label><input class="gcv-dash-input" id="po-pix" /></div>' +
+          '<div class="gcv-dash-field"><label class="gcv-dash-label">Tipo</label><select class="gcv-dash-select" id="po-type"><option value="cpf">CPF</option><option value="cnpj">CNPJ</option><option value="email">E-mail</option><option value="phone">Telefone</option><option value="random">Aleatória</option></select></div>' +
+          '</div>' +
+          '<div class="gcv-dash-field-row">' +
+          '<div class="gcv-dash-field"><label class="gcv-dash-label">TxID</label><input class="gcv-dash-input" id="po-txid" /></div>' +
+          '<div class="gcv-dash-field"><label class="gcv-dash-label">EndToEndId</label><input class="gcv-dash-input" id="po-e2e" /></div>' +
+          '</div>' +
+          '<div class="gcv-dash-field"><label class="gcv-dash-label">Comprovante (URL)</label><input class="gcv-dash-input" id="po-receipt" /></div>' +
+          '<div class="gcv-dash-field"><label class="gcv-dash-label">Observação</label><textarea class="gcv-dash-textarea" id="po-notes"></textarea></div>' +
+          '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary" id="po-save">Registrar repasse</button>' +
+          '<div id="po-msg" class="gcv-dash-alert" hidden style="margin-top:0.75rem;"></div>';
+
+        var first = sales[0];
+        if (first) {
+          document.getElementById('po-amount').value = ((first.guide_amount_cents || 0) / 100).toFixed(2);
+          if (first.guide_pix_key) document.getElementById('po-pix').value = first.guide_pix_key;
+          if (first.guide_pix_key_type) document.getElementById('po-type').value = first.guide_pix_key_type;
+        }
+        var now = new Date();
+        document.getElementById('po-date').value = now.toISOString().substr(0, 10);
+        document.getElementById('po-time').value = ('0' + now.getHours()).slice(-2) + ':' + ('0' + now.getMinutes()).slice(-2);
+
+        document.getElementById('po-sale').onchange = function () {
+          var opt = this.options[this.selectedIndex];
+          var cents = parseInt(opt.getAttribute('data-amount'), 10) || 0;
+          document.getElementById('po-amount').value = (cents / 100).toFixed(2);
+        };
+
+        document.getElementById('po-save').onclick = function () {
+          var msg = document.getElementById('po-msg');
+          post('/api/admin/sale-payouts.php', {
+            action: 'register_pix',
+            sale_id: parseInt(document.getElementById('po-sale').value, 10),
+            amount: parseFloat(document.getElementById('po-amount').value),
+            date: document.getElementById('po-date').value,
+            time: document.getElementById('po-time').value,
+            pix_key: document.getElementById('po-pix').value.trim(),
+            pix_key_type: document.getElementById('po-type').value,
+            txid: document.getElementById('po-txid').value.trim(),
+            end_to_end_id: document.getElementById('po-e2e').value.trim(),
+            receipt_url: document.getElementById('po-receipt').value.trim(),
+            notes: document.getElementById('po-notes').value.trim(),
+          }, function (err2, res2) {
+            msg.hidden = false;
+            if (!res2 || !res2.ok) {
+              msg.className = 'gcv-dash-alert gcv-dash-alert--warning';
+              msg.textContent = (res2 && res2.error) || 'Erro ao registrar';
+              return;
+            }
+            msg.className = 'gcv-dash-alert gcv-dash-alert--info';
+            msg.textContent = 'Repasse registrado com sucesso.';
+            refresh();
+          });
+        };
+      });
+    };
+
+    refresh();
+  }
+
+  function loadExcursionApprovals() {
+    var root = document.getElementById('admin-approvals-content');
+    if (!root) return;
+    root.innerHTML = 'Carregando…';
+    get('/api/admin/excursion-approvals.php', function (err, res) {
+      if (!res || !res.ok) {
+        root.innerHTML = '<div class="gcv-dash-alert">Erro ao carregar aprovações.</div>';
+        return;
+      }
+      var pending = (res.data && res.data.pending) || [];
+      if (!pending.length) {
+        root.innerHTML = '<div class="gcv-dash-alert gcv-dash-alert--info">Nenhuma excursão aguardando aprovação.</div>';
+        return;
+      }
+      root.innerHTML = pending.map(function (ex) {
+        return '<div class="gcv-dash-pending-card" data-id="' + ex.id + '" style="margin-bottom:1rem;">' +
+          '<div class="gcv-dash-pending-card__title">' + (ex.attraction_title || ('Excursão #' + ex.id)) + '</div>' +
+          '<div class="gcv-dash-pending-card__meta">Guia: ' + (ex.guide_name || '—') +
+          ' · ' + (ex.date_iso || '') + ' ' + String(ex.departure_time || '').slice(0, 5) +
+          ' · Líquido guia: ' + fmtMoney(ex.guide_net_cents || 0) +
+          ' · Preço final: ' + fmtMoney(ex.price_cents || 0) +
+          ' · Comissão: ' + (ex.commission_pct_applied || '—') + '%</div>' +
+          '<div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.6rem;">' +
+          '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary" data-act="approve">Aprovar</button>' +
+          '<button type="button" class="gcv-dash-btn" data-act="reject">Rejeitar</button>' +
+          '<button type="button" class="gcv-dash-btn" data-act="request_changes">Solicitar alterações</button>' +
+          '<button type="button" class="gcv-dash-btn" data-act="edit_and_approve">Editar e Aprovar</button>' +
+          '</div></div>';
+      }).join('');
+
+      root.querySelectorAll('[data-act]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var card = btn.closest('[data-id]');
+          var id = parseInt(card.getAttribute('data-id'), 10);
+          var action = btn.getAttribute('data-act');
+          var payload = { id: id, action: action };
+          if (action === 'reject') {
+            var reason = prompt('Motivo da rejeição:');
+            if (!reason) return;
+            payload.rejection_reason = reason;
+          }
+          if (action === 'request_changes') {
+            var note = prompt('Alterações solicitadas:');
+            if (!note) return;
+            payload.approval_note = note;
+          }
+          if (action === 'edit_and_approve') {
+            var price = prompt('Preço final por pessoa (R$) — deixe vazio para manter:');
+            var net = prompt('Valor líquido do guia (R$) — deixe vazio para manter:');
+            if (price) payload.price_cents = Math.round(parseFloat(price) * 100);
+            if (net) {
+              payload.guide_net_cents = Math.round(parseFloat(net) * 100);
+              payload.guide_payout_planned_cents = payload.guide_net_cents;
+            }
+          }
+          post('/api/admin/excursion-approvals.php', payload, function (e2, r2) {
+            alert((r2 && r2.ok) ? 'Ação aplicada.' : ((r2 && r2.error) || 'Erro'));
+            if (r2 && r2.ok) loadExcursionApprovals();
+          });
+        });
+      });
+    });
+  }
+
+  function loadCommissionRules() {
+    var root = document.getElementById('admin-commission-content');
+    if (!root) return;
+    root.innerHTML = 'Carregando…';
+    get('/api/admin/commission-rules.php', function (err, res) {
+      if (!res || !res.ok) {
+        root.innerHTML = '<div class="gcv-dash-alert">Erro ao carregar regras.</div>';
+        return;
+      }
+      var rules = (res.data && res.data.rules) || [];
+      root.innerHTML =
+        '<p class="gcv-dash-hint">Prioridade: Excursão → Guia → Categoria → Cidade → Global. Padrão: 16%.</p>' +
+        '<div class="gcv-dash-table-wrap"><table class="gcv-dash-table"><thead><tr><th>Escopo</th><th>ID</th><th>%</th><th>Label</th><th>Ativa</th></tr></thead><tbody>' +
+        rules.map(function (r) {
+          return '<tr><td>' + r.scope_type + '</td><td>' + (r.scope_id || '—') + '</td><td>' + r.commission_pct +
+            '</td><td>' + (r.label || '—') + '</td><td>' + (r.is_active == 1 ? 'sim' : 'não') + '</td></tr>';
+        }).join('') + '</tbody></table></div>' +
+        '<h3 style="margin-top:1rem;">Nova regra</h3>' +
+        '<div class="gcv-dash-field-row">' +
+        '<div class="gcv-dash-field"><label class="gcv-dash-label">Escopo</label><select class="gcv-dash-select" id="cr-scope"><option value="global">global</option><option value="guide">guide</option><option value="city">city</option><option value="category">category</option><option value="excursion">excursion</option></select></div>' +
+        '<div class="gcv-dash-field"><label class="gcv-dash-label">Scope ID</label><input class="gcv-dash-input" id="cr-sid" type="number" /></div>' +
+        '<div class="gcv-dash-field"><label class="gcv-dash-label">%</label><input class="gcv-dash-input" id="cr-pct" type="number" step="0.001" value="16" /></div>' +
+        '<div class="gcv-dash-field"><label class="gcv-dash-label">Label</label><input class="gcv-dash-input" id="cr-label" /></div>' +
+        '</div>' +
+        '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary" id="cr-save">Salvar regra</button>' +
+        '<div id="cr-msg" class="gcv-dash-alert" hidden style="margin-top:0.75rem;"></div>';
+
+      document.getElementById('cr-save').onclick = function () {
+        post('/api/admin/commission-rules.php', {
+          scope_type: document.getElementById('cr-scope').value,
+          scope_id: parseInt(document.getElementById('cr-sid').value, 10) || null,
+          commission_pct: parseFloat(document.getElementById('cr-pct').value),
+          label: document.getElementById('cr-label').value.trim() || null,
+          is_active: true,
+        }, function (e2, r2) {
+          var msg = document.getElementById('cr-msg');
+          msg.hidden = false;
+          msg.className = 'gcv-dash-alert ' + (r2 && r2.ok ? 'gcv-dash-alert--info' : 'gcv-dash-alert--warning');
+          msg.textContent = (r2 && r2.ok) ? 'Regra salva.' : ((r2 && r2.error) || 'Erro');
+          if (r2 && r2.ok) loadCommissionRules();
+        });
+      };
     });
   }
 
@@ -560,12 +824,14 @@
         { id: 'section-cms-guides',        icon: '🧭', label: 'Guias cadastrados', load: function () { if (window.GcvAdminCms) window.GcvAdminCms.open('guides'); } },
         { id: 'section-cms-cities',        icon: '📍', label: 'Cidades',           load: function () { if (window.GcvAdminCms) window.GcvAdminCms.open('cities'); } },
         { id: 'section-cms-excursions',    icon: '🚌', label: 'Excursões',         load: function () { if (window.GcvAdminCms) window.GcvAdminCms.open('excursions'); } },
+        { id: 'section-admin-approvals',   icon: '✅', label: 'Aprovações',        load: loadExcursionApprovals },
         { id: 'section-pending-guides',    icon: '👤', label: 'Guias pendentes',   load: loadPendingGuides  },
         { id: 'section-admin-guides',      icon: '💳', label: 'Guias + PIX',       load: loadAdminGuides    },
         { id: 'section-admin-payouts',     icon: '💸', label: 'Pagar guias',       load: loadAdminPayouts   },
         { id: 'section-pending-tours',     icon: '🗺️', label: 'Passeios pendentes',load: loadPendingTours   },
         { id: 'section-admin-create-tour', icon: '➕', label: 'Criar passeio',     load: function () { loadGuidesList(); initCreateTourForm('gcv-create-tour-form'); document.getElementById('admin-guide-field').hidden = false; } },
         { id: 'section-admin-bookings',    icon: '📋', label: 'Todas as reservas', load: loadAdminBookings  },
+        { id: 'section-admin-commission',  icon: '📈', label: 'Comissões',         load: loadCommissionRules },
         { id: 'section-admin-settings',    icon: '⚙️', label: 'Configurações',     load: loadSettings       },
         { id: 'section-admin-financial',   icon: '💰', label: 'Financeiro',        load: loadFinancial      },
       ];
@@ -575,6 +841,7 @@
         { id: 'section-guide-tours',        icon: '📅', label: 'Agenda',          load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideAgenda(); } },
         { id: 'section-guide-create-tour',  icon: '➕', label: 'Publicar passeio', load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuidePublish(); } },
         { id: 'section-guide-profile',      icon: '👤', label: 'Meu perfil',      load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideProfile(); } },
+        { id: 'section-guide-financial',    icon: '🏦', label: 'Dados financeiros', load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideFinancial(); } },
         { id: 'section-guide-payments',     icon: '💳', label: 'Recebimentos',    load: loadGuidePayments  },
       ];
     } else if (role === 'guide' && status === 'pending') {

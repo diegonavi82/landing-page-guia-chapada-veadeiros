@@ -284,7 +284,7 @@
       var minQ = d.min_quorum || 4;
 
       form.innerHTML =
-        '<p class="gcv-dash-hint" style="margin:0 0 1rem;color:#64748b;">Escolha um atrativo já cadastrado pelo admin. Valor é <strong>por pessoa</strong>. Quórum mínimo: ' + minQ + ' (abaixo disso fica em formação).</p>' +
+        '<p class="gcv-dash-hint" style="margin:0 0 1rem;color:#64748b;">Informe apenas o <strong>valor líquido</strong> que deseja receber por pessoa. A plataforma calcula comissão, arredondamento e preço final. O passeio fica <strong>aguardando aprovação</strong> (não publica sozinho). Quórum mín.: ' + minQ + '.</p>' +
         '<div class="gcv-dash-field"><label class="gcv-dash-label">Atrativo *</label>' +
         '<select class="gcv-dash-select" id="ge-attr" required><option value="">Selecione…</option>' +
         attrs.map(function (a) {
@@ -300,30 +300,55 @@
           return '<option value="' + c.id + '">' + esc(c.name) + '</option>';
         }).join('') + '</select></div>' +
         '<div class="gcv-dash-field-row">' +
-        '<div class="gcv-dash-field"><label class="gcv-dash-label">Valor por pessoa (R$) *</label>' +
-        '<input class="gcv-dash-input" id="ge-price" type="number" min="1" step="0.01" required /></div>' +
+        '<div class="gcv-dash-field"><label class="gcv-dash-label">Valor líquido desejado (R$/pessoa) *</label>' +
+        '<input class="gcv-dash-input" id="ge-net" type="number" min="1" step="0.01" required /></div>' +
         '<div class="gcv-dash-field"><label class="gcv-dash-label">Quórum *</label>' +
         '<input class="gcv-dash-input" id="ge-quorum" type="number" min="' + minQ + '" value="' + minQ + '" /></div>' +
         '<div class="gcv-dash-field"><label class="gcv-dash-label">Máximo *</label>' +
         '<input class="gcv-dash-input" id="ge-max" type="number" min="' + minQ + '" value="10" /></div>' +
         '</div>' +
+        '<div id="ge-preview" class="gcv-dash-alert gcv-dash-alert--info" style="margin:0.75rem 0;">Digite o valor líquido para ver o preço estimado (cálculo no servidor).</div>' +
         '<label class="gcv-dash-label"><input type="checkbox" id="ge-transport" /> Inclui transporte</label> ' +
         '<label class="gcv-dash-label"><input type="checkbox" id="ge-entry" /> Inclui ingresso</label>' +
         '<div class="gcv-dash-field" style="margin-top:0.75rem;"><label class="gcv-dash-label">Observações</label>' +
         '<textarea class="gcv-dash-textarea" id="ge-notes" maxlength="2000" rows="3"></textarea></div>' +
-        '<button type="submit" class="gcv-dash-btn gcv-dash-btn--primary">Publicar passeio</button>' +
+        '<button type="submit" class="gcv-dash-btn gcv-dash-btn--primary">Enviar para aprovação</button>' +
         '<div id="ge-err" class="gcv-dash-alert gcv-dash-alert--warning" hidden style="margin-top:1rem;"></div>';
+
+      function refreshPreview() {
+        var net = parseFloat(document.getElementById('ge-net').value);
+        var cityId = parseInt(document.getElementById('ge-city').value, 10) || 0;
+        var box = document.getElementById('ge-preview');
+        if (!net || net < 1) {
+          box.textContent = 'Digite o valor líquido para ver o preço estimado (cálculo no servidor).';
+          return;
+        }
+        var q = 'guide_net=' + encodeURIComponent(String(net)) + (cityId ? '&city_id=' + cityId : '');
+        get('/api/guides/pricing-preview.php?' + q, function (e, r) {
+          if (!r || !r.ok || !r.data || !r.data.pricing) {
+            box.textContent = (r && r.error) || 'Não foi possível calcular o preview.';
+            return;
+          }
+          var p = r.data.pricing;
+          box.innerHTML = 'Comissão ' + p.commission_pct + '% (' + (p.commission_scope || '') + ') · ' +
+            'Antes do arredondamento: R$ ' + (p.price_before_round_cents / 100).toFixed(2) + ' · ' +
+            '<strong>Preço final estimado: R$ ' + (p.final_price_cents / 100).toFixed(2) + '</strong>';
+        });
+      }
+      document.getElementById('ge-net').addEventListener('change', refreshPreview);
+      document.getElementById('ge-net').addEventListener('blur', refreshPreview);
+      document.getElementById('ge-city').addEventListener('change', refreshPreview);
 
       form.onsubmit = function (ev) {
         ev.preventDefault();
         var errEl = document.getElementById('ge-err');
-        var price = parseFloat(document.getElementById('ge-price').value);
+        var net = parseFloat(document.getElementById('ge-net').value);
         var payload = {
           attraction_id: parseInt(document.getElementById('ge-attr').value, 10) || 0,
           date_iso: document.getElementById('ge-date').value,
           departure_time: document.getElementById('ge-time').value,
           departure_city_id: parseInt(document.getElementById('ge-city').value, 10) || 0,
-          price_cents: Math.round((price || 0) * 100),
+          guide_net_cents: Math.round((net || 0) * 100),
           quorum: parseInt(document.getElementById('ge-quorum').value, 10) || minQ,
           max_people: parseInt(document.getElementById('ge-max').value, 10) || 10,
           include_transport: document.getElementById('ge-transport').checked,
@@ -335,14 +360,79 @@
             errEl.hidden = false;
             if (!r || !r.ok) {
               errEl.className = 'gcv-dash-alert gcv-dash-alert--warning';
-              errEl.textContent = (r && r.error) || 'Erro ao publicar';
+              errEl.textContent = (r && r.error) || 'Erro ao enviar';
               return;
             }
             errEl.className = 'gcv-dash-alert gcv-dash-alert--info';
-            errEl.textContent = (r.data && r.data.message) || 'Publicado!';
+            var msg = (r.data && r.data.message) || 'Enviado para aprovação!';
+            if (r.data && r.data.pricing) {
+              msg += ' Preço final calculado: R$ ' + (r.data.pricing.final_price_cents / 100).toFixed(2);
+            }
+            errEl.textContent = msg;
             form.reset();
             loadGuideAgenda();
           }
+        });
+      };
+    });
+  }
+
+  /* ---------- GUIA: DADOS FINANCEIROS ---------- */
+  function loadGuideFinancial() {
+    var root = document.getElementById('guide-financial-root');
+    if (!root) return;
+    root.innerHTML = 'Carregando…';
+    get('/api/guides/financial-profile.php', function (err, res) {
+      if (!res || !res.ok) {
+        root.innerHTML = '<div class="gcv-dash-alert">Erro ao carregar perfil financeiro.</div>';
+        return;
+      }
+      var p = (res.data && res.data.profile) || {};
+      var ready = !!(res.data && res.data.ready_for_payout);
+      root.innerHTML =
+        (ready
+          ? '<div class="gcv-dash-alert gcv-dash-alert--info">Perfil financeiro pronto para repasses.</div>'
+          : '<div class="gcv-dash-alert gcv-dash-alert--warning">Complete os dados (PIX obrigatório) para receber repasses.</div>') +
+        '<div class="gcv-dash-field"><label class="gcv-dash-label">Nome / Razão social *</label><input class="gcv-dash-input" id="gf-name" value="' + esc(p.legal_name || '') + '" /></div>' +
+        '<div class="gcv-dash-field-row">' +
+        '<div class="gcv-dash-field"><label class="gcv-dash-label">Tipo *</label><select class="gcv-dash-select" id="gf-type"><option value="PF">PF</option><option value="PJ">PJ</option></select></div>' +
+        '<div class="gcv-dash-field"><label class="gcv-dash-label">CPF</label><input class="gcv-dash-input" id="gf-cpf" value="' + esc(p.cpf || '') + '" /></div>' +
+        '<div class="gcv-dash-field"><label class="gcv-dash-label">CNPJ</label><input class="gcv-dash-input" id="gf-cnpj" value="' + esc(p.cnpj || '') + '" /></div>' +
+        '</div>' +
+        '<div class="gcv-dash-field-row">' +
+        '<div class="gcv-dash-field"><label class="gcv-dash-label">Chave PIX *</label><input class="gcv-dash-input" id="gf-pix" value="' + esc(p.pix_key || '') + '" /></div>' +
+        '<div class="gcv-dash-field"><label class="gcv-dash-label">Tipo da chave *</label><select class="gcv-dash-select" id="gf-pix-type"><option value="cpf">CPF</option><option value="cnpj">CNPJ</option><option value="email">E-mail</option><option value="phone">Telefone</option><option value="random">Aleatória</option></select></div>' +
+        '</div>' +
+        '<div class="gcv-dash-field"><label class="gcv-dash-label">Titular da chave *</label><input class="gcv-dash-input" id="gf-holder" value="' + esc(p.pix_holder_name || '') + '" /></div>' +
+        '<div class="gcv-dash-field-row">' +
+        '<div class="gcv-dash-field"><label class="gcv-dash-label">Banco</label><input class="gcv-dash-input" id="gf-bank" value="' + esc(p.bank_name || '') + '" /></div>' +
+        '<div class="gcv-dash-field"><label class="gcv-dash-label">Agência</label><input class="gcv-dash-input" id="gf-agency" value="' + esc(p.bank_agency || '') + '" /></div>' +
+        '<div class="gcv-dash-field"><label class="gcv-dash-label">Conta</label><input class="gcv-dash-input" id="gf-account" value="' + esc(p.bank_account || '') + '" /></div>' +
+        '</div>' +
+        '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary" id="gf-save">Salvar dados financeiros</button>' +
+        '<div id="gf-msg" class="gcv-dash-alert" hidden style="margin-top:0.75rem;"></div>';
+
+      if (p.person_type) document.getElementById('gf-type').value = p.person_type;
+      if (p.pix_key_type) document.getElementById('gf-pix-type').value = p.pix_key_type;
+
+      document.getElementById('gf-save').onclick = function () {
+        sendJson('PUT', '/api/guides/financial-profile.php', {
+          legal_name: document.getElementById('gf-name').value.trim(),
+          person_type: document.getElementById('gf-type').value,
+          cpf: document.getElementById('gf-cpf').value.trim(),
+          cnpj: document.getElementById('gf-cnpj').value.trim(),
+          pix_key: document.getElementById('gf-pix').value.trim(),
+          pix_key_type: document.getElementById('gf-pix-type').value,
+          pix_holder_name: document.getElementById('gf-holder').value.trim(),
+          bank_name: document.getElementById('gf-bank').value.trim(),
+          bank_agency: document.getElementById('gf-agency').value.trim(),
+          bank_account: document.getElementById('gf-account').value.trim(),
+        }, function (e2, r2) {
+          var msg = document.getElementById('gf-msg');
+          msg.hidden = false;
+          msg.className = 'gcv-dash-alert ' + (r2 && r2.ok ? 'gcv-dash-alert--info' : 'gcv-dash-alert--warning');
+          msg.textContent = (r2 && r2.ok) ? ((r2.data && r2.data.message) || 'Salvo.') : ((r2 && r2.error) || 'Erro');
+          if (r2 && r2.ok) loadGuideFinancial();
         });
       };
     });
@@ -565,6 +655,7 @@
     loadGuideProfile: loadGuideProfile,
     loadGuideAgenda: loadGuideAgenda,
     loadGuidePublish: loadGuidePublish,
+    loadGuideFinancial: loadGuideFinancial,
     loadClientUpcoming: loadClientUpcoming,
     loadClientBookings: loadClientBookingsEnhanced,
     loadClientProfile: loadClientProfile,

@@ -12,6 +12,9 @@ require_once __DIR__ . '/../helpers/auth.php';
 require_once __DIR__ . '/../helpers/validator.php';
 require_once __DIR__ . '/../helpers/cms_schema.php';
 require_once __DIR__ . '/../helpers/excursion_status.php';
+require_once __DIR__ . '/../helpers/marketplace_schema.php';
+require_once __DIR__ . '/../helpers/marketplace/publish_service.php';
+require_once __DIR__ . '/../helpers/marketplace/guide_financial_service.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -20,6 +23,7 @@ if (($user['status'] ?? '') !== 'active') {
     json_response(false, null, 'Guia ainda não aprovado', 403);
 }
 gcv_cms_ensure_schema();
+gcv_marketplace_ensure_schema();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $MIN_QUORUM = 4;
 
@@ -98,6 +102,9 @@ if ($method === 'GET') {
         'cities' => $cities,
         'min_quorum' => $MIN_QUORUM,
         'profile_complete' => gcv_guide_profile_is_complete((int)$user['id']),
+        'financial_ready' => gcv_guide_financial_is_ready((int)$user['id']),
+        'business_mode' => 'GUIDE_MARKETPLACE',
+        'pricing_hint' => 'Informe apenas o valor líquido desejado (guide_net). O backend calcula comissão, arredondamento e preço final.',
     ]);
 }
 
@@ -110,9 +117,16 @@ if ($method === 'POST') {
     $time = trim((string)($data['departure_time'] ?? ''));
     $cityId = (int)($data['departure_city_id'] ?? 0);
     $attrId = (int)($data['attraction_id'] ?? 0);
-    $priceCents = isset($data['price_cents'])
-        ? (int)$data['price_cents']
-        : (int)round(((float)($data['price'] ?? 0)) * 100);
+
+    // Guia informa APENAS o valor líquido desejado (nunca o preço final da plataforma)
+    $guideNetCents = isset($data['guide_net_cents'])
+        ? (int)$data['guide_net_cents']
+        : (isset($data['guide_net'])
+            ? (int)round(((float)$data['guide_net']) * 100)
+            : (isset($data['price_cents'])
+                ? (int)$data['price_cents'] // legado: price_cents tratado como líquido
+                : (int)round(((float)($data['price'] ?? 0)) * 100)));
+
     $quorum = max($MIN_QUORUM, (int)($data['quorum'] ?? $MIN_QUORUM));
     $maxPeople = (int)($data['max_people'] ?? 10);
     $notes = sanitize_textarea((string)($data['notes_pt'] ?? ''), 2000);
@@ -131,8 +145,8 @@ if ($method === 'POST') {
     if ($cityId <= 0 || $attrId <= 0) {
         json_response(false, null, 'Cidade e atrativo são obrigatórios', 422);
     }
-    if ($priceCents < 100) {
-        json_response(false, null, 'Valor por pessoa inválido', 422);
+    if ($guideNetCents < 100) {
+        json_response(false, null, 'Informe o valor líquido que deseja receber (mín. R$ 1,00)', 422);
     }
     if ($maxPeople < $quorum) {
         json_response(false, null, 'Máximo de pessoas deve ser ≥ quórum (' . $MIN_QUORUM . ')', 422);
@@ -149,43 +163,33 @@ if ($method === 'POST') {
         json_response(false, null, 'Cidade de saída inválida', 422);
     }
 
-    $stmt = db()->prepare(
-        'INSERT INTO gcv_excursions (
-          status, date_iso, departure_time, departure_city_id, attraction_id, guide_user_id,
-          price_cents, quorum, max_people, booked_people, include_transport, include_entry, include_lunch,
-          notes_pt, created_by, updated_by
-        ) VALUES (\'published\',?,?,?,?,?,?,?,?,0,?,?,?,?,?,?)'
-    );
-    $stmt->execute([
-        $date,
-        $time,
-        $cityId,
-        $attrId,
-        (int)$user['id'],
-        $priceCents,
-        $quorum,
-        $maxPeople,
-        !empty($data['include_transport']) ? 1 : 0,
-        !empty($data['include_entry']) ? 1 : 0,
-        !empty($data['include_lunch']) ? 1 : 0,
-        $notes !== '' ? $notes : null,
-        (int)$user['id'],
-        (int)$user['id'],
-    ]);
-    $id = (int)db()->lastInsertId();
-    $get = db()->prepare(
-        'SELECT e.*, a.title_pt AS attraction_title, c.name AS departure_city_name
-         FROM gcv_excursions e
-         LEFT JOIN gcv_attractions a ON a.id = e.attraction_id
-         LEFT JOIN gcv_cities c ON c.id = e.departure_city_id
-         WHERE e.id = ?'
-    );
-    $get->execute([$id]);
-    $row = gcv_map_excursion_row($get->fetch(PDO::FETCH_ASSOC) ?: []);
-    json_response(true, [
-        'message' => 'Passeio publicado (em formação até atingir o quórum de ' . $MIN_QUORUM . ')',
-        'excursion' => $row,
-    ]);
+    try {
+        $created = gcv_publish_guide_marketplace([
+            'date_iso' => $date,
+            'departure_time' => $time,
+            'departure_city_id' => $cityId,
+            'attraction_id' => $attrId,
+            'guide_net_cents' => $guideNetCents,
+            'quorum' => $quorum,
+            'max_people' => $maxPeople,
+            'include_transport' => !empty($data['include_transport']),
+            'include_entry' => !empty($data['include_entry']),
+            'include_lunch' => !empty($data['include_lunch']),
+            'notes_pt' => $notes !== '' ? $notes : null,
+            'category_key' => $data['category_key'] ?? null,
+        ], (int)$user['id']);
+        $pricing = $created['pricing'] ?? null;
+        $row = gcv_map_excursion_row($created);
+        json_response(true, [
+            'message' => 'Passeio enviado para aprovação do admin (não publicado automaticamente)',
+            'excursion' => $row,
+            'pricing' => $pricing,
+        ]);
+    } catch (InvalidArgumentException $e) {
+        json_response(false, null, $e->getMessage(), 422);
+    } catch (Throwable $e) {
+        json_response(false, null, $e->getMessage(), 500);
+    }
 }
 
 if ($method === 'PUT') {

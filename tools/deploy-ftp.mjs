@@ -1,13 +1,8 @@
 /**
  * Envia Build_prod/ para a Hostinger via FTPS.
  *
- * Credenciais: arquivo `.env.deploy` na raiz (não vai pro git).
- * Exemplo: copie `.env.deploy.example` → `.env.deploy`
- *
- * Uso:
- *   npm run deploy              (só upload do Build_prod já gerado)
- *   npm run build:deploy        (build + upload)
- *   GCV_DEPLOY_FTP=1 npm run build   (upload automático no fim do build)
+ * Credenciais: `.env.deploy` na raiz.
+ * Uso: npm run deploy | npm run build:deploy
  */
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
@@ -52,25 +47,49 @@ function skipRemoteName(name) {
   );
 }
 
-async function uploadDir(client, localDir, remoteDir) {
-  const entries = readdirSync(localDir);
-  for (const name of entries) {
-    if (skipRemoteName(name)) {
-      console.log("[deploy] pulando (segredo/local):", name);
-      continue;
-    }
+/** @returns {list<{local:string, remote:string}>} */
+function collectFiles(localDir, remoteRel = "") {
+  /** @type {list<{local:string, remote:string}>} */
+  const out = [];
+  for (const name of readdirSync(localDir)) {
+    if (skipRemoteName(name)) continue;
     const localPath = join(localDir, name);
-    const remotePath = remoteDir.replace(/\/$/, "") + "/" + name;
-    const st = statSync(localPath);
-    if (st.isDirectory()) {
-      await client.ensureDir(remotePath);
-      await uploadDir(client, localPath, remotePath);
+    const childRel = remoteRel ? `${remoteRel}/${name}` : name;
+    if (statSync(localPath).isDirectory()) {
+      out.push(...collectFiles(localPath, childRel));
     } else {
-      await client.uploadFrom(localPath, remotePath);
-      const rel = relative(BUILD_PROD_DIR, localPath).split(sep).join("/");
-      console.log("[deploy] ↑", rel);
+      out.push({ local: localPath, remote: childRel.replace(/\\/g, "/") });
     }
   }
+  return out;
+}
+
+async function cdRemoteRoot(client, remoteRoot) {
+  const root = (remoteRoot || "./").trim().replace(/\\/g, "/");
+  if (root === "." || root === "./") return;
+  let pwd = await client.pwd();
+  while (pwd && pwd !== "/") {
+    await client.cdup();
+    pwd = await client.pwd();
+  }
+  for (const part of root.replace(/^\/+|\/+$/g, "").split("/").filter(Boolean)) {
+    await client.cd(part);
+  }
+}
+
+async function connect(env) {
+  const client = new Client(180_000);
+  client.ftp.verbose = String(env.FTP_VERBOSE || "").toLowerCase() === "1";
+  await client.access({
+    host: (env.FTP_SERVER || "").trim(),
+    port: Number(env.FTP_PORT || 21),
+    user: (env.FTP_USERNAME || "").trim(),
+    password: (env.FTP_PASSWORD || "").trim(),
+    secure: String(env.FTP_SECURE || "true").toLowerCase() !== "false",
+    secureOptions: { rejectUnauthorized: false },
+  });
+  await cdRemoteRoot(client, (env.FTP_REMOTE_DIR || "./").trim() || "./");
+  return client;
 }
 
 async function main() {
@@ -78,49 +97,66 @@ async function main() {
   const host = (env.FTP_SERVER || "").trim();
   const user = (env.FTP_USERNAME || "").trim();
   const pass = (env.FTP_PASSWORD || "").trim();
-  const port = Number(env.FTP_PORT || 21);
-  const secure = String(env.FTP_SECURE || "true").toLowerCase() !== "false";
-  // Na Hostinger o FTP costuma já abrir em public_html — use "./" ou "public_html/"
   const remoteRoot = (env.FTP_REMOTE_DIR || "./").trim() || "./";
 
   if (!host || !user || !pass) {
-    console.error("[deploy] Faltam credenciais FTP.");
-    console.error("[deploy] Crie `.env.deploy` a partir de `.env.deploy.example`");
-    console.error("[deploy] Ou no GitHub: Settings → Secrets → FTP_SERVER / FTP_USERNAME / FTP_PASSWORD");
+    console.error("[deploy] Faltam credenciais FTP (.env.deploy).");
     process.exit(1);
   }
-
   if (!existsSync(BUILD_PROD_DIR)) {
     console.error("[deploy] Build_prod/ não existe. Rode: npm run build");
     process.exit(1);
   }
 
-  const client = new Client(120_000);
-  client.ftp.verbose = String(env.FTP_VERBOSE || "").toLowerCase() === "1";
+  const files = collectFiles(BUILD_PROD_DIR);
+  console.log("[deploy] Conectando", host, "(FTPS)");
+  console.log("[deploy] Destino:", remoteRoot);
+  console.log("[deploy] Arquivos:", files.length);
 
-  console.log("[deploy] Conectando", host + ":" + port, secure ? "(FTPS)" : "(FTP)");
-  console.log("[deploy] Destino remoto:", remoteRoot);
-  console.log("[deploy] Origem:", BUILD_PROD_DIR);
+  let client = await connect(env);
+  let basePwd = await client.pwd();
+  console.log("[deploy] cwd:", basePwd);
 
-  try {
-    await client.access({
-      host,
-      port,
-      user,
-      password: pass,
-      secure,
-      secureOptions: { rejectUnauthorized: false },
-    });
-    await client.ensureDir(remoteRoot);
-    await client.cd(remoteRoot);
-    await uploadDir(client, BUILD_PROD_DIR, ".");
-    console.log("[deploy] Concluído.");
-  } catch (err) {
-    console.error("[deploy] Falha:", err && err.message ? err.message : err);
-    process.exit(1);
-  } finally {
-    client.close();
+  let ok = 0;
+  for (let i = 0; i < files.length; i++) {
+    const { local, remote } = files[i];
+    const dir = remote.includes("/") ? remote.slice(0, remote.lastIndexOf("/")) : "";
+    const base = remote.slice(remote.lastIndexOf("/") + 1);
+    let attempts = 0;
+    while (true) {
+      attempts++;
+      try {
+        await client.cd(basePwd);
+        if (dir) await client.ensureDir(dir);
+        await client.uploadFrom(local, base);
+        ok++;
+        if (ok % 25 === 0 || i === files.length - 1) {
+          console.log(`[deploy] ↑ ${ok}/${files.length} — ${remote}`);
+        } else {
+          console.log("[deploy] ↑", remote);
+        }
+        break;
+      } catch (err) {
+        const msg = err && err.message ? err.message : String(err);
+        if (attempts >= 4) {
+          console.error("[deploy] Falha definitiva em", remote, "—", msg);
+          try { client.close(); } catch { /* ignore */ }
+          process.exit(1);
+        }
+        console.warn(`[deploy] retry ${attempts}/3 em ${remote}: ${msg}`);
+        try { client.close(); } catch { /* ignore */ }
+        await new Promise((r) => setTimeout(r, 1500 * attempts));
+        client = await connect(env);
+        basePwd = await client.pwd();
+      }
+    }
   }
+
+  try { client.close(); } catch { /* ignore */ }
+  console.log(`[deploy] Concluído. ${ok} arquivos enviados.`);
 }
 
-main();
+main().catch((e) => {
+  console.error("[deploy] Falha:", e.message || e);
+  process.exit(1);
+});

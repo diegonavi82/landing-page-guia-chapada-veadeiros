@@ -110,6 +110,16 @@ function gcv_pix_mark_paid(string $reservationId, string $source = 'manual'): ?a
         /* não bloqueia o PAID se o arquivo de seats falhar */
     }
 
+    // Snapshot financeiro imutável (marketplace) — nunca recalcular depois
+    if (!$wasPaid) {
+        try {
+            require_once __DIR__ . '/marketplace/sale_service.php';
+            gcv_sale_capture_from_pix_reservation($res, $source);
+        } catch (Throwable $e) {
+            error_log('sale_capture_from_pix: ' . $e->getMessage());
+        }
+    }
+
     return $res;
 }
 
