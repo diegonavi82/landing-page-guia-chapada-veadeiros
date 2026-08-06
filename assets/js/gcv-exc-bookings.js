@@ -228,13 +228,16 @@
     var sameCount = numOrZero(e.pessoasInscritas) === total;
     var sameConfirm = !!e.confirmada === confirmada;
     var sameVagas = numOrZero(e.vagasRestantes) === vagas;
-    if (extra <= 0 && sameCount && sameConfirm && sameVagas) return e;
+    var sameFaltam = numOrZero(e.faltamPessoas) === faltam;
+    var sameQuorum = numOrZero(e.quorumMin) === quorum;
+    if (extra <= 0 && sameCount && sameConfirm && sameVagas && sameFaltam && sameQuorum) return e;
 
     var copy = Object.assign({}, e);
     copy._pixBookedExtra = extra;
     copy.pessoasInscritas = total;
     copy.vagasRestantes = vagas;
     copy.confirmada = confirmada;
+    copy.quorumMin = quorum;
     copy.faltamPessoas = faltam;
     return copy;
   }

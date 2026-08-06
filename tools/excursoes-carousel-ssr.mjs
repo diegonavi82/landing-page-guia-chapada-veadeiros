@@ -105,6 +105,8 @@ const SSR = {
     falta0: "Aguardando inscrições para confirmar.",
     falta1: "Falta 1 inscrição para confirmar.",
     faltaMany: "Faltam {{n}} inscrições para confirmar",
+    quorumNeed1: "Falta 1 para confirmar",
+    quorumNeedMany: "Faltam {{n}} para confirmar",
     waHi:
       "Olá! Gostaria de me inscrever na excursão:\n\n" +
       "📅 Data: {{data}}\n" +
@@ -156,6 +158,8 @@ const SSR = {
     falta0: "Waiting for sign-ups to confirm this departure.",
     falta1: "1 more sign-up needed to confirm the departure.",
     faltaMany: "{{n}} more sign-ups needed to confirm the departure.",
+    quorumNeed1: "1 more to confirm",
+    quorumNeedMany: "{{n}} more to confirm",
     waHi:
       "Hi! I’d like to join this excursion:\n\n" +
       "📅 Date: {{data}}\n" +
@@ -207,6 +211,8 @@ const SSR = {
     falta0: "Esperando inscripciones para confirmar la salida.",
     falta1: "Falta 1 inscripción para confirmar la salida.",
     faltaMany: "Faltan {{n}} inscripciones para confirmar la salida.",
+    quorumNeed1: "Falta 1 para confirmar",
+    quorumNeedMany: "Faltan {{n}} para confirmar",
     waHi:
       "¡Hola! Me gustaría inscribirme en esta excursión:\n\n" +
       "📅 Fecha: {{data}}\n" +
@@ -275,33 +281,79 @@ function cardSpotTransportBadgeSsr(s) {
 
 function cardSpotRowSsr(d, locale, transportBadge) {
   const href = atrativoHrefFrom(d.atrativoPath, locale);
-  const label = esc(String(d.destino));
+  const label = esc(String(d.destino || "").trim());
   const imgInner =
     `<div class="gcv-excursoes-card__img-wrap gcv-excursoes-card__spot-img-wrap">` +
     `<img class="gcv-excursoes-card__img" src="${esc(String(d.cardImg || ""))}" alt="${label}" loading="lazy" decoding="async"></div>`;
   const sub = d.destinoSub ? `<span class="gcv-excursoes-card__dest-sub">${esc(String(d.destinoSub))}</span>` : "";
   const destMod = sub ? " gcv-excursoes-card__spot-dest--has-sub" : "";
-  const title = `<span class="gcv-excursoes-card__dest gcv-excursoes-card__spot-dest${destMod}">${label}${sub}</span>`;
+  const title = label
+    ? `<span class="gcv-excursoes-card__dest gcv-excursoes-card__spot-dest${destMod}">${label}${sub}</span>`
+    : "";
   const photo =
     `<div class="gcv-excursoes-card__spot-photo">` +
     `<div class="gcv-excursoes-card__atrativo-link--img">${imgInner}</div>` +
-    `${transportBadge || ""}</div>`;
+    `${transportBadge || ""}${title}</div>`;
   if (href) {
     return (
       `<div class="gcv-excursoes-card__spot">` +
       `<a class="gcv-excursoes-card__atrativo-link gcv-excursoes-card__atrativo-link--spot" href="${esc(href)}" title="${label}">` +
-      `${photo}${title}</a></div>`
+      `${photo}</a></div>`
     );
   }
-  return `<div class="gcv-excursoes-card__spot">${photo}${title}</div>`;
+  return `<div class="gcv-excursoes-card__spot">${photo}</div>`;
 }
 
-function cardSpotsBlockSsr(e, locale, s) {
+function excursaoDestinoHeadlineSsr(e) {
+  const names = getDestinos(e)
+    .map((d) => String((d && d.destino) || "").trim())
+    .filter(Boolean);
+  if (names.length) return names.join(" · ");
+  return String((e && e.destino) || "").trim();
+}
+
+function faltamParaConfirmarSsr(e) {
+  if (!e || e.confirmada) return 0;
+  const faltam = parseInt(String(e.faltamPessoas), 10);
+  if (Number.isFinite(faltam) && faltam >= 0) return faltam;
+  const q = parseInt(String(e.quorumMin), 10);
+  if (!Number.isFinite(q) || q < 1) return 0;
+  return Math.max(0, q - inscritosNoGrupo(e));
+}
+
+function cardStatusOverlaySsr(e, s, x, cap, labelAria) {
+  const statusHtml = e.confirmada
+    ? `<span class="gcv-excursoes-card__status gcv-excursoes-card__status--ok">${esc(s.statusOk)}</span>`
+    : `<span class="gcv-excursoes-card__status gcv-excursoes-card__status--wait">${esc(s.statusWait)}</span>`;
+  const faltaN = faltamParaConfirmarSsr(e);
+  let quorumHtml = "";
+  if (!e.confirmada && faltaN > 0) {
+    const msg =
+      faltaN === 1
+        ? s.quorumNeed1 || "Falta 1 para confirmar"
+        : tpl(s.quorumNeedMany || "Faltam {{n}} para confirmar", { n: faltaN });
+    quorumHtml = `<p class="gcv-excursoes-card__falta gcv-excursoes-card__falta--on-media">${esc(msg)}</p>`;
+  }
+  return (
+    `<div class="gcv-excursoes-card__media-status">` +
+    `<div class="gcv-excursoes-card__row gcv-excursoes-card__row--status">` +
+    statusHtml +
+    `<span class="gcv-excursoes-card__cap" title="${esc(labelAria)}" aria-label="${esc(labelAria)}">` +
+    `<i class="ti ti-users" aria-hidden="true"></i>` +
+    `<span class="gcv-excursoes-card__cap-ratio" aria-hidden="true">` +
+    `<span class="gcv-excursoes-card__cap-x">${x}</span>` +
+    `<span class="gcv-excursoes-card__cap-slash">/</span>` +
+    `<span class="gcv-excursoes-card__cap-y">${cap}</span>` +
+    `</span></span></div>${quorumHtml}</div>`
+  );
+}
+
+function cardSpotsBlockSsr(e, locale, s, statusOverlayHtml = "") {
   const dests = destinosForCard(e);
   const n = destinosSpotsCount(e);
   const badge = e.comTransporte === true && s ? cardSpotTransportBadgeSsr(s) : "";
   const inner = `<div class="gcv-excursoes-card__spots gcv-excursoes-card__spots--count-${n}" data-spots="${n}">${dests.map((d) => cardSpotRowSsr(d, locale, badge)).join("")}</div>`;
-  return `<div class="gcv-excursoes-card__media">${inner}</div>`;
+  return `<div class="gcv-excursoes-card__media">${statusOverlayHtml || ""}${inner}</div>`;
 }
 
 function cardImgBlockSsr(e, locale) {
@@ -624,9 +676,7 @@ export function excursionsCarouselTrackSsrHtml(locale) {
       const x = inscritosNoGrupo(e);
       const legendaCap = legendaGrupoNoMaximo(cap, s);
       const labelAria = `${x}/${cap} · ${legendaCap}`;
-      const statusHtml = e.confirmada
-        ? `<span class="gcv-excursoes-card__status gcv-excursoes-card__status--ok">${esc(s.statusOk)}</span>`
-        : `<span class="gcv-excursoes-card__status gcv-excursoes-card__status--wait">${esc(s.statusWait)}</span>`;
+      const statusOverlay = cardStatusOverlaySsr(e, s, x, cap, labelAria);
       return (
         `<article class="gcv-excursoes-card ${mod}" data-excursao-index="${idx}" data-cart-id="${esc(excursaoCartIdSsr(e))}" data-excursao-date-iso="${esc(String(e.dateISO || "").slice(0, 10))}" data-excursao-hora="${esc(hora)}"` +
         (e.confirmada ? ' data-excursao-status="confirmada"' : ' data-excursao-status="formacao"') +
@@ -635,6 +685,9 @@ export function excursionsCarouselTrackSsrHtml(locale) {
         '<div class="gcv-excursoes-card__select-band" data-gcv-exc-card-toggle>' +
         '<div class="gcv-excursoes-card__select-band-main">' +
         `<div class="gcv-excursoes-card__card-date">${esc(excursaoCardDateHeadlineSsr(e))}</div>` +
+        (excursaoDestinoHeadlineSsr(e)
+          ? `<div class="gcv-excursoes-card__tour-dest" title="${esc(excursaoDestinoHeadlineSsr(e))}">${esc(excursaoDestinoHeadlineSsr(e))}</div>`
+          : "") +
         '<div class="gcv-excursoes-card__datestrip gcv-excursoes-card__datestrip--time-only">' +
         '<div class="gcv-excursoes-card__time-city-grid">' +
         '<div class="gcv-excursoes-card__meta-col gcv-excursoes-card__meta-col--time">' +
@@ -644,20 +697,10 @@ export function excursionsCarouselTrackSsrHtml(locale) {
         `<span class="gcv-excursoes-card__time-kicker">${esc(embarqueLabel)}</span>` +
         `<span class="gcv-excursoes-card__loc gcv-excursoes-card__loc--inline" title="${esc(city)}">` +
         esc(city) +
-        "</span></div></div></div>" +
-        '<div class="gcv-excursoes-card__meta-stack">' +
-        '<div class="gcv-excursoes-card__row gcv-excursoes-card__row--status">' +
-        statusHtml +
-        `<span class="gcv-excursoes-card__cap" title="${esc(labelAria)}" aria-label="${esc(labelAria)}">` +
-        '<i class="ti ti-users" aria-hidden="true"></i>' +
-        '<span class="gcv-excursoes-card__cap-ratio" aria-hidden="true">' +
-        `<span class="gcv-excursoes-card__cap-x">${x}</span>` +
-        '<span class="gcv-excursoes-card__cap-slash">/</span>' +
-        `<span class="gcv-excursoes-card__cap-y">${cap}</span>` +
-        "</span></span></div></div></div>" +
+        "</span></div></div></div></div>" +
         `<button type="button" class="gcv-excursoes-card__quick-add" data-gcv-exc-card-toggle aria-label="${esc(toggleAdd)}" aria-pressed="false" title="${esc(toggleAdd)}">` +
         '<i class="ti ti-plus" aria-hidden="true"></i></button></div>' +
-        cardSpotsBlockSsr(e, locale, s) +
+        cardSpotsBlockSsr(e, locale, s, statusOverlay) +
         "</div>" +
         '<div class="gcv-excursoes-card__body">' +
         guiaChipSsr(e, locale) +

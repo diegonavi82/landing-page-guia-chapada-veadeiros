@@ -6,6 +6,22 @@ declare(strict_types=1);
  * gcv_excursions.attraction_id permanece como o primeiro (compatível com APIs antigas).
  */
 
+/**
+ * Remove pastas de data do WordPress (/YYYY/MM/) em URLs de mídia flat do site.
+ * Ex.: /assets/img/imagens/2019/10/foto.jpg → /assets/img/imagens/foto.jpg
+ */
+function gcv_normalize_media_url(?string $url): string
+{
+    $url = trim((string)$url);
+    if ($url === '') {
+        return '';
+    }
+    $url = preg_replace('#(/assets/img/imagens)/\d{4}/\d{2}/#', '$1/', $url) ?? $url;
+    $url = preg_replace('#(/imagens)/\d{4}/\d{2}/#', '$1/', $url) ?? $url;
+    $url = preg_replace('#(/wp-content/uploads)/\d{4}/\d{2}/#', '/assets/img/imagens/', $url) ?? $url;
+    return $url;
+}
+
 function gcv_excursion_normalize_attraction_ids(array $body): array
 {
     $ids = [];
@@ -47,7 +63,7 @@ function gcv_excursion_load_attractions(int $excursionId): array
     $stmt->execute([$excursionId]);
     $rows = $stmt->fetchAll();
     if ($rows) {
-        return $rows;
+        return array_map('gcv_excursion_map_attraction_row', $rows);
     }
     // Fallback legado
     $stmt = db()->prepare(
@@ -58,7 +74,16 @@ function gcv_excursion_load_attractions(int $excursionId): array
     );
     $stmt->execute([$excursionId]);
     $one = $stmt->fetch();
-    return $one ? [$one] : [];
+    return $one ? [gcv_excursion_map_attraction_row($one)] : [];
+}
+
+/** @param array<string,mixed> $row */
+function gcv_excursion_map_attraction_row(array $row): array
+{
+    if (isset($row['cover_url'])) {
+        $row['cover_url'] = gcv_normalize_media_url((string)$row['cover_url']);
+    }
+    return $row;
 }
 
 function gcv_excursion_save_attractions(int $excursionId, array $attractionIds): void

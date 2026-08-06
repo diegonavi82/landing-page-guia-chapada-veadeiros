@@ -393,6 +393,10 @@
     var now = nowMs != null ? nowMs : Date.now();
     var catalog = readLiveCatalog(now);
     var id = normalizeCartItemId(it && it.id);
+    // Catálogo vazio (seed sem saídas) ≠ “passeio inválido”: a API live pode ter preenchido o card.
+    if (catalog && catalog.ids && !Object.keys(catalog.ids).length) {
+      catalog = null;
+    }
     // Se o passeio sumiu das próximas saídas, remove do carrinho
     if (catalog && id && !catalog.ids[id]) return false;
     var dep = itemDepartureMs(it);

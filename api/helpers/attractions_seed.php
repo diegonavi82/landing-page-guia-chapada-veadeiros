@@ -61,6 +61,10 @@ function gcv_seed_attractions_from_json(?string $jsonPath = null): array
         if ($cover !== '' && !str_starts_with($cover, 'http') && !str_starts_with($cover, '/')) {
             $cover = '/' . ltrim($cover, '/');
         }
+        if (!function_exists('gcv_normalize_media_url')) {
+            require_once __DIR__ . '/excursion_attractions.php';
+        }
+        $cover = gcv_normalize_media_url($cover);
         $insertStmt->execute([
             $slug,
             $status,

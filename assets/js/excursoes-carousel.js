@@ -152,6 +152,8 @@
       falta0: "Aguardando inscrições para confirmar.",
       falta1: "Falta 1 inscrição para confirmar.",
       faltaMany: "Faltam {{n}} inscrições para confirmar",
+      quorumNeed1: "Falta 1 para confirmar",
+      quorumNeedMany: "Faltam {{n}} para confirmar",
       waHi:
         "Olá! Gostaria de me inscrever na excursão:\n\n" +
         "📅 Data: {{data}}\n" +
@@ -304,6 +306,8 @@
       falta0: "Waiting for sign-ups to confirm this departure.",
       falta1: "1 more sign-up needed to confirm the departure.",
       faltaMany: "{{n}} more sign-ups needed to confirm the departure.",
+      quorumNeed1: "1 more to confirm",
+      quorumNeedMany: "{{n}} more to confirm",
       waHi:
         "Hi! I’d like to join this excursion:\n\n" +
         "📅 Date: {{data}}\n" +
@@ -456,6 +460,8 @@
       falta0: "Esperando inscripciones para confirmar la salida.",
       falta1: "Falta 1 inscripción para confirmar la salida.",
       faltaMany: "Faltan {{n}} inscripciones para confirmar la salida.",
+      quorumNeed1: "Falta 1 para confirmar",
+      quorumNeedMany: "Faltan {{n}} para confirmar",
       waHi:
         "¡Hola! Me gustaría inscribirme en esta excursión:\n\n" +
         "📅 Fecha: {{data}}\n" +
@@ -719,7 +725,7 @@
 
   function cardSpotRowHtml(d, locale, transportBadge) {
     var href = atrativoHrefFrom(d.atrativoPath, locale);
-    var label = escapeHtml(String(d.destino));
+    var label = escapeHtml(String(d.destino || "").trim());
     var imgInner =
       '<div class="gcv-excursoes-card__img-wrap gcv-excursoes-card__spot-img-wrap">' +
       '<img class="gcv-excursoes-card__img" src="' +
@@ -731,19 +737,22 @@
       ? '<span class="gcv-excursoes-card__dest-sub">' + escapeHtml(String(d.destinoSub)) + "</span>"
       : "";
     var destMod = sub ? " gcv-excursoes-card__spot-dest--has-sub" : "";
-    var title =
-      '<span class="gcv-excursoes-card__dest gcv-excursoes-card__spot-dest' +
-      destMod +
-      '">' +
-      label +
-      sub +
-      "</span>";
+    var title = label
+      ? '<span class="gcv-excursoes-card__dest gcv-excursoes-card__spot-dest' +
+        destMod +
+        '">' +
+        label +
+        sub +
+        "</span>"
+      : "";
+    // Título dentro da foto (mesmo stacking) — evita overlay sumir em alguns browsers
     var photo =
       '<div class="gcv-excursoes-card__spot-photo">' +
       '<div class="gcv-excursoes-card__atrativo-link--img">' +
       imgInner +
       "</div>" +
       (transportBadge || "") +
+      title +
       "</div>";
     // Imagem + título = um único link para a página do atrativo
     if (href) {
@@ -755,14 +764,66 @@
         label +
         '">' +
         photo +
-        title +
         "</a></div>"
       );
     }
-    return '<div class="gcv-excursoes-card__spot">' + photo + title + "</div>";
+    return '<div class="gcv-excursoes-card__spot">' + photo + "</div>";
   }
 
-  function cardSpotsBlockHtml(e, locale, s) {
+  /** Nome(s) do(s) atrativo(s) para o cabeçalho do card / aba do dia. */
+  function excursaoDestinoHeadline(e) {
+    var names = getDestinos(e)
+      .map(function (d) {
+        return String((d && d.destino) || "").trim();
+      })
+      .filter(Boolean);
+    if (names.length) return names.join(" · ");
+    return String((e && e.destino) || "").trim();
+  }
+
+  function faltamParaConfirmar(e) {
+    if (!e || e.confirmada) return 0;
+    var faltam = parseInt(String(e.faltamPessoas), 10);
+    if (Number.isFinite(faltam) && faltam >= 0) return faltam;
+    var q = parseInt(String(e.quorumMin), 10);
+    if (!Number.isFinite(q) || q < 1) return 0;
+    return Math.max(0, q - inscritosNoGrupo(e));
+  }
+
+  function cardStatusOverlayHtml(e, s, isLotado) {
+    var statusLine =
+      '<div class="gcv-excursoes-card__row gcv-excursoes-card__row--status">' +
+      (isLotado
+        ? '<span class="gcv-excursoes-card__status gcv-excursoes-card__status--full">' +
+          escapeHtml(s.statusSoldOut) +
+          "</span>"
+        : e.confirmada
+          ? '<span class="gcv-excursoes-card__status gcv-excursoes-card__status--ok">' +
+            escapeHtml(s.statusOk) +
+            "</span>"
+          : '<span class="gcv-excursoes-card__status gcv-excursoes-card__status--wait">' +
+            escapeHtml(s.statusWait) +
+            "</span>") +
+      capGrupoHtml(e, s) +
+      "</div>";
+    var faltaN = faltamParaConfirmar(e);
+    var quorumHtml = "";
+    if (!e.confirmada && !isLotado && faltaN > 0) {
+      var quorumMsg =
+        faltaN === 1
+          ? s.quorumNeed1 || s.falta1 || "Falta 1 para confirmar"
+          : tpl(s.quorumNeedMany || s.faltaMany || "Faltam {{n}} para confirmar", { n: faltaN });
+      quorumHtml =
+        '<p class="gcv-excursoes-card__falta gcv-excursoes-card__falta--on-media">' +
+        escapeHtml(quorumMsg) +
+        "</p>";
+    }
+    return (
+      '<div class="gcv-excursoes-card__media-status">' + statusLine + quorumHtml + "</div>"
+    );
+  }
+
+  function cardSpotsBlockHtml(e, locale, s, statusOverlayHtml) {
     var dests = destinosForCard(e);
     var n = destinosSpotsCount(e);
     var badge = e.comTransporte === true && s ? cardSpotTransportBadgeHtml(s) : "";
@@ -778,7 +839,12 @@
         })
         .join("") +
       "</div>";
-    return '<div class="gcv-excursoes-card__media">' + inner + "</div>";
+    return (
+      '<div class="gcv-excursoes-card__media">' +
+      (statusOverlayHtml || "") +
+      inner +
+      "</div>"
+    );
   }
 
   function cardImgHtml(e, locale) {
@@ -2186,6 +2252,12 @@
       escapeHtml(destino) +
       '" data-cart-date="' +
       escapeHtml(dateLabel) +
+      '" data-cart-date-iso="' +
+      escapeHtml(excursaoDateIso(e)) +
+      '" data-cart-hora="' +
+      escapeHtml(horaExcursao(e)) +
+      '" data-cart-embarque="' +
+      escapeHtml(excursaoEmbarque(e, s)) +
       '">' +
       '<div class="gcv-excursoes-card__book-row">' +
       '<span class="gcv-excursoes-card__book-label">' +
@@ -2266,7 +2338,24 @@
       qty: data.qty,
       pixDesc: data.desc,
       maxQty: data.maxQty,
+      dateIso: block.getAttribute("data-cart-date-iso") || "",
+      hora: block.getAttribute("data-cart-hora") || "",
+      embarque: block.getAttribute("data-cart-embarque") || "",
     };
+    if (item.dateIso && item.hora) {
+      var match = String(item.hora).trim().match(/^(\d{1,2}):(\d{2})$/);
+      if (match) {
+        var ms = Date.parse(
+          item.dateIso +
+            "T" +
+            String(match[1]).padStart(2, "0") +
+            ":" +
+            match[2] +
+            ":00-03:00",
+        );
+        if (Number.isFinite(ms)) item.departureMs = ms;
+      }
+    }
     if (e) {
       item.inclExcl = inclExclLists(e, strings, loc);
       item.embarque = excursaoEmbarque(e, strings);
@@ -2948,31 +3037,24 @@
     var cityName = escapeHtml(excursaoEmbarque(e, s));
     var toggleAddAria = escapeHtml(s.cardToggleAddAria || "Adicionar ao carrinho");
 
-    var statusLine =
-      '<div class="gcv-excursoes-card__row gcv-excursoes-card__row--status">' +
-      (isLotado
-        ? '<span class="gcv-excursoes-card__status gcv-excursoes-card__status--full">' +
-          escapeHtml(s.statusSoldOut) +
-          "</span>"
-        : e.confirmada
-          ? '<span class="gcv-excursoes-card__status gcv-excursoes-card__status--ok">' +
-            escapeHtml(s.statusOk) +
-            "</span>"
-          : '<span class="gcv-excursoes-card__status gcv-excursoes-card__status--wait">' +
-            escapeHtml(s.statusWait) +
-            "</span>") +
-      capGrupoHtml(e, s) +
-      "</div>";
-
     var dateHeadline = escapeHtml(excursaoCardDateHeadline(e));
+    var destHeadline = excursaoDestinoHeadline(e);
+    var destHeadlineHtml = destHeadline
+      ? '<div class="gcv-excursoes-card__tour-dest" title="' +
+        escapeHtml(destHeadline) +
+        '">' +
+        escapeHtml(destHeadline) +
+        "</div>"
+      : "";
 
-    /* Faixa data + hora + status com botão + cobrindo até a linha do “Em formação” */
+    /* Faixa data + atrativo + hora; status/vagas ficam sobre a foto */
     var selectBand =
       '<div class="gcv-excursoes-card__select-band" data-gcv-exc-card-toggle>' +
       '<div class="gcv-excursoes-card__select-band-main">' +
       '<div class="gcv-excursoes-card__card-date">' +
       dateHeadline +
       "</div>" +
+      destHeadlineHtml +
       '<div class="gcv-excursoes-card__datestrip gcv-excursoes-card__datestrip--time-only">' +
       '<div class="gcv-excursoes-card__time-city-grid">' +
       '<div class="gcv-excursoes-card__meta-col gcv-excursoes-card__meta-col--time">' +
@@ -2991,10 +3073,7 @@
       '">' +
       cityName +
       "</span></div>" +
-      "</div></div>" +
-      '<div class="gcv-excursoes-card__meta-stack">' +
-      statusLine +
-      "</div></div>" +
+      "</div></div></div>" +
       '<button type="button" class="gcv-excursoes-card__quick-add" data-gcv-exc-card-toggle aria-label="' +
       toggleAddAria +
       '" aria-pressed="false" title="' +
@@ -3003,7 +3082,7 @@
       '<i class="ti ti-plus" aria-hidden="true"></i>' +
       "</button></div>";
 
-    var cardImgBlock = cardSpotsBlockHtml(e, locale, s);
+    var cardImgBlock = cardSpotsBlockHtml(e, locale, s, cardStatusOverlayHtml(e, s, isLotado));
 
     var cartId = excursaoCartId(e);
 
@@ -6002,6 +6081,61 @@
     return merged;
   }
 
+  /**
+   * Atualiza payload + catálogo do carrinho com saídas da API MySQL.
+   * Sem isso, o carrinho rejeita IDs que só existem no live (seed estático vazio).
+   */
+  function syncLiveExcursaoCatalog(allData) {
+    if (!allData || typeof allData !== "object") return;
+    var payloadEl = document.getElementById("gcv-excursoes-payload");
+    var existing = { pt: [], en: [], es: [] };
+    if (payloadEl && payloadEl.textContent) {
+      try {
+        var parsed = JSON.parse(payloadEl.textContent);
+        if (parsed && typeof parsed === "object") {
+          existing.pt = Array.isArray(parsed.pt) ? parsed.pt : [];
+          existing.en = Array.isArray(parsed.en) ? parsed.en : [];
+          existing.es = Array.isArray(parsed.es) ? parsed.es : [];
+        }
+      } catch (err) { /* ignore */ }
+    }
+    var ptLive = Array.isArray(allData.pt) ? allData.pt : [];
+    var next = {
+      pt: mergeExcursaoRows(existing.pt, ptLive),
+      en: mergeExcursaoRows(
+        existing.en,
+        applyPortugueseDestinos(Array.isArray(allData.en) ? allData.en : [], ptLive),
+      ),
+      es: mergeExcursaoRows(
+        existing.es,
+        applyPortugueseDestinos(Array.isArray(allData.es) ? allData.es : [], ptLive),
+      ),
+    };
+    if (payloadEl) {
+      try {
+        payloadEl.textContent = JSON.stringify(next);
+      } catch (err) { /* ignore */ }
+    }
+    var catalogEl = document.getElementById("gcv-exc-cart-catalog");
+    if (!catalogEl) return;
+    var catalog = { pt: [], en: [], es: [] };
+    ["pt", "en", "es"].forEach(function (loc) {
+      var seen = {};
+      catalog[loc] = (next[loc] || [])
+        .map(function (e) {
+          return normalizeLookupCartId(excursaoCartId(e));
+        })
+        .filter(function (id) {
+          if (!id || seen[id]) return false;
+          seen[id] = true;
+          return true;
+        });
+    });
+    try {
+      catalogEl.textContent = JSON.stringify(catalog);
+    } catch (err) { /* ignore */ }
+  }
+
   function fetchLiveExcursaoRows(locale, cb) {
     try {
       var xhr = new XMLHttpRequest();
@@ -6012,6 +6146,7 @@
           var res = JSON.parse(xhr.responseText || "{}");
           var all = res && res.ok && res.data ? res.data : null;
           if (!all) return cb(null);
+          syncLiveExcursaoCatalog(all);
           var ptRows = Array.isArray(all.pt) ? all.pt : [];
           var rows = Object.prototype.hasOwnProperty.call(all, locale) ? all[locale] : all.pt;
           if (locale !== "pt" && ptRows.length) rows = applyPortugueseDestinos(rows, ptRows);
@@ -6177,10 +6312,15 @@
       dateTabsEl.innerHTML = dates
         .map(function (d) {
           var selected = d.iso === selectedDateIso;
+          var dayRows = (carouselExcursoes || []).filter(function (e) {
+            return excursaoDateIso(e) === d.iso;
+          });
+          var singleDest = dayRows.length === 1 ? excursaoDestinoHeadline(dayRows[0]) : "";
           var countLabel =
-            d.count === 1
+            singleDest ||
+            (d.count === 1
               ? s.dateTabCountOne || "1 passeio"
-              : tpl(s.dateTabCountMany || "{{n}} passeios", { n: d.count });
+              : tpl(s.dateTabCountMany || "{{n}} passeios", { n: d.count }));
           return (
             '<button type="button" class="gcv-excursoes__date-tab' +
             (selected ? " is-active" : "") +

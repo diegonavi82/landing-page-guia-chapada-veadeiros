@@ -147,6 +147,8 @@ function gcv_row_to_card(array $r, string $lang, array $months, array $weekdays)
         'confirmada' => $booked >= $quorum,
         'pessoasInscritas' => $booked,
         'grupoMaximo' => $max,
+        'quorumMin' => $quorum,
+        'faltamPessoas' => max(0, $quorum - $booked),
         'vagasRestantes' => $vagas,
         'cardImg' => $cover,
         'atrativoPath' => $slug !== '' ? ('atrativos/' . $slug . '.html') : '',
