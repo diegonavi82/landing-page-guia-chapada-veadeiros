@@ -190,7 +190,8 @@
       });
       list.querySelectorAll('[data-verify-pix]').forEach(function (btn) {
         btn.addEventListener('click', function () {
-          if (!confirm('Confirmar que esta chave PIX pertence ao guia? Só após isso será possível pagar.')) return;
+          gcvConfirm('Confirmar que esta chave PIX pertence ao guia? Só após isso será possível pagar.').then(function (ok) {
+            if (!ok) return;
           var card = btn.closest('[data-guide-user]');
           var uid = parseInt(card.getAttribute('data-guide-user'), 10);
           put('/api/admin/guides.php', {
@@ -201,6 +202,7 @@
           }, function (e2, r2) {
             alert(r2 && r2.ok ? 'PIX verificado.' : ((r2 && r2.error) || 'Erro'));
             if (r2 && r2.ok) loadAdminGuides();
+          });
           });
         });
       });
@@ -395,18 +397,29 @@
   function loadAdminBookings() {
     var tbody = document.getElementById('admin-bookings-body');
     if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#888;">Carregando…</td></tr>';
     get('/api/admin/bookings.php', function (err, res) {
-      if (!res.ok) return;
-      tbody.innerHTML = res.data.bookings.map(function (b) {
+      if (!res || !res.ok) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#888;">Erro ao carregar reservas.</td></tr>';
+        return;
+      }
+      var rows = (res.data && res.data.bookings) || [];
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#888;">Nenhuma reserva ainda.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = rows.map(function (b) {
+        var code = b.reservation_id || ('#' + b.id);
+        var when = String(b.created_at || '').replace('T', ' ').substr(0, 10);
         return '<tr>'
-          + '<td>#' + b.id + '</td>'
-          + '<td>' + b.tour_title + '</td>'
-          + '<td>' + b.client_name + '</td>'
-          + '<td>' + b.guide_name + '</td>'
+          + '<td>' + escapeHtml(code) + '</td>'
+          + '<td>' + escapeHtml(b.tour_title || '') + '</td>'
+          + '<td>' + escapeHtml(b.client_name || '') + '</td>'
+          + '<td>' + escapeHtml(b.guide_name || '') + '</td>'
           + '<td>' + b.spots + '</td>'
           + '<td>' + fmtMoney(b.total_cents) + '</td>'
           + '<td>' + statusBadge(b.status) + '</td>'
-          + '<td>' + (b.created_at || '').substr(0,10) + '</td>'
+          + '<td>' + escapeHtml(when) + '</td>'
           + '</tr>';
       }).join('');
     });
@@ -415,23 +428,65 @@
   function loadSettings() {
     var form = document.getElementById('admin-settings-form');
     if (!form) return;
+    var groupOf = {
+      notify_guide_hours_long: 'notify',
+      notify_guide_hours_short: 'notify',
+      notify_client_hours_long: 'notify',
+      notify_client_hours_short: 'notify',
+      notify_arrive_minutes: 'notify',
+      notify_late_tolerance_minutes: 'notify',
+      platform_commission_pct: 'finance',
+      payout_after_hour: 'finance',
+      payout_delay_hours: 'finance'
+    };
+    var groupMeta = {
+      notify: {
+        title: 'Notificações de passeio',
+        hint: 'WhatsApp, e-mail e o sino do painel usam estes prazos. 0 em “chegada” desliga o aviso de 15 minutos.'
+      },
+      finance: { title: 'Financeiro e repasse', hint: '' },
+      other: { title: 'Outras', hint: '' }
+    };
     get('/api/admin/settings.php', function (err, res) {
-      if (!res.ok) return;
+      if (!res || !res.ok) return;
+      var buckets = { notify: [], finance: [], other: [] };
+      (res.data.settings || []).forEach(function (s) {
+        var g = groupOf[s.key_name] || 'other';
+        buckets[g].push(s);
+      });
       form.innerHTML = '';
-      res.data.settings.forEach(function (s) {
-        var row = el('div', 'gcv-dash-settings-row');
-        row.innerHTML = '<div class="gcv-dash-settings-label"><strong>' + s.label + '</strong></div>'
-          + '<div style="display:flex;gap:8px;align-items:center;">'
-          + '<input class="gcv-dash-settings-input" type="' + (s.type === 'text' ? 'text' : 'number') + '" value="' + s.value + '" data-key="' + s.key_name + '" />'
-          + '<button class="gcv-dash-btn gcv-dash-btn--sm gcv-dash-btn--primary" data-save-key="' + s.key_name + '">Salvar</button>'
-          + '</div>';
-        row.querySelector('[data-save-key]').addEventListener('click', function () {
-          var input = row.querySelector('.gcv-dash-settings-input');
-          put('/api/admin/settings.php', { key_name: s.key_name, value: input.value }, function (e, r) {
-            alert(r.ok ? 'Salvo!' : (r.error || 'Erro'));
+      ['notify', 'finance', 'other'].forEach(function (gid) {
+        var list = buckets[gid];
+        if (!list.length) return;
+        var box = el('div', 'gcv-dash-settings-group');
+        var meta = groupMeta[gid];
+        box.innerHTML = '<h3 class="gcv-dash-settings-group__title">' + meta.title + '</h3>'
+          + (meta.hint ? '<p class="gcv-dash-settings-group__hint">' + meta.hint + '</p>' : '');
+        list.forEach(function (s) {
+          var row = el('div', 'gcv-dash-settings-row');
+          var unit = /minutes/.test(s.key_name) ? 'min' : (s.type === 'percent' ? '%' : (/hours|hour/.test(s.key_name) ? 'h' : ''));
+          row.innerHTML = '<div class="gcv-dash-settings-label"><strong>' + s.label + '</strong></div>'
+            + '<div class="gcv-dash-settings-controls">'
+            + '<input class="gcv-dash-settings-input" type="number" min="0" step="1" value="' + s.value + '" data-key="' + s.key_name + '" />'
+            + (unit ? '<span class="gcv-dash-settings-unit">' + unit + '</span>' : '')
+            + '<button type="button" class="gcv-dash-btn gcv-dash-btn--sm gcv-dash-btn--primary" data-save-key="' + s.key_name + '">Salvar</button>'
+            + '<span class="gcv-dash-settings-ok" hidden>Salvo</span>'
+            + '</div>';
+          row.querySelector('[data-save-key]').addEventListener('click', function () {
+            var input = row.querySelector('.gcv-dash-settings-input');
+            var okEl = row.querySelector('.gcv-dash-settings-ok');
+            put('/api/admin/settings.php', { key_name: s.key_name, value: input.value }, function (e, r) {
+              if (okEl) {
+                okEl.hidden = !(r && r.ok);
+                okEl.textContent = (r && r.ok) ? 'Salvo' : (r && r.error) || 'Erro';
+              } else {
+                alert(r && r.ok ? 'Salvo!' : ((r && r.error) || 'Erro'));
+              }
+            });
           });
+          box.appendChild(row);
         });
-        form.appendChild(row);
+        form.appendChild(box);
       });
     });
   }
@@ -612,6 +667,15 @@
       var link = document.querySelector('#gcv-dash-nav-list [data-section="section-cms-excursions"]');
       if (!link) return;
       link.innerHTML = '🚌 Excursões' + (n ? ' <span class="gcv-dash-nav-badge">' + n + '</span>' : '');
+    });
+  }
+
+  function refreshGuideBadge() {
+    get('/api/admin/pending-guides.php', function (err, res) {
+      var n = (res && res.ok && res.data && res.data.guides) ? res.data.guides.length : 0;
+      var link = document.querySelector('#gcv-dash-nav-list [data-section="section-cms-guides"]');
+      if (!link) return;
+      link.innerHTML = '🧭 Guias credenciados' + (n ? ' <span class="gcv-dash-nav-badge">' + n + '</span>' : '');
     });
   }
 
@@ -885,16 +949,13 @@
       items = [
         { id: 'section-cms-articles',      icon: '📰', label: 'Revista',           load: function () { if (window.GcvAdminCms) window.GcvAdminCms.open('articles'); } },
         { id: 'section-cms-attractions',   icon: '🏞️', label: 'Atrativos',         load: function () { if (window.GcvAdminCms) window.GcvAdminCms.open('attractions'); } },
-        { id: 'section-cms-guides',        icon: '🧭', label: 'Guias cadastrados', load: function () { if (window.GcvAdminCms) window.GcvAdminCms.open('guides'); } },
+        { id: 'section-cms-guides',        icon: '🧭', label: 'Guias credenciados', load: function () { if (window.GcvAdminCms) window.GcvAdminCms.open('guides'); } },
         { id: 'section-cms-cities',        icon: '📍', label: 'Cidades',           load: function () { if (window.GcvAdminCms) window.GcvAdminCms.open('cities'); } },
         { id: 'section-cms-excursions',    icon: '🚌', label: 'Excursões',         load: function () { if (window.GcvAdminCms) window.GcvAdminCms.open('excursions'); } },
-        { id: 'section-pending-guides',    icon: '👤', label: 'Guias pendentes',   load: loadPendingGuides  },
-        { id: 'section-admin-guides',      icon: '💳', label: 'Guias + PIX',       load: loadAdminGuides    },
         { id: 'section-admin-payouts',     icon: '💸', label: 'Pagar guias',       load: loadAdminPayouts   },
         { id: 'section-pending-tours',     icon: '🗺️', label: 'Passeios pendentes',load: loadPendingTours   },
         { id: 'section-admin-create-tour', icon: '➕', label: 'Criar passeio',     load: function () { loadGuidesList(); initCreateTourForm('gcv-create-tour-form'); document.getElementById('admin-guide-field').hidden = false; } },
         { id: 'section-admin-bookings',    icon: '📋', label: 'Todas as reservas', load: loadAdminBookings  },
-        { id: 'section-admin-commission',  icon: '📈', label: 'Comissões',         load: loadCommissionRules },
         { id: 'section-admin-settings',    icon: '⚙️', label: 'Configurações',     load: loadSettings       },
         { id: 'section-admin-financial',   icon: '💰', label: 'Financeiro',        load: loadFinancial      },
       ];
@@ -916,6 +977,7 @@
         { id: 'section-client-bookings', icon: '📋', label: 'Minhas reservas',   load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadClientBookings(); } },
         { id: 'section-client-publish',  icon: '➕', label: 'Propor excursão',   load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadClientPublish(); } },
         { id: 'section-client-profile',  icon: '👤', label: 'Meu perfil',        load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadClientProfile(); } },
+        { id: 'section-inbox',           icon: '🔔', label: 'Notificações',      load: function () { if (window.GcvInbox) window.GcvInbox.open(); } },
       ];
     }
 
@@ -970,7 +1032,10 @@
       showSection(items[0].id);
       if (loadMap[items[0].id]) loadMap[items[0].id]();
     }
-    if (role === 'admin') refreshApprovalBadge();
+    if (role === 'admin') {
+      refreshApprovalBadge();
+      refreshGuideBadge();
+    }
   }
 
   /* ===== INIT ===== */
@@ -1027,6 +1092,9 @@
       }
 
       buildNav(currentUser.role, currentUser.status);
+      if (window.GcvInbox && typeof window.GcvInbox.start === 'function') {
+        window.GcvInbox.start();
+      }
 
       // Logout
       document.querySelectorAll('.js-gcv-dash-logout').forEach(function (logoutBtn) {
@@ -1072,6 +1140,8 @@
   }
 
   window.GcvDashboard = {
-    refreshApprovalBadge: refreshApprovalBadge
+    refreshApprovalBadge: refreshApprovalBadge,
+    refreshGuideBadge: refreshGuideBadge,
+    showSection: showSection
   };
 }());

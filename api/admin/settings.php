@@ -4,10 +4,12 @@ declare(strict_types=1);
 require_once __DIR__ . '/../helpers/db.php';
 require_once __DIR__ . '/../helpers/auth.php';
 require_once __DIR__ . '/../helpers/validator.php';
+require_once __DIR__ . '/../helpers/marketplace_schema.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
 $admin = require_admin();
+gcv_marketplace_ensure_schema();
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $stmt = db()->prepare('SELECT id, key_name, value, label, type, updated_at FROM gcv_settings ORDER BY id ASC');
@@ -41,6 +43,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
     db()->prepare(
         'UPDATE gcv_settings SET value = ?, updated_by = ? WHERE key_name = ?'
     )->execute([$value, $admin['id'], $keyName]);
+
+    if ($keyName === 'platform_commission_pct') {
+        require_once __DIR__ . '/../helpers/marketplace/commission_service.php';
+        gcv_commission_sync_global_from_settings((float)$value);
+    }
 
     json_response(true, ['message' => 'Configuração salva']);
 }

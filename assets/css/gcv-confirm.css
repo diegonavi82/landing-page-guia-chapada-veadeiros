@@ -1,0 +1,62 @@
+.gcv-confirm-open { overflow: hidden; }
+.gcv-confirm {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: rgba(0, 0, 0, 0.92);
+  box-sizing: border-box;
+}
+.gcv-confirm[hidden] { display: none !important; }
+.gcv-confirm__dialog {
+  width: min(440px, 100%);
+  text-align: center;
+}
+.gcv-confirm__msg {
+  margin: 0 0 1.5rem;
+  color: #fff;
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.45;
+  white-space: pre-line;
+}
+.gcv-confirm__actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+.gcv-confirm__btn {
+  min-width: 7.5rem;
+  padding: 0.65rem 1.15rem;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.gcv-confirm__btn--cancel {
+  background: transparent;
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.45);
+}
+.gcv-confirm__btn--cancel:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.gcv-confirm__btn--ok {
+  background: #16a34a;
+  color: #fff;
+}
+.gcv-confirm__btn--ok:hover {
+  background: #15803d;
+}
+.gcv-confirm__btn--danger {
+  background: #dc2626;
+}
+.gcv-confirm__btn--danger:hover {
+  background: #b91c1c;
+}

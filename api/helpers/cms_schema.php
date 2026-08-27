@@ -39,8 +39,16 @@ function gcv_cms_ensure_schema(): void
     gcv_cms_ensure_core_tables($pdo);
 
     gcv_cms_ensure_guide_columns($pdo);
+    gcv_cms_ensure_user_status_enum($pdo);
     gcv_cms_ensure_excursion_columns($pdo);
     gcv_cms_ensure_client_profiles();
+
+    try {
+        require_once __DIR__ . '/guide_status.php';
+        gcv_guides_apply_inactivity($pdo);
+    } catch (Throwable $e) {
+        error_log('guide inactivity from cms: ' . $e->getMessage());
+    }
 
     try {
         require_once __DIR__ . '/marketplace_schema.php';
@@ -315,6 +323,24 @@ function gcv_cms_ensure_excursion_columns(PDO $pdo): void
     }
 }
 
+function gcv_cms_ensure_user_status_enum(PDO $pdo): void
+{
+    try {
+        $col = $pdo->query("SHOW COLUMNS FROM gcv_users LIKE 'status'")->fetch();
+        $type = strtolower((string)($col['Type'] ?? ''));
+        $needInactive = !str_contains($type, 'inactive');
+        $needCancelled = !str_contains($type, 'cancelled');
+        if (!$needInactive && !$needCancelled) {
+            return;
+        }
+        $pdo->exec(
+            "ALTER TABLE gcv_users MODIFY COLUMN status ENUM('pending','active','inactive','suspended','cancelled') NOT NULL DEFAULT 'pending'"
+        );
+    } catch (Throwable $e) {
+        error_log('cms user status enum: ' . $e->getMessage());
+    }
+}
+
 function gcv_cms_ensure_guide_columns(PDO $pdo): void
 {
     $cols = [
@@ -350,6 +376,22 @@ function gcv_cms_ensure_guide_columns(PDO $pdo): void
         } catch (Throwable $e) {
             // ignore
         }
+    }
+    try {
+        $pdo->exec(
+            "UPDATE gcv_guides SET languages_json = '[\"pt\"]' WHERE languages_json IS NULL OR TRIM(languages_json) IN ('', '[]', 'null')"
+        );
+    } catch (Throwable $e) {
+        // ignore
+    }
+    try {
+        $pdo->exec(
+            "UPDATE gcv_guides
+             SET pix_verified_at = COALESCE(pix_verified_at, NOW())
+             WHERE pix_key IS NOT NULL AND TRIM(pix_key) <> '' AND pix_verified_at IS NULL"
+        );
+    } catch (Throwable $e) {
+        // ignore
     }
 }
 

@@ -3,85 +3,31 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../marketplace_schema.php';
+require_once __DIR__ . '/../settings.php';
 
 /**
- * Resolução de comissão por prioridade:
- * Excursão → Guia → Categoria → Cidade → Global
- * Valor padrão 14% via seed em gcv_commission_rules (nunca hardcoded no cálculo).
+ * Comissão da plataforma: sempre a % definida em Configurações
+ * (gcv_settings.platform_commission_pct).
+ *
+ * @return array{rule_id:?int,pct:float,scope_type:string,label:?string}
  */
-
-/** @return array{rule_id:?int,pct:float,scope_type:string,label:?string} */
 function gcv_commission_resolve(
     ?int $excursionId = null,
     ?int $guideUserId = null,
     ?string $categoryKey = null,
     ?int $cityId = null
 ): array {
+    unset($excursionId, $guideUserId, $categoryKey, $cityId);
     gcv_marketplace_ensure_schema();
-    $pdo = db();
-
-    $candidates = [
-        ['excursion', $excursionId],
-        ['guide', $guideUserId],
-        ['category', $categoryKey],
-        ['city', $cityId],
-        ['global', null],
-    ];
-
-    foreach ($candidates as [$scope, $scopeId]) {
-        if ($scope !== 'global' && ($scopeId === null || $scopeId === '' || $scopeId === 0)) {
-            continue;
-        }
-        if ($scope === 'category') {
-            $stmt = $pdo->prepare(
-                "SELECT id, commission_pct, scope_type, label
-                 FROM gcv_commission_rules
-                 WHERE scope_type = 'category' AND scope_id IS NULL
-                   AND label = ? AND is_active = 1 AND deleted_at IS NULL
-                 ORDER BY id DESC LIMIT 1"
-            );
-            $stmt->execute([(string)$scopeId]);
-        } elseif ($scope === 'global') {
-            $stmt = $pdo->prepare(
-                "SELECT id, commission_pct, scope_type, label
-                 FROM gcv_commission_rules
-                 WHERE scope_type = 'global' AND scope_id IS NULL
-                   AND is_active = 1 AND deleted_at IS NULL
-                 ORDER BY id DESC LIMIT 1"
-            );
-            $stmt->execute();
-        } else {
-            $stmt = $pdo->prepare(
-                "SELECT id, commission_pct, scope_type, label
-                 FROM gcv_commission_rules
-                 WHERE scope_type = ? AND scope_id = ?
-                   AND is_active = 1 AND deleted_at IS NULL
-                 ORDER BY id DESC LIMIT 1"
-            );
-            $stmt->execute([$scope, (int)$scopeId]);
-        }
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        if ($row) {
-            return [
-                'rule_id' => (int)$row['id'],
-                'pct' => (float)$row['commission_pct'],
-                'scope_type' => (string)$row['scope_type'],
-                'label' => $row['label'] !== null ? (string)$row['label'] : null,
-            ];
-        }
-    }
-
-    // Fallback extremo: settings legado (ainda no banco, não no código fixo)
-    require_once __DIR__ . '/../settings.php';
     $pct = (float)setting('platform_commission_pct', '14');
-    if ($pct <= 0) {
+    if ($pct < 0 || $pct > 100) {
         $pct = 14.0;
     }
     return [
         'rule_id' => null,
         'pct' => $pct,
-        'scope_type' => 'global_fallback_settings',
-        'label' => 'Fallback settings',
+        'scope_type' => 'settings',
+        'label' => 'Configurações',
     ];
 }
 
@@ -163,4 +109,22 @@ function gcv_commission_soft_delete_rule(int $id, int $adminId): bool
     );
     $stmt->execute([$adminId, $id]);
     return $stmt->rowCount() > 0;
+}
+
+/** Mantém a regra global alinhada à % de Configurações (legado). */
+function gcv_commission_sync_global_from_settings(float $pct): void
+{
+    if ($pct < 0 || $pct > 100) {
+        return;
+    }
+    try {
+        gcv_marketplace_ensure_schema();
+        db()->prepare(
+            "UPDATE gcv_commission_rules
+             SET commission_pct = ?, updated_at = NOW()
+             WHERE scope_type = 'global' AND deleted_at IS NULL"
+        )->execute([$pct]);
+    } catch (Throwable $e) {
+        error_log('commission sync global: ' . $e->getMessage());
+    }
 }

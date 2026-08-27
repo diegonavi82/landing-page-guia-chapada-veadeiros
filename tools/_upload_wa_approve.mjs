@@ -8,14 +8,19 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const WEB_ROOT_PARTS = ['domains', 'guiachapadaveadeiros.com', 'public_html'];
 
 const FILES = [
+  'api/helpers/validator.php',
+  'api/guides/me-profile.php',
+  'api/client/profile.php',
+  'api/helpers/marketplace/publish_service.php',
+  'api/helpers/marketplace/guide_financial_service.php',
   'api/helpers/notify_ops.php',
+  'api/helpers/purchase_notify.php',
   'api/helpers/marketplace/sale_service.php',
-  'api/helpers/marketplace_schema.php',
-  'api/helpers/cms_schema.php',
-  'api/admin/excursions.php',
-  'api/database/migration_notify_approved.sql',
-  'assets/js/gcv-admin-cms.js',
   'assets/js/gcv-dashboard.js',
+  'assets/js/gcv-admin-cms.js',
+  'assets/js/gcv-dash-roles.js',
+  'assets/js/gcv-confirm.js',
+  'assets/css/gcv-confirm.css',
   'dashboard/index.html',
 ];
 

@@ -49,6 +49,13 @@ function gcv_excursion_sql_public_live(string $alias = 'e'): string
       AND NOT (
         ({$a}.created_by_origin = 'GUIDE' OR {$a}.business_mode = 'GUIDE_MARKETPLACE')
         AND {$a}.approved_at IS NULL
+      )
+      AND (
+        {$a}.guide_user_id IS NULL
+        OR EXISTS (
+          SELECT 1 FROM gcv_users ug
+          WHERE ug.id = {$a}.guide_user_id AND ug.status = 'active'
+        )
       )";
 }
 

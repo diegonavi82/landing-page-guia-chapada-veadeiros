@@ -59,3 +59,81 @@ function body_json(): array {
     $raw = file_get_contents('php://input');
     return $raw ? (json_decode($raw, true) ?? []) : [];
 }
+
+/**
+ * Valida telefone nacional (DDD + número) + DDI.
+ * @return array{ok:bool,error:?string,phone:string,ddi:string,iso:string}
+ */
+function gcv_validate_contact_phone(string $phone, string $ddi = '+55', string $iso = 'br', bool $required = true): array
+{
+    $iso = strtolower(substr(preg_replace('/[^a-z]/i', '', $iso) ?: 'br', 0, 2)) ?: 'br';
+    $ddiDigits = preg_replace('/\D+/', '', $ddi) ?: '55';
+    $ddiOut = '+' . $ddiDigits;
+    $digits = preg_replace('/\D+/', '', $phone) ?? '';
+    if (str_starts_with($digits, '00')) {
+        $digits = substr($digits, 2);
+    }
+    if ($digits !== '' && str_starts_with($digits, $ddiDigits) && strlen($digits) >= 12) {
+        $digits = substr($digits, strlen($ddiDigits));
+    }
+    if (str_starts_with($digits, '0') && strlen($digits) >= 11) {
+        $digits = substr($digits, 1);
+    }
+
+    if ($digits === '') {
+        return [
+            'ok' => !$required,
+            'error' => $required ? 'Informe o DDD e o telefone' : null,
+            'phone' => '',
+            'ddi' => $ddiOut,
+            'iso' => $iso,
+        ];
+    }
+
+    if ($ddiDigits === '55') {
+        if (strlen($digits) < 10 || strlen($digits) > 11) {
+            return [
+                'ok' => false,
+                'error' => 'Telefone: DDD (2 dígitos) + número (8 ou 9 dígitos)',
+                'phone' => $digits,
+                'ddi' => $ddiOut,
+                'iso' => $iso,
+            ];
+        }
+        $ddd = (int)substr($digits, 0, 2);
+        if ($ddd < 11 || $ddd > 99) {
+            return [
+                'ok' => false,
+                'error' => 'DDI/DDD inválido',
+                'phone' => $digits,
+                'ddi' => $ddiOut,
+                'iso' => $iso,
+            ];
+        }
+        if (strlen($digits) === 11 && $digits[2] !== '9') {
+            return [
+                'ok' => false,
+                'error' => 'Celular precisa do 9 depois do DDD',
+                'phone' => $digits,
+                'ddi' => $ddiOut,
+                'iso' => $iso,
+            ];
+        }
+    } elseif (strlen($digits) < 6 || strlen($digits) > 15) {
+        return [
+            'ok' => false,
+            'error' => 'Telefone inválido',
+            'phone' => $digits,
+            'ddi' => $ddiOut,
+            'iso' => $iso,
+        ];
+    }
+
+    return [
+        'ok' => true,
+        'error' => null,
+        'phone' => $digits,
+        'ddi' => $ddiOut,
+        'iso' => $iso,
+    ];
+}

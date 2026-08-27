@@ -46,6 +46,8 @@ function gcv_marketplace_ensure_schema(): void
     gcv_marketplace_ensure_reviews($pdo);
     gcv_marketplace_ensure_settings($pdo);
     gcv_marketplace_retract_unapproved_guide_excursions($pdo);
+    require_once __DIR__ . '/inbox.php';
+    gcv_inbox_ensure_schema();
 }
 
 function gcv_marketplace_ensure_tables(PDO $pdo): void
@@ -429,6 +431,7 @@ function gcv_marketplace_ensure_checkin_columns(PDO $pdo): void
             'notify_dayof_sent_at' => 'ALTER TABLE gcv_sales ADD COLUMN notify_dayof_sent_at DATETIME NULL',
             'notify_pix_paid_sent_at' => 'ALTER TABLE gcv_sales ADD COLUMN notify_pix_paid_sent_at DATETIME NULL',
             'notify_h2_sent_at' => 'ALTER TABLE gcv_sales ADD COLUMN notify_h2_sent_at DATETIME NULL',
+            'notify_m15_sent_at' => 'ALTER TABLE gcv_sales ADD COLUMN notify_m15_sent_at DATETIME NULL',
             'notify_review_sent_at' => 'ALTER TABLE gcv_sales ADD COLUMN notify_review_sent_at DATETIME NULL',
             'review_token' => 'ALTER TABLE gcv_sales ADD COLUMN review_token CHAR(64) NULL',
             'guide_amount_original_cents' => 'ALTER TABLE gcv_sales ADD COLUMN guide_amount_original_cents INT NULL',
@@ -452,6 +455,7 @@ function gcv_marketplace_ensure_checkin_columns(PDO $pdo): void
             'notify_approved_at' => 'ALTER TABLE gcv_excursions ADD COLUMN notify_approved_at DATETIME NULL',
             'notify_d12h_guide_at' => 'ALTER TABLE gcv_excursions ADD COLUMN notify_d12h_guide_at DATETIME NULL',
             'notify_h2_guide_at' => 'ALTER TABLE gcv_excursions ADD COLUMN notify_h2_guide_at DATETIME NULL',
+            'notify_m15_guide_at' => 'ALTER TABLE gcv_excursions ADD COLUMN notify_m15_guide_at DATETIME NULL',
         ] as $col => $sql) {
             if (!isset($exc[$col])) {
                 try {
@@ -534,7 +538,13 @@ function gcv_marketplace_ensure_settings(PDO $pdo): void
     $seeds = [
         ['payout_delay_hours', '6', 'Legado — o repasse automático usa payout_after_hour (17h do dia do passeio)', 'integer'],
         ['payout_after_hour', '17', 'Hora (Brasília) do dia do passeio a partir da qual o PIX automático pode ser enviado ao guia', 'integer'],
-        ['platform_commission_pct', '14', 'Comissão da plataforma (%) — legado; preferir gcv_commission_rules', 'percent'],
+        ['platform_commission_pct', '14', 'Comissão da plataforma (%) aplicada em todos os passeios', 'percent'],
+        ['notify_guide_hours_long', '24', 'Guia: aviso longo (horas antes do passeio) — lista dos grupos', 'integer'],
+        ['notify_guide_hours_short', '3', 'Guia: aviso curto (horas antes do início)', 'integer'],
+        ['notify_client_hours_long', '24', 'Cliente: aviso longo (horas antes do passeio)', 'integer'],
+        ['notify_client_hours_short', '2', 'Cliente: aviso curto (horas antes do passeio)', 'integer'],
+        ['notify_arrive_minutes', '15', 'Chegada: minutos de antecedência (0 = não enviar)', 'integer'],
+        ['notify_late_tolerance_minutes', '15', 'Excursão: tolerância de atraso em minutos (0 = sem frase de tolerância)', 'integer'],
     ];
     $check = $pdo->prepare('SELECT id FROM gcv_settings WHERE key_name = ? LIMIT 1');
     $ins = $pdo->prepare(
@@ -551,6 +561,11 @@ function gcv_marketplace_ensure_settings(PDO $pdo): void
         }
     }
     try {
+        $pdo->exec(
+            "UPDATE gcv_settings
+             SET label = 'Comissão da plataforma (%) aplicada em todos os passeios'
+             WHERE key_name = 'platform_commission_pct'"
+        );
         $pdo->exec(
             "UPDATE gcv_settings
              SET value = '14'

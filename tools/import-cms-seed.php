@@ -142,6 +142,7 @@ $guides = [
         'nickname' => 'Diego Navi',
         'photo' => '/assets/img/imagens/guia-diego-navi.webp',
         'bio' => 'Guia e fundador da Guia Chapada Veadeiros.',
+        'phone' => '21996039027',
     ],
     [
         'email' => 'martina@guiachapadaveadeiros.com',
@@ -180,7 +181,7 @@ foreach ($guides as $g) {
         $uid,
         $g['nickname'],
         $g['full_name'],
-        '62982506891',
+        $g['phone'] ?? '62982506891',
         '+55',
         'br',
         '1990-01-01',

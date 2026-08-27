@@ -10,6 +10,7 @@ require_once __DIR__ . '/../helpers/validator.php';
 require_once __DIR__ . '/../helpers/cms_schema.php';
 require_once __DIR__ . '/../helpers/excursion_status.php';
 require_once __DIR__ . '/../helpers/marketplace/guide_financial_service.php';
+require_once __DIR__ . '/../helpers/guide_languages.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -58,30 +59,38 @@ function gcv_guide_profile_missing(array $p): array
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    $profile = gcv_guide_profile_row((int)$user['id']);
-    if (!$profile) {
-        db()->prepare('INSERT INTO gcv_guides (user_id) VALUES (?)')->execute([(int)$user['id']]);
+    try {
         $profile = gcv_guide_profile_row((int)$user['id']);
-    }
-    $missing = gcv_guide_profile_missing($profile ?: []);
-    $cities = db()->query(
-        "SELECT id, name FROM gcv_cities WHERE status = 'active' ORDER BY name ASC"
-    )->fetchAll(PDO::FETCH_ASSOC);
-    $cities = array_values(array_filter($cities, static function ($c) {
-        return gcv_is_allowed_guide_base_city((string)$c['name']);
-    }));
+        if (!$profile) {
+            db()->prepare('INSERT INTO gcv_guides (user_id) VALUES (?)')->execute([(int)$user['id']]);
+            $profile = gcv_guide_profile_row((int)$user['id']);
+        }
+        if ($profile) {
+            $profile['languages'] = gcv_guide_languages_normalize($profile['languages_json'] ?? null);
+        }
+        $missing = gcv_guide_profile_missing($profile ?: []);
+        $cities = db()->query(
+            "SELECT id, name FROM gcv_cities WHERE status = 'active' ORDER BY name ASC"
+        )->fetchAll(PDO::FETCH_ASSOC);
+        $cities = array_values(array_filter($cities, static function ($c) {
+            return gcv_is_allowed_guide_base_city((string)$c['name']);
+        }));
 
-    json_response(true, [
-        'profile' => $profile,
-        'missing' => $missing,
-        'complete' => count($missing) === 0,
-        'financial_ready' => gcv_guide_financial_is_ready((int)$user['id']),
-        'limits' => [
-            'bio_max' => $BIO_MAX,
-            'bio_recommended' => $BIO_RECOMMENDED,
-        ],
-        'base_cities' => $cities,
-    ]);
+        json_response(true, [
+            'profile' => $profile,
+            'missing' => $missing,
+            'complete' => count($missing) === 0,
+            'financial_ready' => gcv_guide_financial_is_ready((int)$user['id']),
+            'limits' => [
+                'bio_max' => $BIO_MAX,
+                'bio_recommended' => $BIO_RECOMMENDED,
+            ],
+            'base_cities' => $cities,
+        ]);
+    } catch (Throwable $e) {
+        error_log('me-profile GET: ' . $e->getMessage());
+        json_response(false, null, 'Erro ao carregar perfil', 500);
+    }
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
@@ -93,8 +102,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
 
     $fullName = sanitize_text((string)($data['full_name'] ?? ''), 160);
     $nickname = sanitize_text((string)($data['nickname'] ?? ''), 80);
-    $phoneDdi = sanitize_text((string)($data['phone_ddi'] ?? '+55'), 8);
-    $phone = gcv_digits((string)($data['phone'] ?? ''));
+    $phoneCheck = gcv_validate_contact_phone(
+        (string)($data['phone'] ?? ''),
+        (string)($data['phone_ddi'] ?? '+55'),
+        (string)($data['phone_iso'] ?? 'br'),
+        true
+    );
+    if (!$phoneCheck['ok']) {
+        json_response(false, null, $phoneCheck['error'] ?: 'Telefone inválido', 422);
+    }
+    $phoneDdi = $phoneCheck['ddi'];
+    $phone = $phoneCheck['phone'];
+    $phoneIso = $phoneCheck['iso'];
     $birth = trim((string)($data['birth_date'] ?? ''));
     $baseCityId = (int)($data['base_city_id'] ?? 0);
     $idDoc = sanitize_text((string)($data['id_document_url'] ?? ''), 500);
@@ -103,7 +122,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
 
     if (mb_strlen($fullName) < 2) json_response(false, null, 'Nome completo obrigatório', 422);
     if (mb_strlen($nickname) < 2) json_response(false, null, 'Apelido obrigatório', 422);
-    if (strlen($phone) < 10 || strlen($phone) > 13) json_response(false, null, 'Telefone inválido', 422);
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $birth)) json_response(false, null, 'Data de nascimento inválida', 422);
     $birthDt = DateTimeImmutable::createFromFormat('Y-m-d', $birth);
     $adult = (new DateTimeImmutable('now'))->modify('-18 years');
@@ -121,23 +139,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
     if ($bio === '') json_response(false, null, 'Descrição obrigatória', 422);
     if (mb_strlen($bio) > $BIO_MAX) json_response(false, null, "Descrição: máximo {$BIO_MAX} caracteres", 422);
 
+    $langJson = gcv_guide_languages_json($data['languages'] ?? $data['languages_json'] ?? ['pt']);
     $profileComplete = 1;
-    $pdo->prepare(
-        'UPDATE gcv_guides SET
-            full_name = ?, nickname = ?,
-            phone = ?, phone_ddi = ?, birth_date = ?, base_city_id = ?,
-            id_document_url = ?, photo_3x4_url = ?, photo_url = ?, bio_pt = ?, profile_complete = ?
-         WHERE user_id = ?'
-    )->execute([
-        $fullName, $nickname,
-        $phone, $phoneDdi, $birth, $baseCityId,
-        $idDoc, $photo34, $photo34, $bio, $profileComplete, (int)$user['id'],
-    ]);
+    try {
+        $pdo->prepare(
+            'UPDATE gcv_guides SET
+                full_name = ?, nickname = ?,
+                phone = ?, phone_ddi = ?, phone_iso = ?, birth_date = ?, base_city_id = ?,
+                id_document_url = ?, photo_3x4_url = ?, photo_url = ?, bio_pt = ?,
+                languages_json = ?, profile_complete = ?
+             WHERE user_id = ?'
+        )->execute([
+            $fullName, $nickname,
+            $phone, $phoneDdi, $phoneIso, $birth, $baseCityId,
+            $idDoc, $photo34, $photo34, $bio, $langJson, $profileComplete, (int)$user['id'],
+        ]);
+    } catch (Throwable $e) {
+        $pdo->prepare(
+            'UPDATE gcv_guides SET
+                full_name = ?, nickname = ?,
+                phone = ?, phone_ddi = ?, birth_date = ?, base_city_id = ?,
+                id_document_url = ?, photo_3x4_url = ?, photo_url = ?, bio_pt = ?,
+                languages_json = ?, profile_complete = ?
+             WHERE user_id = ?'
+        )->execute([
+            $fullName, $nickname,
+            $phone, $phoneDdi, $birth, $baseCityId,
+            $idDoc, $photo34, $photo34, $bio, $langJson, $profileComplete, (int)$user['id'],
+        ]);
+    }
 
     $pdo->prepare('UPDATE gcv_users SET name = ?, avatar_url = COALESCE(NULLIF(?, ""), avatar_url) WHERE id = ?')
         ->execute([$fullName, $photo34, (int)$user['id']]);
 
     $profile = gcv_guide_profile_row((int)$user['id']);
+    if ($profile) {
+        $profile['languages'] = gcv_guide_languages_normalize($profile['languages_json'] ?? null);
+    }
     $missingAfter = gcv_guide_profile_missing($profile ?: []);
     json_response(true, [
         'message' => 'Perfil atualizado',

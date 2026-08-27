@@ -33,6 +33,52 @@
       .replace(/"/g, '&quot;');
   }
 
+  var GUIDE_LANG_OPTS = [
+    { code: 'pt', label: 'Português', flag: 'br', fixed: true },
+    { code: 'en', label: 'Inglês', flag: 'us', fixed: false },
+    { code: 'es', label: 'Espanhol', flag: 'es', fixed: false },
+    { code: 'cs', label: 'Tcheco', flag: 'cz', fixed: false },
+  ];
+
+  function normalizeGuideLangs(codes) {
+    var out = [];
+    (Array.isArray(codes) ? codes : []).forEach(function (c) {
+      c = String(c || '').toLowerCase().trim();
+      if (c === 'br') c = 'pt';
+      if (c && out.indexOf(c) < 0) out.push(c);
+    });
+    out = out.filter(function (c) { return c !== 'pt'; });
+    out.unshift('pt');
+    return out;
+  }
+
+  function languagesPickerHtml(selected) {
+    var sel = normalizeGuideLangs(selected);
+    return '<div class="gcv-dash-langs">' +
+      GUIDE_LANG_OPTS.map(function (o) {
+        var checked = o.fixed || sel.indexOf(o.code) >= 0;
+        return '<label class="gcv-dash-lang' + (o.fixed ? ' gcv-dash-lang--fixed' : '') + '"' +
+          (o.fixed ? ' title="Português é obrigatório"' : '') + '>' +
+          '<input type="checkbox" data-guide-lang="' + o.code + '"' +
+          (checked ? ' checked' : '') +
+          (o.fixed ? ' disabled' : '') + ' />' +
+          '<span class="fi fi-' + o.flag + '" aria-hidden="true"></span>' +
+          '<span>' + o.label + '</span></label>';
+      }).join('') +
+      '</div>' +
+      '<p class="gcv-cms-muted" style="margin:0.4rem 0 0;">A bandeira do Brasil (português) fica sempre marcada e não pode ser alterada.</p>';
+  }
+
+  function readLanguagesPicker(scope) {
+    var root = scope || document;
+    var codes = ['pt'];
+    root.querySelectorAll('input[data-guide-lang]').forEach(function (inp) {
+      var c = inp.getAttribute('data-guide-lang');
+      if (c && c !== 'pt' && inp.checked && codes.indexOf(c) < 0) codes.push(c);
+    });
+    return codes;
+  }
+
   function icoPencil() {
     return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
   }
@@ -64,15 +110,17 @@
       btn.onclick = function () {
         var id = parseInt(btn.getAttribute(attr), 10);
         var label = btn.getAttribute('data-del-label') || ('#' + id);
-        if (!confirm('Excluir\n' + label + '?\n\nEsta ação não pode ser desfeita.')) return;
-        btn.disabled = true;
-        sendJson('DELETE', url, { id: id }, function (e, r) {
-          btn.disabled = false;
-          if (!r || !r.ok) {
-            alert((r && r.error) || 'Erro ao excluir');
-            return;
-          }
-          reload();
+        gcvConfirm('Excluir\n' + label + '?\n\nEsta ação não pode ser desfeita.', { danger: true, okText: 'Excluir' }).then(function (ok) {
+          if (!ok) return;
+          btn.disabled = true;
+          sendJson('DELETE', url, { id: id }, function (e, r) {
+            btn.disabled = false;
+            if (!r || !r.ok) {
+              alert((r && r.error) || 'Erro ao excluir');
+              return;
+            }
+            reload();
+          });
         });
       };
     });
@@ -539,36 +587,185 @@
   }
 
   /* ---------- GUIAS ---------- */
-  function seedDiegoGuide(done) {
-    get('/api/admin/seed-diego-guide.php', function (err, res) {
-      if (typeof done === 'function') done(err, res);
+  function setGuideBrowseVisible(visible) {
+    var section = document.getElementById('section-cms-guides');
+    var list = root('cms-guide-list');
+    var toolbar = root('cms-guide-toolbar');
+    var hint = section ? section.querySelector('.gcv-dash-hint') : null;
+    if (section) section.classList.toggle('is-editing', !visible);
+    if (list) {
+      list.hidden = !visible;
+      list.setAttribute('aria-hidden', visible ? 'false' : 'true');
+    }
+    if (toolbar) {
+      toolbar.hidden = !visible;
+      toolbar.setAttribute('aria-hidden', visible ? 'false' : 'true');
+    }
+    if (hint) hint.hidden = !visible;
+  }
+
+  function closeGuideForm() {
+    var form = root('cms-guide-form');
+    if (form) {
+      form.hidden = true;
+      form.innerHTML = '';
+    }
+    setGuideBrowseVisible(true);
+    var section = document.getElementById('section-cms-guides');
+    if (section && typeof section.scrollIntoView === 'function') {
+      section.scrollIntoView({ block: 'start' });
+    }
+  }
+
+  function refreshGuideBadges() {
+    if (window.GcvDashboard && typeof window.GcvDashboard.refreshGuideBadge === 'function') {
+      window.GcvDashboard.refreshGuideBadge();
+    }
+  }
+
+  function guidePixFilled(g) {
+    return !!(g && String(g.pix_key || '').trim());
+  }
+
+  function guideWasApproved(g) {
+    if (!g) return false;
+    if (g.was_approved) return true;
+    if (g.approved_at) return true;
+    return ['active', 'inactive', 'cancelled'].indexOf(g.status) >= 0;
+  }
+
+  function guideAccountBadge(g) {
+    var st = String((g && g.status) || '');
+    var approved = guideWasApproved(g);
+    if (st === 'active') return '<span class="gcv-badge gcv-badge--active">ATIVO</span>';
+    if (st === 'inactive') return '<span class="gcv-badge gcv-badge--muted">INATIVO</span>';
+    if (st === 'cancelled' || (st === 'suspended' && approved)) {
+      return '<span class="gcv-badge gcv-badge--cancelled">CANCELADO</span>';
+    }
+    if (st === 'suspended') return '<span class="gcv-badge gcv-badge--rejected">RECUSADO</span>';
+    if (st === 'pending') return '<span class="gcv-badge gcv-badge--pending">PENDENTE</span>';
+    return '';
+  }
+
+  function guidePixBadge(g) {
+    return guidePixFilled(g)
+      ? '<span class="gcv-badge gcv-badge--active">PIX OK</span>'
+      : '<span class="gcv-badge gcv-badge--pending">PIX pendente</span>';
+  }
+
+  function guideWaHref(g) {
+    var digits = String((g && g.phone) || '').replace(/\D+/g, '');
+    if (!digits) return '';
+    var ddi = String((g && g.phone_ddi) || '+55').replace(/\D+/g, '') || '55';
+    if (digits.indexOf(ddi) === 0) return 'https://wa.me/' + digits;
+    return 'https://wa.me/' + ddi + digits;
+  }
+
+  function formatGuidePhone(g) {
+    var digits = String((g && g.phone) || '').replace(/\D+/g, '');
+    if (!digits) return '';
+    var ddi = String((g && g.phone_ddi) || '+55').replace(/\D+/g, '') || '55';
+    if (ddi === '55' && digits.length >= 10) {
+      var ddd = digits.slice(0, 2);
+      var rest = digits.slice(2);
+      if (rest.length === 9) return '+55 (' + ddd + ') ' + rest.slice(0, 5) + '-' + rest.slice(5);
+      if (rest.length === 8) return '+55 (' + ddd + ') ' + rest.slice(0, 4) + '-' + rest.slice(4);
+    }
+    return '+' + ddi + ' ' + digits;
+  }
+
+  function guidePhotoUrl(g) {
+    return (g && (g.photo_3x4_url || g.photo_url || g.avatar_url)) || '';
+  }
+
+  function guideListPhotoHtml(g) {
+    var url = guidePhotoUrl(g);
+    var name = String((g && (g.full_name || g.name || g.nickname)) || '?');
+    var initial = name.charAt(0).toUpperCase();
+    if (url) {
+      return '<div class="gcv-cms-row__photo"><img src="' + esc(url) + '" alt="' + esc(name) + '" /></div>';
+    }
+    return '<div class="gcv-cms-row__photo"><span class="gcv-cms-row__photo-empty">' + esc(initial) + '</span></div>';
+  }
+
+  function guideListMetaHtml(g) {
+    var city = String((g && g.base_city_name) || '').trim() || '—';
+    var pix = String((g && g.pix_key) || '').trim();
+    var pixHtml = pix ? ('Chave pix <strong>' + esc(pix) + '</strong>') : 'Chave pix —';
+    var phone = formatGuidePhone(g);
+    var wa = guideWaHref(g);
+    var cel = phone
+      ? (wa
+        ? ('Celular <a href="' + esc(wa) + '" target="_blank" rel="noopener">' + esc(phone) + '</a>')
+        : ('Celular <strong>' + esc(phone) + '</strong>'))
+      : 'Celular —';
+    return '<div class="gcv-cms-row__meta">' + esc(city) + ' | ' + pixHtml + ' | ' + cel + '</div>';
+  }
+
+  function reloadGuideForm(userId) {
+    get('/api/admin/cms-guides.php?id=' + userId, function (e, r) {
+      if (r && r.ok) openGuideForm(r.data);
+      else renderGuides();
     });
+  }
+
+  function setGuideStatus(userId, status, extra) {
+    extra = extra || {};
+    var done = function () {
+      refreshGuideBadges();
+      if (extra.stayInEdit) reloadGuideForm(userId);
+      else renderGuides();
+    };
+    if (status === 'active' && extra.fromPending) {
+      sendJson('POST', '/api/admin/approve-guide.php', { user_id: userId }, function (e, r) {
+        if (!r || !r.ok) { alert((r && r.error) || 'Erro ao aprovar'); return; }
+        done();
+      });
+      return;
+    }
+    if (status === 'suspended' && extra.fromPending) {
+      var reason = extra.reason;
+      if (reason == null) {
+        reason = prompt('Motivo da recusa (opcional):');
+        if (reason === null) return;
+      }
+      sendJson('POST', '/api/admin/reject-guide.php', { user_id: userId, reason: reason || '' }, function (e, r) {
+        if (!r || !r.ok) { alert((r && r.error) || 'Erro ao recusar'); return; }
+        done();
+      });
+      return;
+    }
+    sendJson('POST', '/api/admin/cms-guides.php', {
+      action: 'set_status',
+      user_id: userId,
+      status: status,
+    }, function (e, r) {
+      if (!r || !r.ok) { alert((r && r.error) || 'Erro ao alterar status'); return; }
+      done();
+    });
+  }
+
+  function guideStatusChip(value, current, uid, label, kind) {
+    var on = current === value;
+    var cls = 'gcv-exc-status gcv-exc-status--' + kind + (on ? ' is-on' : ' is-off');
+    if (on) return '<span class="' + cls + '">' + label + '</span>';
+    return '<button type="button" class="' + cls + '" data-guide-status="' + value + '" data-guide-id="' + uid + '">' + label + '</button>';
   }
 
   function renderGuides() {
     var box = root('cms-guides-root');
     if (!box) return;
+    var section = document.getElementById('section-cms-guides');
+    if (section) section.classList.remove('is-editing');
+    var hint = section ? section.querySelector('.gcv-dash-hint') : null;
+    if (hint) hint.hidden = false;
     box.innerHTML =
-      '<div class="gcv-cms-toolbar">' +
+      '<div class="gcv-cms-toolbar" id="cms-guide-toolbar">' +
       '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary" id="cms-guide-new">+ Novo guia</button>' +
-      '<button type="button" class="gcv-dash-btn" id="cms-guide-seed-diego">Importar Diego Navi</button>' +
       '</div>' +
       '<div id="cms-guide-form" class="gcv-cms-card" hidden></div>' +
       '<div id="cms-guide-list" class="gcv-cms-list">Carregando…</div>';
     root('cms-guide-new').onclick = function () { openGuideForm(null); };
-    root('cms-guide-seed-diego').onclick = function () {
-      var btn = root('cms-guide-seed-diego');
-      if (btn) { btn.disabled = true; btn.textContent = 'Importando…'; }
-      seedDiegoGuide(function (err, res) {
-        if (btn) { btn.disabled = false; btn.textContent = 'Importar Diego Navi'; }
-        if (!res || !res.ok) {
-          alert((res && res.error) || 'Falha ao importar guia');
-          return;
-        }
-        alert(res.message || 'Guia Diego Navi pronto');
-        renderGuides();
-      });
-    };
     get('/api/admin/cms-guides.php', function (err, res) {
       var list = root('cms-guide-list');
       if (!list) return;
@@ -576,46 +773,137 @@
         list.innerHTML = '<p class="gcv-dash-alert">Erro ao carregar guias.</p>';
         return;
       }
-      var rows = (res.data && res.data.guides) || [];
-      state.guides = rows;
-      if (rows.length === 0) {
-        seedDiegoGuide(function (e2, r2) {
-          if (r2 && r2.ok) {
-            get('/api/admin/cms-guides.php', function (e3, r3) {
-              paintGuidesList((r3 && r3.data && r3.data.guides) || []);
-            });
-          } else {
-            paintGuidesList([]);
-          }
-        });
-        return;
-      }
-      paintGuidesList(rows);
+      paintGuidesList((res.data && res.data.guides) || []);
+      refreshGuideBadges();
     });
   }
 
   function paintGuidesList(rows) {
     var list = root('cms-guide-list');
     if (!list) return;
-    state.guides = rows || [];
+    rows = (rows || []).slice().sort(function (a, b) {
+      var pa = a.status === 'pending' ? 0 : 1;
+      var pb = b.status === 'pending' ? 0 : 1;
+      if (pa !== pb) return pa - pb;
+      return String(a.full_name || a.name || '').localeCompare(String(b.full_name || b.name || ''), 'pt');
+    });
+    state.guides = rows;
     list.innerHTML = rows.length ? rows.map(function (g) {
-      var langs = (g.languages || []).join(', ');
+      var pending = g.status === 'pending';
+      var name = g.full_name || g.name || g.nickname || 'Guia';
+      var approve = pending
+        ? ('<button type="button" class="gcv-dash-btn gcv-dash-btn--primary gcv-dash-btn--sm" data-approve-guide="' + g.user_id + '">Aprovar</button>')
+        : '';
       return (
-        '<article class="gcv-cms-row"><div><strong>' + esc(g.full_name || g.name) + '</strong>' +
-        '<div class="gcv-cms-muted">' + esc(g.nickname || '') + ' · ' + esc(g.email) +
-        (g.base_city_name ? ' · ' + esc(g.base_city_name) : '') +
-        (langs ? ' · ' + esc(langs) : '') +
-        ' · ' + esc(g.status || '') + '</div></div>' +
+        '<article class="gcv-cms-row' + (pending ? ' gcv-cms-row--pending' : '') + '">' +
+        '<div class="gcv-cms-row__body">' +
+        guideListPhotoHtml(g) +
+        '<div class="gcv-cms-row__main">' +
+        '<div class="gcv-cms-row__titleline">' +
+        '<strong>' + esc(name) + '</strong>' +
+        guidePixBadge(g) +
+        guideAccountBadge(g) +
+        approve +
+        '</div>' +
+        guideListMetaHtml(g) +
+        '</div></div>' +
         '<div class="gcv-cms-row-side">' +
         cmsRowActions('data-edit-guide="' + g.user_id + '"') +
         '</div></article>'
       );
-    }).join('') : '<p>Nenhum guia. Use <strong>Importar Diego Navi</strong>.</p>';
+    }).join('') : '<p>Nenhum guia credenciado. Clique em <strong>+ Novo guia</strong>.</p>';
+
     list.querySelectorAll('[data-edit-guide]').forEach(function (btn) {
       btn.onclick = function () {
         get('/api/admin/cms-guides.php?id=' + btn.getAttribute('data-edit-guide'), function (e, r) {
           if (r && r.ok) openGuideForm(r.data);
         });
+      };
+    });
+    list.querySelectorAll('[data-approve-guide]').forEach(function (btn) {
+      btn.onclick = function () {
+        gcvConfirm('Aprovar este guia? O status passará a Ativo.', { okText: 'Aprovar' }).then(function (ok) {
+          if (!ok) return;
+          setGuideStatus(parseInt(btn.getAttribute('data-approve-guide'), 10), 'active', { fromPending: true });
+        });
+      };
+    });
+  }
+
+  function guideEditStatusHtml(g) {
+    if (!g) return '';
+    var uid = g.user_id;
+    var pending = g.status === 'pending';
+    var approved = guideWasApproved(g);
+    var actions;
+    if (pending) {
+      actions =
+        '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary gcv-dash-btn--sm" data-guide-edit-status="active" data-from-pending="1">Aprovar</button>' +
+        '<button type="button" class="gcv-dash-btn gcv-dash-btn--danger gcv-dash-btn--sm" data-guide-edit-status="suspended" data-from-pending="1">Recusar</button>';
+    } else if (approved) {
+      actions =
+        guideStatusChip('active', g.status, uid, 'Ativo', 'ok') +
+        guideStatusChip('inactive', g.status, uid, 'Inativo', 'muted') +
+        guideStatusChip('cancelled', g.status, uid, 'Cancelado', 'no');
+    } else {
+      actions =
+        '<span class="gcv-exc-status gcv-exc-status--no is-on">Recusado</span>' +
+        '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary gcv-dash-btn--sm" data-guide-edit-status="active" data-from-pending="1">Aprovar</button>';
+    }
+    return (
+      '<div class="gcv-cms-guide-status-box">' +
+      '<div class="gcv-cms-guide-status-box__head">' +
+      '<h4>Status da conta</h4>' +
+      guidePixBadge(g) +
+      guideAccountBadge(g) +
+      '</div>' +
+      '<div class="gcv-cms-row__decide" style="margin-top:0.55rem;">' + actions + '</div>' +
+      '<p class="gcv-cms-muted" style="margin:0.65rem 0 0;">Recusar vale só para cadastro novo. Perfil já aprovado pode ser inativado ou cancelado. Sem publicação por 90 dias o sistema passa a Inativo.</p>' +
+      '</div>'
+    );
+  }
+
+  function bindGuideEditStatus(form, g) {
+    if (!form || !g || !g.user_id) return;
+    var uid = parseInt(g.user_id, 10);
+    function run(status, fromPending) {
+      var extra = { stayInEdit: true, fromPending: !!fromPending };
+      if (status === 'suspended' && fromPending) {
+        gcvConfirm('Recusar este cadastro? O guia não será aprovado.', { danger: true, okText: 'Recusar' }).then(function (ok) {
+          if (!ok) return;
+          setGuideStatus(uid, 'suspended', extra);
+        });
+        return;
+      }
+      if (status === 'cancelled') {
+        gcvConfirm('Cancelar este perfil? O guia não poderá mais publicar.', { danger: true, okText: 'Cancelar perfil' }).then(function (ok) {
+          if (!ok) return;
+          setGuideStatus(uid, 'cancelled', extra);
+        });
+        return;
+      }
+      if (status === 'inactive') {
+        gcvConfirm('Inativar este guia? Ele deixa de aparecer no site até ser reativado.', { okText: 'Inativar' }).then(function (ok) {
+          if (!ok) return;
+          setGuideStatus(uid, 'inactive', extra);
+        });
+        return;
+      }
+      if (status === 'active' && fromPending) {
+        gcvConfirm('Aprovar este guia? O status passará a Ativo.', { okText: 'Aprovar' }).then(function (ok) {
+          if (!ok) return;
+          setGuideStatus(uid, 'active', extra);
+        });
+        return;
+      }
+      setGuideStatus(uid, status, extra);
+    }
+    form.querySelectorAll('[data-guide-edit-status], [data-guide-status]').forEach(function (btn) {
+      btn.onclick = function () {
+        var st = btn.getAttribute('data-guide-edit-status') || btn.getAttribute('data-guide-status');
+        var fromPending = btn.getAttribute('data-from-pending') === '1';
+        if (!st) return;
+        run(st, fromPending);
       };
     });
   }
@@ -633,14 +921,6 @@
       cb();
     });
   }
-
-  var DEFAULT_GUIDE_PHOTO = '/assets/img/imagens/guia-diego-navi.webp';
-  var DEFAULT_GUIDE_BIO_PT = [
-    'Diego Navi Marques Carvalho é analista de sistemas formado pela PUC-Rio, brasileiro naturalizado italiano e pai de um pré-adolescente. Nascido (19 de dezembro de 1982) e criado no Rio de Janeiro, decidiu trocar a rotina dos escritórios pela natureza da Chapada dos Veadeiros em 2016, onde encontrou sua verdadeira vocação.',
-    'Em 2017, concluiu sua formação como Condutor Local de Visitantes de Ecoturismo da Chapada dos Veadeiros. No mesmo ano, uniu sua experiência na área de tecnologia à paixão pelo turismo de natureza para fundar a Guia Chapada Veadeiros, uma agência virtual criada para orientar visitantes no planejamento de suas viagens, oferecer informações confiáveis sobre os atrativos da região, conectar turistas aos mais experientes guias locais e incentivar um turismo seguro, responsável e de alta qualidade, valorizando a natureza, a cultura e a comunidade da Chapada dos Veadeiros.',
-    'Fluente em português, inglês e espanhol, já conduziu dezenas de grupos com segurança e profissionalismo, recebendo visitantes do Brasil e de diversos países. Frequentador da Chapada dos Veadeiros desde 2009, conhece profundamente a região em todas as épocas do ano. Das cachoeiras mais famosas aos recantos menos explorados, domina trilhas, atrativos, logística, condições climáticas e particularidades de cada destino, proporcionando roteiros personalizados, seguros e memoráveis.',
-    'Com uma visão que une tecnologia, atendimento de excelência e profundo conhecimento da Chapada dos Veadeiros, Diego dedica-se a transformar cada viagem em uma experiência única. Sua missão é ir além de conduzir visitantes: é compartilhar a essência da Chapada, valorizando sua natureza, cultura e as comunidades locais para que cada viajante viva uma experiência autêntica, segura e inesquecível.',
-  ].join('\n\n');
 
   function pixPhoneApi() {
     return global.GcvPixReceipt || null;
@@ -789,19 +1069,25 @@
     ensureCities(function () {
       var form = root('cms-guide-form');
       if (!form) return;
+      setGuideBrowseVisible(false);
       form.hidden = false;
+      window.scrollTo(0, 0);
 
-      var inheritedPhoto = (g && (g.photo_url || g.photo_3x4_url || g.avatar_url)) || DEFAULT_GUIDE_PHOTO;
-      var inheritedBio = (g && g.bio_pt) ? g.bio_pt : DEFAULT_GUIDE_BIO_PT;
+      var photoUrl = g ? (g.photo_url || g.photo_3x4_url || g.avatar_url || '') : '';
+      var bioVal = g ? (g.bio_pt || '') : '';
+      var guideName = (g && (g.full_name || g.name || g.nickname)) || '';
       var phoneIso = (g && g.phone_iso) || 'br';
       var phoneVal = (g && g.phone) || '';
       if (g && g.phone_ddi && (!g.phone_iso || g.phone_iso === '')) {
-        // se só tiver DDI numérico, tenta mapear
         phoneIso = String(g.phone_ddi).replace(/\D+/g, '') === '55' ? 'br' : phoneIso;
       }
 
       form.innerHTML =
-        '<h3>' + (g ? 'Editar guia' : 'Novo guia') + '</h3>' +
+        '<h3 class="gcv-cms-guide-edit-name">' + (g ? esc(guideName) : 'Novo guia') + '</h3>' +
+        '<p class="gcv-cms-muted" style="margin:0 0 1rem;">' +
+        (g ? 'Perfil do guia — edite os dados e o PIX neste formulário.' : 'Cadastro em branco. Nada é copiado de outro perfil.') +
+        '</p>' +
+        guideEditStatusHtml(g) +
         '<div class="gcv-dash-field-row">' +
         '<div class="gcv-dash-field"><label class="gcv-dash-label">Nome completo *</label><input class="gcv-dash-input" id="g-full" value="' + esc(g && g.full_name || '') + '" /></div>' +
         '<div class="gcv-dash-field"><label class="gcv-dash-label">Apelido *</label><input class="gcv-dash-input" id="g-nick" value="' + esc(g && g.nickname || '') + '" /></div>' +
@@ -811,30 +1097,52 @@
         '<div class="gcv-dash-field"><label class="gcv-dash-label">Nascimento *</label><input class="gcv-dash-input" id="g-birth" type="date" value="' + esc(g && g.birth_date || '') + '" /></div>' +
         '</div>' +
         '<div class="gcv-dash-field"><label class="gcv-dash-label">Telefone / WhatsApp *</label><div id="g-phone-wrap"></div></div>' +
-        '<div class="gcv-dash-field-row">' +
-        '<div class="gcv-dash-field"><label class="gcv-dash-label">Tipo chave PIX *</label><select class="gcv-dash-select" id="g-pix-type"><option value="cpf">CPF</option><option value="cnpj">CNPJ</option><option value="email">E-mail</option><option value="phone">Telefone</option><option value="random">Aleatória</option></select></div>' +
-        '<div class="gcv-dash-field"><label class="gcv-dash-label">Chave PIX *</label><input class="gcv-dash-input" id="g-pix" value="' + esc(g && g.pix_key || '') + '" /></div>' +
-        '</div>' +
         '<div class="gcv-dash-field"><label class="gcv-dash-label">Cidade base *</label><select class="gcv-dash-select" id="g-city"><option value="">Selecione…</option>' + cityOptionsHtml(g && g.base_city_id) + '</select></div>' +
+        '<div class="gcv-cms-pix-box">' +
+        '<h4>Recebimento PIX</h4>' +
+        '<p class="gcv-cms-muted" style="margin:0 0 0.75rem;">Pagamentos só são permitidos para guias <strong>ativos</strong> com PIX verificado.</p>' +
+        (g
+          ? (guidePixBadge(g) + guideAccountBadge(g))
+          : '') +
+        '<div class="gcv-dash-field-row" style="margin-top:0.75rem;">' +
+        '<div class="gcv-dash-field"><label class="gcv-dash-label">Tipo da chave *</label><select class="gcv-dash-select" id="g-pix-type"><option value="">Selecione…</option><option value="cpf">CPF</option><option value="cnpj">CNPJ</option><option value="email">E-mail</option><option value="phone">Telefone</option><option value="random">Aleatória</option></select></div>' +
+        '<div class="gcv-dash-field"><label class="gcv-dash-label">Chave PIX *</label><input class="gcv-dash-input" id="g-pix" value="' + esc(g && g.pix_key || '') + '" placeholder="CPF, CNPJ, e-mail, telefone ou aleatória" /></div>' +
+        '</div>' +
+        '<div class="gcv-dash-field"><label class="gcv-dash-label">Titular da chave *</label><input class="gcv-dash-input" id="g-pix-holder" value="' + esc(g && (g.pix_holder_name || g.full_name) || '') + '" /></div>' +
+        (g
+          ? '<div style="margin-top:0.75rem;"><button type="button" class="gcv-dash-btn gcv-dash-btn--sm" id="g-verify-pix"' + (g.pix_key && g.status === 'active' ? '' : ' disabled') + '>Verificar PIX</button></div>'
+          : '') +
+        '</div>' +
         '<div class="gcv-dash-field">' +
         '<label class="gcv-dash-label">Foto *</label>' +
-        '<div class="gcv-cms-photo-preview"><img id="g-photo-preview" src="' + esc(inheritedPhoto) + '" alt="Foto do guia" /><div>' +
-        '<input type="hidden" id="g-photo-url" value="' + esc(inheritedPhoto) + '" />' +
+        '<div class="gcv-cms-photo-preview">' +
+        (photoUrl
+          ? '<img id="g-photo-preview" src="' + esc(photoUrl) + '" alt="Foto do guia" />'
+          : '<div class="gcv-cms-photo-placeholder" id="g-photo-placeholder">Sem foto</div><img id="g-photo-preview" alt="Foto do guia" hidden />') +
+        '<div>' +
+        '<input type="hidden" id="g-photo-url" value="' + esc(photoUrl) + '" />' +
         '<input type="file" id="g-photo-file" accept="image/*" />' +
-        '<p class="gcv-cms-muted" style="margin:0.35rem 0 0;">Anexe uma nova ou mantenha a foto atual.</p></div></div></div>' +
-        '<div class="gcv-dash-field"><label class="gcv-dash-label">Bio (herdada do perfil atual)</label><textarea class="gcv-dash-input" id="g-bio" rows="8">' + esc(inheritedBio) + '</textarea></div>' +
+        '<p class="gcv-cms-muted" style="margin:0.35rem 0 0;">' + (g ? 'Anexe uma nova ou mantenha a foto atual.' : 'Anexe a foto do guia.') + '</p></div></div></div>' +
+        '<div class="gcv-dash-field"><label class="gcv-dash-label">Idiomas falados</label>' +
+        languagesPickerHtml(g && g.languages) +
+        '</div>' +
+        '<div class="gcv-dash-field"><label class="gcv-dash-label">Bio</label><textarea class="gcv-dash-input" id="g-bio" rows="8" placeholder="Biografia do guia">' + esc(bioVal) + '</textarea></div>' +
         '<div style="display:flex;gap:0.5rem;margin-top:0.75rem;">' +
         '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary" id="g-save">Salvar</button>' +
         '<button type="button" class="gcv-dash-btn" id="g-cancel">Cancelar</button></div>';
 
-      if (!(g && g.base_city_id) && state.cities && state.cities.length) {
-        var alto = state.cities.find(function (c) { return /Alto Para/i.test(c.name); });
-        if (alto) root('g-city').value = String(alto.id);
-      }
       if (g && g.pix_key_type) root('g-pix-type').value = g.pix_key_type;
-      else root('g-pix-type').value = 'cpf';
 
       var phoneCtl = mountGuidePhoneField(root('g-phone-wrap'), phoneIso, phoneVal);
+      bindGuideEditStatus(form, g);
+
+      function showPhoto(url) {
+        var img = root('g-photo-preview');
+        var ph = root('g-photo-placeholder');
+        if (root('g-photo-url')) root('g-photo-url').value = url;
+        if (img) { img.src = url; img.hidden = false; }
+        if (ph) ph.hidden = true;
+      }
 
       root('g-photo-file').onchange = function () {
         var f = root('g-photo-file').files && root('g-photo-file').files[0];
@@ -844,21 +1152,66 @@
             alert((r && r.error) || 'Falha no upload da foto');
             return;
           }
-          root('g-photo-url').value = r.data.url;
-          root('g-photo-preview').src = r.data.url;
+          showPhoto(r.data.url);
         });
       };
 
-      root('g-cancel').onclick = function () { form.hidden = true; };
+      var verifyBtn = root('g-verify-pix');
+      if (verifyBtn) {
+        verifyBtn.onclick = function () {
+          if (!g || !g.user_id) return;
+          if (g.status !== 'active') {
+            alert('Só é possível verificar PIX de guia ativo.');
+            return;
+          }
+          var pixVal = root('g-pix').value.trim();
+          if (!pixVal) {
+            alert('Informe a chave PIX antes de verificar.');
+            return;
+          }
+          gcvConfirm('Confirmar que esta chave PIX pertence ao guia? Só após isso será possível pagar.').then(function (ok) {
+            if (!ok) return;
+          verifyBtn.disabled = true;
+          sendJson('PUT', '/api/admin/guides.php', {
+            user_id: g.user_id,
+            pix_key: pixVal,
+            pix_holder_name: root('g-pix-holder').value.trim(),
+            verify_pix: true,
+          }, function (e, r) {
+            verifyBtn.disabled = false;
+            alert(r && r.ok ? 'PIX verificado.' : ((r && r.error) || 'Erro ao verificar PIX'));
+            if (r && r.ok) {
+              get('/api/admin/cms-guides.php?id=' + g.user_id, function (e2, r2) {
+                if (r2 && r2.ok) openGuideForm(r2.data);
+              });
+            }
+          });
+          });
+        };
+      }
+
+      root('g-cancel').onclick = function () { closeGuideForm(); };
       root('g-save').onclick = function () {
-        var photoUrl = root('g-photo-url').value.trim();
-        if (!photoUrl) {
-          alert('Anexe ou mantenha a foto do guia.');
+        var savedPhoto = root('g-photo-url').value.trim();
+        if (!savedPhoto) {
+          alert('Anexe a foto do guia.');
           return;
         }
         var phoneDigits = phoneCtl.getPhoneDigits();
         if (!phoneDigits) {
           alert('Informe o telefone.');
+          return;
+        }
+        if (!root('g-pix-type').value) {
+          alert('Selecione o tipo da chave PIX.');
+          return;
+        }
+        if (!root('g-pix').value.trim()) {
+          alert('Informe a chave PIX.');
+          return;
+        }
+        if (!root('g-pix-holder').value.trim()) {
+          alert('Informe o titular da chave PIX.');
           return;
         }
         var payload = {
@@ -872,16 +1225,16 @@
           phone: phoneDigits,
           pix_key_type: root('g-pix-type').value,
           pix_key: root('g-pix').value.trim(),
+          pix_holder_name: root('g-pix-holder').value.trim(),
           base_city_id: parseInt(root('g-city').value, 10) || 0,
-          photo_url: photoUrl,
-          photo_3x4_url: photoUrl,
+          photo_url: savedPhoto,
+          photo_3x4_url: savedPhoto,
           bio_pt: root('g-bio').value,
-          languages: ['pt', 'en', 'es'],
-          status: 'active',
+          languages: readLanguagesPicker(form),
         };
+        if (!g) payload.status = 'active';
         sendJson(g ? 'PUT' : 'POST', '/api/admin/cms-guides.php', payload, function (e, r) {
           if (!r || !r.ok) { alert((r && r.error) || 'Erro'); return; }
-          form.hidden = true;
           renderGuides();
         });
       };
@@ -1002,7 +1355,8 @@
       }).join('') : '<p>Nenhuma excursão. Clique em <strong>+ Nova saída</strong> e escolha de 1 a 4 atrativos.</p>';
       list.querySelectorAll('[data-approve-exc]').forEach(function (btn) {
         btn.onclick = function () {
-          if (!confirm('Aprovar este passeio e publicar no site?')) return;
+          gcvConfirm('Aprovar este passeio e publicar no site?', { okText: 'Aprovar' }).then(function (ok) {
+            if (!ok) return;
           btn.disabled = true;
           sendJson('POST', '/api/admin/excursion-approvals.php', {
             id: parseInt(btn.getAttribute('data-approve-exc'), 10),
@@ -1018,6 +1372,7 @@
             if (window.GcvDashboard && typeof window.GcvDashboard.refreshApprovalBadge === 'function') {
               window.GcvDashboard.refreshApprovalBadge();
             }
+          });
           });
         };
       });
@@ -1055,7 +1410,8 @@
         btn.onclick = function () {
           var id = btn.getAttribute('data-del-exc');
           var label = btn.getAttribute('data-del-label') || ('#' + id);
-          if (!confirm('Excluir permanentemente a saída\n' + label + '?\n\nEsta ação não pode ser desfeita.')) return;
+          gcvConfirm('Excluir permanentemente a saída\n' + label + '?\n\nEsta ação não pode ser desfeita.', { danger: true, okText: 'Excluir' }).then(function (ok) {
+            if (!ok) return;
           btn.disabled = true;
           sendJson('DELETE', '/api/admin/excursions.php', { id: parseInt(id, 10) }, function (e, r) {
             if (!r || !r.ok) {
@@ -1064,6 +1420,7 @@
               return;
             }
             renderExcursions();
+          });
           });
         };
       });
@@ -1120,7 +1477,7 @@
               return '<option value="' + g.user_id + '"' + (ex && String(ex.guide_user_id) === String(g.user_id) ? ' selected' : '') + '>' + esc(label) + '</option>';
             }).join('') : '') +
             '</select>' +
-            (guides.length ? '' : '<p class="gcv-dash-alert" style="margin-top:0.4rem;">Nenhum guia cadastrado. <button type="button" class="gcv-dash-btn gcv-dash-btn--sm gcv-dash-btn--primary" id="ex-seed-diego">Cadastrar Diego Navi</button></p>') +
+            (guides.length ? '' : '<p class="gcv-dash-alert" style="margin-top:0.4rem;">Nenhum guia cadastrado. Cadastre em <strong>Guias credenciados</strong>.</p>') +
             '</div>' +
             '<div class="gcv-dash-field-row">' +
             '<div class="gcv-dash-field"><label class="gcv-dash-label">Valor/pessoa final (R$) *</label><input class="gcv-dash-input" id="ex-price" value="' + esc(ex ? centsToMoney(ex.price_cents) : '') + '" /></div>' +
@@ -1128,7 +1485,7 @@
             '<div class="gcv-dash-field"><label class="gcv-dash-label">Quórum * (0 a 4)</label><input class="gcv-dash-input" id="ex-quorum" type="number" min="0" max="4" value="' + esc(ex && ex.quorum != null ? ex.quorum : 4) + '" /></div>' +
             '<div class="gcv-dash-field"><label class="gcv-dash-label">Pessoas confirmadas (0 a 5)</label><input class="gcv-dash-input" id="ex-preconfirmed" type="number" min="0" max="5" value="' + esc(ex && ex.preconfirmed_people != null ? ex.preconfirmed_people : 0) + '" /></div>' +
             '<div class="gcv-dash-field"><label class="gcv-dash-label">Vagas * (máximo até 12)</label><input class="gcv-dash-input" id="ex-max" type="number" min="1" max="12" value="' + esc(ex && ex.max_people || 10) + '" /></div>' +
-            '<div class="gcv-dash-field"><label class="gcv-dash-label">Inscritos</label><input class="gcv-dash-input" id="ex-booked" type="number" min="0" value="' + esc(ex && ex.booked_people || 0) + '" /></div>' +
+            '<div class="gcv-dash-field"><label class="gcv-dash-label">Inscritos</label><input class="gcv-dash-input" id="ex-booked" type="number" min="0" value="' + esc(ex && ex.booked_people || 0) + '" readonly disabled tabindex="-1" title="Contador automático das reservas pagas no site" /><p class="gcv-cms-muted" style="margin:0.3rem 0 0;">Atualiza sozinho quando alguém paga no site. Não é editável.</p></div>' +
             '</div>' +
             '<label class="gcv-dash-label"><input type="checkbox" id="ex-transport"' + (ex && Number(ex.include_transport) ? ' checked' : '') + ' /> Inclui transporte</label> ' +
             '<label class="gcv-dash-label"><input type="checkbox" id="ex-entry"' + (ex && Number(ex.include_entry) ? ' checked' : '') + ' /> Inclui ingresso</label>' +
@@ -1247,21 +1604,6 @@
             };
           })();
 
-          var seedDiegoBtn = root('ex-seed-diego');
-          if (seedDiegoBtn) {
-            seedDiegoBtn.onclick = function () {
-              seedDiegoBtn.disabled = true;
-              seedDiegoGuide(function (err, res) {
-                if (!res || !res.ok) {
-                  seedDiegoBtn.disabled = false;
-                  alert((res && res.error) || 'Falha ao cadastrar guia');
-                  return;
-                }
-                openExcursionForm(ex);
-              });
-            };
-          }
-
           if (ex && ex.status) root('ex-status').value = ex.status;
           root('ex-cancel').onclick = function () { form.hidden = true; };
 
@@ -1269,7 +1611,8 @@
           if (delBtn && ex && ex.id) {
             delBtn.onclick = function () {
               var label = (ex.date_iso || '') + ' · ' + (ex.attraction_title || '');
-              if (!confirm('Excluir permanentemente a saída\n' + label + '?\n\nEsta ação não pode ser desfeita.')) return;
+              gcvConfirm('Excluir permanentemente a saída\n' + label + '?\n\nEsta ação não pode ser desfeita.', { danger: true, okText: 'Excluir' }).then(function (ok) {
+                if (!ok) return;
               delBtn.disabled = true;
               sendJson('DELETE', '/api/admin/excursions.php', { id: ex.id }, function (e, r) {
                 if (!r || !r.ok) {
@@ -1279,6 +1622,7 @@
                 }
                 form.hidden = true;
                 renderExcursions();
+              });
               });
             };
           }
@@ -1344,7 +1688,6 @@
               created_by_origin: 'ADMIN',
               quorum: quorum,
               max_people: maxPeople,
-              booked_people: parseInt(root('ex-booked').value, 10) || 0,
               preconfirmed_people: Math.max(0, Math.min(5, parseInt(root('ex-preconfirmed').value, 10) || 0)),
               include_transport: !!(root('ex-transport') && root('ex-transport').checked),
               include_entry: !!(root('ex-entry') && root('ex-entry').checked),
@@ -1363,20 +1706,7 @@
         }
 
         get('/api/admin/cms-guides.php', function (e2, r2) {
-          var guides = (r2 && r2.data && r2.data.guides) || [];
-          if (guides.length === 0) {
-            seedDiegoGuide(function (err, res) {
-              if (res && res.ok) {
-                get('/api/admin/cms-guides.php', function (e3, r3) {
-                  withGuides((r3 && r3.data && r3.data.guides) || []);
-                });
-              } else {
-                withGuides([]);
-              }
-            });
-            return;
-          }
-          withGuides(guides);
+          withGuides((r2 && r2.data && r2.data.guides) || []);
         });
       }
 

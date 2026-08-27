@@ -35,7 +35,7 @@ function gcv_seed_diego_navi_guide(): array
     $fullName = 'Diego Navi Marques Carvalho';
     $nickname = 'Diego Navi';
     $photo = '/assets/img/imagens/guia-diego-navi.webp';
-    $phone = '62982506891';
+    $phone = '21996039027';
     $cpf = '09837259779';
     $pixKey = '09837259779';
     $birth = '1982-12-19';

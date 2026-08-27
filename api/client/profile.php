@@ -56,11 +56,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
     if ($name === '') {
         json_response(false, null, 'Nome obrigatório (2–120)', 422);
     }
-    $phoneDdi = sanitize_text((string)($data['phone_ddi'] ?? '+55'), 8);
-    $phone = gcv_digits_only((string)($data['phone'] ?? ''));
-    if ($phone !== '' && (strlen($phone) < 10 || strlen($phone) > 13)) {
-        json_response(false, null, 'Telefone inválido', 422);
+    $phoneCheck = gcv_validate_contact_phone(
+        (string)($data['phone'] ?? ''),
+        (string)($data['phone_ddi'] ?? '+55'),
+        (string)($data['phone_iso'] ?? 'br'),
+        true
+    );
+    if (!$phoneCheck['ok']) {
+        json_response(false, null, $phoneCheck['error'] ?: 'Telefone inválido', 422);
     }
+    $phoneDdi = $phoneCheck['ddi'];
+    $phone = $phoneCheck['phone'];
     $cpf = gcv_digits_only((string)($data['cpf'] ?? ''));
     if ($cpf !== '' && strlen($cpf) !== 11) {
         json_response(false, null, 'CPF inválido', 422);

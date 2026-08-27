@@ -41,7 +41,7 @@ try {
         json_response(false, null, 'Email ou senha incorretos', 401);
     }
 
-    if ($user['status'] === 'suspended') {
+    if ($user['status'] === 'suspended' || $user['status'] === 'cancelled') {
         json_response(false, null, 'Conta suspensa. Entre em contato com o suporte.', 403);
     }
 

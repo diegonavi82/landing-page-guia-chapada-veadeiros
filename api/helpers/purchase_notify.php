@@ -319,10 +319,36 @@ function gcv_whatsapp_normalize_phone(string $raw, string $ddi = '55'): string
     if (str_starts_with($digits, '00')) {
         $digits = substr($digits, 2);
     }
+    if (str_starts_with($digits, '0') && strlen($digits) >= 11 && strlen($digits) <= 12) {
+        $digits = substr($digits, 1);
+    }
+    if ($ddiDigits !== '' && str_starts_with($digits, $ddiDigits) && strlen($digits) >= 12) {
+        return $digits;
+    }
     if (strlen($digits) <= 11 && $ddiDigits !== '') {
         $digits = $ddiDigits . $digits;
     }
     return $digits;
+}
+
+/** @return list<string> */
+function gcv_whatsapp_number_candidates(string $phone): array
+{
+    $n = preg_replace('/\D+/', '', $phone) ?? '';
+    $out = [];
+    $add = static function (string $x) use (&$out): void {
+        if ($x !== '' && !in_array($x, $out, true)) {
+            $out[] = $x;
+        }
+    };
+    $add($n);
+    if (strlen($n) === 12 && str_starts_with($n, '55')) {
+        $add(substr($n, 0, 4) . '9' . substr($n, 4));
+    }
+    if (strlen($n) === 13 && str_starts_with($n, '55') && isset($n[4]) && $n[4] === '9') {
+        $add(substr($n, 0, 4) . substr($n, 5));
+    }
+    return $out;
 }
 
 /**
@@ -339,12 +365,18 @@ function gcv_env_str(string $key, string $default = ''): string
     return $v !== '' ? $v : $default;
 }
 
+function gcv_whatsapp_last_http(): int
+{
+    return (int)($GLOBALS['_gcv_wa_http'] ?? 0);
+}
+
 /**
  * @param list<string> $headers
  * @param array<string,mixed> $payload
  */
 function gcv_whatsapp_post_json(string $url, array $headers, array $payload, int $timeout = 12): bool
 {
+    $GLOBALS['_gcv_wa_http'] = 0;
     if (!function_exists('curl_init')) {
         error_log('whatsapp: curl ausente');
         return false;
@@ -367,6 +399,7 @@ function gcv_whatsapp_post_json(string $url, array $headers, array $payload, int
     $http = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $err = curl_error($ch);
     curl_close($ch);
+    $GLOBALS['_gcv_wa_http'] = $http;
     if ($http >= 200 && $http < 300 && $body !== false) {
         return true;
     }
@@ -412,13 +445,17 @@ function gcv_whatsapp_send_evolution(string $phone, string $text): bool
     if (gcv_whatsapp_post_json($url, $headers, [
         'number' => $phone,
         'text' => $text,
-    ])) {
+    ], 8)) {
         return true;
+    }
+    $http = gcv_whatsapp_last_http();
+    if ($http === 0 || $http >= 500) {
+        return false;
     }
     return gcv_whatsapp_post_json($url, $headers, [
         'number' => $phone,
         'textMessage' => ['text' => $text],
-    ]);
+    ], 8);
 }
 
 function gcv_whatsapp_send_evolution_image(string $phone, string $caption, string $pngBinary): bool
@@ -502,19 +539,27 @@ function gcv_whatsapp_send_text(string $phone, string $text): bool
     if ($phone === '' || $text === '') {
         return false;
     }
-    try {
-        if (gcv_whatsapp_send_zapi($phone, $text)) {
-            return true;
+    $candidates = gcv_whatsapp_number_candidates($phone);
+    foreach ($candidates as $candidate) {
+        try {
+            if (gcv_whatsapp_send_zapi($candidate, $text)) {
+                return true;
+            }
+        } catch (Throwable $e) {
+            error_log('whatsapp zapi: ' . $e->getMessage());
         }
-    } catch (Throwable $e) {
-        error_log('whatsapp zapi: ' . $e->getMessage());
-    }
-    try {
-        if (gcv_whatsapp_send_evolution($phone, $text)) {
-            return true;
+        try {
+            if (gcv_whatsapp_send_evolution($candidate, $text)) {
+                return true;
+            }
+            $http = gcv_whatsapp_last_http();
+            if ($http === 0 || $http >= 500) {
+                break;
+            }
+        } catch (Throwable $e) {
+            error_log('whatsapp evolution: ' . $e->getMessage());
+            break;
         }
-    } catch (Throwable $e) {
-        error_log('whatsapp evolution: ' . $e->getMessage());
     }
     try {
         return gcv_whatsapp_send_callmebot($phone, $text);

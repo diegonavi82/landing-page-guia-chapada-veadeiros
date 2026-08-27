@@ -115,6 +115,109 @@
     es: "Idiomas",
   };
 
+  function slugifyGuiaNome(nome) {
+    var s = String(nome || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    return s || "guia";
+  }
+
+  function lookupByNomeCI(map, nome) {
+    if (!map || !nome) return null;
+    if (map[nome]) return map[nome];
+    var lower = String(nome).toLowerCase().trim();
+    var keys = Object.keys(map);
+    for (var i = 0; i < keys.length; i++) {
+      if (keys[i].toLowerCase().trim() === lower) return map[keys[i]];
+    }
+    return null;
+  }
+
+  function normalizeGuiaIdiomas(codes) {
+    var allowed = { pt: 1, en: 1, es: 1, cs: 1, ru: 1 };
+    var out = [];
+    (Array.isArray(codes) ? codes : []).forEach(function (c) {
+      c = String(c || "").toLowerCase().trim();
+      if (c === "br" || c === "por") c = "pt";
+      if (c === "us" || c === "eng") c = "en";
+      if (c === "spa") c = "es";
+      if (allowed[c] && out.indexOf(c) < 0) out.push(c);
+    });
+    out = out.filter(function (c) {
+      return c !== "pt";
+    });
+    out.unshift("pt");
+    return out;
+  }
+
+  function resolveGuiaIdiomas(e, nome) {
+    if (e && Array.isArray(e.guiaIdiomas) && e.guiaIdiomas.length) {
+      return normalizeGuiaIdiomas(e.guiaIdiomas);
+    }
+    var fromName = lookupByNomeCI(GUIA_IDIOMAS, nome);
+    return normalizeGuiaIdiomas(fromName || ["pt"]);
+  }
+
+  function resolveGuiaSlug(e, nome) {
+    var fromApi = e && e.guiaSlug ? String(e.guiaSlug).trim() : "";
+    if (fromApi) return fromApi;
+    var fromMap = lookupByNomeCI(GUIA_PROFILE_SLUG, nome);
+    if (fromMap) return fromMap;
+    return slugifyGuiaNome(nome);
+  }
+
+  function bioParagraphs(raw) {
+    if (Array.isArray(raw)) {
+      return raw
+        .map(function (p) {
+          return String(p || "").trim();
+        })
+        .filter(Boolean);
+    }
+    var t = String(raw || "").trim();
+    if (!t) return [];
+    return t.split(/\n\s*\n/).map(function (p) { return p.trim(); }).filter(Boolean);
+  }
+
+  function bioHasText(bio) {
+    if (!bio || typeof bio !== "object") return false;
+    return bioParagraphs(bio.pt).length + bioParagraphs(bio.en).length + bioParagraphs(bio.es).length > 0;
+  }
+
+  function findStaticGuiaProfile(slug, nome, profiles) {
+    if (!profiles) return null;
+    if (slug && profiles[slug]) return profiles[slug];
+    var n = slugifyGuiaNome(nome);
+    var keys = Object.keys(profiles);
+    for (var i = 0; i < keys.length; i++) {
+      var p = profiles[keys[i]];
+      if (keys[i] === n) return p;
+      if (p && slugifyGuiaNome(p.nome) === n) return p;
+    }
+    return null;
+  }
+
+  function resolveGuiaProfile(slug, e, profiles) {
+    var staticP = findStaticGuiaProfile(slug, e && e.guiaNome, profiles) || {};
+    var nome = (e && e.guiaNome) || staticP.nome || "";
+    var idiomas =
+      e && Array.isArray(e.guiaIdiomas) && e.guiaIdiomas.length
+        ? normalizeGuiaIdiomas(e.guiaIdiomas)
+        : normalizeGuiaIdiomas(staticP.idiomas || resolveGuiaIdiomas(e, nome));
+    var bio = bioHasText(e && e.guiaBio) ? e.guiaBio : staticP.bio || {};
+    return {
+      slug: slug || staticP.slug || slugifyGuiaNome(nome),
+      nome: nome || staticP.nome || "",
+      nomeCompleto: (e && e.guiaNomeCompleto) || staticP.nomeCompleto || nome || "",
+      foto: (e && e.guiaFoto) || staticP.foto || "",
+      idiomas: idiomas,
+      bio: bio,
+    };
+  }
+
   var SAIDA_HORA_PADRAO = "8:45";
   /** Reserva só com mais de 2 h até o embarque (horário Chapada). */
   var BOOKING_CUTOFF_MS = 2 * 60 * 60 * 1000;
@@ -262,6 +365,7 @@
       guiaAbout: "Sobre {{nome}}",
       guiaModalClose: "Fechar",
       guiaModalBack: "Voltar",
+      guiaBioEmpty: "Este guia ainda não adicionou uma descrição.",
       filterTitle: "Filtrar saídas",
       filterPeriod: "Período",
       filterDateFrom: "De",
@@ -418,6 +522,7 @@
       guiaAbout: "About {{nome}}",
       guiaModalClose: "Close",
       guiaModalBack: "Back",
+      guiaBioEmpty: "This guide has not added a description yet.",
       filterTitle: "Filter departures",
       filterPeriod: "Period",
       filterDateFrom: "From",
@@ -574,6 +679,7 @@
       guiaAbout: "Acerca de {{nome}}",
       guiaModalClose: "Cerrar",
       guiaModalBack: "Volver",
+      guiaBioEmpty: "Este guía aún no agregó una descripción.",
       filterTitle: "Filtrar salidas",
       filterPeriod: "Período",
       filterDateFrom: "Desde",
@@ -2498,9 +2604,9 @@
     return html;
   }
 
-  function guiaLangsHtml(nome, locale) {
-    var codes = GUIA_IDIOMAS[nome];
-    if (!codes || !codes.length) return "";
+  function guiaLangsHtmlFromCodes(codes, locale) {
+    codes = normalizeGuiaIdiomas(codes);
+    if (!codes.length) return "";
     var loc = locale === "en" || locale === "es" ? locale : "pt";
     var labels = codes.map(function (c) {
       return (IDIOMA_LABEL[c] && IDIOMA_LABEL[c][loc]) || c;
@@ -2517,8 +2623,12 @@
     );
   }
 
-  function guiaChipInnerHtml(nome, foto, locale, altInPhoto) {
-    var langs = guiaLangsHtml(nome, locale);
+  function guiaLangsHtml(nome, locale, e) {
+    return guiaLangsHtmlFromCodes(resolveGuiaIdiomas(e, nome), locale);
+  }
+
+  function guiaChipInnerHtml(nome, foto, locale, altInPhoto, idiomas) {
+    var langs = guiaLangsHtmlFromCodes(idiomas || ["pt"], locale);
     if (!langs) {
       langs =
         '<span class="gcv-excursoes-card__guide-langs gcv-excursoes-card__guide-langs--empty" aria-hidden="true"></span>';
@@ -2554,26 +2664,22 @@
     if (!nome && pending) {
       return (
         '<div class="gcv-excursoes-card__guide gcv-excursoes-card__guide--pending">' +
-        guiaChipInnerHtml(s.guiaPending || "A definir", null, locale, "") +
+        guiaChipInnerHtml(s.guiaPending || "A definir", null, locale, "", ["pt"]) +
         "</div>"
       );
     }
     if (!nome) return "";
     var foto = e.guiaFoto ? String(e.guiaFoto) : null;
-    var slug = GUIA_PROFILE_SLUG[nome];
-    if (slug) {
-      return (
-        '<button type="button" class="gcv-excursoes-card__guide gcv-excursoes-card__guide--btn" data-guia-profile="' +
-        escapeHtml(slug) +
-        '" aria-label="' +
-        escapeHtml(tpl(s.guiaAbout, { nome: nome })) +
-        '">' +
-        guiaChipInnerHtml(nome, foto, locale, null) +
-        "</button>"
-      );
-    }
+    var slug = resolveGuiaSlug(e, nome);
+    var idiomas = resolveGuiaIdiomas(e, nome);
     return (
-      '<div class="gcv-excursoes-card__guide">' + guiaChipInnerHtml(nome, foto, locale, nome) + "</div>"
+      '<button type="button" class="gcv-excursoes-card__guide gcv-excursoes-card__guide--btn" data-guia-profile="' +
+      escapeHtml(slug) +
+      '" aria-label="' +
+      escapeHtml(tpl(s.guiaAbout, { nome: nome })) +
+      '">' +
+      guiaChipInnerHtml(nome, foto, locale, null, idiomas) +
+      "</button>"
     );
   }
 
@@ -6134,11 +6240,24 @@
   }
 
   function openGuiaModal(slug, trigger, locale, s, profiles) {
-    var profile = profiles[slug];
-    if (!profile) return;
+    var card = trigger && trigger.closest ? trigger.closest(".gcv-excursoes-card") : null;
+    var row = null;
+    if (card) {
+      var root = card.closest("#excursoes-junho") || document.getElementById("excursoes-junho");
+      var cartId = card.getAttribute("data-cart-id");
+      if (cartId) row = findBaseExcursaoByCartId(cartId, root);
+      if (!row) {
+        var rows = getMergedExcursaoRows(root);
+        var idx = parseInt(card.getAttribute("data-excursao-index"), 10);
+        if (rows && Number.isFinite(idx) && rows[idx]) row = rows[idx];
+      }
+    }
+    var profile = resolveGuiaProfile(slug, row, profiles);
+    if (!profile || !profile.nome) return;
     var modal = ensureGuiaModal();
     var loc = locale === "en" || locale === "es" ? locale : "pt";
-    var bio = (profile.bio && profile.bio[loc]) || (profile.bio && profile.bio.pt) || [];
+    var bio = bioParagraphs(profile.bio && (profile.bio[loc] || profile.bio.pt));
+    if (!bio.length) bio = [(s && s.guiaBioEmpty) || "Este guia ainda não adicionou uma descrição."];
     var closeLabel = (s && s.guiaModalClose) || "Fechar";
 
     modal.querySelectorAll("[data-gcv-guia-close]").forEach(function (btn) {

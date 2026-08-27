@@ -416,6 +416,13 @@ function gcv_publish_admin_decision(int $excursionId, string $action, array $bod
 
 function gcv_publish_notify_pending_approval(int $excursionId): void
 {
+    try {
+        require_once dirname(__DIR__) . '/notify_ops.php';
+        gcv_ops_notify_guide_pending_approval($excursionId);
+    } catch (Throwable $e) {
+        error_log('pending approval whatsapp: ' . $e->getMessage());
+    }
+
     $row = gcv_publish_load_excursion($excursionId);
     $to = 'diegonavi82@gmail.com';
     $title = (string)($row['attraction_title'] ?? ('Excursão #' . $excursionId));

@@ -29,6 +29,40 @@ export const IDIOMAS_ARIA = {
   es: "Idiomas",
 };
 
+export function slugifyGuiaNome(nome) {
+  const s = String(nome || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return s || "guia";
+}
+
+export function normalizeGuiaIdiomas(codes) {
+  const allowed = { pt: 1, en: 1, es: 1, cs: 1, ru: 1 };
+  const out = [];
+  (Array.isArray(codes) ? codes : []).forEach((c) => {
+    let code = String(c || "").toLowerCase().trim();
+    if (code === "br" || code === "por") code = "pt";
+    if (code === "us" || code === "eng") code = "en";
+    if (code === "spa") code = "es";
+    if (allowed[code] && !out.includes(code)) out.push(code);
+  });
+  return ["pt", ...out.filter((c) => c !== "pt")];
+}
+
+export function resolveGuiaIdiomas(e, nome) {
+  if (e && Array.isArray(e.guiaIdiomas) && e.guiaIdiomas.length) {
+    return normalizeGuiaIdiomas(e.guiaIdiomas);
+  }
+  const fromName = GUIA_IDIOMAS[nome] || GUIA_IDIOMAS[String(nome || "").trim()];
+  if (fromName) return normalizeGuiaIdiomas(fromName);
+  const lower = String(nome || "").toLowerCase().trim();
+  const hit = Object.keys(GUIA_IDIOMAS).find((k) => k.toLowerCase() === lower);
+  return normalizeGuiaIdiomas(hit ? GUIA_IDIOMAS[hit] : ["pt"]);
+}
+
 const INGRESSO_GRATIS = { pt: "grátis", en: "free", es: "gratis" };
 
 /** Destinos do card (um ou vários passeios no mesmo dia). */

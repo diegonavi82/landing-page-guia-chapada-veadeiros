@@ -33,6 +33,52 @@
       .replace(/"/g, '&quot;');
   }
 
+  var GUIDE_LANG_OPTS = [
+    { code: 'pt', label: 'Português', flag: 'br', fixed: true },
+    { code: 'en', label: 'Inglês', flag: 'us', fixed: false },
+    { code: 'es', label: 'Espanhol', flag: 'es', fixed: false },
+    { code: 'cs', label: 'Tcheco', flag: 'cz', fixed: false },
+  ];
+
+  function normalizeGuideLangs(codes) {
+    var out = [];
+    (Array.isArray(codes) ? codes : []).forEach(function (c) {
+      c = String(c || '').toLowerCase().trim();
+      if (c === 'br') c = 'pt';
+      if (c && out.indexOf(c) < 0) out.push(c);
+    });
+    out = out.filter(function (c) { return c !== 'pt'; });
+    out.unshift('pt');
+    return out;
+  }
+
+  function languagesPickerHtml(selected) {
+    var sel = normalizeGuideLangs(selected);
+    return '<div class="gcv-dash-langs">' +
+      GUIDE_LANG_OPTS.map(function (o) {
+        var checked = o.fixed || sel.indexOf(o.code) >= 0;
+        return '<label class="gcv-dash-lang' + (o.fixed ? ' gcv-dash-lang--fixed' : '') + '"' +
+          (o.fixed ? ' title="Português é obrigatório"' : '') + '>' +
+          '<input type="checkbox" data-guide-lang="' + o.code + '"' +
+          (checked ? ' checked' : '') +
+          (o.fixed ? ' disabled' : '') + ' />' +
+          '<span class="fi fi-' + o.flag + '" aria-hidden="true"></span>' +
+          '<span>' + o.label + '</span></label>';
+      }).join('') +
+      '</div>' +
+      '<p class="gcv-dash-hint">A bandeira do Brasil (português) fica sempre marcada. Inglês e espanhol aparecem no card da excursão.</p>';
+  }
+
+  function readLanguagesPicker(scope) {
+    var root = scope || document;
+    var codes = ['pt'];
+    root.querySelectorAll('input[data-guide-lang]').forEach(function (inp) {
+      var c = inp.getAttribute('data-guide-lang');
+      if (c && c !== 'pt' && inp.checked && codes.indexOf(c) < 0) codes.push(c);
+    });
+    return codes;
+  }
+
   function money(cents) {
     return 'R$ ' + ((Number(cents) || 0) / 100).toFixed(2).replace('.', ',');
   }
@@ -517,6 +563,156 @@
     xhr.send(fd);
   }
 
+  function bindDashPhone(wrapEl, prefix, initialIso, initialPhone) {
+    var empty = {
+      getIso: function () { return 'br'; },
+      getDial: function () { return '+55'; },
+      getPhoneDigits: function () { return ''; },
+      validate: function () { return 'Informe o DDD e o telefone'; }
+    };
+    if (!wrapEl) return empty;
+    var api = global.GcvPixReceipt;
+    function getCountry(iso) {
+      if (api && api.findPhoneCountry) return api.findPhoneCountry(iso || 'br');
+      return { iso: 'br', dial: '55', min: 10, max: 11, mask: 'br' };
+    }
+    function formatMask(v, iso) {
+      return (api && api.formatPhoneMask) ? api.formatPhoneMask(v, iso) : String(v || '');
+    }
+    function nationalDigits(v, iso) {
+      return (api && api.nationalPhoneDigits) ? api.nationalPhoneDigits(v, iso) : String(v || '').replace(/\D+/g, '');
+    }
+    var stateIso = getCountry(initialIso || 'br').iso;
+
+    function countries() {
+      return (api && api.getPhoneCountries) ? api.getPhoneCountries() : [getCountry('br')];
+    }
+    function renderList(q) {
+      var list = wrapEl.querySelector('#' + prefix + '-ddi-list');
+      if (!list) return;
+      q = String(q || '').trim().toLowerCase();
+      var html = countries().filter(function (c) {
+        if (!q) return true;
+        var name = (c.name && (c.name.pt || c.name.en)) || c.iso;
+        return String(name).toLowerCase().indexOf(q) >= 0 || ('+' + c.dial).indexOf(q) >= 0 || c.iso.indexOf(q) >= 0;
+      }).slice(0, 40).map(function (c) {
+        var name = (c.name && (c.name.pt || c.name.en)) || c.iso.toUpperCase();
+        return '<button type="button" class="gcv-cms-ddi-option' + (c.iso === stateIso ? ' is-selected' : '') +
+          '" data-iso="' + c.iso + '"><span class="fi fi-' + c.iso + '"></span>' +
+          '<span class="gcv-cms-ddi-option-name">' + esc(name) + '</span>' +
+          '<span class="gcv-cms-ddi-option-dial">+' + c.dial + '</span></button>';
+      }).join('');
+      list.innerHTML = html || '<p class="gcv-cms-muted" style="padding:0.5rem 0.75rem;">Nenhum país</p>';
+      list.querySelectorAll('[data-iso]').forEach(function (btn) {
+        btn.onclick = function () {
+          setIso(btn.getAttribute('data-iso'));
+          closeDrop();
+        };
+      });
+    }
+    function syncUi() {
+      var c = getCountry(stateIso);
+      var flag = wrapEl.querySelector('#' + prefix + '-phone-flag');
+      var dial = wrapEl.querySelector('#' + prefix + '-phone-dial');
+      var hidden = wrapEl.querySelector('#' + prefix + '-phone-iso');
+      var phone = wrapEl.querySelector('#' + prefix + '-phone');
+      if (hidden) hidden.value = c.iso;
+      if (flag) flag.className = 'fi fi-' + c.iso + ' gcv-cms-phone-flag';
+      if (dial) dial.textContent = '+' + c.dial;
+      if (phone) {
+        phone.value = formatMask(phone.value, c.iso);
+        phone.placeholder = (api && api.phonePlaceholderFor) ? api.phonePlaceholderFor(c.iso) : '(00) 00000-0000';
+        phone.maxLength = c.mask === 'br' ? 16 : 20;
+      }
+    }
+    function setIso(nextIso) {
+      stateIso = getCountry(nextIso).iso;
+      if (api && api.savePhoneDdi) api.savePhoneDdi(stateIso);
+      syncUi();
+      renderList(wrapEl.querySelector('#' + prefix + '-ddi-search') ? wrapEl.querySelector('#' + prefix + '-ddi-search').value : '');
+    }
+    function closeDrop() {
+      var drop = wrapEl.querySelector('#' + prefix + '-ddi-dropdown');
+      var trigger = wrapEl.querySelector('#' + prefix + '-ddi-trigger');
+      if (drop) { drop.hidden = true; drop.setAttribute('aria-hidden', 'true'); }
+      if (trigger) trigger.setAttribute('aria-expanded', 'false');
+    }
+    function openDrop() {
+      var drop = wrapEl.querySelector('#' + prefix + '-ddi-dropdown');
+      var trigger = wrapEl.querySelector('#' + prefix + '-ddi-trigger');
+      if (drop) { drop.hidden = false; drop.setAttribute('aria-hidden', 'false'); }
+      if (trigger) trigger.setAttribute('aria-expanded', 'true');
+      renderList('');
+      var search = wrapEl.querySelector('#' + prefix + '-ddi-search');
+      if (search) { search.value = ''; search.focus(); }
+    }
+
+    var c0 = getCountry(stateIso);
+    wrapEl.innerHTML =
+      '<div class="gcv-cms-phone-row"><div class="gcv-cms-phone-wrap">' +
+      '<div class="gcv-cms-phone-prefix">' +
+      '<button type="button" class="gcv-cms-ddi-trigger" id="' + prefix + '-ddi-trigger" aria-haspopup="listbox" aria-expanded="false">' +
+      '<span class="fi fi-' + c0.iso + ' gcv-cms-phone-flag" id="' + prefix + '-phone-flag" aria-hidden="true"></span>' +
+      '<span class="gcv-cms-phone-dial" id="' + prefix + '-phone-dial">+' + c0.dial + '</span>' +
+      '<span class="gcv-cms-ddi-caret" aria-hidden="true"></span></button>' +
+      '<input type="hidden" id="' + prefix + '-phone-iso" value="' + esc(c0.iso) + '" />' +
+      '<div class="gcv-cms-ddi-dropdown" id="' + prefix + '-ddi-dropdown" hidden aria-hidden="true">' +
+      '<input type="search" class="gcv-cms-ddi-search" id="' + prefix + '-ddi-search" placeholder="Buscar país ou DDI…" autocomplete="off" />' +
+      '<div class="gcv-cms-ddi-list" id="' + prefix + '-ddi-list" role="listbox"></div></div></div>' +
+      '<input type="tel" class="gcv-dash-input gcv-cms-phone-input" id="' + prefix + '-phone" autocomplete="tel-national" inputmode="numeric" required />' +
+      '</div></div>';
+
+    var phoneInput = wrapEl.querySelector('#' + prefix + '-phone');
+    if (phoneInput) {
+      phoneInput.value = formatMask(initialPhone || '', stateIso);
+      phoneInput.addEventListener('input', function () {
+        var start = phoneInput.selectionStart;
+        phoneInput.value = formatMask(phoneInput.value, stateIso);
+        try { phoneInput.setSelectionRange(start, start); } catch (err) { /* */ }
+      });
+    }
+    wrapEl.querySelector('#' + prefix + '-ddi-trigger').onclick = function () {
+      var drop = wrapEl.querySelector('#' + prefix + '-ddi-dropdown');
+      if (drop && !drop.hidden) closeDrop();
+      else openDrop();
+    };
+    wrapEl.querySelector('#' + prefix + '-ddi-search').addEventListener('input', function () {
+      renderList(wrapEl.querySelector('#' + prefix + '-ddi-search').value);
+    });
+    document.addEventListener('click', function (ev) {
+      if (!wrapEl.contains(ev.target)) closeDrop();
+    });
+
+    function ready() {
+      syncUi();
+      renderList('');
+    }
+    if (api && api.ensurePhoneCountries) {
+      api.ensurePhoneCountries().then(ready).catch(ready);
+    } else {
+      ready();
+    }
+
+    return {
+      getIso: function () { return stateIso; },
+      getDial: function () { return '+' + getCountry(stateIso).dial; },
+      getPhoneDigits: function () { return nationalDigits(phoneInput ? phoneInput.value : '', stateIso); },
+      validate: function () {
+        var digits = nationalDigits(phoneInput ? phoneInput.value : '', stateIso);
+        if (api && api.phoneValidationMessage) {
+          var msg = api.phoneValidationMessage(digits, stateIso, 'pt');
+          if (msg) return 'Informe DDD + telefone válidos';
+        }
+        if (!digits) return 'Informe o DDD e o telefone';
+        if (stateIso === 'br') {
+          if (digits.length < 10 || digits.length > 11) return 'Telefone: DDD (2 dígitos) + número';
+          if (digits.length === 11 && digits.charAt(2) !== '9') return 'Celular precisa do 9 depois do DDD';
+        }
+        return '';
+      }
+    };
+  }
+
   function gotoDashSection(sectionId) {
     var link = document.querySelector('.gcv-dash-nav a[data-section="' + sectionId + '"]')
       || document.querySelector('.gcv-dash-bottom-nav a[data-section="' + sectionId + '"]');
@@ -597,15 +793,13 @@
         '</div>' +
 
         '<div class="gcv-dash-card">' +
-          '<h3 class="gcv-dash-card__title">Contato</h3>' +
-          '<div class="gcv-dash-field-row gcv-dash-field-row--3">' +
-            '<div class="gcv-dash-field"><label class="gcv-dash-label">DDI *</label>' +
-            '<input class="gcv-dash-input" id="gp-ddi" maxlength="8" value="' + esc(p.phone_ddi || '+55') + '" /></div>' +
-            '<div class="gcv-dash-field"><label class="gcv-dash-label">Telefone *</label>' +
-            '<input class="gcv-dash-input" id="gp-phone" maxlength="13" inputmode="numeric" value="' + esc(p.phone || '') + '" required /></div>' +
-            '<div class="gcv-dash-field"><label class="gcv-dash-label">Nascimento *</label>' +
-            '<input class="gcv-dash-input" id="gp-birth" type="date" value="' + esc(p.birth_date || '') + '" required /></div>' +
-          '</div>' +
+          '<h3 class="gcv-dash-card__title">WhatsApp</h3>' +
+          '<p class="gcv-dash-hint" style="margin:0 0 0.75rem;">Este número recebe os avisos do passeio: enviado para aprovação, aprovado, recusado e novo inscrito.</p>' +
+          '<div class="gcv-dash-field"><label class="gcv-dash-label">Telefone com DDI *</label>' +
+          '<div id="gp-phone-wrap"></div>' +
+          '<p class="gcv-dash-alert gcv-dash-alert--warning" id="gp-phone-err" hidden style="margin-top:0.6rem;"></p></div>' +
+          '<div class="gcv-dash-field"><label class="gcv-dash-label">Nascimento *</label>' +
+          '<input class="gcv-dash-input" id="gp-birth" type="date" value="' + esc(p.birth_date || '') + '" required /></div>' +
           '<div class="gcv-dash-field" style="margin-bottom:0;"><label class="gcv-dash-label">Cidade onde mora *</label>' +
           '<select class="gcv-dash-select" id="gp-city"><option value="">Selecione…</option>' +
           cities.map(function (c) {
@@ -616,6 +810,9 @@
 
         '<div class="gcv-dash-card">' +
           '<h3 class="gcv-dash-card__title">Sobre você</h3>' +
+          '<div class="gcv-dash-field"><label class="gcv-dash-label">Idiomas falados</label>' +
+          languagesPickerHtml(p.languages) +
+          '</div>' +
           '<div class="gcv-dash-field" style="margin-bottom:0;"><label class="gcv-dash-label">Descrição * <span class="gcv-cms-muted">(recomendado ≤' + limits.bio_recommended + '; máx. ' + limits.bio_max + ')</span></label>' +
           '<textarea class="gcv-dash-textarea" id="gp-bio" maxlength="' + limits.bio_max + '" rows="7">' + esc(p.bio_pt || '') + '</textarea>' +
           '<div class="gcv-cms-muted" id="gp-bio-count"></div></div>' +
@@ -738,16 +935,35 @@
         });
       }
 
+      var gpPhone = bindDashPhone(
+        document.getElementById('gp-phone-wrap'),
+        'gp',
+        p.phone_iso || p.phone_ddi || 'br',
+        p.phone || ''
+      );
+
       document.getElementById('guide-profile-form').onsubmit = function (ev) {
         ev.preventDefault();
+        var phoneErr = document.getElementById('gp-phone-err');
+        var phoneIssue = gpPhone.validate();
+        if (phoneIssue) {
+          if (phoneErr) {
+            phoneErr.hidden = false;
+            phoneErr.textContent = phoneIssue;
+          }
+          return;
+        }
+        if (phoneErr) phoneErr.hidden = true;
         var payload = {
           full_name: document.getElementById('gp-full').value.trim(),
           nickname: document.getElementById('gp-nick').value.trim(),
-          phone_ddi: document.getElementById('gp-ddi').value.trim(),
-          phone: document.getElementById('gp-phone').value.trim(),
+          phone_ddi: gpPhone.getDial(),
+          phone_iso: gpPhone.getIso(),
+          phone: gpPhone.getPhoneDigits(),
           birth_date: document.getElementById('gp-birth').value,
           base_city_id: parseInt(document.getElementById('gp-city').value, 10) || 0,
           bio_pt: document.getElementById('gp-bio').value.trim(),
+          languages: readLanguagesPicker(document.getElementById('guide-profile-form')),
           id_document_url: document.getElementById('gp-doc-url').value.trim(),
           photo_3x4_url: document.getElementById('gp-photo-url').value.trim(),
         };
@@ -1702,12 +1918,10 @@
         '<input class="gcv-dash-input" id="cp-name" maxlength="120" value="' + esc(p.name || '') + '" required /></div>' +
         '<div class="gcv-dash-field"><label class="gcv-dash-label">E-mail</label>' +
         '<input class="gcv-dash-input" value="' + esc(p.email || '') + '" disabled /></div>' +
-        '<div class="gcv-dash-field-row">' +
-        '<div class="gcv-dash-field"><label class="gcv-dash-label">DDI</label>' +
-        '<input class="gcv-dash-input" id="cp-ddi" value="' + esc(p.phone_ddi || '+55') + '" /></div>' +
-        '<div class="gcv-dash-field"><label class="gcv-dash-label">Telefone</label>' +
-        '<input class="gcv-dash-input" id="cp-phone" value="' + esc(p.phone || '') + '" /></div>' +
-        '</div>' +
+        '<div class="gcv-dash-field"><label class="gcv-dash-label">WhatsApp *</label>' +
+        '<p class="gcv-dash-hint" style="margin:0 0 0.5rem;">DDI com bandeira + DDD + número. Usamos este telefone para avisar você no WhatsApp.</p>' +
+        '<div id="cp-phone-wrap"></div>' +
+        '<p class="gcv-dash-alert gcv-dash-alert--warning" id="cp-phone-err" hidden style="margin-top:0.6rem;"></p></div>' +
         '<div class="gcv-dash-field-row">' +
         '<div class="gcv-dash-field"><label class="gcv-dash-label">CPF</label>' +
         '<input class="gcv-dash-input" id="cp-cpf" value="' + esc(p.cpf || '') + '" /></div>' +
@@ -1717,12 +1931,30 @@
         '<button type="submit" class="gcv-dash-btn gcv-dash-btn--primary">Salvar</button>' +
         '<div id="cp-msg" class="gcv-dash-alert" hidden style="margin-top:1rem;"></div></form>';
 
+      var cpPhone = bindDashPhone(
+        document.getElementById('cp-phone-wrap'),
+        'cp',
+        p.phone_iso || p.phone_ddi || 'br',
+        p.phone || ''
+      );
+
       document.getElementById('client-profile-form').onsubmit = function (ev) {
         ev.preventDefault();
+        var phoneErr = document.getElementById('cp-phone-err');
+        var phoneIssue = cpPhone.validate();
+        if (phoneIssue) {
+          if (phoneErr) {
+            phoneErr.hidden = false;
+            phoneErr.textContent = phoneIssue;
+          }
+          return;
+        }
+        if (phoneErr) phoneErr.hidden = true;
         sendJson('PUT', '/api/client/profile.php', {
           name: document.getElementById('cp-name').value.trim(),
-          phone_ddi: document.getElementById('cp-ddi').value.trim(),
-          phone: document.getElementById('cp-phone').value.trim(),
+          phone_ddi: cpPhone.getDial(),
+          phone_iso: cpPhone.getIso(),
+          phone: cpPhone.getPhoneDigits(),
           cpf: document.getElementById('cp-cpf').value.trim(),
           birth_date: document.getElementById('cp-birth').value,
         }, function (e, r) {

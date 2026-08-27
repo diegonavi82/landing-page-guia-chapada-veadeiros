@@ -15,6 +15,7 @@ require_once __DIR__ . '/../helpers/excursion_status.php';
 require_once __DIR__ . '/../helpers/marketplace_schema.php';
 require_once __DIR__ . '/../helpers/excursion_attractions.php';
 require_once __DIR__ . '/../helpers/google_places.php';
+require_once __DIR__ . '/../helpers/guide_languages.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: public, max-age=60');
@@ -52,8 +53,11 @@ try {
                 e.created_by_origin, e.business_mode, e.approved_at, e.approved_by, e.created_by, e.guide_user_id, e.deleted_at,
                 c.name AS city_name,
                 u.name AS guide_name,
-                g.nickname AS guide_nickname, g.photo_url AS guide_photo, g.photo_3x4_url AS guide_photo_3x4,
-                g.phone AS guide_phone, g.phone_ddi AS guide_phone_ddi
+                g.nickname AS guide_nickname, g.full_name AS guide_full_name,
+                g.photo_url AS guide_photo, g.photo_3x4_url AS guide_photo_3x4,
+                g.phone AS guide_phone, g.phone_ddi AS guide_phone_ddi,
+                g.bio_pt AS guide_bio_pt, g.bio_en AS guide_bio_en, g.bio_es AS guide_bio_es,
+                g.languages_json AS guide_languages_json, g.user_id AS guide_user_id
          FROM gcv_excursions e
          INNER JOIN gcv_cities c ON c.id = e.departure_city_id
          LEFT JOIN gcv_users u ON u.id = e.guide_user_id
@@ -72,8 +76,11 @@ try {
                     NULL AS meeting_point_place_id, NULL AS meeting_point_lat, NULL AS meeting_point_lng,
                     c.name AS city_name,
                     u.name AS guide_name,
-                    g.nickname AS guide_nickname, g.photo_url AS guide_photo, g.photo_3x4_url AS guide_photo_3x4,
-                    g.phone AS guide_phone, g.phone_ddi AS guide_phone_ddi
+                    g.nickname AS guide_nickname, g.full_name AS guide_full_name,
+                    g.photo_url AS guide_photo, g.photo_3x4_url AS guide_photo_3x4,
+                    g.phone AS guide_phone, g.phone_ddi AS guide_phone_ddi,
+                    g.bio_pt AS guide_bio_pt, g.bio_en AS guide_bio_en, g.bio_es AS guide_bio_es,
+                    g.languages_json AS guide_languages_json, g.user_id AS guide_user_id
              FROM gcv_excursions e
              INNER JOIN gcv_cities c ON c.id = e.departure_city_id
              LEFT JOIN gcv_users u ON u.id = e.guide_user_id
@@ -93,8 +100,11 @@ try {
                         NULL AS meeting_point_place_id, NULL AS meeting_point_lat, NULL AS meeting_point_lng,
                         c.name AS city_name,
                         u.name AS guide_name,
-                        g.nickname AS guide_nickname, g.photo_url AS guide_photo, g.photo_3x4_url AS guide_photo_3x4,
-                        g.phone AS guide_phone, g.phone_ddi AS guide_phone_ddi
+                        g.nickname AS guide_nickname, g.full_name AS guide_full_name,
+                        g.photo_url AS guide_photo, g.photo_3x4_url AS guide_photo_3x4,
+                        g.phone AS guide_phone, g.phone_ddi AS guide_phone_ddi,
+                        g.bio_pt AS guide_bio_pt, g.bio_en AS guide_bio_en, g.bio_es AS guide_bio_es,
+                        g.languages_json AS guide_languages_json, g.user_id AS guide_user_id
                  FROM gcv_excursions e
                  INNER JOIN gcv_cities c ON c.id = e.departure_city_id
                  LEFT JOIN gcv_users u ON u.id = e.guide_user_id
@@ -240,6 +250,20 @@ function gcv_row_to_card(array $r, string $lang, array $months, array $weekdays)
         $card['guiaNome'] = $guideName;
         if ($guidePhoto !== '') $card['guiaFoto'] = $guidePhoto;
         if ($guidePhone !== '') $card['guiaTelefone'] = $guidePhone;
+        $fullName = trim((string)($r['guide_full_name'] ?? ''));
+        if ($fullName !== '') {
+            $card['guiaNomeCompleto'] = $fullName;
+        }
+        $card['guiaSlug'] = gcv_guide_public_slug($guideName, (int)($r['guide_user_id'] ?? 0));
+        $card['guiaIdiomas'] = gcv_guide_languages_normalize($r['guide_languages_json'] ?? null);
+        $bio = gcv_guide_bio_i18n(
+            isset($r['guide_bio_pt']) ? (string)$r['guide_bio_pt'] : null,
+            isset($r['guide_bio_en']) ? (string)$r['guide_bio_en'] : null,
+            isset($r['guide_bio_es']) ? (string)$r['guide_bio_es'] : null
+        );
+        if ($bio['pt'] || $bio['en'] || $bio['es']) {
+            $card['guiaBio'] = $bio;
+        }
     }
     if (!empty($r['include_transport'])) {
         $card['comTransporte'] = true;

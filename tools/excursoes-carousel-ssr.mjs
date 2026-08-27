@@ -11,10 +11,11 @@ import {
   destinosSpotsCount,
   destinosForCard,
   isDestinosDuo,
-  GUIA_IDIOMAS,
   IDIOMA_FLAG,
   IDIOMA_LABEL,
   IDIOMAS_ARIA,
+  slugifyGuiaNome,
+  resolveGuiaIdiomas,
 } from "./excursoes-carousel-data.mjs";
 import { GUIA_PROFILE_SLUG } from "./excursoes-guides-profiles.mjs";
 
@@ -418,8 +419,8 @@ function guiaFlagsLimitedSsr(codes, locale) {
   return html;
 }
 
-function guiaLangsSsr(nome, locale) {
-  const codes = GUIA_IDIOMAS[nome];
+function guiaLangsSsr(nome, locale, e) {
+  const codes = resolveGuiaIdiomas(e, nome);
   if (!codes || !codes.length) return "";
   const loc = locale === "en" || locale === "es" ? locale : "pt";
   const labels = codes.map((c) => (IDIOMA_LABEL[c] && IDIOMA_LABEL[c][loc]) || c);
@@ -433,8 +434,8 @@ function guiaLangsSsr(nome, locale) {
   );
 }
 
-function guiaChipInnerSsr(nome, foto, locale, altInPhoto) {
-  let langs = guiaLangsSsr(nome, locale);
+function guiaChipInnerSsr(nome, foto, locale, altInPhoto, e) {
+  let langs = guiaLangsSsr(nome, locale, e);
   if (!langs) {
     langs = `<span class="gcv-excursoes-card__guide-langs gcv-excursoes-card__guide-langs--empty" aria-hidden="true"></span>`;
   }
@@ -464,22 +465,19 @@ function guiaChipSsr(e, locale) {
   if (!nome && pending) {
     return (
       `<div class="gcv-excursoes-card__guide gcv-excursoes-card__guide--pending">` +
-      guiaChipInnerSsr(s.guiaPending || "A definir", null, locale, "") +
+      guiaChipInnerSsr(s.guiaPending || "A definir", null, locale, "", e) +
       `</div>`
     );
   }
   if (!nome) return "";
   const foto = e.guiaFoto ? String(e.guiaFoto) : null;
-  const slug = GUIA_PROFILE_SLUG[nome];
-  if (slug) {
-    const aboutLabel = tpl(s.guiaAbout, { nome });
-    return (
-      `<button type="button" class="gcv-excursoes-card__guide gcv-excursoes-card__guide--btn" data-guia-profile="${esc(slug)}" aria-label="${esc(aboutLabel)}">` +
-      guiaChipInnerSsr(nome, foto, locale, null) +
-      `</button>`
-    );
-  }
-  return `<div class="gcv-excursoes-card__guide">` + guiaChipInnerSsr(nome, foto, locale, nome) + `</div>`;
+  const slug = (e.guiaSlug && String(e.guiaSlug).trim()) || GUIA_PROFILE_SLUG[nome] || slugifyGuiaNome(nome);
+  const aboutLabel = tpl(s.guiaAbout, { nome });
+  return (
+    `<button type="button" class="gcv-excursoes-card__guide gcv-excursoes-card__guide--btn" data-guia-profile="${esc(slug)}" aria-label="${esc(aboutLabel)}">` +
+    guiaChipInnerSsr(nome, foto, locale, null, e) +
+    `</button>`
+  );
 }
 
 function confirmadoVagasAvisoSsr(e, s) {

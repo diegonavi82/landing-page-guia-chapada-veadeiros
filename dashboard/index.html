@@ -10,7 +10,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="/assets/css/site.css?v=1.0.39" />
-<link rel="stylesheet" href="/assets/css/gcv-dashboard.css?v=1.0.67" />
+<link rel="stylesheet" href="/assets/css/gcv-dashboard.css?v=1.0.76" />
+<link rel="stylesheet" href="/assets/css/gcv-confirm.css?v=1.0.1" />
 <link rel="stylesheet" href="/assets/css/gcv-tours.css?v=1.0.1" />
 <link rel="stylesheet" href="/assets/css/gcv-payment.css?v=1.0.1" />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lipis/flag-icons@7.2.3/css/flag-icons.min.css" />
@@ -31,6 +32,13 @@
               <div class="gcv-dash-user-name" id="dash-name">—</div>
               <div class="gcv-dash-user-role" id="dash-role">—</div>
             </div>
+            <button type="button" class="gcv-inbox-bell" id="gcv-inbox-bell" title="Notificações" aria-label="Notificações">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 01-3.46 0"/>
+              </svg>
+              <span class="gcv-inbox-bell__badge" id="gcv-inbox-badge" hidden>0</span>
+            </button>
           </div>
           <button type="button" class="gcv-dash-mobile-toggle" id="gcv-dash-menu-toggle" aria-expanded="false" aria-controls="gcv-dash-nav">☰ Menu</button>
           <div class="gcv-dash-sidebar__actions">
@@ -79,7 +87,10 @@
         </section>
 
         <section class="gcv-dash-section" id="section-cms-guides">
-          <h2 class="gcv-dash-section-title">Guias cadastrados</h2>
+          <h2 class="gcv-dash-section-title">Guias credenciados</h2>
+          <p class="gcv-dash-hint" style="margin:0 0 1rem;color:#64748b;font-size:0.9rem;">
+            Cadastro, aprovação e PIX do guia ficam no <strong>perfil</strong>. Pagamentos só para guias ativos com PIX verificado.
+          </p>
           <div id="cms-guides-root"></div>
         </section>
 
@@ -186,7 +197,7 @@
           <h2 class="gcv-dash-section-title">Todas as Reservas</h2>
           <div class="gcv-dash-table-wrap">
             <table class="gcv-dash-table" id="admin-bookings-table">
-              <thead><tr><th>ID</th><th>Passeio</th><th>Cliente</th><th>Guia</th><th>Vagas</th><th>Total</th><th>Status</th><th>Data</th></tr></thead>
+              <thead><tr><th>Código</th><th>Passeio</th><th>Cliente</th><th>Guia</th><th>Vagas</th><th>Total</th><th>Status</th><th>Data</th></tr></thead>
               <tbody id="admin-bookings-body"></tbody>
             </table>
           </div>
@@ -194,6 +205,9 @@
 
         <section class="gcv-dash-section" id="section-admin-settings">
           <h2 class="gcv-dash-section-title">Configurações</h2>
+          <p class="gcv-dash-hint" style="margin:0 0 1rem;color:#64748b;font-size:0.9rem;">
+            Prazos de WhatsApp, e-mail e sino do guia/cliente. Vale na hora para os próximos disparos do cron.
+          </p>
           <div class="gcv-dash-form" id="admin-settings-form"></div>
         </section>
 
@@ -320,6 +334,17 @@
           <div id="client-publish-root"></div>
         </section>
 
+        <section class="gcv-dash-section" id="section-inbox">
+          <h2 class="gcv-dash-section-title">Notificações</h2>
+          <p class="gcv-dash-hint" style="margin:0 0 0.75rem;color:#64748b;font-size:0.85rem;">
+            Os mesmos avisos enviados por WhatsApp e e-mail.
+          </p>
+          <p style="margin:0 0 1rem;text-align:right;">
+            <button type="button" class="gcv-dash-btn" id="gcv-inbox-mark-all">Marcar todas como lidas</button>
+          </p>
+          <div id="gcv-inbox-list" class="gcv-inbox-list"></div>
+        </section>
+
         <!-- ===== GUIDE PENDING SCREEN ===== -->
         <section class="gcv-dash-section" id="section-guide-pending">
           <div class="gcv-dash-pending-screen">
@@ -363,10 +388,12 @@
   <script src="/assets/js/gcv-pix-receipt.js?v=1.0.43" defer></script>
   <script src="/assets/js/gcv-meeting-point.js?v=1.0.1" defer></script>
   <script src="/assets/js/gcv-datepicker.js?v=1.0.1" defer></script>
-  <script src="/assets/js/gcv-admin-cms.js?v=1.0.58" defer></script>
+  <script src="/assets/js/gcv-admin-cms.js?v=1.0.64" defer></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
-  <script src="/assets/js/gcv-dash-roles.js?v=1.0.66" defer></script>
-  <script src="/assets/js/gcv-dashboard.js?v=1.0.60" defer></script>
+  <script src="/assets/js/gcv-confirm.js?v=1.0.1" defer></script>
+  <script src="/assets/js/gcv-dash-roles.js?v=1.0.68" defer></script>
+  <script src="/assets/js/gcv-inbox.js?v=1.0.1" defer></script>
+  <script src="/assets/js/gcv-dashboard.js?v=1.0.65" defer></script>
   <script src="/assets/js/gcv-payment.js?v=1.0.40" defer></script>
   <script src="/assets/js/site.js?v=1.0.40" defer></script>
 </body>

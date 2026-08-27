@@ -206,7 +206,7 @@ if ($method === 'POST') {
         $quorum = 4;
     }
     $maxPeople = min(12, max(1, (int)$body['max_people']));
-    $bookedPeople = (int)($body['booked_people'] ?? 0);
+    $bookedPeople = 0;
     $preconfirmed = gcv_clamp_preconfirmed($body['preconfirmed_people'] ?? 0, $maxPeople, $bookedPeople);
     $stmt = db()->prepare(
         'INSERT INTO gcv_excursions (
@@ -338,7 +338,7 @@ if ($method === 'PUT') {
         $quorum = 4;
     }
     $maxPeople = min(12, max(1, (int)($body['max_people'] ?? $ex['max_people'])));
-    $bookedPeople = (int)($body['booked_people'] ?? $ex['booked_people']);
+    $bookedPeople = (int)($ex['booked_people'] ?? 0);
     $preconfirmed = gcv_clamp_preconfirmed(
         $body['preconfirmed_people'] ?? ($ex['preconfirmed_people'] ?? 0),
         $maxPeople,

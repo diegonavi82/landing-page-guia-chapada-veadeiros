@@ -26,7 +26,7 @@ function gcv_guide_financial_get(int $guideUserId): ?array
 
     // Espelha dados legados se existirem
     $g = db()->prepare(
-        'SELECT user_id, full_name, pix_holder_name, person_type, cpf, cnpj, pix_key, pix_key_type,
+        'SELECT user_id, full_name, pix_holder_name, cpf, cnpj, pix_key, pix_key_type,
                 bank_name, bank_agency, bank_account, pix_verified_at
          FROM gcv_guides WHERE user_id = ? LIMIT 1'
     );

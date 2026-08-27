@@ -23,12 +23,23 @@ header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate');
 
 $user = require_role('guide');
-if (($user['status'] ?? '') !== 'active') {
-    json_response(false, null, 'Guia ainda não aprovado', 403);
-}
 gcv_cms_ensure_schema();
 gcv_marketplace_ensure_schema();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+$accountStatus = (string)($user['status'] ?? '');
+if (in_array($accountStatus, ['suspended', 'cancelled'], true)) {
+    json_response(false, null, 'Conta recusada ou cancelada', 403);
+}
+if ($method !== 'GET' && $accountStatus !== 'active') {
+    json_response(
+        false,
+        null,
+        $accountStatus === 'inactive'
+            ? 'Perfil inativo. Peça reativação ao administrador para publicar.'
+            : 'Guia ainda não aprovado',
+        403
+    );
+}
 $MIN_QUORUM = 0;
 $MAX_QUORUM = 4;
 $MAX_PEOPLE_CAP = 12;
