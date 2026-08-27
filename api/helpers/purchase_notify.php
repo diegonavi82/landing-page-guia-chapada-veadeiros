@@ -309,22 +309,158 @@ function gcv_purchase_email_body_html(array $rec): string
     );
 }
 
-/**
- * Envia texto via API CallMeBot (opcional).
- * Configure em api/.env:
- *   CALLMEBOT_APIKEY=...
- *   CALLMEBOT_PHONE=5562982506891
- *
- * Cadastro: https://www.callmebot.com/blog/free-api-whatsapp-send-messages/
- */
-function gcv_whatsapp_send_text(string $phone, string $text): bool
+function gcv_whatsapp_normalize_phone(string $raw, string $ddi = '55'): string
 {
-    $apiKey = trim((string)($_ENV['CALLMEBOT_APIKEY'] ?? ''));
-    if ($apiKey === '') {
+    $digits = preg_replace('/\D+/', '', $raw) ?? '';
+    if ($digits === '') {
+        return '';
+    }
+    $ddiDigits = preg_replace('/\D+/', '', $ddi) ?: '55';
+    if (str_starts_with($digits, '00')) {
+        $digits = substr($digits, 2);
+    }
+    if (strlen($digits) <= 11 && $ddiDigits !== '') {
+        $digits = $ddiDigits . $digits;
+    }
+    return $digits;
+}
+
+/**
+ * @param list<string> $headers
+ * @param array<string,mixed> $payload
+ */
+function gcv_env_str(string $key, string $default = ''): string
+{
+    $v = $_ENV[$key] ?? getenv($key);
+    if ($v === false || $v === null) {
+        return $default;
+    }
+    $v = trim((string)$v);
+    return $v !== '' ? $v : $default;
+}
+
+/**
+ * @param list<string> $headers
+ * @param array<string,mixed> $payload
+ */
+function gcv_whatsapp_post_json(string $url, array $headers, array $payload, int $timeout = 12): bool
+{
+    if (!function_exists('curl_init')) {
+        error_log('whatsapp: curl ausente');
         return false;
     }
-    $phone = preg_replace('/\D+/', '', $phone) ?? '';
-    if ($phone === '') {
+    $ch = curl_init($url);
+    if ($ch === false) {
+        return false;
+    }
+    $headers[] = 'Content-Type: application/json';
+    curl_setopt_array($ch, [
+        CURLOPT_POST => true,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_TIMEOUT => max(8, $timeout),
+        CURLOPT_CONNECTTIMEOUT => 8,
+        CURLOPT_HTTPHEADER => $headers,
+        CURLOPT_POSTFIELDS => json_encode($payload, JSON_UNESCAPED_UNICODE),
+    ]);
+    $body = curl_exec($ch);
+    $http = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $err = curl_error($ch);
+    curl_close($ch);
+    if ($http >= 200 && $http < 300 && $body !== false) {
+        return true;
+    }
+    error_log(
+        'whatsapp POST falhou http=' . $http
+        . ' curl=' . $err
+        . ' url=' . preg_replace('#://[^/]+#', '://***', $url)
+        . ' body=' . substr((string)$body, 0, 240)
+    );
+    return false;
+}
+
+function gcv_whatsapp_send_zapi(string $phone, string $text): bool
+{
+    $instance = gcv_env_str('ZAPI_INSTANCE_ID');
+    $token = gcv_env_str('ZAPI_TOKEN');
+    if ($instance === '' || $token === '') {
+        return false;
+    }
+    $url = 'https://api.z-api.io/instances/' . rawurlencode($instance) . '/token/' . rawurlencode($token) . '/send-text';
+    $headers = [];
+    $clientToken = gcv_env_str('ZAPI_CLIENT_TOKEN');
+    if ($clientToken !== '') {
+        $headers[] = 'Client-Token: ' . $clientToken;
+    }
+    return gcv_whatsapp_post_json($url, $headers, [
+        'phone' => $phone,
+        'message' => $text,
+    ]);
+}
+
+function gcv_whatsapp_send_evolution(string $phone, string $text): bool
+{
+    $base = rtrim(gcv_env_str('EVOLUTION_API_URL', 'https://wa.guiachapadaveadeiros.com'), '/');
+    $key = gcv_env_str('EVOLUTION_API_KEY');
+    $instance = gcv_env_str('EVOLUTION_INSTANCE', 'gcv');
+    if ($key === '') {
+        error_log('whatsapp evolution: EVOLUTION_API_KEY ausente');
+        return false;
+    }
+    $url = $base . '/message/sendText/' . rawurlencode($instance);
+    $headers = ['apikey: ' . $key];
+    if (gcv_whatsapp_post_json($url, $headers, [
+        'number' => $phone,
+        'text' => $text,
+    ])) {
+        return true;
+    }
+    return gcv_whatsapp_post_json($url, $headers, [
+        'number' => $phone,
+        'textMessage' => ['text' => $text],
+    ]);
+}
+
+function gcv_whatsapp_send_evolution_image(string $phone, string $caption, string $pngBinary): bool
+{
+    $base = rtrim(gcv_env_str('EVOLUTION_API_URL', 'https://wa.guiachapadaveadeiros.com'), '/');
+    $key = gcv_env_str('EVOLUTION_API_KEY');
+    $instance = gcv_env_str('EVOLUTION_INSTANCE', 'gcv');
+    if ($key === '' || $pngBinary === '') {
+        return false;
+    }
+    $b64 = base64_encode($pngBinary);
+    $url = $base . '/message/sendMedia/' . rawurlencode($instance);
+    return gcv_whatsapp_post_json($url, ['apikey: ' . $key], [
+        'number' => $phone,
+        'mediatype' => 'image',
+        'mimetype' => 'image/png',
+        'caption' => $caption,
+        'fileName' => 'reserva-gcv.png',
+        'media' => $b64,
+    ], 30);
+}
+
+function gcv_whatsapp_send_image(string $phone, string $caption, string $pngBinary): bool
+{
+    $phone = gcv_whatsapp_normalize_phone($phone);
+    if ($phone === '' || $pngBinary === '') {
+        return false;
+    }
+    try {
+        if (gcv_whatsapp_send_evolution_image($phone, $caption, $pngBinary)) {
+            return true;
+        }
+    } catch (Throwable $e) {
+        error_log('whatsapp evolution image: ' . $e->getMessage());
+    }
+    return gcv_whatsapp_send_text($phone, trim($caption));
+}
+
+function gcv_whatsapp_send_callmebot(string $phone, string $text): bool
+{
+    $apiKey = gcv_env_str('CALLMEBOT_APIKEY');
+    if ($apiKey === '') {
         return false;
     }
     $url =
@@ -354,6 +490,38 @@ function gcv_whatsapp_send_text(string $phone, string $text): bool
     $ctx = stream_context_create(['http' => ['timeout' => 8]]);
     $body = @file_get_contents($url, false, $ctx);
     return $body !== false;
+}
+
+/**
+ * Envia texto no WhatsApp. Ordem: Z-API (número da agência) → Evolution → CallMeBot.
+ */
+function gcv_whatsapp_send_text(string $phone, string $text): bool
+{
+    $phone = gcv_whatsapp_normalize_phone($phone);
+    $text = trim($text);
+    if ($phone === '' || $text === '') {
+        return false;
+    }
+    try {
+        if (gcv_whatsapp_send_zapi($phone, $text)) {
+            return true;
+        }
+    } catch (Throwable $e) {
+        error_log('whatsapp zapi: ' . $e->getMessage());
+    }
+    try {
+        if (gcv_whatsapp_send_evolution($phone, $text)) {
+            return true;
+        }
+    } catch (Throwable $e) {
+        error_log('whatsapp evolution: ' . $e->getMessage());
+    }
+    try {
+        return gcv_whatsapp_send_callmebot($phone, $text);
+    } catch (Throwable $e) {
+        error_log('whatsapp callmebot: ' . $e->getMessage());
+        return false;
+    }
 }
 
 /** @param array<string, mixed> $rec */

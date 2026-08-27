@@ -40,7 +40,12 @@ function gcv_marketplace_ensure_schema(): void
     gcv_marketplace_ensure_tables($pdo);
     gcv_marketplace_ensure_excursion_finance_columns($pdo);
     gcv_marketplace_ensure_guide_finance_columns($pdo);
+    gcv_marketplace_ensure_sales_client_columns($pdo);
+    gcv_marketplace_ensure_payout_columns($pdo);
+    gcv_marketplace_ensure_checkin_columns($pdo);
+    gcv_marketplace_ensure_reviews($pdo);
     gcv_marketplace_ensure_settings($pdo);
+    gcv_marketplace_retract_unapproved_guide_excursions($pdo);
 }
 
 function gcv_marketplace_ensure_tables(PDO $pdo): void
@@ -203,7 +208,14 @@ function gcv_marketplace_ensure_tables(PDO $pdo): void
         if (!$exists) {
             $pdo->exec(
                 "INSERT INTO gcv_commission_rules (scope_type, scope_id, commission_pct, label, is_active)
-                 VALUES ('global', NULL, 16.000, 'Comissão global padrão', 1)"
+                 VALUES ('global', NULL, 14.000, 'Comissão global padrão', 1)"
+            );
+        } else {
+            $pdo->exec(
+                "UPDATE gcv_commission_rules
+                 SET commission_pct = 14.000
+                 WHERE scope_type = 'global' AND scope_id IS NULL AND deleted_at IS NULL AND is_active = 1
+                   AND commission_pct = 16.000"
             );
         }
     } catch (Throwable $e) {
@@ -229,6 +241,7 @@ function gcv_marketplace_ensure_excursion_finance_columns(PDO $pdo): void
         'approved_at' => 'DATETIME NULL',
         'approved_by' => 'INT UNSIGNED NULL',
         'deleted_at' => 'DATETIME NULL',
+        'preconfirmed_people' => 'TINYINT UNSIGNED NOT NULL DEFAULT 0',
     ];
 
     $existing = gcv_marketplace_column_map($pdo, 'gcv_excursions');
@@ -259,6 +272,55 @@ function gcv_marketplace_ensure_excursion_finance_columns(PDO $pdo): void
     }
 }
 
+/**
+ * Passeios enviados por guia que estão no ar sem aprovação voltam para a fila.
+ * Não mexe em saídas já vendidas (booked/sales PAGAS).
+ */
+function gcv_marketplace_retract_unapproved_guide_excursions(PDO $pdo): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+    try {
+        $hasSales = false;
+        try {
+            $hasSales = (bool)$pdo->query("SHOW TABLES LIKE 'gcv_sales'")->fetchColumn();
+        } catch (Throwable $e) {
+            $hasSales = false;
+        }
+        $sql = "UPDATE gcv_excursions e
+                LEFT JOIN gcv_users u ON u.id = e.created_by
+                SET e.status = 'pending_approval', e.approved_at = NULL, e.approved_by = NULL
+                WHERE e.status IN ('published','soldout')
+                  AND e.approved_at IS NULL
+                  AND e.deleted_at IS NULL
+                  AND e.booked_people = 0
+                  AND (
+                    e.created_by_origin = 'GUIDE'
+                    OR e.business_mode = 'GUIDE_MARKETPLACE'
+                    OR (
+                      e.guide_user_id IS NOT NULL
+                      AND e.created_by IS NOT NULL
+                      AND e.created_by = e.guide_user_id
+                      AND (u.role IS NULL OR u.role <> 'admin')
+                    )
+                  )";
+        if ($hasSales) {
+            $sql .= " AND NOT EXISTS (
+                SELECT 1 FROM gcv_sales s
+                WHERE s.excursion_id = e.id
+                  AND s.deleted_at IS NULL
+                  AND s.sale_status = 'PAID'
+            )";
+        }
+        $pdo->exec($sql);
+    } catch (Throwable $e) {
+        error_log('retract unapproved guide excursions: ' . $e->getMessage());
+    }
+}
+
 function gcv_marketplace_ensure_guide_finance_columns(PDO $pdo): void
 {
     $cols = [
@@ -284,11 +346,195 @@ function gcv_marketplace_ensure_guide_finance_columns(PDO $pdo): void
     }
 }
 
+function gcv_marketplace_ensure_sales_client_columns(PDO $pdo): void
+{
+    $existing = gcv_marketplace_column_map($pdo, 'gcv_sales');
+    if ($existing === null) {
+        return;
+    }
+    if (!isset($existing['tourist_phone'])) {
+        try {
+            $pdo->exec('ALTER TABLE gcv_sales ADD COLUMN tourist_phone VARCHAR(30) NULL AFTER tourist_email');
+        } catch (Throwable $e) {
+            error_log('sales tourist_phone col: ' . $e->getMessage());
+        }
+    }
+}
+
+function gcv_marketplace_ensure_payout_columns(PDO $pdo): void
+{
+    $salesCols = gcv_marketplace_column_map($pdo, 'gcv_sales');
+    if ($salesCols !== null && !isset($salesCols['payout_fail_notified_at'])) {
+        try {
+            $pdo->exec('ALTER TABLE gcv_sales ADD COLUMN payout_fail_notified_at DATETIME NULL');
+        } catch (Throwable $e) {
+            error_log('sales payout_fail_notified_at col: ' . $e->getMessage());
+        }
+    }
+
+    gcv_marketplace_reschedule_payouts_to_17h($pdo);
+
+    $existing = gcv_marketplace_column_map($pdo, 'gcv_sale_payouts');
+    if ($existing === null) {
+        return;
+    }
+    if (!isset($existing['sicoob_response'])) {
+        try {
+            $pdo->exec('ALTER TABLE gcv_sale_payouts ADD COLUMN sicoob_response TEXT NULL');
+        } catch (Throwable $e) {
+            error_log('sale_payouts sicoob_response col: ' . $e->getMessage());
+        }
+    }
+}
+
+function gcv_marketplace_reschedule_payouts_to_17h(PDO $pdo): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+    try {
+        $hour = 17;
+        try {
+            if (function_exists('gcv_payout_after_hour')) {
+                $hour = gcv_payout_after_hour();
+            }
+        } catch (Throwable $e) {
+            $hour = 17;
+        }
+        $time = sprintf('%02d:00:00', $hour);
+        $pdo->exec(
+            "UPDATE gcv_sales
+             SET scheduled_payout_at = CONCAT(DATE(COALESCE(excursion_starts_at, scheduled_payout_at, sold_at)), ' {$time}')
+             WHERE deleted_at IS NULL
+               AND sale_status = 'PAID'
+               AND payout_status = 'PAYOUT_PENDING'
+               AND COALESCE(excursion_starts_at, scheduled_payout_at, sold_at) IS NOT NULL"
+        );
+    } catch (Throwable $e) {
+        error_log('reschedule payouts 17h: ' . $e->getMessage());
+    }
+}
+
+function gcv_marketplace_ensure_checkin_columns(PDO $pdo): void
+{
+    $sales = gcv_marketplace_column_map($pdo, 'gcv_sales');
+    if ($sales !== null) {
+        $add = [
+            'attendance_status' => "ALTER TABLE gcv_sales ADD COLUMN attendance_status VARCHAR(20) NULL DEFAULT 'pending'",
+            'checked_in_at' => 'ALTER TABLE gcv_sales ADD COLUMN checked_in_at DATETIME NULL',
+            'checked_in_by' => 'ALTER TABLE gcv_sales ADD COLUMN checked_in_by INT UNSIGNED NULL',
+            'notify_d12h_sent_at' => 'ALTER TABLE gcv_sales ADD COLUMN notify_d12h_sent_at DATETIME NULL',
+            'notify_dayof_sent_at' => 'ALTER TABLE gcv_sales ADD COLUMN notify_dayof_sent_at DATETIME NULL',
+            'notify_pix_paid_sent_at' => 'ALTER TABLE gcv_sales ADD COLUMN notify_pix_paid_sent_at DATETIME NULL',
+            'notify_h2_sent_at' => 'ALTER TABLE gcv_sales ADD COLUMN notify_h2_sent_at DATETIME NULL',
+            'notify_review_sent_at' => 'ALTER TABLE gcv_sales ADD COLUMN notify_review_sent_at DATETIME NULL',
+            'review_token' => 'ALTER TABLE gcv_sales ADD COLUMN review_token CHAR(64) NULL',
+            'guide_amount_original_cents' => 'ALTER TABLE gcv_sales ADD COLUMN guide_amount_original_cents INT NULL',
+            'platform_revenue_original_cents' => 'ALTER TABLE gcv_sales ADD COLUMN platform_revenue_original_cents INT NULL',
+        ];
+        foreach ($add as $col => $sql) {
+            if (!isset($sales[$col])) {
+                try {
+                    $pdo->exec($sql);
+                    $sales[$col] = true;
+                } catch (Throwable $e) {
+                    error_log('sales ' . $col . ': ' . $e->getMessage());
+                }
+            }
+        }
+    }
+    $exc = gcv_marketplace_column_map($pdo, 'gcv_excursions');
+    if ($exc !== null) {
+        foreach ([
+            'notify_confirmed_at' => 'ALTER TABLE gcv_excursions ADD COLUMN notify_confirmed_at DATETIME NULL',
+            'notify_approved_at' => 'ALTER TABLE gcv_excursions ADD COLUMN notify_approved_at DATETIME NULL',
+            'notify_d12h_guide_at' => 'ALTER TABLE gcv_excursions ADD COLUMN notify_d12h_guide_at DATETIME NULL',
+            'notify_h2_guide_at' => 'ALTER TABLE gcv_excursions ADD COLUMN notify_h2_guide_at DATETIME NULL',
+        ] as $col => $sql) {
+            if (!isset($exc[$col])) {
+                try {
+                    $pdo->exec($sql);
+                    $exc[$col] = true;
+                } catch (Throwable $e) {
+                    error_log('excursions ' . $col . ': ' . $e->getMessage());
+                }
+            }
+        }
+    }
+}
+
+function gcv_marketplace_ensure_reviews(PDO $pdo): void
+{
+    try {
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS gcv_guide_reviews (
+              id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+              sale_id BIGINT UNSIGNED NOT NULL,
+              reservation_id VARCHAR(16) NOT NULL,
+              excursion_id INT UNSIGNED NULL,
+              guide_user_id INT UNSIGNED NOT NULL,
+              guide_name VARCHAR(190) NULL,
+              tourist_name VARCHAR(190) NULL,
+              tourist_email VARCHAR(190) NULL,
+              tour_date DATE NULL,
+              excursion_title VARCHAR(255) NULL,
+              score_punctuality TINYINT UNSIGNED NOT NULL,
+              score_knowledge TINYINT UNSIGNED NOT NULL,
+              score_service TINYINT UNSIGNED NOT NULL,
+              score_avg DECIMAL(3,2) NOT NULL,
+              comment TEXT NULL,
+              photos_json TEXT NULL,
+              hidden_by_admin TINYINT(1) NOT NULL DEFAULT 0,
+              hidden_by_tourist TINYINT(1) NOT NULL DEFAULT 0,
+              locale VARCHAR(8) NOT NULL DEFAULT 'pt',
+              created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              UNIQUE KEY uq_review_sale (sale_id),
+              UNIQUE KEY uq_review_reservation (reservation_id),
+              INDEX idx_review_guide_public (guide_user_id, hidden_by_admin, hidden_by_tourist),
+              INDEX idx_review_created (created_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        );
+    } catch (Throwable $e) {
+        error_log('ensure reviews table: ' . $e->getMessage());
+    }
+    $sales = gcv_marketplace_column_map($pdo, 'gcv_sales');
+    if ($sales !== null && !isset($sales['review_token'])) {
+        try {
+            $pdo->exec('ALTER TABLE gcv_sales ADD COLUMN review_token CHAR(64) NULL');
+        } catch (Throwable $e) {
+            error_log('sales review_token: ' . $e->getMessage());
+        }
+    }
+    $hasIdx = false;
+    try {
+        $ix = $pdo->query('SHOW INDEX FROM gcv_sales');
+        foreach (($ix ? $ix->fetchAll(PDO::FETCH_ASSOC) : []) as $row) {
+            if (($row['Key_name'] ?? '') === 'uq_sales_review_token') {
+                $hasIdx = true;
+                break;
+            }
+        }
+    } catch (Throwable $e) {
+        $hasIdx = true;
+    }
+    if (!$hasIdx) {
+        try {
+            $pdo->exec('CREATE UNIQUE INDEX uq_sales_review_token ON gcv_sales (review_token)');
+        } catch (Throwable $e) {
+            error_log('sales review_token index: ' . $e->getMessage());
+        }
+    }
+}
+
 function gcv_marketplace_ensure_settings(PDO $pdo): void
 {
     $seeds = [
-        ['payout_delay_hours', '6', 'Horas após início da excursão para liberar repasse automático (futuro)', 'integer'],
-        ['platform_commission_pct', '16', 'Comissão da plataforma (%) — legado; preferir gcv_commission_rules', 'percent'],
+        ['payout_delay_hours', '6', 'Legado — o repasse automático usa payout_after_hour (17h do dia do passeio)', 'integer'],
+        ['payout_after_hour', '17', 'Hora (Brasília) do dia do passeio a partir da qual o PIX automático pode ser enviado ao guia', 'integer'],
+        ['platform_commission_pct', '14', 'Comissão da plataforma (%) — legado; preferir gcv_commission_rules', 'percent'],
     ];
     $check = $pdo->prepare('SELECT id FROM gcv_settings WHERE key_name = ? LIMIT 1');
     $ins = $pdo->prepare(
@@ -303,6 +549,15 @@ function gcv_marketplace_ensure_settings(PDO $pdo): void
         } catch (Throwable $e) {
             // ignore
         }
+    }
+    try {
+        $pdo->exec(
+            "UPDATE gcv_settings
+             SET value = '14'
+             WHERE key_name = 'platform_commission_pct' AND value = '16'"
+        );
+    } catch (Throwable $e) {
+        // ignore
     }
 }
 

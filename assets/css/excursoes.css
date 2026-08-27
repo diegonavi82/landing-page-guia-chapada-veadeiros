@@ -938,48 +938,36 @@
     inset 0 0 0 1px rgba(15, 23, 42, 0.06);
 }
 
-.gcv-excursoes-card__media-status {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 4;
+.gcv-excursoes-card__band-flags {
   display: flex;
-  flex-direction: column;
-  gap: 0.32rem;
-  padding: 0.42rem 0.45rem 0.5rem;
-  pointer-events: none;
-  background: linear-gradient(
-    180deg,
-    rgba(15, 23, 42, 0.55) 0%,
-    rgba(15, 23, 42, 0.22) 72%,
-    rgba(15, 23, 42, 0) 100%
-  );
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  min-width: 0;
+  padding: 0.05rem 0.55rem 0 16px;
+  box-sizing: border-box;
 }
 
-.gcv-excursoes-card__media-status .gcv-excursoes-card__row--status {
-  min-height: 0;
+.gcv-excursoes-card__band-flags .gcv-excursoes-card__status {
+  flex: 0 1 auto;
+  padding: 0.28rem 0.5rem;
+  font-size: 11px;
 }
 
-.gcv-excursoes-card__media-status .gcv-excursoes-card__cap {
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+.gcv-excursoes-card__band-flags .gcv-excursoes-card__cap {
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
 }
 
-.gcv-excursoes-card__falta--on-media {
-  margin: 0;
-  width: 100%;
-  text-align: center;
-  font-size: 0.78rem;
-  font-weight: 900;
-  letter-spacing: -0.01em;
-  line-height: 1.25;
-  color: #713f12;
-  background: #fde047;
-  border: none;
-  border-radius: 8px;
-  padding: 0.38rem 0.5rem;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.22);
+.gcv-excursoes-card__band-group {
+  min-width: 0;
+  padding: 0 0.55rem 0 16px;
+  text-align: right;
+  box-sizing: border-box;
+}
+
+.gcv-excursoes-card__band-group:empty {
+  display: none;
 }
 
 .gcv-excursoes-card__spots {
@@ -1110,12 +1098,18 @@
   min-height: 0;
 }
 
+.gcv-excursoes-card__spot--no-img .gcv-excursoes-card__spot-img-wrap--empty {
+  background: #0f3d2e;
+}
+
 .gcv-excursoes-card__spot .gcv-excursoes-card__img,
 .gcv-excursoes-card__spot-photo .gcv-excursoes-card__img {
   grid-area: 1 / 1;
   width: 100%;
   height: 100%;
-  min-height: 0;
+  min-width: 100%;
+  min-height: 100%;
+  max-width: none;
   max-height: none;
   object-fit: cover;
   object-position: center;
@@ -1621,6 +1615,26 @@
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
+}
+
+.gcv-excursoes-card__falta.gcv-excursoes-card__falta--band,
+.gcv-excursoes-card__band-group .gcv-excursoes-card__confirmado-info {
+  margin: 0;
+  width: 100%;
+  max-width: 100%;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  display: block;
+  text-align: right;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  color: #92400e;
+  white-space: normal;
 }
 
 .gcv-excursoes-card__confirmado-info {
@@ -2201,6 +2215,8 @@
 .gcv-excursoes-card__img {
   width: 100%;
   height: 100%;
+  max-width: none;
+  max-height: none;
   object-fit: cover;
   object-position: center;
   display: block;
@@ -2239,17 +2255,31 @@
   padding: 0;
 }
 
-.gcv-excursoes-card__guide-photo {
+.gcv-excursoes-card__guide-photo-wrap {
   width: 58px;
+  height: 4.75rem;
+  min-width: 58px;
+  min-height: 4.75rem;
+  max-width: 58px;
+  max-height: 4.75rem;
   flex-shrink: 0;
   align-self: stretch;
-  height: 100%;
+  overflow: hidden;
+  background: #f1f5f9;
+  display: block;
+}
+.gcv-excursoes-card__guide-photo {
+  width: 58px;
+  height: 4.75rem;
+  min-width: 58px;
   min-height: 4.75rem;
+  max-width: 58px;
+  max-height: 4.75rem;
   margin: 0;
   padding: 0;
   border: 0;
   object-fit: cover;
-  object-position: left top;
+  object-position: center top;
   display: block;
   background: #f1f5f9;
   border-radius: 0;
@@ -5151,6 +5181,11 @@ html.gcv-waitlist-modal-open {
   max-width: 100%;
 }
 
+/* Ponto de encontro só no recibo/e-mail/reserva — nunca no card público */
+.gcv-excursoes-card__meta-col--meeting {
+  display: none !important;
+}
+
 .gcv-excursoes-card__time-kicker {
   font-size: 0.6rem;
   font-weight: 700;
@@ -5197,7 +5232,7 @@ html.gcv-waitlist-modal-open {
   color: #dc2626;
 }
 
-/* Botão +: altura só da faixa data/hora (status foi para a foto) */
+/* Botão +: altura da faixa data/hora + status */
 .gcv-excursoes-card__quick-add {
   grid-column: 2;
   grid-row: 1;

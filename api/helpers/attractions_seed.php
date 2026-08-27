@@ -2,8 +2,8 @@
 declare(strict_types=1);
 
 /**
- * Importa atrativos do site (api/data/attractions-seed.json) para gcv_attractions.
- * Idempotente: não sobrescreve slugs já existentes.
+ * Importa atrativos do site para gcv_attractions.
+ * Idempotente: não sobrescreve slug nem title_pt já existentes.
  *
  * @return array{imported:int, skipped:int, total:int, titles:string[]}
  */
@@ -18,12 +18,29 @@ function gcv_seed_attractions_from_json(?string $jsonPath = null): array
     gcv_cms_ensure_schema();
     $pdo = db();
 
-    $path = $jsonPath ?: (dirname(__DIR__) . '/data/attractions-seed.json');
-    if (!is_file($path)) {
-        throw new RuntimeException('Arquivo de seed não encontrado: ' . $path);
+    $paths = [];
+    if ($jsonPath) {
+        $paths[] = $jsonPath;
+    } else {
+        $dir = dirname(__DIR__) . '/data';
+        $paths[] = $dir . '/attractions-seed.json';
+        $extra = $dir . '/attractions-catalog-extra.json';
+        if (is_file($extra)) {
+            $paths[] = $extra;
+        }
     }
-    $raw = json_decode((string)file_get_contents($path), true);
-    $list = is_array($raw['attractions'] ?? null) ? $raw['attractions'] : [];
+
+    $list = [];
+    foreach ($paths as $path) {
+        if (!is_file($path)) {
+            throw new RuntimeException('Arquivo de seed não encontrado: ' . $path);
+        }
+        $raw = json_decode((string)file_get_contents($path), true);
+        $chunk = is_array($raw['attractions'] ?? null) ? $raw['attractions'] : [];
+        foreach ($chunk as $page) {
+            $list[] = $page;
+        }
+    }
     if ($list === []) {
         throw new RuntimeException('Seed de atrativos vazio.');
     }
@@ -32,12 +49,17 @@ function gcv_seed_attractions_from_json(?string $jsonPath = null): array
     $skipped = 0;
     $titles = [];
 
-    $existsStmt = $pdo->prepare('SELECT id FROM gcv_attractions WHERE slug = ?');
+    $existsStmt = $pdo->prepare('SELECT id FROM gcv_attractions WHERE slug = ? LIMIT 1');
+    $titleStmt = $pdo->prepare('SELECT id FROM gcv_attractions WHERE LOWER(TRIM(title_pt)) = LOWER(TRIM(?)) LIMIT 1');
     $insertStmt = $pdo->prepare(
         'INSERT INTO gcv_attractions (
-            slug, status, title_pt, excerpt_pt, content_pt, cover_url,
-            seo_title_pt, seo_desc_pt, published_at, created_at
-         ) VALUES (?,?,?,?,?,?,?,?,NOW(),NOW())'
+            slug, status,
+            title_pt, title_en, title_es,
+            excerpt_pt, excerpt_en, excerpt_es,
+            content_pt, cover_url,
+            seo_title_pt, seo_title_en, seo_title_es,
+            seo_desc_pt, published_at, created_at
+         ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())'
     );
     $galStmt = $pdo->prepare(
         'INSERT INTO gcv_attraction_media (attraction_id, url, alt_text, sort_order) VALUES (?,?,?,?)'
@@ -53,6 +75,13 @@ function gcv_seed_attractions_from_json(?string $jsonPath = null): array
             continue;
         }
         $title = trim((string)($page['title_pt'] ?? $slug));
+        if ($title !== '') {
+            $titleStmt->execute([$title]);
+            if ($titleStmt->fetch()) {
+                $skipped++;
+                continue;
+            }
+        }
         $status = (string)($page['status'] ?? 'published');
         if (!in_array($status, ['draft', 'published', 'archived'], true)) {
             $status = 'published';
@@ -65,14 +94,26 @@ function gcv_seed_attractions_from_json(?string $jsonPath = null): array
             require_once __DIR__ . '/excursion_attractions.php';
         }
         $cover = gcv_normalize_media_url($cover);
+        $titleEn = trim((string)($page['title_en'] ?? ''));
+        $titleEs = trim((string)($page['title_es'] ?? ''));
+        $excerptEn = trim((string)($page['excerpt_en'] ?? ''));
+        $excerptEs = trim((string)($page['excerpt_es'] ?? ''));
+        $seoEn = trim((string)($page['seo_title_en'] ?? $titleEn));
+        $seoEs = trim((string)($page['seo_title_es'] ?? $titleEs));
         $insertStmt->execute([
             $slug,
             $status,
             $title,
+            $titleEn !== '' ? $titleEn : null,
+            $titleEs !== '' ? $titleEs : null,
             (string)($page['excerpt_pt'] ?? ''),
+            $excerptEn !== '' ? $excerptEn : null,
+            $excerptEs !== '' ? $excerptEs : null,
             (string)($page['content_pt'] ?? ''),
             $cover !== '' ? $cover : null,
             (string)($page['seo_title_pt'] ?? $title),
+            $seoEn !== '' ? $seoEn : null,
+            $seoEs !== '' ? $seoEs : null,
             (string)($page['seo_desc_pt'] ?? ''),
         ]);
         $id = (int)$pdo->lastInsertId();

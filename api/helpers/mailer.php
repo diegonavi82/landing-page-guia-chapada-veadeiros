@@ -170,6 +170,64 @@ function mail_reset_password(string $to, string $name, string $token, string $co
     send_mail($to, $subjects[$lang] ?? $subjects['pt'], $bodies[$lang] ?? $bodies['pt'], $name);
 }
 
+function mail_guide_new_booking(
+    string $to,
+    string $guideName,
+    string $tourTitle,
+    string $date,
+    string $time,
+    string $clientName,
+    string $clientEmail,
+    string $clientPhone,
+    int $people,
+    int $amountCents
+): void {
+    $amount = 'R$ ' . number_format(max(0, $amountCents) / 100, 2, ',', '.');
+    $when = trim($date . ($time !== '' ? ' às ' . $time : ''));
+    $pax = $people === 1 ? '1 pessoa' : ($people . ' pessoas');
+    $body = '<p>Olá, <strong>' . htmlspecialchars($guideName) . '</strong>!</p>'
+        . '<p>Nova reserva confirmada (PIX pago) no passeio <strong>' . htmlspecialchars($tourTitle) . '</strong>.</p>'
+        . '<ul>'
+        . ($when !== '' ? '<li><strong>Quando:</strong> ' . htmlspecialchars($when) . '</li>' : '')
+        . '<li><strong>Grupo:</strong> ' . htmlspecialchars($pax) . '</li>'
+        . '<li><strong>Cliente:</strong> ' . htmlspecialchars($clientName) . '</li>'
+        . ($clientEmail !== '' ? '<li><strong>E-mail:</strong> ' . htmlspecialchars($clientEmail) . '</li>' : '')
+        . ($clientPhone !== '' ? '<li><strong>Telefone:</strong> ' . htmlspecialchars($clientPhone) . '</li>' : '')
+        . '<li><strong>Valor pago:</strong> ' . $amount . '</li>'
+        . '</ul>'
+        . '<p>Os dados já aparecem na sua <strong>Agenda</strong> no painel.</p>';
+    send_mail($to, 'Nova reserva — ' . $tourTitle, $body, $guideName);
+}
+
+function mail_payout_pix_failed_admin(
+    string $tourTitle,
+    int $saleId,
+    string $guideName,
+    int $amountCents,
+    string $error
+): void {
+    $amount = 'R$ ' . number_format(max(0, $amountCents) / 100, 2, ',', '.');
+    $body = '<p>O PIX automático para o guia <strong>não foi enviado</strong>.</p>'
+        . '<ul>'
+        . '<li><strong>Venda:</strong> #' . (int)$saleId . '</li>'
+        . '<li><strong>Passeio:</strong> ' . htmlspecialchars($tourTitle) . '</li>'
+        . '<li><strong>Guia:</strong> ' . htmlspecialchars($guideName) . '</li>'
+        . '<li><strong>Valor:</strong> ' . $amount . '</li>'
+        . '<li><strong>Erro:</strong> ' . htmlspecialchars($error) . '</li>'
+        . '</ul>'
+        . '<p>O cron tentará de novo. Confira a chave PIX do guia e o painel Admin → Financeiro.</p>';
+    $tos = [];
+    if (function_exists('gcv_admin_notify_emails')) {
+        $tos = gcv_admin_notify_emails();
+    }
+    if (!$tos) {
+        $tos = ['diegonavi82@gmail.com', 'contato@guiachapadaveadeiros.com'];
+    }
+    foreach ($tos as $to) {
+        send_mail($to, '[GCV] FALHA no PIX automático do guia — venda #' . $saleId, $body, 'Diego');
+    }
+}
+
 function mail_payment_released(string $to, string $guideName, string $tourTitle, int $amountCents): void {
     $amount = 'R$ ' . number_format($amountCents / 100, 2, ',', '.');
     $body   = "<p>Olá, <strong>{$guideName}</strong>!</p><p>O pagamento referente ao passeio <strong>\"{$tourTitle}\"</strong> foi liberado via PIX (Sicoob).</p><p><strong>Valor:</strong> {$amount}</p>";

@@ -11,6 +11,7 @@ require_once __DIR__ . '/../helpers/auth.php';
 require_once __DIR__ . '/../helpers/validator.php';
 require_once __DIR__ . '/../helpers/cms_schema.php';
 require_once __DIR__ . '/../helpers/excursion_status.php';
+require_once __DIR__ . '/../helpers/excursion_attractions.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -20,12 +21,15 @@ if (($user['role'] ?? '') !== 'client') {
 }
 gcv_cms_ensure_schema();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-$MIN_QUORUM = 4;
+$MIN_QUORUM = 0;
+$MAX_QUORUM = 4;
+$MAX_PEOPLE_CAP = 12;
 
 if ($method === 'GET') {
     $attrs = db()->query(
         "SELECT id, title_pt, slug FROM gcv_attractions WHERE status = 'published' ORDER BY title_pt ASC"
     )->fetchAll(PDO::FETCH_ASSOC);
+    $attrs = gcv_sort_attractions_catalog($attrs);
     $cities = db()->query(
         "SELECT id, name FROM gcv_cities WHERE status = 'active' ORDER BY name ASC"
     )->fetchAll(PDO::FETCH_ASSOC);
@@ -52,6 +56,8 @@ if ($method === 'GET') {
         'attractions' => $attrs,
         'cities' => $cities,
         'min_quorum' => $MIN_QUORUM,
+        'max_quorum' => $MAX_QUORUM,
+        'max_people_cap' => $MAX_PEOPLE_CAP,
         'my_proposals' => $rows,
     ]);
 }
@@ -65,8 +71,20 @@ if ($method === 'POST') {
     $priceCents = isset($data['price_cents'])
         ? (int)$data['price_cents']
         : (int)round(((float)($data['price'] ?? 0)) * 100);
-    $quorum = max($MIN_QUORUM, (int)($data['quorum'] ?? $MIN_QUORUM));
+    $quorum = (int)($data['quorum'] ?? 4);
+    if ($quorum < $MIN_QUORUM) {
+        $quorum = $MIN_QUORUM;
+    }
+    if ($quorum > $MAX_QUORUM) {
+        $quorum = $MAX_QUORUM;
+    }
     $maxPeople = (int)($data['max_people'] ?? 10);
+    if ($maxPeople < 1) {
+        $maxPeople = 1;
+    }
+    if ($maxPeople > $MAX_PEOPLE_CAP) {
+        $maxPeople = $MAX_PEOPLE_CAP;
+    }
     $notes = sanitize_textarea((string)($data['notes_pt'] ?? ''), 2000);
 
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
@@ -76,10 +94,10 @@ if ($method === 'POST') {
     if ($date < $today) {
         json_response(false, null, 'Data deve ser futura', 422);
     }
-    if (!preg_match('/^\d{2}:\d{2}/', $time)) {
-        json_response(false, null, 'Horário inválido', 422);
+    $time = gcv_normalize_departure_time($time);
+    if ($time === '') {
+        json_response(false, null, 'Informe o horário de saída (minutos 00, 10, 20, 30, 40 ou 50)', 422);
     }
-    $time = substr($time, 0, 5) . ':00';
     if ($cityId <= 0 || $attrId <= 0) {
         json_response(false, null, 'Cidade e atrativo obrigatórios', 422);
     }

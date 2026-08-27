@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" class="gcv-dash-html">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -10,12 +10,12 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="/assets/css/site.css?v=1.0.39" />
-<link rel="stylesheet" href="/assets/css/gcv-dashboard.css?v=1.0.44" />
+<link rel="stylesheet" href="/assets/css/gcv-dashboard.css?v=1.0.67" />
 <link rel="stylesheet" href="/assets/css/gcv-tours.css?v=1.0.1" />
 <link rel="stylesheet" href="/assets/css/gcv-payment.css?v=1.0.1" />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lipis/flag-icons@7.2.3/css/flag-icons.min.css" />
 </head>
-<body>
+<body class="gcv-dash-page">
   <div class="topbar">+55 62 98250-6891 | contato@guiachapadaveadeiros.com</div>
 
   <!-- Dashboard layout — hidden until JS renders -->
@@ -24,31 +24,43 @@
 
       <!-- Sidebar -->
       <aside class="gcv-dash-sidebar" id="gcv-dash-sidebar">
-        <div class="gcv-dash-user">
-          <div class="gcv-dash-avatar" id="dash-avatar">?</div>
-          <div class="gcv-dash-user-name" id="dash-name">—</div>
-          <div class="gcv-dash-user-role" id="dash-role">—</div>
+        <div class="gcv-dash-sidebar__top">
+          <div class="gcv-dash-user">
+            <div class="gcv-dash-avatar" id="dash-avatar">?</div>
+            <div class="gcv-dash-user-meta">
+              <div class="gcv-dash-user-name" id="dash-name">—</div>
+              <div class="gcv-dash-user-role" id="dash-role">—</div>
+            </div>
+          </div>
+          <button type="button" class="gcv-dash-mobile-toggle" id="gcv-dash-menu-toggle" aria-expanded="false" aria-controls="gcv-dash-nav">☰ Menu</button>
+          <div class="gcv-dash-sidebar__actions">
+            <a href="/index.html" class="gcv-dash-icon-btn" title="Voltar ao site" aria-label="Voltar ao site">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+            </a>
+            <a href="#" class="gcv-dash-icon-btn js-gcv-dash-logout" title="Sair" aria-label="Sair">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            </a>
+          </div>
         </div>
-        <button class="gcv-dash-mobile-toggle" id="gcv-dash-menu-toggle">☰ Menu</button>
-        <nav id="gcv-dash-nav">
+        <nav id="gcv-dash-nav" class="gcv-dash-sidebar__nav">
           <ul class="gcv-dash-nav" id="gcv-dash-nav-list">
             <!-- Rendered by gcv-dashboard.js -->
           </ul>
+          <ul class="gcv-dash-nav gcv-dash-nav--footer">
+            <li>
+              <a href="/index.html">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+                Voltar ao site
+              </a>
+            </li>
+            <li>
+              <a href="#" id="gcv-dash-logout" class="js-gcv-dash-logout">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Sair
+              </a>
+            </li>
+          </ul>
         </nav>
-        <ul class="gcv-dash-nav" style="margin-top:auto;padding-top:20px;border-top:1px solid rgba(255,255,255,0.1);">
-          <li>
-            <a href="/index.html">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
-              Voltar ao site
-            </a>
-          </li>
-          <li>
-            <a href="#" id="gcv-dash-logout">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-              Sair
-            </a>
-          </li>
-        </ul>
       </aside>
 
       <!-- Main content -->
@@ -122,8 +134,8 @@
                 <input class="gcv-dash-input" id="tour-date" name="departure_date" type="date" required />
               </div>
               <div class="gcv-dash-field">
-                <label class="gcv-dash-label" for="tour-time">Horário</label>
-                <input class="gcv-dash-input" id="tour-time" name="departure_time" type="time" value="08:00" required />
+                <label class="gcv-dash-label" for="tour-time">Horário de saída *</label>
+                <input class="gcv-dash-input" id="tour-time" name="departure_time" type="time" required />
               </div>
             </div>
             <div class="gcv-dash-field-row">
@@ -186,9 +198,9 @@
         </section>
 
         <section class="gcv-dash-section" id="section-admin-approvals">
-          <h2 class="gcv-dash-section-title">Aprovações de Excursões</h2>
+          <h2 class="gcv-dash-section-title">Aprovar passeios</h2>
           <p class="gcv-dash-hint" style="margin:0 0 1rem;color:#64748b;font-size:0.9rem;">
-            Excursões do marketplace (guia) ficam em <strong>pending_approval</strong> até Aprovar, Rejeitar, Solicitar alterações ou Editar e Aprovar.
+            Todo passeio enviado por qualquer guia fica parado aqui até você <strong>Aprovar</strong>, <strong>Rejeitar</strong>, <strong>Solicitar alterações</strong> ou <strong>Editar e Aprovar</strong>. Só depois disso ele aparece no site.
           </p>
           <div id="admin-approvals-content"></div>
         </section>
@@ -242,22 +254,17 @@
 
         <!-- ===== GUIDE SECTIONS ===== -->
 
-        <section class="gcv-dash-section" id="section-guide-home">
-          <h2 class="gcv-dash-section-title">Próximas saídas</h2>
-          <p class="gcv-dash-hint" style="margin:0 0 1rem;color:#64748b;font-size:0.9rem;">
-            Destaque da sua agenda. Quórum mínimo: 4 pessoas — abaixo disso o passeio fica <em>em formação</em>.
-          </p>
-          <div id="guide-upcoming-root"></div>
-        </section>
-
         <section class="gcv-dash-section" id="section-guide-tours">
           <h2 class="gcv-dash-section-title">Agenda</h2>
+          <p class="gcv-dash-hint" style="margin:0 0 1rem;color:#64748b;font-size:0.9rem;">
+            No dia do passeio, leia o QR de cada grupo. Sem leitura, o repasse daquela reserva cai para 50%.
+          </p>
           <div id="guide-tours-list"></div>
         </section>
 
         <section class="gcv-dash-section" id="section-guide-create-tour">
           <h2 class="gcv-dash-section-title">Publicar passeio</h2>
-          <form class="gcv-dash-form" id="gcv-guide-create-tour-form" novalidate></form>
+          <form class="gcv-dash-form gcv-dash-form--publish" id="gcv-guide-create-tour-form" novalidate></form>
         </section>
 
         <section class="gcv-dash-section" id="section-guide-profile">
@@ -266,11 +273,11 @@
         </section>
 
         <section class="gcv-dash-section" id="section-guide-financial">
-          <h2 class="gcv-dash-section-title">Dados financeiros</h2>
+          <h2 class="gcv-dash-section-title">Financeiro</h2>
           <p class="gcv-dash-hint" style="margin:0 0 1rem;color:#64748b;font-size:0.9rem;">
-            Obrigatório para receber repasses. Cadastre CPF/CNPJ e chave PIX.
+            Resumo dos passeios, pessoas e recebimentos. Passeios sem compra aparecem zerados. O PIX é enviado automaticamente após a saída.
           </p>
-          <div id="guide-financial-root"></div>
+          <div id="guide-earnings-root"></div>
         </section>
 
         <section class="gcv-dash-section" id="section-guide-bookings">
@@ -281,11 +288,6 @@
               <tbody id="guide-bookings-body"></tbody>
             </table>
           </div>
-        </section>
-
-        <section class="gcv-dash-section" id="section-guide-payments">
-          <h2 class="gcv-dash-section-title">Recebimentos</h2>
-          <div id="guide-payments-content"></div>
         </section>
 
         <!-- ===== CLIENT SECTIONS ===== -->
@@ -329,6 +331,9 @@
 
       </main>
     </div>
+    <nav class="gcv-dash-bottom-nav" id="gcv-dash-bottom-nav" hidden aria-label="Menu principal">
+      <ul class="gcv-dash-bottom-nav__list" id="gcv-dash-bottom-nav-list"></ul>
+    </nav>
   </div>
 
   <!-- Payment modal -->
@@ -339,11 +344,29 @@
     </div>
   </div>
 
+  <div id="gcv-checkin-modal" class="gcv-checkin-modal" hidden>
+    <div class="gcv-checkin-sheet" role="dialog" aria-labelledby="gcv-checkin-title">
+      <h3 id="gcv-checkin-title">Ler QR da reserva</h3>
+      <p class="gcv-dash-hint" style="margin:0 0 0.5rem;">Aponte a câmera para o comprovante do cliente.</p>
+      <div id="gcv-checkin-reader" class="gcv-checkin-reader"></div>
+      <div class="gcv-checkin-manual">
+        <input id="gcv-checkin-manual" type="text" maxlength="12" placeholder="GCV-XXXXXX" autocomplete="off" />
+        <button type="button" class="gcv-dash-btn gcv-dash-btn--primary" id="gcv-checkin-manual-btn">OK</button>
+      </div>
+      <p style="margin:0.75rem 0 0;text-align:right;">
+        <button type="button" class="gcv-dash-btn" id="gcv-checkin-close">Fechar</button>
+      </p>
+    </div>
+  </div>
+
   <script src="/assets/js/gcv-auth.js?v=1.0.43" defer></script>
-  <script src="/assets/js/gcv-pix-receipt.js?v=1.0.42" defer></script>
-  <script src="/assets/js/gcv-admin-cms.js?v=1.0.45" defer></script>
-  <script src="/assets/js/gcv-dash-roles.js?v=1.0.40" defer></script>
-  <script src="/assets/js/gcv-dashboard.js?v=1.0.44" defer></script>
+  <script src="/assets/js/gcv-pix-receipt.js?v=1.0.43" defer></script>
+  <script src="/assets/js/gcv-meeting-point.js?v=1.0.1" defer></script>
+  <script src="/assets/js/gcv-datepicker.js?v=1.0.1" defer></script>
+  <script src="/assets/js/gcv-admin-cms.js?v=1.0.58" defer></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
+  <script src="/assets/js/gcv-dash-roles.js?v=1.0.66" defer></script>
+  <script src="/assets/js/gcv-dashboard.js?v=1.0.60" defer></script>
   <script src="/assets/js/gcv-payment.js?v=1.0.40" defer></script>
   <script src="/assets/js/site.js?v=1.0.40" defer></script>
 </body>

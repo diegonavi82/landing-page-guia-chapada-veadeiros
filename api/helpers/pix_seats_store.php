@@ -268,6 +268,69 @@ function gcv_pix_seats_apply_reservation(array $reservation): array
 }
 
 /**
+ * Devolve vagas de uma reserva cancelada (idempotente).
+ *
+ * @param array<string,mixed> $reservation
+ */
+function gcv_pix_seats_release_reservation(array $reservation): void
+{
+    $rid = gcv_pix_seats_safe_reservation_id((string)($reservation['reservation_id'] ?? ''));
+    if ($rid === '') {
+        return;
+    }
+    $pending = [];
+    $trips = is_array($reservation['trips'] ?? null) ? $reservation['trips'] : [];
+    foreach ($trips as $trip) {
+        if (!is_array($trip)) {
+            continue;
+        }
+        $cartId = gcv_pix_seats_normalize_cart_id((string)($trip['cartId'] ?? $trip['cart_id'] ?? ''));
+        $qty = (int)($trip['qty'] ?? $trip['quantity'] ?? 0);
+        if ($cartId === '' || $qty < 1) {
+            continue;
+        }
+        $pending[$cartId] = ($pending[$cartId] ?? 0) + $qty;
+    }
+    if (!$pending) {
+        return;
+    }
+    $pdo = gcv_pix_seats_db();
+    if ($pdo) {
+        try {
+            $chk = $pdo->prepare('SELECT 1 FROM gcv_pix_carousel_seat_applied WHERE reservation_id = ? LIMIT 1');
+            $chk->execute([$rid]);
+            if (!$chk->fetch()) {
+                return;
+            }
+            $pdo->beginTransaction();
+            $dec = $pdo->prepare('UPDATE gcv_pix_carousel_seats SET qty = GREATEST(0, CAST(qty AS SIGNED) - ?) WHERE cart_id = ?');
+            foreach ($pending as $cartId => $qty) {
+                $dec->execute([$qty, $cartId]);
+            }
+            $pdo->prepare('DELETE FROM gcv_pix_carousel_seat_applied WHERE reservation_id = ?')->execute([$rid]);
+            $pdo->commit();
+            $store = gcv_pix_seats_read_db($pdo);
+            gcv_pix_seats_write_json($store);
+            return;
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            error_log('gcv_pix_seats_release: ' . $e->getMessage());
+        }
+    }
+    $store = gcv_pix_seats_read_json();
+    if (empty($store['applied'][$rid])) {
+        return;
+    }
+    foreach ($pending as $cartId => $qty) {
+        $store['seats'][$cartId] = max(0, (int)($store['seats'][$cartId] ?? 0) - $qty);
+    }
+    unset($store['applied'][$rid]);
+    gcv_pix_seats_write_json($store);
+}
+
+/**
  * Aplica seats de reservas PAID ainda não processadas (recupera histórico / deploy novo).
  */
 function gcv_pix_seats_sync_from_paid_reservations(): array
@@ -314,7 +377,7 @@ function gcv_pix_seats_bump_cms_booked(PDO $pdo, array $pending): void
         $stmt = $pdo->prepare(
             'UPDATE gcv_excursions
              SET booked_people = LEAST(255, booked_people + ?)
-             WHERE cart_slug = ? OR cart_slug = ?'
+             WHERE id = ? OR cart_slug = ? OR cart_slug = ?'
         );
         foreach ($pending as $cartId => $qty) {
             $qty = (int)$qty;
@@ -325,7 +388,8 @@ function gcv_pix_seats_bump_cms_booked(PDO $pdo, array $pending): void
             if (preg_match('/^\d{4}-\d{2}-\d{2}-(.+)$/', $cartId, $m)) {
                 $slug = $m[1];
             }
-            $stmt->execute([$qty, $cartId, $slug]);
+            $maybeId = ctype_digit($cartId) ? (int)$cartId : 0;
+            $stmt->execute([$qty, $maybeId, $cartId, $slug]);
         }
     } catch (Throwable $e) {
         error_log('gcv_pix_seats_bump_cms_booked: ' . $e->getMessage());

@@ -6,6 +6,7 @@ require_once __DIR__ . '/../helpers/auth.php';
 require_once __DIR__ . '/../helpers/validator.php';
 require_once __DIR__ . '/../helpers/mailer.php';
 require_once __DIR__ . '/../helpers/settings.php';
+require_once __DIR__ . '/../helpers/marketplace/guide_financial_service.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -50,13 +51,10 @@ if ($user['role'] === 'admin' && !empty($data['guide_id'])) {
     $guideId = (int)$data['guide_id'];
 }
 
-// Pagamentos via PIX Sicoob — exige chave PIX no perfil (não Mercado Pago)
+// Pagamentos via PIX Sicoob — chave vem dos dados financeiros
 if ($user['role'] === 'guide') {
-    $stmt = db()->prepare('SELECT pix_key FROM gcv_guides WHERE user_id = ?');
-    $stmt->execute([$guideId]);
-    $guide = $stmt->fetch();
-    if (!$guide || trim((string)($guide['pix_key'] ?? '')) === '') {
-        json_response(false, null, 'Cadastre sua chave PIX no perfil antes de criar passeios', 403);
+    if (!gcv_guide_financial_is_ready($guideId)) {
+        json_response(false, null, 'Cadastre CPF/CNPJ e chave PIX em Dados financeiros antes de criar passeios', 403);
     }
 }
 

@@ -13,8 +13,11 @@
       amount: "Valor total",
       trips: "Passeios",
       embarque: "Embarque",
+      meeting: "Ponto de encontro",
+      openMaps: "Abrir no Google Maps",
       guia: "Guia",
       email: "E-mail",
+      name: "Nome",
       phone: "Telefone / WhatsApp",
       person: "pessoa",
       people: "pessoas",
@@ -44,9 +47,12 @@
       status: "Status",
       amount: "Total",
       trips: "Tours",
-      embarque: "Meeting point",
+      embarque: "Departure",
+      meeting: "Meeting point",
+      openMaps: "Open in Google Maps",
       guia: "Guide",
       email: "Email",
+      name: "Name",
       phone: "Phone / WhatsApp",
       person: "person",
       people: "people",
@@ -77,8 +83,11 @@
       amount: "Valor total",
       trips: "Paseos",
       embarque: "Embarque",
+      meeting: "Punto de encuentro",
+      openMaps: "Abrir en Google Maps",
       guia: "Guía",
       email: "Correo",
+      name: "Nombre",
       phone: "Teléfono / WhatsApp",
       person: "persona",
       people: "personas",
@@ -224,21 +233,44 @@
     if (!rows.length && loc !== "pt") rows = loadExcursaoRows("pt");
     if (!rows.length) return trips.slice();
     return trips.map(function (t) {
-      if (!t || t.guiaNome) return t;
+      if (!t) return t;
       var cid = cartIdFromTrip(t);
+      var patch = {};
       for (var i = 0; i < rows.length; i++) {
         var row = rows[i];
-        if (!row || !row.guiaNome) continue;
-        if (cid && cartIdFromRow(row) === cid) {
-          return Object.assign({}, t, { guiaNome: String(row.guiaNome) });
+        if (!row) continue;
+        var match =
+          (cid && cartIdFromRow(row) === cid) ||
+          ((t.dateIso || t.dateISO || "") &&
+            row.dateISO === (t.dateIso || t.dateISO) &&
+            String(t.destino || "") === String(row.destino || ""));
+        if (!match) continue;
+        if (!t.guiaNome && row.guiaNome) patch.guiaNome = String(row.guiaNome);
+        if (!t.guiaTelefone && row.guiaTelefone) patch.guiaTelefone = String(row.guiaTelefone);
+        if (!t.meetingPoint && row.meetingPoint) patch.meetingPoint = String(row.meetingPoint);
+        if ((t.meetingLat == null || t.meetingLat === "") && row.meetingLat != null) {
+          patch.meetingLat = row.meetingLat;
         }
-        var iso = t.dateIso || t.dateISO || "";
-        if (iso && row.dateISO === iso && String(t.destino || "") === String(row.destino || "")) {
-          return Object.assign({}, t, { guiaNome: String(row.guiaNome) });
+        if ((t.meetingLng == null || t.meetingLng === "") && row.meetingLng != null) {
+          patch.meetingLng = row.meetingLng;
         }
+        if (!t.meetingMapsUrl && row.meetingMapsUrl) patch.meetingMapsUrl = String(row.meetingMapsUrl);
+        break;
       }
-      return t;
+      return Object.keys(patch).length ? Object.assign({}, t, patch) : t;
     });
+  }
+
+  function meetingMapsHref(t) {
+    if (!t) return "";
+    if (t.meetingMapsUrl) return String(t.meetingMapsUrl);
+    if (t.meetingLat != null && t.meetingLng != null && t.meetingLat !== "" && t.meetingLng !== "") {
+      return "https://www.google.com/maps?q=" + encodeURIComponent(t.meetingLat + "," + t.meetingLng);
+    }
+    if (t.meetingPoint) {
+      return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(t.meetingPoint);
+    }
+    return "";
   }
 
   function normalizeFromLookup(body, loc) {
@@ -696,8 +728,10 @@
           t.dateIso || t.dateShort || t.dateLabel || "",
           t.destino || "",
           t.embarque || "",
+          t.meetingPoint || "",
           t.hora || "",
           t.guiaNome || "",
+          t.guiaTelefone || "",
           String(parseInt(String(t.qty), 10) || 1),
         ].join("|"),
       );
@@ -800,6 +834,14 @@
         "</strong></dd></div>";
     }
 
+    if (data.name || data.nome || data.customer_name) {
+      html +=
+        "<div><dt>" +
+        escapeHtml(rs(loc, "name")) +
+        "</dt><dd>" +
+        escapeHtml(data.name || data.nome || data.customer_name) +
+        "</dd></div>";
+    }
     if (data.email) {
       html +=
         "<div><dt>" +
@@ -836,10 +878,26 @@
         if (t.hora) sub.push(t.hora);
         sub.push(qty + " " + qtyLabel);
         html += '<span class="gcv-reserva-voucher__trip-sub">' + escapeHtml(sub.join(" · ")) + "</span>";
+        if (t.meetingPoint) {
+          var mapsHref = meetingMapsHref(t);
+          html +=
+            '<span class="gcv-reserva-voucher__trip-meeting">' +
+            escapeHtml(rs(loc, "meeting") + ": " + t.meetingPoint) +
+            (mapsHref
+              ? ' · <a href="' +
+                escapeHtml(mapsHref) +
+                '" target="_blank" rel="noopener noreferrer">' +
+                escapeHtml(rs(loc, "openMaps")) +
+                "</a>"
+              : "") +
+            "</span>";
+        }
         if (t.guiaNome) {
+          var guiaLine = rs(loc, "guia") + ": " + t.guiaNome;
+          if (t.guiaTelefone) guiaLine += " · " + t.guiaTelefone;
           html +=
             '<span class="gcv-reserva-voucher__trip-guia">' +
-            escapeHtml(rs(loc, "guia") + ": " + t.guiaNome) +
+            escapeHtml(guiaLine) +
             "</span>";
         }
         html += "</li>";

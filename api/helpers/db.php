@@ -41,6 +41,12 @@ declare(strict_types=1);
         [$k, $v] = explode('=', $line, 2);
         $k = trim($k);
         $v = trim($v);
+        if (
+            (str_starts_with($v, '"') && str_ends_with($v, '"'))
+            || (str_starts_with($v, "'") && str_ends_with($v, "'"))
+        ) {
+            $v = substr($v, 1, -1);
+        }
         // Não sobrescreve se config.local já definiu
         if ($k !== '' && !isset($_ENV[$k])) {
             $_ENV[$k] = $v;

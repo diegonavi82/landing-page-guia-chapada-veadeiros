@@ -4,11 +4,15 @@ declare(strict_types=1);
 require_once __DIR__ . '/../helpers/db.php';
 require_once __DIR__ . '/../helpers/auth.php';
 require_once __DIR__ . '/../helpers/cms_schema.php';
+require_once __DIR__ . '/../helpers/excursion_status.php';
 require_once __DIR__ . '/../helpers/excursion_attractions.php';
 require_once __DIR__ . '/../helpers/marketplace_schema.php';
 require_once __DIR__ . '/../helpers/marketplace/constants.php';
 require_once __DIR__ . '/../helpers/marketplace/pricing_service.php';
 require_once __DIR__ . '/../helpers/marketplace/audit_service.php';
+require_once __DIR__ . '/../helpers/meeting_point.php';
+require_once __DIR__ . '/../helpers/google_places.php';
+require_once __DIR__ . '/../helpers/notify_ops.php';
 
 header('Content-Type: application/json; charset=utf-8');
 $admin = require_admin();
@@ -22,10 +26,14 @@ function gcv_excursion_validate(array $body, bool $creating): ?string
         if (empty($body['date_iso'])) return 'Data obrigatória';
     }
     if ($creating || array_key_exists('departure_time', $body)) {
-        if (empty($body['departure_time'])) return 'Hora obrigatória';
+        if (empty($body['departure_time'])) return 'Hora obrigatória (minutos 00, 10, 20, 30, 40 ou 50)';
     }
     if ($creating || array_key_exists('departure_city_id', $body)) {
         if (empty($body['departure_city_id'])) return 'Cidade de saída obrigatória';
+    }
+    if ($creating || array_key_exists('meeting_point', $body)) {
+        $mp = gcv_meeting_point_from_body($body, true);
+        if (isset($mp['error'])) return $mp['error'];
     }
     if ($creating || array_key_exists('attraction_ids', $body) || array_key_exists('attraction_id', $body)) {
         $ids = gcv_excursion_normalize_attraction_ids($body);
@@ -39,12 +47,29 @@ function gcv_excursion_validate(array $body, bool $creating): ?string
     }
     if ($creating || array_key_exists('quorum', $body)) {
         $q = (int)($body['quorum'] ?? 0);
-        if ($q < 4) return 'Quorum mínimo é 4 pessoas';
+        if ($q < 0 || $q > 4) return 'Quórum deve ser entre 0 e 4 pessoas';
     }
     if ($creating || array_key_exists('max_people', $body)) {
-        if (!isset($body['max_people']) || (int)$body['max_people'] <= 0) return 'Máximo de pessoas obrigatório';
+        if (!isset($body['max_people']) || (int)$body['max_people'] < 1) return 'Máximo de pessoas obrigatório';
+        if ((int)$body['max_people'] > 12) return 'Máximo de pessoas é 12';
+    }
+    if ($creating || array_key_exists('preconfirmed_people', $body)) {
+        $pre = (int)($body['preconfirmed_people'] ?? 0);
+        if ($pre < 0 || $pre > 5) return 'Pessoas confirmadas deve ser entre 0 e 5';
     }
     return null;
+}
+
+function gcv_admin_notify_guide_published(int $id, string $status): void
+{
+    if (!in_array($status, ['published', 'soldout'], true) || $id <= 0) {
+        return;
+    }
+    try {
+        gcv_ops_notify_guide_approved($id);
+    } catch (Throwable $e) {
+        error_log('notify guide published: ' . $e->getMessage());
+    }
 }
 
 function gcv_excursion_require_guide_if_published(array $body, ?array $existing = null): ?string
@@ -98,6 +123,7 @@ if ($method === 'GET') {
     }
     $rows = db()->query(
         'SELECT e.id, e.status, e.date_iso, e.departure_time, e.price_cents, e.quorum, e.max_people, e.booked_people,
+                e.preconfirmed_people,
                 e.guide_user_id, e.attraction_id, e.business_mode, e.created_by_origin, e.guide_net_cents,
                 e.guide_payout_planned_cents, e.platform_margin_cents, e.commission_pct_applied,
                 c.name AS departure_city_name, u.name AS guide_name
@@ -116,6 +142,9 @@ if ($method === 'GET') {
 }
 
 $body = gcv_cms_json_body();
+if (isset($body['departure_time'])) {
+    $body['departure_time'] = gcv_normalize_departure_time((string)$body['departure_time']);
+}
 
 if ($method === 'POST') {
     $err = gcv_excursion_validate($body, true);
@@ -169,16 +198,25 @@ if ($method === 'POST') {
         exit;
     }
 
-    $quorum = max(4, (int)$body['quorum']);
+    $quorum = (int)$body['quorum'];
+    if ($quorum < 0) {
+        $quorum = 0;
+    }
+    if ($quorum > 4) {
+        $quorum = 4;
+    }
+    $maxPeople = min(12, max(1, (int)$body['max_people']));
+    $bookedPeople = (int)($body['booked_people'] ?? 0);
+    $preconfirmed = gcv_clamp_preconfirmed($body['preconfirmed_people'] ?? 0, $maxPeople, $bookedPeople);
     $stmt = db()->prepare(
         'INSERT INTO gcv_excursions (
           status, date_iso, departure_time, departure_city_id, attraction_id, guide_user_id,
-          price_cents, quorum, max_people, booked_people, include_transport, include_entry, include_lunch,
+          price_cents, quorum, max_people, booked_people, preconfirmed_people, include_transport, include_entry, include_lunch,
           notes_pt, notes_en, notes_es, cart_slug, created_by, updated_by,
           business_mode, created_by_origin, guide_net_cents, commission_rule_id, commission_pct_applied,
           commission_cents, price_before_round_cents, rounding_diff_cents, platform_margin_cents,
           guide_payout_planned_cents, approved_at, approved_by
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
     );
     $stmt->execute([
         $status,
@@ -189,8 +227,9 @@ if ($method === 'POST') {
         !empty($body['guide_user_id']) ? (int)$body['guide_user_id'] : null,
         (int)$body['price_cents'],
         $quorum,
-        (int)$body['max_people'],
-        (int)($body['booked_people'] ?? 0),
+        $maxPeople,
+        $bookedPeople,
+        $preconfirmed,
         !empty($body['include_transport']) ? 1 : 0,
         !empty($body['include_entry']) ? 1 : 0,
         !empty($body['include_lunch']) ? 1 : 0,
@@ -214,6 +253,16 @@ if ($method === 'POST') {
         $status === 'published' ? (int)$admin['id'] : null,
     ]);
     $id = (int)db()->lastInsertId();
+    $mp = gcv_meeting_point_from_body($body, false);
+    if (!isset($mp['error']) && ($mp['point'] ?? '') !== '') {
+        gcv_excursion_save_meeting_point(
+            $id,
+            (string)$mp['point'],
+            $mp['place_id'] ?? null,
+            $mp['lat'] ?? null,
+            $mp['lng'] ?? null
+        );
+    }
     try {
         gcv_excursion_save_attractions($id, $attrIds);
     } catch (Throwable $e) {
@@ -229,7 +278,9 @@ if ($method === 'POST') {
     ], $createdByOrigin);
     $stmt = db()->prepare('SELECT * FROM gcv_excursions WHERE id = ?');
     $stmt->execute([$id]);
-    echo json_encode(['ok' => true, 'data' => gcv_excursion_enrich($stmt->fetch())]);
+    $created = $stmt->fetch();
+    gcv_admin_notify_guide_published($id, $status);
+    echo json_encode(['ok' => true, 'data' => gcv_excursion_enrich($created)]);
     exit;
 }
 
@@ -279,14 +330,40 @@ if ($method === 'PUT') {
         : (int)($ex['guide_payout_planned_cents'] ?? $ex['guide_net_cents'] ?? 0);
     $margin = max(0, $priceCents - $guidePayout);
 
-    $quorum = max(4, (int)($body['quorum'] ?? $ex['quorum']));
+    $quorum = (int)($body['quorum'] ?? $ex['quorum']);
+    if ($quorum < 0) {
+        $quorum = 0;
+    }
+    if ($quorum > 4) {
+        $quorum = 4;
+    }
+    $maxPeople = min(12, max(1, (int)($body['max_people'] ?? $ex['max_people'])));
+    $bookedPeople = (int)($body['booked_people'] ?? $ex['booked_people']);
+    $preconfirmed = gcv_clamp_preconfirmed(
+        $body['preconfirmed_people'] ?? ($ex['preconfirmed_people'] ?? 0),
+        $maxPeople,
+        $bookedPeople
+    );
+    $approvedAt = $ex['approved_at'] ?? null;
+    $approvedBy = $ex['approved_by'] ?? null;
+    $justPublished = false;
+    $justRejected = false;
+    if (in_array($status, ['published', 'soldout'], true) && empty($approvedAt)) {
+        $approvedAt = date('Y-m-d H:i:s');
+        $approvedBy = (int)$admin['id'];
+        $justPublished = true;
+    }
+    if ($status === 'rejected' && (string)($ex['status'] ?? '') !== 'rejected') {
+        $justRejected = true;
+    }
     $stmt = db()->prepare(
         'UPDATE gcv_excursions SET
           status=?, date_iso=?, departure_time=?, departure_city_id=?, attraction_id=?, guide_user_id=?,
-          price_cents=?, quorum=?, max_people=?, booked_people=?, include_transport=?, include_entry=?, include_lunch=?,
+          price_cents=?, quorum=?, max_people=?, booked_people=?, preconfirmed_people=?, include_transport=?, include_entry=?, include_lunch=?,
           notes_pt=?, notes_en=?, notes_es=?, cart_slug=?, updated_by=?,
           guide_payout_planned_cents=?, guide_net_cents=?, platform_margin_cents=?,
-          business_mode=COALESCE(business_mode, \'ADMINISTRATIVE\')
+          business_mode=COALESCE(business_mode, \'ADMINISTRATIVE\'),
+          approved_at=?, approved_by=?
          WHERE id=?'
     );
     $stmt->execute([
@@ -300,8 +377,9 @@ if ($method === 'PUT') {
             : $ex['guide_user_id'],
         $priceCents,
         $quorum,
-        (int)($body['max_people'] ?? $ex['max_people']),
-        (int)($body['booked_people'] ?? $ex['booked_people']),
+        $maxPeople,
+        $bookedPeople,
+        $preconfirmed,
         array_key_exists('include_transport', $body) ? (!empty($body['include_transport']) ? 1 : 0) : (int)$ex['include_transport'],
         array_key_exists('include_entry', $body) ? (!empty($body['include_entry']) ? 1 : 0) : (int)$ex['include_entry'],
         array_key_exists('include_lunch', $body) ? (!empty($body['include_lunch']) ? 1 : 0) : (int)$ex['include_lunch'],
@@ -315,8 +393,25 @@ if ($method === 'PUT') {
         $guidePayout,
         $guidePayout,
         $margin,
+        $approvedAt,
+        $approvedBy,
         $id,
     ]);
+    if (array_key_exists('meeting_point', $body)) {
+        $mp = gcv_meeting_point_from_body($body, true);
+        if (isset($mp['error'])) {
+            http_response_code(400);
+            echo json_encode(['ok' => false, 'error' => $mp['error']]);
+            exit;
+        }
+        gcv_excursion_save_meeting_point(
+            $id,
+            (string)$mp['point'],
+            $mp['place_id'] ?? null,
+            $mp['lat'] ?? null,
+            $mp['lng'] ?? null
+        );
+    }
     try {
         gcv_excursion_save_attractions($id, $attrIds);
     } catch (Throwable $e) {
@@ -328,6 +423,17 @@ if ($method === 'PUT') {
     $stmt->execute([$id]);
     $after = $stmt->fetch();
     gcv_audit_diff('excursion', $id, $ex, $after ?: [], (int)$admin['id'], GcvCreatedBy::ADMIN);
+    if ($justPublished) {
+        gcv_admin_notify_guide_published($id, $status);
+    }
+    if ($justRejected) {
+        $reason = trim((string)($body['rejection_reason'] ?? $ex['rejection_reason'] ?? ''));
+        try {
+            gcv_ops_notify_guide_rejected($id, $reason);
+        } catch (Throwable $e) {
+            error_log('notify guide rejected cms: ' . $e->getMessage());
+        }
+    }
     echo json_encode(['ok' => true, 'data' => gcv_excursion_enrich($after)]);
     exit;
 }
@@ -350,6 +456,12 @@ if ($method === 'DELETE') {
         exit;
     }
     gcv_audit_log('excursion', $id, 'soft_delete', (int)$admin['id'], 'deleted_at', null, date('c'), GcvCreatedBy::ADMIN);
+    try {
+        require_once dirname(__DIR__) . '/helpers/notify_ops.php';
+        gcv_ops_notify_tour_cancelled($id, 'admin');
+    } catch (Throwable $e) {
+        error_log('notify admin tour cancel: ' . $e->getMessage());
+    }
     echo json_encode(['ok' => true, 'deleted' => $id, 'soft' => true]);
     exit;
 }

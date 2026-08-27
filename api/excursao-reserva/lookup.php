@@ -90,4 +90,35 @@ if (!empty($res['incl_excl']) && is_array($res['incl_excl'])) {
 if (!empty($res['packages']) && is_array($res['packages'])) {
     $payload['packages'] = $res['packages'];
 }
+
+$payload['can_cancel'] = false;
+if ($status === 'PAID') {
+    try {
+        require_once dirname(__DIR__) . '/helpers/db.php';
+        require_once dirname(__DIR__) . '/helpers/excursion_status.php';
+        $st = db()->prepare('SELECT excursion_id, sale_status FROM gcv_sales WHERE reservation_id = ? AND deleted_at IS NULL LIMIT 1');
+        $st->execute([$reservationId]);
+        $saleRow = $st->fetch(PDO::FETCH_ASSOC);
+        if ($saleRow && ($saleRow['sale_status'] ?? '') === 'PAID') {
+            $excId = (int)($saleRow['excursion_id'] ?? 0);
+            $life = 'em_formacao';
+            if ($excId > 0) {
+                $ex = db()->prepare('SELECT * FROM gcv_excursions WHERE id = ? LIMIT 1');
+                $ex->execute([$excId]);
+                $excRow = $ex->fetch(PDO::FETCH_ASSOC);
+                if ($excRow) {
+                    $life = gcv_resolve_excursion_lifecycle($excRow);
+                    $payload['lifecycle'] = $life;
+                    $today = (new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo')))->format('Y-m-d');
+                    $payload['can_cancel'] = in_array($life, ['em_formacao', 'confirmada'], true)
+                        && (string)($excRow['date_iso'] ?? '') >= $today;
+                }
+            } else {
+                $payload['can_cancel'] = true;
+            }
+        }
+    } catch (Throwable $e) {
+        // lookup continua sem cancel
+    }
+}
 echo json_encode($payload);

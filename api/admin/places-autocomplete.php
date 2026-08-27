@@ -2,74 +2,44 @@
 declare(strict_types=1);
 
 /**
- * Proxy Places Autocomplete (New) — evita expor a chave no browser se preferir.
- * GET ?q=Alto+Paraiso
- *
- * Requer GOOGLE_PLACES_API_KEY no .env (Places API / Places API New).
+ * Proxy Places Autocomplete (compat admin).
+ * Preferir /api/places/autocomplete.php (admin + guia).
  */
 require_once __DIR__ . '/../helpers/db.php';
 require_once __DIR__ . '/../helpers/auth.php';
+require_once __DIR__ . '/../helpers/google_places.php';
 
 header('Content-Type: application/json; charset=utf-8');
 require_admin();
 
 $q = trim((string)($_GET['q'] ?? ''));
-if (mb_strlen($q) < 2) {
-    echo json_encode(['ok' => true, 'data' => ['predictions' => []]]);
-    exit;
+$cityId = (int)($_GET['city_id'] ?? 0);
+$bias = null;
+if ($cityId > 0) {
+    try {
+        $st = db()->prepare('SELECT name, lat, lng FROM gcv_cities WHERE id = ? AND status = \'active\' LIMIT 1');
+        $st->execute([$cityId]);
+        $city = $st->fetch(PDO::FETCH_ASSOC);
+        if ($city) {
+            $bias = [
+                'city' => (string)($city['name'] ?? ''),
+                'lat' => isset($city['lat']) && $city['lat'] !== null && $city['lat'] !== '' ? (float)$city['lat'] : null,
+                'lng' => isset($city['lng']) && $city['lng'] !== null && $city['lng'] !== '' ? (float)$city['lng'] : null,
+            ];
+        }
+    } catch (Throwable $e) {
+        $bias = null;
+    }
 }
-
-$key = $_ENV['GOOGLE_PLACES_API_KEY'] ?? $_ENV['GOOGLE_MAPS_API_KEY'] ?? '';
-if ($key === '') {
-    http_response_code(503);
+$result = gcv_places_autocomplete($q, 'pt-BR', $bias);
+if (!$result['ok']) {
+    http_response_code(isset($result['detail']) ? 502 : 503);
     echo json_encode([
         'ok' => false,
-        'error' => 'Configure GOOGLE_PLACES_API_KEY no api/.env (Google Cloud → Places API).',
+        'error' => $result['error'] ?? 'erro',
         'how' => 'https://developers.google.com/maps/documentation/places/web-service/autocomplete',
-    ]);
+        'detail' => $result['detail'] ?? null,
+    ], JSON_UNESCAPED_UNICODE);
     exit;
 }
-
-// Places API (New) autocomplete
-$payload = json_encode([
-    'input' => $q,
-    'languageCode' => 'pt-BR',
-    'includedRegionCodes' => ['br'],
-], JSON_UNESCAPED_UNICODE);
-
-$ch = curl_init('https://places.googleapis.com/v1/places:autocomplete');
-curl_setopt_array($ch, [
-    CURLOPT_POST => true,
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_HTTPHEADER => [
-        'Content-Type: application/json',
-        'X-Goog-Api-Key: ' . $key,
-        'X-Goog-FieldMask: suggestions.placePrediction.placeId,suggestions.placePrediction.text,suggestions.placePrediction.structuredFormat',
-    ],
-    CURLOPT_POSTFIELDS => $payload,
-    CURLOPT_TIMEOUT => 12,
-]);
-$raw = curl_exec($ch);
-$code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-curl_close($ch);
-
-$data = json_decode((string)$raw, true);
-if ($code >= 400 || !is_array($data)) {
-    http_response_code(502);
-    echo json_encode(['ok' => false, 'error' => 'Falha no Google Places', 'detail' => $data ?: $raw]);
-    exit;
-}
-
-$out = [];
-foreach (($data['suggestions'] ?? []) as $s) {
-    $p = $s['placePrediction'] ?? null;
-    if (!$p) continue;
-    $out[] = [
-        'place_id' => $p['placeId'] ?? '',
-        'description' => $p['text']['text'] ?? '',
-        'main_text' => $p['structuredFormat']['mainText']['text'] ?? '',
-        'secondary_text' => $p['structuredFormat']['secondaryText']['text'] ?? '',
-    ];
-}
-
-echo json_encode(['ok' => true, 'data' => ['predictions' => $out]]);
+echo json_encode(['ok' => true, 'data' => ['predictions' => $result['predictions'] ?? []]], JSON_UNESCAPED_UNICODE);

@@ -33,6 +33,89 @@
       .replace(/"/g, '&quot;');
   }
 
+  function icoPencil() {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+  }
+
+  function icoTrash() {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>';
+  }
+
+  function cmsIconEdit(attrHtml) {
+    return '<button type="button" class="gcv-cms-icon-btn" ' + attrHtml + ' title="Editar" aria-label="Editar">' + icoPencil() + '</button>';
+  }
+
+  function cmsIconDel(attrHtml) {
+    return '<button type="button" class="gcv-cms-icon-btn gcv-cms-icon-btn--danger" ' + attrHtml + ' title="Excluir" aria-label="Excluir">' + icoTrash() + '</button>';
+  }
+
+  function cmsRowActions(editAttrHtml, delAttrHtml) {
+    return (
+      '<div class="gcv-cms-row-actions">' +
+      cmsIconEdit(editAttrHtml) +
+      (delAttrHtml ? cmsIconDel(delAttrHtml) : '') +
+      '</div>'
+    );
+  }
+
+  function bindRowDelete(list, attr, url, reload) {
+    if (!list) return;
+    list.querySelectorAll('[' + attr + ']').forEach(function (btn) {
+      btn.onclick = function () {
+        var id = parseInt(btn.getAttribute(attr), 10);
+        var label = btn.getAttribute('data-del-label') || ('#' + id);
+        if (!confirm('Excluir\n' + label + '?\n\nEsta ação não pode ser desfeita.')) return;
+        btn.disabled = true;
+        sendJson('DELETE', url, { id: id }, function (e, r) {
+          btn.disabled = false;
+          if (!r || !r.ok) {
+            alert((r && r.error) || 'Erro ao excluir');
+            return;
+          }
+          reload();
+        });
+      };
+    });
+  }
+
+  function pad2(n) {
+    return (n < 10 ? '0' : '') + String(n);
+  }
+
+  function timeSelectHtml(hourId, minId, selectedHHmm) {
+    var raw = String(selectedHHmm || '10:00');
+    var parts = raw.split(':');
+    var h = parseInt(parts[0], 10);
+    var m = parseInt(parts[1], 10);
+    if (!Number.isFinite(h) || h < 0 || h > 23) h = 10;
+    if (!Number.isFinite(m) || m < 0) m = 0;
+    m = Math.round(m / 10) * 10;
+    if (m >= 60) m = 50;
+    var hours = '';
+    var i;
+    for (i = 0; i < 24; i++) {
+      hours += '<option value="' + pad2(i) + '"' + (i === h ? ' selected' : '') + '>' + pad2(i) + 'h</option>';
+    }
+    var mins = '';
+    [0, 10, 20, 30, 40, 50].forEach(function (mm) {
+      mins += '<option value="' + pad2(mm) + '"' + (mm === m ? ' selected' : '') + '>' + pad2(mm) + '</option>';
+    });
+    return (
+      '<div class="gcv-dash-time">' +
+      '<select class="gcv-dash-select gcv-dash-time__h" id="' + hourId + '" required aria-label="Hora">' + hours + '</select>' +
+      '<span class="gcv-dash-time__sep" aria-hidden="true">:</span>' +
+      '<select class="gcv-dash-select gcv-dash-time__m" id="' + minId + '" required aria-label="Minutos">' + mins + '</select>' +
+      '</div>'
+    );
+  }
+
+  function readTimeSelect(hourId, minId) {
+    var h = root(hourId);
+    var m = root(minId);
+    if (!h || !m || !h.value || !m.value) return '';
+    return h.value + ':' + m.value;
+  }
+
   function root(id) {
     return document.getElementById(id);
   }
@@ -90,8 +173,12 @@
         return (
           '<article class="gcv-cms-row">' +
           '<div><strong>' + esc(c.name) + '</strong><div class="gcv-cms-muted">' + esc(c.formatted_address || (c.state + ' / ' + c.country)) + '</div></div>' +
-          '<button type="button" class="gcv-dash-btn gcv-dash-btn--sm" data-edit-city="' + c.id + '">Editar</button>' +
-          '</article>'
+          '<div class="gcv-cms-row-side">' +
+          cmsRowActions(
+            'data-edit-city="' + c.id + '"',
+            'data-del-city="' + c.id + '" data-del-label="' + esc(c.name) + '"'
+          ) +
+          '</div></article>'
         );
       }).join('');
       list.querySelectorAll('[data-edit-city]').forEach(function (btn) {
@@ -101,6 +188,7 @@
           openCityForm(city || null);
         };
       });
+      bindRowDelete(list, 'data-del-city', '/api/admin/cities.php', renderCities);
     });
   }
 
@@ -202,8 +290,12 @@
           '<article class="gcv-cms-row">' +
           '<div><strong>' + esc(a.title_pt) + '</strong>' +
           '<div class="gcv-cms-muted">/' + esc(a.slug) + ' · ' + esc(a.status) + '</div></div>' +
-          '<button type="button" class="gcv-dash-btn gcv-dash-btn--sm" data-edit-article="' + a.id + '">Editar</button>' +
-          '</article>'
+          '<div class="gcv-cms-row-side">' +
+          cmsRowActions(
+            'data-edit-article="' + a.id + '"',
+            'data-del-article="' + a.id + '" data-del-label="' + esc(a.title_pt) + '"'
+          ) +
+          '</div></article>'
         );
       }).join('');
       list.querySelectorAll('[data-edit-article]').forEach(function (btn) {
@@ -213,6 +305,7 @@
           });
         };
       });
+      bindRowDelete(list, 'data-del-article', '/api/admin/articles.php', renderArticles);
     });
   }
 
@@ -278,7 +371,12 @@
         '<article class="gcv-cms-row"><div><strong>' + esc(a.title_pt) + '</strong>' +
         '<div class="gcv-cms-muted">/' + esc(a.slug) + ' · ' + esc(a.status) +
         (a.entry_price_label ? ' · ' + esc(a.entry_price_label) : '') + '</div></div>' +
-        '<button type="button" class="gcv-dash-btn gcv-dash-btn--sm" data-edit-attr="' + a.id + '">Editar</button></article>'
+        '<div class="gcv-cms-row-side">' +
+        cmsRowActions(
+          'data-edit-attr="' + a.id + '"',
+          'data-del-attr="' + a.id + '" data-del-label="' + esc(a.title_pt) + '"'
+        ) +
+        '</div></article>'
       );
     }).join('') : '<p>Nenhum atrativo. Use <strong>Importar do site</strong> para carregar os 18 atrativos atuais.</p>';
     list.querySelectorAll('[data-edit-attr]').forEach(function (btn) {
@@ -287,6 +385,11 @@
           if (r && r.ok) openAttractionForm(r.data);
         });
       };
+    });
+    bindRowDelete(list, 'data-del-attr', '/api/admin/attractions.php', function () {
+      get('/api/admin/attractions.php', function (err, res) {
+        paintAttractionsList((res && res.data && res.data.attractions) || []);
+      });
     });
   }
 
@@ -503,7 +606,9 @@
         (g.base_city_name ? ' · ' + esc(g.base_city_name) : '') +
         (langs ? ' · ' + esc(langs) : '') +
         ' · ' + esc(g.status || '') + '</div></div>' +
-        '<button type="button" class="gcv-dash-btn gcv-dash-btn--sm" data-edit-guide="' + g.user_id + '">Editar</button></article>'
+        '<div class="gcv-cms-row-side">' +
+        cmsRowActions('data-edit-guide="' + g.user_id + '"') +
+        '</div></article>'
       );
     }).join('') : '<p>Nenhum guia. Use <strong>Importar Diego Navi</strong>.</p>';
     list.querySelectorAll('[data-edit-guide]').forEach(function (btn) {
@@ -851,18 +956,94 @@
         return;
       }
       var rows = (res.data && res.data.excursions) || [];
+      rows = rows.slice().sort(function (a, b) {
+        var pa = a.status === 'pending_approval' ? 0 : 1;
+        var pb = b.status === 'pending_approval' ? 0 : 1;
+        if (pa !== pb) return pa - pb;
+        return String(a.date_iso || '').localeCompare(String(b.date_iso || ''));
+      });
       list.innerHTML = rows.length ? rows.map(function (e) {
+        var pending = e.status === 'pending_approval';
+        var rejected = e.status === 'rejected';
+        var approved = e.status === 'published' || e.status === 'soldout';
+        var lead = '';
+        if (pending) {
+          lead =
+            '<span class="gcv-cms-row__decide">' +
+            '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary gcv-dash-btn--sm" data-approve-exc="' + e.id + '">Aprovar</button>' +
+            '<button type="button" class="gcv-dash-btn gcv-dash-btn--danger gcv-dash-btn--sm" data-reject-exc="' + e.id + '">Recusar</button>' +
+            '</span>';
+        } else if (approved) {
+          lead = '<span class="gcv-exc-status gcv-exc-status--ok">Aprovada</span>';
+        } else if (rejected) {
+          lead = '<span class="gcv-exc-status gcv-exc-status--no">Recusada</span>';
+        }
+        var metaStatus = pending
+          ? '<strong>aguardando sua aprovação</strong>'
+          : (approved || rejected ? '' : esc(e.status));
         return (
-          '<article class="gcv-cms-row"><div><strong>' + esc(e.date_iso) + ' · ' + esc(e.attraction_title || '') + '</strong>' +
+          '<article class="gcv-cms-row' + (pending ? ' gcv-cms-row--pending' : '') + '">' +
+          '<div class="gcv-cms-row__main">' +
+          '<div class="gcv-cms-row__titleline">' + lead +
+          '<strong>' + esc(e.date_iso) + ' · ' + esc(e.attraction_title || '') + '</strong></div>' +
           '<div class="gcv-cms-muted">' + esc(e.departure_city_name || '') + ' · ' + esc(String(e.departure_time || '').slice(0, 5)) +
-          ' · R$ ' + esc(centsToMoney(e.price_cents)) + ' · ' + esc(e.status) +
+          ' · R$ ' + esc(centsToMoney(e.price_cents)) +
+          (metaStatus ? ' · ' + metaStatus : '') +
           (e.guide_name ? ' · guia: ' + esc(e.guide_name) : ' · sem guia') +
           (e.attraction_ids && e.attraction_ids.length > 1 ? ' · ' + e.attraction_ids.length + ' atrativos' : '') +
           '</div></div>' +
-          '<button type="button" class="gcv-dash-btn gcv-dash-btn--sm" data-edit-exc="' + e.id + '">Editar</button>' +
-          '<button type="button" class="gcv-dash-btn gcv-dash-btn--sm gcv-dash-btn--danger" data-del-exc="' + e.id + '" data-del-label="' + esc(e.date_iso + ' · ' + (e.attraction_title || '')) + '">Excluir</button></article>'
+          '<div class="gcv-cms-row-side">' +
+          cmsRowActions(
+            'data-edit-exc="' + e.id + '"',
+            'data-del-exc="' + e.id + '" data-del-label="' + esc(e.date_iso + ' · ' + (e.attraction_title || '')) + '"'
+          ) +
+          '</div></article>'
         );
       }).join('') : '<p>Nenhuma excursão. Clique em <strong>+ Nova saída</strong> e escolha de 1 a 4 atrativos.</p>';
+      list.querySelectorAll('[data-approve-exc]').forEach(function (btn) {
+        btn.onclick = function () {
+          if (!confirm('Aprovar este passeio e publicar no site?')) return;
+          btn.disabled = true;
+          sendJson('POST', '/api/admin/excursion-approvals.php', {
+            id: parseInt(btn.getAttribute('data-approve-exc'), 10),
+            action: 'approve',
+          }, function (e, r) {
+            btn.disabled = false;
+            if (!r || !r.ok) {
+              alert((r && r.error) || 'Erro ao aprovar');
+              return;
+            }
+            alert('Passeio aprovado. O guia foi avisado no WhatsApp cadastrado.');
+            renderExcursions();
+            if (window.GcvDashboard && typeof window.GcvDashboard.refreshApprovalBadge === 'function') {
+              window.GcvDashboard.refreshApprovalBadge();
+            }
+          });
+        };
+      });
+      list.querySelectorAll('[data-reject-exc]').forEach(function (btn) {
+        btn.onclick = function () {
+          var reason = prompt('Motivo da rejeição:');
+          if (!reason) return;
+          btn.disabled = true;
+          sendJson('POST', '/api/admin/excursion-approvals.php', {
+            id: parseInt(btn.getAttribute('data-reject-exc'), 10),
+            action: 'reject',
+            rejection_reason: reason,
+          }, function (e, r) {
+            btn.disabled = false;
+            if (!r || !r.ok) {
+              alert((r && r.error) || 'Erro ao rejeitar');
+              return;
+            }
+            alert('Passeio recusado. O guia foi avisado no WhatsApp' + (reason ? ' com a justificativa.' : '.'));
+            renderExcursions();
+            if (window.GcvDashboard && typeof window.GcvDashboard.refreshApprovalBadge === 'function') {
+              window.GcvDashboard.refreshApprovalBadge();
+            }
+          });
+        };
+      });
       list.querySelectorAll('[data-edit-exc]').forEach(function (btn) {
         btn.onclick = function () {
           get('/api/admin/excursions.php?id=' + btn.getAttribute('data-edit-exc'), function (e, r) {
@@ -903,14 +1084,36 @@
             '<h3>' + (ex ? 'Editar saída' : 'Nova saída de excursão') + '</h3>' +
             '<div class="gcv-dash-field-row">' +
             '<div class="gcv-dash-field"><label class="gcv-dash-label">Data *</label><input class="gcv-dash-input" id="ex-date" type="date" value="' + esc(ex && ex.date_iso || '') + '" /></div>' +
-            '<div class="gcv-dash-field"><label class="gcv-dash-label">Hora *</label><input class="gcv-dash-input" id="ex-time" type="time" value="' + esc(ex && String(ex.departure_time || '').slice(0, 5) || '') + '" /></div>' +
-            '<div class="gcv-dash-field"><label class="gcv-dash-label">Status</label><select class="gcv-dash-select" id="ex-status"><option value="draft">Rascunho</option><option value="published">Publicada</option><option value="soldout">Esgotada</option><option value="cancelled">Cancelada</option></select></div>' +
+            '<div class="gcv-dash-field"><label class="gcv-dash-label">Horário de saída *</label>' +
+            timeSelectHtml('ex-time-h', 'ex-time-m', ex && String(ex.departure_time || '').slice(0, 5) || '10:00') + '</div>' +
+            '<div class="gcv-dash-field"><label class="gcv-dash-label">Status</label><select class="gcv-dash-select" id="ex-status">' +
+            [['draft','Rascunho'],['pending_approval','Aguardando aprovação'],['published','Publicada'],['soldout','Esgotada'],['rejected','Rejeitada'],['cancelled','Cancelada']].map(function (opt) {
+              return '<option value="' + opt[0] + '">' + opt[1] + '</option>';
+            }).join('') +
+            '</select></div>' +
             '</div>' +
             '<div class="gcv-dash-field">' +
             '<label class="gcv-dash-label">Atrativos do dia * <span class="gcv-cms-muted" id="ex-attr-count"></span></label>' +
             '<div id="ex-attr-picker-wrap">' + renderAttractionPickerMulti(attrs, selectedIds) + '</div>' +
             '</div>' +
             '<div class="gcv-dash-field"><label class="gcv-dash-label">Cidade de saída *</label><select class="gcv-dash-select" id="ex-city"><option value="">Selecione…</option>' + cityOptionsHtml(ex && ex.departure_city_id) + '</select></div>' +
+            '<div class="gcv-dash-field"><label class="gcv-dash-label">Ponto de encontro *</label>' +
+            '<div class="gcv-meeting-point">' +
+            '<div class="gcv-meeting-point__row">' +
+            '<input class="gcv-dash-input" id="ex-meeting" maxlength="300" autocomplete="off" value="' + esc(ex && ex.meeting_point || '') + '" placeholder="Digite o endereço — ex.: Padaria Santa Maria" />' +
+            '<button type="button" class="gcv-dash-btn gcv-dash-btn--sm gcv-meeting-gps-btn" id="ex-meeting-gps-btn" hidden>Usar minha localização</button>' +
+            '</div>' +
+            '<div id="ex-meeting-suggest" class="gcv-cms-suggest"></div>' +
+            '<p class="gcv-cms-muted" id="ex-meeting-gps">' +
+            (ex && ex.meeting_point_lat != null && ex.meeting_point_lng != null
+              ? 'GPS gravado'
+              : 'Digite o endereço e escolha uma sugestão.') +
+            '</p>' +
+            '<div class="gcv-meeting-map" id="ex-meeting-map" hidden><iframe class="gcv-meeting-map__frame" title="Mapa do ponto de encontro" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>' +
+            '<input type="hidden" id="ex-meeting-place" value="' + esc(ex && ex.meeting_point_place_id || '') + '" />' +
+            '<input type="hidden" id="ex-meeting-lat" value="' + esc(ex && ex.meeting_point_lat != null ? ex.meeting_point_lat : '') + '" />' +
+            '<input type="hidden" id="ex-meeting-lng" value="' + esc(ex && ex.meeting_point_lng != null ? ex.meeting_point_lng : '') + '" />' +
+            '</div></div>' +
             '<div class="gcv-dash-field"><label class="gcv-dash-label">Guia * (obrigatório ao publicar)</label><select class="gcv-dash-select" id="ex-guide"><option value="">Selecione o guia…</option>' +
             (guides.length ? guides.map(function (g) {
               var label = (g.full_name || g.nickname || g.name || '') + (g.nickname && g.full_name ? ' (' + g.nickname + ')' : '');
@@ -922,21 +1125,49 @@
             '<div class="gcv-dash-field-row">' +
             '<div class="gcv-dash-field"><label class="gcv-dash-label">Valor/pessoa final (R$) *</label><input class="gcv-dash-input" id="ex-price" value="' + esc(ex ? centsToMoney(ex.price_cents) : '') + '" /></div>' +
             '<div class="gcv-dash-field"><label class="gcv-dash-label">Repasse previsto ao guia (R$) *</label><input class="gcv-dash-input" id="ex-guide-payout" value="' + esc(ex ? centsToMoney(ex.guide_payout_planned_cents != null ? ex.guide_payout_planned_cents : ex.guide_net_cents) : '') + '" /></div>' +
-            '<div class="gcv-dash-field"><label class="gcv-dash-label">Quorum * (mín. 4)</label><input class="gcv-dash-input" id="ex-quorum" type="number" min="4" value="' + esc(ex && ex.quorum || 4) + '" /></div>' +
-            '<div class="gcv-dash-field"><label class="gcv-dash-label">Máximo *</label><input class="gcv-dash-input" id="ex-max" type="number" min="1" value="' + esc(ex && ex.max_people || 10) + '" /></div>' +
+            '<div class="gcv-dash-field"><label class="gcv-dash-label">Quórum * (0 a 4)</label><input class="gcv-dash-input" id="ex-quorum" type="number" min="0" max="4" value="' + esc(ex && ex.quorum != null ? ex.quorum : 4) + '" /></div>' +
+            '<div class="gcv-dash-field"><label class="gcv-dash-label">Pessoas confirmadas (0 a 5)</label><input class="gcv-dash-input" id="ex-preconfirmed" type="number" min="0" max="5" value="' + esc(ex && ex.preconfirmed_people != null ? ex.preconfirmed_people : 0) + '" /></div>' +
+            '<div class="gcv-dash-field"><label class="gcv-dash-label">Vagas * (máximo até 12)</label><input class="gcv-dash-input" id="ex-max" type="number" min="1" max="12" value="' + esc(ex && ex.max_people || 10) + '" /></div>' +
             '<div class="gcv-dash-field"><label class="gcv-dash-label">Inscritos</label><input class="gcv-dash-input" id="ex-booked" type="number" min="0" value="' + esc(ex && ex.booked_people || 0) + '" /></div>' +
             '</div>' +
+            '<label class="gcv-dash-label"><input type="checkbox" id="ex-transport"' + (ex && Number(ex.include_transport) ? ' checked' : '') + ' /> Inclui transporte</label> ' +
+            '<label class="gcv-dash-label"><input type="checkbox" id="ex-entry"' + (ex && Number(ex.include_entry) ? ' checked' : '') + ' /> Inclui ingresso</label>' +
             '<p class="gcv-cms-muted" style="margin:0 0 0.75rem;">Modo ADMINISTRATIVE: você define o preço final e o repasse ao guia. A margem da plataforma é registrada automaticamente.</p>' +
             '<div class="gcv-dash-field"><label class="gcv-dash-label">Slug do carrinho (opcional)</label><input class="gcv-dash-input" id="ex-cart" value="' + esc(ex && ex.cart_slug || '') + '" placeholder="ex.: mirante-da-janela-2026-07-09" /></div>' +
             '<div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.75rem;">' +
             '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary" id="ex-save">Salvar</button>' +
             '<button type="button" class="gcv-dash-btn" id="ex-cancel">Fechar</button>' +
             (ex && ex.id
-              ? '<button type="button" class="gcv-dash-btn gcv-dash-btn--danger" id="ex-delete" style="margin-left:auto;">Excluir saída</button>'
+              ? '<button type="button" class="gcv-cms-icon-btn gcv-cms-icon-btn--danger" id="ex-delete" style="margin-left:auto;" title="Excluir" aria-label="Excluir">' + icoTrash() + '</button>'
               : '') +
             '</div>';
 
           var selected = selectedIds.slice();
+
+          (function bindMeetingPlaces() {
+            if (typeof global.gcvBindMeetingPoint !== 'function') return;
+            global.gcvBindMeetingPoint({
+              input: root('ex-meeting'),
+              box: root('ex-meeting-suggest'),
+              gpsEl: root('ex-meeting-gps'),
+              mapEl: root('ex-meeting-map'),
+              gpsBtn: root('ex-meeting-gps-btn'),
+              placeEl: root('ex-meeting-place'),
+              latEl: root('ex-meeting-lat'),
+              lngEl: root('ex-meeting-lng'),
+              getCityId: function () {
+                return root('ex-city') ? root('ex-city').value : '';
+              },
+              get: get,
+              esc: esc
+            });
+          })();
+
+          if (typeof global.gcvBindDatePicker === 'function') {
+            global.gcvBindDatePicker(root('ex-date'), {
+              min: typeof global.gcvTodayIso === 'function' ? global.gcvTodayIso() : ''
+            });
+          }
 
           function refreshPicker() {
             var wrap = root('ex-attr-picker-wrap');
@@ -984,6 +1215,37 @@
 
           bindChips();
           updateHint();
+
+          (function bindAdminAttrOverlay() {
+            var wrap = root('ex-attr-picker-wrap');
+            if (!wrap) return;
+            var field = wrap.closest('.gcv-dash-field');
+            if (!field) return;
+            var scrim = field.querySelector(':scope > .gcv-dash-attr-ac__scrim');
+            if (!scrim) {
+              scrim = document.createElement('div');
+              scrim.className = 'gcv-dash-attr-ac__scrim';
+              scrim.hidden = true;
+              field.insertBefore(scrim, field.firstChild);
+            }
+            function openOverlay() {
+              field.classList.add('is-attr-picking');
+              scrim.hidden = false;
+              document.body.classList.add('gcv-attr-picking');
+            }
+            function closeOverlay() {
+              field.classList.remove('is-attr-picking');
+              scrim.hidden = true;
+              if (!document.querySelector('.gcv-dash-attr-ac.is-open')) {
+                document.body.classList.remove('gcv-attr-picking');
+              }
+            }
+            wrap.addEventListener('click', openOverlay);
+            scrim.onmousedown = function (ev) {
+              ev.preventDefault();
+              closeOverlay();
+            };
+          })();
 
           var seedDiegoBtn = root('ex-seed-diego');
           if (seedDiegoBtn) {
@@ -1036,27 +1298,56 @@
               alert('Defina o guia antes de publicar a excursão.');
               return;
             }
-            var quorum = parseInt(root('ex-quorum').value, 10) || 0;
-            if (quorum < 4) {
-              alert('Quórum mínimo é 4 pessoas.');
+            var quorum = parseInt(root('ex-quorum').value, 10);
+            if (!Number.isFinite(quorum)) quorum = 0;
+            if (quorum < 0 || quorum > 4) {
+              alert('Quórum deve ser entre 0 e 4 pessoas.');
               return;
             }
+            var maxPeople = parseInt(root('ex-max').value, 10);
+            if (!Number.isFinite(maxPeople) || maxPeople < 1) {
+              alert('Informe o máximo de pessoas.');
+              return;
+            }
+            if (maxPeople > 12) {
+              alert('Máximo de pessoas é 12.');
+              return;
+            }
+            var meetingPoint = (root('ex-meeting') && root('ex-meeting').value || '').trim();
+            if (!meetingPoint) {
+              alert('Informe o ponto de encontro.');
+              return;
+            }
+            var timeVal = readTimeSelect('ex-time-h', 'ex-time-m');
+            if (!timeVal) {
+              alert('Informe o horário de saída.');
+              return;
+            }
+            var meetingLat = (root('ex-meeting-lat') && root('ex-meeting-lat').value || '').trim();
+            var meetingLng = (root('ex-meeting-lng') && root('ex-meeting-lng').value || '').trim();
             var payload = {
               id: ex && ex.id,
               date_iso: root('ex-date').value,
-              departure_time: root('ex-time').value,
+              departure_time: timeVal,
               status: statusVal,
               attraction_ids: selected.slice(),
               attraction_id: selected[0],
               departure_city_id: parseInt(root('ex-city').value, 10) || 0,
+              meeting_point: meetingPoint,
+              meeting_point_place_id: (root('ex-meeting-place') && root('ex-meeting-place').value || '').trim() || null,
+              meeting_point_lat: meetingLat !== '' ? meetingLat : null,
+              meeting_point_lng: meetingLng !== '' ? meetingLng : null,
               guide_user_id: guideId,
               price_cents: moneyToCents(root('ex-price').value),
               guide_payout_planned_cents: moneyToCents(root('ex-guide-payout').value),
               business_mode: 'ADMINISTRATIVE',
               created_by_origin: 'ADMIN',
               quorum: quorum,
-              max_people: parseInt(root('ex-max').value, 10) || 0,
+              max_people: maxPeople,
               booked_people: parseInt(root('ex-booked').value, 10) || 0,
+              preconfirmed_people: Math.max(0, Math.min(5, parseInt(root('ex-preconfirmed').value, 10) || 0)),
+              include_transport: !!(root('ex-transport') && root('ex-transport').checked),
+              include_entry: !!(root('ex-entry') && root('ex-entry').checked),
               cart_slug: root('ex-cart').value.trim() || null,
             };
             if ((statusVal === 'published' || statusVal === 'soldout') && !payload.guide_payout_planned_cents) {

@@ -58,6 +58,8 @@ function gcv_build_pix_receipt_email_html(array $rec, string $locale): string
             'colDest' => 'Destino',
             'colGuide' => 'Guia',
             'colDeparture' => 'Saída',
+            'colMeeting' => 'Ponto de encontro',
+            'openMaps' => 'Abrir no Google Maps',
             'colPeople' => 'Pessoas',
             'colTotal' => 'Total',
             'financial' => 'Resumo financeiro',
@@ -70,6 +72,7 @@ function gcv_build_pix_receipt_email_html(array $rec, string $locale): string
             'emitted' => 'Emitido em',
             'contact' => 'Contato',
             'buyer' => 'Cliente',
+            'buyerName' => 'Nome',
             'buyerEmail' => 'E-mail',
             'buyerPhone' => 'Telefone / WhatsApp',
             'confirm' => 'Ver confirmação',
@@ -83,7 +86,9 @@ function gcv_build_pix_receipt_email_html(array $rec, string $locale): string
             'colDate' => 'Date',
             'colDest' => 'Destination',
             'colGuide' => 'Guide',
-            'colDeparture' => 'Meeting point',
+            'colDeparture' => 'Departure',
+            'colMeeting' => 'Meeting point',
+            'openMaps' => 'Open in Google Maps',
             'colPeople' => 'People',
             'colTotal' => 'Total',
             'financial' => 'Payment summary',
@@ -96,6 +101,7 @@ function gcv_build_pix_receipt_email_html(array $rec, string $locale): string
             'emitted' => 'Issued on',
             'contact' => 'Contact',
             'buyer' => 'Customer',
+            'buyerName' => 'Name',
             'buyerEmail' => 'Email',
             'buyerPhone' => 'Phone / WhatsApp',
             'confirm' => 'View confirmation',
@@ -110,6 +116,8 @@ function gcv_build_pix_receipt_email_html(array $rec, string $locale): string
             'colDest' => 'Destino',
             'colGuide' => 'Guía',
             'colDeparture' => 'Salida',
+            'colMeeting' => 'Punto de encuentro',
+            'openMaps' => 'Abrir en Google Maps',
             'colPeople' => 'Personas',
             'colTotal' => 'Total',
             'financial' => 'Resumen financiero',
@@ -122,6 +130,7 @@ function gcv_build_pix_receipt_email_html(array $rec, string $locale): string
             'emitted' => 'Emitido el',
             'contact' => 'Contacto',
             'buyer' => 'Cliente',
+            'buyerName' => 'Nombre',
             'buyerEmail' => 'Correo',
             'buyerPhone' => 'Teléfono / WhatsApp',
             'confirm' => 'Ver confirmación',
@@ -162,6 +171,35 @@ function gcv_build_pix_receipt_email_html(array $rec, string $locale): string
         $qty = max(1, (int)($t['qty'] ?? 1));
         $unit = (int)($t['valorUnit'] ?? $amount);
         $dep = trim((string)($t['embarque'] ?? '') . ((isset($t['hora']) && $t['hora'] !== '') ? ' · ' . $t['hora'] : ''));
+        $meeting = trim((string)($t['meetingPoint'] ?? $t['meeting_point'] ?? ''));
+        if (!function_exists('gcv_maps_url_from_meeting')) {
+            require_once __DIR__ . '/google_places.php';
+        }
+        $mapsUrl = trim((string)($t['meetingMapsUrl'] ?? ''));
+        if ($mapsUrl === '' && $meeting !== '') {
+            $mapsUrl = gcv_maps_url_from_meeting(
+                $meeting,
+                $t['meetingLat'] ?? $t['meeting_point_lat'] ?? null,
+                $t['meetingLng'] ?? $t['meeting_point_lng'] ?? null,
+                isset($t['meeting_point_place_id']) ? (string)$t['meeting_point_place_id'] : null
+            );
+        }
+        $meetingCell = $meeting !== '' ? htmlspecialchars($meeting, ENT_QUOTES, 'UTF-8') : '—';
+        if ($meeting !== '' && $mapsUrl !== '') {
+            $meetingCell .= '<br><a href="' . htmlspecialchars($mapsUrl, ENT_QUOTES, 'UTF-8')
+                . '" target="_blank" rel="noopener noreferrer" style="color:#0f766e;font-size:11px;font-weight:700;">'
+                . htmlspecialchars($L['openMaps'], ENT_QUOTES, 'UTF-8') . '</a>';
+        }
+        $guideName = trim((string)($t['guiaNome'] ?? ''));
+        $guidePhone = trim((string)($t['guiaTelefone'] ?? $t['guia_telefone'] ?? ''));
+        if ($guideName !== '' && $guidePhone !== '') {
+            $guideCell = htmlspecialchars($guideName, ENT_QUOTES, 'UTF-8')
+                . '<br><span style="color:#64748b;font-size:11px;">' . htmlspecialchars($guidePhone, ENT_QUOTES, 'UTF-8') . '</span>';
+        } elseif ($guideName !== '') {
+            $guideCell = htmlspecialchars($guideName, ENT_QUOTES, 'UTF-8');
+        } else {
+            $guideCell = '—';
+        }
         $weekday = trim((string)($t['weekday'] ?? ''));
         $dateCell = gcv_pix_trip_date_label($t);
         if ($weekday !== '') {
@@ -170,14 +208,15 @@ function gcv_build_pix_receipt_email_html(array $rec, string $locale): string
         $tripRows .= '<tr>'
             . '<td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;font-size:12px;">' . htmlspecialchars($dateCell, ENT_QUOTES, 'UTF-8') . '</td>'
             . '<td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;font-size:12px;">' . htmlspecialchars(gcv_pix_trip_destino($t), ENT_QUOTES, 'UTF-8') . '</td>'
-            . '<td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;font-size:12px;">' . htmlspecialchars((string)($t['guiaNome'] ?? '—'), ENT_QUOTES, 'UTF-8') . '</td>'
+            . '<td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;font-size:12px;">' . $guideCell . '</td>'
             . '<td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;font-size:12px;">' . htmlspecialchars($dep !== '' ? $dep : '—', ENT_QUOTES, 'UTF-8') . '</td>'
+            . '<td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;font-size:12px;">' . $meetingCell . '</td>'
             . '<td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center;font-size:12px;">' . htmlspecialchars((string)$qty, ENT_QUOTES, 'UTF-8') . '</td>'
             . '<td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-size:12px;font-weight:700;">' . htmlspecialchars(gcv_pix_receipt_format_brl($unit * $qty), ENT_QUOTES, 'UTF-8') . '</td>'
             . '</tr>';
     }
     if ($tripRows === '') {
-        $tripRows = '<tr><td colspan="6" style="padding:8px;color:#64748b;">—</td></tr>';
+        $tripRows = '<tr><td colspan="7" style="padding:8px;color:#64748b;">—</td></tr>';
     }
 
     $inclHtml = '';
@@ -191,14 +230,21 @@ function gcv_build_pix_receipt_email_html(array $rec, string $locale): string
 
     $received = $st === 'PAID' ? gcv_pix_receipt_format_brl($amount) : gcv_pix_receipt_format_brl(0);
     $receivedLabel = $st === 'PAID' ? $L['finReceived'] : $L['finTotal'];
+    $buyerName = trim((string)($rec['name'] ?? $rec['nome'] ?? $rec['customer_name'] ?? $rec['buyer_name'] ?? ''));
     $buyerEmail = trim((string)($rec['email'] ?? $rec['buyer_email'] ?? ''));
     $buyerPhone = trim((string)($rec['phone'] ?? $rec['telefone'] ?? $rec['buyer_phone'] ?? ''));
     $buyerBlock = '';
-    if ($buyerEmail !== '' || $buyerPhone !== '') {
+    if ($buyerName !== '' || $buyerEmail !== '' || $buyerPhone !== '') {
         $buyerBlock =
             '<div style="margin:0 0 16px;padding:14px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;">'
             . '<p style="margin:0 0 6px;font-size:11px;font-weight:700;color:#1e3a8a;letter-spacing:.06em;text-transform:uppercase;">'
             . htmlspecialchars($L['buyer'], ENT_QUOTES, 'UTF-8') . '</p>';
+        if ($buyerName !== '') {
+            $buyerBlock .=
+                '<p style="margin:0 0 4px;font-size:13px;color:#334155;"><strong>'
+                . htmlspecialchars($L['buyerName'], ENT_QUOTES, 'UTF-8')
+                . ':</strong> ' . htmlspecialchars($buyerName, ENT_QUOTES, 'UTF-8') . '</p>';
+        }
         if ($buyerEmail !== '') {
             $buyerBlock .=
                 '<p style="margin:0 0 4px;font-size:13px;color:#334155;"><strong>'
@@ -228,6 +274,7 @@ function gcv_build_pix_receipt_email_html(array $rec, string $locale): string
         . '<th style="padding:10px 8px;text-align:left;font-size:11px;">' . htmlspecialchars($L['colDest'], ENT_QUOTES, 'UTF-8') . '</th>'
         . '<th style="padding:10px 8px;text-align:left;font-size:11px;">' . htmlspecialchars($L['colGuide'], ENT_QUOTES, 'UTF-8') . '</th>'
         . '<th style="padding:10px 8px;text-align:left;font-size:11px;">' . htmlspecialchars($L['colDeparture'], ENT_QUOTES, 'UTF-8') . '</th>'
+        . '<th style="padding:10px 8px;text-align:left;font-size:11px;">' . htmlspecialchars($L['colMeeting'], ENT_QUOTES, 'UTF-8') . '</th>'
         . '<th style="padding:10px 8px;text-align:center;font-size:11px;">' . htmlspecialchars($L['colPeople'], ENT_QUOTES, 'UTF-8') . '</th>'
         . '<th style="padding:10px 8px;text-align:right;font-size:11px;">' . htmlspecialchars($L['colTotal'], ENT_QUOTES, 'UTF-8') . '</th>'
         . '</tr></thead><tbody>' . $tripRows . '</tbody></table>'

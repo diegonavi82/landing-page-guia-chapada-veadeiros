@@ -763,11 +763,16 @@
           dateLabel: it.dateLabel || "",
           destino: shortDestLabel(it),
           embarque: it.embarque || "",
+          meetingPoint: it.meetingPoint || "",
+          meetingLat: it.meetingLat != null ? it.meetingLat : null,
+          meetingLng: it.meetingLng != null ? it.meetingLng : null,
+          meetingMapsUrl: it.meetingMapsUrl || "",
           hora: it.hora || "",
           qty: parseInt(String(it.qty), 10) || 1,
           cartId: it.id || "",
           valorUnit: parseInt(String(it.valorUnit), 10) || 0,
           guiaNome: it.guiaNome || "",
+          guiaTelefone: it.guiaTelefone || "",
           dateIso: it.dateIso || "",
         };
       }),
@@ -777,6 +782,10 @@
           dateLabel: it.dateLabel || "",
           destino: it.destino || shortDestLabel(it),
           embarque: it.embarque || "",
+          meetingPoint: it.meetingPoint || "",
+          meetingLat: it.meetingLat != null ? it.meetingLat : null,
+          meetingLng: it.meetingLng != null ? it.meetingLng : null,
+          meetingMapsUrl: it.meetingMapsUrl || "",
           hora: it.hora || "",
           qty: parseInt(String(it.qty), 10) || 1,
           cartId: it.id || "",
@@ -784,6 +793,7 @@
           // Não envia inclExcl cacheado: o modal regenera no idioma da página.
           inclExcl: null,
           guiaNome: it.guiaNome || "",
+          guiaTelefone: it.guiaTelefone || "",
           dateIso: it.dateIso || "",
         };
       }),
@@ -1134,6 +1144,11 @@
       if (item.embarque) existing.embarque = item.embarque;
       if (item.hora) existing.hora = item.hora;
       if (item.guiaNome) existing.guiaNome = item.guiaNome;
+      if (item.guiaTelefone) existing.guiaTelefone = item.guiaTelefone;
+      if (item.meetingPoint) existing.meetingPoint = item.meetingPoint;
+      if (item.meetingLat != null) existing.meetingLat = item.meetingLat;
+      if (item.meetingLng != null) existing.meetingLng = item.meetingLng;
+      if (item.meetingMapsUrl) existing.meetingMapsUrl = item.meetingMapsUrl;
       if (item.departureMs) existing.departureMs = item.departureMs;
       if (Array.isArray(item.destinos) && item.destinos.length) existing.destinos = item.destinos.slice();
     } else {
@@ -1149,9 +1164,14 @@
         maxQty: max,
         inclExcl: item.inclExcl || null,
         embarque: item.embarque || "",
+        meetingPoint: item.meetingPoint || "",
+        meetingLat: item.meetingLat != null ? item.meetingLat : null,
+        meetingLng: item.meetingLng != null ? item.meetingLng : null,
+        meetingMapsUrl: item.meetingMapsUrl || "",
         hora: item.hora || "",
         departureMs: item.departureMs || null,
         guiaNome: item.guiaNome || "",
+        guiaTelefone: item.guiaTelefone || "",
       });
     }
     saveItems(items);

@@ -7,7 +7,7 @@ require_once __DIR__ . '/../marketplace_schema.php';
 /**
  * Resolução de comissão por prioridade:
  * Excursão → Guia → Categoria → Cidade → Global
- * Valor padrão 16% via seed em gcv_commission_rules (nunca hardcoded no cálculo).
+ * Valor padrão 14% via seed em gcv_commission_rules (nunca hardcoded no cálculo).
  */
 
 /** @return array{rule_id:?int,pct:float,scope_type:string,label:?string} */
@@ -73,9 +73,9 @@ function gcv_commission_resolve(
 
     // Fallback extremo: settings legado (ainda no banco, não no código fixo)
     require_once __DIR__ . '/../settings.php';
-    $pct = (float)setting('platform_commission_pct', '16');
+    $pct = (float)setting('platform_commission_pct', '14');
     if ($pct <= 0) {
-        $pct = 16.0;
+        $pct = 14.0;
     }
     return [
         'rule_id' => null,

@@ -71,6 +71,9 @@ function gcv_pix_effective_status(array $reservation): string
     if ($status === 'PAID') {
         return 'PAID';
     }
+    if ($status === 'CANCELLED' || $status === 'CANCELED' || $status === 'REFUNDED') {
+        return 'CANCELLED';
+    }
     $expires = (string)($reservation['expires_at'] ?? '');
     if ($expires !== '') {
         $ts = strtotime($expires);

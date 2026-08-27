@@ -43,9 +43,36 @@
     document.querySelectorAll('.gcv-dash-section').forEach(function (s) { s.classList.remove('active'); });
     var s = document.getElementById(id);
     if (s) s.classList.add('active');
-    document.querySelectorAll('.gcv-dash-nav a').forEach(function (a) { a.classList.remove('active'); });
-    var link = document.querySelector('.gcv-dash-nav a[data-section="' + id + '"]');
-    if (link) link.classList.add('active');
+    document.querySelectorAll('.gcv-dash-nav a, .gcv-dash-bottom-nav a').forEach(function (a) { a.classList.remove('active'); });
+    document.querySelectorAll('[data-section="' + id + '"]').forEach(function (link) {
+      link.classList.add('active');
+    });
+    closeMobileNav();
+  }
+
+  function closeMobileNav() {
+    var navArea = document.getElementById('gcv-dash-nav');
+    var toggle = document.getElementById('gcv-dash-menu-toggle');
+    if (navArea) navArea.classList.remove('open');
+    if (toggle) {
+      toggle.setAttribute('aria-expanded', 'false');
+      toggle.textContent = '☰ Menu';
+    }
+  }
+
+  function labelDashTables(root) {
+    (root || document).querySelectorAll('.gcv-dash-table').forEach(function (table) {
+      var headers = [];
+      table.querySelectorAll('thead th').forEach(function (th) {
+        headers.push((th.textContent || '').trim());
+      });
+      if (!headers.length) return;
+      table.querySelectorAll('tbody tr').forEach(function (tr) {
+        Array.prototype.forEach.call(tr.children, function (td, i) {
+          if (!td.hasAttribute('data-label')) td.setAttribute('data-label', headers[i] || '');
+        });
+      });
+    });
   }
 
   /** Toast estilizado do dashboard (substitui alert nativo). */
@@ -579,6 +606,15 @@
     refresh();
   }
 
+  function refreshApprovalBadge() {
+    get('/api/admin/excursion-approvals.php', function (err, res) {
+      var n = (res && res.ok && res.data && res.data.pending) ? res.data.pending.length : 0;
+      var link = document.querySelector('#gcv-dash-nav-list [data-section="section-cms-excursions"]');
+      if (!link) return;
+      link.innerHTML = '🚌 Excursões' + (n ? ' <span class="gcv-dash-nav-badge">' + n + '</span>' : '');
+    });
+  }
+
   function loadExcursionApprovals() {
     var root = document.getElementById('admin-approvals-content');
     if (!root) return;
@@ -648,11 +684,11 @@
             var successByAction = {
               approve: {
                 title: 'Excursão aprovada',
-                message: 'A saída foi publicada e já pode aparecer no carrossel.',
+                message: 'A saída foi publicada e o guia foi avisado no WhatsApp cadastrado.',
               },
               reject: {
                 title: 'Excursão rejeitada',
-                message: 'O guia verá o status rejeitado com o motivo informado.',
+                message: 'O guia foi avisado no WhatsApp com a justificativa informada.',
               },
               request_changes: {
                 title: 'Alterações solicitadas',
@@ -660,7 +696,7 @@
               },
               edit_and_approve: {
                 title: 'Editada e aprovada',
-                message: 'Os ajustes foram salvos e a saída foi publicada.',
+                message: 'Os ajustes foram salvos, a saída foi publicada e o guia foi avisado no WhatsApp.',
               },
             };
             var copy = successByAction[action] || {
@@ -669,6 +705,7 @@
             };
             showDashToast({ type: 'success', title: copy.title, message: copy.message });
             loadExcursionApprovals();
+            refreshApprovalBadge();
           });
         });
       });
@@ -686,7 +723,7 @@
       }
       var rules = (res.data && res.data.rules) || [];
       root.innerHTML =
-        '<p class="gcv-dash-hint">Prioridade: Excursão → Guia → Categoria → Cidade → Global. Padrão: 16%.</p>' +
+        '<p class="gcv-dash-hint">Prioridade: Excursão → Guia → Categoria → Cidade → Global. Padrão: 14%.</p>' +
         '<div class="gcv-dash-table-wrap"><table class="gcv-dash-table"><thead><tr><th>Escopo</th><th>ID</th><th>%</th><th>Label</th><th>Ativa</th></tr></thead><tbody>' +
         rules.map(function (r) {
           return '<tr><td>' + r.scope_type + '</td><td>' + (r.scope_id || '—') + '</td><td>' + r.commission_pct +
@@ -696,7 +733,7 @@
         '<div class="gcv-dash-field-row">' +
         '<div class="gcv-dash-field"><label class="gcv-dash-label">Escopo</label><select class="gcv-dash-select" id="cr-scope"><option value="global">global</option><option value="guide">guide</option><option value="city">city</option><option value="category">category</option><option value="excursion">excursion</option></select></div>' +
         '<div class="gcv-dash-field"><label class="gcv-dash-label">Scope ID</label><input class="gcv-dash-input" id="cr-sid" type="number" /></div>' +
-        '<div class="gcv-dash-field"><label class="gcv-dash-label">%</label><input class="gcv-dash-input" id="cr-pct" type="number" step="0.001" value="16" /></div>' +
+        '<div class="gcv-dash-field"><label class="gcv-dash-label">%</label><input class="gcv-dash-input" id="cr-pct" type="number" step="0.001" value="14" /></div>' +
         '<div class="gcv-dash-field"><label class="gcv-dash-label">Label</label><input class="gcv-dash-input" id="cr-label" /></div>' +
         '</div>' +
         '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary" id="cr-save">Salvar regra</button>' +
@@ -790,67 +827,6 @@
     });
   }
 
-  function loadGuidePayments() {
-    var content = document.getElementById('guide-payments-content');
-    if (!content) return;
-    content.innerHTML = 'Carregando…';
-
-    function render(g) {
-      var pixKey = (g && (g.pix_key || '')).trim();
-      var pixType = (g && (g.pix_key_type || '')).trim();
-      var verified = !!(g && g.pix_verified_at);
-      var holder = (g && (g.pix_holder_name || g.full_name || g.name || '')).trim();
-
-      if (pixKey) {
-        content.innerHTML =
-          '<div class="gcv-mp-connect">' +
-          '<div class="gcv-mp-connected"><span>✓</span> Recebimentos via PIX (Sicoob)</div>' +
-          '<p class="gcv-mp-connect__desc" style="margin-top:1rem;text-align:left;">' +
-          'Os clientes pagam com <strong>PIX Sicoob</strong>. Seu repasse é feito pelo admin para a chave PIX cadastrada no perfil.</p>' +
-          '<p style="text-align:left;font-size:0.9rem;margin:0.75rem 0 0;">' +
-          '<strong>Chave:</strong> <code>' + escapeHtml(pixKey) + '</code>' +
-          (pixType ? ' <span class="gcv-cms-muted">(' + escapeHtml(pixType) + ')</span>' : '') +
-          (holder ? '<br><strong>Titular:</strong> ' + escapeHtml(holder) : '') +
-          '<br><strong>Status:</strong> ' + (verified ? 'PIX verificado' : 'Aguardando verificação pelo admin') +
-          '</p>' +
-          '<p style="margin-top:1rem;"><a href="#" class="gcv-dash-btn gcv-dash-btn--sm" data-goto-profile>Editar PIX no perfil</a></p>' +
-          '</div>';
-      } else {
-        content.innerHTML =
-          '<div class="gcv-mp-connect">' +
-          '<div class="gcv-mp-connect__icon" aria-hidden="true">PIX</div>' +
-          '<h3 class="gcv-mp-connect__title">Cadastre sua chave PIX</h3>' +
-          '<p class="gcv-mp-connect__desc">Pagamentos dos clientes são via <strong>PIX Sicoob</strong>. ' +
-          'Para receber seus repasses, cadastre e confirme a chave PIX no perfil. Não usamos Mercado Pago.</p>' +
-          '<a href="#" class="gcv-dash-btn gcv-dash-btn--primary" data-goto-profile>Ir para meu perfil</a>' +
-          '</div>';
-      }
-
-      content.querySelectorAll('[data-goto-profile]').forEach(function (a) {
-        a.addEventListener('click', function (e) {
-          e.preventDefault();
-          var link = document.querySelector('.gcv-dash-nav a[data-section="section-guide-profile"]');
-          if (link) link.click();
-          else if (window.GcvDashRoles) window.GcvDashRoles.loadGuideProfile();
-        });
-      });
-    }
-
-    get('/api/guides/me-profile.php', function (err, res) {
-      if (res && res.ok && res.data && res.data.profile) {
-        render(res.data.profile);
-        return;
-      }
-      get('/api/guides/profile.php', function (e2, r2) {
-        if (!r2 || !r2.ok) {
-          content.innerHTML = '<p class="gcv-dash-alert">Erro ao carregar recebimentos.</p>';
-          return;
-        }
-        render(r2.data || {});
-      });
-    });
-  }
-
   /* ===== CLIENT ===== */
 
   function loadClientBookings() {
@@ -886,6 +862,20 @@
 
   /* ===== SETUP NAV BY ROLE ===== */
 
+  function dashTabIcon(kind) {
+    var svg = {
+      agenda:
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
+      publish:
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>',
+      profile:
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+      money:
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 21h18"/><path d="M5 21V8l7-5 7 5v13"/><path d="M9 21v-6h6v6"/></svg>'
+    };
+    return svg[kind] || '';
+  }
+
   function buildNav(role, status) {
     var navList = document.getElementById('gcv-dash-nav-list');
     if (!navList) return;
@@ -898,7 +888,6 @@
         { id: 'section-cms-guides',        icon: '🧭', label: 'Guias cadastrados', load: function () { if (window.GcvAdminCms) window.GcvAdminCms.open('guides'); } },
         { id: 'section-cms-cities',        icon: '📍', label: 'Cidades',           load: function () { if (window.GcvAdminCms) window.GcvAdminCms.open('cities'); } },
         { id: 'section-cms-excursions',    icon: '🚌', label: 'Excursões',         load: function () { if (window.GcvAdminCms) window.GcvAdminCms.open('excursions'); } },
-        { id: 'section-admin-approvals',   icon: '✅', label: 'Aprovações',        load: loadExcursionApprovals },
         { id: 'section-pending-guides',    icon: '👤', label: 'Guias pendentes',   load: loadPendingGuides  },
         { id: 'section-admin-guides',      icon: '💳', label: 'Guias + PIX',       load: loadAdminGuides    },
         { id: 'section-admin-payouts',     icon: '💸', label: 'Pagar guias',       load: loadAdminPayouts   },
@@ -911,12 +900,10 @@
       ];
     } else if (role === 'guide' && status === 'active') {
       items = [
-        { id: 'section-guide-home',         icon: '⭐', label: 'Próximas saídas', load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideAgenda(); } },
-        { id: 'section-guide-tours',        icon: '📅', label: 'Agenda',          load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideAgenda(); } },
-        { id: 'section-guide-create-tour',  icon: '➕', label: 'Publicar passeio', load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuidePublish(); } },
-        { id: 'section-guide-profile',      icon: '👤', label: 'Meu perfil',      load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideProfile(); } },
-        { id: 'section-guide-financial',    icon: '🏦', label: 'Dados financeiros', load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideFinancial(); } },
-        { id: 'section-guide-payments',     icon: '💳', label: 'Recebimentos',    load: loadGuidePayments  },
+        { id: 'section-guide-tours',        icon: '📅', label: 'Agenda',            tab: 'Agenda',      tabIcon: 'agenda',  load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideAgenda(); } },
+        { id: 'section-guide-create-tour',  icon: '➕', label: 'Publicar passeio',  tab: 'Publicar',   tabIcon: 'publish', load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuidePublish(); } },
+        { id: 'section-guide-profile',      icon: '👤', label: 'Meu perfil',        tab: 'Perfil',     tabIcon: 'profile', load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideProfile(); } },
+        { id: 'section-guide-financial',    icon: '🏦', label: 'Financeiro',       tab: 'Financeiro', tabIcon: 'money',   load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideEarnings(); } },
       ];
     } else if (role === 'guide' && status === 'pending') {
       items = [
@@ -939,20 +926,51 @@
     var loadMap = {};
     items.forEach(function (item) { loadMap[item.id] = item.load; });
 
-    navList.addEventListener('click', function (e) {
+    function onNavClick(e) {
       var link = e.target.closest('[data-section]');
       if (!link) return;
       e.preventDefault();
       var sId = link.getAttribute('data-section');
       showSection(sId);
       if (loadMap[sId]) loadMap[sId]();
-    });
+    }
+
+    navList.addEventListener('click', onNavClick);
+
+    var tabBar = document.getElementById('gcv-dash-bottom-nav');
+    var tabList = document.getElementById('gcv-dash-bottom-nav-list');
+    var useTabBar = role === 'guide' && status === 'active' && items.length === 4;
+    document.body.classList.toggle('gcv-dash-page--tabbar', useTabBar);
+    if (tabBar && tabList) {
+      if (useTabBar) {
+        tabBar.removeAttribute('hidden');
+        tabBar.hidden = false;
+        if (tabBar.parentNode !== document.body) {
+          document.body.appendChild(tabBar);
+        }
+        tabList.innerHTML = items.map(function (item) {
+          var fullLabel = item.label || item.tab || '';
+          return (
+            '<li><a href="#" data-section="' + item.id + '" aria-label="' + fullLabel + '">' +
+            dashTabIcon(item.tabIcon) +
+            '<span>' + (item.tab || item.label) + '</span></a></li>'
+          );
+        }).join('');
+        tabList.onclick = onNavClick;
+      } else {
+        tabBar.setAttribute('hidden', '');
+        tabBar.hidden = true;
+        tabList.innerHTML = '';
+        tabList.onclick = null;
+      }
+    }
 
     // Show first section
     if (items.length) {
       showSection(items[0].id);
       if (loadMap[items[0].id]) loadMap[items[0].id]();
     }
+    if (role === 'admin') refreshApprovalBadge();
   }
 
   /* ===== INIT ===== */
@@ -1000,12 +1018,18 @@
           avatarEl.textContent = (currentUser.name || '?').charAt(0).toUpperCase();
         }
       }
+      if ((currentUser.role === 'guide' || (currentUser.roles || []).indexOf('guide') >= 0) && !currentUser.avatar_url) {
+        get('/api/guides/me-profile.php', function (_e, r) {
+          var p = r && r.data && r.data.profile;
+          var url = p && (p.photo_3x4_url || p.photo_url || p.avatar_url);
+          if (url && avatarEl) avatarEl.innerHTML = '<img src="' + url + '" alt="Avatar" />';
+        });
+      }
 
       buildNav(currentUser.role, currentUser.status);
 
       // Logout
-      var logoutBtn = document.getElementById('gcv-dash-logout');
-      if (logoutBtn) {
+      document.querySelectorAll('.js-gcv-dash-logout').forEach(function (logoutBtn) {
         logoutBtn.addEventListener('click', function (e) {
           e.preventDefault();
           var xhr = new XMLHttpRequest();
@@ -1013,15 +1037,24 @@
           xhr.onload = function () { window.location.href = '/index.html'; };
           xhr.send();
         });
-      }
+      });
 
       // Mobile menu toggle
       var toggle  = document.getElementById('gcv-dash-menu-toggle');
       var navArea = document.getElementById('gcv-dash-nav');
       if (toggle && navArea) {
         toggle.addEventListener('click', function () {
-          navArea.classList.toggle('open');
+          var open = navArea.classList.toggle('open');
+          toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+          toggle.textContent = open ? '✕ Fechar' : '☰ Menu';
         });
+      }
+
+      var main = document.getElementById('gcv-dash-main');
+      if (main && typeof MutationObserver === 'function') {
+        labelDashTables(main);
+        new MutationObserver(function () { labelDashTables(main); })
+          .observe(main, { childList: true, subtree: true });
       }
 
       // Check PIX/Sicoob notification (legado: mp_connected)
@@ -1037,4 +1070,8 @@
   } else {
     init();
   }
+
+  window.GcvDashboard = {
+    refreshApprovalBadge: refreshApprovalBadge
+  };
 }());

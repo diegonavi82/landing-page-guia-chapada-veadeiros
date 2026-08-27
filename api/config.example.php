@@ -21,6 +21,8 @@ return [
     /**
      * Segredo para pix_webhook.php confirmar pagamentos (OpenPix, banco, etc.).
      * Em localhost com mock-server use: dev-local
+     * Cron de PIX automático aos guias:
+     *   /api/cron/auto-payouts.php?secret=ESTE_VALOR  (a cada 15 min)
      */
     'pix_webhook_secret' => '',
     /**

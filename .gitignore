@@ -10,3 +10,11 @@ api/_setup_db_once.php
 api/_ensure_admin_once.php
 api/_fix_db_env.php
 api/_migrate_cms_once.php
+tools/evolution/.env
+tools/evolution/qr-*.png
+tools/evolution/vps-secrets.txt
+tools/evolution/create-instance.json
+tools/evolution/connect-instance.json
+tools/evolution/prod-env.bak
+tools/evolution/_patch_prod_env.mjs
+tools/evolution/pairing-code.txt

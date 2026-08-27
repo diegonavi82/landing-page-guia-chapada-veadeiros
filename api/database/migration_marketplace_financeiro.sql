@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS gcv_commission_rules (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO gcv_commission_rules (scope_type, scope_id, commission_pct, label, is_active)
-SELECT 'global', NULL, 16.000, 'Comissão global padrão', 1
+SELECT 'global', NULL, 14.000, 'Comissão global padrão', 1
 WHERE NOT EXISTS (
   SELECT 1 FROM gcv_commission_rules
   WHERE scope_type = 'global' AND scope_id IS NULL AND deleted_at IS NULL
@@ -190,13 +190,13 @@ SELECT 'payout_delay_hours', '6', 'Horas após início da excursão para liberar
 WHERE NOT EXISTS (SELECT 1 FROM gcv_settings WHERE key_name = 'payout_delay_hours');
 
 INSERT INTO gcv_settings (key_name, value, label, type)
-SELECT 'platform_commission_pct', '16', 'Comissão da plataforma (%) — legado; preferir gcv_commission_rules', 'percent'
+SELECT 'platform_commission_pct', '14', 'Comissão da plataforma (%) — legado; preferir gcv_commission_rules', 'percent'
 WHERE NOT EXISTS (SELECT 1 FROM gcv_settings WHERE key_name = 'platform_commission_pct');
 
 UPDATE gcv_settings
-SET value = '16', label = 'Comissão da plataforma (%) — legado; preferir gcv_commission_rules'
+SET value = '14', label = 'Comissão da plataforma (%) — legado; preferir gcv_commission_rules'
 WHERE key_name = 'platform_commission_pct'
-  AND CAST(value AS DECIMAL(10,3)) < 16;
+  AND value = '16';
 
 -- ---------------------------------------------------------------------------
 -- 8) Colunas em gcv_excursions (ALTER — ignore se já existir via auto-schema)

@@ -32,6 +32,12 @@
       backExc: "← Voltar às excursões",
       person: "pessoa",
       people: "pessoas",
+      statusCANCELLED: "Reserva cancelada",
+      cancelBtn: "Cancelar reserva",
+      cancelConfirmForming: "Cancelar esta reserva? O guia será avisado e o valor será reembolsado conforme a política (em formação).",
+      cancelConfirmPaid: "Cancelar esta reserva? O guia será avisado.",
+      cancelOk: "Reserva cancelada. O guia foi notificado.",
+      cancelErr: "Não foi possível cancelar agora.",
     },
     en: {
       statusPENDING: "Awaiting payment",
@@ -57,6 +63,12 @@
       backExc: "← Back to tours",
       person: "person",
       people: "people",
+      statusCANCELLED: "Reservation cancelled",
+      cancelBtn: "Cancel reservation",
+      cancelConfirmForming: "Cancel this reservation? The guide will be notified. Full refund applies while the tour is forming.",
+      cancelConfirmPaid: "Cancel this reservation? The guide will be notified.",
+      cancelOk: "Reservation cancelled. The guide was notified.",
+      cancelErr: "Could not cancel right now.",
     },
     es: {
       statusPENDING: "Esperando pago",
@@ -82,6 +94,12 @@
       backExc: "← Volver a las excursiones",
       person: "persona",
       people: "personas",
+      statusCANCELLED: "Reserva cancelada",
+      cancelBtn: "Cancelar reserva",
+      cancelConfirmForming: "¿Cancelar esta reserva? Se avisará al guía. Reembolso integral mientras el paseo esté en formación.",
+      cancelConfirmPaid: "¿Cancelar esta reserva? Se avisará al guía.",
+      cancelOk: "Reserva cancelada. El guía fue notificado.",
+      cancelErr: "No se pudo cancelar ahora.",
     },
   };
 
@@ -129,6 +147,53 @@
     return apiBase() + "excursao-reserva/recover-by-email.php";
   }
 
+  function cancelApiUrl() {
+    return apiBase() + "excursao-reserva/cancel.php";
+  }
+
+  function bindCancelButton(resultEl, data, loc, email) {
+    if (!resultEl || !data || !data.can_cancel) return;
+    var code = data.reservation_id || "";
+    if (!code) return;
+    var wrap = document.createElement("p");
+    wrap.className = "gcv-reserva-result__actions";
+    wrap.style.marginTop = "0.75rem";
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "gcv-reserva-btn";
+    btn.textContent = s(loc, "cancelBtn");
+    btn.addEventListener("click", function () {
+      var forming = data.lifecycle === "em_formacao";
+      var msg = forming ? s(loc, "cancelConfirmForming") : s(loc, "cancelConfirmPaid");
+      if (!window.confirm(msg)) return;
+      btn.disabled = true;
+      fetch(cancelApiUrl(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ reservation_id: code, email: email }),
+      })
+        .then(function (res) {
+          return res.json().then(function (body) {
+            return { ok: res.ok, body: body };
+          });
+        })
+        .then(function (pack) {
+          if (pack.ok && pack.body && pack.body.ok) {
+            wrap.textContent = s(loc, "cancelOk");
+            return;
+          }
+          btn.disabled = false;
+          alert((pack.body && pack.body.message) || s(loc, "cancelErr"));
+        })
+        .catch(function () {
+          btn.disabled = false;
+          alert(s(loc, "cancelErr"));
+        });
+    });
+    wrap.appendChild(btn);
+    resultEl.appendChild(wrap);
+  }
+
   function confirmUrl(id, loc) {
     var base = loc === "pt" ? "confirmacao.html" : "../" + loc + "/confirmacao.html";
     if (loc !== "pt" && window.location.pathname.indexOf("/" + loc + "/") >= 0) {
@@ -154,6 +219,7 @@
     var st = String(status || "").toUpperCase();
     if (st === "PAID") return s(loc, "statusPAID");
     if (st === "EXPIRED") return s(loc, "statusEXPIRED");
+    if (st === "CANCELLED" || st === "CANCELED") return s(loc, "statusCANCELLED");
     return s(loc, "statusPENDING");
   }
 
@@ -372,6 +438,7 @@
             } else {
               result.innerHTML = renderResult(body, loc);
             }
+            bindCancelButton(result, body, loc, email);
           }
           openVoucherPopup(body, loc);
           return;

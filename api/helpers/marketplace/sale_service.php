@@ -4,7 +4,10 @@ declare(strict_types=1);
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../marketplace_schema.php';
 require_once __DIR__ . '/../settings.php';
-require_once __DIR__ . '/constants.php';
+require_once __DIR__ . '/../excursion_status.php';
+require_once __DIR__ . '/../mailer.php';
+require_once __DIR__ . '/../purchase_notify.php';
+require_once __DIR__ . '/../notify_ops.php';
 require_once __DIR__ . '/audit_service.php';
 
 /**
@@ -32,6 +35,21 @@ function gcv_sale_capture_from_pix_reservation(array $reservation, string $sourc
     $sale = $existing->fetch(PDO::FETCH_ASSOC);
     if ($sale && ($sale['sale_status'] ?? '') === GcvSaleStatus::PAID) {
         gcv_sale_upsert_pix_payment($sale, $reservation, GcvSaleStatus::PAID);
+        $phone = trim((string)($reservation['phone'] ?? $reservation['telefone'] ?? $sale['tourist_phone'] ?? ''));
+        if ($phone !== '' && empty($sale['tourist_phone'])) {
+        try {
+            $pdo->prepare('UPDATE gcv_sales SET tourist_phone = ? WHERE id = ?')->execute([$phone, (int)$sale['id']]);
+                $sale['tourist_phone'] = $phone;
+            } catch (Throwable $e) {
+                error_log('sale tourist_phone: ' . $e->getMessage());
+            }
+        }
+        try {
+            $excursion = gcv_sale_resolve_excursion($reservation);
+            gcv_ops_notify_client_pix_paid($sale, $excursion);
+        } catch (Throwable $e) {
+            error_log('notify client pix paid (already paid): ' . $e->getMessage());
+        }
         return $sale;
     }
 
@@ -71,7 +89,7 @@ function gcv_sale_capture_from_pix_reservation(array $reservation, string $sourc
         $unitGuide = (int)($excursion['guide_payout_planned_cents'] ?? $excursion['guide_net_cents'] ?? 0);
         if ($unitGuide <= 0 && $unitCents > 0) {
             // legado: usa comissão percentual se não houver repasse definido
-            $commissionPct = (float)($excursion['commission_pct_applied'] ?? setting('platform_commission_pct', '16'));
+            $commissionPct = (float)($excursion['commission_pct_applied'] ?? setting('platform_commission_pct', '14'));
             $unitPlatform = (int)round($unitCents * ($commissionPct / 100.0));
             $unitGuide = max(0, $unitCents - $unitPlatform);
             $ruleId = isset($excursion['commission_rule_id']) ? (int)$excursion['commission_rule_id'] : null;
@@ -98,17 +116,17 @@ function gcv_sale_capture_from_pix_reservation(array $reservation, string $sourc
             $time .= ':00';
         }
         $startsAt = $excursion['date_iso'] . ' ' . $time;
-        $delayHours = (int)setting('payout_delay_hours', '6');
-        if ($delayHours < 0) {
-            $delayHours = 6;
+        if (!function_exists('gcv_payout_compute_scheduled_at')) {
+            require_once __DIR__ . '/payout_service.php';
         }
         try {
-            $dt = new DateTimeImmutable($startsAt, new DateTimeZone('America/Sao_Paulo'));
-            $scheduledPayoutAt = $dt->modify('+' . $delayHours . ' hours')->format('Y-m-d H:i:s');
+            $scheduledPayoutAt = gcv_payout_compute_scheduled_at($startsAt);
         } catch (Throwable $e) {
-            $scheduledPayoutAt = null;
+            $scheduledPayoutAt = $excursion['date_iso'] . ' 17:00:00';
         }
     }
+
+    $previousStatus = is_array($sale) ? strtoupper((string)($sale['sale_status'] ?? '')) : '';
 
     $paidAt = null;
     $status = strtoupper((string)($reservation['status'] ?? 'PENDING')) === 'PAID'
@@ -190,6 +208,16 @@ function gcv_sale_capture_from_pix_reservation(array $reservation, string $sourc
         $get->execute([$saleId]);
         $sale = $get->fetch(PDO::FETCH_ASSOC) ?: [];
 
+        $phone = trim((string)($reservation['phone'] ?? $reservation['telefone'] ?? ''));
+        if ($phone !== '' && $saleId > 0) {
+            try {
+                $pdo->prepare('UPDATE gcv_sales SET tourist_phone = ? WHERE id = ?')->execute([$phone, $saleId]);
+                $sale['tourist_phone'] = $phone;
+        } catch (Throwable $e) {
+            error_log('sale tourist_phone: ' . $e->getMessage());
+        }
+        }
+
         gcv_sale_upsert_pix_payment($sale, $reservation, $status);
         $pdo->commit();
     } catch (Throwable $e) {
@@ -206,7 +234,234 @@ function gcv_sale_capture_from_pix_reservation(array $reservation, string $sourc
         'sold_price_cents' => $soldCents,
     ], 'WEBHOOK');
 
+    $becamePaid = $status === GcvSaleStatus::PAID && $previousStatus !== GcvSaleStatus::PAID;
+    if ($becamePaid) {
+        $excId = $excursion ? (int)($excursion['id'] ?? 0) : 0;
+        if ($excId <= 0) {
+            $excId = (int)($sale['excursion_id'] ?? 0);
+        }
+        if ($excId > 0) {
+            gcv_sale_refresh_booked_people($excId);
+        }
+        gcv_sale_notify_guide_new_booking($sale, $excursion, $spots);
+        try {
+            require_once dirname(__DIR__) . '/notify_ops.php';
+            gcv_ops_notify_client_pix_paid($sale, $excursion);
+        } catch (Throwable $e) {
+            error_log('notify client pix paid: ' . $e->getMessage());
+        }
+    }
+
     return $sale;
+}
+
+function gcv_sale_refresh_booked_people(int $excursionId): void
+{
+    if ($excursionId <= 0) {
+        return;
+    }
+    $beforeLife = '';
+    try {
+        $row = db()->prepare('SELECT * FROM gcv_excursions WHERE id = ? LIMIT 1');
+        $row->execute([$excursionId]);
+        $before = $row->fetch(PDO::FETCH_ASSOC) ?: [];
+        if ($before) {
+            $beforeLife = gcv_resolve_excursion_lifecycle($before);
+        }
+    } catch (Throwable $e) {
+        $before = [];
+    }
+    try {
+        db()->prepare(
+            'UPDATE gcv_excursions e
+             SET booked_people = LEAST(255, (
+               SELECT COALESCE(SUM(s.spots), 0)
+               FROM gcv_sales s
+               WHERE s.excursion_id = e.id
+                 AND s.deleted_at IS NULL
+                 AND s.sale_status = \'PAID\'
+             ))
+             WHERE e.id = ?'
+        )->execute([$excursionId]);
+    } catch (Throwable $e) {
+        error_log('gcv_sale_refresh_booked_people: ' . $e->getMessage());
+        return;
+    }
+    try {
+        $row = db()->prepare('SELECT * FROM gcv_excursions WHERE id = ? LIMIT 1');
+        $row->execute([$excursionId]);
+        $after = $row->fetch(PDO::FETCH_ASSOC) ?: [];
+        if ($after && $beforeLife !== 'confirmada' && gcv_resolve_excursion_lifecycle($after) === 'confirmada') {
+            require_once dirname(__DIR__) . '/notify_ops.php';
+            gcv_ops_notify_guide_confirmed($excursionId);
+        }
+    } catch (Throwable $e) {
+        error_log('gcv_sale_refresh_booked_people notify: ' . $e->getMessage());
+    }
+}
+
+/**
+ * Cancela venda Pix paga (cliente). Notifica o guia.
+ *
+ * @return array<string,mixed>
+ */
+function gcv_sale_cancel_reservation(string $reservationId, string $email): array
+{
+    gcv_marketplace_ensure_schema();
+    $reservationId = strtoupper(trim($reservationId));
+    $email = strtolower(trim($email));
+    $pdo = db();
+    $stmt = $pdo->prepare('SELECT * FROM gcv_sales WHERE reservation_id = ? AND deleted_at IS NULL LIMIT 1');
+    $stmt->execute([$reservationId]);
+    $sale = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$sale) {
+        throw new RuntimeException('Reserva não encontrada');
+    }
+    $storedEmail = strtolower(trim((string)($sale['tourist_email'] ?? '')));
+    if ($storedEmail !== '' && $storedEmail !== $email) {
+        throw new RuntimeException('E-mail não confere');
+    }
+    if (($sale['sale_status'] ?? '') === GcvSaleStatus::CANCELLED) {
+        return ['ok' => true, 'already' => true, 'sale' => $sale];
+    }
+    if (($sale['sale_status'] ?? '') !== GcvSaleStatus::PAID) {
+        throw new RuntimeException('Só é possível cancelar reserva paga');
+    }
+    $excId = (int)($sale['excursion_id'] ?? 0);
+    $exc = $excId > 0 ? (function () use ($excId) {
+        $s = db()->prepare('SELECT * FROM gcv_excursions WHERE id = ? LIMIT 1');
+        $s->execute([$excId]);
+        return $s->fetch(PDO::FETCH_ASSOC) ?: null;
+    })() : null;
+    $life = $exc ? gcv_resolve_excursion_lifecycle($exc) : 'em_formacao';
+    $pdo->prepare(
+        "UPDATE gcv_sales SET sale_status = 'CANCELLED', payout_status = 'PAYOUT_BLOCKED' WHERE id = ?"
+    )->execute([(int)$sale['id']]);
+    $sale['sale_status'] = GcvSaleStatus::CANCELLED;
+
+    require_once dirname(__DIR__) . '/pix_reservation_store.php';
+    $res = gcv_pix_read_reservation($reservationId);
+    if ($res) {
+        $res['status'] = 'CANCELLED';
+        $res['cancelled_at'] = gmdate('c');
+        gcv_pix_write_reservation($res);
+        try {
+            require_once dirname(__DIR__) . '/pix_seats_store.php';
+            gcv_pix_seats_release_reservation($res);
+        } catch (Throwable $e) {
+            error_log('cancel seats: ' . $e->getMessage());
+        }
+    }
+    if ($excId > 0) {
+        gcv_sale_refresh_booked_people($excId);
+        $s = db()->prepare('SELECT * FROM gcv_excursions WHERE id = ? LIMIT 1');
+        $s->execute([$excId]);
+        $exc = $s->fetch(PDO::FETCH_ASSOC) ?: $exc;
+    }
+    require_once dirname(__DIR__) . '/notify_ops.php';
+    gcv_ops_notify_guide_cancelled($sale, $exc, $life);
+    return ['ok' => true, 'lifecycle' => $life, 'sale' => $sale];
+}
+
+/**
+ * @param array<string,mixed> $sale
+ * @param array<string,mixed>|null $excursion
+ */
+function gcv_sale_notify_guide_new_booking(array $sale, ?array $excursion, int $spots): void
+{
+    $guideId = (int)($sale['guide_user_id'] ?? 0);
+    if ($guideId <= 0) {
+        return;
+    }
+    try {
+        $stmt = db()->prepare(
+            'SELECT u.name, u.email, g.full_name, g.nickname, g.phone, g.phone_ddi
+             FROM gcv_users u
+             LEFT JOIN gcv_guides g ON g.user_id = u.id
+             WHERE u.id = ? LIMIT 1'
+        );
+        $stmt->execute([$guideId]);
+        $guide = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+        $email = strtolower(trim((string)($guide['email'] ?? '')));
+        $title = (string)($sale['excursion_title'] ?? $excursion['attraction_title'] ?? 'Passeio');
+        $date = (string)($excursion['date_iso'] ?? '');
+        if ($date !== '' && preg_match('/^(\d{4})-(\d{2})-(\d{2})/', $date, $m)) {
+            $date = $m[3] . '/' . $m[2] . '/' . $m[1];
+        }
+        $time = substr((string)($excursion['departure_time'] ?? ''), 0, 5);
+        $client = trim((string)($sale['tourist_name'] ?? '')) ?: 'Cliente';
+        $clientEmail = trim((string)($sale['tourist_email'] ?? ''));
+        $clientPhone = trim((string)($sale['tourist_phone'] ?? ''));
+        $people = max(1, $spots);
+        $guideName = (string)($guide['full_name'] ?? $guide['nickname'] ?? $guide['name'] ?? $sale['guide_name'] ?? 'Guia');
+        $amountCents = (int)($sale['sold_price_cents'] ?? 0);
+        $code = strtoupper(trim((string)($sale['reservation_id'] ?? '')));
+        $amount = 'R$ ' . number_format(max(0, $amountCents) / 100, 2, ',', '.');
+        $pax = $people === 1 ? '1 pessoa' : ($people . ' pessoas');
+        $when = trim($date . ($time !== '' ? ' às ' . $time : ''));
+
+        if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            mail_guide_new_booking(
+                $email,
+                $guideName,
+                $title,
+                $date,
+                $time,
+                $client,
+                $clientEmail,
+                $clientPhone,
+                $people,
+                $amountCents
+            );
+        }
+
+        $wa = "🛒 Nova venda confirmada\n\n";
+        $wa .= "Guia: {$guideName}\n";
+        $wa .= "Passeio: {$title}\n";
+        if ($when !== '') {
+            $wa .= "Quando: {$when}\n";
+        }
+        $wa .= "Pessoas: {$pax}\n";
+        $wa .= "Valor pago: {$amount}\n";
+        $wa .= "\nCliente: {$client}\n";
+        if ($clientPhone !== '') {
+            $wa .= "Telefone do cliente: {$clientPhone}\n";
+        }
+        if ($clientEmail !== '') {
+            $wa .= "E-mail do cliente: {$clientEmail}\n";
+        }
+        if ($code !== '') {
+            $wa .= "Código: {$code}\n";
+        }
+        $excId = (int)($sale['excursion_id'] ?? ($excursion['id'] ?? 0));
+        if ($excId > 0 && function_exists('gcv_ops_group_update_text')) {
+            $wa .= "\n" . gcv_ops_group_update_text($excId, $excursion);
+        }
+
+        $sent = [];
+        $guidePhone = '';
+        if (function_exists('gcv_whatsapp_normalize_phone')) {
+            $guidePhone = gcv_whatsapp_normalize_phone(
+                (string)($guide['phone'] ?? ''),
+                (string)($guide['phone_ddi'] ?? '55')
+            );
+        }
+        $agencyPhone = function_exists('gcv_admin_whatsapp_phone')
+            ? gcv_admin_whatsapp_phone()
+            : '5562982506891';
+
+        if (function_exists('gcv_whatsapp_send_text')) {
+            if ($guidePhone !== '') {
+                gcv_whatsapp_send_text($guidePhone, $wa);
+                $sent[$guidePhone] = true;
+            }
+            if ($agencyPhone !== '' && empty($sent[$agencyPhone])) {
+                gcv_whatsapp_send_text($agencyPhone, $wa);
+            }
+        }
+    } catch (Throwable $e) {
+        error_log('gcv_sale_notify_guide_new_booking: ' . $e->getMessage());
+    }
 }
 
 /**
@@ -351,7 +606,7 @@ function gcv_sale_resolve_excursion(array $reservation): ?array
         $like = '%' . $destino . '%';
         $stmt->execute([$date, $like, $like]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        if ($row) {
+        if ($row && gcv_excursion_is_publicly_bookable($row)) {
             return $row;
         }
     }

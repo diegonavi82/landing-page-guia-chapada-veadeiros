@@ -121,6 +121,7 @@ const SSR = {
     meetingCity: "Alto Paraíso",
     statusOk: "✅ Confirmado",
     statusWait: "⏳ Em formação",
+    statusSoldOut: "Lotado",
     spotsNone: "Não restam vagas",
     spotsOne: "Resta 1 vaga",
     spotsMany: "Restam {{n}} vagas",
@@ -174,6 +175,7 @@ const SSR = {
     meetingCity: "Alto Paraíso",
     statusOk: "✅ Confirmed",
     statusWait: "⏳ Forming",
+    statusSoldOut: "Sold out",
     spotsNone: "No spots left",
     spotsOne: "1 spot left",
     spotsMany: "{{n}} spots left",
@@ -227,6 +229,7 @@ const SSR = {
     meetingCity: "Alto Paraíso",
     statusOk: "✅ Confirmado",
     statusWait: "⏳ Formando",
+    statusSoldOut: "Agotado",
     spotsNone: "No quedan plazas",
     spotsOne: "Queda 1 plaza",
     spotsMany: "Quedan {{n}} plazas",
@@ -321,22 +324,14 @@ function faltamParaConfirmarSsr(e) {
   return Math.max(0, q - inscritosNoGrupo(e));
 }
 
-function cardStatusOverlaySsr(e, s, x, cap, labelAria) {
-  const statusHtml = e.confirmada
-    ? `<span class="gcv-excursoes-card__status gcv-excursoes-card__status--ok">${esc(s.statusOk)}</span>`
-    : `<span class="gcv-excursoes-card__status gcv-excursoes-card__status--wait">${esc(s.statusWait)}</span>`;
-  const faltaN = faltamParaConfirmarSsr(e);
-  let quorumHtml = "";
-  if (!e.confirmada && faltaN > 0) {
-    const msg =
-      faltaN === 1
-        ? s.quorumNeed1 || "Falta 1 para confirmar"
-        : tpl(s.quorumNeedMany || "Faltam {{n}} para confirmar", { n: faltaN });
-    quorumHtml = `<p class="gcv-excursoes-card__falta gcv-excursoes-card__falta--on-media">${esc(msg)}</p>`;
-  }
+function cardBandFlagsSsr(e, s, x, cap, labelAria, isLotado) {
+  const statusHtml = isLotado
+    ? `<span class="gcv-excursoes-card__status gcv-excursoes-card__status--full">${esc(s.statusSoldOut)}</span>`
+    : e.confirmada
+      ? `<span class="gcv-excursoes-card__status gcv-excursoes-card__status--ok">${esc(s.statusOk)}</span>`
+      : `<span class="gcv-excursoes-card__status gcv-excursoes-card__status--wait">${esc(s.statusWait)}</span>`;
   return (
-    `<div class="gcv-excursoes-card__media-status">` +
-    `<div class="gcv-excursoes-card__row gcv-excursoes-card__row--status">` +
+    `<div class="gcv-excursoes-card__band-flags">` +
     statusHtml +
     `<span class="gcv-excursoes-card__cap" title="${esc(labelAria)}" aria-label="${esc(labelAria)}">` +
     `<i class="ti ti-users" aria-hidden="true"></i>` +
@@ -344,16 +339,39 @@ function cardStatusOverlaySsr(e, s, x, cap, labelAria) {
     `<span class="gcv-excursoes-card__cap-x">${x}</span>` +
     `<span class="gcv-excursoes-card__cap-slash">/</span>` +
     `<span class="gcv-excursoes-card__cap-y">${cap}</span>` +
-    `</span></span></div>${quorumHtml}</div>`
+    `</span></span></div>`
   );
 }
 
-function cardSpotsBlockSsr(e, locale, s, statusOverlayHtml = "") {
+function cardBandNoticeTextSsr(e, s, isLotado) {
+  if (isLotado) return "";
+  if (e.confirmada) {
+    const v = vagasDisponiveis(e);
+    if (v === 0) return s.spotsNone || "";
+    if (v === 1) return s.spotsOne || "";
+    return tpl(s.spotsMany || "Restam {{n}} vagas", { n: v });
+  }
+  const faltaN = faltamParaConfirmarSsr(e);
+  if (faltaN === 1) return s.quorumNeed1 || "Falta 1 para confirmar";
+  if (faltaN > 1) return tpl(s.quorumNeedMany || "Faltam {{n}} para confirmar", { n: faltaN });
+  return s.falta0 || "";
+}
+
+function cardBandGroupSsr(e, s, isLotado) {
+  const msg = cardBandNoticeTextSsr(e, s, isLotado);
+  if (!msg) return '<div class="gcv-excursoes-card__band-group"></div>';
+  return (
+    `<div class="gcv-excursoes-card__band-group">` +
+    `<p class="gcv-excursoes-card__falta gcv-excursoes-card__falta--band">${esc(msg)}</p></div>`
+  );
+}
+
+function cardSpotsBlockSsr(e, locale, s) {
   const dests = destinosForCard(e);
   const n = destinosSpotsCount(e);
   const badge = e.comTransporte === true && s ? cardSpotTransportBadgeSsr(s) : "";
   const inner = `<div class="gcv-excursoes-card__spots gcv-excursoes-card__spots--count-${n}" data-spots="${n}">${dests.map((d) => cardSpotRowSsr(d, locale, badge)).join("")}</div>`;
-  return `<div class="gcv-excursoes-card__media">${statusOverlayHtml || ""}${inner}</div>`;
+  return `<div class="gcv-excursoes-card__media">${inner}</div>`;
 }
 
 function cardImgBlockSsr(e, locale) {
@@ -674,9 +692,10 @@ export function excursionsCarouselTrackSsrHtml(locale) {
       if (destinosSpotsCount(e) > 1) mod += " gcv-excursoes-card--multi";
       const cap = grupoMaximoValor(e);
       const x = inscritosNoGrupo(e);
+      const isLotado = vagasDisponiveis(e) < 1;
+      if (isLotado) mod += " gcv-excursoes-card--lotado";
       const legendaCap = legendaGrupoNoMaximo(cap, s);
       const labelAria = `${x}/${cap} · ${legendaCap}`;
-      const statusOverlay = cardStatusOverlaySsr(e, s, x, cap, labelAria);
       return (
         `<article class="gcv-excursoes-card ${mod}" data-excursao-index="${idx}" data-cart-id="${esc(excursaoCartIdSsr(e))}" data-excursao-date-iso="${esc(String(e.dateISO || "").slice(0, 10))}" data-excursao-hora="${esc(hora)}"` +
         (e.confirmada ? ' data-excursao-status="confirmada"' : ' data-excursao-status="formacao"') +
@@ -697,10 +716,13 @@ export function excursionsCarouselTrackSsrHtml(locale) {
         `<span class="gcv-excursoes-card__time-kicker">${esc(embarqueLabel)}</span>` +
         `<span class="gcv-excursoes-card__loc gcv-excursoes-card__loc--inline" title="${esc(city)}">` +
         esc(city) +
-        "</span></div></div></div></div>" +
+        "</span></div></div></div>" +
+        cardBandFlagsSsr(e, s, x, cap, labelAria, isLotado) +
+        cardBandGroupSsr(e, s, isLotado) +
+        "</div>" +
         `<button type="button" class="gcv-excursoes-card__quick-add" data-gcv-exc-card-toggle aria-label="${esc(toggleAdd)}" aria-pressed="false" title="${esc(toggleAdd)}">` +
         '<i class="ti ti-plus" aria-hidden="true"></i></button></div>' +
-        cardSpotsBlockSsr(e, locale, s, statusOverlay) +
+        cardSpotsBlockSsr(e, locale, s) +
         "</div>" +
         '<div class="gcv-excursoes-card__body">' +
         guiaChipSsr(e, locale) +

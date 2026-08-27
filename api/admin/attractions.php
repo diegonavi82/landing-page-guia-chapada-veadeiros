@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../helpers/db.php';
 require_once __DIR__ . '/../helpers/auth.php';
 require_once __DIR__ . '/../helpers/cms_schema.php';
+require_once __DIR__ . '/../helpers/excursion_attractions.php';
 
 header('Content-Type: application/json; charset=utf-8');
 $admin = require_admin();
@@ -105,6 +106,7 @@ if ($method === 'GET') {
             'SELECT id, slug, status, title_pt, cover_url, difficulty, entry_price_cents, entry_price_label, city_id, updated_at
              FROM gcv_attractions ORDER BY title_pt ASC'
         )->fetchAll();
+        $rows = gcv_sort_attractions_catalog($rows);
         echo json_encode(['ok' => true, 'data' => ['attractions' => $rows]]);
         exit;
     } catch (Throwable $e) {

@@ -169,7 +169,7 @@ function gcv_cms_ensure_core_tables(PDO $pdo): void
 
         "CREATE TABLE IF NOT EXISTS gcv_excursions (
           id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-          status ENUM('draft','published','cancelled','soldout') NOT NULL DEFAULT 'draft',
+          status ENUM('draft','pending_approval','published','cancelled','soldout','rejected') NOT NULL DEFAULT 'draft',
           date_iso DATE NOT NULL,
           departure_time TIME NOT NULL,
           departure_city_id INT UNSIGNED NOT NULL,
@@ -179,6 +179,7 @@ function gcv_cms_ensure_core_tables(PDO $pdo): void
           quorum TINYINT UNSIGNED NOT NULL DEFAULT 4,
           max_people TINYINT UNSIGNED NOT NULL DEFAULT 10,
           booked_people TINYINT UNSIGNED NOT NULL DEFAULT 0,
+          preconfirmed_people TINYINT UNSIGNED NOT NULL DEFAULT 0,
           include_transport TINYINT(1) NOT NULL DEFAULT 0,
           include_entry TINYINT(1) NOT NULL DEFAULT 0,
           include_lunch TINYINT(1) NOT NULL DEFAULT 0,
@@ -265,12 +266,35 @@ function gcv_cms_ensure_core_tables(PDO $pdo): void
             // ignore
         }
     }
+
+    $coords = [
+        'Alto Paraíso de Goiás' => [-14.1328, -47.5100],
+        'São Jorge' => [-14.1835, -47.8090],
+        'Cavalcante' => [-13.7975, -47.4567],
+        'Teresina de Goiás' => [-13.7720, -47.2658],
+        "São João d'Aliança" => [-14.7058, -47.5247],
+    ];
+    try {
+        $upd = $pdo->prepare('UPDATE gcv_cities SET lat = ?, lng = ?, is_base = 1, status = \'active\' WHERE name = ?');
+        foreach ($coords as $name => $xy) {
+            $upd->execute([$xy[0], $xy[1], $name]);
+        }
+    } catch (Throwable $e) {
+        // ignore
+    }
 }
 
 function gcv_cms_ensure_excursion_columns(PDO $pdo): void
 {
     $cols = [
         'cart_slug' => 'VARCHAR(180) NULL',
+        'meeting_point' => 'VARCHAR(300) NULL',
+        'meeting_point_place_id' => 'VARCHAR(220) NULL',
+        'meeting_point_lat' => 'DECIMAL(10,7) NULL',
+        'meeting_point_lng' => 'DECIMAL(10,7) NULL',
+        'hide_guide_profile' => 'TINYINT(1) NOT NULL DEFAULT 0',
+        'preconfirmed_people' => 'TINYINT UNSIGNED NOT NULL DEFAULT 0',
+        'notify_approved_at' => 'DATETIME NULL',
     ];
     $existing = [];
     try {

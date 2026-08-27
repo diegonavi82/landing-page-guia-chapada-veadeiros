@@ -76,11 +76,30 @@ $rel = 'assets/img/uploads/guias/' . $ym . '/' . $name;
 $url = gcv_cms_public_url($rel);
 $width = null;
 $height = null;
+$savedMime = $mime;
 if (str_starts_with($mime, 'image/')) {
-    $size = @getimagesize($abs);
-    if (is_array($size)) {
-        $width = (int)$size[0];
-        $height = (int)$size[1];
+    require_once __DIR__ . '/../helpers/image_cover.php';
+    $jpgName = preg_replace('/\.[a-z0-9]+$/i', '.jpg', $name) ?: ($name . '.jpg');
+    $jpgAbs = $dir . '/' . $jpgName;
+    $cover = gcv_image_cover_to_jpeg($abs, $jpgAbs, 480, 640, $mime);
+    if (!empty($cover['ok'])) {
+        if ($jpgAbs !== $abs && is_file($abs)) {
+            @unlink($abs);
+        }
+        $abs = $jpgAbs;
+        $name = $jpgName;
+        $rel = 'assets/img/uploads/guias/' . $ym . '/' . $name;
+        $url = gcv_cms_public_url($rel);
+        $width = (int)($cover['width'] ?? 480);
+        $height = (int)($cover['height'] ?? 640);
+        $savedMime = 'image/jpeg';
+        $mime = $savedMime;
+    } else {
+        $size = @getimagesize($abs);
+        if (is_array($size)) {
+            $width = (int)$size[0];
+            $height = (int)$size[1];
+        }
     }
 }
 
@@ -93,7 +112,7 @@ try {
         $rel,
         $url,
         $mime,
-        (int)$file['size'],
+        (int)(is_file($abs) ? filesize($abs) : $file['size']),
         $width,
         $height,
         null,

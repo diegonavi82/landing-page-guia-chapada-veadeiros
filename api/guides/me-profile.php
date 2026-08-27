@@ -9,6 +9,7 @@ require_once __DIR__ . '/../helpers/auth.php';
 require_once __DIR__ . '/../helpers/validator.php';
 require_once __DIR__ . '/../helpers/cms_schema.php';
 require_once __DIR__ . '/../helpers/excursion_status.php';
+require_once __DIR__ . '/../helpers/marketplace/guide_financial_service.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -45,9 +46,6 @@ function gcv_guide_profile_missing(array $p): array
     if (trim((string)($p['full_name'] ?? '')) === '') $missing[] = 'full_name';
     if (trim((string)($p['nickname'] ?? '')) === '') $missing[] = 'nickname';
     if (trim((string)($p['email'] ?? '')) === '') $missing[] = 'email';
-    if (strlen(gcv_digits((string)($p['cpf'] ?? ''))) !== 11) $missing[] = 'cpf';
-    if (trim((string)($p['pix_key'] ?? '')) === '') $missing[] = 'pix_key';
-    if (trim((string)($p['pix_key_type'] ?? '')) === '') $missing[] = 'pix_key_type';
     $phone = gcv_digits((string)($p['phone'] ?? ''));
     if (strlen($phone) < 10) $missing[] = 'phone';
     if (empty($p['birth_date'])) $missing[] = 'birth_date';
@@ -77,11 +75,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         'profile' => $profile,
         'missing' => $missing,
         'complete' => count($missing) === 0,
+        'financial_ready' => gcv_guide_financial_is_ready((int)$user['id']),
         'limits' => [
             'bio_max' => $BIO_MAX,
             'bio_recommended' => $BIO_RECOMMENDED,
         ],
-        'pix_key_types' => ['cpf', 'cnpj', 'email', 'phone', 'random'],
         'base_cities' => $cities,
     ]);
 }
@@ -95,9 +93,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
 
     $fullName = sanitize_text((string)($data['full_name'] ?? ''), 160);
     $nickname = sanitize_text((string)($data['nickname'] ?? ''), 80);
-    $cpf = gcv_digits((string)($data['cpf'] ?? ''));
-    $pixKey = sanitize_text((string)($data['pix_key'] ?? ''), 120);
-    $pixType = strtolower(trim((string)($data['pix_key_type'] ?? '')));
     $phoneDdi = sanitize_text((string)($data['phone_ddi'] ?? '+55'), 8);
     $phone = gcv_digits((string)($data['phone'] ?? ''));
     $birth = trim((string)($data['birth_date'] ?? ''));
@@ -108,11 +103,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
 
     if (mb_strlen($fullName) < 2) json_response(false, null, 'Nome completo obrigatório', 422);
     if (mb_strlen($nickname) < 2) json_response(false, null, 'Apelido obrigatório', 422);
-    if (strlen($cpf) !== 11) json_response(false, null, 'CPF inválido (11 dígitos)', 422);
-    if ($pixKey === '') json_response(false, null, 'Chave PIX obrigatória', 422);
-    if (!in_array($pixType, ['cpf', 'cnpj', 'email', 'phone', 'random'], true)) {
-        json_response(false, null, 'Tipo de chave PIX inválido', 422);
-    }
     if (strlen($phone) < 10 || strlen($phone) > 13) json_response(false, null, 'Telefone inválido', 422);
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $birth)) json_response(false, null, 'Data de nascimento inválida', 422);
     $birthDt = DateTimeImmutable::createFromFormat('Y-m-d', $birth);
@@ -124,34 +114,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
     $cityStmt->execute([$baseCityId]);
     $cityName = (string)($cityStmt->fetchColumn() ?: '');
     if ($cityName === '' || !gcv_is_allowed_guide_base_city($cityName)) {
-        json_response(false, null, 'Cidade deve ser Alto Paraíso, São Jorge ou Cavalcante', 422);
+        json_response(false, null, 'Cidade deve ser Alto Paraíso, São Jorge, Cavalcante, Teresina de Goiás ou São João d\'Aliança', 422);
     }
     if ($idDoc === '') json_response(false, null, 'Documento de identificação obrigatório', 422);
     if ($photo34 === '') json_response(false, null, 'Foto 3x4 obrigatória', 422);
     if ($bio === '') json_response(false, null, 'Descrição obrigatória', 422);
     if (mb_strlen($bio) > $BIO_MAX) json_response(false, null, "Descrição: máximo {$BIO_MAX} caracteres", 422);
 
+    $profileComplete = 1;
     $pdo->prepare(
         'UPDATE gcv_guides SET
-            full_name = ?, nickname = ?, cpf = ?, pix_key = ?, pix_key_type = ?,
+            full_name = ?, nickname = ?,
             phone = ?, phone_ddi = ?, birth_date = ?, base_city_id = ?,
-            id_document_url = ?, photo_3x4_url = ?, bio_pt = ?, profile_complete = 1
+            id_document_url = ?, photo_3x4_url = ?, photo_url = ?, bio_pt = ?, profile_complete = ?
          WHERE user_id = ?'
     )->execute([
-        $fullName, $nickname, $cpf, $pixKey, $pixType,
+        $fullName, $nickname,
         $phone, $phoneDdi, $birth, $baseCityId,
-        $idDoc, $photo34, $bio, (int)$user['id'],
+        $idDoc, $photo34, $photo34, $bio, $profileComplete, (int)$user['id'],
     ]);
 
-    // Espelha nome no usuário
-    $pdo->prepare('UPDATE gcv_users SET name = ? WHERE id = ?')->execute([$fullName, (int)$user['id']]);
+    $pdo->prepare('UPDATE gcv_users SET name = ?, avatar_url = COALESCE(NULLIF(?, ""), avatar_url) WHERE id = ?')
+        ->execute([$fullName, $photo34, (int)$user['id']]);
 
     $profile = gcv_guide_profile_row((int)$user['id']);
+    $missingAfter = gcv_guide_profile_missing($profile ?: []);
     json_response(true, [
         'message' => 'Perfil atualizado',
         'profile' => $profile,
-        'missing' => gcv_guide_profile_missing($profile ?: []),
-        'complete' => true,
+        'missing' => $missingAfter,
+        'complete' => count($missingAfter) === 0,
+        'financial_ready' => gcv_guide_financial_is_ready((int)$user['id']),
     ]);
 }
 

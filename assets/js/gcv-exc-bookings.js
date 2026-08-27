@@ -94,7 +94,7 @@
 
   function quorumMinimo(e) {
     var q = parseInt(String(e && e.quorumMin), 10);
-    if (Number.isFinite(q) && q > 0) return q;
+    if (Number.isFinite(q) && q >= 0) return q;
     return grupoMaximo(e);
   }
 

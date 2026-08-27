@@ -580,6 +580,48 @@ const MOCK_USERS = {
 
 const user = MOCK_USERS[ROLE] || MOCK_USERS.guide;
 
+function loadCatalogAttractions() {
+  const files = [
+    path.join(ROOT, "api", "data", "attractions-seed.json"),
+    path.join(ROOT, "api", "data", "attractions-catalog-extra.json"),
+  ];
+  const seen = new Set();
+  const out = [];
+  let id = 1;
+  for (const file of files) {
+    if (!fs.existsSync(file)) continue;
+    try {
+      const raw = JSON.parse(fs.readFileSync(file, "utf8"));
+      for (const a of raw.attractions || []) {
+        const title = String(a.title_pt || "").trim();
+        const slug = String(a.slug || "").trim();
+        if (!title) continue;
+        const key = title.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push({ id: id++, title_pt: title, slug, city_id: null, entry_price_cents: null });
+      }
+    } catch {
+      /* ignore malformed seed */
+    }
+  }
+  out.sort((a, b) => {
+    const combo = (t) => (String(t).includes(" + ") ? 1 : 0);
+    const ca = combo(a.title_pt);
+    const cb = combo(b.title_pt);
+    if (ca !== cb) return ca - cb;
+    return a.title_pt.localeCompare(b.title_pt, "pt", { sensitivity: "base" });
+  });
+  return out;
+}
+
+const MOCK_ATTRACTIONS = loadCatalogAttractions();
+const MOCK_CITIES = [
+  { id: 1, name: "Alto Paraíso de Goiás" },
+  { id: 2, name: "São Jorge" },
+  { id: 3, name: "Cavalcante" },
+];
+
 /** Muda o usuário mockado em runtime (login / Google). */
 function setMockUser(next) {
   Object.keys(user).forEach((k) => {
@@ -681,15 +723,8 @@ const API_ROUTES = {
     data: {
       profile_complete: true,
       min_quorum: 4,
-      attractions: [
-        { id: 1, title_pt: "Loquinhas", slug: "loquinhas" },
-        { id: 2, title_pt: "Cristais", slug: "cristais" },
-      ],
-      cities: [
-        { id: 1, name: "Alto Paraíso de Goiás" },
-        { id: 2, name: "São Jorge" },
-        { id: 3, name: "Cavalcante" },
-      ],
+      attractions: MOCK_ATTRACTIONS,
+      cities: MOCK_CITIES,
       upcoming: [
         {
           id: 101,
@@ -783,8 +818,8 @@ const API_ROUTES = {
     ok: true,
     data: {
       min_quorum: 4,
-      attractions: [{ id: 1, title_pt: "Loquinhas", slug: "loquinhas" }],
-      cities: [{ id: 1, name: "Alto Paraíso de Goiás" }],
+      attractions: MOCK_ATTRACTIONS,
+      cities: MOCK_CITIES,
       my_proposals: [],
     },
   }),
@@ -881,6 +916,87 @@ const server = http.createServer((req, res) => {
 
   // Mock API
   if (urlPath.startsWith("/api/")) {
+    const jsonOk = (payload) => {
+      res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify(payload));
+    };
+    const MOCK_PLACES = [
+      {
+        place_id: "osm:node/centro-ap",
+        description: "Centro de Alto Paraíso, Alto Paraíso de Goiás - GO",
+        main_text: "Centro de Alto Paraíso",
+        secondary_text: "Alto Paraíso de Goiás - GO",
+        lat: -14.1328,
+        lng: -47.51,
+        maps_url: "https://www.google.com/maps?q=-14.1328,-47.51",
+      },
+      {
+        place_id: "osm:node/padaria-sm",
+        description: "Padaria Santa Maria, Alto Paraíso de Goiás - GO",
+        main_text: "Padaria Santa Maria",
+        secondary_text: "Alto Paraíso de Goiás - GO",
+        lat: -14.1342,
+        lng: -47.5118,
+        maps_url: "https://www.google.com/maps?q=-14.1342,-47.5118",
+      },
+      {
+        place_id: "osm:node/sao-jorge",
+        description: "Vila de São Jorge, Alto Paraíso de Goiás - GO",
+        main_text: "Vila de São Jorge",
+        secondary_text: "Alto Paraíso de Goiás - GO",
+        lat: -14.1835,
+        lng: -47.809,
+        maps_url: "https://www.google.com/maps?q=-14.1835,-47.809",
+      },
+    ];
+    if (urlPath === "/api/places/autocomplete.php") {
+      const u = new URL(req.url, "http://localhost:" + PORT);
+      const q = String(u.searchParams.get("q") || "").trim().toLowerCase();
+      const preds = MOCK_PLACES.filter((p) =>
+        !q || p.description.toLowerCase().includes(q) || p.main_text.toLowerCase().includes(q)
+      );
+      jsonOk({ ok: true, data: { predictions: preds } });
+      return;
+    }
+    if (urlPath === "/api/places/details.php") {
+      const u = new URL(req.url, "http://localhost:" + PORT);
+      const id = String(u.searchParams.get("place_id") || "");
+      const found = MOCK_PLACES.find((p) => p.place_id === id) || MOCK_PLACES[0];
+      jsonOk({
+        ok: true,
+        data: {
+          place_id: found.place_id,
+          name: found.main_text,
+          formatted_address: found.description,
+          label: found.main_text,
+          lat: found.lat,
+          lng: found.lng,
+          maps_url: found.maps_url,
+        },
+      });
+      return;
+    }
+    if (urlPath === "/api/places/reverse.php") {
+      const u = new URL(req.url, "http://localhost:" + PORT);
+      const lat = parseFloat(u.searchParams.get("lat") || "");
+      const lng = parseFloat(u.searchParams.get("lng") || "");
+      jsonOk({
+        ok: true,
+        data: {
+          place_id: "osm:node/gps",
+          name: "Minha localização",
+          formatted_address: "Ponto atual (GPS)",
+          label: "Minha localização",
+          lat: Number.isFinite(lat) ? lat : -14.1328,
+          lng: Number.isFinite(lng) ? lng : -47.51,
+          maps_url: "https://www.google.com/maps?q=" + encodeURIComponent(
+            (Number.isFinite(lat) ? lat : -14.1328) + "," + (Number.isFinite(lng) ? lng : -47.51)
+          ),
+        },
+      });
+      return;
+    }
+
     // Login e-mail/senha (3 portas)
     if (urlPath === "/api/auth/login.php" && req.method === "POST") {
       readJsonBody(req)
@@ -1109,6 +1225,7 @@ server.listen(PORT, () => {
   console.log("");
   console.log("  ✅  Mock server rodando em http://localhost:" + PORT);
   console.log("  👤  Usuário mockado: " + user.name + " (" + user.role + " / " + user.status + ")");
+  console.log("  🌿  Atrativos no catálogo: " + MOCK_ATTRACTIONS.length);
   console.log("  📬  Lista de espera: POST /api/excursao-waitlist/register.php");
   console.log("  ✉   E-mail dev: api/.env (SMTP) ou api/storage/dev-outbox/");
   console.log("");

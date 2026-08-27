@@ -3,10 +3,35 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../marketplace_schema.php';
+require_once __DIR__ . '/../excursion_status.php';
 require_once __DIR__ . '/../mailer.php';
 require_once __DIR__ . '/constants.php';
 require_once __DIR__ . '/pricing_service.php';
 require_once __DIR__ . '/audit_service.php';
+
+function gcv_clamp_quorum($value): int
+{
+    $n = (int)$value;
+    if ($n < 0) {
+        return 0;
+    }
+    if ($n > 4) {
+        return 4;
+    }
+    return $n;
+}
+
+function gcv_clamp_max_people($value): int
+{
+    $n = (int)$value;
+    if ($n < 1) {
+        return 1;
+    }
+    if ($n > 12) {
+        return 12;
+    }
+    return $n;
+}
 
 /**
  * Publicação administrativa (BusinessMode = ADMINISTRATIVE).
@@ -50,18 +75,24 @@ function gcv_publish_administrative(array $payload, int $adminUserId, string $cr
     }
 
     $pdo = db();
+    $quorum = gcv_clamp_quorum($payload['quorum'] ?? 4);
+    $maxPeople = gcv_clamp_max_people($payload['max_people'] ?? 10);
+    $preconfirmed = gcv_clamp_preconfirmed(
+        $payload['preconfirmed_people'] ?? 0,
+        $maxPeople,
+        (int)($payload['booked_people'] ?? 0)
+    );
     $stmt = $pdo->prepare(
         'INSERT INTO gcv_excursions (
           status, date_iso, departure_time, departure_city_id, attraction_id, guide_user_id,
-          price_cents, quorum, max_people, booked_people, include_transport, include_entry, include_lunch,
+          price_cents, quorum, max_people, booked_people, preconfirmed_people, include_transport, include_entry, include_lunch,
           notes_pt, notes_en, notes_es, cart_slug, created_by, updated_by,
           business_mode, created_by_origin, guide_net_cents, commission_rule_id, commission_pct_applied,
           commission_cents, price_before_round_cents, rounding_diff_cents, platform_margin_cents,
           guide_payout_planned_cents, approved_at, approved_by
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),?)'
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),?)'
     );
 
-    $quorum = max(4, (int)($payload['quorum'] ?? 4));
     $stmt->execute([
         $status,
         $payload['date_iso'],
@@ -71,8 +102,9 @@ function gcv_publish_administrative(array $payload, int $adminUserId, string $cr
         $guideUserId,
         $pricing['final_price_cents'],
         $quorum,
-        (int)($payload['max_people'] ?? 10),
+        $maxPeople,
         (int)($payload['booked_people'] ?? 0),
+        $preconfirmed,
         !empty($payload['include_transport']) ? 1 : 0,
         !empty($payload['include_entry']) ? 1 : 0,
         !empty($payload['include_lunch']) ? 1 : 0,
@@ -109,7 +141,8 @@ function gcv_publish_administrative(array $payload, int $adminUserId, string $cr
 
 /**
  * Publicação pelo guia (BusinessMode = GUIDE_MARKETPLACE).
- * Guia informa apenas valor líquido; status = pending_approval.
+ * Sempre entra em pending_approval — nunca publica sozinho.
+ * Só o admin publica (Aprovar / Editar e Aprovar).
  *
  * @param array<string,mixed> $payload
  * @return array<string,mixed>
@@ -129,16 +162,18 @@ function gcv_publish_guide_marketplace(array $payload, int $guideUserId): array
     $pricing = gcv_pricing_from_guide_net($guideNet, null, $guideUserId, $categoryKey, $cityId > 0 ? $cityId : null);
 
     $pdo = db();
-    $quorum = max(4, (int)($payload['quorum'] ?? 4));
+    $quorum = gcv_clamp_quorum($payload['quorum'] ?? 4);
+    $maxPeople = gcv_clamp_max_people($payload['max_people'] ?? 10);
+    $preconfirmed = gcv_clamp_preconfirmed($payload['preconfirmed_people'] ?? 0, $maxPeople, 0);
     $stmt = $pdo->prepare(
         'INSERT INTO gcv_excursions (
           status, date_iso, departure_time, departure_city_id, attraction_id, guide_user_id,
-          price_cents, quorum, max_people, booked_people, include_transport, include_entry, include_lunch,
+          price_cents, quorum, max_people, booked_people, preconfirmed_people, include_transport, include_entry, include_lunch,
           notes_pt, created_by, updated_by,
           business_mode, created_by_origin, guide_net_cents, commission_rule_id, commission_pct_applied,
           commission_cents, price_before_round_cents, rounding_diff_cents, platform_margin_cents,
           guide_payout_planned_cents
-        ) VALUES (\'pending_approval\',?,?,?,?,?,?,?,?,0,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+        ) VALUES (\'pending_approval\',?,?,?,?,?,?,?,?,0,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
     );
     $stmt->execute([
         $payload['date_iso'],
@@ -148,7 +183,8 @@ function gcv_publish_guide_marketplace(array $payload, int $guideUserId): array
         $guideUserId,
         $pricing['final_price_cents'],
         $quorum,
-        (int)($payload['max_people'] ?? 10),
+        $maxPeople,
+        $preconfirmed,
         !empty($payload['include_transport']) ? 1 : 0,
         !empty($payload['include_entry']) ? 1 : 0,
         !empty($payload['include_lunch']) ? 1 : 0,
@@ -168,6 +204,38 @@ function gcv_publish_guide_marketplace(array $payload, int $guideUserId): array
     ]);
 
     $id = (int)$pdo->lastInsertId();
+    $verify = $pdo->prepare('SELECT status FROM gcv_excursions WHERE id = ?');
+    $verify->execute([$id]);
+    $st = (string)$verify->fetchColumn();
+    if ($st !== 'pending_approval') {
+        gcv_marketplace_ensure_schema();
+        try {
+            $pdo->prepare(
+                "UPDATE gcv_excursions SET status='pending_approval', approved_at=NULL, approved_by=NULL WHERE id=?"
+            )->execute([$id]);
+            $verify->execute([$id]);
+            $st = (string)$verify->fetchColumn();
+        } catch (Throwable $e) {
+            $st = '';
+        }
+        if ($st !== 'pending_approval') {
+            $pdo->prepare("UPDATE gcv_excursions SET status='draft' WHERE id=?")->execute([$id]);
+            throw new RuntimeException('Não foi possível enfileirar o passeio para aprovação do admin.');
+        }
+    }
+    if (!function_exists('gcv_excursion_save_meeting_point')) {
+        require_once __DIR__ . '/../meeting_point.php';
+    }
+    $meetingPoint = trim((string)($payload['meeting_point'] ?? ''));
+    if ($meetingPoint !== '') {
+        gcv_excursion_save_meeting_point(
+            $id,
+            $meetingPoint,
+            isset($payload['meeting_point_place_id']) ? (string)$payload['meeting_point_place_id'] : null,
+            $payload['meeting_point_lat'] ?? null,
+            $payload['meeting_point_lng'] ?? null
+        );
+    }
     gcv_audit_log('excursion', $id, 'create_guide_marketplace', $guideUserId, null, null, $pricing, GcvCreatedBy::GUIDE);
 
     gcv_publish_notify_pending_approval($id);
@@ -202,6 +270,18 @@ function gcv_publish_admin_decision(int $excursionId, string $action, array $bod
             "UPDATE gcv_excursions SET status='published', approved_at=NOW(), approved_by=?, rejection_reason=NULL, updated_by=? WHERE id=?"
         )->execute([$adminId, $adminId, $excursionId]);
         gcv_audit_log('excursion', $excursionId, 'approve', $adminId, 'status', $before['status'], 'published', GcvCreatedBy::ADMIN);
+        try {
+            require_once dirname(__DIR__) . '/notify_ops.php';
+            gcv_ops_notify_guide_approved($excursionId);
+            $after = $pdo->prepare('SELECT * FROM gcv_excursions WHERE id = ? LIMIT 1');
+            $after->execute([$excursionId]);
+            $afterRow = $after->fetch(PDO::FETCH_ASSOC) ?: [];
+            if ($afterRow && gcv_resolve_excursion_lifecycle($afterRow) === 'confirmada') {
+                gcv_ops_notify_guide_confirmed($excursionId);
+            }
+        } catch (Throwable $e) {
+            error_log('notify approve: ' . $e->getMessage());
+        }
     } elseif ($action === 'reject') {
         $reason = trim((string)($body['rejection_reason'] ?? $body['reason'] ?? ''));
         if ($reason === '') {
@@ -211,6 +291,12 @@ function gcv_publish_admin_decision(int $excursionId, string $action, array $bod
             "UPDATE gcv_excursions SET status='rejected', rejection_reason=?, approved_at=NULL, approved_by=NULL, updated_by=? WHERE id=?"
         )->execute([$reason, $adminId, $excursionId]);
         gcv_audit_log('excursion', $excursionId, 'reject', $adminId, 'status', $before['status'], 'rejected', GcvCreatedBy::ADMIN, ['reason' => $reason]);
+        try {
+            require_once dirname(__DIR__) . '/notify_ops.php';
+            gcv_ops_notify_guide_rejected($excursionId, $reason);
+        } catch (Throwable $e) {
+            error_log('notify reject: ' . $e->getMessage());
+        }
     } elseif ($action === 'request_changes') {
         $note = trim((string)($body['approval_note'] ?? $body['note'] ?? ''));
         if ($note === '') {
@@ -220,12 +306,18 @@ function gcv_publish_admin_decision(int $excursionId, string $action, array $bod
             "UPDATE gcv_excursions SET status='draft', approval_note=?, updated_by=? WHERE id=?"
         )->execute([$note, $adminId, $excursionId]);
         gcv_audit_log('excursion', $excursionId, 'request_changes', $adminId, 'status', $before['status'], 'draft', GcvCreatedBy::ADMIN, ['note' => $note]);
+        try {
+            require_once dirname(__DIR__) . '/notify_ops.php';
+            gcv_ops_notify_guide_needs_changes($excursionId, $note);
+        } catch (Throwable $e) {
+            error_log('notify changes: ' . $e->getMessage());
+        }
     } elseif ($action === 'edit_and_approve') {
         $fields = [];
         $params = [];
         $editable = [
             'date_iso', 'departure_time', 'departure_city_id', 'attraction_id', 'guide_user_id',
-            'price_cents', 'quorum', 'max_people', 'notes_pt', 'notes_en', 'notes_es',
+            'price_cents', 'quorum', 'max_people', 'preconfirmed_people', 'notes_pt', 'notes_en', 'notes_es',
             'guide_net_cents', 'guide_payout_planned_cents', 'platform_margin_cents',
             'include_transport', 'include_entry', 'include_lunch',
         ];
@@ -233,8 +325,13 @@ function gcv_publish_admin_decision(int $excursionId, string $action, array $bod
             if (!array_key_exists($f, $body)) {
                 continue;
             }
+            $val = $body[$f];
+            if ($f === 'preconfirmed_people') {
+                $maxP = gcv_clamp_max_people($body['max_people'] ?? $ex['max_people'] ?? 10);
+                $val = gcv_clamp_preconfirmed($val, $maxP, (int)($ex['booked_people'] ?? 0));
+            }
             $fields[] = "`{$f}`=?";
-            $params[] = $body[$f];
+            $params[] = $val;
         }
 
         // Se admin informou guide_net e modo marketplace, recalcula preço
@@ -300,6 +397,15 @@ function gcv_publish_admin_decision(int $excursionId, string $action, array $bod
         $after = gcv_publish_load_excursion($excursionId);
         gcv_audit_diff('excursion', $excursionId, $before, $after, $adminId, GcvCreatedBy::ADMIN);
         gcv_audit_log('excursion', $excursionId, 'edit_and_approve', $adminId, 'status', $before['status'], 'published', GcvCreatedBy::ADMIN);
+        try {
+            require_once dirname(__DIR__) . '/notify_ops.php';
+            gcv_ops_notify_guide_approved($excursionId);
+            if (gcv_resolve_excursion_lifecycle($after) === 'confirmada') {
+                gcv_ops_notify_guide_confirmed($excursionId);
+            }
+        } catch (Throwable $e) {
+            error_log('notify edit_and_approve: ' . $e->getMessage());
+        }
         return $after;
     } else {
         throw new InvalidArgumentException('Ação inválida');

@@ -1,0 +1,346 @@
+{
+  "attractions": [
+    {
+      "slug": "chapada-alta-guia-chapada-veadeiros",
+      "status": "published",
+      "title_pt": "Chapada Alta",
+      "title_en": "Chapada Alta",
+      "title_es": "Chapada Alta",
+      "excerpt_pt": "Roteiro em Alto Paraíso de Goiás.",
+      "excerpt_en": "Tour in Alto Paraíso de Goiás.",
+      "excerpt_es": "Ruta en Alto Paraíso de Goiás."
+    },
+    {
+      "slug": "dragao-4x4-guia-chapada-veadeiros",
+      "status": "published",
+      "title_pt": "Dragão",
+      "title_en": "Dragão",
+      "title_es": "Dragão",
+      "excerpt_pt": "Roteiro 4x4 em Alto Paraíso de Goiás.",
+      "excerpt_en": "4x4 tour in Alto Paraíso de Goiás.",
+      "excerpt_es": "Ruta 4x4 en Alto Paraíso de Goiás."
+    },
+    {
+      "slug": "sertao-zen-guia-chapada-veadeiros",
+      "status": "published",
+      "title_pt": "Sertão Zen",
+      "title_en": "Sertão Zen",
+      "title_es": "Sertão Zen",
+      "excerpt_pt": "Roteiro em Alto Paraíso de Goiás.",
+      "excerpt_en": "Tour in Alto Paraíso de Goiás.",
+      "excerpt_es": "Ruta en Alto Paraíso de Goiás."
+    },
+    {
+      "slug": "simao-correia-guia-chapada-veadeiros",
+      "status": "published",
+      "title_pt": "Simão Correia",
+      "title_en": "Simão Correia",
+      "title_es": "Simão Correia",
+      "excerpt_pt": "Roteiro em Alto Paraíso de Goiás.",
+      "excerpt_en": "Tour in Alto Paraíso de Goiás.",
+      "excerpt_es": "Ruta en Alto Paraíso de Goiás."
+    },
+    {
+      "slug": "bocaina-de-farias-guia-chapada-veadeiros",
+      "status": "published",
+      "title_pt": "Bocaina de Farias",
+      "title_en": "Bocaina de Farias",
+      "title_es": "Bocaina de Farias",
+      "excerpt_pt": "Roteiro em Alto Paraíso de Goiás.",
+      "excerpt_en": "Tour in Alto Paraíso de Goiás.",
+      "excerpt_es": "Ruta en Alto Paraíso de Goiás."
+    },
+    {
+      "slug": "lajeado-guia-chapada-veadeiros",
+      "status": "published",
+      "title_pt": "Lajeado",
+      "title_en": "Lajeado",
+      "title_es": "Lajeado",
+      "excerpt_pt": "Roteiro em São Jorge.",
+      "excerpt_en": "Tour in São Jorge.",
+      "excerpt_es": "Ruta en São Jorge."
+    },
+    {
+      "slug": "morada-do-sol-guia-chapada-veadeiros",
+      "status": "published",
+      "title_pt": "Morada do Sol",
+      "title_en": "Morada do Sol",
+      "title_es": "Morada del Sol",
+      "excerpt_pt": "Roteiro em São Jorge.",
+      "excerpt_en": "Tour in São Jorge.",
+      "excerpt_es": "Ruta en São Jorge."
+    },
+    {
+      "slug": "santana-guia-chapada-veadeiros",
+      "status": "published",
+      "title_pt": "Santana",
+      "title_en": "Santana",
+      "title_es": "Santana",
+      "excerpt_pt": "Roteiro em Cavalcante.",
+      "excerpt_en": "Tour in Cavalcante.",
+      "excerpt_es": "Ruta en Cavalcante."
+    },
+    {
+      "slug": "barroco-guia-chapada-veadeiros",
+      "status": "published",
+      "title_pt": "Barroco",
+      "title_en": "Barroco",
+      "title_es": "Barroco",
+      "excerpt_pt": "Roteiro em Cavalcante.",
+      "excerpt_en": "Tour in Cavalcante.",
+      "excerpt_es": "Ruta en Cavalcante."
+    },
+    {
+      "slug": "veredas-guia-chapada-veadeiros",
+      "status": "published",
+      "title_pt": "Veredas",
+      "title_en": "Veredas",
+      "title_es": "Veredas",
+      "excerpt_pt": "Roteiro em Cavalcante.",
+      "excerpt_en": "Tour in Cavalcante.",
+      "excerpt_es": "Ruta en Cavalcante."
+    },
+    {
+      "slug": "boqueirao-guia-chapada-veadeiros",
+      "status": "published",
+      "title_pt": "Boqueirão",
+      "title_en": "Boqueirão",
+      "title_es": "Boqueirão",
+      "excerpt_pt": "Roteiro em Cavalcante.",
+      "excerpt_en": "Tour in Cavalcante.",
+      "excerpt_es": "Ruta en Cavalcante."
+    },
+    {
+      "slug": "guardiao-4x4-guia-chapada-veadeiros",
+      "status": "published",
+      "title_pt": "Guardião (4x4)",
+      "title_en": "Guardião (4x4)",
+      "title_es": "Guardião (4x4)",
+      "excerpt_pt": "Roteiro 4x4 em Cavalcante.",
+      "excerpt_en": "4x4 tour in Cavalcante.",
+      "excerpt_es": "Ruta 4x4 en Cavalcante."
+    },
+    {
+      "slug": "curriola-guia-chapada-veadeiros",
+      "status": "published",
+      "title_pt": "Curriola",
+      "title_en": "Curriola",
+      "title_es": "Curriola",
+      "excerpt_pt": "Roteiro em Cavalcante.",
+      "excerpt_en": "Tour in Cavalcante.",
+      "excerpt_es": "Ruta en Cavalcante."
+    },
+    {
+      "slug": "rei-do-prata-guia-chapada-veadeiros",
+      "status": "published",
+      "title_pt": "Rei do Prata",
+      "title_en": "Rei do Prata",
+      "title_es": "Rei do Prata",
+      "excerpt_pt": "Roteiro em Cavalcante.",
+      "excerpt_en": "Tour in Cavalcante.",
+      "excerpt_es": "Ruta en Cavalcante."
+    },
+    {
+      "slug": "canjica-aguas-lindas-guia-chapada-veadeiros",
+      "status": "published",
+      "title_pt": "Canjica e Águas Lindas",
+      "title_en": "Canjica and Águas Lindas",
+      "title_es": "Canjica y Águas Lindas",
+      "excerpt_pt": "Cachoeira da borda infinita no Canjica, Cavalcante.",
+      "excerpt_en": "Infinity-edge waterfall at Canjica, Cavalcante.",
+      "excerpt_es": "Cascada de borde infinito en Canjica, Cavalcante.",
+      "cover_url": "/assets/img/imagens/cachoeira-borda-infinita-canjica-aguas-lindas-guia-chapada-veadeiros-cavalcante.jpg",
+      "seo_title_pt": "Canjica e Águas Lindas | Guia Chapada Veadeiros (GCV)",
+      "seo_title_en": "Canjica and Águas Lindas | Guia Chapada Veadeiros (GCV)",
+      "seo_title_es": "Canjica y Águas Lindas | Guia Chapada Veadeiros (GCV)",
+      "seo_desc_pt": "Cachoeira da borda infinita no Canjica e Águas Lindas, Cavalcante — Guia Chapada Veadeiros (GCV).",
+      "gallery": [
+        {
+          "url": "/assets/img/imagens/cachoeira-borda-infinita-canjica-aguas-lindas-guia-chapada-veadeiros-cavalcante.jpg",
+          "alt": "Cachoeira da borda infinita no Canjica e Águas Lindas, Cavalcante — Guia Chapada Veadeiros (GCV)",
+          "sort_order": 0
+        }
+      ]
+    },
+    {
+      "slug": "catoa-guia-chapada-veadeiros",
+      "status": "published",
+      "title_pt": "Catoá",
+      "title_en": "Catoá",
+      "title_es": "Catoá",
+      "excerpt_pt": "Roteiro na Chapada dos Veadeiros.",
+      "excerpt_en": "Tour in Chapada dos Veadeiros.",
+      "excerpt_es": "Ruta en la Chapada dos Veadeiros."
+    },
+    {
+      "slug": "anjos-arcanjos-caracol-guia-chapada-veadeiros",
+      "status": "published",
+      "title_pt": "Anjos e Arcanjos + Caracol",
+      "title_en": "Anjos e Arcanjos + Caracol",
+      "title_es": "Anjos e Arcanjos + Caracol",
+      "excerpt_pt": "Roteiro duplo em Alto Paraíso de Goiás.",
+      "excerpt_en": "Combo tour in Alto Paraíso de Goiás.",
+      "excerpt_es": "Ruta doble en Alto Paraíso de Goiás."
+    },
+    {
+      "slug": "santa-barbara-capivara-guia-chapada-veadeiros",
+      "status": "published",
+      "title_pt": "Santa Bárbara + Capivara",
+      "title_en": "Santa Bárbara + Capivara",
+      "title_es": "Santa Bárbara + Capivara",
+      "excerpt_pt": "Roteiro duplo em Cavalcante: Santa Bárbara e Capivara.",
+      "excerpt_en": "Combo tour in Cavalcante: Santa Bárbara and Capivara.",
+      "excerpt_es": "Ruta doble en Cavalcante: Santa Bárbara y Capivara."
+    },
+    {
+      "slug": "santa-barbara-candaru-guia-chapada-veadeiros",
+      "status": "published",
+      "title_pt": "Santa Bárbara + Candaru",
+      "title_en": "Santa Bárbara + Candaru",
+      "title_es": "Santa Bárbara + Candaru",
+      "excerpt_pt": "Roteiro duplo em Cavalcante: Santa Bárbara e Candaru.",
+      "excerpt_en": "Combo tour in Cavalcante: Santa Bárbara and Candaru.",
+      "excerpt_es": "Ruta doble en Cavalcante: Santa Bárbara y Candaru."
+    },
+    {
+      "slug": "santa-barbara-capivara-candaru-guia-chapada-veadeiros",
+      "status": "published",
+      "title_pt": "Santa Bárbara + Capivara + Candaru",
+      "title_en": "Santa Bárbara + Capivara + Candaru",
+      "title_es": "Santa Bárbara + Capivara + Candaru",
+      "excerpt_pt": "Roteiro combinado em Cavalcante: Santa Bárbara, Capivara e Candaru.",
+      "excerpt_en": "Combo tour in Cavalcante: Santa Bárbara, Capivara and Candaru.",
+      "excerpt_es": "Ruta combinada en Cavalcante: Santa Bárbara, Capivara y Candaru."
+    },
+    {
+      "slug": "mirante-da-janela-noturno-guia-chapada-veadeiros",
+      "status": "published",
+      "title_pt": "Mirante da Janela Noturno",
+      "title_en": "Mirante da Janela at night",
+      "title_es": "Mirante da Janela nocturno",
+      "excerpt_pt": "Roteiro noturno em São Jorge.",
+      "excerpt_en": "Night tour in São Jorge.",
+      "excerpt_es": "Ruta nocturna en São Jorge."
+    },
+    {
+      "slug": "parque-nacional-noturno-guia-chapada-veadeiros",
+      "status": "published",
+      "title_pt": "Parque Nacional Noturno",
+      "title_en": "National Park at night",
+      "title_es": "Parque Nacional nocturno",
+      "excerpt_pt": "Roteiro noturno no Parque Nacional da Chapada dos Veadeiros.",
+      "excerpt_en": "Night tour in Chapada dos Veadeiros National Park.",
+      "excerpt_es": "Ruta nocturna en el Parque Nacional Chapada dos Veadeiros."
+    },
+    {
+      "slug": "almecegas-vale-da-lua-guia-chapada-veadeiros",
+      "status": "published",
+      "title_pt": "Almécegas + Vale da Lua",
+      "title_en": "Almécegas + Vale da Lua",
+      "title_es": "Almécegas + Vale da Lua",
+      "excerpt_pt": "Roteiro duplo: Almécegas e Vale da Lua.",
+      "excerpt_en": "Combo tour: Almécegas and Vale da Lua.",
+      "excerpt_es": "Ruta doble: Almécegas y Vale da Lua."
+    },
+    {
+      "slug": "segredo-vale-da-lua-guia-chapada-veadeiros",
+      "status": "published",
+      "title_pt": "Segredo + Vale da Lua",
+      "title_en": "Segredo + Vale da Lua",
+      "title_es": "Segredo + Vale da Lua",
+      "excerpt_pt": "Roteiro duplo: Segredo e Vale da Lua.",
+      "excerpt_en": "Combo tour: Segredo and Vale da Lua.",
+      "excerpt_es": "Ruta doble: Segredo y Vale da Lua."
+    },
+    {
+      "slug": "morada-do-sol-raizama-guia-chapada-veadeiros",
+      "status": "published",
+      "title_pt": "Morada do Sol + Raizama",
+      "title_en": "Morada do Sol + Raizama",
+      "title_es": "Morada del Sol + Raizama",
+      "excerpt_pt": "Roteiro duplo em São Jorge: Morada do Sol e Raizama.",
+      "excerpt_en": "Combo tour in São Jorge: Morada do Sol and Raizama.",
+      "excerpt_es": "Ruta doble en São Jorge: Morada del Sol y Raizama."
+    },
+    {
+      "slug": "loquinhas-vale-da-lua-guia-chapada-veadeiros",
+      "status": "published",
+      "title_pt": "Loquinhas + Vale da Lua",
+      "title_en": "Loquinhas + Vale da Lua",
+      "title_es": "Loquinhas + Vale da Lua",
+      "excerpt_pt": "Roteiro duplo: Loquinhas e Vale da Lua.",
+      "excerpt_en": "Combo tour: Loquinhas and Vale da Lua.",
+      "excerpt_es": "Ruta doble: Loquinhas y Vale da Lua."
+    },
+    {
+      "slug": "almecegas-loquinhas-guia-chapada-veadeiros",
+      "status": "published",
+      "title_pt": "Almécegas + Loquinhas",
+      "title_en": "Almécegas + Loquinhas",
+      "title_es": "Almécegas + Loquinhas",
+      "excerpt_pt": "Roteiro duplo: Almécegas e Loquinhas.",
+      "excerpt_en": "Combo tour: Almécegas and Loquinhas.",
+      "excerpt_es": "Ruta doble: Almécegas y Loquinhas."
+    },
+    {
+      "slug": "cordovil-loquinhas-guia-chapada-veadeiros",
+      "status": "published",
+      "title_pt": "Cordovil + Loquinhas",
+      "title_en": "Cordovil + Loquinhas",
+      "title_es": "Cordovil + Loquinhas",
+      "excerpt_pt": "Roteiro duplo: Cordovil e Loquinhas.",
+      "excerpt_en": "Combo tour: Cordovil and Loquinhas.",
+      "excerpt_es": "Ruta doble: Cordovil y Loquinhas."
+    },
+    {
+      "slug": "morada-do-sol-lajeado-guia-chapada-veadeiros",
+      "status": "published",
+      "title_pt": "Morada do Sol + Lajeado",
+      "title_en": "Morada do Sol + Lajeado",
+      "title_es": "Morada del Sol + Lajeado",
+      "excerpt_pt": "Roteiro duplo em São Jorge: Morada do Sol e Lajeado.",
+      "excerpt_en": "Combo tour in São Jorge: Morada do Sol and Lajeado.",
+      "excerpt_es": "Ruta doble en São Jorge: Morada del Sol y Lajeado."
+    },
+    {
+      "slug": "lajeado-raizama-guia-chapada-veadeiros",
+      "status": "published",
+      "title_pt": "Lajeado + Raizama",
+      "title_en": "Lajeado + Raizama",
+      "title_es": "Lajeado + Raizama",
+      "excerpt_pt": "Roteiro duplo em São Jorge: Lajeado e Raizama.",
+      "excerpt_en": "Combo tour in São Jorge: Lajeado and Raizama.",
+      "excerpt_es": "Ruta doble en São Jorge: Lajeado y Raizama."
+    },
+    {
+      "slug": "vale-da-lua-raizama-guia-chapada-veadeiros",
+      "status": "published",
+      "title_pt": "Vale da Lua + Raizama",
+      "title_en": "Vale da Lua + Raizama",
+      "title_es": "Vale da Lua + Raizama",
+      "excerpt_pt": "Roteiro duplo: Vale da Lua e Raizama.",
+      "excerpt_en": "Combo tour: Vale da Lua and Raizama.",
+      "excerpt_es": "Ruta doble: Vale da Lua y Raizama."
+    },
+    {
+      "slug": "cordovil-vale-da-lua-guia-chapada-veadeiros",
+      "status": "published",
+      "title_pt": "Cordovil + Vale da Lua",
+      "title_en": "Cordovil + Vale da Lua",
+      "title_es": "Cordovil + Vale da Lua",
+      "excerpt_pt": "Roteiro duplo: Cordovil e Vale da Lua.",
+      "excerpt_en": "Combo tour: Cordovil and Vale da Lua.",
+      "excerpt_es": "Ruta doble: Cordovil y Vale da Lua."
+    },
+    {
+      "slug": "caracol-guia-chapada-veadeiros",
+      "status": "published",
+      "title_pt": "Caracol",
+      "title_en": "Caracol",
+      "title_es": "Caracol",
+      "excerpt_pt": "Roteiro em Alto Paraíso de Goiás.",
+      "excerpt_en": "Tour in Alto Paraíso de Goiás.",
+      "excerpt_es": "Ruta en Alto Paraíso de Goiás."
+    }
+  ]
+}

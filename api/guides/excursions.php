@@ -4,7 +4,7 @@ declare(strict_types=1);
 /**
  * Agenda / publicar / cancelar excursões do guia (gcv_excursions).
  * GET  — lista minhas saídas + opções (atrativos, cidades)
- * POST — publica saída (preço/pessoa, quorum ≥ 4)
+ * POST — publica saída (preço/pessoa, quórum 0–4, pessoas confirmadas 0–5, máximo 12)
  * PUT  — cancela saída futura (status=cancelled)
  */
 require_once __DIR__ . '/../helpers/db.php';
@@ -15,8 +15,12 @@ require_once __DIR__ . '/../helpers/excursion_status.php';
 require_once __DIR__ . '/../helpers/marketplace_schema.php';
 require_once __DIR__ . '/../helpers/marketplace/publish_service.php';
 require_once __DIR__ . '/../helpers/marketplace/guide_financial_service.php';
+require_once __DIR__ . '/../helpers/meeting_point.php';
+require_once __DIR__ . '/../helpers/pix_reservation_store.php';
+require_once __DIR__ . '/../helpers/excursion_attractions.php';
 
 header('Content-Type: application/json; charset=utf-8');
+header('Cache-Control: no-store, no-cache, must-revalidate');
 
 $user = require_role('guide');
 if (($user['status'] ?? '') !== 'active') {
@@ -25,28 +29,25 @@ if (($user['status'] ?? '') !== 'active') {
 gcv_cms_ensure_schema();
 gcv_marketplace_ensure_schema();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-$MIN_QUORUM = 4;
+$MIN_QUORUM = 0;
+$MAX_QUORUM = 4;
+$MAX_PEOPLE_CAP = 12;
 
 function gcv_guide_profile_is_complete(int $userId): bool
 {
     $stmt = db()->prepare(
-        'SELECT full_name, nickname, cpf, pix_key, pix_key_type, phone, birth_date,
-                base_city_id, id_document_url, diploma_url, photo_3x4_url, photo_url, bio_pt, profile_complete
+        'SELECT full_name, nickname, phone, birth_date,
+                base_city_id, id_document_url, diploma_url, photo_3x4_url, photo_url, bio_pt
          FROM gcv_guides WHERE user_id = ? LIMIT 1'
     );
     $stmt->execute([$userId]);
     $p = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$p) return false;
-    if (!empty($p['profile_complete'])) return true;
-    $cpf = preg_replace('/\D+/', '', (string)($p['cpf'] ?? '')) ?? '';
     $phone = preg_replace('/\D+/', '', (string)($p['phone'] ?? '')) ?? '';
     $doc = trim((string)($p['id_document_url'] ?? $p['diploma_url'] ?? ''));
     $photo = trim((string)($p['photo_3x4_url'] ?? $p['photo_url'] ?? ''));
     return trim((string)($p['full_name'] ?? '')) !== ''
         && trim((string)($p['nickname'] ?? '')) !== ''
-        && strlen($cpf) === 11
-        && trim((string)($p['pix_key'] ?? '')) !== ''
-        && trim((string)($p['pix_key_type'] ?? '')) !== ''
         && strlen($phone) >= 10
         && !empty($p['birth_date'])
         && !empty($p['base_city_id'])
@@ -66,6 +67,296 @@ function gcv_map_excursion_row(array $r): array
     return $r;
 }
 
+function gcv_guide_client_whatsapp(string $phone): string
+{
+    $digits = preg_replace('/\D+/', '', $phone) ?? '';
+    if (strlen($digits) < 10) {
+        return '';
+    }
+    if (strlen($digits) <= 11) {
+        $digits = '55' . $digits;
+    }
+    return 'https://wa.me/' . $digits;
+}
+
+/**
+ * @param array<string,mixed> $sale
+ * @param array<string,mixed>|null $reservation
+ * @return array<string,mixed>
+ */
+function gcv_guide_normalize_client(array $sale, ?array $reservation = null): array
+{
+    $res = $reservation ?? [];
+    $name = trim((string)($sale['tourist_name'] ?? $res['name'] ?? $res['nome'] ?? $res['customer_name'] ?? $res['full_name'] ?? ''));
+    $email = strtolower(trim((string)($sale['tourist_email'] ?? $res['email'] ?? '')));
+    if ($name === '' && $email !== '') {
+        $name = explode('@', $email)[0];
+    }
+    $phone = trim((string)($sale['tourist_phone'] ?? $res['phone'] ?? $res['telefone'] ?? ''));
+    $spots = (int)($sale['spots'] ?? 0);
+    if ($spots < 1 && is_array($res['trips'] ?? null)) {
+        foreach ($res['trips'] as $trip) {
+            if (is_array($trip)) {
+                $spots += max(1, (int)($trip['qty'] ?? 1));
+            }
+        }
+    }
+    if ($spots < 1) {
+        $spots = max(1, (int)($res['qty'] ?? $res['people'] ?? 1));
+    }
+    $status = strtoupper((string)($sale['sale_status'] ?? $res['status'] ?? 'PAID'));
+    if ($reservation && function_exists('gcv_pix_effective_status')) {
+        $status = gcv_pix_effective_status($reservation);
+    }
+    return [
+        'name' => $name !== '' ? $name : 'Cliente',
+        'email' => $email,
+        'phone' => $phone,
+        'whatsapp' => $phone !== '' ? gcv_guide_client_whatsapp($phone) : '',
+        'spots' => $spots,
+        'people' => $spots,
+        'status' => $status,
+        'reservation_id' => (string)($sale['reservation_id'] ?? $res['reservation_id'] ?? ''),
+        'paid_at' => $sale['paid_at'] ?? $res['paid_at'] ?? null,
+        'total_cents' => isset($sale['sold_price_cents']) ? (int)$sale['sold_price_cents'] : null,
+        'attendance_status' => strtolower(trim((string)($sale['attendance_status'] ?? 'pending'))) ?: 'pending',
+        'checked_in_at' => $sale['checked_in_at'] ?? null,
+    ];
+}
+
+function gcv_guide_trip_matches_excursion(array $trip, array $exc): bool
+{
+    $excId = (int)($exc['id'] ?? 0);
+    $slug = strtolower(trim((string)($exc['cart_slug'] ?? '')));
+    $date = (string)($exc['date_iso'] ?? '');
+    $title = mb_strtolower(trim((string)($exc['attraction_title'] ?? '')));
+    $cid = strtolower(trim((string)($trip['cartId'] ?? $trip['cart_id'] ?? '')));
+    $tid = (int)($trip['excursion_id'] ?? $trip['id'] ?? 0);
+    $tdate = trim((string)($trip['dateIso'] ?? $trip['date_iso'] ?? ''));
+    $tdest = mb_strtolower(trim((string)($trip['destino'] ?? '')));
+    if ($excId > 0 && ($tid === $excId || $cid === (string)$excId)) {
+        return true;
+    }
+    if ($slug !== '' && $cid === $slug) {
+        return true;
+    }
+    if ($date !== '' && $tdate === $date && $title !== '' && $tdest !== ''
+        && (str_contains($tdest, $title) || str_contains($title, $tdest))) {
+        return true;
+    }
+    return false;
+}
+
+/**
+ * @param array<string,mixed> $reservation
+ * @param array<string,mixed> $exc
+ */
+function gcv_guide_reservation_matches_excursion(array $reservation, array $exc): bool
+{
+    $excId = (int)($exc['id'] ?? 0);
+    $resExc = (int)($reservation['excursion_id'] ?? $reservation['cms_excursion_id'] ?? 0);
+    if ($excId > 0 && $resExc === $excId) {
+        return true;
+    }
+    $trips = is_array($reservation['trips'] ?? null) ? $reservation['trips'] : [];
+    foreach ($trips as $trip) {
+        if (is_array($trip) && gcv_guide_trip_matches_excursion($trip, $exc)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function gcv_guide_people_for_excursion(array $sale, ?array $reservation, array $exc): int
+{
+    $qty = 0;
+    $trips = is_array(($reservation ?? [])['trips'] ?? null) ? $reservation['trips'] : [];
+    foreach ($trips as $trip) {
+        if (is_array($trip) && gcv_guide_trip_matches_excursion($trip, $exc)) {
+            $qty += max(1, (int)($trip['qty'] ?? $trip['people'] ?? 1));
+        }
+    }
+    if ($qty > 0) {
+        return $qty;
+    }
+    $fromSale = (int)($sale['spots'] ?? 0);
+    if ($fromSale > 0) {
+        return $fromSale;
+    }
+    return max(1, (int)(($reservation ?? [])['qty'] ?? ($reservation ?? [])['people'] ?? 1));
+}
+
+/**
+ * @param list<array<string,mixed>> $rows
+ * @return list<array<string,mixed>>
+ */
+function gcv_guide_attach_clients(array $rows, int $guideUserId): array
+{
+    if (!$rows) {
+        return $rows;
+    }
+    $byExc = [];
+    $seen = [];
+
+    $ids = [];
+    $excById = [];
+    foreach ($rows as $r) {
+        $id = (int)($r['id'] ?? 0);
+        if ($id > 0) {
+            $ids[] = $id;
+            $excById[$id] = $r;
+        }
+    }
+
+    try {
+        if ($ids) {
+            $placeholders = implode(',', array_fill(0, count($ids), '?'));
+            $stmt = db()->prepare(
+                "SELECT id, reservation_id, excursion_id, tourist_name, tourist_email, tourist_phone, tourist_cpf,
+                        spots, sale_status, sold_price_cents, paid_at, sold_at, attendance_status, checked_in_at
+                 FROM gcv_sales
+                 WHERE guide_user_id = ?
+                   AND deleted_at IS NULL
+                   AND sale_status IN ('PAID','PENDING')
+                   AND (excursion_id IN ({$placeholders}) OR excursion_id IS NULL)
+                 ORDER BY sold_at ASC"
+            );
+            $stmt->execute(array_merge([$guideUserId], $ids));
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $sale) {
+                $res = null;
+                $rid = (string)($sale['reservation_id'] ?? '');
+                if ($rid !== '') {
+                    $res = gcv_pix_read_reservation($rid);
+                }
+                $client = gcv_guide_normalize_client($sale, $res);
+                $key = $rid !== '' ? $rid : ('sale-' . (int)$sale['id']);
+                $excId = (int)($sale['excursion_id'] ?? 0);
+                $targets = [];
+                if ($excId > 0) {
+                    $targets[] = $excId;
+                } elseif ($res) {
+                    foreach ($rows as $exc) {
+                        if (gcv_guide_reservation_matches_excursion($res, $exc)) {
+                            $targets[] = (int)$exc['id'];
+                        }
+                    }
+                }
+                foreach ($targets as $tid) {
+                    $seenKey = $tid . ':' . $key;
+                    if (isset($seen[$seenKey])) {
+                        continue;
+                    }
+                    $seen[$seenKey] = true;
+                    $item = $client;
+                    $excRow = $excById[$tid] ?? null;
+                    if ($excRow) {
+                        $people = gcv_guide_people_for_excursion($sale, $res, $excRow);
+                        $item['spots'] = $people;
+                        $item['people'] = $people;
+                    }
+                    $byExc[$tid][] = $item;
+                }
+            }
+        }
+    } catch (Throwable $e) {
+        error_log('guide_attach_clients sales: ' . $e->getMessage());
+    }
+
+    try {
+        $dir = gcv_pix_storage_dir();
+        foreach (glob($dir . '/GCV-*.json') ?: [] as $path) {
+            $raw = file_get_contents($path);
+            if ($raw === false || $raw === '') {
+                continue;
+            }
+            $res = json_decode($raw, true);
+            if (!is_array($res)) {
+                continue;
+            }
+            $st = gcv_pix_effective_status($res);
+            if (!in_array($st, ['PAID', 'PENDING'], true)) {
+                continue;
+            }
+            $rid = (string)($res['reservation_id'] ?? '');
+            $client = gcv_guide_normalize_client(['sale_status' => $st, 'reservation_id' => $rid], $res);
+            foreach ($rows as $exc) {
+                if (!gcv_guide_reservation_matches_excursion($res, $exc)) {
+                    continue;
+                }
+                $tid = (int)$exc['id'];
+                $seenKey = $tid . ':' . ($rid !== '' ? $rid : basename($path));
+                if (isset($seen[$seenKey])) {
+                    continue;
+                }
+                $seen[$seenKey] = true;
+                $item = $client;
+                $people = gcv_guide_people_for_excursion([], $res, $exc);
+                $item['spots'] = $people;
+                $item['people'] = $people;
+                $byExc[$tid][] = $item;
+            }
+        }
+    } catch (Throwable $e) {
+        error_log('guide_attach_clients pix: ' . $e->getMessage());
+    }
+
+    $emails = [];
+    foreach ($byExc as $list) {
+        foreach ($list as $c) {
+            $em = strtolower(trim((string)($c['email'] ?? '')));
+            if ($em !== '') {
+                $emails[$em] = true;
+            }
+        }
+    }
+    $nameByEmail = [];
+    if ($emails) {
+        try {
+            $keys = array_keys($emails);
+            $ph = implode(',', array_fill(0, count($keys), '?'));
+            $st = db()->prepare("SELECT email, name FROM gcv_users WHERE email IN ({$ph})");
+            $st->execute($keys);
+            foreach ($st->fetchAll(PDO::FETCH_ASSOC) ?: [] as $u) {
+                $em = strtolower(trim((string)$u['email']));
+                $nm = trim((string)($u['name'] ?? ''));
+                if ($em !== '' && $nm !== '') {
+                    $nameByEmail[$em] = $nm;
+                }
+            }
+        } catch (Throwable $e) {
+            // ignore
+        }
+    }
+    if ($nameByEmail) {
+        foreach ($byExc as &$list) {
+            foreach ($list as &$c) {
+                $em = strtolower(trim((string)($c['email'] ?? '')));
+                if ($em !== '' && isset($nameByEmail[$em])) {
+                    $current = trim((string)($c['name'] ?? ''));
+                    if ($current === '' || $current === 'Cliente' || $current === explode('@', $em)[0]) {
+                        $c['name'] = $nameByEmail[$em];
+                    }
+                }
+            }
+            unset($c);
+        }
+        unset($list);
+    }
+
+    foreach ($rows as &$r) {
+        $list = $byExc[(int)$r['id']] ?? [];
+        $r['clients'] = $list;
+        $r['clients_count'] = count($list);
+        $spots = 0;
+        foreach ($list as $c) {
+            $spots += (int)($c['spots'] ?? 1);
+        }
+        $r['clients_spots'] = $spots;
+    }
+    unset($r);
+    return $rows;
+}
+
 if ($method === 'GET') {
     $stmt = db()->prepare(
         'SELECT e.*, a.title_pt AS attraction_title, a.slug AS attraction_slug,
@@ -78,6 +369,7 @@ if ($method === 'GET') {
     );
     $stmt->execute([(int)$user['id']]);
     $rows = array_map('gcv_map_excursion_row', $stmt->fetchAll(PDO::FETCH_ASSOC) ?: []);
+    $rows = gcv_guide_attach_clients($rows, (int)$user['id']);
 
     $today = (new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo')))->format('Y-m-d');
     $upcoming = array_values(array_filter($rows, static function ($e) use ($today) {
@@ -90,6 +382,7 @@ if ($method === 'GET') {
          WHERE status = 'published'
          ORDER BY title_pt ASC"
     )->fetchAll(PDO::FETCH_ASSOC);
+    $attrs = gcv_sort_attractions_catalog($attrs);
 
     $cities = db()->query(
         "SELECT id, name FROM gcv_cities WHERE status = 'active' ORDER BY name ASC"
@@ -101,6 +394,8 @@ if ($method === 'GET') {
         'attractions' => $attrs,
         'cities' => $cities,
         'min_quorum' => $MIN_QUORUM,
+        'max_quorum' => $MAX_QUORUM,
+        'max_people_cap' => $MAX_PEOPLE_CAP,
         'profile_complete' => gcv_guide_profile_is_complete((int)$user['id']),
         'financial_ready' => gcv_guide_financial_is_ready((int)$user['id']),
         'business_mode' => 'GUIDE_MARKETPLACE',
@@ -111,6 +406,9 @@ if ($method === 'GET') {
 if ($method === 'POST') {
     if (!gcv_guide_profile_is_complete((int)$user['id'])) {
         json_response(false, null, 'Complete seu perfil antes de publicar passeios', 422);
+    }
+    if (!gcv_guide_financial_is_ready((int)$user['id'])) {
+        json_response(false, null, 'Cadastre CPF/CNPJ e chave PIX em Dados financeiros antes de publicar passeios', 422);
     }
     $data = body_json();
     $date = trim((string)($data['date_iso'] ?? ''));
@@ -127,8 +425,21 @@ if ($method === 'POST') {
                 ? (int)$data['price_cents'] // legado: price_cents tratado como líquido
                 : (int)round(((float)($data['price'] ?? 0)) * 100)));
 
-    $quorum = max($MIN_QUORUM, (int)($data['quorum'] ?? $MIN_QUORUM));
+    $quorum = (int)($data['quorum'] ?? 4);
+    if ($quorum < $MIN_QUORUM) {
+        $quorum = $MIN_QUORUM;
+    }
+    if ($quorum > $MAX_QUORUM) {
+        $quorum = $MAX_QUORUM;
+    }
     $maxPeople = (int)($data['max_people'] ?? 10);
+    if ($maxPeople < 1) {
+        $maxPeople = 1;
+    }
+    if ($maxPeople > $MAX_PEOPLE_CAP) {
+        $maxPeople = $MAX_PEOPLE_CAP;
+    }
+    $preconfirmed = gcv_clamp_preconfirmed($data['preconfirmed_people'] ?? 0, $maxPeople, 0);
     $notes = sanitize_textarea((string)($data['notes_pt'] ?? ''), 2000);
 
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
@@ -138,10 +449,10 @@ if ($method === 'POST') {
     if ($date < $today) {
         json_response(false, null, 'Data deve ser futura', 422);
     }
-    if (!preg_match('/^\d{2}:\d{2}/', $time)) {
-        json_response(false, null, 'Horário inválido', 422);
+    $time = gcv_normalize_departure_time($time);
+    if ($time === '') {
+        json_response(false, null, 'Informe o horário de saída (minutos 00, 10, 20, 30, 40 ou 50)', 422);
     }
-    $time = substr($time, 0, 5) . ':00';
     if ($cityId <= 0 || $attrId <= 0) {
         json_response(false, null, 'Cidade e atrativo são obrigatórios', 422);
     }
@@ -149,7 +460,7 @@ if ($method === 'POST') {
         json_response(false, null, 'Informe o valor líquido que deseja receber (mín. R$ 1,00)', 422);
     }
     if ($maxPeople < $quorum) {
-        json_response(false, null, 'Máximo de pessoas deve ser ≥ quórum (' . $MIN_QUORUM . ')', 422);
+        json_response(false, null, 'Máximo de pessoas deve ser ≥ quórum', 422);
     }
 
     $a = db()->prepare("SELECT id FROM gcv_attractions WHERE id = ? AND status = 'published'");
@@ -164,6 +475,10 @@ if ($method === 'POST') {
     }
 
     try {
+        $mp = gcv_meeting_point_from_body($data, true);
+        if (isset($mp['error'])) {
+            json_response(false, null, $mp['error'], 400);
+        }
         $created = gcv_publish_guide_marketplace([
             'date_iso' => $date,
             'departure_time' => $time,
@@ -172,10 +487,15 @@ if ($method === 'POST') {
             'guide_net_cents' => $guideNetCents,
             'quorum' => $quorum,
             'max_people' => $maxPeople,
+            'preconfirmed_people' => $preconfirmed,
             'include_transport' => !empty($data['include_transport']),
             'include_entry' => !empty($data['include_entry']),
             'include_lunch' => !empty($data['include_lunch']),
             'notes_pt' => $notes !== '' ? $notes : null,
+            'meeting_point' => (string)$mp['point'],
+            'meeting_point_place_id' => $mp['place_id'] ?? null,
+            'meeting_point_lat' => $mp['lat'] ?? null,
+            'meeting_point_lng' => $mp['lng'] ?? null,
             'category_key' => $data['category_key'] ?? null,
         ], (int)$user['id']);
         $pricing = $created['pricing'] ?? null;
@@ -216,8 +536,14 @@ if ($method === 'PUT') {
             'UPDATE gcv_excursions SET status = \'cancelled\', updated_by = ? WHERE id = ?'
         )->execute([(int)$user['id'], $id]);
         $ex['status'] = 'cancelled';
+        try {
+            require_once __DIR__ . '/../helpers/notify_ops.php';
+            gcv_ops_notify_tour_cancelled($id, 'guia');
+        } catch (Throwable $e) {
+            error_log('notify tour cancel: ' . $e->getMessage());
+        }
         json_response(true, [
-            'message' => 'Passeio cancelado',
+            'message' => 'Passeio cancelado. Clientes avisados no WhatsApp.',
             'excursion' => gcv_map_excursion_row($ex),
         ]);
     }

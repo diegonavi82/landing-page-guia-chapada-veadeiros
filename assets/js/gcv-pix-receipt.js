@@ -6,6 +6,7 @@
 
   var EMAIL_STORAGE_KEY = "gcv-receipt-email";
   var PHONE_STORAGE_KEY = "gcv-receipt-phone";
+  var NAME_STORAGE_KEY = "gcv-receipt-name";
   var RESERVATION_CODES_KEY = "gcv-reserva-codes";
   var RESERVATION_CODES_MAX = 30;
   var RESERVATION_CODE_RE = /^GCV-[A-Z0-9]{6}$/;
@@ -40,6 +41,7 @@
         "Recebemos a quantia de {{amount}} ({{amountWords}}), referente ao pagamento via Pix de passeio(s) em excursão, identificado pelo código de reserva {{code}}, conforme roteiro abaixo.",
       contractor: "Contratada",
       buyer: "Cliente",
+      buyerName: "Nome",
       buyerEmail: "E-mail",
       buyerPhone: "Telefone / WhatsApp",
       itinerary: "Roteiro confirmado",
@@ -48,6 +50,8 @@
       colDest: "Destino",
       colGuide: "Guia",
       colDeparture: "Saída",
+      colMeeting: "Ponto de encontro",
+      openMaps: "Abrir no Google Maps",
       colUnit: "Valor individual",
       colPeople: "Pessoas",
       colDayTotal: "Total do dia",
@@ -62,7 +66,7 @@
       exclDefault: "Transporte, ingresso e almoço",
       observations: "Observações importantes",
       obs1: "Este documento comprova a intenção de reserva vinculada ao código {{code}}; a vaga é confirmada após validação do Pix.",
-      obs2: "Compareça ao ponto de embarque com antecedência mínima de 15 minutos do horário informado.",
+      obs2: "Compareça ao ponto de encontro com antecedência mínima de 15 minutos do horário informado.",
       obs3: "Em caso de dúvidas, envie o comprovante do banco pelo WhatsApp informando o código de reserva.",
       emitted: "Emitido em",
       validity: "Válido como comprovante de pagamento Pix para os passeios listados.",
@@ -90,6 +94,11 @@
       emailSent: "Recibo enviado para {{email}}.",
       emailError: "Não foi possível enviar. Use imprimir ou WhatsApp.",
       emailInvalid: "E-mail com formato inválido.",
+      nameLabel: "Nome completo",
+      namePlaceholder: "Nome e sobrenome",
+      nameRequiredHint: "Obrigatório — o guia vê este nome na reserva.",
+      nameRequiredBlock: "Informe seu nome para gerar o Pix.",
+      nameInvalid: "Informe nome e sobrenome.",
       perTripSuffix: "por passeio",
     },
     en: {
@@ -99,6 +108,7 @@
         "We acknowledge payment of {{amount}} ({{amountWords}}) via Pix for the excursion(s) below, reservation code {{code}}.",
       contractor: "Provider",
       buyer: "Customer",
+      buyerName: "Name",
       buyerEmail: "Email",
       buyerPhone: "Phone / WhatsApp",
       itinerary: "Confirmed itinerary",
@@ -106,7 +116,9 @@
       colDay: "Day",
       colDest: "Destination",
       colGuide: "Guide",
-      colDeparture: "Meeting point",
+      colDeparture: "Departure",
+      colMeeting: "Meeting point",
+      openMaps: "Open in Google Maps",
       colUnit: "Price per person",
       colPeople: "People",
       colDayTotal: "Day total",
@@ -149,6 +161,11 @@
       emailSent: "Receipt sent to {{email}}.",
       emailError: "Could not send. Try print or WhatsApp.",
       emailInvalid: "Invalid email format.",
+      nameLabel: "Full name",
+      namePlaceholder: "First and last name",
+      nameRequiredHint: "Required — the guide sees this name on the booking.",
+      nameRequiredBlock: "Enter your name to generate the Pix.",
+      nameInvalid: "Enter first and last name.",
       perTripSuffix: "per tour",
     },
     es: {
@@ -158,6 +175,7 @@
         "Recibimos {{amount}} ({{amountWords}}) vía Pix por la(s) excursión(es) abajo, código de reserva {{code}}.",
       contractor: "Contratada",
       buyer: "Cliente",
+      buyerName: "Nombre",
       buyerEmail: "Correo",
       buyerPhone: "Teléfono / WhatsApp",
       itinerary: "Itinerario confirmado",
@@ -166,6 +184,8 @@
       colDest: "Destino",
       colGuide: "Guía",
       colDeparture: "Salida",
+      colMeeting: "Punto de encuentro",
+      openMaps: "Abrir en Google Maps",
       colUnit: "Valor individual",
       colPeople: "Personas",
       colDayTotal: "Total del día",
@@ -180,7 +200,7 @@
       exclDefault: "Transporte, entrada y almuerzo",
       observations: "Observaciones importantes",
       obs1: "Este documento está vinculado al código {{code}}; la plaza se confirma tras validar el Pix.",
-      obs2: "Presente en el punto de salida al menos 15 minutos antes del horario indicado.",
+      obs2: "Preséntese en el punto de encuentro al menos 15 minutos antes del horario indicado.",
       obs3: "Ante dudas, envíe el comprobante del banco por WhatsApp con el código de reserva.",
       emitted: "Emitido el",
       validity: "Válido como comprobante de pago Pix para los paseos listados.",
@@ -208,6 +228,11 @@
       emailSent: "Recibo enviado a {{email}}.",
       emailError: "No se pudo enviar. Use imprimir o WhatsApp.",
       emailInvalid: "Formato de correo inválido.",
+      nameLabel: "Nombre completo",
+      namePlaceholder: "Nombre y apellido",
+      nameRequiredHint: "Obligatorio — el guía ve este nombre en la reserva.",
+      nameRequiredBlock: "Indique su nombre para generar el Pix.",
+      nameInvalid: "Indique nombre y apellido.",
       perTripSuffix: "por paseo",
     },
   };
@@ -527,13 +552,30 @@
         dateLabel: dateShort || String(trip.dateLabel || "").trim(),
         destino: destino,
         guiaNome: trip.guiaNome || "",
+        guiaTelefone: trip.guiaTelefone || "",
         embarque: trip.embarque || "",
+        meetingPoint: trip.meetingPoint || "",
+        meetingLat: trip.meetingLat != null && trip.meetingLat !== "" ? trip.meetingLat : null,
+        meetingLng: trip.meetingLng != null && trip.meetingLng !== "" ? trip.meetingLng : null,
+        meetingMapsUrl: trip.meetingMapsUrl || "",
         hora: trip.hora || "",
         valorUnit: unit,
         qty: qty,
         totalDay: unit * qty,
       };
     });
+  }
+
+  function meetingMapsHref(t) {
+    if (!t) return "";
+    if (t.meetingMapsUrl) return String(t.meetingMapsUrl);
+    if (t.meetingLat != null && t.meetingLng != null && t.meetingLat !== "" && t.meetingLng !== "") {
+      return "https://www.google.com/maps?q=" + encodeURIComponent(t.meetingLat + "," + t.meetingLng);
+    }
+    if (t.meetingPoint) {
+      return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(t.meetingPoint);
+    }
+    return "";
   }
 
   function resolveInclExcl(data) {
@@ -562,6 +604,7 @@
     var amount = Number(data.amount);
     if (!Number.isFinite(amount)) amount = 0;
     var code = data.code || "";
+    var buyerName = String((data && (data.name || data.nome || data.customer_name)) || "").trim();
     var buyerEmail = String((data && data.email) || "").trim();
     var buyerPhoneRaw = String((data && (data.phone || data.telefone)) || "").trim();
     var buyerPhone = buyerPhoneRaw
@@ -602,10 +645,27 @@
           "</td>" +
           '<td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#0f172a;vertical-align:top;">' +
           escapeHtml(t.guiaNome || "—") +
+          (t.guiaTelefone
+            ? '<br><span style="color:#64748b;font-size:11px;">' + escapeHtml(t.guiaTelefone) + "</span>"
+            : "") +
           "</td>" +
           '<td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#0f172a;vertical-align:top;">' +
           escapeHtml(t.embarque || "—") +
           (t.hora ? " · " + escapeHtml(t.hora) : "") +
+          "</td>" +
+          '<td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#0f172a;vertical-align:top;">' +
+          escapeHtml(t.meetingPoint || "—") +
+          (function () {
+            var href = meetingMapsHref(t);
+            if (!href || !t.meetingPoint) return "";
+            return (
+              '<br><a href="' +
+              escapeHtml(href) +
+              '" target="_blank" rel="noopener noreferrer" style="color:#0f766e;font-size:11px;font-weight:700;">' +
+              escapeHtml(rs(loc, "openMaps")) +
+              "</a>"
+            );
+          })() +
           "</td>" +
           '<td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#0f172a;text-align:right;vertical-align:top;">' +
           escapeHtml(formatBrlInt(t.valorUnit)) +
@@ -705,12 +765,19 @@
       " · " +
       escapeHtml(COMPANY.guide) +
       "</p></td></tr></table>" +
-      (buyerEmail || buyerPhone
+      (buyerName || buyerEmail || buyerPhone
         ? '<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;">' +
           "<tr><td style=\"padding:14px 16px;\">" +
           '<p style="margin:0 0 6px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#1e3a8a;font-weight:700;">' +
           escapeHtml(rs(loc, "buyer")) +
           "</p>" +
+          (buyerName
+            ? '<p style="margin:0 0 4px;font-size:13px;color:#334155;"><strong>' +
+              escapeHtml(rs(loc, "buyerName")) +
+              ":</strong> " +
+              escapeHtml(buyerName) +
+              "</p>"
+            : "") +
           (buyerEmail
             ? '<p style="margin:0 0 4px;font-size:13px;color:#334155;"><strong>' +
               escapeHtml(rs(loc, "buyerEmail")) +
@@ -751,6 +818,11 @@
       th +
       ">" +
       escapeHtml(rs(loc, "colDeparture")) +
+      "</th>" +
+      "<th " +
+      th +
+      ">" +
+      escapeHtml(rs(loc, "colMeeting")) +
       "</th>" +
       "<th " +
       thR +
@@ -994,6 +1066,36 @@
     }
   }
 
+  function readSavedName() {
+    try {
+      return global.localStorage.getItem(NAME_STORAGE_KEY) || "";
+    } catch (err) {
+      return "";
+    }
+  }
+
+  function saveName(name) {
+    try {
+      var v = String(name || "").trim();
+      if (v) global.localStorage.setItem(NAME_STORAGE_KEY, v);
+    } catch (err) {
+      /* */
+    }
+  }
+
+  function isValidName(name) {
+    var n = String(name || "").trim().replace(/\s+/g, " ");
+    if (n.length < 3) return false;
+    return n.split(" ").filter(Boolean).length >= 2;
+  }
+
+  function nameValidationMessage(name, locale) {
+    var n = String(name || "").trim();
+    if (!n) return rs(locale, "nameRequiredBlock") || rs(locale, "fieldFillToContinue");
+    if (!isValidName(n)) return rs(locale, "nameInvalid");
+    return "";
+  }
+
   var PHONE_DDI_STORAGE_KEY = "gcv-receipt-phone-ddi";
   var PHONE_COUNTRIES = [
     { iso: "br", dial: "55", name: { pt: "Brasil", en: "Brazil", es: "Brasil" }, min: 11, max: 11, mask: "br" },
@@ -1233,6 +1335,7 @@
           if (!RESERVATION_CODE_RE.test(code)) return null;
           return {
             code: code,
+            name: item.name ? String(item.name).trim() : "",
             email: item.email ? String(item.email).trim().toLowerCase() : "",
             phone: item.phone ? String(item.phone).trim() : "",
             savedAt: item.savedAt ? String(item.savedAt) : "",
@@ -1273,6 +1376,7 @@
     });
     list.unshift({
       code: normalized,
+      name: opts && opts.name ? String(opts.name).trim() : "",
       email: email,
       phone: phone,
       savedAt: new Date().toISOString(),
@@ -1281,6 +1385,7 @@
     writeSavedReservationCodes(list);
     if (email) saveEmail(email);
     if (phone) savePhone(phone);
+    if (opts && opts.name) saveName(opts.name);
     return true;
   }
 
@@ -1568,6 +1673,10 @@
     receiptApiUrl: receiptApiUrl,
     readSavedEmail: readSavedEmail,
     saveEmail: saveEmail,
+    readSavedName: readSavedName,
+    saveName: saveName,
+    isValidName: isValidName,
+    nameValidationMessage: nameValidationMessage,
     readSavedPhone: readSavedPhone,
     savePhone: savePhone,
     readSavedPhoneDdi: readSavedPhoneDdi,

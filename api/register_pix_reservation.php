@@ -154,6 +154,12 @@ if ($clientEmail !== '' && filter_var($clientEmail, FILTER_VALIDATE_EMAIL)) {
     $record['email'] = strtolower($clientEmail);
 }
 
+$clientName = trim((string)($data['name'] ?? $data['nome'] ?? $data['customer_name'] ?? $data['full_name'] ?? ''));
+if ($clientName !== '') {
+    $record['name'] = mb_substr($clientName, 0, 160);
+    $record['customer_name'] = $record['name'];
+}
+
 $clientPhone = trim((string)($data['phone'] ?? $data['telefone'] ?? ''));
 if ($clientPhone !== '') {
     $phoneDigits = preg_replace('/\D+/', '', $clientPhone) ?? '';

@@ -6,10 +6,13 @@ require_once __DIR__ . '/../marketplace_schema.php';
 require_once __DIR__ . '/../settings.php';
 require_once __DIR__ . '/constants.php';
 require_once __DIR__ . '/audit_service.php';
+require_once __DIR__ . '/../sicoob_pix_pay.php';
+require_once __DIR__ . '/../mailer.php';
+require_once __DIR__ . '/../purchase_notify.php';
 
 /**
- * Repasse ao guia — versão atual: manual.
- * Arquitetura preparada para Sicoob automático (NÃO executar ainda).
+ * Repasse ao guia: manual (admin) + automático via PIX Sicoob
+ * após as 17h (horário de Brasília) do dia do passeio.
  */
 
 /**
@@ -156,6 +159,15 @@ function gcv_payout_register_manual(array $data, int $adminId): array
         'end_to_end_id' => $e2e,
     ], GcvCreatedBy::ADMIN);
 
+    if ($status === GcvPayoutStatus::PAID) {
+        try {
+            require_once dirname(__DIR__) . '/notify_ops.php';
+            gcv_ops_notify_guide_payout($sale, true, '', $e2e);
+        } catch (Throwable $e) {
+            error_log('notify manual payout wa: ' . $e->getMessage());
+        }
+    }
+
     $get = $pdo->prepare('SELECT * FROM gcv_sale_payouts WHERE id = ?');
     $get->execute([$payoutId]);
     return $get->fetch(PDO::FETCH_ASSOC) ?: [];
@@ -194,6 +206,35 @@ function gcv_payout_load_guide_financial(int $guideUserId): ?array
     $g->execute([$guideUserId]);
     $row = $g->fetch(PDO::FETCH_ASSOC);
     return $row ?: null;
+}
+
+/**
+ * Chave conferida pelo admin (gcv_guides.pix_verified_at) ou perfil financeiro ativo.
+ *
+ * @param array<string,mixed>|null $fin
+ */
+function gcv_guide_pix_is_verified(int $guideUserId, ?array $fin = null): bool
+{
+    if ($guideUserId <= 0) {
+        return false;
+    }
+    $fin = $fin ?? gcv_payout_load_guide_financial($guideUserId);
+    if ($fin) {
+        $st = strtolower(trim((string)($fin['status'] ?? '')));
+        if ($st === 'active' || !empty($fin['verified_at'])) {
+            return true;
+        }
+    }
+    try {
+        $stmt = db()->prepare(
+            'SELECT pix_verified_at FROM gcv_guides WHERE user_id = ? LIMIT 1'
+        );
+        $stmt->execute([$guideUserId]);
+        $at = $stmt->fetchColumn();
+        return $at !== false && $at !== null && $at !== '';
+    } catch (Throwable $e) {
+        return false;
+    }
 }
 
 /**
@@ -236,9 +277,12 @@ function gcv_payout_auto_eligibility(int $saleId): array
     $fin = gcv_payout_load_guide_financial($guideId);
     if (!$fin || trim((string)($fin['pix_key'] ?? '')) === '') {
         $reasons[] = 'invalid_pix_key';
+    } elseif (!gcv_guide_pix_is_verified($guideId, $fin)) {
+        $reasons[] = 'pix_not_verified';
     }
 
     $excId = (int)($sale['excursion_id'] ?? 0);
+    $excursion = null;
     if ($excId > 0) {
         $ex = db()->prepare('SELECT id, status, date_iso, departure_time, deleted_at FROM gcv_excursions WHERE id = ?');
         $ex->execute([$excId]);
@@ -247,33 +291,34 @@ function gcv_payout_auto_eligibility(int $saleId): array
             $reasons[] = 'excursion_inactive';
         } elseif (in_array($excursion['status'] ?? '', ['cancelled', 'rejected'], true)) {
             $reasons[] = 'excursion_cancelled';
-        } else {
-            // excursão realizada = horário de início já passou
-            $starts = ($sale['excursion_starts_at'] ?? null)
-                ?: (($excursion['date_iso'] ?? '') . ' ' . ($excursion['departure_time'] ?? '00:00:00'));
-            try {
-                $startDt = new DateTimeImmutable((string)$starts, new DateTimeZone('America/Sao_Paulo'));
-                $now = new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo'));
-                if ($now < $startDt) {
-                    $reasons[] = 'excursion_not_started';
-                }
-            } catch (Throwable $e) {
-                $reasons[] = 'excursion_start_invalid';
-            }
         }
     }
 
     $scheduled = $sale['scheduled_payout_at'] ?? null;
+    $tz = new DateTimeZone('America/Sao_Paulo');
+    $now = new DateTimeImmutable('now', $tz);
+    $payAt = null;
     if ($scheduled) {
         try {
-            $schedDt = new DateTimeImmutable((string)$scheduled, new DateTimeZone('America/Sao_Paulo'));
-            $now = new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo'));
-            if ($now < $schedDt) {
-                $reasons[] = 'payout_delay_not_elapsed';
-            }
+            $payAt = new DateTimeImmutable((string)$scheduled, $tz);
         } catch (Throwable $e) {
-            // ignore
+            $payAt = null;
         }
+    }
+    if (!$payAt) {
+        $dateIso = '';
+        if (!empty($sale['excursion_starts_at'])) {
+            $dateIso = substr((string)$sale['excursion_starts_at'], 0, 10);
+        } elseif (is_array($excursion) && !empty($excursion['date_iso'])) {
+            $dateIso = (string)$excursion['date_iso'];
+        }
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateIso)) {
+            $hour = gcv_payout_after_hour();
+            $payAt = new DateTimeImmutable($dateIso . ' ' . sprintf('%02d:00:00', $hour), $tz);
+        }
+    }
+    if ($payAt && $now < $payAt) {
+        $reasons[] = 'payout_before_17h';
     }
 
     // Reserva ativa (não cancelada/reembolsada)
@@ -284,31 +329,328 @@ function gcv_payout_auto_eligibility(int $saleId): array
     return [
         'ok' => $reasons === [],
         'reasons' => $reasons,
-        'scheduled_payout_at' => $scheduled,
+        'scheduled_payout_at' => $payAt ? $payAt->format('Y-m-d H:i:s') : $scheduled,
     ];
 }
 
+function gcv_payout_system_actor_id(): int
+{
+    try {
+        $id = (int)db()->query("SELECT id FROM gcv_users WHERE role = 'admin' ORDER BY id ASC LIMIT 1")->fetchColumn();
+        return $id > 0 ? $id : 0;
+    } catch (Throwable $e) {
+        return 0;
+    }
+}
+
 /**
- * Stub futuro — NÃO automatizar. Apenas documenta o ponto de extensão.
+ * Envia o PIX de uma venda elegível para a chave cadastrada do guia.
  *
- * @return array{executed:false,message:string,eligibility:array<string,mixed>}
+ * @return array<string,mixed>
  */
+function gcv_payout_auto_execute(int $saleId): array
+{
+    gcv_marketplace_ensure_schema();
+    $elig = gcv_payout_auto_eligibility($saleId);
+    if (!$elig['ok']) {
+        return [
+            'ok' => false,
+            'executed' => false,
+            'sale_id' => $saleId,
+            'reasons' => $elig['reasons'],
+            'message' => 'Venda ainda não elegível para PIX automático',
+        ];
+    }
+
+    $pdo = db();
+    $saleStmt = $pdo->prepare('SELECT * FROM gcv_sales WHERE id = ? AND deleted_at IS NULL');
+    $saleStmt->execute([$saleId]);
+    $sale = $saleStmt->fetch(PDO::FETCH_ASSOC);
+    if (!$sale) {
+        return ['ok' => false, 'executed' => false, 'sale_id' => $saleId, 'error' => 'sale_not_found'];
+    }
+
+    $att = strtolower(trim((string)($sale['attendance_status'] ?? 'pending')));
+    if ($att === '' || $att === 'pending') {
+        try {
+            require_once dirname(__DIR__) . '/notify_ops.php';
+            gcv_ops_apply_noshow($sale);
+            $saleStmt->execute([$saleId]);
+            $sale = $saleStmt->fetch(PDO::FETCH_ASSOC) ?: $sale;
+        } catch (Throwable $e) {
+            error_log('payout noshow: ' . $e->getMessage());
+        }
+    }
+
+    $guideUserId = (int)($sale['guide_user_id'] ?? 0);
+    $fin = gcv_payout_load_guide_financial($guideUserId);
+    if (!$fin) {
+        gcv_payout_notify_failure($sale, 'missing_pix');
+        return ['ok' => false, 'executed' => false, 'sale_id' => $saleId, 'error' => 'missing_pix'];
+    }
+
+    $amountCents = (int)($sale['guide_amount_cents'] ?? 0);
+    if ($amountCents < 100) {
+        gcv_payout_notify_failure($sale, 'amount_too_small');
+        return ['ok' => false, 'executed' => false, 'sale_id' => $saleId, 'error' => 'amount_too_small'];
+    }
+
+    $idem = 'auto-sale-' . $saleId;
+    $dup = $pdo->prepare(
+        'SELECT * FROM gcv_sale_payouts WHERE idempotency_key = ? AND deleted_at IS NULL LIMIT 1'
+    );
+    $dup->execute([$idem]);
+    $existing = $dup->fetch(PDO::FETCH_ASSOC);
+    if ($existing) {
+        if (($existing['status'] ?? '') === GcvPayoutStatus::PAID) {
+            $pdo->prepare('UPDATE gcv_sales SET payout_status = ?, updated_at = NOW() WHERE id = ?')
+                ->execute([GcvPayoutStatus::PAID, $saleId]);
+            return [
+                'ok' => true,
+                'executed' => false,
+                'sale_id' => $saleId,
+                'already_paid' => true,
+                'payout_id' => (int)$existing['id'],
+                'endToEndId' => $existing['end_to_end_id'] ?? null,
+            ];
+        }
+    }
+
+    if (!gcv_sicoob_is_configured()) {
+        gcv_payout_notify_failure($sale, 'sicoob_not_configured');
+        return [
+            'ok' => false,
+            'executed' => false,
+            'sale_id' => $saleId,
+            'error' => 'sicoob_not_configured',
+            'message' => 'Sicoob não configurado para envio de PIX',
+        ];
+    }
+
+    $pixKey = trim((string)$fin['pix_key']);
+    $pixType = strtolower(trim((string)($fin['pix_key_type'] ?? 'cpf')));
+    $desc = 'Repasse GCV venda #' . $saleId;
+    $rid = trim((string)($sale['reservation_id'] ?? ''));
+    if ($rid !== '') {
+        $desc .= ' ' . $rid;
+    }
+
+    $result = gcv_sicoob_send_pix_payment($pixKey, $pixType, $amountCents, $desc, $idem);
+    $now = new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo'));
+    $actorId = gcv_payout_system_actor_id();
+    if ($actorId <= 0) {
+        $actorId = $guideUserId;
+    }
+
+    if (empty($result['ok'])) {
+        $err = (string)($result['error'] ?? 'pix_send_failed');
+        error_log('gcv_payout_auto_execute fail sale=' . $saleId . ' ' . $err);
+        gcv_payout_notify_failure($sale, $err);
+        return [
+            'ok' => false,
+            'executed' => false,
+            'sale_id' => $saleId,
+            'error' => $err,
+            'http' => $result['http'] ?? null,
+        ];
+    }
+
+    $e2e = $result['endToEndId'] ?? null;
+    $pdo->beginTransaction();
+    try {
+        $ins = $pdo->prepare(
+            'INSERT INTO gcv_sale_payouts (
+              sale_id, guide_user_id, amount_cents, paid_at, paid_date, paid_time,
+              pix_key, pix_key_type, txid, end_to_end_id, receipt_url, notes, status,
+              idempotency_key, responsible_user_id, auto_eligible, scheduled_payout_at,
+              executed_via, sicoob_response
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+        );
+        $ins->execute([
+            $saleId,
+            $guideUserId,
+            $amountCents,
+            $now->format('Y-m-d H:i:s'),
+            $now->format('Y-m-d'),
+            $now->format('H:i:s'),
+            $pixKey,
+            $pixType,
+            null,
+            $e2e,
+            null,
+            'PIX automático Sicoob',
+            GcvPayoutStatus::PAID,
+            $idem,
+            $actorId,
+            1,
+            $sale['scheduled_payout_at'] ?? null,
+            'sicoob_api',
+            json_encode($result['raw'] ?? [], JSON_UNESCAPED_UNICODE),
+        ]);
+        $payoutId = (int)$pdo->lastInsertId();
+        $pdo->prepare('UPDATE gcv_sales SET payout_status = ?, updated_at = NOW() WHERE id = ?')
+            ->execute([GcvPayoutStatus::PAID, $saleId]);
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log('gcv_payout_auto_execute db: ' . $e->getMessage());
+        return ['ok' => false, 'executed' => false, 'sale_id' => $saleId, 'error' => 'db_error'];
+    }
+
+    try {
+        gcv_audit_log('sale_payout', $payoutId, 'auto_pix', $actorId, null, null, null, GcvCreatedBy::API, [
+            'sale_id' => $saleId,
+            'amount_cents' => $amountCents,
+            'end_to_end_id' => $e2e,
+        ]);
+    } catch (Throwable $e) {
+        // auditoria não bloqueia o PIX já enviado
+    }
+
+    try {
+        $g = db()->prepare('SELECT email, name FROM gcv_users WHERE id = ? LIMIT 1');
+        $g->execute([$guideUserId]);
+        $guide = $g->fetch(PDO::FETCH_ASSOC) ?: [];
+        $to = strtolower(trim((string)($guide['email'] ?? '')));
+        if ($to !== '' && filter_var($to, FILTER_VALIDATE_EMAIL)) {
+            mail_payment_released(
+                $to,
+                (string)($guide['name'] ?? $sale['guide_name'] ?? 'Guia'),
+                (string)($sale['excursion_title'] ?? 'Passeio'),
+                $amountCents
+            );
+        }
+    } catch (Throwable $e) {
+        error_log('mail_payment_released: ' . $e->getMessage());
+    }
+
+    try {
+        require_once dirname(__DIR__) . '/notify_ops.php';
+        gcv_ops_notify_guide_payout($sale, true, '', is_string($e2e) ? $e2e : null);
+    } catch (Throwable $e) {
+        error_log('notify payout ok wa: ' . $e->getMessage());
+    }
+
+    return [
+        'ok' => true,
+        'executed' => true,
+        'sale_id' => $saleId,
+        'payout_id' => $payoutId,
+        'amount_cents' => $amountCents,
+        'endToEndId' => $e2e,
+        'message' => 'PIX enviado ao guia',
+    ];
+}
+
+function gcv_payout_after_hour(): int
+{
+    $hour = (int)setting('payout_after_hour', '17');
+    if ($hour < 0 || $hour > 23) {
+        return 17;
+    }
+    return $hour;
+}
+
+/**
+ * @param array<string,mixed> $sale
+ */
+function gcv_payout_notify_failure(array $sale, string $error): void
+{
+    $saleId = (int)($sale['id'] ?? 0);
+    if ($saleId <= 0) {
+        return;
+    }
+    try {
+        $chk = db()->prepare('SELECT payout_fail_notified_at FROM gcv_sales WHERE id = ? LIMIT 1');
+        $chk->execute([$saleId]);
+        $already = $chk->fetchColumn();
+        if ($already) {
+            return;
+        }
+    } catch (Throwable $e) {
+        // coluna pode não existir ainda — segue o e-mail
+    }
+    try {
+        mail_payout_pix_failed_admin(
+            (string)($sale['excursion_title'] ?? ('Venda #' . $saleId)),
+            $saleId,
+            (string)($sale['guide_name'] ?? ''),
+            (int)($sale['guide_amount_cents'] ?? 0),
+            $error
+        );
+        db()->prepare('UPDATE gcv_sales SET payout_fail_notified_at = NOW() WHERE id = ?')->execute([$saleId]);
+        try {
+            require_once dirname(__DIR__) . '/notify_ops.php';
+            gcv_ops_notify_guide_payout($sale, false, $error);
+        } catch (Throwable $e) {
+            error_log('notify payout fail wa: ' . $e->getMessage());
+        }
+    } catch (Throwable $e) {
+        error_log('gcv_payout_notify_failure: ' . $e->getMessage());
+    }
+}
+
+/**
+ * @return array{processed:int,paid:int,skipped:int,failed:int,results:list<array<string,mixed>>}
+ */
+function gcv_payout_process_due(?int $guideUserId = null, int $limit = 15): array
+{
+    gcv_marketplace_ensure_schema();
+    $limit = max(1, min(40, $limit));
+    $sql =
+        "SELECT id FROM gcv_sales
+         WHERE deleted_at IS NULL
+           AND sale_status = 'PAID'
+           AND payout_status = 'PAYOUT_PENDING'";
+    $params = [];
+    if ($guideUserId !== null && $guideUserId > 0) {
+        $sql .= ' AND guide_user_id = ?';
+        $params[] = $guideUserId;
+    }
+    $sql .= ' ORDER BY scheduled_payout_at ASC, id ASC LIMIT ' . $limit;
+    $stmt = db()->prepare($sql);
+    $stmt->execute($params);
+    $ids = $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
+
+    $results = [];
+    $paid = 0;
+    $skipped = 0;
+    $failed = 0;
+    foreach ($ids as $id) {
+        $row = gcv_payout_auto_execute((int)$id);
+        $results[] = $row;
+        if (!empty($row['ok']) && !empty($row['executed'])) {
+            $paid++;
+        } elseif (!empty($row['ok'])) {
+            $skipped++;
+        } elseif (!empty($row['reasons'])) {
+            $skipped++;
+        } else {
+            $failed++;
+        }
+    }
+
+    return [
+        'processed' => count($results),
+        'paid' => $paid,
+        'skipped' => $skipped,
+        'failed' => $failed,
+        'results' => $results,
+    ];
+}
+
+/** @deprecated use gcv_payout_auto_execute */
 function gcv_payout_auto_execute_stub(int $saleId): array
 {
-    $elig = gcv_payout_auto_eligibility($saleId);
-    return [
-        'executed' => false,
-        'message' => 'Repasse automático via API Sicoob ainda não habilitado. Use REGISTRAR REPASSE PIX manual.',
-        'eligibility' => $elig,
-    ];
+    return gcv_payout_auto_execute($saleId);
 }
 
 function gcv_payout_compute_scheduled_at(string $excursionStartsAt): string
 {
-    $delay = (int)setting('payout_delay_hours', '6');
-    if ($delay < 0) {
-        $delay = 6;
-    }
-    $dt = new DateTimeImmutable($excursionStartsAt, new DateTimeZone('America/Sao_Paulo'));
-    return $dt->modify('+' . $delay . ' hours')->format('Y-m-d H:i:s');
+    $tz = new DateTimeZone('America/Sao_Paulo');
+    $dt = new DateTimeImmutable($excursionStartsAt, $tz);
+    $hour = gcv_payout_after_hour();
+    return $dt->setTime($hour, 0, 0)->format('Y-m-d H:i:s');
 }

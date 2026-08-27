@@ -126,3 +126,39 @@ function gcv_excursion_titles_joined(array $attrRows, string $lang = 'pt'): stri
     }
     return implode(' + ', $parts);
 }
+
+function gcv_attraction_is_combo(?string $title): bool
+{
+    return str_contains((string)$title, ' + ');
+}
+
+/** Catálogo: A–Z, com roteiros duplos por último. */
+function gcv_sort_attractions_catalog(array $rows): array
+{
+    usort($rows, static function ($a, $b) {
+        $ta = (string)($a['title_pt'] ?? '');
+        $tb = (string)($b['title_pt'] ?? '');
+        $ca = gcv_attraction_is_combo($ta) ? 1 : 0;
+        $cb = gcv_attraction_is_combo($tb) ? 1 : 0;
+        if ($ca !== $cb) {
+            return $ca <=> $cb;
+        }
+        if (class_exists('Collator')) {
+            $cmp = (new Collator('pt_BR'))->compare($ta, $tb);
+            return is_int($cmp) ? $cmp : 0;
+        }
+        return strcasecmp($ta, $tb);
+    });
+    return $rows;
+}
+
+/** Caminho público do atrativo, ou vazio se não existir página HTML. */
+function gcv_attraction_public_html_path(?string $slug): string
+{
+    $slug = trim((string)$slug);
+    if ($slug === '' || !preg_match('/^[a-z0-9-]+$/i', $slug)) {
+        return '';
+    }
+    $file = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'atrativos' . DIRECTORY_SEPARATOR . $slug . '.html';
+    return is_file($file) ? ('atrativos/' . $slug . '.html') : '';
+}

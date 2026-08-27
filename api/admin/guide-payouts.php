@@ -21,6 +21,7 @@ require_once __DIR__ . '/../helpers/pix_key.php';
 require_once __DIR__ . '/../helpers/guide_payout_schema.php';
 require_once __DIR__ . '/../helpers/rate_limiter.php';
 require_once __DIR__ . '/../helpers/sicoob_pix_pay.php';
+require_once __DIR__ . '/../helpers/marketplace/guide_financial_service.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -53,10 +54,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
          FROM gcv_users u
          JOIN gcv_guides g ON g.user_id = u.id
          WHERE u.role = \'guide\' AND u.status = \'active\'
-           AND g.pix_key IS NOT NULL AND g.pix_key <> \'\'
            AND g.pix_verified_at IS NOT NULL
          ORDER BY u.name ASC'
     )->fetchAll();
+    foreach ($eligible as &$gRow) {
+        $fin = gcv_guide_financial_get((int)$gRow['user_id']);
+        if ($fin && trim((string)($fin['pix_key'] ?? '')) !== '') {
+            $gRow['pix_key'] = $fin['pix_key'];
+            $gRow['pix_key_type'] = $fin['pix_key_type'] ?? $gRow['pix_key_type'];
+            $gRow['pix_holder_name'] = $fin['pix_holder_name'] ?? $gRow['pix_holder_name'];
+        }
+    }
+    unset($gRow);
+    $eligible = array_values(array_filter($eligible, static function ($gRow) {
+        return trim((string)($gRow['pix_key'] ?? '')) !== '';
+    }));
 
     json_response(true, [
         'payouts' => $rows,
@@ -279,11 +291,22 @@ function gcv_payout_load_eligible_guide(int $userId): ?array
          FROM gcv_users u
          JOIN gcv_guides g ON g.user_id = u.id
          WHERE u.id = ? AND u.role = \'guide\' AND u.status = \'active\'
-           AND g.pix_key IS NOT NULL AND TRIM(g.pix_key) <> \'\'
            AND g.pix_verified_at IS NOT NULL
          LIMIT 1'
     );
     $stmt->execute([$userId]);
     $row = $stmt->fetch();
-    return $row ?: null;
+    if (!$row) {
+        return null;
+    }
+    $fin = gcv_guide_financial_get($userId);
+    if ($fin && trim((string)($fin['pix_key'] ?? '')) !== '') {
+        $row['pix_key'] = $fin['pix_key'];
+        $row['pix_key_type'] = $fin['pix_key_type'] ?? $row['pix_key_type'];
+        $row['pix_holder_name'] = $fin['pix_holder_name'] ?? $row['pix_holder_name'];
+    }
+    if (trim((string)($row['pix_key'] ?? '')) === '') {
+        return null;
+    }
+    return $row;
 }

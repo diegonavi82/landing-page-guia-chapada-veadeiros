@@ -33,6 +33,8 @@ const LABELS = {
     colDest: "Destino",
     colGuide: "Guia",
     colDeparture: "Saída",
+    colMeeting: "Ponto de encontro",
+    openMaps: "Abrir no Google Maps",
     colPeople: "Pessoas",
     colTotal: "Total",
     financial: "Resumo financeiro",
@@ -56,7 +58,9 @@ const LABELS = {
     colDate: "Date",
     colDest: "Destination",
     colGuide: "Guide",
-    colDeparture: "Meeting point",
+    colDeparture: "Departure",
+    colMeeting: "Meeting point",
+    openMaps: "Open in Google Maps",
     colPeople: "People",
     colTotal: "Total",
     financial: "Payment summary",
@@ -81,6 +85,8 @@ const LABELS = {
     colDest: "Destino",
     colGuide: "Guía",
     colDeparture: "Salida",
+    colMeeting: "Punto de encuentro",
+    openMaps: "Abrir en Google Maps",
     colPeople: "Personas",
     colTotal: "Total",
     financial: "Resumen financiero",
@@ -193,18 +199,40 @@ export function buildPixReceiptEmailHtml(rec, locale) {
   for (const t of trips) {
     const qty = Math.max(1, parseInt(String(t.qty), 10) || 1);
     const unit = parseInt(String(t.valorUnit), 10) || amount;
+    const guideName = String(t.guiaNome || "").trim();
+    const guidePhone = String(t.guiaTelefone || "").trim();
+    let guideCell = esc(guideName || "—");
+    if (guideName && guidePhone) {
+      guideCell =
+        esc(guideName) +
+        `<br><span style="color:#64748b;font-size:11px;">${esc(guidePhone)}</span>`;
+    }
+    const meeting = String(t.meetingPoint || t.meeting_point || "").trim();
+    let maps =
+      String(t.meetingMapsUrl || "").trim() ||
+      (t.meetingLat != null && t.meetingLng != null
+        ? `https://www.google.com/maps?q=${encodeURIComponent(t.meetingLat + "," + t.meetingLng)}`
+        : meeting
+          ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(meeting)}`
+          : "");
+    let meetingCell = esc(meeting || "—");
+    if (meeting && maps) {
+      meetingCell +=
+        `<br><a href="${esc(maps)}" target="_blank" rel="noopener noreferrer" style="color:#0f766e;font-size:11px;font-weight:700;">${esc(L.openMaps)}</a>`;
+    }
     tripRows +=
       "<tr>" +
       `<td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;">${esc(tripDateLabel(t))}</td>` +
       `<td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;">${esc(t.destino || "—")}</td>` +
-      `<td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;">${esc(t.guiaNome || "—")}</td>` +
+      `<td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;">${guideCell}</td>` +
       `<td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;">${esc([t.embarque, t.hora].filter(Boolean).join(" · ") || "—")}</td>` +
+      `<td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;">${meetingCell}</td>` +
       `<td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:center;">${esc(String(qty))}</td>` +
       `<td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:right;">${esc(formatBrl(unit * qty))}</td>` +
       "</tr>";
   }
   if (!tripRows) {
-    tripRows = `<tr><td colspan="6" style="padding:8px;color:#64748b;">—</td></tr>`;
+    tripRows = `<tr><td colspan="7" style="padding:8px;color:#64748b;">—</td></tr>`;
   }
 
   const body =
@@ -218,6 +246,7 @@ export function buildPixReceiptEmailHtml(rec, locale) {
     `<th style="padding:6px 8px;text-align:left;">${esc(L.colDest)}</th>` +
     `<th style="padding:6px 8px;text-align:left;">${esc(L.colGuide)}</th>` +
     `<th style="padding:6px 8px;text-align:left;">${esc(L.colDeparture)}</th>` +
+    `<th style="padding:6px 8px;text-align:left;">${esc(L.colMeeting)}</th>` +
     `<th style="padding:6px 8px;text-align:center;">${esc(L.colPeople)}</th>` +
     `<th style="padding:6px 8px;text-align:right;">${esc(L.colTotal)}</th>` +
     `</tr></thead><tbody>${tripRows}</tbody></table>` +

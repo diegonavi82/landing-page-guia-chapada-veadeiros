@@ -171,6 +171,8 @@
       statusOk: "✅ Confirmado",
       statusSoldOut: "Lotado",
       statusWait: "⏳ Em formação",
+      meetingPointLabel: "Ponto de encontro",
+      guidePhoneLabel: "Telefone do guia",
       guiaPending: "A definir",
       pixBtnAria: "Pagar {{valor}} com Pix",
       pixModalTitle: "Pagamento via Pix",
@@ -325,6 +327,8 @@
       statusOk: "✅ Confirmed",
       statusSoldOut: "Sold out",
       statusWait: "⏳ Forming",
+      meetingPointLabel: "Meeting point",
+      guidePhoneLabel: "Guide phone",
       guiaPending: "To be announced",
       pixBtnAria: "Pay {{valor}} with Pix",
       pixModalTitle: "Pix payment",
@@ -390,7 +394,7 @@
       dateTabCountOne: "1 tour",
       dateTabCountMany: "{{n}} tours",
       departureTimeLabel: "Departure",
-      embarqueLabel: "Meeting point",
+      embarqueLabel: "Departure",
       dayListEmpty: "No tours on this day.",
       dayPagerPrev: "Previous page",
       dayPagerNext: "Next page",
@@ -479,6 +483,8 @@
       statusOk: "✅ Confirmado",
       statusSoldOut: "Agotado",
       statusWait: "⏳ Formando",
+      meetingPointLabel: "Punto de encuentro",
+      guidePhoneLabel: "Teléfono del guía",
       guiaPending: "Por definir",
       pixBtnAria: "Pagar {{valor}} con Pix",
       pixModalTitle: "Pago con Pix",
@@ -623,6 +629,7 @@
       if (pt.atrativoPath) copy.atrativoPath = pt.atrativoPath;
       if (pt.destinoSub) copy.destinoSub = pt.destinoSub;
       if (pt.inclEntradas) copy.inclEntradas = pt.inclEntradas;
+      if (pt.comTransporte === true) copy.comTransporte = true;
       if (pt.valorIngresso != null) copy.valorIngresso = pt.valorIngresso;
       if (Array.isArray(pt.destinos) && pt.destinos.length) copy.destinos = pt.destinos;
       return copy;
@@ -726,13 +733,15 @@
   function cardSpotRowHtml(d, locale, transportBadge) {
     var href = atrativoHrefFrom(d.atrativoPath, locale);
     var label = escapeHtml(String(d.destino || "").trim());
-    var imgInner =
-      '<div class="gcv-excursoes-card__img-wrap gcv-excursoes-card__spot-img-wrap">' +
-      '<img class="gcv-excursoes-card__img" src="' +
-      escapeHtml(String(d.cardImg || "")) +
-      '" alt="' +
-      label +
-      '" loading="lazy" decoding="async"></div>';
+    var hasImg = !!(d.cardImg && String(d.cardImg).trim());
+    var imgInner = hasImg
+      ? '<div class="gcv-excursoes-card__img-wrap gcv-excursoes-card__spot-img-wrap">' +
+        '<img class="gcv-excursoes-card__img" src="' +
+        escapeHtml(String(d.cardImg)) +
+        '" alt="' +
+        label +
+        '" loading="lazy" decoding="async"></div>'
+      : '<div class="gcv-excursoes-card__img-wrap gcv-excursoes-card__spot-img-wrap gcv-excursoes-card__spot-img-wrap--empty" aria-hidden="true"></div>';
     var sub = d.destinoSub
       ? '<span class="gcv-excursoes-card__dest-sub">' + escapeHtml(String(d.destinoSub)) + "</span>"
       : "";
@@ -757,7 +766,7 @@
     // Imagem + título = um único link para a página do atrativo
     if (href) {
       return (
-        '<div class="gcv-excursoes-card__spot">' +
+        '<div class="gcv-excursoes-card__spot' + (hasImg ? "" : " gcv-excursoes-card__spot--no-img") + '">' +
         '<a class="gcv-excursoes-card__atrativo-link gcv-excursoes-card__atrativo-link--spot" href="' +
         escapeHtml(href) +
         '" title="' +
@@ -767,7 +776,7 @@
         "</a></div>"
       );
     }
-    return '<div class="gcv-excursoes-card__spot">' + photo + "</div>";
+    return '<div class="gcv-excursoes-card__spot' + (hasImg ? "" : " gcv-excursoes-card__spot--no-img") + '">' + photo + "</div>";
   }
 
   /** Nome(s) do(s) atrativo(s) para o cabeçalho do card / aba do dia. */
@@ -790,40 +799,48 @@
     return Math.max(0, q - inscritosNoGrupo(e));
   }
 
-  function cardStatusOverlayHtml(e, s, isLotado) {
-    var statusLine =
-      '<div class="gcv-excursoes-card__row gcv-excursoes-card__row--status">' +
-      (isLotado
-        ? '<span class="gcv-excursoes-card__status gcv-excursoes-card__status--full">' +
-          escapeHtml(s.statusSoldOut) +
+  function cardBandFlagsHtml(e, s, isLotado) {
+    var statusSpan = isLotado
+      ? '<span class="gcv-excursoes-card__status gcv-excursoes-card__status--full">' +
+        escapeHtml(s.statusSoldOut) +
+        "</span>"
+      : e.confirmada
+        ? '<span class="gcv-excursoes-card__status gcv-excursoes-card__status--ok">' +
+          escapeHtml(s.statusOk) +
           "</span>"
-        : e.confirmada
-          ? '<span class="gcv-excursoes-card__status gcv-excursoes-card__status--ok">' +
-            escapeHtml(s.statusOk) +
-            "</span>"
-          : '<span class="gcv-excursoes-card__status gcv-excursoes-card__status--wait">' +
-            escapeHtml(s.statusWait) +
-            "</span>") +
-      capGrupoHtml(e, s) +
-      "</div>";
-    var faltaN = faltamParaConfirmar(e);
-    var quorumHtml = "";
-    if (!e.confirmada && !isLotado && faltaN > 0) {
-      var quorumMsg =
-        faltaN === 1
-          ? s.quorumNeed1 || s.falta1 || "Falta 1 para confirmar"
-          : tpl(s.quorumNeedMany || s.faltaMany || "Faltam {{n}} para confirmar", { n: faltaN });
-      quorumHtml =
-        '<p class="gcv-excursoes-card__falta gcv-excursoes-card__falta--on-media">' +
-        escapeHtml(quorumMsg) +
-        "</p>";
-    }
+        : '<span class="gcv-excursoes-card__status gcv-excursoes-card__status--wait">' +
+          escapeHtml(s.statusWait) +
+          "</span>";
     return (
-      '<div class="gcv-excursoes-card__media-status">' + statusLine + quorumHtml + "</div>"
+      '<div class="gcv-excursoes-card__band-flags">' + statusSpan + capGrupoHtml(e, s) + "</div>"
     );
   }
 
-  function cardSpotsBlockHtml(e, locale, s, statusOverlayHtml) {
+  function cardBandNoticeText(e, s, isLotado) {
+    if (isLotado) return "";
+    if (e.confirmada) {
+      return restamVagasResumo(vagasDisponiveis(e), s);
+    }
+    var faltaN = faltamParaConfirmar(e);
+    if (faltaN === 1) return s.quorumNeed1 || s.falta1 || "Falta 1 para confirmar";
+    if (faltaN > 1) {
+      return tpl(s.quorumNeedMany || s.faltaMany || "Faltam {{n}} para confirmar", { n: faltaN });
+    }
+    return s.falta0 || "";
+  }
+
+  function cardBandGroupHtml(e, s, isLotado) {
+    var msg = cardBandNoticeText(e, s, isLotado);
+    if (!msg) return '<div class="gcv-excursoes-card__band-group"></div>';
+    return (
+      '<div class="gcv-excursoes-card__band-group">' +
+      '<p class="gcv-excursoes-card__falta gcv-excursoes-card__falta--band">' +
+      escapeHtml(msg) +
+      "</p></div>"
+    );
+  }
+
+  function cardSpotsBlockHtml(e, locale, s) {
     var dests = destinosForCard(e);
     var n = destinosSpotsCount(e);
     var badge = e.comTransporte === true && s ? cardSpotTransportBadgeHtml(s) : "";
@@ -839,12 +856,7 @@
         })
         .join("") +
       "</div>";
-    return (
-      '<div class="gcv-excursoes-card__media">' +
-      (statusOverlayHtml || "") +
-      inner +
-      "</div>"
-    );
+    return '<div class="gcv-excursoes-card__media">' + inner + "</div>";
   }
 
   function cardImgHtml(e, locale) {
@@ -2356,13 +2368,18 @@
         if (Number.isFinite(ms)) item.departureMs = ms;
       }
     }
-    if (e) {
+      if (e) {
       item.inclExcl = inclExclLists(e, strings, loc);
       item.embarque = excursaoEmbarque(e, strings);
       item.hora = horaExcursao(e);
       item.departureMs = excursaoDepartureEpochMs(e);
       item.dateIso = excursaoDateIso(e);
       if (e.guiaNome) item.guiaNome = String(e.guiaNome);
+      if (e.guiaTelefone) item.guiaTelefone = String(e.guiaTelefone);
+      if (e.meetingPoint) item.meetingPoint = String(e.meetingPoint);
+      if (e.meetingLat != null && e.meetingLat !== "") item.meetingLat = e.meetingLat;
+      if (e.meetingLng != null && e.meetingLng !== "") item.meetingLng = e.meetingLng;
+      if (e.meetingMapsUrl) item.meetingMapsUrl = String(e.meetingMapsUrl);
       var destTitles = getDestinos(e)
         .map(function (d) {
           return String((d && d.destino) || "").trim();
@@ -2516,11 +2533,12 @@
       "</div>";
     if (foto) {
       return (
+        '<span class="gcv-excursoes-card__guide-photo-wrap">' +
         '<img class="gcv-excursoes-card__guide-photo" src="' +
         escapeHtml(foto) +
         '" alt="' +
         (altInPhoto ? escapeHtml(altInPhoto) : "") +
-        '" loading="lazy" width="230" height="90">' +
+        '" loading="lazy" decoding="async"></span>' +
         info
       );
     }
@@ -2737,6 +2755,10 @@
         : dateLabel,
       destino: String(e.destino || ""),
       embarque: excursaoEmbarque(e, s),
+      meetingPoint: e && e.meetingPoint ? String(e.meetingPoint) : "",
+      meetingLat: e && e.meetingLat != null && e.meetingLat !== "" ? e.meetingLat : null,
+      meetingLng: e && e.meetingLng != null && e.meetingLng !== "" ? e.meetingLng : null,
+      meetingMapsUrl: e && e.meetingMapsUrl ? String(e.meetingMapsUrl) : "",
       hora: horaExcursao(e),
       qty: Math.max(1, parseInt(String(qty), 10) || 1),
       cartId: excursaoCartId(e),
@@ -2746,6 +2768,7 @@
       dayNum: e && e.dayNum != null ? String(e.dayNum) : "",
       monthName: e && e.monthName ? String(e.monthName) : "",
       guiaNome: e && e.guiaNome ? String(e.guiaNome) : "",
+      guiaTelefone: e && e.guiaTelefone ? String(e.guiaTelefone) : "",
     };
   }
 
@@ -2756,6 +2779,10 @@
       dateShort: trip.dateShort || "",
       destino: trip.destino || "",
       embarque: trip.embarque || "",
+      meetingPoint: trip.meetingPoint || "",
+      meetingLat: trip.meetingLat != null && trip.meetingLat !== "" ? trip.meetingLat : null,
+      meetingLng: trip.meetingLng != null && trip.meetingLng !== "" ? trip.meetingLng : null,
+      meetingMapsUrl: trip.meetingMapsUrl || "",
       hora: trip.hora || "",
       qty: Math.max(1, parseInt(String(trip.qty), 10) || 1),
       cartId: trip.cartId || "",
@@ -2765,6 +2792,7 @@
       dayNum: trip.dayNum != null ? String(trip.dayNum) : "",
       monthName: trip.monthName || "",
       guiaNome: trip.guiaNome || "",
+      guiaTelefone: trip.guiaTelefone || "",
     };
     var cartId = out.cartId;
     if (!cartId) return out.embarque || out.hora ? out : null;
@@ -2785,6 +2813,17 @@
         if (!out.dayNum && rows[i].dayNum != null) out.dayNum = String(rows[i].dayNum);
         if (!out.monthName && rows[i].monthName) out.monthName = String(rows[i].monthName);
         if (!out.guiaNome && rows[i].guiaNome) out.guiaNome = String(rows[i].guiaNome);
+        if (!out.guiaTelefone && rows[i].guiaTelefone) out.guiaTelefone = String(rows[i].guiaTelefone);
+        if (!out.meetingPoint && rows[i].meetingPoint) out.meetingPoint = String(rows[i].meetingPoint);
+        if ((out.meetingLat == null || out.meetingLat === "") && rows[i].meetingLat != null) {
+          out.meetingLat = rows[i].meetingLat;
+        }
+        if ((out.meetingLng == null || out.meetingLng === "") && rows[i].meetingLng != null) {
+          out.meetingLng = rows[i].meetingLng;
+        }
+        if (!out.meetingMapsUrl && rows[i].meetingMapsUrl) {
+          out.meetingMapsUrl = String(rows[i].meetingMapsUrl);
+        }
         if (out.dateIso) {
           out.dateShort =
             out.dateIso.slice(8, 10) + "/" + out.dateIso.slice(5, 7) + "/" + out.dateIso.slice(0, 4);
@@ -3047,7 +3086,7 @@
         "</div>"
       : "";
 
-    /* Faixa data + atrativo + hora; status/vagas ficam sobre a foto */
+    /* Faixa data + atrativo + hora + status; foto só com o nome do atrativo */
     var selectBand =
       '<div class="gcv-excursoes-card__select-band" data-gcv-exc-card-toggle>' +
       '<div class="gcv-excursoes-card__select-band-main">' +
@@ -3073,7 +3112,10 @@
       '">' +
       cityName +
       "</span></div>" +
-      "</div></div></div>" +
+      "</div></div>" +
+      cardBandFlagsHtml(e, s, isLotado) +
+      cardBandGroupHtml(e, s, isLotado) +
+      "</div>" +
       '<button type="button" class="gcv-excursoes-card__quick-add" data-gcv-exc-card-toggle aria-label="' +
       toggleAddAria +
       '" aria-pressed="false" title="' +
@@ -3082,7 +3124,7 @@
       '<i class="ti ti-plus" aria-hidden="true"></i>' +
       "</button></div>";
 
-    var cardImgBlock = cardSpotsBlockHtml(e, locale, s, cardStatusOverlayHtml(e, s, isLotado));
+    var cardImgBlock = cardSpotsBlockHtml(e, locale, s);
 
     var cartId = excursaoCartId(e);
 
@@ -3355,6 +3397,12 @@
     return block;
   }
 
+  function getModalReceiptName(modal) {
+    if (!modal) return "";
+    var nameInput = modal.querySelector("#gcv-pix-modal-name");
+    return nameInput ? String(nameInput.value || "").trim().replace(/\s+/g, " ") : "";
+  }
+
   function getModalReceiptEmail(modal) {
     if (!modal) return "";
     var emailInput = modal.querySelector("#gcv-pix-modal-email");
@@ -3387,10 +3435,21 @@
     return iso || "br";
   }
 
+  function pixFieldErrorId(field) {
+    if (field === "phone") return "gcv-pix-modal-phone-error";
+    if (field === "name") return "gcv-pix-modal-name-error";
+    return "gcv-pix-modal-email-error";
+  }
+
+  function pixFieldInputId(field) {
+    if (field === "phone") return "gcv-pix-modal-phone";
+    if (field === "name") return "gcv-pix-modal-name";
+    return "gcv-pix-modal-email";
+  }
+
   function clearPixFieldError(modal, field) {
     if (!modal) return;
-    var errId = field === "phone" ? "gcv-pix-modal-phone-error" : "gcv-pix-modal-email-error";
-    var errEl = modal.querySelector("#" + errId);
+    var errEl = modal.querySelector("#" + pixFieldErrorId(field));
     if (errEl) {
       errEl.hidden = true;
       errEl.textContent = "";
@@ -3404,18 +3463,17 @@
       }
       if (phoneWrap) phoneWrap.classList.remove("is-invalid");
     } else {
-      var emailInput = modal.querySelector("#gcv-pix-modal-email");
-      if (emailInput) {
-        emailInput.classList.remove("is-invalid");
-        emailInput.removeAttribute("aria-invalid");
+      var fieldInput = modal.querySelector("#" + pixFieldInputId(field));
+      if (fieldInput) {
+        fieldInput.classList.remove("is-invalid");
+        fieldInput.removeAttribute("aria-invalid");
       }
     }
   }
 
   function setPixFieldError(modal, field, message) {
     if (!modal) return;
-    var errId = field === "phone" ? "gcv-pix-modal-phone-error" : "gcv-pix-modal-email-error";
-    var errEl = modal.querySelector("#" + errId);
+    var errEl = modal.querySelector("#" + pixFieldErrorId(field));
     if (errEl) {
       errEl.hidden = !message;
       errEl.textContent = message || "";
@@ -3430,13 +3488,34 @@
       }
       if (phoneWrap) phoneWrap.classList.toggle("is-invalid", !!message);
     } else {
-      var emailInput = modal.querySelector("#gcv-pix-modal-email");
-      if (emailInput) {
-        emailInput.classList.toggle("is-invalid", !!message);
-        if (message) emailInput.setAttribute("aria-invalid", "true");
-        else emailInput.removeAttribute("aria-invalid");
+      var fieldInput = modal.querySelector("#" + pixFieldInputId(field));
+      if (fieldInput) {
+        fieldInput.classList.toggle("is-invalid", !!message);
+        if (message) fieldInput.setAttribute("aria-invalid", "true");
+        else fieldInput.removeAttribute("aria-invalid");
       }
     }
+  }
+
+  function validatePixNameField(modal, options) {
+    var opts = options || {};
+    var loc = modal._gcvPixLocale || "pt";
+    var name = getModalReceiptName(modal);
+    var msg = "";
+    if (window.GcvPixReceipt && typeof window.GcvPixReceipt.nameValidationMessage === "function") {
+      msg = window.GcvPixReceipt.nameValidationMessage(name, loc);
+    } else if (!name) {
+      msg = "Preencha para prosseguir";
+    } else if (!window.GcvPixReceipt || !window.GcvPixReceipt.isValidName(name)) {
+      msg = "Informe nome e sobrenome.";
+    }
+    if (opts.show === false) {
+      if (!msg) clearPixFieldError(modal, "name");
+      return !msg;
+    }
+    if (msg) setPixFieldError(modal, "name", msg);
+    else clearPixFieldError(modal, "name");
+    return !msg;
   }
 
   function validatePixEmailField(modal, options) {
@@ -3484,6 +3563,19 @@
 
   function ensurePixFieldErrorEls(block) {
     if (!block) return;
+    if (!block.querySelector("#gcv-pix-modal-name-error")) {
+      var nameHint = block.querySelector("#gcv-pix-modal-name-hint");
+      var nameErr = document.createElement("p");
+      nameErr.className = "gcv-pix-modal__field-error";
+      nameErr.id = "gcv-pix-modal-name-error";
+      nameErr.setAttribute("role", "alert");
+      nameErr.hidden = true;
+      if (nameHint && nameHint.parentNode) {
+        nameHint.parentNode.insertBefore(nameErr, nameHint.nextSibling);
+      } else {
+        block.appendChild(nameErr);
+      }
+    }
     if (!block.querySelector("#gcv-pix-modal-email-error")) {
       var emailHint = block.querySelector("#gcv-pix-modal-email-hint");
       var emailErr = document.createElement("p");
@@ -3733,6 +3825,12 @@
     if (!modal) return;
     var block = modal.querySelector("#gcv-pix-modal-email-block");
     if (block) block.classList.add("gcv-pix-modal__email-block--locked");
+    var nameInput = modal.querySelector("#gcv-pix-modal-name");
+    if (nameInput) {
+      nameInput.readOnly = true;
+      nameInput.disabled = false;
+      nameInput.setAttribute("aria-readonly", "true");
+    }
     var emailInput = modal.querySelector("#gcv-pix-modal-email");
     if (emailInput) {
       emailInput.readOnly = true;
@@ -3760,6 +3858,12 @@
     if (!modal) return;
     var block = modal.querySelector("#gcv-pix-modal-email-block");
     if (block) block.classList.remove("gcv-pix-modal__email-block--locked");
+    var nameInput = modal.querySelector("#gcv-pix-modal-name");
+    if (nameInput) {
+      nameInput.readOnly = false;
+      nameInput.disabled = false;
+      nameInput.removeAttribute("aria-readonly");
+    }
     var emailInput = modal.querySelector("#gcv-pix-modal-email");
     if (emailInput) {
       emailInput.readOnly = false;
@@ -3783,6 +3887,8 @@
     });
     var emailHint = modal.querySelector("#gcv-pix-modal-email-hint");
     if (emailHint) emailHint.hidden = false;
+    var nameHint = modal.querySelector("#gcv-pix-modal-name-hint");
+    if (nameHint) nameHint.hidden = false;
     var phoneHint = modal.querySelector("#gcv-pix-modal-phone-hint");
     if (phoneHint) phoneHint.hidden = false;
     syncPixContinueButton(modal);
@@ -4015,6 +4121,14 @@
       block.id = "gcv-pix-modal-email-block";
       block.className = "gcv-pix-modal__email-block";
       block.innerHTML =
+        '<label class="gcv-pix-modal__email-label gcv-pix-modal__name-label" for="gcv-pix-modal-name">' +
+        '<span class="gcv-pix-modal__name-label-text"></span> ' +
+        '<span class="gcv-pix-modal__email-label-required" aria-hidden="true">*</span></label>' +
+        '<div class="gcv-pix-modal__email-row">' +
+        '<input type="text" class="gcv-pix-modal__email" id="gcv-pix-modal-name" required autocomplete="name" autocapitalize="words" spellcheck="false" />' +
+        "</div>" +
+        '<p class="gcv-pix-modal__email-hint" id="gcv-pix-modal-name-hint"></p>' +
+        '<p class="gcv-pix-modal__field-error" id="gcv-pix-modal-name-error" role="alert" hidden></p>' +
         '<label class="gcv-pix-modal__email-label" for="gcv-pix-modal-email">' +
         '<span class="gcv-pix-modal__email-label-text"></span> ' +
         '<span class="gcv-pix-modal__email-label-required" aria-hidden="true">*</span></label>' +
@@ -4039,6 +4153,25 @@
       }
     }
     ensurePixFieldErrorEls(block);
+    if (!block.querySelector("#gcv-pix-modal-name")) {
+      var nameFrag = document.createElement("div");
+      nameFrag.innerHTML =
+        '<label class="gcv-pix-modal__email-label gcv-pix-modal__name-label" for="gcv-pix-modal-name">' +
+        '<span class="gcv-pix-modal__name-label-text"></span> ' +
+        '<span class="gcv-pix-modal__email-label-required" aria-hidden="true">*</span></label>' +
+        '<div class="gcv-pix-modal__email-row" id="gcv-pix-modal-name-row">' +
+        '<input type="text" class="gcv-pix-modal__email" id="gcv-pix-modal-name" required autocomplete="name" autocapitalize="words" spellcheck="false" />' +
+        "</div>" +
+        '<p class="gcv-pix-modal__email-hint" id="gcv-pix-modal-name-hint"></p>' +
+        '<p class="gcv-pix-modal__field-error" id="gcv-pix-modal-name-error" role="alert" hidden></p>';
+      var emailLabelExisting = block.querySelector('label[for="gcv-pix-modal-email"]');
+      var insertParent = emailLabelExisting && emailLabelExisting.parentNode;
+      if (insertParent) {
+        while (nameFrag.firstChild) {
+          insertParent.insertBefore(nameFrag.firstChild, emailLabelExisting);
+        }
+      }
+    }
     if (!block.querySelector("#gcv-pix-modal-phone")) {
       var phoneLabel = document.createElement("label");
       phoneLabel.className = "gcv-pix-modal__email-label gcv-pix-modal__phone-label";
@@ -4104,10 +4237,13 @@
     }
     var locStrings = STRINGS[loc] || STRINGS.pt;
     var labelText = block.querySelector(".gcv-pix-modal__email-label-text");
+    var nameLabelText = block.querySelector(".gcv-pix-modal__name-label-text");
     var phoneLabelText = block.querySelector(".gcv-pix-modal__phone-label-text");
     var hintEl = block.querySelector("#gcv-pix-modal-email-hint");
+    var nameHintEl = block.querySelector("#gcv-pix-modal-name-hint");
     var phoneHintEl = block.querySelector("#gcv-pix-modal-phone-hint");
     var emailInput = block.querySelector("#gcv-pix-modal-email");
+    var nameInput = block.querySelector("#gcv-pix-modal-name");
     var phoneInput = block.querySelector("#gcv-pix-modal-phone");
     var continueBtn = block.querySelector("[data-gcv-pix-email-continue]");
     var clearBtn = block.querySelector("[data-gcv-pix-email-clear]");
@@ -4129,8 +4265,15 @@
     if (window.GcvPixReceipt) {
       if (labelText) labelText.textContent = window.GcvPixReceipt.rs(loc, "emailLabel");
       if (hintEl) hintEl.textContent = window.GcvPixReceipt.rs(loc, "emailRequiredHint");
+      if (nameLabelText) nameLabelText.textContent = window.GcvPixReceipt.rs(loc, "nameLabel");
+      if (nameHintEl) nameHintEl.textContent = window.GcvPixReceipt.rs(loc, "nameRequiredHint");
       if (phoneLabelText) phoneLabelText.textContent = window.GcvPixReceipt.rs(loc, "phoneLabel");
       if (phoneHintEl) phoneHintEl.textContent = window.GcvPixReceipt.rs(loc, "phoneRequiredHint");
+      if (nameInput) {
+        nameInput.placeholder = window.GcvPixReceipt.rs(loc, "namePlaceholder");
+        nameInput.setAttribute("autocomplete", "name");
+        nameInput.setAttribute("autocapitalize", "words");
+      }
       if (emailInput) {
         emailInput.placeholder = window.GcvPixReceipt.rs(loc, "emailPlaceholder");
         emailInput.setAttribute("autocomplete", "email");
@@ -4166,9 +4309,15 @@
       continueBtn.disabled = true;
       return;
     }
+    var name = getModalReceiptName(modal);
     var email = getModalEmailInputValue(modal);
     var phone = getModalPhoneInputValue(modal);
     var phoneIso = getModalPhoneIso(modal);
+    var nameOk =
+      !!name &&
+      window.GcvPixReceipt &&
+      typeof window.GcvPixReceipt.isValidName === "function" &&
+      window.GcvPixReceipt.isValidName(name);
     var emailOk =
       !!email &&
       window.GcvPixReceipt &&
@@ -4179,7 +4328,7 @@
       window.GcvPixReceipt &&
       typeof window.GcvPixReceipt.isValidPhone === "function" &&
       window.GcvPixReceipt.isValidPhone(phone, phoneIso);
-    continueBtn.disabled = !(emailOk && phoneOk);
+    continueBtn.disabled = !(nameOk && emailOk && phoneOk);
   }
 
   function pixPostpayIsPaid(modal) {
@@ -4223,11 +4372,19 @@
   function activatePixCheckout(modal, s) {
     if (!modal || modal._gcvPixCheckoutActive) return false;
     var loc = modal._gcvPixLocale || "pt";
+    var name = getModalReceiptName(modal);
     var email = getModalEmailInputValue(modal);
     var phone = getModalPhoneInputValue(modal);
     var statusEl = modal.querySelector("#gcv-pix-modal-email-status");
+    var nameOk = validatePixNameField(modal, { show: true });
     var emailOk = validatePixEmailField(modal, { show: true });
     var phoneOk = validatePixPhoneField(modal, { show: true });
+    if (!nameOk) {
+      var nameInputEmpty = modal.querySelector("#gcv-pix-modal-name");
+      if (nameInputEmpty && typeof nameInputEmpty.focus === "function") nameInputEmpty.focus();
+      syncPixContinueButton(modal);
+      return false;
+    }
     if (!emailOk) {
       var emailInputEmpty = modal.querySelector("#gcv-pix-modal-email");
       if (emailInputEmpty && typeof emailInputEmpty.focus === "function") emailInputEmpty.focus();
@@ -4267,16 +4424,20 @@
     modal._gcvPixCheckoutActive = true;
     modal._gcvPixCheckoutEmail = email;
     modal._gcvPixCheckoutPhone = phoneNormalized;
+    modal._gcvPixCheckoutName = name;
     if (modal._gcvReceiptData) {
       modal._gcvReceiptData.email = email;
       modal._gcvReceiptData.phone = phoneStored;
+      modal._gcvReceiptData.name = name;
     }
     if (modal._gcvPixPendingCheckout && modal._gcvPixPendingCheckout.receiptData) {
       modal._gcvPixPendingCheckout.receiptData.email = email;
       modal._gcvPixPendingCheckout.receiptData.phone = phoneStored;
+      modal._gcvPixPendingCheckout.receiptData.name = name;
     }
     if (window.GcvPixReceipt.saveEmail) window.GcvPixReceipt.saveEmail(email);
     if (window.GcvPixReceipt.savePhone) window.GcvPixReceipt.savePhone(phoneStored);
+    if (window.GcvPixReceipt.saveName) window.GcvPixReceipt.saveName(name);
     modal.classList.remove("gcv-pix-modal--await-email");
     modal.classList.add("gcv-pix-modal--checkout-active");
     lockPixEmailBlock(modal);
@@ -4360,6 +4521,7 @@
       reservationId
     ) {
       window.GcvPixReceipt.saveReservationCode(reservationId, {
+        name: getModalReceiptName(modal) || undefined,
         email: getModalReceiptEmail(modal) || undefined,
         phone:
           (typeof window.GcvPixReceipt.formatPhoneIntl === "function" &&
@@ -4476,6 +4638,7 @@
       trips: (receiptData && receiptData.trips) || [],
       incl_excl: receiptData && receiptData.inclExcl ? receiptData.inclExcl : undefined,
       packages: receiptData && receiptData.packages ? receiptData.packages : undefined,
+      name: getModalReceiptName(modal) || (receiptData && receiptData.name) || undefined,
       email: getModalReceiptEmail(modal) || undefined,
       phone:
         (window.GcvPixReceipt &&
@@ -4643,6 +4806,14 @@
       '<p class="gcv-pix-modal__ref-label"></p>' +
       '<p class="gcv-pix-modal__ref-code" id="gcv-pix-modal-ref-code"></p></div>' +
       '<div class="gcv-pix-modal__email-block" id="gcv-pix-modal-email-block">' +
+      '<label class="gcv-pix-modal__email-label gcv-pix-modal__name-label" for="gcv-pix-modal-name">' +
+      '<span class="gcv-pix-modal__name-label-text"></span> ' +
+      '<span class="gcv-pix-modal__email-label-required" aria-hidden="true">*</span></label>' +
+      '<div class="gcv-pix-modal__email-row">' +
+      '<input type="text" class="gcv-pix-modal__email" id="gcv-pix-modal-name" required autocomplete="name" autocapitalize="words" spellcheck="false" />' +
+      "</div>" +
+      '<p class="gcv-pix-modal__email-hint" id="gcv-pix-modal-name-hint"></p>' +
+      '<p class="gcv-pix-modal__field-error" id="gcv-pix-modal-name-error" role="alert" hidden></p>' +
       '<label class="gcv-pix-modal__email-label" for="gcv-pix-modal-email">' +
       '<span class="gcv-pix-modal__email-label-text"></span> ' +
       '<span class="gcv-pix-modal__email-label-required" aria-hidden="true">*</span></label>' +
@@ -4893,6 +5064,12 @@
     modal.classList.add("gcv-pix-modal--await-email");
     ensurePixEmailBlock(modal, loc);
     unlockPixEmailBlock(modal);
+    var nameInputOpen = modal.querySelector("#gcv-pix-modal-name");
+    if (nameInputOpen) {
+      nameInputOpen.value = "";
+      nameInputOpen.readOnly = false;
+      nameInputOpen.disabled = false;
+    }
     var emailInputOpen = modal.querySelector("#gcv-pix-modal-email");
     if (emailInputOpen) {
       emailInputOpen.value = "";
@@ -4907,9 +5084,9 @@
     }
     syncPostpayActions(modal);
     syncPixRefBlock(modal);
-    if (emailInputOpen && typeof emailInputOpen.focus === "function") {
+    if (nameInputOpen && typeof nameInputOpen.focus === "function") {
       window.setTimeout(function () {
-        emailInputOpen.focus();
+        nameInputOpen.focus();
       }, 120);
     }
 
@@ -5107,7 +5284,9 @@
         var input = e.target;
         if (
           !input ||
-          (input.id !== "gcv-pix-modal-email" && input.id !== "gcv-pix-modal-phone")
+          (input.id !== "gcv-pix-modal-name" &&
+            input.id !== "gcv-pix-modal-email" &&
+            input.id !== "gcv-pix-modal-phone")
         ) {
           return;
         }
@@ -5124,12 +5303,20 @@
       "input",
       function (e) {
         var input = e.target;
-        if (!input || (input.id !== "gcv-pix-modal-email" && input.id !== "gcv-pix-modal-phone")) {
+        if (
+          !input ||
+          (input.id !== "gcv-pix-modal-name" &&
+            input.id !== "gcv-pix-modal-email" &&
+            input.id !== "gcv-pix-modal-phone")
+        ) {
           return;
         }
         if (modal._gcvPixConfirmed) return;
         // Com Pix ativo os campos ficam bloqueados: só exclui pelo botão.
         if (modal._gcvPixCheckoutActive || input.readOnly) {
+          if (input.id === "gcv-pix-modal-name" && modal._gcvPixCheckoutName) {
+            input.value = modal._gcvPixCheckoutName;
+          }
           if (input.id === "gcv-pix-modal-email" && modal._gcvPixCheckoutEmail) {
             input.value = modal._gcvPixCheckoutEmail;
           }
@@ -5151,7 +5338,10 @@
           }
         }
         // Enquanto digita: sem mensagem de erro
-        clearPixFieldError(modal, input.id === "gcv-pix-modal-phone" ? "phone" : "email");
+        clearPixFieldError(
+          modal,
+          input.id === "gcv-pix-modal-phone" ? "phone" : input.id === "gcv-pix-modal-name" ? "name" : "email",
+        );
         var statusEl = modal.querySelector("#gcv-pix-modal-email-status");
         if (statusEl) {
           statusEl.hidden = true;
@@ -5169,6 +5359,11 @@
         var input = e.target;
         if (!input) return;
         if (modal._gcvPixConfirmed || modal._gcvPixCheckoutActive) return;
+        if (input.id === "gcv-pix-modal-name") {
+          validatePixNameField(modal, { show: true });
+          syncPixContinueButton(modal);
+          return;
+        }
         if (input.id === "gcv-pix-modal-email") {
           validatePixEmailField(modal, { show: true });
           syncPixContinueButton(modal);
@@ -5206,7 +5401,11 @@
         var input = e.target;
         if (!input) return;
         if (modal._gcvPixConfirmed) return;
-        if (input.id !== "gcv-pix-modal-email" && input.id !== "gcv-pix-modal-phone") {
+        if (
+          input.id !== "gcv-pix-modal-name" &&
+          input.id !== "gcv-pix-modal-email" &&
+          input.id !== "gcv-pix-modal-phone"
+        ) {
           return;
         }
         if (modal._gcvPixCheckoutActive) return;
@@ -5219,6 +5418,8 @@
           validatePixPhoneField(modal, { show: true });
         } else if (input.id === "gcv-pix-modal-email") {
           validatePixEmailField(modal, { show: true });
+        } else if (input.id === "gcv-pix-modal-name") {
+          validatePixNameField(modal, { show: true });
         }
         var statusEl = modal.querySelector("#gcv-pix-modal-email-status");
         if (statusEl) {

@@ -88,11 +88,34 @@ function gcv_guide_financial_upsert(int $guideUserId, array $data, ?int $actorId
 
     $legalName = trim((string)($data['legal_name'] ?? $data['nome'] ?? $before['legal_name'] ?? ''));
     $personType = strtoupper(trim((string)($data['person_type'] ?? $data['tipo_pessoa'] ?? $before['person_type'] ?? 'PF')));
+    if ($personType === 'CPF') {
+        $personType = 'PF';
+    }
+    if ($personType === 'CNPJ') {
+        $personType = 'PJ';
+    }
     if (!in_array($personType, ['PF', 'PJ'], true)) {
         $personType = 'PF';
     }
-    $cpf = preg_replace('/\D+/', '', (string)($data['cpf'] ?? $before['cpf'] ?? '')) ?: null;
-    $cnpj = preg_replace('/\D+/', '', (string)($data['cnpj'] ?? $before['cnpj'] ?? '')) ?: null;
+    $cpfIn = preg_replace('/\D+/', '', (string)($data['cpf'] ?? '')) ?: '';
+    $cnpjIn = preg_replace('/\D+/', '', (string)($data['cnpj'] ?? '')) ?: '';
+    $unifiedDoc = preg_replace('/\D+/', '', (string)($data['document'] ?? $data['cpf_cnpj'] ?? '')) ?: '';
+    if ($unifiedDoc !== '') {
+        if ($personType === 'PJ') {
+            $cnpjIn = $unifiedDoc;
+            $cpfIn = '';
+        } else {
+            $cpfIn = $unifiedDoc;
+            $cnpjIn = '';
+        }
+    }
+    if ($personType === 'PJ') {
+        $cnpj = $cnpjIn !== '' ? $cnpjIn : (preg_replace('/\D+/', '', (string)($before['cnpj'] ?? '')) ?: null);
+        $cpf = null;
+    } else {
+        $cpf = $cpfIn !== '' ? $cpfIn : (preg_replace('/\D+/', '', (string)($before['cpf'] ?? '')) ?: null);
+        $cnpj = null;
+    }
     $pixKey = trim((string)($data['pix_key'] ?? $before['pix_key'] ?? ''));
     $pixType = strtolower(trim((string)($data['pix_key_type'] ?? $before['pix_key_type'] ?? '')));
     $holder = trim((string)($data['pix_holder_name'] ?? $data['titular'] ?? $before['pix_holder_name'] ?? $legalName));
@@ -116,10 +139,10 @@ function gcv_guide_financial_upsert(int $guideUserId, array $data, ?int $actorId
             }
         }
     }
-    if ($personType === 'PF' && ($cpf === null || strlen($cpf) !== 11)) {
+    if ($personType === 'PF' && ($cpf === null || strlen($cpf) !== 11 || !gcv_pix_cpf_valid($cpf))) {
         throw new InvalidArgumentException('CPF inválido');
     }
-    if ($personType === 'PJ' && ($cnpj === null || strlen($cnpj) !== 14)) {
+    if ($personType === 'PJ' && ($cnpj === null || strlen($cnpj) !== 14 || !gcv_pix_cnpj_valid($cnpj))) {
         throw new InvalidArgumentException('CNPJ inválido');
     }
     if (!in_array($status, ['incomplete', 'pending_review', 'active', 'blocked'], true)) {
