@@ -37,8 +37,8 @@ function gcv_sale_capture_from_pix_reservation(array $reservation, string $sourc
         gcv_sale_upsert_pix_payment($sale, $reservation, GcvSaleStatus::PAID);
         $phone = trim((string)($reservation['phone'] ?? $reservation['telefone'] ?? $sale['tourist_phone'] ?? ''));
         if ($phone !== '' && empty($sale['tourist_phone'])) {
-        try {
-            $pdo->prepare('UPDATE gcv_sales SET tourist_phone = ? WHERE id = ?')->execute([$phone, (int)$sale['id']]);
+            try {
+                $pdo->prepare('UPDATE gcv_sales SET tourist_phone = ? WHERE id = ?')->execute([$phone, (int)$sale['id']]);
                 $sale['tourist_phone'] = $phone;
             } catch (Throwable $e) {
                 error_log('sale tourist_phone: ' . $e->getMessage());

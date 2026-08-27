@@ -10,6 +10,7 @@ const FILES = [
   'api/helpers/purchase_notify.php',
   'api/helpers/notify_ops.php',
   'api/helpers/marketplace/sale_service.php',
+  'api/helpers/marketplace/publish_service.php',
 ];
 
 async function cdWebRoot(client) {

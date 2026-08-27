@@ -413,19 +413,14 @@ function gcv_ops_notify_guide_cancelled(array $sale, ?array $exc, string $lifecy
     if ($agency !== '' && function_exists('gcv_whatsapp_send_text')) {
         gcv_whatsapp_send_text($agency, $text);
     }
-    $cPhone = function_exists('gcv_whatsapp_normalize_phone')
-        ? gcv_whatsapp_normalize_phone((string)($sale['tourist_phone'] ?? ''))
-        : '';
-    if ($cPhone !== '' && function_exists('gcv_whatsapp_send_text')) {
-        gcv_whatsapp_send_text(
-            $cPhone,
-            "✅ Sua reserva foi cancelada.\n\n"
-            . 'Passeio: ' . $title . "\n"
-            . ($when !== '' ? 'Quando: ' . $when . "\n" : '')
-            . 'Código: ' . $code . "\n"
-            . 'O guia foi avisado.'
-        );
-    }
+    gcv_ops_wa_client(
+        $sale,
+        "✅ Sua reserva foi cancelada.\n\n"
+        . 'Passeio: ' . $title . "\n"
+        . ($when !== '' ? 'Quando: ' . $when . "\n" : '')
+        . 'Código: ' . $code . "\n"
+        . 'O guia foi avisado.'
+    );
 }
 
 function gcv_ops_notify_guide_rejected(int $excursionId, string $reason): void
@@ -478,14 +473,8 @@ function gcv_ops_notify_tour_cancelled(int $excursionId, string $who = 'guia'): 
     $by = $who === 'admin' ? 'pela plataforma' : 'pelo guia';
     $sales = gcv_ops_paid_sales_for_excursion($excursionId);
     foreach ($sales as $sale) {
-        $cPhone = function_exists('gcv_whatsapp_normalize_phone')
-            ? gcv_whatsapp_normalize_phone((string)($sale['tourist_phone'] ?? ''))
-            : '';
-        if ($cPhone === '') {
-            continue;
-        }
-        gcv_whatsapp_send_text(
-            $cPhone,
+        gcv_ops_wa_client(
+            $sale,
             "❌ Passeio cancelado {$by}.\n\n"
             . 'Passeio: ' . $title . "\n"
             . 'Quando: ' . $when . "\n"
@@ -590,10 +579,7 @@ function gcv_ops_notify_client_d12h(array $sale, array $exc): void
     if (!empty($sale['notify_d12h_sent_at'])) {
         return;
     }
-    $phone = '';
-    if (function_exists('gcv_whatsapp_normalize_phone')) {
-        $phone = gcv_whatsapp_normalize_phone((string)($sale['tourist_phone'] ?? ''));
-    }
+    $phone = gcv_ops_client_phone($sale);
     if ($phone === '') {
         return;
     }
@@ -629,10 +615,7 @@ function gcv_ops_notify_client_dayof(array $sale, array $exc): void
     if (!empty($sale['notify_dayof_sent_at'])) {
         return;
     }
-    $phone = '';
-    if (function_exists('gcv_whatsapp_normalize_phone')) {
-        $phone = gcv_whatsapp_normalize_phone((string)($sale['tourist_phone'] ?? ''));
-    }
+    $phone = gcv_ops_client_phone($sale);
     if ($phone === '') {
         return;
     }
@@ -893,12 +876,7 @@ function gcv_ops_notify_checkin(array $sale, array $exc): void
         . 'Pessoas: ' . $pax . "\n"
         . 'Passeio: ' . (string)($exc['attraction_title'] ?? 'Passeio');
     gcv_ops_wa_guide($guideId, $ok);
-    $cPhone = function_exists('gcv_whatsapp_normalize_phone')
-        ? gcv_whatsapp_normalize_phone((string)($sale['tourist_phone'] ?? ''))
-        : '';
-    if ($cPhone !== '') {
-        gcv_whatsapp_send_text($cPhone, $ok . "\n\nBom passeio!");
-    }
+    gcv_ops_wa_client($sale, $ok . "\n\nBom passeio!");
 }
 
 function gcv_ops_apply_noshow(array $sale): bool
