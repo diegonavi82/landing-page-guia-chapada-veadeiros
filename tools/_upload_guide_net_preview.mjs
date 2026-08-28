@@ -8,11 +8,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const WEB_ROOT_PARTS = ['domains', 'guiachapadaveadeiros.com', 'public_html'];
 
 const FILES = [
-  'api/guides/excursions.php',
-  'api/helpers/marketplace/pricing_service.php',
-  'api/helpers/marketplace/publish_service.php',
   'assets/js/gcv-dash-roles.js',
-  'assets/css/gcv-dashboard.css',
   'dashboard/index.html',
 ];
 
@@ -46,12 +42,8 @@ function loadDeployEnv() {
   return out;
 }
 
-async function main() {
+async function ftpAccess() {
   const env = loadDeployEnv();
-  if (!(env.FTP_SERVER || '').trim() || !(env.FTP_USERNAME || '').trim() || !(env.FTP_PASSWORD || '').trim()) {
-    console.error('[guide-net] Faltam credenciais FTP (.env.deploy).');
-    process.exit(1);
-  }
   const client = new Client(180_000);
   await client.access({
     host: (env.FTP_SERVER || '').trim(),
@@ -61,12 +53,17 @@ async function main() {
     secure: String(env.FTP_SECURE || 'true').toLowerCase() !== 'false',
     secureOptions: { rejectUnauthorized: false },
   });
+  return client;
+}
+
+async function main() {
+  const client = await ftpAccess();
   try {
     console.log('[guide-net] web root:', await cdWebRoot(client));
     for (const rel of FILES) {
       const localPath = join(ROOT, rel);
       if (!existsSync(localPath)) {
-        console.warn('[guide-net] skip missing', rel);
+        console.error('[guide-net] missing', rel);
         continue;
       }
       const parts = rel.replace(/\\/g, '/').split('/');
@@ -80,10 +77,9 @@ async function main() {
   } finally {
     client.close();
   }
-  console.log('[guide-net] concluído');
 }
 
-main().catch((e) => {
-  console.error('[guide-net] ERRO:', e.message || e);
+main().catch((err) => {
+  console.error('[guide-net] FAIL', err);
   process.exit(1);
 });

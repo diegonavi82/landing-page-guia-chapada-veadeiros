@@ -1576,13 +1576,42 @@
           return '';
         }
 
-        function paintPreviewHtml(box, finalCents, warn) {
-          var html = 'Comissão entre 14% e 16%<br>' +
-            '<strong>Preço final na plataforma: ' + formatBrlFromCents(finalCents) + '</strong>';
+        function formatFeeReais(cents) {
+          var n = Math.round((Number(cents) || 0) / 100);
+          if (n < 0) n = 0;
+          return 'R$ ' + n;
+        }
+
+        function paintPreviewHtml(box, finalCents, netReais, warn) {
+          var netCents = Math.round(Number(netReais) * 100);
+          var feeCents = Math.max(0, (Number(finalCents) || 0) - netCents);
+          var html = '<strong>Preço final na plataforma: ' + formatBrlFromCents(finalCents) +
+            '</strong> (Taxa de comissão de ' + formatFeeReais(feeCents) + ' para cada inscrição)';
           if (warn) {
             html += '<div class="gcv-guide-net-box__warn">' + esc(warn) + '</div>';
           }
           box.innerHTML = html;
+        }
+
+        function clampNetEl(el, forceMin) {
+          var raw = String(el.value || '').trim().replace(',', '.');
+          if (raw === '') return;
+          var n = parseFloat(raw);
+          if (!isFinite(n)) {
+            el.value = '';
+            return;
+          }
+          if (n > netMax) {
+            el.value = String(netMax);
+            return;
+          }
+          if (n < 0) {
+            el.value = forceMin ? String(netMin) : '';
+            return;
+          }
+          if (forceMin && n < netMin) {
+            el.value = String(netMin);
+          }
         }
 
         function refreshPreview(immediateServer) {
@@ -1591,7 +1620,7 @@
           var box = document.getElementById(p + 'preview');
           if (!box || !netEl) return;
           var raw = String(netEl.value || '').trim();
-          var net = parseFloat(raw);
+          var net = parseFloat(raw.replace(',', '.'));
           var cityId = cityEl ? (parseInt(cityEl.value, 10) || 0) : 0;
           if (raw === '' || !isFinite(net) || net < 0) {
             box.textContent = emptyHint;
@@ -1599,7 +1628,7 @@
           }
           var warn = rangeWarn(net);
           var localCents = estimateGuideFinalCents(net, commissionPct);
-          paintPreviewHtml(box, localCents, warn);
+          paintPreviewHtml(box, localCents, net, warn);
 
           if (net < 1) return;
           var seq = ++previewSeq;
@@ -1609,7 +1638,8 @@
               if (seq !== previewSeq) return;
               if (!r || !r.ok || !r.data || !r.data.pricing) return;
               var pr = r.data.pricing;
-              paintPreviewHtml(box, pr.final_price_cents, warn);
+              var fee = pr.final_price_cents;
+              paintPreviewHtml(box, fee, net, warn);
             });
           }
           if (immediateServer) {
@@ -1622,13 +1652,49 @@
 
         var netEl = document.getElementById(p + 'net');
         if (netEl) {
-          netEl.addEventListener('input', function () { refreshPreview(false); });
-          netEl.addEventListener('keyup', function () { refreshPreview(false); });
-          netEl.addEventListener('paste', function () {
-            setTimeout(function () { refreshPreview(false); }, 0);
+          netEl.setAttribute('min', String(netMin));
+          netEl.setAttribute('max', String(netMax));
+          netEl.addEventListener('keydown', function (ev) {
+            if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+            var k = ev.key;
+            if (k.length !== 1 || k < '0' || k > '9') return;
+            var start = netEl.selectionStart;
+            var end = netEl.selectionEnd;
+            var cur = String(netEl.value || '');
+            var next = cur.slice(0, start) + k + cur.slice(end);
+            var n = parseFloat(next.replace(',', '.'));
+            if (isFinite(n) && n > netMax) {
+              ev.preventDefault();
+              netEl.value = String(netMax);
+              refreshPreview(false);
+            }
           });
-          netEl.addEventListener('change', function () { refreshPreview(true); });
-          netEl.addEventListener('blur', function () { refreshPreview(true); });
+          netEl.addEventListener('input', function () {
+            clampNetEl(netEl, false);
+            refreshPreview(false);
+          });
+          netEl.addEventListener('keyup', function () { refreshPreview(false); });
+          netEl.addEventListener('paste', function (ev) {
+            ev.preventDefault();
+            var text = '';
+            try {
+              text = (ev.clipboardData || window.clipboardData).getData('text') || '';
+            } catch (err) {}
+            var n = parseFloat(String(text).replace(',', '.'));
+            if (!isFinite(n)) return;
+            if (n > netMax) n = netMax;
+            if (n < netMin) n = netMin;
+            netEl.value = String(Math.round(n));
+            refreshPreview(false);
+          });
+          netEl.addEventListener('change', function () {
+            clampNetEl(netEl, true);
+            refreshPreview(true);
+          });
+          netEl.addEventListener('blur', function () {
+            clampNetEl(netEl, true);
+            refreshPreview(true);
+          });
         }
         var cityEl = document.getElementById(p + 'city');
         if (cityEl) cityEl.addEventListener('change', function () { refreshPreview(true); });
