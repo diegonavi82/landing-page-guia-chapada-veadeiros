@@ -221,8 +221,12 @@
     var cap = grupoMaximo(e);
     var quorum = quorumMinimo(e);
     var total = fromCms ? numOrZero(e.pessoasInscritas) : baseInscritos(e) + extra;
-    var confirmada = !!(e.confirmada || total >= quorum);
-    var faltam = confirmada ? 0 : Math.max(0, quorum - total);
+    var confirmada = fromCms
+      ? !!e.confirmada
+      : !!(e.confirmada || total >= quorum);
+    var faltam = fromCms
+      ? (confirmada ? 0 : Math.max(0, numOrZero(e.faltamPessoas)))
+      : (confirmada ? 0 : Math.max(0, quorum - total));
     var vagas = Math.max(0, cap - total);
 
     var sameCount = numOrZero(e.pessoasInscritas) === total;

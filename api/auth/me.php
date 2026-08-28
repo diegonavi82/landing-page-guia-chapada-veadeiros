@@ -12,6 +12,19 @@ if (!$user) {
     json_response(false, null, 'Não autenticado', 401);
 }
 
+$profileComplete = false;
+$isGuide = ($user['role'] ?? '') === 'guide'
+    || in_array('guide', $user['roles'] ?? [], true);
+if ($isGuide) {
+    try {
+        $st = db()->prepare('SELECT profile_complete FROM gcv_guides WHERE user_id = ? LIMIT 1');
+        $st->execute([(int)$user['id']]);
+        $profileComplete = (int)$st->fetchColumn() === 1;
+    } catch (Throwable $e) {
+        $profileComplete = false;
+    }
+}
+
 json_response(true, [
     'id'             => $user['id'],
     'name'           => $user['name'],
@@ -24,4 +37,5 @@ json_response(true, [
     'lang'           => $user['lang'],
     'status'         => $user['status'],
     'email_verified' => (bool)$user['email_verified'],
+    'profile_complete' => $profileComplete,
 ]);

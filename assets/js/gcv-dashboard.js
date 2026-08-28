@@ -437,6 +437,7 @@
       notify_late_tolerance_minutes: 'notify',
       platform_commission_pct: 'finance',
       payout_after_hour: 'finance',
+      payout_after_minute: 'finance',
       payout_delay_hours: 'finance'
     };
     var groupMeta = {
@@ -464,7 +465,7 @@
           + (meta.hint ? '<p class="gcv-dash-settings-group__hint">' + meta.hint + '</p>' : '');
         list.forEach(function (s) {
           var row = el('div', 'gcv-dash-settings-row');
-          var unit = /minutes/.test(s.key_name) ? 'min' : (s.type === 'percent' ? '%' : (/hours|hour/.test(s.key_name) ? 'h' : ''));
+          var unit = /minute/.test(s.key_name) ? 'min' : (s.type === 'percent' ? '%' : (/hours|hour/.test(s.key_name) ? 'h' : ''));
           row.innerHTML = '<div class="gcv-dash-settings-label"><strong>' + s.label + '</strong></div>'
             + '<div class="gcv-dash-settings-controls">'
             + '<input class="gcv-dash-settings-input" type="number" min="0" step="1" value="' + s.value + '" data-key="' + s.key_name + '" />'
@@ -967,10 +968,15 @@
         { id: 'section-guide-financial',    icon: '🏦', label: 'Financeiro',       tab: 'Financeiro', tabIcon: 'money',   load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideEarnings(); } },
       ];
     } else if (role === 'guide' && status === 'pending') {
-      items = [
-        { id: 'section-guide-pending', icon: '⏳', label: 'Status', load: function () {} },
-        { id: 'section-guide-profile', icon: '👤', label: 'Meu perfil', load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideProfile(); } },
-      ];
+      var profileDone = !!(currentUser && currentUser.profile_complete);
+      items = profileDone
+        ? [
+            { id: 'section-guide-pending', icon: '⏳', label: 'Status', load: function () {} },
+            { id: 'section-guide-profile', icon: '👤', label: 'Meu perfil', load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideProfile(); } },
+          ]
+        : [
+            { id: 'section-guide-profile', icon: '👤', label: 'Meu perfil', load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideProfile(); } },
+          ];
     } else if (role === 'client') {
       items = [
         { id: 'section-client-tours',    icon: '🌿', label: 'Próximos passeios', load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadClientUpcoming(); } },
@@ -1029,8 +1035,12 @@
 
     // Show first section
     if (items.length) {
-      showSection(items[0].id);
-      if (loadMap[items[0].id]) loadMap[items[0].id]();
+      var wantScan = window.GcvDashRoles && typeof window.GcvDashRoles.consumeCheckinHash === 'function'
+        && window.GcvDashRoles.consumeCheckinHash();
+      if (!wantScan) {
+        showSection(items[0].id);
+        if (loadMap[items[0].id]) loadMap[items[0].id]();
+      }
     }
     if (role === 'admin') {
       refreshApprovalBadge();
@@ -1050,8 +1060,8 @@
         // Sem sessão: manda para a porta correta (admin se veio de /admin)
         var fromAdmin = /\/admin\//.test(document.referrer || '') || /admin=1/.test(location.search || '');
         window.location.href = fromAdmin
-          ? '/admin/login.html?redirect=/dashboard/'
-          : '/login.html?redirect=/dashboard/';
+          ? '/admin/login.html?redirect=' + encodeURIComponent('/dashboard/' + (location.hash || ''))
+          : '/login.html?redirect=' + encodeURIComponent('/dashboard/' + (location.hash || ''));
         return;
       }
       currentUser = res.data;
@@ -1092,6 +1102,11 @@
       }
 
       buildNav(currentUser.role, currentUser.status);
+      window.addEventListener('hashchange', function () {
+        if (window.GcvDashRoles && typeof window.GcvDashRoles.consumeCheckinHash === 'function') {
+          window.GcvDashRoles.consumeCheckinHash();
+        }
+      });
       if (window.GcvInbox && typeof window.GcvInbox.start === 'function') {
         window.GcvInbox.start();
       }

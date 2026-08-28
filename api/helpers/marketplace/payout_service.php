@@ -12,7 +12,7 @@ require_once __DIR__ . '/../purchase_notify.php';
 
 /**
  * Repasse ao guia: manual (admin) + automático via PIX Sicoob
- * após as 17h (horário de Brasília) do dia do passeio.
+ * após as 16h20 (horário de Brasília) do dia do passeio.
  */
 
 /**
@@ -313,12 +313,12 @@ function gcv_payout_auto_eligibility(int $saleId): array
             $dateIso = (string)$excursion['date_iso'];
         }
         if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateIso)) {
-            $hour = gcv_payout_after_hour();
-            $payAt = new DateTimeImmutable($dateIso . ' ' . sprintf('%02d:00:00', $hour), $tz);
+            $hm = gcv_payout_after_hm();
+            $payAt = new DateTimeImmutable($dateIso . ' ' . sprintf('%02d:%02d:00', $hm[0], $hm[1]), $tz);
         }
     }
     if ($payAt && $now < $payAt) {
-        $reasons[] = 'payout_before_17h';
+        $reasons[] = 'payout_before_time';
     }
 
     // Reserva ativa (não cancelada/reembolsada)
@@ -544,13 +544,37 @@ function gcv_payout_auto_execute(int $saleId): array
     ];
 }
 
+function gcv_payout_after_hm(): array
+{
+    $hour = (int)setting('payout_after_hour', '16');
+    $min = (int)setting('payout_after_minute', '20');
+    if ($hour < 0 || $hour > 23) {
+        $hour = 16;
+    }
+    if ($min < 0 || $min > 59) {
+        $min = 20;
+    }
+    return [$hour, $min];
+}
+
 function gcv_payout_after_hour(): int
 {
-    $hour = (int)setting('payout_after_hour', '17');
-    if ($hour < 0 || $hour > 23) {
-        return 17;
+    return gcv_payout_after_hm()[0];
+}
+
+function gcv_payout_after_label(): string
+{
+    [$hour, $min] = gcv_payout_after_hm();
+    if ($min === 0) {
+        return $hour . 'h';
     }
-    return $hour;
+    return $hour . 'h' . str_pad((string)$min, 2, '0', STR_PAD_LEFT);
+}
+
+function gcv_payout_after_sql_time(): string
+{
+    [$hour, $min] = gcv_payout_after_hm();
+    return sprintf('%02d:%02d:00', $hour, $min);
 }
 
 /**
@@ -651,6 +675,6 @@ function gcv_payout_compute_scheduled_at(string $excursionStartsAt): string
 {
     $tz = new DateTimeZone('America/Sao_Paulo');
     $dt = new DateTimeImmutable($excursionStartsAt, $tz);
-    $hour = gcv_payout_after_hour();
-    return $dt->setTime($hour, 0, 0)->format('Y-m-d H:i:s');
+    [$hour, $min] = gcv_payout_after_hm();
+    return $dt->setTime($hour, $min, 0)->format('Y-m-d H:i:s');
 }

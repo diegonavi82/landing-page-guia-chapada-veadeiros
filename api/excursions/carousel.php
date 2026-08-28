@@ -166,10 +166,11 @@ function gcv_row_to_card(array $r, string $lang, array $months, array $weekdays)
     $w = (int)date('w', $ts);
     $day = (string)((int)date('j', $ts));
     $hora = substr((string)$r['departure_time'], 0, 5);
-    $booked = gcv_excursion_occupied_people($r);
+    $occupied = gcv_excursion_occupied_people($r);
+    $inscriptions = gcv_excursion_platform_inscriptions($r);
     $max = max(1, (int)$r['max_people']);
     $quorum = max(0, (int)$r['quorum']);
-    $vagas = max(0, $max - $booked);
+    $vagas = max(0, $max - $occupied);
     $destino = gcv_excursion_titles_joined($attrs, $lang);
     $primary = $attrs[0] ?? null;
     $slug = (string)($primary['slug'] ?? '');
@@ -236,11 +237,11 @@ function gcv_row_to_card(array $r, string $lang, array $months, array $weekdays)
         'cartSlug' => $cartSlug,
         'hora' => $hora,
         'valor' => (int)round(((int)$r['price_cents']) / 100),
-        'confirmada' => $booked >= $quorum,
-        'pessoasInscritas' => $booked,
+        'confirmada' => gcv_excursion_quorum_met($r),
+        'pessoasInscritas' => $occupied,
         'grupoMaximo' => $max,
         'quorumMin' => $quorum,
-        'faltamPessoas' => max(0, $quorum - $booked),
+        'faltamPessoas' => max(0, $quorum - $inscriptions),
         'vagasRestantes' => $vagas,
         'cardImg' => $cover,
         'atrativoPath' => $page,

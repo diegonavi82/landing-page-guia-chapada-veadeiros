@@ -920,6 +920,11 @@ body.gcv-dash-page main.gcv-dash-main {
   line-height: 1.4;
   color: #1e3a8a;
 }
+.gcv-guide-net-box__warn {
+  margin-top: 0.35rem;
+  color: #b45309;
+  font-weight: 600;
+}
 
 .gcv-dash-form--profile {
   width: 100%;
@@ -1027,6 +1032,12 @@ body.gcv-dash-page main.gcv-dash-main {
 }
 .gcv-dash-doc-status a { color: #0f3d2e; font-weight: 600; }
 .gcv-dash-doc-ok { color: #276749; font-weight: 600; }
+.gcv-dash-doc-id-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: 1rem 1.25rem;
+  align-items: start;
+}
 .gcv-dash-note {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
@@ -1291,6 +1302,7 @@ body.gcv-dash-page main.gcv-dash-main {
     justify-items: center;
     text-align: center;
   }
+  .gcv-dash-doc-id-grid { grid-template-columns: 1fr; }
   .gcv-dash-profile-hero__fields { width: 100%; text-align: left; }
   .gcv-dash-form { padding: 18px 16px; max-width: none; }
   .gcv-dash-form > .gcv-dash-btn--primary,
@@ -2207,6 +2219,25 @@ body.gcv-dash-page main.gcv-dash-main {
   border-radius: 8px;
   font: inherit;
   text-transform: uppercase;
+}
+.gcv-checkin-result {
+  margin: 0.65rem 0 0;
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.35;
+  white-space: pre-line;
+}
+.gcv-checkin-result--ok {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #6ee7b7;
+}
+.gcv-checkin-result--err {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
 }
 
 .gcv-dash-langs {

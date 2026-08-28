@@ -4,7 +4,7 @@ declare(strict_types=1);
 /**
  * Agenda / publicar / cancelar excursões do guia (gcv_excursions).
  * GET  — lista minhas saídas + opções (atrativos, cidades)
- * POST — publica saída (preço/pessoa, quórum 0–4, pessoas confirmadas 0–5, máximo 12)
+ * POST — publica saída (preço/pessoa, quórum só para novas inscrições 0–4, confirmados por fora 0–5, máximo 12)
  * PUT  — cancela saída futura (status=cancelled)
  */
 require_once __DIR__ . '/../helpers/db.php';
@@ -14,7 +14,10 @@ require_once __DIR__ . '/../helpers/cms_schema.php';
 require_once __DIR__ . '/../helpers/excursion_status.php';
 require_once __DIR__ . '/../helpers/marketplace_schema.php';
 require_once __DIR__ . '/../helpers/marketplace/publish_service.php';
+require_once __DIR__ . '/../helpers/marketplace/pricing_service.php';
+require_once __DIR__ . '/../helpers/marketplace/commission_service.php';
 require_once __DIR__ . '/../helpers/marketplace/guide_financial_service.php';
+require_once __DIR__ . '/../helpers/guide_profile.php';
 require_once __DIR__ . '/../helpers/meeting_point.php';
 require_once __DIR__ . '/../helpers/pix_reservation_store.php';
 require_once __DIR__ . '/../helpers/excursion_attractions.php';
@@ -43,29 +46,6 @@ if ($method !== 'GET' && $accountStatus !== 'active') {
 $MIN_QUORUM = 0;
 $MAX_QUORUM = 4;
 $MAX_PEOPLE_CAP = 12;
-
-function gcv_guide_profile_is_complete(int $userId): bool
-{
-    $stmt = db()->prepare(
-        'SELECT full_name, nickname, phone, birth_date,
-                base_city_id, id_document_url, diploma_url, photo_3x4_url, photo_url, bio_pt
-         FROM gcv_guides WHERE user_id = ? LIMIT 1'
-    );
-    $stmt->execute([$userId]);
-    $p = $stmt->fetch(PDO::FETCH_ASSOC);
-    if (!$p) return false;
-    $phone = preg_replace('/\D+/', '', (string)($p['phone'] ?? '')) ?? '';
-    $doc = trim((string)($p['id_document_url'] ?? $p['diploma_url'] ?? ''));
-    $photo = trim((string)($p['photo_3x4_url'] ?? $p['photo_url'] ?? ''));
-    return trim((string)($p['full_name'] ?? '')) !== ''
-        && trim((string)($p['nickname'] ?? '')) !== ''
-        && strlen($phone) >= 10
-        && !empty($p['birth_date'])
-        && !empty($p['base_city_id'])
-        && $doc !== ''
-        && $photo !== ''
-        && trim((string)($p['bio_pt'] ?? '')) !== '';
-}
 
 function gcv_map_excursion_row(array $r): array
 {
@@ -399,6 +379,8 @@ if ($method === 'GET') {
         "SELECT id, name FROM gcv_cities WHERE status = 'active' ORDER BY name ASC"
     )->fetchAll(PDO::FETCH_ASSOC);
 
+    $commission = gcv_commission_resolve(null, (int)$user['id'], null, null);
+
     json_response(true, [
         'excursions' => $rows,
         'upcoming' => $upcoming,
@@ -407,6 +389,10 @@ if ($method === 'GET') {
         'min_quorum' => $MIN_QUORUM,
         'max_quorum' => $MAX_QUORUM,
         'max_people_cap' => $MAX_PEOPLE_CAP,
+        'guide_net_min' => gcv_guide_net_min_cents() / 100,
+        'guide_net_max' => gcv_guide_net_max_cents() / 100,
+        'commission_pct' => (float)$commission['pct'],
+        'commission_scope' => (string)$commission['scope_type'],
         'profile_complete' => gcv_guide_profile_is_complete((int)$user['id']),
         'financial_ready' => gcv_guide_financial_is_ready((int)$user['id']),
         'business_mode' => 'GUIDE_MARKETPLACE',
@@ -467,11 +453,12 @@ if ($method === 'POST') {
     if ($cityId <= 0 || $attrId <= 0) {
         json_response(false, null, 'Cidade e atrativo são obrigatórios', 422);
     }
-    if ($guideNetCents < 100) {
-        json_response(false, null, 'Informe o valor líquido que deseja receber (mín. R$ 1,00)', 422);
+    $netRangeErr = gcv_guide_net_range_error($guideNetCents);
+    if ($netRangeErr !== null) {
+        json_response(false, null, $netRangeErr, 422);
     }
-    if ($maxPeople < $quorum) {
-        json_response(false, null, 'Máximo de pessoas deve ser ≥ quórum', 422);
+    if ($maxPeople < ($preconfirmed + $quorum)) {
+        json_response(false, null, 'Vagas devem caber as pessoas confirmadas por fora e o quórum das novas inscrições', 422);
     }
 
     $a = db()->prepare("SELECT id FROM gcv_attractions WHERE id = ? AND status = 'published'");

@@ -660,7 +660,12 @@ function pickUserByLogin(email, context) {
 
 /** Respostas mock da API */
 const API_ROUTES = {
-  "/api/auth/me.php": () => ({ ok: true, data: user }),
+  "/api/auth/me.php": () => ({
+    ok: true,
+    data: Object.assign({}, user, {
+      profile_complete: user.status === "pending" ? false : true,
+    }),
+  }),
 
   "/api/guides/tours.php": () => ({
     ok: true,
@@ -686,37 +691,54 @@ const API_ROUTES = {
     },
   }),
 
-  "/api/guides/me-profile.php": () => ({
-    ok: true,
-    data: {
-      profile: {
-        user_id: user.id,
-        full_name: user.name,
-        nickname: "Navi",
-        email: user.email,
-        cpf: "00000000000",
-        pix_key: "diegonavi82@gmail.com",
-        pix_key_type: "email",
-        phone: "21996039027",
-        phone_ddi: "+55",
-        birth_date: "1982-01-15",
-        base_city_id: 1,
-        id_document_url: "/assets/img/uploads/guias/doc.pdf",
-        photo_3x4_url: "/assets/img/uploads/guias/foto.jpg",
-        bio_pt: "Guia local na Chapada dos Veadeiros.",
-        profile_complete: 1,
+  "/api/guides/me-profile.php": () => {
+    const pending = user.status === "pending";
+    return {
+      ok: true,
+      data: {
+        profile: {
+          user_id: user.id,
+          user_status: user.status,
+          full_name: user.name,
+          nickname: pending ? "" : "Navi",
+          email: user.email,
+          cpf: pending ? "" : "52998224725",
+          person_type: "PF",
+          pix_key: pending ? "" : "diegonavi82@gmail.com",
+          pix_key_type: pending ? "" : "email",
+          phone: pending ? "" : "21996039027",
+          phone_ddi: "+55",
+          birth_date: pending ? "" : "1982-01-15",
+          base_city_id: pending ? 0 : 1,
+          id_document_url: pending ? "" : "/assets/img/uploads/guias/doc.pdf",
+          photo_3x4_url: pending ? "" : "/assets/img/uploads/guias/foto.jpg",
+          bio_pt: pending ? "" : "Guia local na Chapada dos Veadeiros.",
+          profile_complete: pending ? 0 : 1,
+        },
+        financial: pending
+          ? { legal_name: "", person_type: "PF", cpf: "", pix_key: "", pix_key_type: "" }
+          : {
+              legal_name: user.name,
+              person_type: "PF",
+              cpf: "52998224725",
+              pix_key: "diegonavi82@gmail.com",
+              pix_key_type: "email",
+            },
+        missing: pending
+          ? ["photo_3x4_url", "phone", "birth_date", "base_city_id", "legal_name", "cpf_cnpj", "pix_key"]
+          : [],
+        complete: !pending,
+        financial_ready: !pending,
+        limits: { bio_max: 800, bio_recommended: 600 },
+        pix_key_types: ["cpf", "cnpj", "email", "phone", "random"],
+        base_cities: [
+          { id: 1, name: "Alto Paraíso de Goiás" },
+          { id: 2, name: "São Jorge" },
+          { id: 3, name: "Cavalcante" },
+        ],
       },
-      missing: [],
-      complete: true,
-      limits: { bio_max: 800, bio_recommended: 600 },
-      pix_key_types: ["cpf", "cnpj", "email", "phone", "random"],
-      base_cities: [
-        { id: 1, name: "Alto Paraíso de Goiás" },
-        { id: 2, name: "São Jorge" },
-        { id: 3, name: "Cavalcante" },
-      ],
-    },
-  }),
+    };
+  },
 
   "/api/guides/excursions.php": () => ({
     ok: true,
@@ -1124,8 +1146,11 @@ const server = http.createServer((req, res) => {
                 message:
                   urlPath.indexOf("cancel") >= 0
                     ? "Reserva/passeio cancelado (mock)"
-                    : "Salvo (mock)",
+                    : urlPath.indexOf("me-profile") >= 0 && user.status === "pending"
+                      ? "Cadastro enviado para aprovação"
+                      : "Salvo (mock)",
                 complete: true,
+                submitted_for_approval: urlPath.indexOf("me-profile") >= 0 && user.status === "pending",
               },
             }),
           );

@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="/assets/css/site.css?v=1.0.39" />
-<link rel="stylesheet" href="/assets/css/gcv-dashboard.css?v=1.0.76" />
+<link rel="stylesheet" href="/assets/css/gcv-dashboard.css?v=1.0.79" />
 <link rel="stylesheet" href="/assets/css/gcv-confirm.css?v=1.0.1" />
 <link rel="stylesheet" href="/assets/css/gcv-tours.css?v=1.0.1" />
 <link rel="stylesheet" href="/assets/css/gcv-payment.css?v=1.0.1" />
@@ -350,7 +350,7 @@
           <div class="gcv-dash-pending-screen">
             <div class="gcv-dash-pending-screen__icon">⏳</div>
             <h2 class="gcv-dash-pending-screen__title">Cadastro em análise</h2>
-            <p class="gcv-dash-pending-screen__body">Seu cadastro como guia está sendo analisado pelo administrador. Você receberá um email assim que for aprovado.</p>
+            <p class="gcv-dash-pending-screen__body">Seu cadastro como guia está sendo analisado pelo administrador. Você receberá um aviso no WhatsApp e um e-mail assim que for aprovado.</p>
           </div>
         </section>
 
@@ -372,8 +372,9 @@
   <div id="gcv-checkin-modal" class="gcv-checkin-modal" hidden>
     <div class="gcv-checkin-sheet" role="dialog" aria-labelledby="gcv-checkin-title">
       <h3 id="gcv-checkin-title">Ler QR da reserva</h3>
-      <p class="gcv-dash-hint" style="margin:0 0 0.5rem;">Aponte a câmera para o comprovante do cliente.</p>
+      <p class="gcv-dash-hint" style="margin:0 0 0.5rem;">Aponte a câmera para o QR CODE da reserva do cliente.</p>
       <div id="gcv-checkin-reader" class="gcv-checkin-reader"></div>
+      <p id="gcv-checkin-result" class="gcv-checkin-result" hidden role="status"></p>
       <div class="gcv-checkin-manual">
         <input id="gcv-checkin-manual" type="text" maxlength="12" placeholder="GCV-XXXXXX" autocomplete="off" />
         <button type="button" class="gcv-dash-btn gcv-dash-btn--primary" id="gcv-checkin-manual-btn">OK</button>
@@ -384,16 +385,16 @@
     </div>
   </div>
 
-  <script src="/assets/js/gcv-auth.js?v=1.0.43" defer></script>
+  <script src="/assets/js/gcv-auth.js?v=1.0.44" defer></script>
   <script src="/assets/js/gcv-pix-receipt.js?v=1.0.43" defer></script>
   <script src="/assets/js/gcv-meeting-point.js?v=1.0.1" defer></script>
   <script src="/assets/js/gcv-datepicker.js?v=1.0.1" defer></script>
-  <script src="/assets/js/gcv-admin-cms.js?v=1.0.64" defer></script>
+  <script src="/assets/js/gcv-admin-cms.js?v=1.0.66" defer></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
   <script src="/assets/js/gcv-confirm.js?v=1.0.1" defer></script>
-  <script src="/assets/js/gcv-dash-roles.js?v=1.0.68" defer></script>
+  <script src="/assets/js/gcv-dash-roles.js?v=1.0.75" defer></script>
   <script src="/assets/js/gcv-inbox.js?v=1.0.1" defer></script>
-  <script src="/assets/js/gcv-dashboard.js?v=1.0.65" defer></script>
+  <script src="/assets/js/gcv-dashboard.js?v=1.0.68" defer></script>
   <script src="/assets/js/gcv-payment.js?v=1.0.40" defer></script>
   <script src="/assets/js/site.js?v=1.0.40" defer></script>
 </body>

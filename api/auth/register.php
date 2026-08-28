@@ -54,7 +54,6 @@ try {
         $pdo->prepare(
             'INSERT INTO gcv_guides (user_id, cadastur) VALUES (?,?)'
         )->execute([$userId, $cadastur ?: null]);
-        mail_guide_pending_admin($name, $email);
     }
 
     $pdo->commit();
@@ -73,8 +72,18 @@ gcv_user_sync_primary_role($userId);
 
 mail_welcome($email, $name, $lang);
 
+if ($role === 'guide') {
+    destroy_session();
+    create_session($userId, 'guide');
+    json_response(true, [
+        'message' => 'Conta criada! Complete seu perfil para enviar à aprovação.',
+        'auto_login' => true,
+        'redirect' => '/dashboard/',
+        'role' => 'guide',
+        'status' => 'pending',
+    ]);
+}
+
 json_response(true, [
-    'message' => $role === 'guide'
-        ? 'Cadastro realizado! Aguarde aprovação do administrador.'
-        : 'Cadastro realizado! Faça login para continuar.',
+    'message' => 'Cadastro realizado! Faça login para continuar.',
 ]);

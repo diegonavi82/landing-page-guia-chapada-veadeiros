@@ -155,6 +155,11 @@ function gcv_publish_guide_marketplace(array $payload, int $guideUserId): array
         ? (int)$payload['guide_net_cents']
         : (int)round(((float)($payload['guide_net'] ?? 0)) * 100);
 
+    $rangeErr = gcv_guide_net_range_error($guideNet);
+    if ($rangeErr !== null) {
+        throw new InvalidArgumentException($rangeErr);
+    }
+
     $cityId = (int)($payload['departure_city_id'] ?? 0);
     $attrId = (int)($payload['attraction_id'] ?? 0);
     $categoryKey = isset($payload['category_key']) ? (string)$payload['category_key'] : null;

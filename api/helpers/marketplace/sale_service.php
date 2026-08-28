@@ -127,7 +127,7 @@ function gcv_sale_capture_from_pix_reservation(array $reservation, string $sourc
         try {
             $scheduledPayoutAt = gcv_payout_compute_scheduled_at($startsAt);
         } catch (Throwable $e) {
-            $scheduledPayoutAt = $excursion['date_iso'] . ' 17:00:00';
+            $scheduledPayoutAt = $excursion['date_iso'] . ' ' . (function_exists('gcv_payout_after_sql_time') ? gcv_payout_after_sql_time() : '16:20:00');
         }
     }
 

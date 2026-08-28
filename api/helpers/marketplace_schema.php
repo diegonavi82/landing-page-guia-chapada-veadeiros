@@ -397,15 +397,14 @@ function gcv_marketplace_reschedule_payouts_to_17h(PDO $pdo): void
     }
     $done = true;
     try {
-        $hour = 17;
+        $time = '16:20:00';
         try {
-            if (function_exists('gcv_payout_after_hour')) {
-                $hour = gcv_payout_after_hour();
+            if (function_exists('gcv_payout_after_sql_time')) {
+                $time = gcv_payout_after_sql_time();
             }
         } catch (Throwable $e) {
-            $hour = 17;
+            $time = '16:20:00';
         }
-        $time = sprintf('%02d:00:00', $hour);
         $pdo->exec(
             "UPDATE gcv_sales
              SET scheduled_payout_at = CONCAT(DATE(COALESCE(excursion_starts_at, scheduled_payout_at, sold_at)), ' {$time}')
@@ -415,7 +414,7 @@ function gcv_marketplace_reschedule_payouts_to_17h(PDO $pdo): void
                AND COALESCE(excursion_starts_at, scheduled_payout_at, sold_at) IS NOT NULL"
         );
     } catch (Throwable $e) {
-        error_log('reschedule payouts 17h: ' . $e->getMessage());
+        error_log('reschedule payouts 16h20: ' . $e->getMessage());
     }
 }
 
@@ -456,6 +455,7 @@ function gcv_marketplace_ensure_checkin_columns(PDO $pdo): void
             'notify_d12h_guide_at' => 'ALTER TABLE gcv_excursions ADD COLUMN notify_d12h_guide_at DATETIME NULL',
             'notify_h2_guide_at' => 'ALTER TABLE gcv_excursions ADD COLUMN notify_h2_guide_at DATETIME NULL',
             'notify_m15_guide_at' => 'ALTER TABLE gcv_excursions ADD COLUMN notify_m15_guide_at DATETIME NULL',
+            'notify_dayof_guide_at' => 'ALTER TABLE gcv_excursions ADD COLUMN notify_dayof_guide_at DATETIME NULL',
         ] as $col => $sql) {
             if (!isset($exc[$col])) {
                 try {
@@ -536,8 +536,9 @@ function gcv_marketplace_ensure_reviews(PDO $pdo): void
 function gcv_marketplace_ensure_settings(PDO $pdo): void
 {
     $seeds = [
-        ['payout_delay_hours', '6', 'Legado — o repasse automático usa payout_after_hour (17h do dia do passeio)', 'integer'],
-        ['payout_after_hour', '17', 'Hora (Brasília) do dia do passeio a partir da qual o PIX automático pode ser enviado ao guia', 'integer'],
+        ['payout_delay_hours', '6', 'Legado — o repasse automático usa 16h20 do dia do passeio', 'integer'],
+        ['payout_after_hour', '16', 'Hora (Brasília) do PIX automático ao guia no dia do passeio', 'integer'],
+        ['payout_after_minute', '20', 'Minuto (Brasília) do PIX automático ao guia no dia do passeio', 'integer'],
         ['platform_commission_pct', '14', 'Comissão da plataforma (%) aplicada em todos os passeios', 'percent'],
         ['notify_guide_hours_long', '24', 'Guia: aviso longo (horas antes do passeio) — lista dos grupos', 'integer'],
         ['notify_guide_hours_short', '3', 'Guia: aviso curto (horas antes do início)', 'integer'],
@@ -570,6 +571,17 @@ function gcv_marketplace_ensure_settings(PDO $pdo): void
             "UPDATE gcv_settings
              SET value = '14'
              WHERE key_name = 'platform_commission_pct' AND value = '16'"
+        );
+        $pdo->exec(
+            "UPDATE gcv_settings
+             SET value = '16',
+                 label = 'Hora (Brasília) do PIX automático ao guia no dia do passeio'
+             WHERE key_name = 'payout_after_hour' AND value = '17'"
+        );
+        $pdo->exec(
+            "UPDATE gcv_settings
+             SET label = 'Legado — o repasse automático usa 16h20 do dia do passeio'
+             WHERE key_name = 'payout_delay_hours'"
         );
     } catch (Throwable $e) {
         // ignore

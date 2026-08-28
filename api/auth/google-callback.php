@@ -211,15 +211,6 @@ try {
                 gcv_user_grant_role($userId, 'guide');
                 // Não concede client enquanto a área do cliente estiver fechada
                 gcv_user_sync_primary_role($userId);
-                try {
-                    if (is_readable(__DIR__ . '/../helpers/mailer.php')) {
-                        require_once __DIR__ . '/../helpers/mailer.php';
-                        if (function_exists('mail_guide_pending_admin')) {
-                            mail_guide_pending_admin($name, $email);
-                        }
-                    }
-                } catch (Throwable) {
-                }
             } catch (Throwable $e) {
                 $pdo->rollBack();
                 throw $e;

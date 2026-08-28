@@ -77,13 +77,36 @@ function gcv_clamp_preconfirmed($value, int $maxPeople = 12, int $bookedPeople =
 }
 
 /**
- * Ocupação real: PIX (booked_people) + pessoas que o guia já confirmou.
+ * Ocupação real do grupo: PIX (booked_people) + pessoas que o guia já confirmou por fora.
+ * Serve para vagas / lotação — não para o quórum.
  *
  * @param array<string,mixed> $e
  */
 function gcv_excursion_occupied_people(array $e): int
 {
     return max(0, (int)($e['booked_people'] ?? 0)) + max(0, (int)($e['preconfirmed_people'] ?? 0));
+}
+
+/**
+ * Novas inscrições na plataforma (Pix pago). Confirmados por fora não entram.
+ *
+ * @param array<string,mixed> $e
+ */
+function gcv_excursion_platform_inscriptions(array $e): int
+{
+    return max(0, (int)($e['booked_people'] ?? 0));
+}
+
+/**
+ * Quórum vale somente para novas inscrições.
+ * Quórum 0 = sem quórum (passeio já confirmado).
+ *
+ * @param array<string,mixed> $e
+ */
+function gcv_excursion_quorum_met(array $e): bool
+{
+    $quorum = max(0, (int)($e['quorum'] ?? 0));
+    return gcv_excursion_platform_inscriptions($e) >= $quorum;
 }
 
 /**
@@ -111,14 +134,13 @@ function gcv_resolve_excursion_lifecycle(array $e): string
 
     $date = (string)($e['date_iso'] ?? '');
     $today = (new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo')))->format('Y-m-d');
-    $occupied = gcv_excursion_occupied_people($e);
-    $quorum = max(0, (int)($e['quorum'] ?? 0));
+    $quorumMet = gcv_excursion_quorum_met($e);
 
     if ($date !== '' && $date < $today) {
-        return $occupied >= $quorum ? 'concluida' : 'cancelada';
+        return $quorumMet ? 'concluida' : 'cancelada';
     }
 
-    if ($occupied >= $quorum) {
+    if ($quorumMet) {
         return 'confirmada';
     }
     return 'em_formacao';

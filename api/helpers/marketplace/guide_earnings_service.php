@@ -203,7 +203,9 @@ function gcv_guide_earnings_dashboard(int $guideUserId): array
             'pix_ready' => gcv_guide_financial_is_ready($guideUserId),
             'pix_verified' => gcv_guide_pix_is_verified($guideUserId),
             'auto_pix' => gcv_sicoob_is_configured(),
-            'payout_after_hour' => function_exists('gcv_payout_after_hour') ? gcv_payout_after_hour() : 17,
+            'payout_after_hour' => function_exists('gcv_payout_after_hour') ? gcv_payout_after_hour() : 16,
+            'payout_after_minute' => function_exists('gcv_payout_after_hm') ? gcv_payout_after_hm()[1] : 20,
+            'payout_after_label' => function_exists('gcv_payout_after_label') ? gcv_payout_after_label() : '16h20',
         ],
         'tours' => $tours,
         'auto_run' => [

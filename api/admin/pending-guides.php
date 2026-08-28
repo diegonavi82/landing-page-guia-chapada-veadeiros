@@ -17,6 +17,7 @@ try {
          FROM gcv_users u
          INNER JOIN gcv_guides g ON g.user_id = u.id
          WHERE u.status = \'pending\'
+           AND COALESCE(g.profile_complete, 0) = 1
            AND (
              u.role = \'guide\'
              OR EXISTS (
@@ -35,6 +36,7 @@ try {
          FROM gcv_users u
          JOIN gcv_guides g ON g.user_id = u.id
          WHERE u.role = \'guide\' AND u.status = \'pending\'
+           AND COALESCE(g.profile_complete, 0) = 1
          ORDER BY u.created_at ASC'
     );
     $stmt->execute();

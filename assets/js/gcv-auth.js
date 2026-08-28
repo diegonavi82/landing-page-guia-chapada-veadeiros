@@ -216,6 +216,10 @@
           showError(err, (res && res.error) || 'Erro ao criar conta');
           return;
         }
+        if (res.data && res.data.redirect) {
+          window.location.href = res.data.redirect;
+          return;
+        }
         if (suc) showSuccess(suc, (res.data && res.data.message) || 'Conta criada!');
         form.reset();
         setTimeout(function () { window.location.href = '/login.html'; }, 2500);

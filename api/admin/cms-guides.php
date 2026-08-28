@@ -21,7 +21,11 @@ function gcv_cms_guide_hydrate(array $row): array
     $row['languages'] = gcv_guide_languages_normalize($row['languages_json'] ?? null);
     $row['pix_ready'] = trim((string)($row['pix_key'] ?? '')) !== '';
     $row['was_approved'] = gcv_guide_was_approved($row);
+    $row['profile_complete'] = (int)($row['profile_complete'] ?? 0) === 1;
     $row['account_label'] = gcv_guide_account_label((string)($row['status'] ?? ''), (bool)$row['was_approved']);
+    if (($row['status'] ?? '') === 'pending' && !$row['profile_complete']) {
+        $row['account_label'] = 'RASCUNHO';
+    }
     return $row;
 }
 
@@ -32,7 +36,7 @@ function gcv_cms_guide_select_sql(): string
                 g.birth_date, g.base_city_id, g.cadastur, g.pix_key, g.pix_key_type, g.pix_holder_name,
                 g.pix_verified_at, g.pix_verified_by,
                 g.photo_url, g.diploma_url, g.association_doc_url, g.photo_3x4_url,
-                g.bio_pt, g.bio_en, g.bio_es, g.languages_json, g.cpf, g.approved_at, g.approved_by,
+                g.bio_pt, g.bio_en, g.bio_es, g.languages_json, g.cpf, g.profile_complete, g.approved_at, g.approved_by,
                 c.name AS base_city_name
          FROM gcv_users u
          LEFT JOIN gcv_guides g ON g.user_id = u.id
@@ -66,7 +70,7 @@ function gcv_cms_guides_list(): array
     $order = ' ORDER BY CASE WHEN u.status = \'pending\' THEN 0 ELSE 1 END, COALESCE(g.full_name, u.name) ASC';
     $select = 'SELECT u.id AS user_id, u.name, u.email, u.status, u.avatar_url, g.nickname, g.full_name, g.phone, g.phone_ddi,
                 g.cadastur, g.pix_key, g.pix_key_type, g.pix_holder_name, g.pix_verified_at, g.approved_at,
-                g.photo_3x4_url, g.photo_url, g.languages_json, c.name AS base_city_name
+                g.photo_3x4_url, g.photo_url, g.languages_json, g.profile_complete, c.name AS base_city_name
          FROM gcv_users u
          LEFT JOIN gcv_guides g ON g.user_id = u.id
          LEFT JOIN gcv_cities c ON c.id = g.base_city_id';

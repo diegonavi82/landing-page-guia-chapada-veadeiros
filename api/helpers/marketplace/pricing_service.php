@@ -12,6 +12,32 @@ declare(strict_types=1);
  * Exemplos: 212,28→215 | 232,00→232 | 238,20→240
  */
 
+/** Mínimo do valor a receber por pessoa (guia), em centavos. */
+function gcv_guide_net_min_cents(): int
+{
+    return 5000; // R$ 50,00
+}
+
+/** Máximo do valor a receber por pessoa (guia), em centavos. */
+function gcv_guide_net_max_cents(): int
+{
+    return 100000; // R$ 1.000,00
+}
+
+/**
+ * Valida faixa do valor a receber na publicação (não no preview ao digitar).
+ */
+function gcv_guide_net_range_error(int $cents): ?string
+{
+    if ($cents < gcv_guide_net_min_cents()) {
+        return 'Valor a receber por pessoa: mínimo R$ 50,00';
+    }
+    if ($cents > gcv_guide_net_max_cents()) {
+        return 'Valor a receber por pessoa: máximo R$ 1.000,00';
+    }
+    return null;
+}
+
 /**
  * @return array{
  *   guide_net_cents:int,

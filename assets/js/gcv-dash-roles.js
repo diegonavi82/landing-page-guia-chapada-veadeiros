@@ -158,6 +158,29 @@
   var DEFAULT_QUORUM = 4;
   var DEFAULT_MAX_PEOPLE = 10;
   var DEFAULT_PRECONFIRMED = 0;
+  var GUIDE_NET_MIN = 50;
+  var GUIDE_NET_MAX = 1000;
+
+  function quorumSelectHtml(id, selected) {
+    var sel = parseFiniteInt(selected, DEFAULT_QUORUM);
+    var opts = [
+      { v: 0, t: 'sem quórum (✅ confirmado)' },
+      { v: 1, t: '1' },
+      { v: 2, t: '2' },
+      { v: 3, t: '3' },
+      { v: 4, t: '4' }
+    ];
+    return '<select class="gcv-dash-select" id="' + id + '" required>' +
+      opts.map(function (o) {
+        return '<option value="' + o.v + '"' + (sel === o.v ? ' selected' : '') + '>' + o.t + '</option>';
+      }).join('') +
+      '</select>';
+  }
+
+  function quorumLabel(n) {
+    n = parseFiniteInt(n, DEFAULT_QUORUM);
+    return n <= 0 ? 'sem quórum' : String(n);
+  }
 
   function attractionComboboxHtml(inputId, hiddenId, suggestId) {
     return (
@@ -387,6 +410,26 @@
     }
     el.addEventListener('change', apply);
     el.addEventListener('blur', apply);
+  }
+
+  /** Mesma regra do PHP gcv_pricing_commercial_round_reais. */
+  function commercialRoundReais(amount) {
+    var n = Math.ceil(Number(amount) - 1e-9);
+    if (n < 0) n = 0;
+    while (n % 5 !== 0 && n % 8 !== 0) n += 1;
+    return n;
+  }
+
+  function estimateGuideFinalCents(netReais, pct) {
+    var netCents = Math.round(Number(netReais) * 100);
+    var divisor = 1 - (Number(pct) / 100);
+    if (!isFinite(netCents) || netCents <= 0 || !isFinite(divisor) || divisor <= 0) return 0;
+    var priceBeforeRound = Math.round(netCents / divisor);
+    return commercialRoundReais(priceBeforeRound / 100) * 100;
+  }
+
+  function formatBrlFromCents(cents) {
+    return 'R$ ' + (Number(cents) / 100).toFixed(2);
   }
 
   function lifeBadge(code, label) {
@@ -722,14 +765,14 @@
   function profileMissingLabel(key) {
     var map = {
       full_name: 'Nome completo',
-      nickname: 'Apelido',
       email: 'E-mail',
       phone: 'Telefone',
       birth_date: 'Nascimento',
-      id_document_url: 'Documento',
       base_city_id: 'Cidade',
       photo_3x4_url: 'Foto 3×4',
-      bio_pt: 'Descrição'
+      legal_name: 'Nome / Razão social',
+      cpf_cnpj: 'CPF/CNPJ',
+      pix_key: 'Chave PIX'
     };
     return map[key] || key;
   }
@@ -748,19 +791,27 @@
       var p = d.profile || {};
       var cities = d.base_cities || [];
       var limits = d.limits || { bio_max: 800, bio_recommended: 600 };
-      var missing = (d.missing || []).filter(function (k) {
-        return k !== 'cpf' && k !== 'pix_key' && k !== 'pix_key_type';
-      });
+      var missing = d.missing || [];
       var complete = missing.length === 0;
-      var photoUrl = p.photo_3x4_url || p.photo_url || p.avatar_url || '';
+      var fin = d.financial || {};
+      var savedPhoto = p.photo_3x4_url || p.photo_url || '';
+      var photoUrl = savedPhoto || p.avatar_url || '';
       var docUrl = p.id_document_url || p.diploma_url || '';
       var initial = String(p.full_name || p.nickname || p.user_name || '?').charAt(0).toUpperCase();
       var missingTxt = missing.map(profileMissingLabel).join(', ');
+      var pendingFirst = String(p.user_status || '') === 'pending' && !complete;
+      var saveLabel = pendingFirst ? 'Enviar para Aprovação' : 'Salvar';
+      var personType = (fin.person_type === 'PJ' || fin.person_type === 'CNPJ' || p.person_type === 'PJ') ? 'PJ' : 'PF';
+      if (!fin.person_type && !p.person_type && fin.cnpj && !fin.cpf) personType = 'PJ';
 
       root.innerHTML =
         (complete
-          ? '<div class="gcv-dash-alert gcv-dash-alert--success">Perfil completo. Você pode publicar passeios.</div>'
-          : '<div class="gcv-dash-alert gcv-dash-alert--warning">Complete os campos obrigatórios para publicar passeios.' +
+          ? '<div class="gcv-dash-alert gcv-dash-alert--success">' +
+            (String(p.user_status || '') === 'pending'
+              ? 'Cadastro enviado. Aguarde a aprovação do administrador.'
+              : 'Perfil completo. Você pode publicar passeios.') +
+            '</div>'
+          : '<div class="gcv-dash-alert gcv-dash-alert--warning">Preencha os campos obrigatórios para enviar o cadastro.' +
             (missingTxt ? ' Faltam: <strong>' + esc(missingTxt) + '</strong>' : '') + '</div>') +
         '<form class="gcv-dash-form gcv-dash-form--profile" id="guide-profile-form" novalidate>' +
 
@@ -774,19 +825,19 @@
             '</div>' +
             '<label class="gcv-dash-file-btn">' +
               '<input type="file" id="gp-photo-file" accept="image/*" hidden />' +
-              (photoUrl ? 'Trocar foto' : 'Enviar foto 3×4') +
+              (savedPhoto ? 'Trocar foto' : 'Enviar foto 3×4 *') +
             '</label>' +
-            '<p class="gcv-dash-photo-hint">Assim a foto aparece no site</p>' +
-            '<input type="hidden" id="gp-photo-url" value="' + esc(photoUrl) + '" />' +
+            '<p class="gcv-dash-photo-hint">Foto obrigatória — assim aparece no site</p>' +
+            '<input type="hidden" id="gp-photo-url" value="' + esc(savedPhoto) + '" />' +
             '<p class="gcv-cms-muted" id="gp-photo-status" hidden></p>' +
           '</div>' +
           '<div class="gcv-dash-profile-hero__fields">' +
             '<div class="gcv-dash-field"><label class="gcv-dash-label">Nome completo *</label>' +
             '<input class="gcv-dash-input" id="gp-full" maxlength="160" value="' + esc(p.full_name || p.user_name || '') + '" required /></div>' +
             '<div class="gcv-dash-field-row">' +
-            '<div class="gcv-dash-field"><label class="gcv-dash-label">Apelido *</label>' +
-            '<input class="gcv-dash-input" id="gp-nick" maxlength="80" value="' + esc(p.nickname || '') + '" required /></div>' +
-            '<div class="gcv-dash-field"><label class="gcv-dash-label">E-mail</label>' +
+            '<div class="gcv-dash-field"><label class="gcv-dash-label">Apelido</label>' +
+            '<input class="gcv-dash-input" id="gp-nick" maxlength="80" value="' + esc(p.nickname || '') + '" /></div>' +
+            '<div class="gcv-dash-field"><label class="gcv-dash-label">E-mail *</label>' +
             '<input class="gcv-dash-input" value="' + esc(p.email || '') + '" disabled /></div>' +
             '</div>' +
           '</div>' +
@@ -794,14 +845,14 @@
 
         '<div class="gcv-dash-card">' +
           '<h3 class="gcv-dash-card__title">WhatsApp</h3>' +
-          '<p class="gcv-dash-hint" style="margin:0 0 0.75rem;">Este número recebe os avisos do passeio: enviado para aprovação, aprovado, recusado e novo inscrito.</p>' +
+          '<p class="gcv-dash-hint" style="margin:0 0 0.75rem;">Este número recebe os avisos: cadastro em aprovação, passeio enviado, aprovado, recusado e novo inscrito.</p>' +
           '<div class="gcv-dash-field"><label class="gcv-dash-label">Telefone com DDI *</label>' +
           '<div id="gp-phone-wrap"></div>' +
           '<p class="gcv-dash-alert gcv-dash-alert--warning" id="gp-phone-err" hidden style="margin-top:0.6rem;"></p></div>' +
           '<div class="gcv-dash-field"><label class="gcv-dash-label">Nascimento *</label>' +
           '<input class="gcv-dash-input" id="gp-birth" type="date" value="' + esc(p.birth_date || '') + '" required /></div>' +
           '<div class="gcv-dash-field" style="margin-bottom:0;"><label class="gcv-dash-label">Cidade onde mora *</label>' +
-          '<select class="gcv-dash-select" id="gp-city"><option value="">Selecione…</option>' +
+          '<select class="gcv-dash-select" id="gp-city" required><option value="">Selecione…</option>' +
           cities.map(function (c) {
             return '<option value="' + c.id + '"' + (String(p.base_city_id) === String(c.id) ? ' selected' : '') + '>' + esc(c.name) + '</option>';
           }).join('') +
@@ -813,40 +864,69 @@
           '<div class="gcv-dash-field"><label class="gcv-dash-label">Idiomas falados</label>' +
           languagesPickerHtml(p.languages) +
           '</div>' +
-          '<div class="gcv-dash-field" style="margin-bottom:0;"><label class="gcv-dash-label">Descrição * <span class="gcv-cms-muted">(recomendado ≤' + limits.bio_recommended + '; máx. ' + limits.bio_max + ')</span></label>' +
+          '<div class="gcv-dash-field" style="margin-bottom:0;"><label class="gcv-dash-label">Descrição <span class="gcv-cms-muted">(opcional · recomendado ≤' + limits.bio_recommended + '; máx. ' + limits.bio_max + ')</span></label>' +
           '<textarea class="gcv-dash-textarea" id="gp-bio" maxlength="' + limits.bio_max + '" rows="7">' + esc(p.bio_pt || '') + '</textarea>' +
           '<div class="gcv-cms-muted" id="gp-bio-count"></div></div>' +
         '</div>' +
 
         '<div class="gcv-dash-card">' +
           '<h3 class="gcv-dash-card__title">Documento</h3>' +
-          '<input type="hidden" id="gp-doc-url" value="' + esc(docUrl) + '" />' +
-          '<div class="gcv-dash-doc-row">' +
-            '<div class="gcv-dash-doc-status" id="gp-doc-status">' +
-              (docUrl
-                ? '<span class="gcv-dash-doc-ok">Documento enviado</span>' +
-                  (/\.(jpe?g|png|gif|webp)(\?|$)/i.test(docUrl)
-                    ? '<a href="' + esc(docUrl) + '" target="_blank" rel="noopener">Ver arquivo</a>'
-                    : '<a href="' + esc(docUrl) + '" target="_blank" rel="noopener">Abrir arquivo</a>')
-                : '<span>Envie RG, CNH ou outro documento com foto.</span>') +
+          '<div class="gcv-dash-doc-id-grid">' +
+            '<div>' +
+              '<input type="hidden" id="gp-doc-url" value="' + esc(docUrl) + '" />' +
+              '<div class="gcv-dash-doc-row">' +
+                '<div class="gcv-dash-doc-status" id="gp-doc-status">' +
+                  (docUrl
+                    ? '<span class="gcv-dash-doc-ok">Documento enviado</span>' +
+                      (/\.(jpe?g|png|gif|webp)(\?|$)/i.test(docUrl)
+                        ? '<a href="' + esc(docUrl) + '" target="_blank" rel="noopener">Ver arquivo</a>'
+                        : '<a href="' + esc(docUrl) + '" target="_blank" rel="noopener">Abrir arquivo</a>')
+                    : '<span>RG, CNH ou outro documento com foto (opcional).</span>') +
+                '</div>' +
+                '<label class="gcv-dash-file-btn gcv-dash-file-btn--secondary">' +
+                  '<input type="file" id="gp-doc-file" accept="image/*,application/pdf" hidden />' +
+                  (docUrl ? 'Trocar documento' : 'Enviar documento') +
+                '</label>' +
+              '</div>' +
             '</div>' +
-            '<label class="gcv-dash-file-btn gcv-dash-file-btn--secondary">' +
-              '<input type="file" id="gp-doc-file" accept="image/*,application/pdf" hidden />' +
-              (docUrl ? 'Trocar documento' : 'Enviar documento') +
-            '</label>' +
+            '<div>' +
+              '<div class="gcv-dash-field"><label class="gcv-dash-label">Tipo CPF / CNPJ *</label>' +
+              '<select class="gcv-dash-select" id="gf-type">' +
+              '<option value="PF">CPF</option>' +
+              '<option value="PJ">CNPJ</option>' +
+              '</select></div>' +
+              '<div class="gcv-dash-field" style="margin-bottom:0;"><label class="gcv-dash-label" id="gf-doc-label">CPF *</label>' +
+              '<input class="gcv-dash-input" id="gf-doc" type="text" inputmode="numeric" autocomplete="off" required /></div>' +
+            '</div>' +
           '</div>' +
         '</div>' +
 
-        '<button type="submit" class="gcv-dash-btn gcv-dash-btn--primary">Salvar perfil</button>' +
-        '<div id="gp-msg" class="gcv-dash-alert" hidden style="margin-top:1rem;"></div>' +
-        '</form>' +
-
         '<div class="gcv-dash-profile-finance">' +
           '<h2 class="gcv-dash-section-title gcv-dash-section-title--sub">Dados financeiros</h2>' +
-          '<p class="gcv-dash-hint">CPF/CNPJ e chave PIX para receber o repasse automático após as 17h do dia do passeio. ' +
-          '<a href="#financeiro" id="gp-goto-earnings">Ver painel de recebimentos</a>.</p>' +
-          '<div id="guide-financial-root"></div>' +
-        '</div>';
+          '<p class="gcv-dash-hint">Chave PIX para receber o repasse automático após as 16h20 do dia do passeio.' +
+          (String(p.user_status || '') === 'active'
+            ? ' <a href="#financeiro" id="gp-goto-earnings">Ver painel de recebimentos</a>.'
+            : '') +
+          '</p>' +
+          '<div class="gcv-dash-card">' +
+            '<h3 class="gcv-dash-card__title">Recebimento PIX</h3>' +
+            '<div class="gcv-dash-field"><label class="gcv-dash-label">Nome / Razão social *</label>' +
+            '<input class="gcv-dash-input" id="gf-name" value="' + esc(fin.legal_name || p.full_name || p.user_name || '') + '" required /></div>' +
+            '<div class="gcv-dash-field-row">' +
+              '<div class="gcv-dash-field"><label class="gcv-dash-label">Tipo de chave *</label>' +
+              '<select class="gcv-dash-select" id="gf-pix-type">' +
+              '<option value="cpf">CPF</option><option value="cnpj">CNPJ</option><option value="email">E-mail</option>' +
+              '<option value="phone">Telefone</option><option value="random">Aleatória</option>' +
+              '</select></div>' +
+              '<div class="gcv-dash-field"><label class="gcv-dash-label">Chave PIX *</label>' +
+              '<input class="gcv-dash-input" id="gf-pix" value="' + esc(fin.pix_key || '') + '" required /></div>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+
+        '<button type="submit" class="gcv-dash-btn gcv-dash-btn--primary" id="gp-save">' + esc(saveLabel) + '</button>' +
+        '<div id="gp-msg" class="gcv-dash-alert" hidden style="margin-top:1rem;"></div>' +
+        '</form>';
 
       var bio = document.getElementById('gp-bio');
       var bioCount = document.getElementById('gp-bio-count');
@@ -866,7 +946,18 @@
           gotoDashSection('section-guide-financial');
         });
       }
-      loadGuideFinancial();
+
+      var typeEl = document.getElementById('gf-type');
+      var docEl = document.getElementById('gf-doc');
+      if (typeEl && docEl) {
+        typeEl.value = personType;
+        docEl.value = personType === 'PJ' ? (fin.cnpj || p.cnpj || '') : (fin.cpf || p.cpf || '');
+        bindCpfCnpjField(docEl, typeEl, document.getElementById('gf-doc-label'));
+      }
+      if (fin.pix_key_type) {
+        var pixTypeEl = document.getElementById('gf-pix-type');
+        if (pixTypeEl) pixTypeEl.value = fin.pix_key_type;
+      }
 
       function showPhoto(url) {
         var img = document.getElementById('gp-photo-preview');
@@ -944,6 +1035,13 @@
 
       document.getElementById('guide-profile-form').onsubmit = function (ev) {
         ev.preventDefault();
+        var msg = document.getElementById('gp-msg');
+        function warn(text) {
+          if (!msg) return;
+          msg.hidden = false;
+          msg.className = 'gcv-dash-alert gcv-dash-alert--warning';
+          msg.textContent = text;
+        }
         var phoneErr = document.getElementById('gp-phone-err');
         var phoneIssue = gpPhone.validate();
         if (phoneIssue) {
@@ -951,9 +1049,38 @@
             phoneErr.hidden = false;
             phoneErr.textContent = phoneIssue;
           }
+          warn(phoneIssue);
           return;
         }
         if (phoneErr) phoneErr.hidden = true;
+        var photoUrlVal = (document.getElementById('gp-photo-url').value || '').trim();
+        if (!photoUrlVal) {
+          warn('Envie a foto 3×4.');
+          return;
+        }
+        if (!document.getElementById('gp-city').value) {
+          warn('Selecione a cidade onde mora.');
+          return;
+        }
+        var isPj = typeEl && typeEl.value === 'PJ';
+        var docDigits = digitsOnly(docEl ? docEl.value : '');
+        var docOk = isPj ? isValidCnpj(docDigits) : isValidCpf(docDigits);
+        if (!docOk) {
+          warn(isPj ? 'CNPJ inválido. Confira os 14 dígitos.' : 'CPF inválido. Confira os 11 dígitos.');
+          if (docEl) docEl.focus();
+          return;
+        }
+        var legalName = (document.getElementById('gf-name').value || '').trim();
+        var pixKey = (document.getElementById('gf-pix').value || '').trim();
+        var pixType = (document.getElementById('gf-pix-type').value || '').trim();
+        if (legalName.length < 2) {
+          warn('Informe o nome / razão social.');
+          return;
+        }
+        if (!pixKey || !pixType) {
+          warn('Informe o tipo de chave e a chave PIX.');
+          return;
+        }
         var payload = {
           full_name: document.getElementById('gp-full').value.trim(),
           nickname: document.getElementById('gp-nick').value.trim(),
@@ -965,15 +1092,29 @@
           bio_pt: document.getElementById('gp-bio').value.trim(),
           languages: readLanguagesPicker(document.getElementById('guide-profile-form')),
           id_document_url: document.getElementById('gp-doc-url').value.trim(),
-          photo_3x4_url: document.getElementById('gp-photo-url').value.trim(),
+          photo_3x4_url: photoUrlVal,
+          legal_name: legalName,
+          person_type: isPj ? 'PJ' : 'PF',
+          cpf: isPj ? '' : docDigits,
+          cnpj: isPj ? docDigits : '',
+          pix_key: pixKey,
+          pix_key_type: pixType
         };
+        var saveBtn = document.getElementById('gp-save');
+        if (saveBtn) saveBtn.disabled = true;
         sendJson('PUT', '/api/guides/me-profile.php', payload, function (e, r) {
-          var msg = document.getElementById('gp-msg');
+          if (saveBtn) saveBtn.disabled = false;
           if (!msg) return;
           msg.hidden = false;
           if (!r || !r.ok) {
             msg.className = 'gcv-dash-alert gcv-dash-alert--warning';
             msg.textContent = (r && r.error) || 'Erro ao salvar';
+            return;
+          }
+          if (r.data && r.data.submitted_for_approval) {
+            msg.className = 'gcv-dash-alert gcv-dash-alert--success';
+            msg.textContent = 'Cadastro enviado para aprovação. Você receberá um WhatsApp quando estiver em análise.';
+            window.setTimeout(function () { window.location.reload(); }, 900);
             return;
           }
           msg.className = 'gcv-dash-alert gcv-dash-alert--success';
@@ -987,31 +1128,60 @@
   /* ---------- GUIA: AGENDA ---------- */
   var checkinScanner = null;
   var checkinBusy = false;
+  var lastScanCode = '';
+  var lastScanAt = 0;
 
   function extractReservationCode(raw) {
     var m = String(raw || '').toUpperCase().match(/GCV-[A-Z0-9]{6}/);
     return m ? m[0] : '';
   }
 
-  function postCheckin(code) {
+  function postCheckin(code, fromScan) {
     code = extractReservationCode(code);
     if (!code) {
-      alert('Código da reserva inválido.');
+      paintCheckinResult(false, 'Código da reserva inválido.');
+      if (!fromScan) alert('Código da reserva inválido.');
       return;
     }
+    if (fromScan && code === lastScanCode && (Date.now() - lastScanAt) < 8000) {
+      return;
+    }
+    lastScanCode = code;
+    lastScanAt = Date.now();
     if (checkinBusy) return;
     checkinBusy = true;
-    closeCheckinScanner();
     sendJson('POST', '/api/guides/check-in.php', { reservation_id: code }, function (e, r) {
       checkinBusy = false;
       var d = (r && r.data) || {};
       if (r && r.ok) {
-        alert((d.message || 'Presença confirmada') + (d.tourist_name ? '\n' + d.tourist_name : ''));
+        var msg = (d.already ? 'Presença já confirmada' : 'Presença confirmada')
+          + (d.tourist_name ? '\n' + d.tourist_name : '')
+          + (d.reservation_id ? '\n' + d.reservation_id : '');
+        paintCheckinResult(true, msg);
+        if (!fromScan) alert(msg);
         loadGuideAgenda();
         return;
       }
-      alert((r && r.error) || 'Não foi possível confirmar a presença.');
+      var err = (r && r.error) || 'Não foi possível confirmar a presença.';
+      paintCheckinResult(false, err);
+      if (!fromScan) alert(err);
     });
+  }
+
+  function paintCheckinResult(ok, text) {
+    var el = document.getElementById('gcv-checkin-result');
+    if (!el) return;
+    el.hidden = false;
+    el.className = 'gcv-checkin-result ' + (ok ? 'gcv-checkin-result--ok' : 'gcv-checkin-result--err');
+    el.textContent = text || '';
+  }
+
+  function clearCheckinResult() {
+    var el = document.getElementById('gcv-checkin-result');
+    if (!el) return;
+    el.hidden = true;
+    el.textContent = '';
+    el.className = 'gcv-checkin-result';
   }
 
   function closeCheckinScanner() {
@@ -1031,6 +1201,7 @@
       return;
     }
     modal.hidden = false;
+    clearCheckinResult();
     var reader = document.getElementById('gcv-checkin-reader');
     var manual = document.getElementById('gcv-checkin-manual');
     if (manual) {
@@ -1055,12 +1226,20 @@
       checkinScanner.start(
         { facingMode: 'environment' },
         { fps: 8, qrbox: { width: 240, height: 240 } },
-        function (decoded) { postCheckin(decoded); },
+        function (decoded) { postCheckin(decoded, true); },
         function () {}
       ).catch(function () {
         if (reader) reader.innerHTML = '<p class="gcv-dash-hint">Não foi possível abrir a câmera. Digite o código abaixo.</p>';
       });
     }
+  }
+
+  function consumeCheckinHash() {
+    var h = String(location.hash || '').toLowerCase();
+    if (h.indexOf('#checkin') !== 0 && h.indexOf('scan=1') === -1) return false;
+    gotoDashSection('section-guide-tours');
+    setTimeout(function () { openCheckinScanner(); }, 350);
+    return true;
   }
 
   function renderAgendaCard(e) {
@@ -1084,7 +1263,7 @@
       esc(String(e.departure_time || '').slice(0, 5)) + ' · ' + money(e.price_cents) +
       ' · ' + booked + (booked === 1 ? ' pessoa inscrita' : ' pessoas inscritas') +
       ' / ' + (e.max_people != null ? e.max_people : DEFAULT_MAX_PEOPLE) +
-      ' (quórum ' + (e.quorum != null ? e.quorum : DEFAULT_QUORUM) + ')</div></div>' +
+      ' (quórum: ' + quorumLabel(e.quorum) + ')</div></div>' +
       '<div class="gcv-guide-upcoming__actions">' +
       lifeBadge(e.lifecycle, e.lifecycle_label) +
       scanBtn +
@@ -1193,6 +1372,13 @@
       var minQ = d.min_quorum != null ? parseFiniteInt(d.min_quorum, MIN_QUORUM) : MIN_QUORUM;
       var maxQ = d.max_quorum != null ? parseFiniteInt(d.max_quorum, MAX_QUORUM) : MAX_QUORUM;
       var maxCap = d.max_people_cap != null ? parseFiniteInt(d.max_people_cap, MAX_PEOPLE_CAP) : MAX_PEOPLE_CAP;
+      var netMin = d.guide_net_min != null ? parseFloat(d.guide_net_min) : GUIDE_NET_MIN;
+      var netMax = d.guide_net_max != null ? parseFloat(d.guide_net_max) : GUIDE_NET_MAX;
+      if (!isFinite(netMin) || netMin < 1) netMin = GUIDE_NET_MIN;
+      if (!isFinite(netMax) || netMax < netMin) netMax = GUIDE_NET_MAX;
+      var commissionPct = d.commission_pct != null ? parseFloat(d.commission_pct) : 14;
+      if (!isFinite(commissionPct) || commissionPct < 0 || commissionPct >= 100) commissionPct = 14;
+      var commissionScope = String(d.commission_scope || 'settings');
       var nextIdx = 1;
       var activeTourIdx = null;
 
@@ -1332,11 +1518,11 @@
           '<input type="hidden" id="' + p + 'meeting-lat" value="" />' +
           '<input type="hidden" id="' + p + 'meeting-lng" value="" /></div></div>' +
           '<div class="gcv-dash-field-row gcv-dash-field-row--2">' +
-          '<div class="gcv-dash-field"><label class="gcv-dash-label">Quórum * (0 a 4)</label>' +
-          '<input class="gcv-dash-input" id="' + p + 'quorum" type="number" min="' + minQ + '" max="' + maxQ + '" value="' + DEFAULT_QUORUM + '" /></div>' +
+          '<div class="gcv-dash-field"><label class="gcv-dash-label" for="' + p + 'quorum">Quórum (somente para as novas inscrições)</label>' +
+          quorumSelectHtml(p + 'quorum', DEFAULT_QUORUM) + '</div>' +
           '</div>' +
           '<div class="gcv-dash-field-row gcv-dash-field-row--2">' +
-          '<div class="gcv-dash-field"><label class="gcv-dash-label">Pessoas confirmadas (0 a 5)</label>' +
+          '<div class="gcv-dash-field"><label class="gcv-dash-label">Pessoas confirmadas por fora (0 a 5)</label>' +
           '<input class="gcv-dash-input" id="' + p + 'preconfirmed" type="number" min="0" max="' + MAX_PRECONFIRMED + '" value="' + DEFAULT_PRECONFIRMED + '" /></div>' +
           '<div class="gcv-dash-field"><label class="gcv-dash-label">Vagas * (máximo até 12)</label>' +
           '<input class="gcv-dash-input" id="' + p + 'max" type="number" min="1" max="' + maxCap + '" value="' + DEFAULT_MAX_PEOPLE + '" /></div>' +
@@ -1344,8 +1530,8 @@
           '<div class="gcv-guide-net-box">' +
           '<div class="gcv-dash-field gcv-guide-net-box__field">' +
           '<label class="gcv-dash-label gcv-guide-net-box__label" for="' + p + 'net">Valor a receber (R$/por pessoa) *</label>' +
-          '<input class="gcv-dash-input gcv-guide-net-box__input" id="' + p + 'net" type="number" min="1" step="0.01" required /></div>' +
-          '<div id="' + p + 'preview" class="gcv-guide-net-box__hint">Digite o valor a receber para ver o preço estimado (cálculo no servidor).</div>' +
+          '<input class="gcv-dash-input gcv-guide-net-box__input" id="' + p + 'net" type="number" min="' + netMin + '" max="' + netMax + '" step="1" inputmode="decimal" required /></div>' +
+          '<div id="' + p + 'preview" class="gcv-guide-net-box__hint">Digite o valor a receber (mín. R$ ' + netMin + ', máx. R$ ' + netMax + ').</div>' +
           '</div>' +
           '<label class="gcv-dash-label"><input type="checkbox" id="' + p + 'transport" /> Inclui transporte</label> ' +
           '<label class="gcv-dash-label"><input type="checkbox" id="' + p + 'entry" /> Inclui ingresso</label>' +
@@ -1378,29 +1564,74 @@
 
       function bindTourBlock(idx) {
         var p = 'ge-' + idx + '-';
-        function refreshPreview() {
-          var net = parseFloat(document.getElementById(p + 'net').value);
-          var cityId = parseInt(document.getElementById(p + 'city').value, 10) || 0;
+        var previewTimer = 0;
+        var previewSeq = 0;
+        var emptyHint = 'Digite o valor a receber (mín. R$ ' + netMin + ', máx. R$ ' + netMax + ').';
+
+        function rangeWarn(net) {
+          if (!isFinite(net)) return '';
+          if (net < netMin || net > netMax) {
+            return 'Informe um valor entre R$ ' + netMin + ' e R$ ' + netMax + '.';
+          }
+          return '';
+        }
+
+        function paintPreviewHtml(box, finalCents, warn) {
+          var html = 'Comissão entre 14% e 16%<br>' +
+            '<strong>Preço final na plataforma: ' + formatBrlFromCents(finalCents) + '</strong>';
+          if (warn) {
+            html += '<div class="gcv-guide-net-box__warn">' + esc(warn) + '</div>';
+          }
+          box.innerHTML = html;
+        }
+
+        function refreshPreview(immediateServer) {
+          var netEl = document.getElementById(p + 'net');
+          var cityEl = document.getElementById(p + 'city');
           var box = document.getElementById(p + 'preview');
-          if (!box) return;
-          if (!net || net < 1) {
-            box.textContent = 'Digite o valor a receber para ver o preço estimado (cálculo no servidor).';
+          if (!box || !netEl) return;
+          var raw = String(netEl.value || '').trim();
+          var net = parseFloat(raw);
+          var cityId = cityEl ? (parseInt(cityEl.value, 10) || 0) : 0;
+          if (raw === '' || !isFinite(net) || net < 0) {
+            box.textContent = emptyHint;
             return;
           }
-          var q = 'guide_net=' + encodeURIComponent(String(net)) + (cityId ? '&city_id=' + cityId : '');
-          get('/api/guides/pricing-preview.php?' + q, function (e, r) {
-            if (!r || !r.ok || !r.data || !r.data.pricing) {
-              box.textContent = (r && r.error) || 'Não foi possível calcular o preview.';
-              return;
-            }
-            var pr = r.data.pricing;
-            box.innerHTML = 'Comissão ' + pr.commission_pct + '% (' + (pr.commission_scope || '') + ') · ' +
-              '<strong>Preço final estimado: R$ ' + (pr.final_price_cents / 100).toFixed(2) + '</strong>';
-          });
+          var warn = rangeWarn(net);
+          var localCents = estimateGuideFinalCents(net, commissionPct);
+          paintPreviewHtml(box, localCents, warn);
+
+          if (net < 1) return;
+          var seq = ++previewSeq;
+          function fetchServer() {
+            var q = 'guide_net=' + encodeURIComponent(String(net)) + (cityId ? '&city_id=' + cityId : '');
+            get('/api/guides/pricing-preview.php?' + q, function (e, r) {
+              if (seq !== previewSeq) return;
+              if (!r || !r.ok || !r.data || !r.data.pricing) return;
+              var pr = r.data.pricing;
+              paintPreviewHtml(box, pr.final_price_cents, warn);
+            });
+          }
+          if (immediateServer) {
+            fetchServer();
+            return;
+          }
+          if (previewTimer) clearTimeout(previewTimer);
+          previewTimer = setTimeout(fetchServer, 160);
         }
-        document.getElementById(p + 'net').addEventListener('change', refreshPreview);
-        document.getElementById(p + 'net').addEventListener('blur', refreshPreview);
-        document.getElementById(p + 'city').addEventListener('change', refreshPreview);
+
+        var netEl = document.getElementById(p + 'net');
+        if (netEl) {
+          netEl.addEventListener('input', function () { refreshPreview(false); });
+          netEl.addEventListener('keyup', function () { refreshPreview(false); });
+          netEl.addEventListener('paste', function () {
+            setTimeout(function () { refreshPreview(false); }, 0);
+          });
+          netEl.addEventListener('change', function () { refreshPreview(true); });
+          netEl.addEventListener('blur', function () { refreshPreview(true); });
+        }
+        var cityEl = document.getElementById(p + 'city');
+        if (cityEl) cityEl.addEventListener('change', function () { refreshPreview(true); });
         var dateEl = document.getElementById(p + 'date');
         if (dateEl) {
           if (typeof global.gcvBindDatePicker === 'function') {
@@ -1439,7 +1670,6 @@
         var attrQ = document.getElementById(p + 'attr-q');
         if (attrQ) attrQ.addEventListener('input', function () { refreshTourTabs(); });
         clampField(document.getElementById(p + 'max'), 1, maxCap, DEFAULT_MAX_PEOPLE);
-        clampField(document.getElementById(p + 'quorum'), minQ, maxQ, DEFAULT_QUORUM);
         clampField(document.getElementById(p + 'preconfirmed'), 0, MAX_PRECONFIRMED, DEFAULT_PRECONFIRMED);
         bindMeetingPlaces(idx);
         var block = form.querySelector('[data-tour-idx="' + idx + '"]');
@@ -1498,12 +1728,18 @@
         if (!time) return { error: label + ': informe o horário de saída.' };
         if (!cityId) return { error: label + ': selecione a cidade de saída.' };
         if (!meetingPoint) return { error: label + ': informe o ponto de encontro.' };
-        if (!net || net < 1) return { error: label + ': informe o valor a receber.' };
+        if (!net || !isFinite(net) || net < netMin || net > netMax) {
+          return { error: label + ': valor a receber deve ser entre R$ ' + netMin + ' e R$ ' + netMax + '.' };
+        }
         var meetingLat = (el('meeting-lat').value || '').trim();
         var meetingLng = (el('meeting-lng').value || '').trim();
         var maxPeople = clampRange(parseFiniteInt(el('max').value, DEFAULT_MAX_PEOPLE), 1, maxCap);
         var preconfirmed = clampRange(parseFiniteInt(el('preconfirmed').value, DEFAULT_PRECONFIRMED), 0, MAX_PRECONFIRMED);
+        var quorum = clampRange(parseFiniteInt(el('quorum').value, DEFAULT_QUORUM), minQ, maxQ);
         if (preconfirmed > maxPeople) preconfirmed = maxPeople;
+        if (maxPeople < preconfirmed + quorum) {
+          return { error: label + ': vagas devem caber as pessoas confirmadas por fora e o quórum das novas inscrições.' };
+        }
         return {
           payload: {
             attraction_id: attrId,
@@ -1515,7 +1751,7 @@
             meeting_point_lat: meetingLat !== '' ? meetingLat : null,
             meeting_point_lng: meetingLng !== '' ? meetingLng : null,
             guide_net_cents: Math.round(net * 100),
-            quorum: clampRange(parseFiniteInt(el('quorum').value, DEFAULT_QUORUM), minQ, maxQ),
+            quorum: quorum,
             preconfirmed_people: preconfirmed,
             max_people: maxPeople,
             include_transport: el('transport').checked,
@@ -1603,89 +1839,8 @@
     });
   }
 
-  /* ---------- GUIA: DADOS FINANCEIROS ---------- */
-  function loadGuideFinancial() {
-    var root = document.getElementById('guide-financial-root');
-    if (!root) return;
-    root.innerHTML = 'Carregando…';
-    get('/api/guides/financial-profile.php', function (err, res) {
-      if (!res || !res.ok) {
-        root.innerHTML = '<div class="gcv-dash-alert">Erro ao carregar perfil financeiro.</div>';
-        return;
-      }
-      var p = (res.data && res.data.profile) || {};
-      var ready = !!(res.data && res.data.ready_for_payout);
-      root.innerHTML =
-        (ready
-          ? '<div class="gcv-dash-alert gcv-dash-alert--success">Perfil financeiro pronto para receber PIX automático.</div>'
-          : '<div class="gcv-dash-alert gcv-dash-alert--warning">Complete os dados (PIX obrigatório) para receber os repasses.</div>') +
-        '<div class="gcv-dash-card">' +
-        '<h3 class="gcv-dash-card__title">Recebimento PIX</h3>' +
-        '<div class="gcv-dash-field"><label class="gcv-dash-label">Nome / Razão social *</label><input class="gcv-dash-input" id="gf-name" value="' + esc(p.legal_name || '') + '" /></div>' +
-        '<div class="gcv-dash-field-row">' +
-        '<div class="gcv-dash-field"><label class="gcv-dash-label">Tipo *</label>' +
-        '<select class="gcv-dash-select" id="gf-type">' +
-        '<option value="PF">CPF</option>' +
-        '<option value="PJ">CNPJ</option>' +
-        '</select></div>' +
-        '<div class="gcv-dash-field"><label class="gcv-dash-label" id="gf-doc-label">CPF *</label>' +
-        '<input class="gcv-dash-input" id="gf-doc" type="text" inputmode="numeric" autocomplete="off" /></div>' +
-        '</div>' +
-        '<div class="gcv-dash-field-row">' +
-        '<div class="gcv-dash-field"><label class="gcv-dash-label">Chave PIX *</label><input class="gcv-dash-input" id="gf-pix" value="' + esc(p.pix_key || '') + '" /></div>' +
-        '<div class="gcv-dash-field"><label class="gcv-dash-label">Tipo da chave *</label><select class="gcv-dash-select" id="gf-pix-type"><option value="cpf">CPF</option><option value="cnpj">CNPJ</option><option value="email">E-mail</option><option value="phone">Telefone</option><option value="random">Aleatória</option></select></div>' +
-        '</div>' +
-        '<div class="gcv-dash-field"><label class="gcv-dash-label">Titular da chave *</label><input class="gcv-dash-input" id="gf-holder" value="' + esc(p.pix_holder_name || '') + '" /></div>' +
-        '<div class="gcv-dash-field-row">' +
-        '<div class="gcv-dash-field"><label class="gcv-dash-label">Banco</label><input class="gcv-dash-input" id="gf-bank" value="' + esc(p.bank_name || '') + '" /></div>' +
-        '<div class="gcv-dash-field"><label class="gcv-dash-label">Agência</label><input class="gcv-dash-input" id="gf-agency" value="' + esc(p.bank_agency || '') + '" /></div>' +
-        '<div class="gcv-dash-field"><label class="gcv-dash-label">Conta</label><input class="gcv-dash-input" id="gf-account" value="' + esc(p.bank_account || '') + '" /></div>' +
-        '</div>' +
-        '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary" id="gf-save">Salvar dados financeiros</button>' +
-        '<div id="gf-msg" class="gcv-dash-alert" hidden style="margin-top:0.75rem;"></div>' +
-        '</div>';
-
-      var typeEl = document.getElementById('gf-type');
-      var docEl = document.getElementById('gf-doc');
-      var personType = (p.person_type === 'PJ' || p.person_type === 'CNPJ') ? 'PJ' : 'PF';
-      if (!p.person_type && p.cnpj && !p.cpf) personType = 'PJ';
-      typeEl.value = personType;
-      docEl.value = personType === 'PJ' ? (p.cnpj || '') : (p.cpf || '');
-      bindCpfCnpjField(docEl, typeEl, document.getElementById('gf-doc-label'));
-      if (p.pix_key_type) document.getElementById('gf-pix-type').value = p.pix_key_type;
-
-      document.getElementById('gf-save').onclick = function () {
-        var msg = document.getElementById('gf-msg');
-        var isPj = typeEl.value === 'PJ';
-        var docDigits = digitsOnly(docEl.value);
-        var docOk = isPj ? isValidCnpj(docDigits) : isValidCpf(docDigits);
-        if (!docOk) {
-          msg.hidden = false;
-          msg.className = 'gcv-dash-alert gcv-dash-alert--warning';
-          msg.textContent = isPj ? 'CNPJ inválido. Confira os 14 dígitos.' : 'CPF inválido. Confira os 11 dígitos.';
-          docEl.focus();
-          return;
-        }
-        sendJson('PUT', '/api/guides/financial-profile.php', {
-          legal_name: document.getElementById('gf-name').value.trim(),
-          person_type: typeEl.value,
-          cpf: isPj ? '' : docDigits,
-          cnpj: isPj ? docDigits : '',
-          pix_key: document.getElementById('gf-pix').value.trim(),
-          pix_key_type: document.getElementById('gf-pix-type').value,
-          pix_holder_name: document.getElementById('gf-holder').value.trim(),
-          bank_name: document.getElementById('gf-bank').value.trim(),
-          bank_agency: document.getElementById('gf-agency').value.trim(),
-          bank_account: document.getElementById('gf-account').value.trim(),
-        }, function (e2, r2) {
-          msg.hidden = false;
-          msg.className = 'gcv-dash-alert ' + (r2 && r2.ok ? 'gcv-dash-alert--info' : 'gcv-dash-alert--warning');
-          msg.textContent = (r2 && r2.ok) ? ((r2.data && r2.data.message) || 'Salvo.') : ((r2 && r2.error) || 'Erro');
-          if (r2 && r2.ok) loadGuideFinancial();
-        });
-      };
-    });
-  }
+  /* ---------- GUIA: DADOS FINANCEIROS (embutidos em Meu perfil) ---------- */
+  function loadGuideFinancial() {}
 
   function formatDateTime(raw) {
     if (!raw) return '—';
@@ -1715,7 +1870,8 @@
       var d = res.data || {};
       var sum = d.summary || {};
       var tours = d.tours || [];
-      var afterHour = sum.payout_after_hour || 17;
+      var afterLabel = sum.payout_after_label
+        || ((sum.payout_after_hour || 16) + 'h' + (sum.payout_after_minute ? String(sum.payout_after_minute).padStart(2, '0') : ''));
       var pixReady = !!sum.pix_ready;
       var pixVerified = !!sum.pix_verified;
       var autoPix = !!sum.auto_pix;
@@ -1783,7 +1939,7 @@
       root.innerHTML =
         '<div class="gcv-dash-alert ' + (pixReady && pixVerified && autoPix ? 'gcv-dash-alert--success' : 'gcv-dash-alert--info') + '">' +
         (autoPix
-          ? 'O PIX é <strong>enviado automaticamente</strong> para a chave cadastrada em Meu perfil, <strong>após as ' + afterHour + 'h do dia do passeio</strong>.'
+          ? 'O PIX é <strong>enviado automaticamente</strong> para a chave cadastrada em Meu perfil, <strong>após as ' + afterLabel + ' do dia do passeio</strong>.'
           : 'O envio automático de PIX ainda não está ativo no banco. O admin pode pagar manualmente; a chave continua em Meu perfil.') +
         (pixReady ? '' : ' Cadastre CPF/CNPJ e PIX em <a href="#perfil" id="ge-goto-profile">Meu perfil</a>.') +
         (pixReady && !pixVerified ? ' A chave ainda <strong>aguarda verificação do admin</strong> antes do primeiro envio automático.' : '') +
@@ -2003,8 +2159,8 @@
         '<div class="gcv-dash-field-row">' +
         '<div class="gcv-dash-field"><label class="gcv-dash-label">Valor por pessoa (R$) *</label>' +
         '<input class="gcv-dash-input" type="number" min="1" step="0.01" id="ce-price" /></div>' +
-        '<div class="gcv-dash-field"><label class="gcv-dash-label">Quórum (0 a 4)</label>' +
-        '<input class="gcv-dash-input" type="number" min="' + minQ + '" max="' + maxQ + '" value="' + DEFAULT_QUORUM + '" id="ce-quorum" /></div>' +
+        '<div class="gcv-dash-field"><label class="gcv-dash-label" for="ce-quorum">Quórum (somente para as novas inscrições)</label>' +
+        quorumSelectHtml('ce-quorum', DEFAULT_QUORUM) + '</div>' +
         '<div class="gcv-dash-field"><label class="gcv-dash-label">Vagas (máximo até 12)</label>' +
         '<input class="gcv-dash-input" type="number" min="1" max="' + maxCap + '" value="' + DEFAULT_MAX_PEOPLE + '" id="ce-max" /></div>' +
         '</div>' +
@@ -2027,7 +2183,6 @@
         });
       }
       clampField(document.getElementById('ce-max'), 1, maxCap, DEFAULT_MAX_PEOPLE);
-      clampField(document.getElementById('ce-quorum'), minQ, maxQ, DEFAULT_QUORUM);
 
       document.getElementById('client-pub-form').onsubmit = function (ev) {
         ev.preventDefault();
@@ -2081,5 +2236,7 @@
     loadClientBookings: loadClientBookingsEnhanced,
     loadClientProfile: loadClientProfile,
     loadClientPublish: loadClientPublish,
+    openCheckinScanner: openCheckinScanner,
+    consumeCheckinHash: consumeCheckinHash,
   };
 }(window));

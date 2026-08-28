@@ -643,7 +643,10 @@
       return '<span class="gcv-badge gcv-badge--cancelled">CANCELADO</span>';
     }
     if (st === 'suspended') return '<span class="gcv-badge gcv-badge--rejected">RECUSADO</span>';
-    if (st === 'pending') return '<span class="gcv-badge gcv-badge--pending">PENDENTE</span>';
+    if (st === 'pending') {
+      if (g && g.profile_complete === false) return '<span class="gcv-badge gcv-badge--muted">RASCUNHO</span>';
+      return '<span class="gcv-badge gcv-badge--pending">PENDENTE</span>';
+    }
     return '';
   }
 
@@ -782,14 +785,14 @@
     var list = root('cms-guide-list');
     if (!list) return;
     rows = (rows || []).slice().sort(function (a, b) {
-      var pa = a.status === 'pending' ? 0 : 1;
-      var pb = b.status === 'pending' ? 0 : 1;
+      var pa = (a.status === 'pending' && a.profile_complete) ? 0 : 1;
+      var pb = (b.status === 'pending' && b.profile_complete) ? 0 : 1;
       if (pa !== pb) return pa - pb;
       return String(a.full_name || a.name || '').localeCompare(String(b.full_name || b.name || ''), 'pt');
     });
     state.guides = rows;
     list.innerHTML = rows.length ? rows.map(function (g) {
-      var pending = g.status === 'pending';
+      var pending = g.status === 'pending' && !!g.profile_complete;
       var name = g.full_name || g.name || g.nickname || 'Guia';
       var approve = pending
         ? ('<button type="button" class="gcv-dash-btn gcv-dash-btn--primary gcv-dash-btn--sm" data-approve-guide="' + g.user_id + '">Aprovar</button>')
@@ -833,13 +836,16 @@
   function guideEditStatusHtml(g) {
     if (!g) return '';
     var uid = g.user_id;
-    var pending = g.status === 'pending';
+    var awaiting = g.status === 'pending' && !!g.profile_complete;
+    var draft = g.status === 'pending' && !g.profile_complete;
     var approved = guideWasApproved(g);
     var actions;
-    if (pending) {
+    if (awaiting) {
       actions =
         '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary gcv-dash-btn--sm" data-guide-edit-status="active" data-from-pending="1">Aprovar</button>' +
         '<button type="button" class="gcv-dash-btn gcv-dash-btn--danger gcv-dash-btn--sm" data-guide-edit-status="suspended" data-from-pending="1">Recusar</button>';
+    } else if (draft) {
+      actions = '<span class="gcv-cms-muted">Aguardando o guia completar o cadastro.</span>';
     } else if (approved) {
       actions =
         guideStatusChip('active', g.status, uid, 'Ativo', 'ok') +
@@ -1482,8 +1488,22 @@
             '<div class="gcv-dash-field-row">' +
             '<div class="gcv-dash-field"><label class="gcv-dash-label">Valor/pessoa final (R$) *</label><input class="gcv-dash-input" id="ex-price" value="' + esc(ex ? centsToMoney(ex.price_cents) : '') + '" /></div>' +
             '<div class="gcv-dash-field"><label class="gcv-dash-label">Repasse previsto ao guia (R$) *</label><input class="gcv-dash-input" id="ex-guide-payout" value="' + esc(ex ? centsToMoney(ex.guide_payout_planned_cents != null ? ex.guide_payout_planned_cents : ex.guide_net_cents) : '') + '" /></div>' +
-            '<div class="gcv-dash-field"><label class="gcv-dash-label">Quórum * (0 a 4)</label><input class="gcv-dash-input" id="ex-quorum" type="number" min="0" max="4" value="' + esc(ex && ex.quorum != null ? ex.quorum : 4) + '" /></div>' +
-            '<div class="gcv-dash-field"><label class="gcv-dash-label">Pessoas confirmadas (0 a 5)</label><input class="gcv-dash-input" id="ex-preconfirmed" type="number" min="0" max="5" value="' + esc(ex && ex.preconfirmed_people != null ? ex.preconfirmed_people : 0) + '" /></div>' +
+            '<div class="gcv-dash-field"><label class="gcv-dash-label" for="ex-quorum">Quórum (somente para as novas inscrições)</label>' +
+            (function () {
+              var sel = parseInt(ex && ex.quorum != null ? ex.quorum : 4, 10);
+              if (!Number.isFinite(sel)) sel = 4;
+              var opts = [
+                { v: 0, t: 'sem quórum (✅ confirmado)' },
+                { v: 1, t: '1' },
+                { v: 2, t: '2' },
+                { v: 3, t: '3' },
+                { v: 4, t: '4' }
+              ];
+              return '<select class="gcv-dash-select" id="ex-quorum">' + opts.map(function (o) {
+                return '<option value="' + o.v + '"' + (sel === o.v ? ' selected' : '') + '>' + o.t + '</option>';
+              }).join('') + '</select>';
+            }()) + '</div>' +
+            '<div class="gcv-dash-field"><label class="gcv-dash-label">Pessoas confirmadas por fora (0 a 5)</label><input class="gcv-dash-input" id="ex-preconfirmed" type="number" min="0" max="5" value="' + esc(ex && ex.preconfirmed_people != null ? ex.preconfirmed_people : 0) + '" /></div>' +
             '<div class="gcv-dash-field"><label class="gcv-dash-label">Vagas * (máximo até 12)</label><input class="gcv-dash-input" id="ex-max" type="number" min="1" max="12" value="' + esc(ex && ex.max_people || 10) + '" /></div>' +
             '<div class="gcv-dash-field"><label class="gcv-dash-label">Inscritos</label><input class="gcv-dash-input" id="ex-booked" type="number" min="0" value="' + esc(ex && ex.booked_people || 0) + '" readonly disabled tabindex="-1" title="Contador automático das reservas pagas no site" /><p class="gcv-cms-muted" style="margin:0.3rem 0 0;">Atualiza sozinho quando alguém paga no site. Não é editável.</p></div>' +
             '</div>' +
