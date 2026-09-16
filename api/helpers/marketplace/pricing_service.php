@@ -12,28 +12,107 @@ declare(strict_types=1);
  * Exemplos: 212,28→215 | 232,00→232 | 238,20→240
  */
 
+function gcv_guide_net_setting_reais(string $key, int $fallback): int
+{
+    $fallback = max(1, $fallback);
+    try {
+        $settingsFile = dirname(__DIR__) . '/settings.php';
+        if (is_file($settingsFile)) {
+            require_once $settingsFile;
+        }
+        if (!function_exists('setting')) {
+            return $fallback;
+        }
+        $n = (int)round((float)setting($key, (string)$fallback));
+        return $n >= 1 ? $n : $fallback;
+    } catch (Throwable $e) {
+        return $fallback;
+    }
+}
+
 /** Mínimo do valor a receber por pessoa (guia), em centavos. */
 function gcv_guide_net_min_cents(): int
 {
-    return 5000; // R$ 50,00
+    return gcv_guide_net_setting_reais('guide_net_min_reais', 50) * 100;
+}
+
+/** Máximo padrão do valor a receber por pessoa (guia), em centavos. */
+function gcv_guide_net_max_default_cents(): int
+{
+    $min = (int)(gcv_guide_net_min_cents() / 100);
+    $max = gcv_guide_net_setting_reais('guide_net_max_reais', 160);
+    if ($max < $min) {
+        $max = $min;
+    }
+    return $max * 100;
+}
+
+/** Máximo na Cachoeira do Dragão, em centavos. */
+function gcv_guide_net_max_dragao_cents(): int
+{
+    $base = (int)(gcv_guide_net_max_default_cents() / 100);
+    $dragao = gcv_guide_net_setting_reais('guide_net_max_dragao_reais', 190);
+    if ($dragao < $base) {
+        $dragao = $base;
+    }
+    return $dragao * 100;
+}
+
+function gcv_attraction_is_dragao(?int $attractionId = null, ?string $slug = null, ?string $title = null): bool
+{
+    $blob = strtolower(trim((string)$slug . ' ' . (string)$title));
+    $blob = strtr($blob, [
+        'á' => 'a', 'à' => 'a', 'ã' => 'a', 'â' => 'a',
+        'é' => 'e', 'ê' => 'e', 'í' => 'i',
+        'ó' => 'o', 'ô' => 'o', 'õ' => 'o',
+        'ú' => 'u', 'ç' => 'c',
+    ]);
+    if ($blob !== '' && str_contains($blob, 'dragao')) {
+        return true;
+    }
+    if ($attractionId && $attractionId > 0) {
+        try {
+            if (!function_exists('db')) {
+                return false;
+            }
+            $st = db()->prepare('SELECT slug, title_pt FROM gcv_attractions WHERE id = ? LIMIT 1');
+            $st->execute([$attractionId]);
+            $row = $st->fetch(PDO::FETCH_ASSOC);
+            if ($row) {
+                return gcv_attraction_is_dragao(null, (string)($row['slug'] ?? ''), (string)($row['title_pt'] ?? ''));
+            }
+        } catch (Throwable $e) {
+            return false;
+        }
+    }
+    return false;
 }
 
 /** Máximo do valor a receber por pessoa (guia), em centavos. */
-function gcv_guide_net_max_cents(): int
+function gcv_guide_net_max_cents(?int $attractionId = null, ?string $attractionSlug = null, ?string $attractionTitle = null): int
 {
-    return 100000; // R$ 1.000,00
+    if (gcv_attraction_is_dragao($attractionId, $attractionSlug, $attractionTitle)) {
+        return gcv_guide_net_max_dragao_cents();
+    }
+    return gcv_guide_net_max_default_cents();
 }
 
 /**
  * Valida faixa do valor a receber na publicação (não no preview ao digitar).
  */
-function gcv_guide_net_range_error(int $cents): ?string
+function gcv_guide_net_range_error(int $cents, ?int $attractionId = null, ?string $attractionSlug = null): ?string
 {
-    if ($cents < gcv_guide_net_min_cents()) {
-        return 'Valor a receber por pessoa: mínimo R$ 50,00';
+    $min = gcv_guide_net_min_cents();
+    if ($cents < $min) {
+        return 'Valor a receber por pessoa: mínimo R$ ' . number_format($min / 100, 2, ',', '.');
     }
-    if ($cents > gcv_guide_net_max_cents()) {
-        return 'Valor a receber por pessoa: máximo R$ 1.000,00';
+    $max = gcv_guide_net_max_cents($attractionId, $attractionSlug);
+    if ($cents > $max) {
+        $reais = number_format($max / 100, 2, ',', '.');
+        if (gcv_attraction_is_dragao($attractionId, $attractionSlug)) {
+            return 'Valor a receber por pessoa: máximo R$ ' . $reais . ' (Cachoeira do Dragão)';
+        }
+        return 'Valor a receber por pessoa: máximo R$ ' . $reais;
     }
     return null;
 }

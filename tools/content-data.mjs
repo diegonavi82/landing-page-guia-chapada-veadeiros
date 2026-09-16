@@ -91,8 +91,8 @@ export const HERO_SLIDES = {
     {
       image: "imagens/hero-slide-01-guias-locais-cachoeira.png",
       badge: "Chapada dos Veadeiros",
-      title: "Passeios com guias locais",
-      lead: "Contamos com uma equipe de guias parceiros na Chapada dos Veadeiros para realização de passeios exclusivos ou em excursões com grupos diversos",
+      title: "Chapada dos Veadeiros: passeios com guia local",
+      lead: "Passeios na Chapada dos Veadeiros com guia local credenciado — exclusivos ou em grupo. Contrate guia, trilhas, cachoeiras e o Parque Nacional.",
       sub: "Faça seu roteiro ou entre na próxima excursão",
       ctaKind: "whatsapp",
       ctaLabel: "Whatsapp",
@@ -102,8 +102,8 @@ export const HERO_SLIDES = {
       image: "imagens/hero-slide-02-em-breve-cachoeira.png",
       badge: "Novidade",
       title: "Seu próximo destino começa aqui",
-      lead: "Nosso sistema de venda de ingressos para excursões está na fase final de testes. As primeiras saídas já estão sendo disponibilizadas. Reserve agora e garanta sua vaga antes que as turmas sejam preenchidas.",
-      sub: "Participe das primeiras excursões com reserva online, confirmação automática e atendimento especializado da Guia Chapada Veadeiros.",
+      lead: "Faça seu roteiro e decida se quer exclusivo apenas para seu grupo ou compartilhado com outros viajantes.",
+      sub: "",
       ctaKind: "none",
       duration: 10000,
     },
@@ -130,8 +130,8 @@ export const HERO_SLIDES = {
     {
       image: "imagens/hero-slide-01-guias-locais-cachoeira.png",
       badge: "Chapada dos Veadeiros",
-      title: "Tours with local guides",
-      lead: "We work with partner guides across Chapada dos Veadeiros for exclusive outings or mixed-group excursions.",
+      title: "Chapada dos Veadeiros: tours with a local guide",
+      lead: "Chapada dos Veadeiros tours with a licensed local guide — private or group. Hire a guide for waterfalls, trails and the National Park.",
       sub: "Plan your route or join the next group trip",
       ctaKind: "whatsapp",
       ctaLabel: "WhatsApp",
@@ -141,8 +141,8 @@ export const HERO_SLIDES = {
       image: "imagens/hero-slide-02-em-breve-cachoeira.png",
       badge: "Coming soon",
       title: "Your next destination starts here",
-      lead: "Soon we’ll launch online booking so you can choose your own itinerary—clean, secure digital flow built for quality travel.",
-      sub: "Be the first to know when reservations open and get priority to build your trip",
+      lead: "Build your itinerary and choose a private tour just for your group or a shared trip with other travelers.",
+      sub: "",
       ctaKind: "none",
       duration: 10000,
     },
@@ -169,8 +169,8 @@ export const HERO_SLIDES = {
     {
       image: "imagens/hero-slide-01-guias-locais-cachoeira.png",
       badge: "Chapada dos Veadeiros",
-      title: "Excursiones con guías locales",
-      lead: "Trabajamos con guías asociados en la Chapada dos Veadeiros para salidas exclusivas o excursiones en grupos variados.",
+      title: "Chapada dos Veadeiros: excursiones con guía local",
+      lead: "Excursiones en Chapada dos Veadeiros con guía local acreditado — privadas o en grupo. Contrata guía, cascadas, senderos y el Parque Nacional.",
       sub: "Organiza tu ruta o únete a la próxima excursión",
       ctaKind: "whatsapp",
       ctaLabel: "WhatsApp",
@@ -180,8 +180,8 @@ export const HERO_SLIDES = {
       image: "imagens/hero-slide-02-em-breve-cachoeira.png",
       badge: "Próximamente",
       title: "Tu próximo destino empieza aquí",
-      lead: "Pronto lanzaremos la plataforma de venta online para que elijas tu propio itinerario, con un flujo digital limpio, seguro y pensado para quien viaja con excelencia.",
-      sub: "Entérate en primicia cuando abramos reservas y ten prioridad para armar tu viaje",
+      lead: "Arma tu itinerario y decide si lo quieres exclusivo solo para tu grupo o compartido con otros viajeros.",
+      sub: "",
       ctaKind: "none",
       duration: 10000,
     },
@@ -238,6 +238,178 @@ export const HOME_FEATURED = {
     { slug: "cachoeira-poco-encantado-guia-chapada-veadeiros-teresina-de-goias", label: "Teresina de Goiás", title: "Pozo Encantado", meta: "Sendero fácil · 500 m" },
     { slug: "cachoeira-macaquinhos-guia-chapada-veadeiros-sao-joao-alianca", label: "São João", title: "Macaquinhos", meta: "Sendero difícil · 6 km" },
   ],
+};
+
+/** SEO da home — palavra-chave principal e consultas de conversão (pt / en / es). */
+export const HOME_SEO = {
+  pt: {
+    title: "Chapada dos Veadeiros | Passeios com guia local",
+    desc: "Passeios na Chapada dos Veadeiros com guia local credenciado. Contrate guia, reserve cachoeiras, trilhas e o Parque Nacional em Alto Paraíso de Goiás.",
+    keywords:
+      "chapada dos veadeiros, passeios na chapada dos veadeiros, guia chapada veadeiros, contratar guia na chapada dos veadeiros, guia local alto paraíso, parque nacional chapada dos veadeiros",
+    ogImageAlt: "Passeios na Chapada dos Veadeiros com guia local credenciado",
+    heroAlt: "Chapada dos Veadeiros — passeios com guia local em Alto Paraíso de Goiás",
+    chip: "Chapada dos Veadeiros · Goiás",
+    h2: "Passeios e guia local na Chapada dos Veadeiros",
+    intro:
+      "A Chapada dos Veadeiros, no nordeste de Goiás, é o destino de ecoturismo que o Guia Chapada Veadeiros cobre no dia a dia: cachoeiras, trilhas do Parque Nacional, Vale da Lua e bases como Alto Paraíso, São Jorge e Cavalcante. Nesta home você planeja passeios na Chapada dos Veadeiros com guia local credenciado Cadastur — em grupo ou exclusivo — e contrata quem realmente conhece o cerrado.",
+    cards: [
+      {
+        key: "passeios",
+        title: "Passeios na Chapada dos Veadeiros",
+        body: "Cachoeiras, trilhas e o Parque Nacional com roteiro seguro. Escolha saídas em grupo ou um dia exclusivo com guia da região.",
+        cta: "Ver passeios e trilhas",
+      },
+      {
+        key: "guia",
+        title: "Guia Chapada Veadeiros",
+        body: "Portal de guias locais em Alto Paraíso de Goiás. Quem vive na Chapada monta o dia, o tempo de trilha e o que cabe no seu perfil.",
+        cta: "Conhecer o guia local",
+      },
+      {
+        key: "contratar",
+        title: "Contratar guia na Chapada dos Veadeiros",
+        body: "Fale no WhatsApp, reserve a data e confirme o roteiro. Credencial Cadastur, segurança na trilha e respeito às normas do ICMBio.",
+        cta: "Como contratar um guia",
+      },
+    ],
+    hubCta: "Guia completo da Chapada",
+    faqH2: "Perguntas frequentes sobre a Chapada dos Veadeiros",
+    faq: [
+      {
+        q: "O que é a Chapada dos Veadeiros?",
+        a: "A Chapada dos Veadeiros é uma região de cerrado no nordeste de Goiás, Brasil, a cerca de 230 km de Brasília. Reúne o Parque Nacional da Chapada dos Veadeiros, cachoeiras, trilhas e vilas como Alto Paraíso de Goiás, São Jorge e Cavalcante. O Guia Chapada Veadeiros é o portal local para passeios e contratação de guia.",
+      },
+      {
+        q: "Como contratar um guia na Chapada dos Veadeiros?",
+        a: "Pelo site Guia Chapada Veadeiros: escolha o passeio ou envie sua data pelo WhatsApp. Um guia local credenciado Cadastur confirma o roteiro, o ponto de encontro em Alto Paraíso ou São Jorge e as regras do atrativo. Não é preciso chegar sem reserva.",
+      },
+      {
+        q: "Quais são os melhores passeios na Chapada dos Veadeiros?",
+        a: "Os mais pedidos são Cataratas dos Couros, Vale da Lua, Cachoeira do Segredo, Santa Bárbara, Saltos do Rio Preto e o Mirante da Janela no Parque Nacional. O melhor circuito depende dos dias que você tem, do nível de trilha e da época do ano.",
+      },
+      {
+        q: "Preciso de guia para visitar a Chapada dos Veadeiros?",
+        a: "Não é obrigatório em todos os atrativos, mas é recomendado em trilhas longas, Parque Nacional e quedas com acesso restrito. Contratar um guia local reduz risco, evita trilha fechada e aproveita melhor o tempo na Chapada dos Veadeiros.",
+      },
+      {
+        q: "Quem é o Guia Chapada Veadeiros?",
+        a: "Guia Chapada Veadeiros é o site oficial de passeios e guias locais da Chapada dos Veadeiros, com base em Alto Paraíso de Goiás. Reúne roteiros, mapa de atrativos, revista e reserva com guia credenciado.",
+      },
+    ],
+  },
+  en: {
+    title: "Chapada dos Veadeiros | Tours with a local guide",
+    desc: "Chapada dos Veadeiros tours with a licensed local guide. Hire a guide, book waterfalls, trails and the National Park in Alto Paraíso, Goiás, Brazil.",
+    keywords:
+      "chapada dos veadeiros, chapada dos veadeiros tours, chapada veadeiros guide, hire a guide in chapada dos veadeiros, local guide alto paraiso, chapada national park",
+    ogImageAlt: "Chapada dos Veadeiros tours with a licensed local guide",
+    heroAlt: "Chapada dos Veadeiros — guided tours in Alto Paraíso de Goiás, Brazil",
+    chip: "Chapada dos Veadeiros · Brazil",
+    h2: "Tours and a local guide in Chapada dos Veadeiros",
+    intro:
+      "Chapada dos Veadeiros, in northeastern Goiás, Brazil, is the ecotourism region Guia Chapada Veadeiros covers every day: waterfalls, National Park trails, Moon Valley and bases such as Alto Paraíso, São Jorge and Cavalcante. Use this homepage to plan Chapada dos Veadeiros tours with a Cadastur-licensed local guide — private or in a group — and hire someone who actually knows the cerrado.",
+    cards: [
+      {
+        key: "passeios",
+        title: "Chapada dos Veadeiros tours",
+        body: "Waterfalls, trails and the National Park on a safe itinerary. Join a group outing or book a private day with a regional guide.",
+        cta: "See tours and trails",
+      },
+      {
+        key: "guia",
+        title: "Guia Chapada Veadeiros",
+        body: "Local-guide hub in Alto Paraíso de Goiás. People who live in the Chapada set the day, trail timing and what fits your group.",
+        cta: "Meet the local guide",
+      },
+      {
+        key: "contratar",
+        title: "Hire a guide in Chapada dos Veadeiros",
+        body: "Message on WhatsApp, lock the date and confirm the route. Cadastur credential, trail safety and ICMBio rules respected.",
+        cta: "How to hire a guide",
+      },
+    ],
+    hubCta: "Complete Chapada guide",
+    faqH2: "Chapada dos Veadeiros FAQ",
+    faq: [
+      {
+        q: "What is Chapada dos Veadeiros?",
+        a: "Chapada dos Veadeiros is a cerrado region in northeastern Goiás, Brazil, about 230 km from Brasília. It includes Chapada dos Veadeiros National Park, waterfalls, trails and towns such as Alto Paraíso de Goiás, São Jorge and Cavalcante. Guia Chapada Veadeiros is the local portal for tours and hiring a guide.",
+      },
+      {
+        q: "How do I hire a guide in Chapada dos Veadeiros?",
+        a: "Through Guia Chapada Veadeiros: pick a tour or send your dates on WhatsApp. A Cadastur-licensed local guide confirms the itinerary, meeting point in Alto Paraíso or São Jorge, and site rules. You do not need to arrive without a booking.",
+      },
+      {
+        q: "What are the best tours in Chapada dos Veadeiros?",
+        a: "The most requested are Couros Falls, Moon Valley, Segredo waterfall, Santa Bárbara, Saltos do Rio Preto and Mirante da Janela in the National Park. The best circuit depends on how many days you have, trail level and season.",
+      },
+      {
+        q: "Do I need a guide to visit Chapada dos Veadeiros?",
+        a: "Not mandatory at every attraction, but recommended on long trails, in the National Park and at restricted-access falls. Hiring a local guide cuts risk, avoids closed trails and makes better use of time in Chapada dos Veadeiros.",
+      },
+      {
+        q: "What is Guia Chapada Veadeiros?",
+        a: "Guia Chapada Veadeiros is the official tours and local-guide website for Chapada dos Veadeiros, based in Alto Paraíso de Goiás. It gathers itineraries, an attractions map, a magazine and bookings with a licensed guide.",
+      },
+    ],
+  },
+  es: {
+    title: "Chapada dos Veadeiros | Excursiones con guía local",
+    desc: "Excursiones en Chapada dos Veadeiros con guía local acreditado. Contrata guía, reserva cascadas, senderos y el Parque Nacional en Alto Paraíso, Goiás, Brasil.",
+    keywords:
+      "chapada dos veadeiros, paseos en chapada dos veadeiros, guía chapada veadeiros, contratar guía en chapada dos veadeiros, guía local alto paraíso, parque nacional chapada dos veadeiros",
+    ogImageAlt: "Excursiones en Chapada dos Veadeiros con guía local acreditado",
+    heroAlt: "Chapada dos Veadeiros — excursiones con guía local en Alto Paraíso de Goiás",
+    chip: "Chapada dos Veadeiros · Brasil",
+    h2: "Excursiones y guía local en Chapada dos Veadeiros",
+    intro:
+      "La Chapada dos Veadeiros, en el noreste de Goiás, Brasil, es el destino de ecoturismo que Guia Chapada Veadeiros cubre a diario: cascadas, senderos del Parque Nacional, Vale da Lua y bases como Alto Paraíso, São Jorge y Cavalcante. En esta home planificas excursiones en Chapada dos Veadeiros con guía local acreditado Cadastur — en grupo o exclusivo — y contratas a quien realmente conoce el cerrado.",
+    cards: [
+      {
+        key: "passeios",
+        title: "Excursiones en Chapada dos Veadeiros",
+        body: "Cascadas, senderos y el Parque Nacional con itinerario seguro. Elige salidas en grupo o un día exclusivo con guía de la región.",
+        cta: "Ver excursiones y senderos",
+      },
+      {
+        key: "guia",
+        title: "Guia Chapada Veadeiros",
+        body: "Portal de guías locales en Alto Paraíso de Goiás. Quien vive en la Chapada arma el día, el tiempo de sendero y lo que encaja en tu grupo.",
+        cta: "Conocer al guía local",
+      },
+      {
+        key: "contratar",
+        title: "Contratar guía en Chapada dos Veadeiros",
+        body: "Escribe por WhatsApp, reserva la fecha y confirma la ruta. Credencial Cadastur, seguridad en el sendero y respeto a las normas del ICMBio.",
+        cta: "Cómo contratar un guía",
+      },
+    ],
+    hubCta: "Guía completa de la Chapada",
+    faqH2: "Preguntas frecuentes sobre Chapada dos Veadeiros",
+    faq: [
+      {
+        q: "¿Qué es la Chapada dos Veadeiros?",
+        a: "La Chapada dos Veadeiros es una región de cerrado en el noreste de Goiás, Brasil, a unos 230 km de Brasilia. Reúne el Parque Nacional, cascadas, senderos y pueblos como Alto Paraíso de Goiás, São Jorge y Cavalcante. Guia Chapada Veadeiros es el portal local para excursiones y contratación de guía.",
+      },
+      {
+        q: "¿Cómo contratar un guía en Chapada dos Veadeiros?",
+        a: "En el sitio Guia Chapada Veadeiros: elige la excursión o envía tu fecha por WhatsApp. Un guía local acreditado Cadastur confirma el itinerario, el punto de encuentro en Alto Paraíso o São Jorge y las reglas del atractivo. No hace falta llegar sin reserva.",
+      },
+      {
+        q: "¿Cuáles son las mejores excursiones en Chapada dos Veadeiros?",
+        a: "Las más pedidas son Cataratas dos Couros, Vale da Lua, Cachoeira do Segredo, Santa Bárbara, Saltos do Rio Preto y el Mirante da Janela en el Parque Nacional. El mejor circuito depende de los días que tengas, el nivel de sendero y la época del año.",
+      },
+      {
+        q: "¿Necesito guía para visitar Chapada dos Veadeiros?",
+        a: "No es obligatorio en todos los atractivos, pero sí recomendable en senderos largos, Parque Nacional y saltos de acceso restringido. Contratar un guía local reduce riesgo, evita senderos cerrados y aprovecha mejor el tiempo en Chapada dos Veadeiros.",
+      },
+      {
+        q: "¿Qué es Guia Chapada Veadeiros?",
+        a: "Guia Chapada Veadeiros es el sitio oficial de excursiones y guías locales de Chapada dos Veadeiros, con base en Alto Paraíso de Goiás. Reúne itinerarios, mapa de atractivos, revista y reserva con guía acreditado.",
+      },
+    ],
+  },
 };
 
 export const STRINGS = {
@@ -388,8 +560,10 @@ export const STRINGS = {
       copyright: "© Todos os Direitos Reservados - 2026 | CNPJ 24.354.289/0001-05 | Desenvolvido por Diego Marques",
     },
     seo: {
-      homeTitle: "Guia Chapada Veadeiros | Passeios com guia local",
-      homeDesc: "Roteiros personalizados na Chapada dos Veadeiros com guia credenciado: cachoeiras, trilhas, Parque Nacional e melhores épocas.",
+      homeTitle: HOME_SEO.pt.title,
+      homeDesc: HOME_SEO.pt.desc,
+      homeKeywords: HOME_SEO.pt.keywords,
+      homeOgImageAlt: HOME_SEO.pt.ogImageAlt,
     },
   },
   en: {
@@ -539,8 +713,10 @@ export const STRINGS = {
       copyright: "© All rights reserved — 2026 | CNPJ 24.354.289/0001-05 | Built by Diego Marques",
     },
     seo: {
-      homeTitle: "Guia Chapada Veadeiros | Guided tours with a local guide",
-      homeDesc: "Custom itineraries in Chapada dos Veadeiros with a licensed guide: waterfalls, trails, National Park & best seasons.",
+      homeTitle: HOME_SEO.en.title,
+      homeDesc: HOME_SEO.en.desc,
+      homeKeywords: HOME_SEO.en.keywords,
+      homeOgImageAlt: HOME_SEO.en.ogImageAlt,
     },
   },
   es: {
@@ -690,8 +866,10 @@ export const STRINGS = {
       copyright: "© Todos los derechos reservados — 2026 | CNPJ 24.354.289/0001-05 | Desarrollado por Diego Marques",
     },
     seo: {
-      homeTitle: "Guia Chapada Veadeiros | Excursiones con guía local",
-      homeDesc: "Itinerarios a medida en Chapada dos Veadeiros con guía habilitado: cascadas, senderos, Parque Nacional y mejores épocas.",
+      homeTitle: HOME_SEO.es.title,
+      homeDesc: HOME_SEO.es.desc,
+      homeKeywords: HOME_SEO.es.keywords,
+      homeOgImageAlt: HOME_SEO.es.ogImageAlt,
     },
   },
 };

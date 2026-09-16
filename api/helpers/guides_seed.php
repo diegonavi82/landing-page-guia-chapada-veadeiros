@@ -2,12 +2,33 @@
 declare(strict_types=1);
 
 /**
+ * Seed do guia Diego Navi — DESATIVADO durante recadastro do zero (set/2026).
+ * Foto e descrição ficam em api/data/_tmp_diego_navi/profile.json
+ */
+const GCV_SEED_DIEGO_NAVI_ENABLED = false;
+
+/**
  * Upsert do guia Diego Navi (perfil completo para aparecer em Excursões).
  *
- * @return array{created:bool,updated:bool,user_id:int,email:string,name:string}
+ * @return array{created:bool,updated:bool,skipped?:bool,reason?:string,user_id:int,email:string,name:string}
  */
 function gcv_seed_diego_navi_guide(): array
 {
+    if (!GCV_SEED_DIEGO_NAVI_ENABLED) {
+        return [
+            'created' => false,
+            'updated' => false,
+            'skipped' => true,
+            'reason' => 'Seed desativado: recadastro do zero com diegonavi82@gmail.com. Foto/bio em api/data/_tmp_diego_navi/.',
+            'user_id' => 0,
+            'email' => 'diegonavi82@gmail.com',
+            'name' => 'Diego Navi',
+            'languages' => [],
+            'pix_key' => '',
+            'roles' => [],
+        ];
+    }
+
     if (!function_exists('db')) {
         require_once __DIR__ . '/db.php';
     }

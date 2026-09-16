@@ -90,15 +90,16 @@ function gcv_pix_mark_paid(string $reservationId, string $source = 'manual'): ?a
     if (!$res) {
         return null;
     }
-    if (gcv_pix_effective_status($res) === 'EXPIRED') {
+    $effective = gcv_pix_effective_status($res);
+    if ($effective === 'CANCELLED') {
         return null;
     }
-    $wasPaid = strtoupper((string)($res['status'] ?? '')) === 'PAID';
+    $wasPaid = $effective === 'PAID' || strtoupper((string)($res['status'] ?? '')) === 'PAID';
     $res['status'] = 'PAID';
-    $res['paid_at'] = $res['paid_at'] ?? gmdate('c');
-    $res['paid_source'] = $res['paid_source'] ?? $source;
     if (!$wasPaid) {
-        $res['paid_at'] = gmdate('c');
+        if (empty($res['paid_at'])) {
+            $res['paid_at'] = gmdate('c');
+        }
         $res['paid_source'] = $source;
     }
     if (!gcv_pix_write_reservation($res)) {

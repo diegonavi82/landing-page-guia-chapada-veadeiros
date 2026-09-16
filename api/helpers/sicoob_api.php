@@ -543,7 +543,8 @@ function gcv_sicoob_create_cob(string $reservationId, float $amount, int $expire
 function gcv_sicoob_try_confirm_via_cob(array $reservation): ?array
 {
     $reservationId = gcv_pix_safe_id((string)($reservation['reservation_id'] ?? ''));
-    if ($reservationId === '' || gcv_pix_effective_status($reservation) !== 'PENDING') {
+    $effective = gcv_pix_effective_status($reservation);
+    if ($reservationId === '' || $effective === 'PAID' || $effective === 'CANCELLED') {
         return null;
     }
     $txid = substr(preg_replace('/[^A-Za-z0-9]/', '', (string)($reservation['txid'] ?? '')) ?? '', 0, 35);
@@ -558,6 +559,18 @@ function gcv_sicoob_try_confirm_via_cob(array $reservation): ?array
     $status = strtoupper((string)($cob['status'] ?? ''));
     if ($status !== 'CONCLUIDA') {
         return null;
+    }
+
+    $firstPix = null;
+    if (!empty($cob['pix']) && is_array($cob['pix'])) {
+        $firstPix = is_array($cob['pix'][0] ?? null) ? $cob['pix'][0] : null;
+    }
+    if (is_array($firstPix)) {
+        $horario = trim((string)($firstPix['horario'] ?? ''));
+        if ($horario !== '' && empty($reservation['paid_at'])) {
+            $reservation['paid_at'] = $horario;
+            gcv_pix_write_reservation($reservation);
+        }
     }
 
     $res = gcv_pix_mark_paid($reservationId, 'sicoob_cob');
@@ -626,7 +639,8 @@ function gcv_sicoob_try_confirm_reservation(array $reservation): ?array
     }
 
     $reservationId = gcv_pix_safe_id((string)($reservation['reservation_id'] ?? ''));
-    if ($reservationId === '' || gcv_pix_effective_status($reservation) !== 'PENDING') {
+    $effective = gcv_pix_effective_status($reservation);
+    if ($reservationId === '' || $effective === 'PAID' || $effective === 'CANCELLED') {
         return null;
     }
 
@@ -759,4 +773,76 @@ function gcv_sicoob_register_webhook(): array
         'success' => false,
         'message' => 'HTTP ' . $code . ': ' . substr((string)$resp, 0, 400),
     ];
+}
+
+/**
+ * Reconcilia reservas PENDING/EXPIRED com cobrança Sicoob já CONCLUIDA.
+ * Impede PIX pago sumir sem venda/aviso.
+ *
+ * @return array{checked:int,recovered:int,ids:list<string>}
+ */
+function gcv_pix_recover_unconfirmed_paid(int $max = 40, int $maxAgeDays = 14): array
+{
+    $out = ['checked' => 0, 'recovered' => 0, 'ids' => []];
+    if (!gcv_sicoob_is_configured()) {
+        return $out;
+    }
+    $dir = gcv_pix_storage_dir();
+    $cutoff = time() - max(1, $maxAgeDays) * 86400;
+    $files = glob($dir . '/GCV-*.json') ?: [];
+    usort($files, static function ($a, $b) {
+        return filemtime($b) <=> filemtime($a);
+    });
+    foreach ($files as $path) {
+        if ($out['checked'] >= $max) {
+            break;
+        }
+        $mtime = (int)@filemtime($path);
+        if ($mtime > 0 && $mtime < $cutoff) {
+            continue;
+        }
+        $raw = @file_get_contents($path);
+        if ($raw === false || $raw === '') {
+            continue;
+        }
+        $data = json_decode($raw, true);
+        if (!is_array($data)) {
+            continue;
+        }
+        $created = strtotime((string)($data['created_at'] ?? ''));
+        if ($created !== false && $created < $cutoff) {
+            continue;
+        }
+        $st = gcv_pix_effective_status($data);
+        if ($st === 'PAID' || $st === 'CANCELLED') {
+            continue;
+        }
+        $out['checked']++;
+        try {
+            $confirmed = gcv_sicoob_try_confirm_via_cob($data);
+            if ($confirmed && strtoupper((string)($confirmed['status'] ?? '')) === 'PAID') {
+                $id = gcv_pix_safe_id((string)($confirmed['reservation_id'] ?? ''));
+                if ($id !== '') {
+                    $out['recovered']++;
+                    $out['ids'][] = $id;
+                }
+            }
+        } catch (Throwable $e) {
+            error_log('pix recover ' . basename($path) . ': ' . $e->getMessage());
+        }
+    }
+    if ($out['recovered'] > 0) {
+        try {
+            require_once __DIR__ . '/notify_ops.php';
+            $list = implode(', ', $out['ids']);
+            $msg = '⚠️ PIX recuperado automaticamente (' . $out['recovered'] . "):\n" . $list
+                . "\n\nA cobrança estava paga no banco e a reserva local não tinha sido confirmada.";
+            if (function_exists('gcv_ops_wa_agency')) {
+                gcv_ops_wa_agency($msg);
+            }
+        } catch (Throwable $e) {
+            error_log('pix recover notify: ' . $e->getMessage());
+        }
+    }
+    return $out;
 }

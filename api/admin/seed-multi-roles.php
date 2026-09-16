@@ -14,19 +14,14 @@ header('Content-Type: application/json; charset=utf-8');
 $admin = require_admin();
 
 $emails = [
-    'diegonavi82@gmail.com',
+    // diegonavi82: recadastro do zero — não auto-ativar admin/guia
     'diegonavi182@gmail.com',
     'diegocsp82@gmail.com',
 ];
 
 try {
     gcv_auth_ensure_role_schema();
-    // Garante perfil guia Diego
-    try {
-        gcv_seed_diego_navi_guide();
-    } catch (Throwable $e) {
-        // pode falhar se e-mail for admin-only em edge case
-    }
+    // Seed do Diego Navi está desativado (recadastro do zero)
 
     $out = [];
     foreach ($emails as $email) {

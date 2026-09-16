@@ -16,8 +16,8 @@ return [
         'diegonavi82@gmail.com',
         'contato@guiachapadaveadeiros.com',
     ],
-    /** Compatível: um único e-mail (ou use purchase_notify_emails). */
-    'purchase_notify_email' => 'diegonavi82@gmail.com',
+    /** WhatsApp do admin (avisos de cadastro, compras, etc.). */
+    'admin_whatsapp' => '5521996039027',
     /**
      * Segredo para pix_webhook.php confirmar pagamentos (OpenPix, banco, etc.).
      * Em localhost com mock-server use: dev-local

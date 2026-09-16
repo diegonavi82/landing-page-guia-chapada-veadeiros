@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import {
   HOTSPOTS,
   STRINGS,
+  HOME_SEO,
   ARTICLE_CONTRATAR,
   ARTICLE_EPOCA,
   ARTICLE_ONCA_PARDA,
@@ -38,6 +39,7 @@ import {
   filterEligibleGoogleReviews,
   pickRandomReviews,
   writeGoogleReviewsAsset,
+  redactGuideNamesInText,
 } from "./google-reviews.mjs";
 import {
   resolveInstagramFeedForBuild,
@@ -66,11 +68,14 @@ import {
   organizationJsonLd,
   webSiteJsonLd,
   travelAgencyJsonLd,
+  touristDestinationJsonLd,
+  homeWebPageJsonLd,
   faqPageJsonLd,
   itemListJsonLd,
   collectionPageJsonLd,
   touristAttractionJsonLd,
   seoExtraHeadMeta,
+  buildLlmsTxt,
   relatedPagesHtml,
   pillarContextLinkHtml,
   isoDateNow,
@@ -125,7 +130,7 @@ if (existsSync(cmsPath)) {
 
 const SITE_ORIGIN = (process.env.SITE_ORIGIN || "https://www.guiachapadaveadeiros.com").replace(/\/$/, "");
 const GOOGLE_SITE_VERIFICATION = (process.env.GOOGLE_SITE_VERIFICATION || "iX1Yk-5FoSjpSbyVkS_XN49QoMuTLDlIVloEAwsEIa8").trim();
-const PUBLISHER_LOGO_ABS = `${SITE_ORIGIN}/wp-content/uploads/2024/05/Logo-Guia-Chapada-Veadeiros-2024.jpg`;
+const PUBLISHER_LOGO_ABS = `${SITE_ORIGIN}/assets/img/imagens/logo-guia-chapada-veadeiros-oficial.png`;
 const CONTACT_POST_URL = (process.env.CONTACT_POST_URL || `${SITE_ORIGIN}/api/contact`).trim();
 const WHATSAPP_PHONE = (process.env.WHATSAPP_PHONE_E164 || "5562982506891").replace(/\D/g, "");
 const CONTACT_EMAIL = process.env.CONTACT_EMAIL || "contato@guiachapadaveadeiros.com";
@@ -815,10 +820,11 @@ function writeAdvancedSitemapsAndFeed() {
   );
 
   writeFileSync(join(ROOT, "robots.txt"), buildRobotsTxt(SITE_ORIGIN), "utf8");
+  writeFileSync(join(ROOT, "llms.txt"), buildLlmsTxt(SITE_ORIGIN), "utf8");
 
   const rssSorted = RSS_ITEMS.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
   writeFileSync(join(ROOT, "feed.xml"), buildRssFeed(SITE_ORIGIN, rssSorted), "utf8");
-  console.log("[build] SEO: sitemap index,", allEntries.length, "URLs · RSS", rssSorted.length, "itens");
+  console.log("[build] SEO: sitemap index,", allEntries.length, "URLs · RSS", rssSorted.length, "itens · llms.txt");
 }
 
 function sitemapBucket(pathKey) {
@@ -945,7 +951,7 @@ function buildHeroAnim(title, lead, sub) {
   return { badgeMs, titleStartMs, leadStartMs, subStartMs, ctaStartMs };
 }
 
-function heroPictureBg(ap, rel, eagerFirst) {
+function heroPictureBg(ap, rel, eagerFirst, alt = "") {
   const m = rel.match(/^(.*)\.(jpe?g|png)$/i);
   const basePath = m ? m[1] : rel;
   const webpPath = `${ap}assets/img/${basePath}.webp`;
@@ -953,7 +959,7 @@ function heroPictureBg(ap, rel, eagerFirst) {
   const loading = eagerFirst ? "eager" : "lazy";
   return `<picture class="gcv-hero__picture">
   <source srcset="${esc(webpPath)}" type="image/webp" />
-  <img class="gcv-hero__bg" src="${esc(fallbackPath)}" alt="" width="1600" height="900" loading="${loading}" decoding="async" />
+  <img class="gcv-hero__bg" src="${esc(fallbackPath)}" alt="${esc(alt)}" width="1600" height="900" loading="${loading}" decoding="async" />
 </picture>`;
 }
 
@@ -1205,11 +1211,11 @@ ${instagramGridCellsHtml(fallback, ap, openOnIg)}
 }
 
 function reviewCardHtml(r, { ap, googleLabel }) {
-  const quote = String(r.quote || "").trim();
+  const quote = redactGuideNamesInText(String(r.quote || "").trim());
   const img = r.image ? String(r.image).trim() : "";
   const tour = r.tour ? String(r.tour).trim() : "";
   const avatar = img
-    ? `<div class="gcv-review-card__avatar"><img src="${esc(`${ap}assets/img/${img}`)}" alt="${esc(r.name)}" width="80" height="80" loading="lazy" decoding="async" /></div>`
+    ? `<div class="gcv-review-card__avatar"><img src="${esc(`${ap}assets/img/${img}`)}" alt="" width="80" height="80" loading="lazy" decoding="async" /></div>`
     : `<div class="gcv-review-card__avatar gcv-review-card__avatar--fallback" aria-hidden="true">${esc(String(r.name || "?").charAt(0))}</div>`;
   return `<article class="gcv-review-card">
   <div class="gcv-review-card__head">
@@ -1378,7 +1384,7 @@ function headerHtml(ctx) {
       ${picture(
         ap,
         "imagens/logo-guia-chapada-veadeiros-oficial.png",
-        "Guia Chapada Veadeiros",
+        "Guia Chapada Veadeiros — Chapada dos Veadeiros",
         1024,
         189,
         { eager: true, fetchPriority: "high" },
@@ -1705,6 +1711,53 @@ function heroPetzenSlideHtml(ap, first, durationMs, slide = {}) {
 </div>`;
 }
 
+function homeSeoSection(locale, cur) {
+  const seo = HOME_SEO[locale] || HOME_SEO.pt;
+  const hrefPasseios = relBetweenSync(cur, outRelPath(locale, pillarPathKey("passeios-chapada-dos-veadeiros")));
+  const hrefGuia = relBetweenSync(cur, outRelPath(locale, pillarPathKey("guia-local-chapada-dos-veadeiros")));
+  const hrefHub = relBetweenSync(cur, outRelPath(locale, pillarPathKey("chapada-dos-veadeiros")));
+  const hrefContratar = relBetweenSync(cur, outRelPath(locale, ARTICLE_CONTRATAR[locale].path));
+  const hrefByKey = { passeios: hrefPasseios, guia: hrefGuia, contratar: hrefContratar };
+  const cards = (seo.cards || [])
+    .map((card) => {
+      const href = hrefByKey[card.key];
+      if (!href) return "";
+      return `<a class="gcv-home-seo__card" href="${esc(href)}">
+  <h3>${esc(card.title)}</h3>
+  <p>${esc(card.body)}</p>
+  <span class="gcv-home-seo__cta">${esc(card.cta)} →</span>
+</a>`;
+    })
+    .filter(Boolean)
+    .join("\n");
+  const faqItems = (seo.faq || [])
+    .map(
+      (item) => `<details>
+  <summary>${esc(item.q)}</summary>
+  <p>${esc(item.a)}</p>
+</details>`,
+    )
+    .join("\n");
+  return `    <section class="gcv-home-card gcv-home-seo" aria-labelledby="gcv-home-seo-h2">
+      <div class="gcv-home-card__head">
+        <div>
+          <span class="gcv-chip-orange">${esc(seo.chip)}</span>
+          <h2 id="gcv-home-seo-h2" class="gcv-home-featured-title gcv-home-seo__h2">${esc(seo.h2)}</h2>
+        </div>
+        <a class="gcv-link-cerrado" href="${esc(hrefHub)}">${esc(seo.hubCta)} →</a>
+      </div>
+      <p class="gcv-home-seo__intro">${esc(seo.intro)}</p>
+      <div class="gcv-home-seo__grid">
+${cards}
+      </div>
+      <div class="gcv-pillar-faq gcv-home-seo__faq">
+        <h2>${esc(seo.faqH2)}</h2>
+${faqItems}
+      </div>
+    </section>
+`;
+}
+
 function homeMainHtml(locale, ap, instagramPosts, reviewsPool) {
   const S = STRINGS[locale];
   const home = S.home;
@@ -1738,12 +1791,15 @@ function homeMainHtml(locale, ap, instagramPosts, reviewsPool) {
             ? `<a class="gcv-hero-line gcv-hero-plain-chip gcv-hero-cta" href="${esc(waUrl(locale))}" target="_blank" rel="noopener noreferrer" style="animation-delay:${anim.ctaStartMs}ms">${WA_SVG}${esc(slide.ctaLabel)}</a>`
             : `<a class="gcv-hero-line gcv-hero-plain-chip gcv-hero-cta" href="${esc(contactHref)}" style="animation-delay:${anim.ctaStartMs}ms">${esc(slide.ctaLabel)}</a>`;
 
+      const headingTag = first ? "h1" : "h2";
+      const heroAlt = first ? (HOME_SEO[locale] || HOME_SEO.pt).heroAlt : "";
+
       return `<div class="gcv-hero__slide${first ? " is-active" : ""}" data-gcv-hero-slide data-gcv-hero-duration="${duration}" aria-hidden="${first ? "false" : "true"}">
-  ${heroPictureBg(ap, slide.image, true)}
+  ${heroPictureBg(ap, slide.image, first, heroAlt)}
   <div class="gcv-hero__gradient" aria-hidden="true"></div>
   <div class="gcv-hero-overlay-text">
     <span class="${badgeClass}" style="animation-delay:${anim.badgeMs}ms">${esc(slide.badge)}</span>
-    <h1>${titleWords}</h1>
+    <${headingTag}>${titleWords}</${headingTag}>
     <p class="gcv-hero-lead">${leadWords}</p>
     ${subHtml}
     ${ctaHtml}
@@ -1797,8 +1853,13 @@ function homeMainHtml(locale, ap, instagramPosts, reviewsPool) {
     S.seo.homeDesc,
     `${SITE_ORIGIN}/assets/img/${ogHeroImage}`,
   );
-
-  const webSiteLd = webSiteJsonLd(SITE_ORIGIN, locale, S.htmlLang, `${SITE_ORIGIN}/`);
+  const destLd = touristDestinationJsonLd(SITE_ORIGIN);
+  const pageLd = homeWebPageJsonLd(SITE_ORIGIN, locale, S.htmlLang, {
+    name: S.seo.homeTitle,
+    description: S.seo.homeDesc,
+    imageUrl: `${SITE_ORIGIN}/assets/img/${ogHeroImage}`,
+  });
+  const faqLd = faqPageJsonLd((HOME_SEO[locale] || HOME_SEO.pt).faq || []);
 
   const guiaHubHref = relBetweenSync(cur, outRelPath(locale, pillarPathKey("chapada-dos-veadeiros")));
   const guiaHubLabel =
@@ -1872,10 +1933,13 @@ ${featuredCards}
 
     ${homeInstagramHtml(locale, ap, instagramPosts)}
     ${homeReviewsRichHtml(locale, ap, reviewsPool)}
+${homeSeoSection(locale, cur)}
   </div>
 </div>
-<script type="application/ld+json">${safeJsonLd(webSiteLd)}</script>
+<script type="application/ld+json">${safeJsonLd(pageLd)}</script>
+<script type="application/ld+json">${safeJsonLd(destLd)}</script>
 <script type="application/ld+json">${safeJsonLd(jsonLd)}</script>
+<script type="application/ld+json">${safeJsonLd(faqLd)}</script>
 ${globalJsonLdScripts(locale)}`;
 }
 
@@ -2644,7 +2708,16 @@ function collectSearchEntries(locale) {
     });
   };
 
-  add(S.nav.home, "", S.seo.homeDesc);
+  const homeSeo = HOME_SEO[locale] || HOME_SEO.pt;
+  const homeBody = [
+    homeSeo.intro,
+    ...(homeSeo.cards || []).map((c) => `${c.title} ${c.body}`),
+    ...(homeSeo.faq || []).map((f) => `${f.q} ${f.a}`),
+    homeSeo.keywords,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  add(S.seo.homeTitle, "", S.seo.homeDesc, homeBody);
   add(S.nav.revista, "revista.html", S.revistaPage.seoDesc);
   add(S.atrativosHub.title, "atrativos.html", S.atrativosHub.seoDesc);
   add(S.contact.title, "contato.html", S.contact.subtitle);
@@ -2782,6 +2855,8 @@ for (const locale of LOCALES) {
     let title = S.seo.homeTitle;
     let desc = S.seo.homeDesc;
     let og = "imagens/hero-slide-01-guias-locais-cachoeira.png";
+    let pageKeywords = pk === "" ? S.seo.homeKeywords : undefined;
+    let pageOgImageAlt = pk === "" ? S.seo.homeOgImageAlt : undefined;
     if (pk === "contato.html") {
       title = `${S.contact.title} | Guia Chapada Veadeiros`;
       desc = S.contact.subtitle;
@@ -2848,6 +2923,8 @@ for (const locale of LOCALES) {
       ogImageHeight,
       current: p.current,
       mainHtml: p.main(locale),
+      keywords: pageKeywords,
+      ogImageAlt: pageOgImageAlt,
       extraAfterFooter:
         (pk === "" || pk === "contato.html" ? `  ${floatWaHtml(locale)}\n` : "") + (p.extraAfterFooter || ""),
       extraFooterScripts: (p.extraFooterScripts || homeExcursionsHead.extraFooterScripts || "") + homeConsultarScript,
@@ -2859,7 +2936,12 @@ for (const locale of LOCALES) {
     });
     writePage(locale, pk || "", html);
     const pagePriority = pk === "" ? 1.0 : pk === "atrativos.html" || pk === "revista.html" ? 0.85 : 0.6;
-    noteSitemapUrl(locale, pk, { priority: pagePriority, changefreq: "weekly", ogImageRel: og, title });
+    noteSitemapUrl(locale, pk, {
+      priority: pagePriority,
+      changefreq: pk === "" ? "daily" : "weekly",
+      ogImageRel: og,
+      title,
+    });
   }
 
   const revistaBuilt = new Set();

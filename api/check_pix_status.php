@@ -37,7 +37,7 @@ if (!$res) {
 
 $status = gcv_pix_effective_status($res);
 $justPaid = false;
-if ($status === 'PENDING') {
+if ($status === 'PENDING' || $status === 'EXPIRED') {
     $confirmed = gcv_sicoob_try_confirm_reservation($res);
     if (!$confirmed) {
         $confirmed = gcv_openpix_try_confirm_reservation($res);

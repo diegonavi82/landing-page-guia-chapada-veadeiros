@@ -64,7 +64,8 @@ function gcv_sale_capture_from_pix_reservation(array $reservation, string $sourc
         throw new InvalidArgumentException('Valor da venda inválido');
     }
 
-    $spots = max(1, (int)($reservation['qty'] ?? $reservation['people'] ?? $reservation['spots'] ?? 1));
+    $trip = gcv_sale_first_trip($reservation);
+    $spots = max(1, (int)($reservation['qty'] ?? $reservation['people'] ?? $reservation['spots'] ?? $trip['qty'] ?? $trip['people'] ?? 1));
     $excursion = gcv_sale_resolve_excursion($reservation);
     $guide = gcv_sale_resolve_guide($excursion);
 
@@ -94,7 +95,7 @@ function gcv_sale_capture_from_pix_reservation(array $reservation, string $sourc
         $unitGuide = (int)($excursion['guide_payout_planned_cents'] ?? $excursion['guide_net_cents'] ?? 0);
         if ($unitGuide <= 0 && $unitCents > 0) {
             // legado: usa comissão percentual se não houver repasse definido
-            $commissionPct = (float)($excursion['commission_pct_applied'] ?? setting('platform_commission_pct', '14'));
+            $commissionPct = (float)($excursion['commission_pct_applied'] ?? setting('platform_commission_pct', '10'));
             $unitPlatform = (int)round($unitCents * ($commissionPct / 100.0));
             $unitGuide = max(0, $unitCents - $unitPlatform);
             $ruleId = isset($excursion['commission_rule_id']) ? (int)$excursion['commission_rule_id'] : null;
@@ -521,10 +522,31 @@ function gcv_sale_upsert_pix_payment(array $sale, array $reservation, string $st
 }
 
 /** @return array<string,mixed>|null */
+/**
+ * @param array<string,mixed> $reservation
+ * @return array<string,mixed>
+ */
+function gcv_sale_first_trip(array $reservation): array
+{
+    foreach (['trips', 'packages'] as $key) {
+        $list = $reservation[$key] ?? null;
+        if (!is_array($list)) {
+            continue;
+        }
+        foreach ($list as $trip) {
+            if (is_array($trip)) {
+                return $trip;
+            }
+        }
+    }
+    return [];
+}
+
 function gcv_sale_resolve_excursion(array $reservation): ?array
 {
     $pdo = db();
-    $excId = (int)($reservation['excursion_id'] ?? $reservation['cms_excursion_id'] ?? 0);
+    $trip = gcv_sale_first_trip($reservation);
+    $excId = (int)($reservation['excursion_id'] ?? $reservation['cms_excursion_id'] ?? $trip['excursion_id'] ?? 0);
     if ($excId > 0) {
         $stmt = $pdo->prepare(
             'SELECT e.*, a.title_pt AS attraction_title, c.name AS departure_city_name
@@ -540,7 +562,7 @@ function gcv_sale_resolve_excursion(array $reservation): ?array
         }
     }
 
-    $cartId = trim((string)($reservation['cart_id'] ?? $reservation['cartId'] ?? ''));
+    $cartId = trim((string)($reservation['cart_id'] ?? $reservation['cartId'] ?? $trip['cartId'] ?? $trip['cart_id'] ?? ''));
     $slug = trim((string)($reservation['cart_slug'] ?? ''));
     if ($cartId !== '' || $slug !== '') {
         $needle = $slug !== '' ? $slug : $cartId;
@@ -549,7 +571,7 @@ function gcv_sale_resolve_excursion(array $reservation): ?array
              FROM gcv_excursions e
              LEFT JOIN gcv_attractions a ON a.id = e.attraction_id
              LEFT JOIN gcv_cities c ON c.id = e.departure_city_id
-             WHERE e.cart_slug = ? OR e.id = ?
+             WHERE e.deleted_at IS NULL AND (e.cart_slug = ? OR e.id = ?)
              ORDER BY e.id DESC LIMIT 1'
         );
         $maybeId = ctype_digit($needle) ? (int)$needle : 0;
@@ -560,24 +582,56 @@ function gcv_sale_resolve_excursion(array $reservation): ?array
         }
     }
 
-    // Fallback: destino + data
-    $destino = trim((string)($reservation['destino'] ?? ''));
-    $date = trim((string)($reservation['date_iso'] ?? $reservation['date'] ?? ''));
+    $destino = trim((string)($reservation['destino'] ?? $trip['destino'] ?? ''));
+    $date = trim((string)($reservation['date_iso'] ?? $reservation['date'] ?? $trip['dateIso'] ?? $trip['date_iso'] ?? ''));
+    $hora = substr(trim((string)($reservation['departure_time'] ?? $trip['hora'] ?? '')), 0, 5);
+    $guideName = trim((string)($reservation['guide_name'] ?? $trip['guiaNome'] ?? $trip['guide'] ?? ''));
     if ($destino !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
-        $stmt = $pdo->prepare(
-            "SELECT e.*, a.title_pt AS attraction_title, c.name AS departure_city_name
+        $sql = 'SELECT e.*, a.title_pt AS attraction_title, c.name AS departure_city_name
              FROM gcv_excursions e
              LEFT JOIN gcv_attractions a ON a.id = e.attraction_id
              LEFT JOIN gcv_cities c ON c.id = e.departure_city_id
-             WHERE e.date_iso = ? AND e.status IN ('published','soldout')
-               AND (a.title_pt LIKE ? OR e.notes_pt LIKE ?)
-             ORDER BY e.id DESC LIMIT 1"
-        );
-        $like = '%' . $destino . '%';
-        $stmt->execute([$date, $like, $like]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        if ($row && gcv_excursion_is_publicly_bookable($row)) {
-            return $row;
+             WHERE e.date_iso = ?
+               AND e.deleted_at IS NULL
+             ORDER BY e.id DESC LIMIT 20';
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$date]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        $destFold = function_exists('mb_strtolower') ? mb_strtolower($destino) : strtolower($destino);
+        $guideFold = function_exists('mb_strtolower') ? mb_strtolower($guideName) : strtolower($guideName);
+        $best = null;
+        $bestScore = -1;
+        foreach ($rows as $row) {
+            $st = strtolower((string)($row['status'] ?? ''));
+            if (in_array($st, ['cancelled', 'rejected'], true)) {
+                continue;
+            }
+            if ($hora !== '' && preg_match('/^\d{2}:\d{2}$/', $hora)) {
+                $rowTime = substr((string)($row['departure_time'] ?? ''), 0, 5);
+                if ($rowTime !== $hora) {
+                    continue;
+                }
+            }
+            $title = function_exists('mb_strtolower')
+                ? mb_strtolower((string)($row['attraction_title'] ?? ''))
+                : strtolower((string)($row['attraction_title'] ?? ''));
+            $notes = function_exists('mb_strtolower')
+                ? mb_strtolower((string)($row['notes_pt'] ?? ''))
+                : strtolower((string)($row['notes_pt'] ?? ''));
+            if ($title === '' || (!str_contains($title, $destFold) && !str_contains($destFold, $title) && !str_contains($notes, $destFold))) {
+                continue;
+            }
+            $score = 1;
+            if ($hora !== '' && substr((string)($row['departure_time'] ?? ''), 0, 5) === $hora) {
+                $score += 1;
+            }
+            if ($score > $bestScore) {
+                $bestScore = $score;
+                $best = $row;
+            }
+        }
+        if ($best) {
+            return $best;
         }
     }
 

@@ -12,6 +12,8 @@ require_once __DIR__ . '/../helpers/cms_schema.php';
 header('Content-Type: application/json; charset=utf-8');
 
 $user = require_role('guide');
+require_once __DIR__ . '/../helpers/email_verify.php';
+gcv_require_guide_email_verified($user);
 gcv_cms_ensure_schema();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {

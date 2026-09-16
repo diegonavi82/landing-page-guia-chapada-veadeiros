@@ -32,7 +32,7 @@ try {
     }
 
     $stmt = db()->prepare(
-        'SELECT id, name, email, password_hash, role, avatar_url, lang, status FROM gcv_users WHERE email = ?'
+        'SELECT id, name, email, password_hash, role, avatar_url, lang, status, email_verified FROM gcv_users WHERE email = ?'
     );
     $stmt->execute([$email]);
     $user = $stmt->fetch();
@@ -70,6 +70,7 @@ try {
     create_session((int)$user['id'], $context);
 
     $roles = gcv_user_roles((int)$user['id']);
+    $verified = !empty($user['email_verified']);
     json_response(true, [
         'role'        => $context,
         'active_role' => $context,
@@ -78,6 +79,9 @@ try {
         'avatar_url'  => $user['avatar_url'],
         'lang'        => $user['lang'],
         'status'      => $user['status'],
+        'email_verified' => $verified,
+        'need_email_verify' => $context === 'guide' && !$verified,
+        'email' => $user['email'],
     ]);
 } catch (Throwable $e) {
     error_log('login.php: ' . $e->getMessage());

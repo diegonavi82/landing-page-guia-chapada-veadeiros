@@ -7,6 +7,7 @@ require_once __DIR__ . '/../helpers/validator.php';
 require_once __DIR__ . '/../helpers/mailer.php';
 require_once __DIR__ . '/../helpers/user_roles.php';
 require_once __DIR__ . '/../helpers/access_policy.php';
+require_once __DIR__ . '/../helpers/notify_ops.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -41,5 +42,10 @@ db()->prepare(
 )->execute([$admin['id'], $userId]);
 
 mail_guide_approved($guide['email'], $guide['name']);
+try {
+    gcv_ops_notify_guide_approved($userId);
+} catch (Throwable $e) {
+    error_log('approve-guide notify: ' . $e->getMessage());
+}
 
 json_response(true, ['message' => 'Guia aprovado com sucesso']);

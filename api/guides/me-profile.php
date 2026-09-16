@@ -15,10 +15,13 @@ require_once __DIR__ . '/../helpers/guide_languages.php';
 require_once __DIR__ . '/../helpers/guide_profile.php';
 require_once __DIR__ . '/../helpers/mailer.php';
 require_once __DIR__ . '/../helpers/notify_ops.php';
+require_once __DIR__ . '/../helpers/diego_navi_stash.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
 $user = require_role('guide');
+require_once __DIR__ . '/../helpers/email_verify.php';
+gcv_require_guide_email_verified($user);
 gcv_cms_ensure_schema();
 
 $BIO_MAX = 800;
@@ -65,6 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         if (!$profile) {
             db()->prepare('INSERT INTO gcv_guides (user_id) VALUES (?)')->execute([(int)$user['id']]);
         }
+        gcv_diego_navi_stash_apply_if_needed((int)$user['id'], (string)($user['email'] ?? ''));
         $pack = gcv_guide_profile_payload((int)$user['id']);
         $cities = db()->query(
             "SELECT id, name FROM gcv_cities WHERE status = 'active' ORDER BY name ASC"
@@ -208,8 +212,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
             ]);
         }
 
-        $pdo->prepare('UPDATE gcv_users SET name = ?, avatar_url = COALESCE(NULLIF(?, ""), avatar_url) WHERE id = ?')
-            ->execute([$fullName, $photo34, $userId]);
+        if ($photo34 !== '') {
+            $pdo->prepare('UPDATE gcv_users SET name = ?, avatar_url = ? WHERE id = ?')
+                ->execute([$fullName, $photo34, $userId]);
+        } else {
+            $pdo->prepare('UPDATE gcv_users SET name = ? WHERE id = ?')
+                ->execute([$fullName, $userId]);
+        }
 
         gcv_guide_financial_upsert($userId, [
             'legal_name' => $legalName,

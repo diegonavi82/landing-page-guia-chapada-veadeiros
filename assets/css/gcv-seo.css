@@ -259,3 +259,72 @@
   margin-right: auto;
   padding: 0 1.25rem;
 }
+
+.gcv-home-seo {
+  margin-top: 2.5rem;
+}
+
+.gcv-home-seo__intro {
+  margin: 1.25rem 0 1.5rem;
+  line-height: 1.7;
+  color: #334155;
+  font-size: 1.0625rem;
+  max-width: 52rem;
+}
+
+.gcv-home-seo__grid {
+  display: grid;
+  gap: 0.875rem;
+  margin-bottom: 1.75rem;
+}
+
+@media (min-width: 768px) {
+  .gcv-home-seo__grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.gcv-home-seo__card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1.125rem 1.25rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  text-decoration: none;
+  color: inherit;
+  background: #fff;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  min-height: 100%;
+}
+
+.gcv-home-seo__card:hover {
+  border-color: #0f766e;
+  box-shadow: 0 8px 20px rgba(15, 118, 110, 0.08);
+}
+
+.gcv-home-seo__card h3 {
+  margin: 0;
+  font-size: 1.0625rem;
+  line-height: 1.3;
+  color: #0f3d2e;
+}
+
+.gcv-home-seo__card p {
+  margin: 0;
+  flex: 1;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: #475569;
+}
+
+.gcv-home-seo__cta {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #0f766e;
+}
+
+.gcv-home-seo__faq {
+  margin-top: 0.5rem;
+  padding: 1.25rem 1.25rem 0.5rem;
+}

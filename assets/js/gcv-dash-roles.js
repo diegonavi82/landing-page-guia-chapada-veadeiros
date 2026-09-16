@@ -159,7 +159,15 @@
   var DEFAULT_MAX_PEOPLE = 10;
   var DEFAULT_PRECONFIRMED = 0;
   var GUIDE_NET_MIN = 50;
-  var GUIDE_NET_MAX = 1000;
+  var GUIDE_NET_MAX = 160;
+  var GUIDE_NET_MAX_DRAGAO = 190;
+
+  function attractionLooksLikeDragao(a) {
+    if (!a) return false;
+    var slug = String(a.slug || '').toLowerCase();
+    var title = foldText(a.title_pt || a.title || '');
+    return slug.indexOf('dragao') >= 0 || title.indexOf('dragao') >= 0;
+  }
 
   function quorumSelectHtml(id, selected) {
     var sel = parseFiniteInt(selected, DEFAULT_QUORUM);
@@ -808,7 +816,7 @@
         (complete
           ? '<div class="gcv-dash-alert gcv-dash-alert--success">' +
             (String(p.user_status || '') === 'pending'
-              ? 'Cadastro enviado. Aguarde a aprovação do administrador.'
+              ? 'Cadastro enviado para aprovação. Você receberá um WhatsApp quando for aprovado. Enquanto isso, só esta tela de perfil fica disponível.'
               : 'Perfil completo. Você pode publicar passeios.') +
             '</div>'
           : '<div class="gcv-dash-alert gcv-dash-alert--warning">Preencha os campos obrigatórios para enviar o cadastro.' +
@@ -1113,7 +1121,7 @@
           }
           if (r.data && r.data.submitted_for_approval) {
             msg.className = 'gcv-dash-alert gcv-dash-alert--success';
-            msg.textContent = 'Cadastro enviado para aprovação. Você receberá um WhatsApp quando estiver em análise.';
+            msg.textContent = 'Cadastro enviado para aprovação. Você e o administrador receberão um WhatsApp.';
             window.setTimeout(function () { window.location.reload(); }, 900);
             return;
           }
@@ -1374,10 +1382,30 @@
       var maxCap = d.max_people_cap != null ? parseFiniteInt(d.max_people_cap, MAX_PEOPLE_CAP) : MAX_PEOPLE_CAP;
       var netMin = d.guide_net_min != null ? parseFloat(d.guide_net_min) : GUIDE_NET_MIN;
       var netMax = d.guide_net_max != null ? parseFloat(d.guide_net_max) : GUIDE_NET_MAX;
+      var netMaxDragao = d.guide_net_max_dragao != null ? parseFloat(d.guide_net_max_dragao) : GUIDE_NET_MAX_DRAGAO;
       if (!isFinite(netMin) || netMin < 1) netMin = GUIDE_NET_MIN;
       if (!isFinite(netMax) || netMax < netMin) netMax = GUIDE_NET_MAX;
-      var commissionPct = d.commission_pct != null ? parseFloat(d.commission_pct) : 14;
-      if (!isFinite(commissionPct) || commissionPct < 0 || commissionPct >= 100) commissionPct = 14;
+      if (!isFinite(netMaxDragao) || netMaxDragao < netMax) netMaxDragao = GUIDE_NET_MAX_DRAGAO;
+      var commissionPct = d.commission_pct != null ? parseFloat(d.commission_pct) : 10;
+      if (!isFinite(commissionPct) || commissionPct < 0 || commissionPct >= 100) commissionPct = 10;
+
+      function attractionById(id) {
+        var sid = String(id || '');
+        if (!sid) return null;
+        for (var i = 0; i < attrs.length; i++) {
+          if (String(attrs[i].id) === sid) return attrs[i];
+        }
+        return null;
+      }
+
+      function netMaxForAttractionId(id) {
+        var a = attractionById(id);
+        if (a && a.guide_net_max != null) {
+          var m = parseFloat(a.guide_net_max);
+          if (isFinite(m) && m >= netMin) return m;
+        }
+        return attractionLooksLikeDragao(a) ? netMaxDragao : netMax;
+      }
       var commissionScope = String(d.commission_scope || 'settings');
       var nextIdx = 1;
       var activeTourIdx = null;
@@ -1566,12 +1594,21 @@
         var p = 'ge-' + idx + '-';
         var previewTimer = 0;
         var previewSeq = 0;
-        var emptyHint = 'Digite o valor a receber (mín. R$ ' + netMin + ', máx. R$ ' + netMax + ').';
+
+        function blockNetMax() {
+          var hid = document.getElementById(p + 'attr');
+          return netMaxForAttractionId(hid ? hid.value : '');
+        }
+
+        function emptyHintText() {
+          return 'Digite o valor a receber (mín. R$ ' + netMin + ', máx. R$ ' + blockNetMax() + ').';
+        }
 
         function rangeWarn(net) {
+          var max = blockNetMax();
           if (!isFinite(net)) return '';
-          if (net < netMin || net > netMax) {
-            return 'Informe um valor entre R$ ' + netMin + ' e R$ ' + netMax + '.';
+          if (net < netMin || net > max) {
+            return 'Informe um valor entre R$ ' + netMin + ' e R$ ' + max + '.';
           }
           return '';
         }
@@ -1594,6 +1631,7 @@
         }
 
         function clampNetEl(el, forceMin) {
+          var max = blockNetMax();
           var raw = String(el.value || '').trim().replace(',', '.');
           if (raw === '') return;
           var n = parseFloat(raw);
@@ -1601,8 +1639,8 @@
             el.value = '';
             return;
           }
-          if (n > netMax) {
-            el.value = String(netMax);
+          if (n > max) {
+            el.value = String(max);
             return;
           }
           if (n < 0) {
@@ -1614,6 +1652,15 @@
           }
         }
 
+        function applyBlockNetMax() {
+          var el = document.getElementById(p + 'net');
+          if (el) {
+            el.setAttribute('max', String(blockNetMax()));
+            clampNetEl(el, false);
+          }
+          refreshPreview(true);
+        }
+
         function refreshPreview(immediateServer) {
           var netEl = document.getElementById(p + 'net');
           var cityEl = document.getElementById(p + 'city');
@@ -1623,7 +1670,7 @@
           var net = parseFloat(raw.replace(',', '.'));
           var cityId = cityEl ? (parseInt(cityEl.value, 10) || 0) : 0;
           if (raw === '' || !isFinite(net) || net < 0) {
-            box.textContent = emptyHint;
+            box.textContent = emptyHintText();
             return;
           }
           var warn = rangeWarn(net);
@@ -1653,7 +1700,7 @@
         var netEl = document.getElementById(p + 'net');
         if (netEl) {
           netEl.setAttribute('min', String(netMin));
-          netEl.setAttribute('max', String(netMax));
+          netEl.setAttribute('max', String(blockNetMax()));
           netEl.addEventListener('keydown', function (ev) {
             if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
             var k = ev.key;
@@ -1663,9 +1710,10 @@
             var cur = String(netEl.value || '');
             var next = cur.slice(0, start) + k + cur.slice(end);
             var n = parseFloat(next.replace(',', '.'));
-            if (isFinite(n) && n > netMax) {
+            var max = blockNetMax();
+            if (isFinite(n) && n > max) {
               ev.preventDefault();
-              netEl.value = String(netMax);
+              netEl.value = String(max);
               refreshPreview(false);
             }
           });
@@ -1682,7 +1730,8 @@
             } catch (err) {}
             var n = parseFloat(String(text).replace(',', '.'));
             if (!isFinite(n)) return;
-            if (n > netMax) n = netMax;
+            var max = blockNetMax();
+            if (n > max) n = max;
             if (n < netMin) n = netMin;
             netEl.value = String(Math.round(n));
             refreshPreview(false);
@@ -1731,7 +1780,10 @@
           });
         }
         bindAttractionCombobox(p + 'attr-q', p + 'attr', p + 'attr-suggest', attrs, {
-          onChange: function () { refreshTourTabs(); }
+          onChange: function () {
+            refreshTourTabs();
+            applyBlockNetMax();
+          }
         });
         var attrQ = document.getElementById(p + 'attr-q');
         if (attrQ) attrQ.addEventListener('input', function () { refreshTourTabs(); });
@@ -1794,8 +1846,9 @@
         if (!time) return { error: label + ': informe o horário de saída.' };
         if (!cityId) return { error: label + ': selecione a cidade de saída.' };
         if (!meetingPoint) return { error: label + ': informe o ponto de encontro.' };
-        if (!net || !isFinite(net) || net < netMin || net > netMax) {
-          return { error: label + ': valor a receber deve ser entre R$ ' + netMin + ' e R$ ' + netMax + '.' };
+        if (!net || !isFinite(net) || net < netMin || net > netMaxForAttractionId(attrId)) {
+          var thisMax = netMaxForAttractionId(attrId);
+          return { error: label + ': valor a receber deve ser entre R$ ' + netMin + ' e R$ ' + thisMax + '.' };
         }
         var meetingLat = (el('meeting-lat').value || '').trim();
         var meetingLng = (el('meeting-lng').value || '').trim();

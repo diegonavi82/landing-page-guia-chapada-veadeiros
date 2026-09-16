@@ -33,13 +33,13 @@ $accountStatus = (string)($user['status'] ?? '');
 if (in_array($accountStatus, ['suspended', 'cancelled'], true)) {
     json_response(false, null, 'Conta recusada ou cancelada', 403);
 }
-if ($method !== 'GET' && $accountStatus !== 'active') {
+if ($accountStatus !== 'active') {
     json_response(
         false,
         null,
         $accountStatus === 'inactive'
             ? 'Perfil inativo. Peça reativação ao administrador para publicar.'
-            : 'Guia ainda não aprovado',
+            : 'Complete o perfil e aguarde a aprovação para acessar agenda e publicações.',
         403
     );
 }
@@ -374,6 +374,14 @@ if ($method === 'GET') {
          ORDER BY title_pt ASC"
     )->fetchAll(PDO::FETCH_ASSOC);
     $attrs = gcv_sort_attractions_catalog($attrs);
+    foreach ($attrs as &$a) {
+        $a['guide_net_max'] = gcv_guide_net_max_cents(
+            (int)($a['id'] ?? 0),
+            (string)($a['slug'] ?? ''),
+            (string)($a['title_pt'] ?? '')
+        ) / 100;
+    }
+    unset($a);
 
     $cities = db()->query(
         "SELECT id, name FROM gcv_cities WHERE status = 'active' ORDER BY name ASC"
@@ -390,7 +398,8 @@ if ($method === 'GET') {
         'max_quorum' => $MAX_QUORUM,
         'max_people_cap' => $MAX_PEOPLE_CAP,
         'guide_net_min' => gcv_guide_net_min_cents() / 100,
-        'guide_net_max' => gcv_guide_net_max_cents() / 100,
+        'guide_net_max' => gcv_guide_net_max_default_cents() / 100,
+        'guide_net_max_dragao' => gcv_guide_net_max_dragao_cents() / 100,
         'commission_pct' => (float)$commission['pct'],
         'commission_scope' => (string)$commission['scope_type'],
         'profile_complete' => gcv_guide_profile_is_complete((int)$user['id']),
@@ -453,7 +462,7 @@ if ($method === 'POST') {
     if ($cityId <= 0 || $attrId <= 0) {
         json_response(false, null, 'Cidade e atrativo são obrigatórios', 422);
     }
-    $netRangeErr = gcv_guide_net_range_error($guideNetCents);
+    $netRangeErr = gcv_guide_net_range_error($guideNetCents, $attrId);
     if ($netRangeErr !== null) {
         json_response(false, null, $netRangeErr, 422);
     }

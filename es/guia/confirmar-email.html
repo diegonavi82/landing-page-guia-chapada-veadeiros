@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex,nofollow" />
+<link rel="icon" href="https://www.guiachapadaveadeiros.com/favicon.ico" sizes="48x48" />
+<title>Confirmar correo | Guia Chapada Veadeiros</title>
+<link rel="stylesheet" href="/assets/css/site.css?v=1.0.8" />
+<link rel="stylesheet" href="/assets/css/gcv-auth.css?v=1.0.2" />
+</head>
+<body>
+<div class="gcv-auth-page gcv-auth-page--guide">
+  <div class="gcv-auth-card" id="gcv-verify-page">
+    <a class="gcv-auth-logo" href="/es/index.html">
+      <img src="/assets/img/imagens/logo-guia-chapada-veadeiros-oficial.png" alt="Guia Chapada Veadeiros" width="180" height="33" />
+    </a>
+    <h1 class="gcv-auth-title">Confirma tu correo</h1>
+    <p class="gcv-auth-subtitle">Enviamos un enlace y un código de 6 dígitos a <strong id="gcv-verify-email-label"></strong></p>
+    <div id="gcv-auth-error" class="gcv-auth-error" hidden></div>
+    <div id="gcv-auth-success" class="gcv-auth-success" hidden></div>
+    <form id="gcv-verify-form" novalidate data-locale="es">
+      <div class="gcv-auth-code-grid">
+        <input class="gcv-auth-code-input" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="one-time-code" />
+        <input class="gcv-auth-code-input" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" />
+        <input class="gcv-auth-code-input" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" />
+        <input class="gcv-auth-code-input" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" />
+        <input class="gcv-auth-code-input" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" />
+        <input class="gcv-auth-code-input" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" />
+      </div>
+      <button class="gcv-auth-btn gcv-auth-btn--primary" type="submit">Confirmar correo</button>
+    </form>
+    <p class="gcv-auth-note">O abre el enlace que llegó a tu correo.</p>
+    <button class="gcv-auth-btn" type="button" id="gcv-verify-resend">Reenviar código</button>
+    <div class="gcv-auth-links" style="margin-top:20px;">
+      <a href="/guia/cadastro.html">← Volver al registro</a>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/gcv-auth.js?v=1.0.46" defer></script>
+</body>
+</html>

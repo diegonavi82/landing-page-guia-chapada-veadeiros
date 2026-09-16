@@ -25,19 +25,40 @@ $resetRow = null;
 
 if ($token) {
     $tokenHash = hash('sha256', $token);
-    $stmt = db()->prepare(
-        'SELECT id, user_id FROM gcv_password_resets WHERE token_hash = ? AND used = 0 AND expires_at > NOW()'
-    );
-    $stmt->execute([$tokenHash]);
-    $resetRow = $stmt->fetch();
+    try {
+        $stmt = db()->prepare(
+            "SELECT id, user_id FROM gcv_password_resets
+             WHERE token_hash = ? AND used = 0 AND expires_at > NOW()
+               AND (purpose = 'password_reset' OR purpose IS NULL OR purpose = '')"
+        );
+        $stmt->execute([$tokenHash]);
+        $resetRow = $stmt->fetch();
+    } catch (Throwable $e) {
+        $stmt = db()->prepare(
+            'SELECT id, user_id FROM gcv_password_resets WHERE token_hash = ? AND used = 0 AND expires_at > NOW()'
+        );
+        $stmt->execute([$tokenHash]);
+        $resetRow = $stmt->fetch();
+    }
 } elseif ($code6 && $email) {
-    $stmt = db()->prepare(
-        'SELECT r.id, r.user_id FROM gcv_password_resets r
-         JOIN gcv_users u ON u.id = r.user_id
-         WHERE r.code_6 = ? AND u.email = ? AND r.used = 0 AND r.expires_at > NOW()'
-    );
-    $stmt->execute([$code6, $email]);
-    $resetRow = $stmt->fetch();
+    try {
+        $stmt = db()->prepare(
+            "SELECT r.id, r.user_id FROM gcv_password_resets r
+             JOIN gcv_users u ON u.id = r.user_id
+             WHERE r.code_6 = ? AND u.email = ? AND r.used = 0 AND r.expires_at > NOW()
+               AND (r.purpose = 'password_reset' OR r.purpose IS NULL OR r.purpose = '')"
+        );
+        $stmt->execute([$code6, $email]);
+        $resetRow = $stmt->fetch();
+    } catch (Throwable $e) {
+        $stmt = db()->prepare(
+            'SELECT r.id, r.user_id FROM gcv_password_resets r
+             JOIN gcv_users u ON u.id = r.user_id
+             WHERE r.code_6 = ? AND u.email = ? AND r.used = 0 AND r.expires_at > NOW()'
+        );
+        $stmt->execute([$code6, $email]);
+        $resetRow = $stmt->fetch();
+    }
 }
 
 if (!$resetRow) {

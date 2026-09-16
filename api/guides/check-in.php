@@ -15,6 +15,8 @@ header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 
 $user = require_role('guide');
+require_once __DIR__ . '/../helpers/email_verify.php';
+gcv_require_guide_approved($user);
 gcv_marketplace_ensure_schema();
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {

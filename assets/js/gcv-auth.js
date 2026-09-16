@@ -98,6 +98,60 @@
     return params.get('redirect') || '/dashboard/';
   }
 
+  function bindCodeInputs(root) {
+    var scope = root || document;
+    var codeInputs = scope.querySelectorAll('.gcv-auth-code-input');
+    codeInputs.forEach(function (input, idx) {
+      input.addEventListener('input', function () {
+        input.value = (input.value || '').replace(/\D/g, '').slice(0, 1);
+        if (input.value && idx < codeInputs.length - 1) {
+          codeInputs[idx + 1].focus();
+        }
+      });
+      input.addEventListener('keydown', function (e) {
+        if (e.key === 'Backspace' && !input.value && idx > 0) {
+          codeInputs[idx - 1].focus();
+        }
+      });
+      input.addEventListener('paste', function (e) {
+        var text = (e.clipboardData || window.clipboardData).getData('text') || '';
+        var digits = text.replace(/\D/g, '').slice(0, 6);
+        if (digits.length < 2) return;
+        e.preventDefault();
+        for (var i = 0; i < codeInputs.length; i++) {
+          codeInputs[i].value = digits.charAt(i) || '';
+        }
+        codeInputs[Math.min(digits.length, codeInputs.length) - 1].focus();
+      });
+    });
+    return codeInputs;
+  }
+
+  function readCode(root) {
+    var scope = root || document;
+    return Array.from(scope.querySelectorAll('.gcv-auth-code-input')).map(function (i) {
+      return i.value;
+    }).join('');
+  }
+
+  function showVerifyStep(email) {
+    var step1 = document.getElementById('gcv-register-step1');
+    var step2 = document.getElementById('gcv-register-step2');
+    var emailEl = document.getElementById('gcv-verify-email-label');
+    var card = document.querySelector('.gcv-auth-card');
+    if (card) {
+      var h1 = card.querySelector(':scope > .gcv-auth-title');
+      var sub = card.querySelector(':scope > .gcv-auth-subtitle');
+      if (h1) h1.hidden = true;
+      if (sub) sub.hidden = true;
+    }
+    if (step1) step1.hidden = true;
+    if (step2) step2.hidden = false;
+    if (emailEl) emailEl.textContent = email || '';
+    var first = document.querySelector('#gcv-register-step2 .gcv-auth-code-input');
+    if (first) first.focus();
+  }
+
   /* ---- Login ---- */
   function initLogin() {
     var form  = document.getElementById('gcv-login-form');
@@ -152,6 +206,11 @@
           return;
         }
         if (context === 'guide') {
+          if (res.data && (res.data.need_email_verify || res.data.email_verified === false)) {
+            var verifyEmail = (res.data.email || email || '').trim();
+            window.location.href = '/guia/confirmar-email.html' + (verifyEmail ? ('?email=' + encodeURIComponent(verifyEmail)) : '');
+            return;
+          }
           window.location.href = '/dashboard/';
           return;
         }
@@ -169,6 +228,46 @@
     if (!form) return;
 
     bindStrength('register-password');
+    bindCodeInputs(document.getElementById('gcv-register-step2') || document);
+
+    var verifyForm = document.getElementById('gcv-verify-form');
+    if (verifyForm) {
+      verifyForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        hideError(err);
+        var code = readCode(document.getElementById('gcv-register-step2') || document);
+        if (code.length !== 6) {
+          showError(err, t('verify', 'code_label'));
+          return;
+        }
+        var emailVal = (form.querySelector('[name=email]') && form.querySelector('[name=email]').value.trim())
+          || (sessionStorage.getItem('gcv_verify_email') || '');
+        if (btn) btn.disabled = true;
+        post(BASE + '/verify-email.php', { email: emailVal, code: code }, function (error, res) {
+          if (btn) btn.disabled = false;
+          if (error || !res || !res.ok) {
+            showError(err, (res && res.error) || 'Código inválido');
+            return;
+          }
+          window.location.href = (res.data && res.data.redirect) || '/dashboard/';
+        });
+      });
+    }
+    var resendBtn = document.getElementById('gcv-verify-resend');
+    if (resendBtn) {
+      resendBtn.addEventListener('click', function () {
+        hideError(err);
+        var emailVal = (form.querySelector('[name=email]') && form.querySelector('[name=email]').value.trim())
+          || (sessionStorage.getItem('gcv_verify_email') || '');
+        post(BASE + '/resend-verification.php', { email: emailVal }, function (error, res) {
+          if (error || !res || !res.ok) {
+            showError(err, (res && res.error) || 'Não foi possível reenviar');
+            return;
+          }
+          if (suc) showSuccess(suc, t('verify', 'resent'));
+        });
+      });
+    }
 
     // Role buttons
     var roleInput = document.getElementById('register-role');
@@ -216,13 +315,19 @@
           showError(err, (res && res.error) || 'Erro ao criar conta');
           return;
         }
+        if (res.data && res.data.need_email_verify) {
+          try { sessionStorage.setItem('gcv_verify_email', email); } catch (e) {}
+          showVerifyStep(email);
+          return;
+        }
         if (res.data && res.data.redirect) {
           window.location.href = res.data.redirect;
           return;
         }
         if (suc) showSuccess(suc, (res.data && res.data.message) || 'Conta criada!');
         form.reset();
-        setTimeout(function () { window.location.href = '/login.html'; }, 2500);
+        var loginHref = (form.getAttribute('data-context') === 'guide') ? '/guia/login.html' : '/login.html';
+        setTimeout(function () { window.location.href = loginHref; }, 2500);
       });
     });
   }
@@ -251,19 +356,7 @@
     });
 
     // Code inputs auto-advance
-    var codeInputs = document.querySelectorAll('.gcv-auth-code-input');
-    codeInputs.forEach(function (input, idx) {
-      input.addEventListener('input', function () {
-        if (input.value && idx < codeInputs.length - 1) {
-          codeInputs[idx + 1].focus();
-        }
-      });
-      input.addEventListener('keydown', function (e) {
-        if (e.key === 'Backspace' && !input.value && idx > 0) {
-          codeInputs[idx - 1].focus();
-        }
-      });
-    });
+    bindCodeInputs(step2 || document);
 
     var codeForm = document.getElementById('gcv-code-form');
     var err2     = document.getElementById('gcv-auth-error2');
@@ -272,7 +365,7 @@
     codeForm.addEventListener('submit', function (e) {
       e.preventDefault();
       if (err2) err2.hidden = true;
-      var code = Array.from(codeInputs).map(function (i) { return i.value; }).join('');
+      var code = readCode(step2 || document);
       if (code.length !== 6) { showError(err2, 'Digite todos os 6 dígitos'); return; }
 
       post(BASE + '/reset-password.php', { code: code, email: emailSent, password: '___placeholder___', password_confirm: '___placeholder___' }, function (error, res) {
@@ -322,6 +415,72 @@
     });
   }
 
+  /* ---- Confirm email page ---- */
+  function initVerifyPage() {
+    var page = document.getElementById('gcv-verify-page');
+    if (!page) return;
+    var err = document.getElementById('gcv-auth-error');
+    var suc = document.getElementById('gcv-auth-success');
+    var params = new URLSearchParams(window.location.search);
+    var token = params.get('token') || '';
+    var email = params.get('email') || '';
+    try {
+      if (!email) email = sessionStorage.getItem('gcv_verify_email') || '';
+    } catch (e) {}
+    var emailEl = document.getElementById('gcv-verify-email-label');
+    if (emailEl && email) emailEl.textContent = email;
+
+    bindCodeInputs(page);
+
+    if (token) {
+      if (suc) showSuccess(suc, t('verify', 'checking'));
+      post(BASE + '/verify-email.php', { token: token }, function (error, res) {
+        if (error || !res || !res.ok) {
+          showError(err, (res && res.error) || t('reset', 'error_invalid'));
+          return;
+        }
+        window.location.href = (res.data && res.data.redirect) || '/dashboard/';
+      });
+    }
+
+    var form = document.getElementById('gcv-verify-form');
+    if (form) {
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        hideError(err);
+        var code = readCode(page);
+        if (code.length !== 6) {
+          showError(err, t('verify', 'code_label'));
+          return;
+        }
+        post(BASE + '/verify-email.php', { email: email, code: code }, function (error, res) {
+          if (error || !res || !res.ok) {
+            showError(err, (res && res.error) || 'Código inválido');
+            return;
+          }
+          window.location.href = (res.data && res.data.redirect) || '/dashboard/';
+        });
+      });
+    }
+    var resendBtn = document.getElementById('gcv-verify-resend');
+    if (resendBtn) {
+      resendBtn.addEventListener('click', function () {
+        hideError(err);
+        post(BASE + '/resend-verification.php', { email: email }, function (error, res) {
+          if (error || !res || !res.ok) {
+            showError(err, (res && res.error) || 'Não foi possível reenviar');
+            return;
+          }
+          if (res.data && res.data.redirect && res.data.already) {
+            window.location.href = res.data.redirect;
+            return;
+          }
+          if (suc) showSuccess(suc, t('verify', 'resent'));
+        });
+      });
+    }
+  }
+
   /* ---- Init ---- */
   function init() {
     loadI18n(function () {
@@ -329,6 +488,7 @@
       initRegister();
       initForgot();
       initReset();
+      initVerifyPage();
     });
   }
 

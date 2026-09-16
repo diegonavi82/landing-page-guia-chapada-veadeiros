@@ -15,6 +15,8 @@ if (file_exists($envFile)) {
 }
 
 $user = require_role('guide');
+require_once __DIR__ . '/../helpers/email_verify.php';
+gcv_require_guide_approved($user);
 
 $mpAppId      = $_ENV['MP_APP_ID']   ?? '';
 $appUrl       = $_ENV['APP_URL']     ?? 'https://www.guiachapadaveadeiros.com';

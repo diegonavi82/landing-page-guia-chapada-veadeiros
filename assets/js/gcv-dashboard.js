@@ -436,6 +436,9 @@
       notify_arrive_minutes: 'notify',
       notify_late_tolerance_minutes: 'notify',
       platform_commission_pct: 'finance',
+      guide_net_min_reais: 'finance',
+      guide_net_max_reais: 'finance',
+      guide_net_max_dragao_reais: 'finance',
       payout_after_hour: 'finance',
       payout_after_minute: 'finance',
       payout_delay_hours: 'finance'
@@ -445,7 +448,10 @@
         title: 'Notificações de passeio',
         hint: 'WhatsApp, e-mail e o sino do painel usam estes prazos. 0 em “chegada” desliga o aviso de 15 minutos.'
       },
-      finance: { title: 'Financeiro e repasse', hint: '' },
+      finance: {
+        title: 'Financeiro e repasse',
+        hint: 'A diária máxima é o valor que o guia pode pedir por pessoa. Ainda entra a taxa da plataforma e o arredondamento (5 e 8). Dragão pode ter teto próprio.'
+      },
       other: { title: 'Outras', hint: '' }
     };
     get('/api/admin/settings.php', function (err, res) {
@@ -465,7 +471,9 @@
           + (meta.hint ? '<p class="gcv-dash-settings-group__hint">' + meta.hint + '</p>' : '');
         list.forEach(function (s) {
           var row = el('div', 'gcv-dash-settings-row');
-          var unit = /minute/.test(s.key_name) ? 'min' : (s.type === 'percent' ? '%' : (/hours|hour/.test(s.key_name) ? 'h' : ''));
+          var unit = /guide_net_.*_reais/.test(s.key_name)
+            ? 'R$'
+            : (/minute/.test(s.key_name) ? 'min' : (s.type === 'percent' ? '%' : (/hours|hour/.test(s.key_name) ? 'h' : '')));
           row.innerHTML = '<div class="gcv-dash-settings-label"><strong>' + s.label + '</strong></div>'
             + '<div class="gcv-dash-settings-controls">'
             + '<input class="gcv-dash-settings-input" type="number" min="0" step="1" value="' + s.value + '" data-key="' + s.key_name + '" />'
@@ -788,7 +796,7 @@
       }
       var rules = (res.data && res.data.rules) || [];
       root.innerHTML =
-        '<p class="gcv-dash-hint">Prioridade: Excursão → Guia → Categoria → Cidade → Global. Padrão: 14%.</p>' +
+        '<p class="gcv-dash-hint">Prioridade: Excursão → Guia → Categoria → Cidade → Global. Padrão: 10%.</p>' +
         '<div class="gcv-dash-table-wrap"><table class="gcv-dash-table"><thead><tr><th>Escopo</th><th>ID</th><th>%</th><th>Label</th><th>Ativa</th></tr></thead><tbody>' +
         rules.map(function (r) {
           return '<tr><td>' + r.scope_type + '</td><td>' + (r.scope_id || '—') + '</td><td>' + r.commission_pct +
@@ -798,7 +806,7 @@
         '<div class="gcv-dash-field-row">' +
         '<div class="gcv-dash-field"><label class="gcv-dash-label">Escopo</label><select class="gcv-dash-select" id="cr-scope"><option value="global">global</option><option value="guide">guide</option><option value="city">city</option><option value="category">category</option><option value="excursion">excursion</option></select></div>' +
         '<div class="gcv-dash-field"><label class="gcv-dash-label">Scope ID</label><input class="gcv-dash-input" id="cr-sid" type="number" /></div>' +
-        '<div class="gcv-dash-field"><label class="gcv-dash-label">%</label><input class="gcv-dash-input" id="cr-pct" type="number" step="0.001" value="14" /></div>' +
+        '<div class="gcv-dash-field"><label class="gcv-dash-label">%</label><input class="gcv-dash-input" id="cr-pct" type="number" step="0.001" value="10" /></div>' +
         '<div class="gcv-dash-field"><label class="gcv-dash-label">Label</label><input class="gcv-dash-input" id="cr-label" /></div>' +
         '</div>' +
         '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary" id="cr-save">Salvar regra</button>' +
@@ -968,15 +976,9 @@
         { id: 'section-guide-financial',    icon: '🏦', label: 'Financeiro',       tab: 'Financeiro', tabIcon: 'money',   load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideEarnings(); } },
       ];
     } else if (role === 'guide' && status === 'pending') {
-      var profileDone = !!(currentUser && currentUser.profile_complete);
-      items = profileDone
-        ? [
-            { id: 'section-guide-pending', icon: '⏳', label: 'Status', load: function () {} },
-            { id: 'section-guide-profile', icon: '👤', label: 'Meu perfil', load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideProfile(); } },
-          ]
-        : [
-            { id: 'section-guide-profile', icon: '👤', label: 'Meu perfil', load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideProfile(); } },
-          ];
+      items = [
+        { id: 'section-guide-profile', icon: '👤', label: 'Meu perfil', load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideProfile(); } },
+      ];
     } else if (role === 'client') {
       items = [
         { id: 'section-client-tours',    icon: '🌿', label: 'Próximos passeios', load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadClientUpcoming(); } },
@@ -1037,7 +1039,13 @@
     if (items.length) {
       var wantScan = window.GcvDashRoles && typeof window.GcvDashRoles.consumeCheckinHash === 'function'
         && window.GcvDashRoles.consumeCheckinHash();
-      if (!wantScan) {
+      var hash = (location.hash || '').replace(/^#/, '');
+      var wantPublish = role === 'guide' && status === 'active'
+        && (hash === 'publicar' || hash === 'section-guide-create-tour');
+      if (!wantScan && wantPublish) {
+        showSection('section-guide-create-tour');
+        if (loadMap['section-guide-create-tour']) loadMap['section-guide-create-tour']();
+      } else if (!wantScan) {
         showSection(items[0].id);
         if (loadMap[items[0].id]) loadMap[items[0].id]();
       }
@@ -1065,6 +1073,14 @@
         return;
       }
       currentUser = res.data;
+      if (currentUser.role === 'guide' && !currentUser.email_verified) {
+        window.location.href = '/guia/confirmar-email.html?email=' + encodeURIComponent(currentUser.email || '');
+        return;
+      }
+      document.body.classList.toggle(
+        'gcv-dash-page--guide-locked',
+        currentUser.role === 'guide' && currentUser.status !== 'active'
+      );
       if (currentUser.role === 'admin' && window.GcvAdminCms && typeof window.GcvAdminCms.boot === 'function') {
         window.GcvAdminCms.boot();
       }
@@ -1107,7 +1123,8 @@
           window.GcvDashRoles.consumeCheckinHash();
         }
       });
-      if (window.GcvInbox && typeof window.GcvInbox.start === 'function') {
+      if (window.GcvInbox && typeof window.GcvInbox.start === 'function'
+          && !(currentUser.role === 'guide' && currentUser.status !== 'active')) {
         window.GcvInbox.start();
       }
 

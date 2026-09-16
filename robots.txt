@@ -1,8 +1,10 @@
 # Guia Chapada Veadeiros — robots.txt otimizado para SEO e IA generativa
 # https://www.guiachapadaveadeiros.com
+# Contexto para LLMs: https://www.guiachapadaveadeiros.com/llms.txt
 
 User-agent: *
 Allow: /
+Allow: /llms.txt
 Disallow: /Build_prod/
 Disallow: /api/
 Disallow: /dashboard/
@@ -15,7 +17,16 @@ Allow: /
 User-agent: ChatGPT-User
 Allow: /
 
+User-agent: OAI-SearchBot
+Allow: /
+
 User-agent: Google-Extended
+Allow: /
+
+User-agent: Google-CloudVertexBot
+Allow: /
+
+User-agent: GoogleOther
 Allow: /
 
 User-agent: anthropic-ai
@@ -25,6 +36,12 @@ User-agent: ClaudeBot
 Allow: /
 
 User-agent: Claude-Web
+Allow: /
+
+User-agent: Claude-SearchBot
+Allow: /
+
+User-agent: Claude-User
 Allow: /
 
 User-agent: PerplexityBot
@@ -37,6 +54,36 @@ User-agent: cohere-ai
 Allow: /
 
 User-agent: Bytespider
+Allow: /
+
+User-agent: Amazonbot
+Allow: /
+
+User-agent: meta-externalagent
+Allow: /
+
+User-agent: FacebookBot
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: YouBot
+Allow: /
+
+User-agent: DuckAssistBot
+Allow: /
+
+User-agent: MistralAI-User
+Allow: /
+
+User-agent: Timpibot
+Allow: /
+
+User-agent: Diffbot
+Allow: /
+
+User-agent: ImagesiftBot
 Allow: /
 
 # Feeds e sitemaps

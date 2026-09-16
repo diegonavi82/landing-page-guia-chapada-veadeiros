@@ -2276,13 +2276,12 @@ body.gcv-dash-page main.gcv-dash-main {
   cursor: not-allowed;
 }
 
-@media (max-width: 640px) {
-  .gcv-dash-toast-host {
-    top: auto;
-    bottom: 1rem;
-    left: 1rem;
-    right: 1rem;
-    max-width: none;
-  }
+body.gcv-dash-page--guide-locked .gcv-inbox-bell,
+body.gcv-dash-page--guide-locked .gcv-dash-icon-btn:not(.js-gcv-dash-logout) {
+  display: none !important;
 }
+body.gcv-dash-page--guide-locked .gcv-dash-bottom-nav {
+  display: none !important;
+}
+
 

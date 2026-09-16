@@ -58,18 +58,21 @@ if (!$res) {
         echo json_encode(['success' => false, 'message' => 'Not found']);
         exit;
     }
-    if (gcv_pix_effective_status($existing) === 'EXPIRED') {
-        http_response_code(409);
-        echo json_encode(['success' => false, 'status' => 'EXPIRED']);
-        exit;
-    }
-    if (($existing['status'] ?? '') === 'PAID') {
+    if (($existing['status'] ?? '') === 'PAID' || gcv_pix_effective_status($existing) === 'PAID') {
         echo json_encode(['success' => true, 'status' => 'PAID', 'reservation_id' => $reservationId]);
         exit;
     }
-    http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Could not confirm']);
-    exit;
+    try {
+        require_once __DIR__ . '/helpers/sicoob_api.php';
+        $res = gcv_sicoob_try_confirm_via_cob($existing);
+    } catch (Throwable $e) {
+        $res = null;
+    }
+    if (!$res) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Could not confirm']);
+        exit;
+    }
 }
 
 try {

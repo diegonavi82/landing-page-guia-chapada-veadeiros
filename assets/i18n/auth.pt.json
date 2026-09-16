@@ -25,7 +25,7 @@
     "cadastur": "Número Cadastur (opcional)",
     "btn_register": "Criar conta",
     "btn_google": "Cadastrar com Google",
-    "note_guide": "Depois de criar a conta, complete o perfil (foto, telefone e PIX) para enviar à aprovação",
+    "note_guide": "Depois de confirmar o e-mail, complete o perfil (foto, telefone e PIX) para enviar à aprovação",
     "already": "Já tem conta?",
     "login": "Entrar",
     "strength_weak": "Senha fraca",
@@ -33,6 +33,17 @@
     "strength_strong": "Senha forte",
     "error_mismatch": "As senhas não coincidem",
     "error_short": "Senha muito curta (mínimo 8 caracteres)"
+  },
+  "verify": {
+    "title": "Confirme seu e-mail",
+    "subtitle": "Enviamos um link e um código de 6 dígitos para",
+    "code_label": "Digite o código de 6 dígitos",
+    "btn_verify": "Confirmar e-mail",
+    "btn_resend": "Reenviar código",
+    "resent": "Novo código enviado. Confira sua caixa de entrada.",
+    "or_link": "Ou abra o link que chegou no e-mail.",
+    "checking": "Confirmando…",
+    "back": "Voltar para o cadastro"
   },
   "forgot": {
     "title": "Esqueci minha senha",

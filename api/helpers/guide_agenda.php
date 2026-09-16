@@ -241,7 +241,13 @@ function gcv_guide_update_excursion(array $ex, array $data, int $userId): array
 
     $currentNet = (int)($ex['guide_net_cents'] ?? 0);
     if ($currentNet <= 0) {
-        $currentNet = (int)round(((int)($ex['price_cents'] ?? 0)) * 0.86);
+        require_once __DIR__ . '/settings.php';
+        $pct = (float)setting('platform_commission_pct', '10');
+        $keep = 1 - ($pct / 100.0);
+        if ($keep <= 0 || $keep >= 1) {
+            $keep = 0.90;
+        }
+        $currentNet = (int)round(((int)($ex['price_cents'] ?? 0)) * $keep);
     }
     if (isset($data['guide_net_cents']) || isset($data['guide_net'])) {
         if (empty($flags['can_change_price'])) {
@@ -253,7 +259,7 @@ function gcv_guide_update_excursion(array $ex, array $data, int $userId): array
         if ($newNet < $currentNet) {
             throw new InvalidArgumentException('O valor a receber só pode ser aumentado');
         }
-        $rangeErr = gcv_guide_net_range_error($newNet);
+        $rangeErr = gcv_guide_net_range_error($newNet, (int)($ex['attraction_id'] ?? 0));
         if ($rangeErr !== null) {
             throw new InvalidArgumentException($rangeErr);
         }

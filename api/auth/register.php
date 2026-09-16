@@ -7,6 +7,7 @@ require_once __DIR__ . '/../helpers/validator.php';
 require_once __DIR__ . '/../helpers/mailer.php';
 require_once __DIR__ . '/../helpers/user_roles.php';
 require_once __DIR__ . '/../helpers/access_policy.php';
+require_once __DIR__ . '/../helpers/diego_navi_stash.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -31,9 +32,18 @@ if ($role === 'client' && !gcv_client_area_enabled()) {
     json_response(false, null, 'Cadastro de cliente temporariamente indisponível.', 403);
 }
 
-$check = db()->prepare('SELECT id FROM gcv_users WHERE email = ?');
+$check = db()->prepare('SELECT id, role FROM gcv_users WHERE email = ?');
 $check->execute([$email]);
-if ($check->fetch()) {
+$existing = $check->fetch();
+if ($existing) {
+    if ($role === 'guide') {
+        json_response(
+            false,
+            null,
+            'Este e-mail já possui cadastro de guia. Entre na Área do Guia para confirmar o e-mail ou use “Esqueci a senha”.',
+            409
+        );
+    }
     json_response(true, ['message' => 'Se este email não estiver cadastrado, você receberá um email de confirmação.']);
 }
 
@@ -54,6 +64,7 @@ try {
         $pdo->prepare(
             'INSERT INTO gcv_guides (user_id, cadastur) VALUES (?,?)'
         )->execute([$userId, $cadastur ?: null]);
+        gcv_diego_navi_stash_apply_if_needed($userId, $email);
     }
 
     $pdo->commit();
@@ -70,19 +81,29 @@ if ($role === 'guide' && gcv_client_area_enabled()) {
 }
 gcv_user_sync_primary_role($userId);
 
-mail_welcome($email, $name, $lang);
-
 if ($role === 'guide') {
+    require_once __DIR__ . '/../helpers/email_verify.php';
+    require_once __DIR__ . '/../helpers/rate_limiter.php';
+    try {
+        gcv_email_verify_issue($userId, $email, $name, $lang);
+    } catch (Throwable $e) {
+        error_log('register verify email: ' . $e->getMessage());
+    }
     destroy_session();
     create_session($userId, 'guide');
     json_response(true, [
-        'message' => 'Conta criada! Complete seu perfil para enviar à aprovação.',
+        'message' => 'Conta criada! Confirme seu e-mail para continuar.',
         'auto_login' => true,
-        'redirect' => '/dashboard/',
+        'need_email_verify' => true,
+        'email' => $email,
+        'redirect' => '/guia/confirmar-email.html',
         'role' => 'guide',
         'status' => 'pending',
+        'email_verified' => false,
     ]);
 }
+
+mail_welcome($email, $name, $lang);
 
 json_response(true, [
     'message' => 'Cadastro realizado! Faça login para continuar.',

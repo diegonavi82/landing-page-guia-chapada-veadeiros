@@ -95,13 +95,7 @@ if (($existing['status'] ?? '') === 'PAID') {
 }
 
 if (gcv_pix_effective_status($existing) === 'EXPIRED') {
-    http_response_code(409);
-    echo json_encode([
-        'success' => false,
-        'status' => 'EXPIRED',
-        'reservation_id' => $reservationId,
-    ]);
-    exit;
+    // PIX no banco ainda confirma reserva expirada no JSON local.
 }
 
 $paidReais = gcv_openpix_amount_reais($data);

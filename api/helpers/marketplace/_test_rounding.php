@@ -27,12 +27,15 @@ foreach ($cases as [$in, $expected]) {
     }
 }
 
-// guide net 20000 cents (R$200) com 14% → before round = 200/0.86 ≈ 232.558 → 23256 cents → round 235
+// guide net 15000 cents (R$150) com 10% → before round = 150/0.90 ≈ 166.667 → 16667 cents → round 168
 try {
     // Sem DB: testa só a função de arredondamento do fluxo
-    $before = (int)round(20000 / (1 - 0.14));
+    $before = (int)round(15000 / (1 - 0.10));
     $final = gcv_pricing_commercial_round_reais($before / 100.0);
-    echo "Fluxo 14% sobre líquido 200: before={$before} cents, final={$final} reais\n";
+    echo "Fluxo 10% sobre líquido 150: before={$before} cents, final={$final} reais\n";
+    $beforeD = (int)round(19000 / (1 - 0.10));
+    $finalD = gcv_pricing_commercial_round_reais($beforeD / 100.0);
+    echo "Fluxo 10% sobre líquido 190 (Dragão): before={$beforeD} cents, final={$finalD} reais\n";
 } catch (Throwable $e) {
     echo 'ERR ' . $e->getMessage() . "\n";
     $failed++;

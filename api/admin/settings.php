@@ -40,6 +40,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
         }
     }
 
+    if (in_array($keyName, ['guide_net_min_reais', 'guide_net_max_reais', 'guide_net_max_dragao_reais'], true)) {
+        $n = (int)round((float)$value);
+        if ($n < 1 || $n > 10000) {
+            json_response(false, null, 'Informe um valor em reais entre 1 e 10000', 422);
+        }
+        $value = (string)$n;
+    }
+
     db()->prepare(
         'UPDATE gcv_settings SET value = ?, updated_by = ? WHERE key_name = ?'
     )->execute([$value, $admin['id'], $keyName]);

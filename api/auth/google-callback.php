@@ -5,6 +5,7 @@ require_once __DIR__ . '/../helpers/db.php';
 require_once __DIR__ . '/../helpers/auth.php';
 require_once __DIR__ . '/../helpers/user_roles.php';
 require_once __DIR__ . '/../helpers/access_policy.php';
+require_once __DIR__ . '/../helpers/diego_navi_stash.php';
 // mailer NÃO é carregado no boot — só quando for enviar e-mail (evita 500 se vendor ausente)
 
 auth_session_start();
@@ -207,6 +208,7 @@ try {
                 )->execute([$name, $email, $googleId, $avatarUrl]);
                 $userId = (int)$pdo->lastInsertId();
                 $pdo->prepare('INSERT INTO gcv_guides (user_id, cadastur) VALUES (?, NULL)')->execute([$userId]);
+                gcv_diego_navi_stash_apply_if_needed($userId, $email);
                 $pdo->commit();
                 gcv_user_grant_role($userId, 'guide');
                 // Não concede client enquanto a área do cliente estiver fechada

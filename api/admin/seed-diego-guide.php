@@ -15,6 +15,14 @@ $admin = require_admin();
 
 try {
     $result = gcv_seed_diego_navi_guide();
+    if (!empty($result['skipped'])) {
+        echo json_encode([
+            'ok' => true,
+            'data' => $result,
+            'message' => $result['reason'] ?? 'Seed do Diego Navi desativado (recadastro do zero).',
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
     echo json_encode([
         'ok' => true,
         'data' => $result,

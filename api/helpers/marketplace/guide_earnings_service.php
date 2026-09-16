@@ -35,7 +35,8 @@ function gcv_guide_earnings_dashboard(int $guideUserId): array
         "SELECT s.id, s.excursion_id, s.reservation_id, s.tourist_name, s.tourist_email,
                 s.tourist_phone, s.spots, s.sold_price_cents, s.guide_amount_cents,
                 s.platform_revenue_cents, s.sale_status, s.payout_status,
-                s.paid_at, s.sold_at, s.scheduled_payout_at, s.excursion_starts_at
+                s.paid_at, s.sold_at, s.scheduled_payout_at, s.excursion_starts_at,
+                s.attendance_status
          FROM gcv_sales s
          WHERE s.guide_user_id = ? AND s.deleted_at IS NULL
          ORDER BY s.sold_at DESC"
@@ -81,6 +82,7 @@ function gcv_guide_earnings_dashboard(int $guideUserId): array
         $list = $salesByExc[$eid] ?? [];
         $mapped = [];
         $people = 0;
+        $guiagem = 0;
         $billed = 0;
         $guide = 0;
         $paidOut = 0;
@@ -90,6 +92,9 @@ function gcv_guide_earnings_dashboard(int $guideUserId): array
             $mapped[] = $row;
             if ($row['sale_status'] === 'PAID') {
                 $people += $row['people'];
+                if (!empty($row['in_guiagem'])) {
+                    $guiagem += $row['people'];
+                }
                 $billed += $row['sold_price_cents'];
                 $guide += $row['guide_amount_cents'];
                 if ($row['payout_status'] === GcvPayoutStatus::PAID) {
@@ -124,6 +129,7 @@ function gcv_guide_earnings_dashboard(int $guideUserId): array
             'max_people' => (int)($exc['max_people'] ?? 0),
             'upcoming' => $dateIso >= $today && ($exc['status'] ?? '') !== 'cancelled',
             'people' => $people,
+            'guiagem_people' => $guiagem,
             'sales_count' => count($mapped),
             'paid_sales' => count(array_filter($mapped, static function ($s) {
                 return $s['sale_status'] === 'PAID';
@@ -139,6 +145,7 @@ function gcv_guide_earnings_dashboard(int $guideUserId): array
     if ($orphanSales) {
         $mapped = [];
         $people = 0;
+        $guiagem = 0;
         $billed = 0;
         $guide = 0;
         $paidOut = 0;
@@ -148,6 +155,9 @@ function gcv_guide_earnings_dashboard(int $guideUserId): array
             $mapped[] = $row;
             if ($row['sale_status'] === 'PAID') {
                 $people += $row['people'];
+                if (!empty($row['in_guiagem'])) {
+                    $guiagem += $row['people'];
+                }
                 $billed += $row['sold_price_cents'];
                 $guide += $row['guide_amount_cents'];
                 if ($row['payout_status'] === GcvPayoutStatus::PAID) {
@@ -177,6 +187,7 @@ function gcv_guide_earnings_dashboard(int $guideUserId): array
             'max_people' => 0,
             'upcoming' => false,
             'people' => $people,
+            'guiagem_people' => $guiagem,
             'sales_count' => count($mapped),
             'paid_sales' => count(array_filter($mapped, static function ($s) {
                 return $s['sale_status'] === 'PAID';
@@ -195,6 +206,9 @@ function gcv_guide_earnings_dashboard(int $guideUserId): array
             'tours_with_sales' => $toursWithSales,
             'tours_without_sales' => max(0, count($excursions) - $toursWithSales),
             'people_total' => $sumPeople,
+            'guiagem_people_total' => array_sum(array_map(static function ($t) {
+                return (int)($t['guiagem_people'] ?? 0);
+            }, $tours)),
             'billed_cents' => $sumBilled,
             'guide_cents' => $sumGuide,
             'payout_paid_cents' => $sumPaidOut,
@@ -232,12 +246,15 @@ function gcv_guide_earnings_map_sale(array $sale, ?array $payout): array
     if ($payout && ($payout['status'] ?? '') === GcvPayoutStatus::PAID) {
         $payoutStatus = GcvPayoutStatus::PAID;
     }
+    $att = strtolower(trim((string)($sale['attendance_status'] ?? 'pending')));
     return [
         'id' => (int)$sale['id'],
         'reservation_id' => (string)($sale['reservation_id'] ?? ''),
         'name' => $name !== '' ? $name : 'Cliente',
         'email' => $email,
         'people' => max(1, (int)($sale['spots'] ?? 1)),
+        'attendance_status' => $att !== '' ? $att : 'pending',
+        'in_guiagem' => $att === 'checked_in',
         'sold_price_cents' => (int)($sale['sold_price_cents'] ?? 0),
         'guide_amount_cents' => (int)($sale['guide_amount_cents'] ?? 0),
         'sale_status' => strtoupper((string)($sale['sale_status'] ?? '')),

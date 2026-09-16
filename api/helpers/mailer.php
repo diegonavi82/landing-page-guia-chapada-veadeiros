@@ -101,6 +101,23 @@ HTML;
 
 /* ---- Templates ---- */
 
+function mail_verify_email(string $to, string $name, string $token, string $code6, string $lang = 'pt'): void
+{
+    $appUrl = rtrim((string)($_ENV['APP_URL'] ?? 'https://www.guiachapadaveadeiros.com'), '/');
+    $link = $appUrl . '/guia/confirmar-email.html?token=' . rawurlencode($token);
+    $subjects = [
+        'pt' => 'Confirme seu e-mail — Guia Chapada Veadeiros',
+        'en' => 'Confirm your email — Guia Chapada Veadeiros',
+        'es' => 'Confirma tu correo — Guia Chapada Veadeiros',
+    ];
+    $bodies = [
+        'pt' => "<p>Olá, <strong>{$name}</strong>!</p><p>Para continuar o cadastro de guia, confirme que este e-mail é seu.</p><p><a href='{$link}' style='background:#0f3d2e;color:#fff;padding:10px 20px;border-radius:4px;text-decoration:none;'>Confirmar e-mail</a></p><p>Ou digite o código de 6 dígitos:</p><p><strong style='font-size:28px;letter-spacing:6px;'>{$code6}</strong></p><p>O código expira em 24 horas. Se você não se cadastrou, ignore este e-mail.</p>",
+        'en' => "<p>Hello, <strong>{$name}</strong>!</p><p>To continue your guide registration, confirm this email is yours.</p><p><a href='{$link}' style='background:#0f3d2e;color:#fff;padding:10px 20px;border-radius:4px;text-decoration:none;'>Confirm email</a></p><p>Or enter this 6-digit code:</p><p><strong style='font-size:28px;letter-spacing:6px;'>{$code6}</strong></p><p>The code expires in 24 hours. If you did not sign up, ignore this email.</p>",
+        'es' => "<p>Hola, <strong>{$name}</strong>!</p><p>Para continuar el registro de guía, confirma que este correo es tuyo.</p><p><a href='{$link}' style='background:#0f3d2e;color:#fff;padding:10px 20px;border-radius:4px;text-decoration:none;'>Confirmar correo</a></p><p>O escribe el código de 6 dígitos:</p><p><strong style='font-size:28px;letter-spacing:6px;'>{$code6}</strong></p><p>El código caduca en 24 horas. Si no te registraste, ignora este correo.</p>",
+    ];
+    send_mail($to, $subjects[$lang] ?? $subjects['pt'], $bodies[$lang] ?? $bodies['pt'], $name);
+}
+
 function mail_welcome(string $to, string $name, string $lang = 'pt'): void {
     $subjects = ['pt' => 'Bem-vindo ao Guia Chapada Veadeiros!', 'en' => 'Welcome to Guia Chapada Veadeiros!', 'es' => '¡Bienvenido a Guia Chapada Veadeiros!'];
     $bodies   = [
@@ -119,8 +136,9 @@ function mail_guide_pending_admin(string $guideName, string $guideEmail): void {
 }
 
 function mail_guide_approved(string $to, string $name): void {
-    $appUrl = $_ENV['APP_URL'] ?? 'https://www.guiachapadaveadeiros.com';
-    $body   = "<p>Parabéns, <strong>{$name}</strong>!</p><p>Seu cadastro como guia foi aprovado. Agora você pode criar e publicar passeios.</p><p><a href='{$appUrl}/dashboard/' style='background:#0f3d2e;color:#fff;padding:10px 20px;border-radius:4px;text-decoration:none;'>Acessar meu painel</a></p>";
+    $appUrl = rtrim((string)($_ENV['APP_URL'] ?? 'https://www.guiachapadaveadeiros.com'), '/');
+    $publish = $appUrl . '/dashboard/#publicar';
+    $body   = "<p>Parabéns, <strong>{$name}</strong>!</p><p>Seu cadastro como guia foi aprovado. Agora você pode publicar sua primeira excursão.</p><p><a href='{$publish}' style='background:#0f3d2e;color:#fff;padding:10px 20px;border-radius:4px;text-decoration:none;'>Publicar excursão</a></p>";
     send_mail($to, 'Seu cadastro de guia foi aprovado!', $body, $name);
 }
 

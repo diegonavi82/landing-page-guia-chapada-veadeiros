@@ -139,8 +139,8 @@ export const PILLAR_CONTENT = {
   "chapada-dos-veadeiros": {
     pt: {
       title: "Guia completo da Chapada dos Veadeiros",
-      h1: "Chapada dos Veadeiros: guia definitivo para planejar sua viagem",
-      seoTitle: "Chapada dos Veadeiros — guia completo 2026 | Passeios, cachoeiras e roteiros",
+      h1: "Guia completo da Chapada dos Veadeiros: planeje sua viagem",
+      seoTitle: "Guia completo da Chapada dos Veadeiros 2026 | Passeios, cachoeiras e roteiros",
       seoDesc:
         "Tudo sobre Chapada dos Veadeiros: cachoeiras, passeios guiados, ecoturismo, melhor época e roteiros com guia local credenciado Cadastur em Alto Paraíso de Goiás.",
       keywords:
@@ -175,8 +175,8 @@ export const PILLAR_CONTENT = {
     },
     en: {
       title: "Complete Chapada dos Veadeiros guide",
-      h1: "Chapada dos Veadeiros: the definitive travel guide",
-      seoTitle: "Chapada dos Veadeiros — complete 2026 guide | Tours, waterfalls & itineraries",
+      h1: "Complete Chapada dos Veadeiros guide: plan your trip",
+      seoTitle: "Complete Chapada dos Veadeiros travel guide 2026 | Tours, waterfalls and itineraries",
       seoDesc:
         "Everything about Chapada dos Veadeiros: waterfalls, guided tours, ecotourism, best season and itineraries with a licensed local guide in Alto Paraíso, Goiás.",
       keywords:
@@ -211,8 +211,8 @@ export const PILLAR_CONTENT = {
     },
     es: {
       title: "Guía completa de Chapada dos Veadeiros",
-      h1: "Chapada dos Veadeiros: guía definitiva para planificar tu viaje",
-      seoTitle: "Chapada dos Veadeiros — guía completa 2026 | Excursiones, cascadas y rutas",
+      h1: "Guía completa de Chapada dos Veadeiros: planifica tu viaje",
+      seoTitle: "Guía completa de Chapada dos Veadeiros 2026 | Excursiones, cascadas y rutas",
       seoDesc:
         "Todo sobre Chapada dos Veadeiros: cascadas, excursiones guiadas, ecoturismo, mejor época e itinerarios con guía local acreditado Cadastur en Alto Paraíso de Goiás.",
       keywords:

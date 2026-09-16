@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /**
- * Notificações operacionais (WhatsApp) + check-in / no-show 50%.
+ * Notificações operacionais (WhatsApp) + check-in / guiagem.
  */
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/purchase_notify.php';
@@ -69,12 +69,12 @@ function gcv_ops_wa_agency(string $text): bool
     }
     $phone = function_exists('gcv_admin_whatsapp_phone')
         ? gcv_admin_whatsapp_phone()
-        : '5562982506891';
+        : '5521996039027';
     $phone = function_exists('gcv_whatsapp_normalize_phone')
         ? gcv_whatsapp_normalize_phone($phone, '55')
         : preg_replace('/\D+/', '', $phone);
     if ($phone === '') {
-        $phone = '5562982506891';
+        $phone = '5521996039027';
     }
     $ok = gcv_whatsapp_send_text($phone, $text);
     if (!$ok) {
@@ -246,8 +246,8 @@ function gcv_ops_checkin_url(): string
 
 function gcv_ops_guide_qr_scan_lines(): string
 {
-    return "Leia o QR CODE de cada reserva no embarque.\n"
-        . "Sem leitura = 50% do valor da reserva.\n"
+    return "Leia o QR CODE de cada reserva no embarque para registrar a guiagem.\n"
+        . "Sem leitura o PIX segue integral, mas essas pessoas não entram na sua guiagem.\n"
         . 'Abrir leitor: ' . gcv_ops_checkin_url();
 }
 
@@ -687,12 +687,13 @@ function gcv_ops_notify_guide_registration_pending(int $guideUserId): void
     if ($guideUserId <= 0) {
         return;
     }
+    $appUrl = rtrim((string)($_ENV['APP_URL'] ?? 'https://www.guiachapadaveadeiros.com'), '/');
     $c = gcv_ops_guide_contact($guideUserId);
     $name = trim((string)($c['name'] ?? '')) ?: 'Guia';
-    $text = "📬 Seu cadastro de guia está em aprovação.\n\n"
+    $text = "✅ Recebemos seu cadastro de guia.\n\n"
         . 'Olá, ' . $name . "!\n\n"
-        . "Recebemos seus dados. Nossa equipe vai analisar o perfil e você recebe um aviso neste WhatsApp quando for aprovado.\n\n"
-        . 'Enquanto isso, acompanhe o status no painel.';
+        . "Seus dados foram enviados para análise. Você recebe outro WhatsApp neste número quando for aprovado, com o link para publicar sua primeira excursão.\n\n"
+        . 'Enquanto isso, acompanhe o status no perfil do painel.';
     if (!gcv_ops_wa_guide($guideUserId, $text, ['type' => 'guide_registration_pending'])) {
         error_log('gcv_ops_notify_guide_registration_pending: WhatsApp não enviado ao guia ' . $guideUserId);
     }
@@ -700,8 +701,27 @@ function gcv_ops_notify_guide_registration_pending(int $guideUserId): void
         . 'Nome: ' . $name . "\n"
         . 'Email: ' . (string)($c['email'] ?? '') . "\n"
         . (($c['phone'] ?? '') !== '' ? 'WhatsApp: ' . $c['phone'] . "\n" : '')
-        . "\nPainel → Guias credenciados.";
+        . "\nAbrir painel:\n"
+        . $appUrl . '/dashboard/';
     gcv_ops_wa_agency($adminText);
+}
+
+function gcv_ops_notify_guide_approved(int $guideUserId): void
+{
+    if ($guideUserId <= 0) {
+        return;
+    }
+    $appUrl = rtrim((string)($_ENV['APP_URL'] ?? 'https://www.guiachapadaveadeiros.com'), '/');
+    $publish = $appUrl . '/dashboard/#publicar';
+    $c = gcv_ops_guide_contact($guideUserId);
+    $name = trim((string)($c['name'] ?? '')) ?: 'Guia';
+    $text = "✅ Cadastro aprovado!\n\n"
+        . 'Olá, ' . $name . "!\n\n"
+        . "Seu perfil de guia foi aprovado. Publique sua primeira excursão neste link:\n"
+        . $publish;
+    if (!gcv_ops_wa_guide($guideUserId, $text, ['type' => 'guide_approved'])) {
+        error_log('gcv_ops_notify_guide_approved: WhatsApp não enviado ao guia ' . $guideUserId);
+    }
 }
 
 function gcv_ops_notify_guide_pending_approval(int $excursionId): void
@@ -1661,34 +1681,28 @@ function gcv_ops_apply_noshow(array $sale): bool
     if (($sale['sale_status'] ?? '') !== GcvSaleStatus::PAID) {
         return false;
     }
-    if (($sale['payout_status'] ?? '') === GcvPayoutStatus::PAID) {
-        return false;
-    }
-    $sold = (int)($sale['sold_price_cents'] ?? 0);
-    $guideOrig = (int)($sale['guide_amount_cents'] ?? 0);
-    $platOrig = (int)($sale['platform_revenue_cents'] ?? 0);
-    $guideNew = (int)round($sold * 0.5);
-    $platNew = max(0, $sold - $guideNew);
     try {
-        db()->prepare(
+        $st = db()->prepare(
             "UPDATE gcv_sales
-             SET attendance_status = 'no_show',
-                 guide_amount_original_cents = COALESCE(guide_amount_original_cents, ?),
-                 platform_revenue_original_cents = COALESCE(platform_revenue_original_cents, ?),
-                 guide_amount_cents = ?,
-                 platform_revenue_cents = ?
+             SET attendance_status = 'no_show'
              WHERE id = ? AND (attendance_status IS NULL OR attendance_status = 'pending')"
-        )->execute([$guideOrig, $platOrig, $guideNew, $platNew, $id]);
+        );
+        $st->execute([$id]);
+        if ($st->rowCount() < 1) {
+            return false;
+        }
     } catch (Throwable $e) {
         error_log('ops noshow: ' . $e->getMessage());
         return false;
     }
     $guideId = (int)($sale['guide_user_id'] ?? 0);
-    $text = "⚠️ Presença não lida — reserva abatida em 50%\n\n"
-        . 'Código: ' . strtoupper(trim((string)($sale['reservation_id'] ?? ''))) . "\n"
+    $code = strtoupper(trim((string)($sale['reservation_id'] ?? '')));
+    $pax = max(1, (int)($sale['spots'] ?? 1));
+    $text = "ℹ️ QR não lido nesta reserva — ela não entra na sua guiagem.\n\n"
+        . 'Código: ' . $code . "\n"
         . 'Cliente: ' . trim((string)($sale['tourist_name'] ?? 'Cliente')) . "\n"
-        . 'Valor da reserva: ' . gcv_ops_brl($sold) . "\n"
-        . 'Seu repasse: ' . gcv_ops_brl($guideNew) . ' (50%). O restante fica com a plataforma.';
+        . 'Pessoas: ' . $pax . "\n"
+        . 'O PIX de repasse segue o valor integral da reserva paga.';
     gcv_ops_wa_guide($guideId, $text);
     return true;
 }
@@ -1794,5 +1808,22 @@ function gcv_ops_cron_tick(): array
         }
     }
 
-    return ['reminders' => $reminders, 'noshow' => $noshow, 'h2' => $h2, 'review' => $review];
+    $pixRecover = ['checked' => 0, 'recovered' => 0, 'ids' => []];
+    try {
+        require_once __DIR__ . '/sicoob_api.php';
+        if (function_exists('gcv_pix_recover_unconfirmed_paid')) {
+            $pixRecover = gcv_pix_recover_unconfirmed_paid(40, 14);
+        }
+    } catch (Throwable $e) {
+        error_log('ops pix recover: ' . $e->getMessage());
+    }
+
+    return [
+        'reminders' => $reminders,
+        'noshow' => $noshow,
+        'h2' => $h2,
+        'review' => $review,
+        'pix_recovered' => (int)($pixRecover['recovered'] ?? 0),
+        'pix_checked' => (int)($pixRecover['checked'] ?? 0),
+    ];
 }

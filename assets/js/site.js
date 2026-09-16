@@ -1013,6 +1013,32 @@
     });
     if (!reviews.length) return;
 
+    var guideNames = [
+      "Diego Navi Marques Carvalho",
+      "Diego Navi",
+      "Martina Motlová",
+      "Martina Motlova",
+      "Gyovanna Torres",
+      "Felipe Camargo",
+      "Gyovanna",
+      "Martina",
+      "Diego",
+      "Felipe",
+    ].sort(function (a, b) {
+      return b.length - a.length;
+    });
+
+    function redactGuides(text) {
+      var out = String(text || "");
+      guideNames.forEach(function (name) {
+        var re = new RegExp("\\b" + name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b", "gi");
+        out = out.replace(re, function (m) {
+          return m.charAt(0).toUpperCase() + "...";
+        });
+      });
+      return out;
+    }
+
     var count = parseInt(section.getAttribute("data-gcv-reviews-count") || "3", 10);
     if (!count || count < 1) count = 3;
     count = Math.min(count, reviews.length);
@@ -1039,15 +1065,13 @@
     }
 
     function cardHtml(r) {
-      var quote = String(r.quote || "").trim();
+      var quote = redactGuides(String(r.quote || "").trim());
       var img = r.image ? String(r.image).trim() : "";
       var tour = r.tour ? String(r.tour).trim() : "";
       var avatar = img
         ? '<div class="gcv-review-card__avatar"><img src="' +
           escapeHtml(assetBase + img) +
-          '" alt="' +
-          escapeHtml(r.name) +
-          '" width="80" height="80" loading="lazy" decoding="async" /></div>'
+          '" alt="" width="80" height="80" loading="lazy" decoding="async" /></div>'
         : '<div class="gcv-review-card__avatar gcv-review-card__avatar--fallback" aria-hidden="true">' +
           escapeHtml(String(r.name || "?").charAt(0)) +
           "</div>";

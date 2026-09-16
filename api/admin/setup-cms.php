@@ -56,9 +56,13 @@ try {
     echo "\n--- Seed guia Diego Navi + multi-papéis ---\n";
     try {
         $g = gcv_seed_diego_navi_guide();
-        echo ($g['created'] ? 'Criado' : 'Atualizado') . ": {$g['name']} <{$g['email']}> user_id={$g['user_id']}\n";
-        echo "PIX: {$g['pix_key']} | idiomas: " . implode(',', $g['languages']) . "\n";
-        echo "Papéis: " . implode(',', $g['roles'] ?? []) . "\n";
+        if (!empty($g['skipped'])) {
+            echo "Pulado: " . ($g['reason'] ?? 'seed desativado') . "\n";
+        } else {
+            echo ($g['created'] ? 'Criado' : 'Atualizado') . ": {$g['name']} <{$g['email']}> user_id={$g['user_id']}\n";
+            echo "PIX: {$g['pix_key']} | idiomas: " . implode(',', $g['languages']) . "\n";
+            echo "Papéis: " . implode(',', $g['roles'] ?? []) . "\n";
+        }
     } catch (Throwable $e) {
         echo "Seed guia: " . $e->getMessage() . "\n";
     }

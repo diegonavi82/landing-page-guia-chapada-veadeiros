@@ -82,5 +82,8 @@ function db(): PDO
             PDO::ATTR_TIMEOUT            => 5,
         ]
     );
+    // Hostinger: charset utf8mb4 no DSN usa collation general_ci; as tabelas são unicode_ci.
+    // Sem isto, NULLIF/comparações quebram o cadastro do guia (SQLSTATE 1267).
+    $pdo->exec('SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci');
     return $pdo;
 }

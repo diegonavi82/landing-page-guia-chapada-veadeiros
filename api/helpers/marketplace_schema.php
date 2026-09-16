@@ -210,14 +210,14 @@ function gcv_marketplace_ensure_tables(PDO $pdo): void
         if (!$exists) {
             $pdo->exec(
                 "INSERT INTO gcv_commission_rules (scope_type, scope_id, commission_pct, label, is_active)
-                 VALUES ('global', NULL, 14.000, 'Comissão global padrão', 1)"
+                 VALUES ('global', NULL, 10.000, 'Comissão global padrão', 1)"
             );
         } else {
             $pdo->exec(
                 "UPDATE gcv_commission_rules
-                 SET commission_pct = 14.000
+                 SET commission_pct = 10.000
                  WHERE scope_type = 'global' AND scope_id IS NULL AND deleted_at IS NULL AND is_active = 1
-                   AND commission_pct = 16.000"
+                   AND commission_pct IN (14.000, 16.000)"
             );
         }
     } catch (Throwable $e) {
@@ -539,7 +539,10 @@ function gcv_marketplace_ensure_settings(PDO $pdo): void
         ['payout_delay_hours', '6', 'Legado — o repasse automático usa 16h20 do dia do passeio', 'integer'],
         ['payout_after_hour', '16', 'Hora (Brasília) do PIX automático ao guia no dia do passeio', 'integer'],
         ['payout_after_minute', '20', 'Minuto (Brasília) do PIX automático ao guia no dia do passeio', 'integer'],
-        ['platform_commission_pct', '14', 'Comissão da plataforma (%) aplicada em todos os passeios', 'percent'],
+        ['platform_commission_pct', '10', 'Comissão da plataforma (%) aplicada em todos os passeios', 'percent'],
+        ['guide_net_min_reais', '50', 'Diária mínima do guia (R$ por pessoa)', 'integer'],
+        ['guide_net_max_reais', '160', 'Diária máxima do guia (R$ por pessoa)', 'integer'],
+        ['guide_net_max_dragao_reais', '190', 'Diária máxima do guia na Cachoeira do Dragão (R$ por pessoa)', 'integer'],
         ['notify_guide_hours_long', '24', 'Guia: aviso longo (horas antes do passeio) — lista dos grupos', 'integer'],
         ['notify_guide_hours_short', '3', 'Guia: aviso curto (horas antes do início)', 'integer'],
         ['notify_client_hours_long', '24', 'Cliente: aviso longo (horas antes do passeio)', 'integer'],
@@ -569,8 +572,8 @@ function gcv_marketplace_ensure_settings(PDO $pdo): void
         );
         $pdo->exec(
             "UPDATE gcv_settings
-             SET value = '14'
-             WHERE key_name = 'platform_commission_pct' AND value = '16'"
+             SET value = '10'
+             WHERE key_name = 'platform_commission_pct' AND value IN ('14', '16')"
         );
         $pdo->exec(
             "UPDATE gcv_settings
@@ -582,6 +585,22 @@ function gcv_marketplace_ensure_settings(PDO $pdo): void
             "UPDATE gcv_settings
              SET label = 'Legado — o repasse automático usa 16h20 do dia do passeio'
              WHERE key_name = 'payout_delay_hours'"
+        );
+        $pdo->exec(
+            "UPDATE gcv_settings
+             SET value = '160',
+                 label = 'Diária máxima do guia (R$ por pessoa)'
+             WHERE key_name = 'guide_net_max_reais' AND value = '150'"
+        );
+        $pdo->exec(
+            "UPDATE gcv_settings
+             SET label = 'Diária mínima do guia (R$ por pessoa)'
+             WHERE key_name = 'guide_net_min_reais'"
+        );
+        $pdo->exec(
+            "UPDATE gcv_settings
+             SET label = 'Diária máxima do guia na Cachoeira do Dragão (R$ por pessoa)'
+             WHERE key_name = 'guide_net_max_dragao_reais'"
         );
     } catch (Throwable $e) {
         // ignore

@@ -15,6 +15,8 @@ require_once __DIR__ . '/../helpers/marketplace/pricing_service.php';
 
 header('Content-Type: application/json; charset=utf-8');
 $user = require_role('guide');
+require_once __DIR__ . '/../helpers/email_verify.php';
+gcv_require_guide_approved($user);
 
 $data = $_SERVER['REQUEST_METHOD'] === 'GET' ? $_GET : body_json();
 $guideNet = isset($data['guide_net_cents'])

@@ -63,11 +63,23 @@ function gcv_admin_notify_email(): string
 
 function gcv_admin_whatsapp_phone(): string
 {
-    $phone = preg_replace('/\D+/', '', (string)($_ENV['PURCHASE_NOTIFY_WHATSAPP'] ?? $_ENV['WHATSAPP_PHONE_E164'] ?? '5562982506891')) ?? '';
-    if ($phone === '') {
-        $phone = '5562982506891';
+    $cfgPath = dirname(__DIR__) . '/config.local.php';
+    if (is_readable($cfgPath)) {
+        $cfg = require $cfgPath;
+        if (is_array($cfg) && !empty($cfg['admin_whatsapp'])) {
+            $fromCfg = preg_replace('/\D+/', '', (string)$cfg['admin_whatsapp']) ?? '';
+            if ($fromCfg !== '') {
+                return $fromCfg;
+            }
+        }
     }
-    return $phone;
+
+    $adminEnv = preg_replace('/\D+/', '', (string)($_ENV['ADMIN_WHATSAPP'] ?? '')) ?? '';
+    if ($adminEnv !== '') {
+        return $adminEnv;
+    }
+
+    return '5521996039027';
 }
 
 /** @param array<string, mixed> $t */

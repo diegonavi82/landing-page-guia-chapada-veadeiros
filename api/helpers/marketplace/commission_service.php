@@ -19,9 +19,9 @@ function gcv_commission_resolve(
 ): array {
     unset($excursionId, $guideUserId, $categoryKey, $cityId);
     gcv_marketplace_ensure_schema();
-    $pct = (float)setting('platform_commission_pct', '14');
+    $pct = (float)setting('platform_commission_pct', '10');
     if ($pct < 0 || $pct > 100) {
-        $pct = 14.0;
+        $pct = 10.0;
     }
     return [
         'rule_id' => null,

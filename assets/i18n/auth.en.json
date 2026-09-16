@@ -25,7 +25,7 @@
     "cadastur": "Cadastur Number (optional)",
     "btn_register": "Create account",
     "btn_google": "Sign up with Google",
-    "note_guide": "After creating your account, complete your profile (photo, phone and PIX) to submit for approval",
+    "note_guide": "After confirming your email, complete your profile (photo, phone and PIX) to submit for approval",
     "already": "Already have an account?",
     "login": "Sign in",
     "strength_weak": "Weak password",
@@ -33,6 +33,17 @@
     "strength_strong": "Strong password",
     "error_mismatch": "Passwords do not match",
     "error_short": "Password too short (minimum 8 characters)"
+  },
+  "verify": {
+    "title": "Confirm your email",
+    "subtitle": "We sent a link and a 6-digit code to",
+    "code_label": "Enter the 6-digit code",
+    "btn_verify": "Confirm email",
+    "btn_resend": "Resend code",
+    "resent": "New code sent. Check your inbox.",
+    "or_link": "Or open the link we sent to your email.",
+    "checking": "Confirming…",
+    "back": "Back to sign up"
   },
   "forgot": {
     "title": "Forgot password",

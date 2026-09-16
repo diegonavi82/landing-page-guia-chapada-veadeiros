@@ -247,7 +247,7 @@ function gcv_sicoob_match_webhook_payload(array $data, ?array $preferredReservat
         if (!$reservation) {
             continue;
         }
-        if (gcv_pix_effective_status($reservation) === 'EXPIRED') {
+        if (gcv_pix_effective_status($reservation) === 'CANCELLED') {
             continue;
         }
         if (!gcv_sicoob_amount_matches($reservation, $pixItem)) {

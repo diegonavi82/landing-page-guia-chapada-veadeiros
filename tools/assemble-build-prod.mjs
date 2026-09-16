@@ -40,6 +40,7 @@ export const DEPLOY_ROOT_ENTRIES = [
   "sitemap-revista.xml",
   "sitemap-guia.xml",
   "robots.txt",
+  "llms.txt",
   ".htaccess",
   "feed.xml",
   "assets",

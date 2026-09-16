@@ -70,9 +70,17 @@ if ($status === 'PAID') {
 }
 
 if ($status === 'EXPIRED') {
-    http_response_code(409);
-    echo json_encode(['success' => false, 'status' => 'EXPIRED', 'message' => 'Reservation expired']);
-    exit;
+    $confirmed = gcv_sicoob_try_confirm_reservation($res) ?: gcv_sicoob_try_confirm_via_cob($res);
+    if ($confirmed) {
+        echo json_encode([
+            'success' => true,
+            'status' => 'PAID',
+            'reservation_id' => $reservationId,
+            'recovered' => true,
+            'paid_at' => $confirmed['paid_at'] ?? null,
+        ]);
+        exit;
+    }
 }
 
 // Tenta conciliar com a API Sicoob antes de forçar

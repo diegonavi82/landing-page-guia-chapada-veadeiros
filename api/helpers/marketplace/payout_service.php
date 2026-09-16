@@ -375,10 +375,8 @@ function gcv_payout_auto_execute(int $saleId): array
         try {
             require_once dirname(__DIR__) . '/notify_ops.php';
             gcv_ops_apply_noshow($sale);
-            $saleStmt->execute([$saleId]);
-            $sale = $saleStmt->fetch(PDO::FETCH_ASSOC) ?: $sale;
         } catch (Throwable $e) {
-            error_log('payout noshow: ' . $e->getMessage());
+            error_log('payout noshow mark: ' . $e->getMessage());
         }
     }
 
