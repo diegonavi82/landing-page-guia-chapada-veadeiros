@@ -210,6 +210,16 @@
     row.classList.toggle('is-unconfirmed', !confirmed);
   }
 
+  function confirmedCheckboxHtml(prefix, confirmed, label) {
+    confirmed = !!confirmed;
+    var t = label || 'Passeio confirmado';
+    return (
+      '<label class="gcv-dash-label gcv-guide-net-box__transport">' +
+      '<input type="checkbox" id="' + prefix + 'confirmed-yes"' + (confirmed ? ' checked' : '') + ' /> ' +
+      '<span>' + t + '</span></label>'
+    );
+  }
+
   function bindConfirmedYesNo(prefix) {
     var yes = document.getElementById(prefix + 'confirmed-yes');
     var no = document.getElementById(prefix + 'confirmed-no');
@@ -218,7 +228,10 @@
     function apply() {
       var confirmed = !!(yes && yes.checked);
       if (no) no.checked = !confirmed;
+      var row = wrap ? wrap.closest('.gcv-dash-confirm-quorum') : null;
+      var inlineQuestion = !!(row && row.querySelector('.gcv-dash-confirm-quorum__confirmed'));
       if (wrap) wrap.hidden = confirmed;
+      if (row && !inlineQuestion) row.hidden = confirmed;
       paintConfirmedQuorum(prefix, confirmed);
       if (sel) {
         sel.disabled = confirmed;
@@ -231,15 +244,15 @@
     }
     if (yes) {
       yes.addEventListener('change', function () {
-        if (yes.checked && no) no.checked = false;
-        if (!yes.checked && no) no.checked = true;
+        if (no) {
+          no.checked = !yes.checked;
+        }
         apply();
       });
     }
     if (no) {
       no.addEventListener('change', function () {
-        if (no.checked && yes) yes.checked = false;
-        if (!no.checked && yes) yes.checked = true;
+        if (yes) yes.checked = !no.checked;
         apply();
       });
     }
@@ -1019,45 +1032,6 @@
   }
 
   /* ---------- GUIA: PERFIL ---------- */
-  function fillGuideProfileInbox() {
-    var host = document.getElementById('gp-inbox-list');
-    if (!host) return;
-    get('/api/inbox/list.php?limit=30', function (err, res) {
-      if (!host) return;
-      if (err || !res || !res.ok) {
-        host.innerHTML = '<p class="gcv-dash-alert gcv-dash-alert--warning">' +
-          esc((res && res.error) || 'Não foi possível carregar as notificações.') + '</p>';
-        return;
-      }
-      var items = (res.data && res.data.items) || [];
-      if (!items.length) {
-        host.innerHTML = '<p class="gcv-dash-hint" style="margin:0;color:#64748b;">Nenhuma notificação ainda.</p>';
-        return;
-      }
-      host.innerHTML = items.map(function (it) {
-        var unread = !!it.unread;
-        var when = '';
-        if (it.created_at) {
-          var d = new Date(String(it.created_at).replace(' ', 'T'));
-          if (!isNaN(d.getTime())) {
-            var pad = function (n) { return (n < 10 ? '0' : '') + n; };
-            when = pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear()
-              + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
-          }
-        }
-        return (
-          '<article class="gcv-inbox-item' + (unread ? ' gcv-inbox-item--unread' : '') + '">' +
-            '<div class="gcv-inbox-item__head">' +
-              '<strong>' + esc(it.title) + '</strong>' +
-              (when ? '<time>' + esc(when) + '</time>' : '') +
-            '</div>' +
-            '<pre class="gcv-inbox-item__body">' + esc(it.body) + '</pre>' +
-          '</article>'
-        );
-      }).join('');
-    });
-  }
-
   function loadGuideProfile() {
     var root = document.getElementById('guide-profile-root');
     if (!root) return;
@@ -1102,7 +1076,7 @@
       } else if (complete) {
         statusBanner = String(p.user_status || '') === 'pending'
           ? '<div class="gcv-dash-alert gcv-dash-alert--pending">Aguardando Aprovação</div>'
-          : '<div class="gcv-dash-alert gcv-dash-alert--success">Perfil completo. Você pode publicar passeios.</div>';
+          : '';
       } else {
         statusBanner = '<div class="gcv-dash-alert gcv-dash-alert--warning">Preencha os campos obrigatórios para enviar o cadastro.' +
           (missingTxt ? ' Faltam: <strong>' + esc(missingTxt) + '</strong>' : '') + '</div>';
@@ -1110,11 +1084,6 @@
 
       root.innerHTML =
         statusBanner +
-        '<div class="gcv-dash-card" id="gp-inbox-card">' +
-          '<h3 class="gcv-dash-card__title">Notificações</h3>' +
-          '<p class="gcv-dash-hint" style="margin:0 0 0.75rem;">Os mesmos avisos do sino: inscrição, aprovação e lembretes do passeio.</p>' +
-          '<div id="gp-inbox-list">Carregando…</div>' +
-        '</div>' +
         '<div id="gp-msg" class="gcv-dash-alert" hidden style="margin-top:0.75rem;"></div>' +
         '<form class="gcv-dash-form gcv-dash-form--profile" id="guide-profile-form" novalidate>' +
 
@@ -1256,7 +1225,6 @@
       }
       if (bio) bio.addEventListener('input', updateBioCount);
       updateBioCount();
-      fillGuideProfileInbox();
 
       var gotoEarn = document.getElementById('gp-goto-earnings');
       if (gotoEarn) {
@@ -1656,12 +1624,6 @@
   }
 
   function loadGuideAgenda() {
-    var pubBtn = document.getElementById('guide-agenda-goto-publish');
-    if (pubBtn) {
-      pubBtn.onclick = function () {
-        gotoDashSection('section-guide-create-tour');
-      };
-    }
     var list = document.getElementById('guide-tours-list');
     if (!list) return;
     list.innerHTML = 'Carregando…';
@@ -1719,9 +1681,33 @@
   }
 
   /* ---------- GUIA: PUBLICAR ---------- */
+  function confirmClearPublish(form) {
+    function doClear(ok) {
+      if (!ok) return;
+      if (typeof form._gcvResetPublish === 'function') form._gcvResetPublish();
+    }
+    if (typeof global.gcvConfirm === 'function') {
+      global.gcvConfirm('Limpar o formulário?\n\nTodos os passeios preenchidos serão apagados.', {
+        danger: true,
+        okText: 'Limpar',
+        cancelText: 'Voltar'
+      }).then(doClear);
+    } else {
+      doClear(window.confirm('Limpar o formulário?\n\nTodos os passeios preenchidos serão apagados.'));
+    }
+  }
+
+  function bindClearPublishButtons(form) {
+    ['ge-clear-publish', 'ge-clear-publish-footer'].forEach(function (id) {
+      var btn = document.getElementById(id);
+      if (btn) btn.onclick = function () { confirmClearPublish(form); };
+    });
+  }
+
   function loadGuidePublish() {
     var form = document.getElementById('gcv-guide-create-tour-form');
     if (!form) return;
+    bindClearPublishButtons(form);
     if (form.getAttribute('data-ready') === '1') return;
     form.innerHTML = 'Carregando…';
     get('/api/guides/excursions.php', function (err, res) {
@@ -1834,7 +1820,11 @@
         return { name: name, date: date };
       }
 
-      function selectTourTab(idx) {
+      function isMobileTourCarousel() {
+        return window.matchMedia('(max-width: 768px)').matches;
+      }
+
+      function markTourActive(idx) {
         activeTourIdx = String(idx);
         tourBlocks().forEach(function (block) {
           block.classList.toggle('is-active', block.getAttribute('data-tour-idx') === String(idx));
@@ -1849,9 +1839,46 @@
         });
       }
 
+      function scrollTourIntoView(idx) {
+        var host = document.getElementById('ge-tours');
+        var block = form.querySelector('.gcv-dash-tour-block[data-tour-idx="' + idx + '"]');
+        if (!host || !block || !isMobileTourCarousel()) return;
+        var left = host.scrollLeft + (block.getBoundingClientRect().left - host.getBoundingClientRect().left);
+        if (typeof host.scrollTo === 'function') {
+          host.scrollTo({ left: left, behavior: 'smooth' });
+        } else {
+          host.scrollLeft = left;
+        }
+      }
+
+      function selectTourTab(idx) {
+        markTourActive(idx);
+        scrollTourIntoView(idx);
+      }
+
+      function syncCarouselActive() {
+        if (!isMobileTourCarousel()) return;
+        var host = document.getElementById('ge-tours');
+        var blocks = tourBlocks();
+        if (!host || !blocks.length) return;
+        var mid = host.scrollLeft + host.clientWidth / 2;
+        var origin = host.getBoundingClientRect().left - host.scrollLeft;
+        var best = blocks[0];
+        var bestDist = Infinity;
+        blocks.forEach(function (b) {
+          var center = (b.getBoundingClientRect().left - origin) + b.offsetWidth / 2;
+          var d = Math.abs(center - mid);
+          if (d < bestDist) {
+            bestDist = d;
+            best = b;
+          }
+        });
+        var idx = best.getAttribute('data-tour-idx');
+        if (String(idx) !== String(activeTourIdx)) markTourActive(idx);
+      }
+
       function setDateLocked(dateEl, locked) {
         if (!dateEl) return;
-        dateEl.readOnly = !!locked;
         dateEl.tabIndex = locked ? -1 : 0;
         var wrap = dateEl.closest('.gcv-datepicker');
         if (wrap) {
@@ -1905,10 +1932,21 @@
         var wasActive = String(idx) === String(activeTourIdx);
         block.remove();
         retitleBlocks();
+        syncSequentialDates();
         refreshTourTabs();
         if (wasActive) {
           var left = tourBlocks();
           if (left.length) selectTourTab(left[left.length - 1].getAttribute('data-tour-idx'));
+        }
+      }
+
+      function pinTourTabsBar() {
+        var header = document.getElementById('gcv-dash-sidebar');
+        var wrap = form.querySelector('.gcv-tour-tabs-wrap');
+        var h = header ? Math.round(header.getBoundingClientRect().height) : 60;
+        document.documentElement.style.setProperty('--gcv-dash-header-h', h + 'px');
+        if (wrap && form.classList.contains('is-tour-carousel') && isMobileTourCarousel()) {
+          document.documentElement.style.setProperty('--gcv-tour-tabs-h', Math.round(wrap.getBoundingClientRect().height) + 'px');
         }
       }
 
@@ -1934,6 +1972,8 @@
             '</div>';
         });
         host.innerHTML = html;
+        form.classList.toggle('is-tour-carousel', blocks.length >= 2);
+        requestAnimationFrame(pinTourTabsBar);
         host.querySelectorAll('.gcv-tour-tab__hit').forEach(function (hit) {
           hit.onclick = function () {
             var panel = hit.closest('[data-tour-tab]');
@@ -1988,20 +2028,21 @@
           '<div class="gcv-guide-net-pair">' +
           '<div class="gcv-guide-net-box">' +
           '<div class="gcv-guide-net-box__title">Individual (SEM TRANSPORTE)</div>' +
+          confirmedCheckboxHtml(p, false) +
           '<div class="gcv-dash-field gcv-guide-net-box__field">' +
           '<label class="gcv-dash-label gcv-guide-net-box__label" id="' + p + 'net-label" for="' + p + 'net">Valor a receber por Pessoa (limite de R$' + netMax + ') *</label>' +
           '<input class="gcv-dash-input gcv-guide-net-box__input" id="' + p + 'net" type="number" min="' + netMin + '" max="' + netMax + '" step="1" inputmode="decimal" required /></div>' +
-          '<div id="' + p + 'preview" class="gcv-guide-net-box__hint">Digite o valor a receber (mín. R$ ' + netMin + ', máx. R$ ' + netMax + ').</div>' +
-          confirmedQuorumRowHtml(p, false) +
+          '<div id="' + p + 'preview" class="gcv-guide-net-box__hint" hidden></div>' +
+          quorumOnlyRowHtml(p) +
           '</div>' +
           '<div class="gcv-guide-net-box gcv-guide-net-box--transport is-disabled" id="' + p + 'transport-box">' +
           '<div class="gcv-guide-net-box__title">Individual (COM TRANSPORTE)</div>' +
           '<label class="gcv-dash-label gcv-guide-net-box__transport"><input type="checkbox" id="' + p + 'transport" /> <span id="' + p + 'transport-label">Oferecer vagas com translado</span></label>' +
-          '<div id="' + p + 'transport-fields" hidden>' +
+          '<div id="' + p + 'transport-fields" class="gcv-guide-net-box__body" hidden>' +
           '<div class="gcv-dash-field gcv-guide-net-box__field">' +
           '<label class="gcv-dash-label gcv-guide-net-box__label" id="' + p + 'net-t-label" for="' + p + 'net-t">Valor a receber por Pessoa (limite de R$' + netMaxTransport + ') *</label>' +
           '<input class="gcv-dash-input gcv-guide-net-box__input" id="' + p + 'net-t" type="number" min="' + netMin + '" max="' + netMaxTransport + '" step="1" inputmode="decimal" disabled /></div>' +
-          '<div id="' + p + 'preview-t" class="gcv-guide-net-box__hint">Marque para informar o valor com transporte.</div>' +
+          '<div id="' + p + 'preview-t" class="gcv-guide-net-box__hint" hidden></div>' +
           quorumOnlyRowHtml(p + 't-') +
           '<div class="gcv-dash-field"><label class="gcv-dash-label" for="' + p + 'max-t">Vagas com transporte (máximo 4)</label>' +
           transportMaxSelectHtml(p + 'max-t', DEFAULT_MAX_TRANSPORT) +
@@ -2055,10 +2096,6 @@
           return netMaxForAttractionId(hid ? hid.value : '', true);
         }
 
-        function emptyHintText() {
-          return 'Digite o valor a receber (mín. R$ ' + netMin + ', máx. R$ ' + blockNetMax() + ').';
-        }
-
         function rangeWarn(net, maxOverride) {
           var max = maxOverride != null ? maxOverride : blockNetMax();
           if (!isFinite(net)) return '';
@@ -2082,6 +2119,7 @@
           if (warn) {
             html += '<div class="gcv-guide-net-box__warn">' + esc(warn) + '</div>';
           }
+          box.hidden = false;
           box.innerHTML = html;
         }
 
@@ -2199,7 +2237,8 @@
           var net = parseFloat(raw.replace(',', '.'));
           var cityId = cityEl ? (parseInt(cityEl.value, 10) || 0) : 0;
           if (raw === '' || !isFinite(net) || net < 0) {
-            box.textContent = emptyHintText();
+            box.textContent = '';
+            box.hidden = true;
             return;
           }
           var warn = rangeWarn(net);
@@ -2226,24 +2265,22 @@
           previewTimer = setTimeout(fetchServer, 160);
         }
 
-        function emptyHintTextT() {
-          return 'Digite o valor a receber (mín. R$ ' + netMin + ', máx. R$ ' + blockNetMaxTransport() + ').';
-        }
-
         function refreshPreviewT(immediateServer) {
           var netEl = document.getElementById(p + 'net-t');
           var cityEl = document.getElementById(p + 'city');
           var box = document.getElementById(p + 'preview-t');
           if (!box || !netEl) return;
           if (!blockHasTransport()) {
-            box.textContent = 'Marque para informar o valor com transporte.';
+            box.textContent = '';
+            box.hidden = true;
             return;
           }
           var raw = String(netEl.value || '').trim();
           var net = parseFloat(raw.replace(',', '.'));
           var cityId = cityEl ? (parseInt(cityEl.value, 10) || 0) : 0;
           if (raw === '' || !isFinite(net) || net < 0) {
-            box.textContent = emptyHintTextT();
+            box.textContent = '';
+            box.hidden = true;
             return;
           }
           var warn = rangeWarn(net, blockNetMaxTransport());
@@ -2344,30 +2381,8 @@
               min: typeof global.gcvTodayIso === 'function' ? global.gcvTodayIso() : ''
             });
           }
-          dateEl.addEventListener('change', function () {
-            var blocks = tourBlocks();
-            var start = -1;
-            var i;
-            for (i = 0; i < blocks.length; i++) {
-              if (blocks[i].getAttribute('data-tour-idx') === String(idx)) {
-                start = i;
-                break;
-              }
-            }
-            if (start >= 0 && dateEl.value) {
-              var cur = dateEl.value;
-              for (i = start + 1; i < blocks.length; i++) {
-                cur = addDaysIso(cur, 1);
-                var nidx = blocks[i].getAttribute('data-tour-idx');
-                var nextDate = document.getElementById('ge-' + nidx + '-date');
-                if (nextDate && cur) {
-                  nextDate.value = cur;
-                  nextDate.dispatchEvent(new Event('input', { bubbles: true }));
-                }
-              }
-            }
-            refreshTourTabs();
-          });
+          dateEl.addEventListener('change', syncSequentialDates);
+          dateEl.addEventListener('input', syncSequentialDates);
         }
         bindAttractionCombobox(p + 'attr-q', p + 'attr', p + 'attr-suggest', attrs, {
           getExcludedIds: function () {
@@ -2414,6 +2429,7 @@
         }
         if (!activeTourIdx) selectTourTab(idx);
         refreshTourTabs();
+        syncSequentialDates();
       }
 
       function addTourBlock() {
@@ -2437,12 +2453,9 @@
           if (ph && nh) nh.value = ph.value;
           if (pm && nm) nm.value = pm.value;
         }
-        var last = host.lastElementChild;
-        selectTourTab(idx);
         refreshTourTabs();
-        if (last && idx > 1 && window.matchMedia('(max-width: 768px)').matches) {
-          last.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
+        syncSequentialDates();
+        requestAnimationFrame(function () { selectTourTab(idx); });
       }
 
       function readTourPayload(block, n) {
@@ -2513,6 +2526,85 @@
         return { payload: payload };
       }
 
+      function fieldWrap(node) {
+        if (!node) return null;
+        return (node.closest && (
+          node.closest('.gcv-dash-field') ||
+          node.closest('.gcv-guide-net-box') ||
+          node.closest('.gcv-datepicker')
+        )) || node;
+      }
+
+      function firstPublishIssue() {
+        var blocks = tourBlocks();
+        var many = blocks.length > 1;
+        var seenAttr = {};
+        var i;
+        for (i = 0; i < blocks.length; i++) {
+          var n = i + 1;
+          var idx = blocks[i].getAttribute('data-tour-idx');
+          var p = 'ge-' + idx + '-';
+          var el = function (name) { return document.getElementById(p + name); };
+          var prefix = many ? ('Passeio ' + n + ': ') : '';
+          function issue(node, message) {
+            var focus = node;
+            return {
+              idx: idx,
+              n: n,
+              target: fieldWrap(node) || node,
+              focus: focus,
+              message: prefix + message
+            };
+          }
+          var attrId = parseInt(el('attr') && el('attr').value, 10) || 0;
+          if (!attrId) return issue(el('attr-q') || el('attr'), 'Selecione um atrativo da lista.');
+          if (seenAttr[String(attrId)]) {
+            return issue(el('attr-q') || el('attr'), 'Não é possível repetir o mesmo passeio em mais de um dia.');
+          }
+          seenAttr[String(attrId)] = true;
+          if (!(el('date') && (el('date').value || '').trim())) {
+            return issue(el('date'), 'Informe a data.');
+          }
+          if (!readTimeSelect(p + 'time-h', p + 'time-m')) {
+            return issue(el('time-h'), 'Informe o horário de saída.');
+          }
+          var cityId = parseInt(el('city') && el('city').value, 10) || 0;
+          if (!cityId) return issue(el('city'), 'Selecione a cidade de saída.');
+          if (!(el('meeting') && (el('meeting').value || '').trim())) {
+            return issue(el('meeting'), 'Informe o ponto de encontro.');
+          }
+          var net = parseFloat(el('net') && el('net').value);
+          var maxNet = netMaxForAttractionId(attrId, false);
+          if (!net || !isFinite(net) || net < netMin || net > maxNet) {
+            return issue(el('net'), 'Valor a receber deve ser entre R$ ' + netMin + ' e R$ ' + maxNet + '.');
+          }
+          var maxPeople = clampRange(parseFiniteInt(el('max') && el('max').value, DEFAULT_MAX_PEOPLE), 1, maxCap);
+          var preconfirmed = clampRange(parseFiniteInt(el('preconfirmed') && el('preconfirmed').value, DEFAULT_PRECONFIRMED), 0, MAX_PRECONFIRMED);
+          var confirmed = isTourConfirmed(p);
+          var quorum = confirmed ? 0 : clampRange(parseFiniteInt(el('quorum') && el('quorum').value, DEFAULT_QUORUM), 1, maxQ);
+          if (preconfirmed > maxPeople) preconfirmed = maxPeople;
+          if (maxPeople < preconfirmed + quorum) {
+            return issue(el('max'), 'Vagas devem caber as pessoas confirmadas por fora e o quórum das novas inscrições.');
+          }
+          var withTransport = !!(el('transport') && el('transport').checked);
+          if (withTransport) {
+            var netT = parseFloat(el('net-t') && el('net-t').value);
+            var maxTCap = netMaxForAttractionId(attrId, true);
+            if (!netT || !isFinite(netT) || netT < netMin || netT > maxTCap) {
+              return issue(el('net-t'), 'Valor com transporte deve ser entre R$ ' + netMin + ' e R$ ' + maxTCap + '.');
+            }
+            var tQuorumEl = el('t-quorum');
+            var maxTEl = el('max-t');
+            var maxPeopleT = clampRange(parseFiniteInt(maxTEl ? maxTEl.value : DEFAULT_MAX_TRANSPORT, DEFAULT_MAX_TRANSPORT), 1, Math.min(MAX_TRANSPORT_PEOPLE, maxPeople));
+            var quorumT = clampRange(parseFiniteInt(tQuorumEl ? tQuorumEl.value : DEFAULT_QUORUM, DEFAULT_QUORUM), 1, maxPeopleT);
+            if (quorumT > maxPeopleT) {
+              return issue(tQuorumEl, 'O quórum do transporte não pode ser maior que as vagas com transporte.');
+            }
+          }
+        }
+        return null;
+      }
+
       function sendAll(payloads, i, okCount, errors, done) {
         if (i >= payloads.length) return done(okCount, errors);
         sendJson('POST', '/api/guides/excursions.php', payloads[i], function (e, r) {
@@ -2528,96 +2620,258 @@
         '<div class="gcv-tour-tabs" id="ge-tour-tabs" role="tablist"></div>' +
         '<button type="button" class="gcv-tour-tab gcv-tour-tab--add" id="ge-add-tour-desk" aria-label="Adicionar passeio">+</button>' +
         '</div>' +
-        '<div id="ge-tours"></div>' +
+        '<div id="ge-tours" class="gcv-tour-carousel"></div>' +
         '<button type="button" class="gcv-dash-btn gcv-dash-btn--secondary gcv-dash-form__add gcv-tour-add-mobile" id="ge-add-tour">+ Adicionar passeio</button>' +
         '<div class="gcv-dash-form__footer">' +
         '<div class="gcv-dash-form__footer-actions">' +
-        '<button type="submit" class="gcv-dash-btn gcv-dash-btn--primary">Enviar para aprovação</button>' +
-        '<button type="button" class="gcv-dash-btn gcv-dash-btn--secondary" id="ge-cancel-publish">Cancelar</button>' +
+        '<button type="submit" class="gcv-dash-btn gcv-dash-btn--success">Enviar para aprovação</button>' +
+        '<button type="button" class="gcv-dash-btn gcv-dash-btn--blue" id="ge-clear-publish-footer">Limpar</button>' +
         '</div>' +
-        '<div id="ge-err" class="gcv-dash-alert" hidden></div>' +
         '</div>';
 
       addTourBlock();
+      var publishSpot = null;
+      var publishSpotIssue = null;
+      var publishSpotWatch = null;
+      var publishSpotLayout = null;
+
+      function hidePublishSpot() {
+        if (publishSpotWatch) {
+          document.removeEventListener('input', publishSpotWatch, true);
+          document.removeEventListener('change', publishSpotWatch, true);
+          publishSpotWatch = null;
+        }
+        if (publishSpotLayout) {
+          window.removeEventListener('resize', publishSpotLayout);
+          window.removeEventListener('scroll', publishSpotLayout, true);
+          publishSpotLayout = null;
+        }
+        if (publishSpot) {
+          publishSpot.root.hidden = true;
+          publishSpot.root.setAttribute('aria-hidden', 'true');
+        }
+        document.body.classList.remove('gcv-spot-open');
+        form.querySelectorAll('.is-spotlight').forEach(function (el) {
+          el.classList.remove('is-spotlight');
+        });
+        publishSpotIssue = null;
+      }
+
+      function layoutPublishSpot() {
+        if (!publishSpot || !publishSpotIssue || !publishSpotIssue.target) return;
+        var pad = 6;
+        var r = publishSpotIssue.target.getBoundingClientRect();
+        var top = Math.max(0, Math.round(r.top - pad));
+        var left = Math.max(0, Math.round(r.left - pad));
+        var right = Math.min(window.innerWidth, Math.round(r.right + pad));
+        var bottom = Math.min(window.innerHeight, Math.round(r.bottom + pad));
+        var w = Math.max(8, right - left);
+        var h = Math.max(8, bottom - top);
+        publishSpot.n.style.cssText = 'top:0;left:0;right:0;height:' + top + 'px';
+        publishSpot.s.style.cssText = 'top:' + bottom + 'px;left:0;right:0;bottom:0';
+        publishSpot.w.style.cssText = 'top:' + top + 'px;left:0;width:' + left + 'px;height:' + h + 'px';
+        publishSpot.e.style.cssText = 'top:' + top + 'px;left:' + right + 'px;right:0;height:' + h + 'px';
+        publishSpot.ring.style.cssText = 'top:' + top + 'px;left:' + left + 'px;width:' + w + 'px;height:' + h + 'px';
+        publishSpot.msg.textContent = publishSpotIssue.message || '';
+        var alertW = Math.min(320, window.innerWidth - 24);
+        publishSpot.alert.style.width = alertW + 'px';
+        var alertH = publishSpot.alert.offsetHeight || 96;
+        var alertTop = bottom + 10;
+        if (alertTop + alertH > window.innerHeight - 12) {
+          alertTop = Math.max(12, top - alertH - 10);
+        }
+        var alertLeft = left;
+        if (alertLeft + alertW > window.innerWidth - 12) alertLeft = window.innerWidth - alertW - 12;
+        if (alertLeft < 12) alertLeft = 12;
+        publishSpot.alert.style.top = alertTop + 'px';
+        publishSpot.alert.style.left = alertLeft + 'px';
+      }
+
+      function ensurePublishSpot() {
+        if (publishSpot) return;
+        var root = document.createElement('div');
+        root.className = 'gcv-spot';
+        root.hidden = true;
+        root.setAttribute('aria-hidden', 'true');
+        root.innerHTML =
+          '<div class="gcv-spot__dim" data-edge="n"></div>' +
+          '<div class="gcv-spot__dim" data-edge="s"></div>' +
+          '<div class="gcv-spot__dim" data-edge="w"></div>' +
+          '<div class="gcv-spot__dim" data-edge="e"></div>' +
+          '<div class="gcv-spot__ring"></div>' +
+          '<div class="gcv-spot__alert" role="alert">' +
+          '<p class="gcv-spot__msg"></p>' +
+          '<button type="button" class="gcv-spot__ok">Entendi</button>' +
+          '</div>';
+        document.body.appendChild(root);
+        root.addEventListener('click', function (ev) {
+          var edge = ev.target && ev.target.getAttribute && ev.target.getAttribute('data-edge');
+          if (edge) hidePublishSpot();
+        });
+        root.querySelector('.gcv-spot__ok').addEventListener('click', function () { hidePublishSpot(); });
+        document.addEventListener('keydown', function (ev) {
+          if (ev.key === 'Escape' && publishSpot && !publishSpot.root.hidden) {
+            ev.preventDefault();
+            hidePublishSpot();
+          }
+        });
+        publishSpot = {
+          root: root,
+          n: root.querySelector('[data-edge="n"]'),
+          s: root.querySelector('[data-edge="s"]'),
+          w: root.querySelector('[data-edge="w"]'),
+          e: root.querySelector('[data-edge="e"]'),
+          ring: root.querySelector('.gcv-spot__ring'),
+          alert: root.querySelector('.gcv-spot__alert'),
+          msg: root.querySelector('.gcv-spot__msg')
+        };
+      }
+
+      function showPublishSpot(issue) {
+        if (!issue || !issue.target) return;
+        ensurePublishSpot();
+        form.querySelectorAll('.is-spotlight').forEach(function (el) {
+          el.classList.remove('is-spotlight');
+        });
+        publishSpotIssue = issue;
+        issue.target.classList.add('is-spotlight');
+        selectTourTab(issue.idx);
+        requestAnimationFrame(function () {
+          pinTourTabsBar();
+          var header = document.getElementById('gcv-dash-sidebar');
+          var tabs = form.querySelector('.gcv-tour-tabs-wrap');
+          var headerH = header ? header.getBoundingClientRect().height : 60;
+          var tabsH = (form.classList.contains('is-tour-carousel') && tabs && tabs.offsetHeight) ? tabs.offsetHeight : 0;
+          var y = issue.target.getBoundingClientRect().top + (window.pageYOffset || 0) - headerH - tabsH - 24;
+          if (y < 0) y = 0;
+          window.scrollTo(0, y);
+          requestAnimationFrame(function () {
+            publishSpot.root.hidden = false;
+            publishSpot.root.setAttribute('aria-hidden', 'false');
+            document.body.classList.add('gcv-spot-open');
+            layoutPublishSpot();
+            if (!publishSpotLayout) {
+              publishSpotLayout = function () { layoutPublishSpot(); };
+              window.addEventListener('resize', publishSpotLayout);
+              window.addEventListener('scroll', publishSpotLayout, true);
+            }
+            var focusEl = issue.focus;
+            if (focusEl && typeof focusEl.focus === 'function') {
+              try { focusEl.focus({ preventScroll: true }); } catch (err) { focusEl.focus(); }
+            }
+          });
+        });
+        if (!publishSpotWatch) {
+          publishSpotWatch = function () {
+            if (!publishSpotIssue) return;
+            var next = firstPublishIssue();
+            if (!next) {
+              hidePublishSpot();
+              return;
+            }
+            if (next.focus !== publishSpotIssue.focus || next.message !== publishSpotIssue.message) {
+              showPublishSpot(next);
+            } else {
+              layoutPublishSpot();
+            }
+          };
+          document.addEventListener('input', publishSpotWatch, true);
+          document.addEventListener('change', publishSpotWatch, true);
+        }
+      }
+
       function resetPublishForm() {
+        hidePublishSpot();
         var host = document.getElementById('ge-tours');
         if (host) host.innerHTML = '';
         nextIdx = 1;
         activeTourIdx = null;
         addTourBlock();
-        var errEl = document.getElementById('ge-err');
-        if (errEl) {
-          errEl.hidden = true;
-          errEl.textContent = '';
+      }
+      form._gcvResetPublish = resetPublishForm;
+      bindClearPublishButtons(form);
+      function scrollPublishToTop() {
+        var header = document.getElementById('gcv-dash-sidebar');
+        var wrap = form.querySelector('.gcv-tour-tabs-wrap');
+        var host = document.getElementById('ge-tours');
+        var headerH = header ? header.getBoundingClientRect().height : 60;
+        var el = (wrap && wrap.offsetHeight) ? wrap : host;
+        if (!el) return;
+        var y = el.getBoundingClientRect().top + (window.pageYOffset || 0) - headerH;
+        if (y < 0) y = 0;
+        if (typeof window.scrollTo === 'function') {
+          window.scrollTo({ top: y, behavior: 'auto' });
+        } else {
+          window.scrollTop = y;
         }
       }
-      function onAddTour() { addTourBlock(); }
+      function onAddTour() {
+        addTourBlock();
+        requestAnimationFrame(function () {
+          pinTourTabsBar();
+          requestAnimationFrame(function () { scrollPublishToTop(); });
+        });
+      }
       var addMobile = document.getElementById('ge-add-tour');
       var addDesk = document.getElementById('ge-add-tour-desk');
       if (addMobile) addMobile.onclick = onAddTour;
       if (addDesk) addDesk.onclick = onAddTour;
-      var cancelBtn = document.getElementById('ge-cancel-publish');
-      if (cancelBtn) {
-        cancelBtn.onclick = function () { resetPublishForm(); };
+      var carouselHost = document.getElementById('ge-tours');
+      if (carouselHost && carouselHost.getAttribute('data-carousel-bound') !== '1') {
+        carouselHost.setAttribute('data-carousel-bound', '1');
+        var carouselTick = false;
+        carouselHost.addEventListener('scroll', function () {
+          if (carouselTick) return;
+          carouselTick = true;
+          requestAnimationFrame(function () {
+            carouselTick = false;
+            syncCarouselActive();
+          });
+        }, { passive: true });
+        window.addEventListener('resize', function () {
+          pinTourTabsBar();
+          if (activeTourIdx) scrollTourIntoView(activeTourIdx);
+        });
       }
       form.setAttribute('data-ready', '1');
 
       form.onsubmit = function (ev) {
         ev.preventDefault();
-        var errEl = document.getElementById('ge-err');
+        var issue = firstPublishIssue();
+        if (issue) {
+          showPublishSpot(issue);
+          return;
+        }
+        hidePublishSpot();
         var blocks = tourBlocks();
         var payloads = [];
         var i;
         for (i = 0; i < blocks.length; i++) {
           var parsed = readTourPayload(blocks[i], i + 1);
           if (parsed.error) {
-            if (errEl) {
-              errEl.hidden = false;
-              errEl.className = 'gcv-dash-alert gcv-dash-alert--warning';
-              errEl.textContent = parsed.error;
-            }
+            showPublishSpot(firstPublishIssue());
             return;
           }
           payloads.push(parsed.payload);
         }
-        var seenAttr = {};
-        for (i = 0; i < payloads.length; i++) {
-          var aid = String(payloads[i].attraction_id || '');
-          if (aid && seenAttr[aid]) {
-            if (errEl) {
-              errEl.hidden = false;
-              errEl.className = 'gcv-dash-alert gcv-dash-alert--warning';
-              errEl.textContent = 'Não é possível repetir o mesmo passeio em mais de um dia.';
-            }
-            return;
-          }
-          if (aid) seenAttr[aid] = true;
-        }
-        var btn = form.querySelector('.gcv-dash-form__footer .gcv-dash-btn--primary');
+        var btn = form.querySelector('.gcv-dash-form__footer button[type="submit"]');
         if (btn) btn.disabled = true;
         sendAll(payloads, 0, 0, [], function (okCount, errors) {
           if (btn) btn.disabled = false;
-          if (!errEl) return;
-          errEl.hidden = false;
+          var msg;
           if (errors.length && !okCount) {
-            errEl.className = 'gcv-dash-alert gcv-dash-alert--warning';
-            errEl.textContent = errors.join(' ');
+            msg = errors.join(' ');
+            if (typeof global.gcvAlert === 'function') global.gcvAlert(msg);
+            else window.alert(msg);
             return;
           }
-          errEl.className = 'gcv-dash-alert gcv-dash-alert--info';
-          var msg = okCount === 1
-            ? '1 passeio enviado para aprovação.'
-            : okCount + ' passeios enviados para aprovação.';
-          msg += ' Só aparecem no site depois que o administrador aprovar.';
+          msg = okCount === 1
+            ? '1 passeio enviado para aprovação. Só aparece no site depois que o administrador aprovar.'
+            : okCount + ' passeios enviados para aprovação. Só aparecem no site depois que o administrador aprovar.';
           if (errors.length) msg += ' ' + errors.join(' ');
-          errEl.textContent = msg;
-          if (okCount) {
-            var keepClass = errEl.className;
-            resetPublishForm();
-            errEl.hidden = false;
-            errEl.className = keepClass;
-            errEl.textContent = msg;
-          }
+          if (okCount) resetPublishForm();
+          if (typeof global.gcvAlert === 'function') global.gcvAlert(msg);
+          else window.alert(msg);
         });
       };
     });

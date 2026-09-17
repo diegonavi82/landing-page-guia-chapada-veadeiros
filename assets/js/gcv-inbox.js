@@ -127,13 +127,6 @@
         openPage();
       });
     }
-    var mark = document.getElementById('gcv-inbox-mark-all');
-    if (mark && !mark._gcvBound) {
-      mark._gcvBound = true;
-      mark.addEventListener('click', function () {
-        post('/api/inbox/read.php', { all: true }, function () { loadList(); });
-      });
-    }
     var list = document.getElementById('gcv-inbox-list');
     if (list && !list._gcvBound) {
       list._gcvBound = true;

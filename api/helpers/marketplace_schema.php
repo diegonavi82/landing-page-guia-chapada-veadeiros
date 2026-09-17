@@ -368,6 +368,70 @@ function gcv_marketplace_ensure_sales_client_columns(PDO $pdo): void
             error_log('sales tourist_phone col: ' . $e->getMessage());
         }
     }
+    if (!isset($existing['include_transport'])) {
+        try {
+            $pdo->exec('ALTER TABLE gcv_sales ADD COLUMN include_transport TINYINT(1) NOT NULL DEFAULT 0');
+        } catch (Throwable $e) {
+            error_log('sales include_transport col: ' . $e->getMessage());
+        }
+    }
+}
+
+/**
+ * Reserva com translado: flag no JSON, trip.comTransporte ou cartId com sufixo -t (van).
+ *
+ * @param array<string,mixed>|null $reservation
+ */
+function gcv_reservation_has_transport(?array $reservation): bool
+{
+    if (!$reservation) {
+        return false;
+    }
+    if (!empty($reservation['comTransporte']) || !empty($reservation['include_transport']) || !empty($reservation['with_transport'])) {
+        return true;
+    }
+    foreach ((array)($reservation['trips'] ?? []) as $t) {
+        if (!is_array($t)) {
+            continue;
+        }
+        if (!empty($t['comTransporte']) || !empty($t['include_transport']) || !empty($t['withTransport']) || !empty($t['with_transport'])) {
+            return true;
+        }
+        $cart = strtolower(trim((string)($t['cartId'] ?? $t['cart_id'] ?? $t['cartSlug'] ?? '')));
+        if ($cart !== '' && (str_ends_with($cart, '-t') || str_contains($cart, '-t-'))) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Infere com/sem transporte a partir da venda, PIX e preço da saída.
+ *
+ * @param array<string,mixed> $row
+ * @param array<string,mixed>|null $pix
+ */
+function gcv_sale_row_has_transport(array $row, ?array $pix = null): bool
+{
+    if (!empty($row['sale_include_transport'])) {
+        return true;
+    }
+    if ($pix && gcv_reservation_has_transport($pix)) {
+        return true;
+    }
+    $unit = (int)($row['unit_price_cents'] ?? 0);
+    $priceT = (int)($row['price_transport_cents'] ?? 0);
+    $priceW = (int)($row['price_cents'] ?? 0);
+    if ($priceT > 0 && $unit > 0 && abs($unit - $priceT) <= 50) {
+        return true;
+    }
+    if ($priceW > 0 && $unit > 0 && abs($unit - $priceW) <= 50) {
+        return false;
+    }
+    if (!empty($row['offer_transport'])) {
+        return false;
+    }
+    return !empty($row['include_transport']);
 }
 
 function gcv_marketplace_ensure_payout_columns(PDO $pdo): void

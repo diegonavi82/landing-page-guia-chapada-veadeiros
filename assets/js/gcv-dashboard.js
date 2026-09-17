@@ -126,7 +126,8 @@
   }
 
   function fmtMoney(cents) {
-    return 'R$ ' + (cents / 100).toFixed(2).replace('.', ',');
+    if (cents == null || cents === '') return '—';
+    return 'R$ ' + (Number(cents) / 100).toFixed(2).replace('.', ',');
   }
 
   function statusBadge(status) {
@@ -323,29 +324,35 @@
   function loadAdminBookings() {
     var tbody = document.getElementById('admin-bookings-body');
     if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#888;">Carregando…</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#888;">Carregando…</td></tr>';
     get('/api/admin/bookings.php', function (err, res) {
       if (!res || !res.ok) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#888;">Erro ao carregar reservas.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#888;">Erro ao carregar reservas.</td></tr>';
         return;
       }
       var rows = (res.data && res.data.bookings) || [];
       if (!rows.length) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#888;">Nenhuma reserva ainda.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#888;">Nenhuma reserva ainda.</td></tr>';
         return;
       }
       tbody.innerHTML = rows.map(function (b) {
         var code = b.reservation_id || ('#' + b.id);
         var when = String(b.created_at || '').replace('T', ' ').substr(0, 10);
+        var transport = b.with_transport
+          ? '<span class="gcv-badge gcv-badge--transport-com">Com transporte</span>'
+          : '<span class="gcv-badge gcv-badge--transport-sem">Sem transporte</span>';
         return '<tr>'
-          + '<td>' + escapeHtml(code) + '</td>'
-          + '<td>' + escapeHtml(b.tour_title || '') + '</td>'
-          + '<td>' + escapeHtml(b.client_name || '') + '</td>'
-          + '<td>' + escapeHtml(b.guide_name || '') + '</td>'
-          + '<td>' + b.spots + '</td>'
-          + '<td>' + fmtMoney(b.total_cents) + '</td>'
-          + '<td>' + statusBadge(b.status) + '</td>'
-          + '<td>' + escapeHtml(when) + '</td>'
+          + '<td data-label="Código">' + escapeHtml(code) + '</td>'
+          + '<td data-label="Passeio">' + escapeHtml(b.tour_title || '') + '</td>'
+          + '<td data-label="Cliente">' + escapeHtml(b.client_name || '') + '</td>'
+          + '<td data-label="Guia">' + escapeHtml(b.guide_name || '') + '</td>'
+          + '<td data-label="Transporte">' + transport + '</td>'
+          + '<td data-label="Vagas">' + b.spots + '</td>'
+          + '<td data-label="Total">' + fmtMoney(b.total_cents) + '</td>'
+          + '<td data-label="Taxa">' + fmtMoney(b.platform_revenue_cents) + '</td>'
+          + '<td data-label="Pago ao guia">' + fmtMoney(b.guide_amount_cents) + '</td>'
+          + '<td data-label="Status">' + statusBadge(b.status) + '</td>'
+          + '<td data-label="Data">' + escapeHtml(when) + '</td>'
           + '</tr>';
       }).join('');
     });
@@ -876,7 +883,7 @@
       profile:
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
       money:
-        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 21h18"/><path d="M5 21V8l7-5 7 5v13"/><path d="M9 21v-6h6v6"/></svg>'
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>'
     };
     return svg[kind] || '';
   }
@@ -905,7 +912,7 @@
       items = [
         { id: 'section-guide-create-tour',  icon: '➕', label: 'Publicar passeio',  tab: 'Publicar',   tabIcon: 'publish', load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuidePublish(); } },
         { id: 'section-guide-tours',        icon: '📅', label: 'Agenda',            tab: 'Agenda',      tabIcon: 'agenda',  load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideAgenda(); } },
-        { id: 'section-guide-financial',    icon: '🏦', label: 'Financeiro',       tab: 'Financeiro', tabIcon: 'money',   load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideEarnings(); } },
+        { id: 'section-guide-financial',    icon: '💲', label: 'Financeiro',       tab: 'Financeiro', tabIcon: 'money',   load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideEarnings(); } },
         { id: 'section-guide-profile',      icon: '👤', label: 'Meu perfil',        tab: 'Perfil',     tabIcon: 'profile', load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideProfile(); } },
       ];
     } else if (role === 'guide' && (status === 'pending' || status === 'suspended')) {

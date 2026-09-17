@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="/assets/css/site.css?v=1.0.39" />
-<link rel="stylesheet" href="/assets/css/gcv-dashboard.css?v=1.1.02" />
+<link rel="stylesheet" href="/assets/css/gcv-dashboard.css?v=1.1.24" />
 <link rel="stylesheet" href="/assets/css/gcv-confirm.css?v=1.0.4" />
 <link rel="stylesheet" href="/assets/css/gcv-tours.css?v=1.0.1" />
 <link rel="stylesheet" href="/assets/css/gcv-payment.css?v=1.0.1" />
@@ -178,7 +178,7 @@
           <h2 class="gcv-dash-section-title">Todas as Reservas</h2>
           <div class="gcv-dash-table-wrap">
             <table class="gcv-dash-table" id="admin-bookings-table">
-              <thead><tr><th>Código</th><th>Passeio</th><th>Cliente</th><th>Guia</th><th>Vagas</th><th>Total</th><th>Status</th><th>Data</th></tr></thead>
+              <thead><tr><th>Código</th><th>Passeio</th><th>Cliente</th><th>Guia</th><th>Transporte</th><th>Vagas</th><th>Total</th><th>Taxa</th><th>Pago ao guia</th><th>Status</th><th>Data</th></tr></thead>
               <tbody id="admin-bookings-body"></tbody>
             </table>
           </div>
@@ -251,18 +251,15 @@
         <!-- ===== GUIDE SECTIONS ===== -->
 
         <section class="gcv-dash-section" id="section-guide-create-tour">
-          <h2 class="gcv-dash-section-title">Publicar passeio</h2>
+          <div class="gcv-dash-section-head">
+            <h2 class="gcv-dash-section-title">Publicar passeio</h2>
+            <button type="button" class="gcv-dash-btn gcv-dash-btn--blue gcv-dash-btn--sm" id="ge-clear-publish">Limpar</button>
+          </div>
           <form class="gcv-dash-form gcv-dash-form--publish" id="gcv-guide-create-tour-form" novalidate></form>
         </section>
 
         <section class="gcv-dash-section" id="section-guide-tours">
           <h2 class="gcv-dash-section-title">Agenda</h2>
-          <div class="gcv-dash-agenda-head">
-            <p class="gcv-dash-hint">
-              No dia do passeio, leia o QR de cada grupo. Sem leitura, o número de pessoas guiadas não é contabilizado.
-            </p>
-            <button type="button" class="gcv-dash-btn gcv-dash-btn--primary" id="guide-agenda-goto-publish">Publicar passeio</button>
-          </div>
           <div id="guide-tours-list"></div>
         </section>
 
@@ -321,12 +318,6 @@
 
         <section class="gcv-dash-section" id="section-inbox">
           <h2 class="gcv-dash-section-title">Notificações</h2>
-          <p class="gcv-dash-hint" style="margin:0 0 0.75rem;color:#64748b;font-size:0.85rem;">
-            Os mesmos avisos enviados por WhatsApp e e-mail.
-          </p>
-          <p style="margin:0 0 1rem;text-align:right;">
-            <button type="button" class="gcv-dash-btn" id="gcv-inbox-mark-all">Marcar todas como lidas</button>
-          </p>
           <div id="gcv-inbox-list" class="gcv-inbox-list"></div>
         </section>
 
@@ -377,9 +368,9 @@
   <script src="/assets/js/gcv-datepicker.js?v=1.0.1" defer></script>
   <script src="/assets/js/gcv-admin-cms.js?v=1.0.82" defer></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
-  <script src="/assets/js/gcv-dash-roles.js?v=1.1.06" defer></script>
-  <script src="/assets/js/gcv-inbox.js?v=1.0.2" defer></script>
-  <script src="/assets/js/gcv-dashboard.js?v=1.0.86" defer></script>
+  <script src="/assets/js/gcv-dash-roles.js?v=1.1.23" defer></script>
+  <script src="/assets/js/gcv-inbox.js?v=1.0.3" defer></script>
+  <script src="/assets/js/gcv-dashboard.js?v=1.0.88" defer></script>
   <script src="/assets/js/gcv-payment.js?v=1.0.40" defer></script>
   <script src="/assets/js/site.js?v=1.0.40" defer></script>
 </body>

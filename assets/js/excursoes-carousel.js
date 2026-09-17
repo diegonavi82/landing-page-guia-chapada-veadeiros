@@ -2930,6 +2930,7 @@
       qty: Math.max(1, parseInt(String(qty), 10) || 1),
       cartId: excursaoCartId(e),
       valorUnit: excursaoValor(e),
+      comTransporte: e && e.comTransporte === true,
       weekday: String((e && e.weekday) || ""),
       dateIso: dateIso,
       dayNum: e && e.dayNum != null ? String(e.dayNum) : "",
@@ -2954,6 +2955,7 @@
       qty: Math.max(1, parseInt(String(trip.qty), 10) || 1),
       cartId: trip.cartId || "",
       valorUnit: parseInt(String(trip.valorUnit), 10) || 0,
+      comTransporte: trip.comTransporte === true,
       weekday: trip.weekday || "",
       dateIso: trip.dateIso || trip.dateISO || "",
       dayNum: trip.dayNum != null ? String(trip.dayNum) : "",
@@ -2991,6 +2993,7 @@
         if (!out.meetingMapsUrl && rows[i].meetingMapsUrl) {
           out.meetingMapsUrl = String(rows[i].meetingMapsUrl);
         }
+        if (rows[i].comTransporte === true) out.comTransporte = true;
         if (out.dateIso) {
           out.dateShort =
             out.dateIso.slice(8, 10) + "/" + out.dateIso.slice(5, 7) + "/" + out.dateIso.slice(0, 4);

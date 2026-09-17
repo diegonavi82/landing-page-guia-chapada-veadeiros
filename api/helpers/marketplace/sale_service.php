@@ -76,6 +76,14 @@ function gcv_sale_capture_from_pix_reservation(array $reservation, string $sourc
         $unitCents = (int)round($soldCents / $spots);
     }
 
+    $withTransport = gcv_reservation_has_transport($reservation);
+    if ($withTransport && $excursion) {
+        $priceT = (int)($excursion['price_transport_cents'] ?? 0);
+        if ($priceT > 0) {
+            $unitCents = $priceT;
+        }
+    }
+
     $businessMode = GcvBusinessMode::normalize(
         $excursion['business_mode'] ?? null,
         GcvBusinessMode::ADMINISTRATIVE
@@ -87,12 +95,16 @@ function gcv_sale_capture_from_pix_reservation(array $reservation, string $sourc
 
     // Snapshot: valores congelados da excursão no momento da venda
     if ($businessMode === GcvBusinessMode::GUIDE_MARKETPLACE) {
-        $unitGuide = (int)($excursion['guide_net_cents'] ?? 0);
+        $unitGuide = $withTransport
+            ? (int)($excursion['guide_net_transport_cents'] ?? $excursion['guide_net_cents'] ?? 0)
+            : (int)($excursion['guide_net_cents'] ?? 0);
         $unitPlatform = max(0, $unitCents - $unitGuide);
         $commissionPct = (float)($excursion['commission_pct_applied'] ?? 0);
         $ruleId = isset($excursion['commission_rule_id']) ? (int)$excursion['commission_rule_id'] : null;
     } else {
-        $unitGuide = (int)($excursion['guide_payout_planned_cents'] ?? $excursion['guide_net_cents'] ?? 0);
+        $unitGuide = $withTransport
+            ? (int)($excursion['guide_net_transport_cents'] ?? $excursion['guide_payout_planned_cents'] ?? $excursion['guide_net_cents'] ?? 0)
+            : (int)($excursion['guide_payout_planned_cents'] ?? $excursion['guide_net_cents'] ?? 0);
         if ($unitGuide <= 0 && $unitCents > 0) {
             // legado: usa comissão percentual se não houver repasse definido
             $commissionPct = (float)($excursion['commission_pct_applied'] ?? setting('platform_commission_pct', '10'));
@@ -147,66 +159,132 @@ function gcv_sale_capture_from_pix_reservation(array $reservation, string $sourc
         }
     }
 
+    $salesCols = gcv_marketplace_column_map($pdo, 'gcv_sales') ?: [];
+    $hasTransportCol = isset($salesCols['include_transport']);
+
     $pdo->beginTransaction();
     try {
         if ($sale) {
-            $upd = $pdo->prepare(
-                'UPDATE gcv_sales SET
-                  sale_status=?, paid_at=?, sold_price_cents=?, guide_amount_cents=?, platform_revenue_cents=?,
-                  updated_at=NOW()
-                 WHERE id=?'
-            );
-            $upd->execute([
-                $status,
-                $paidAt,
-                $soldCents,
-                $guideAmount,
-                $platformRevenue,
-                (int)$sale['id'],
-            ]);
+            if ($hasTransportCol) {
+                $upd = $pdo->prepare(
+                    'UPDATE gcv_sales SET
+                      sale_status=?, paid_at=?, sold_price_cents=?, guide_amount_cents=?, platform_revenue_cents=?,
+                      include_transport=?, updated_at=NOW()
+                     WHERE id=?'
+                );
+                $upd->execute([
+                    $status,
+                    $paidAt,
+                    $soldCents,
+                    $guideAmount,
+                    $platformRevenue,
+                    $withTransport ? 1 : 0,
+                    (int)$sale['id'],
+                ]);
+            } else {
+                $upd = $pdo->prepare(
+                    'UPDATE gcv_sales SET
+                      sale_status=?, paid_at=?, sold_price_cents=?, guide_amount_cents=?, platform_revenue_cents=?,
+                      updated_at=NOW()
+                     WHERE id=?'
+                );
+                $upd->execute([
+                    $status,
+                    $paidAt,
+                    $soldCents,
+                    $guideAmount,
+                    $platformRevenue,
+                    (int)$sale['id'],
+                ]);
+            }
             $saleId = (int)$sale['id'];
         } else {
-            $ins = $pdo->prepare(
-                'INSERT INTO gcv_sales (
-                  reservation_id, excursion_id, tourist_user_id, tourist_name, tourist_email, tourist_cpf,
-                  guide_user_id, guide_name, guide_cpf, guide_cnpj, city_id, city_name, attraction_id,
-                  category_key, excursion_title, spots, sold_price_cents, unit_price_cents,
-                  guide_amount_cents, platform_revenue_cents, commission_pct_applied, commission_rule_id,
-                  business_mode, created_by_origin, sale_status, payout_status,
-                  excursion_starts_at, scheduled_payout_at, paid_at, sold_at
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW())'
-            );
-            $ins->execute([
-                $reservationId,
-                $excursion ? (int)$excursion['id'] : null,
-                null,
-                trim((string)($reservation['name'] ?? $reservation['customer_name'] ?? '')) ?: null,
-                trim((string)($reservation['email'] ?? '')) ?: null,
-                preg_replace('/\D+/', '', (string)($reservation['cpf'] ?? '')) ?: null,
-                $guide['user_id'],
-                $guide['name'],
-                $guide['cpf'],
-                $guide['cnpj'],
-                $excursion ? (int)($excursion['departure_city_id'] ?? 0) ?: null : null,
-                $excursion['departure_city_name'] ?? null,
-                $excursion ? (int)($excursion['attraction_id'] ?? 0) ?: null : null,
-                null,
-                $excursion['attraction_title'] ?? ($reservation['destino'] ?? null),
-                $spots,
-                $soldCents,
-                $unitCents,
-                $guideAmount,
-                $platformRevenue,
-                $commissionPct ?? 0,
-                $ruleId ?? null,
-                $businessMode,
-                $createdByOrigin,
-                $status,
-                GcvPayoutStatus::PENDING,
-                $startsAt,
-                $scheduledPayoutAt,
-                $paidAt,
-            ]);
+            if ($hasTransportCol) {
+                $ins = $pdo->prepare(
+                    'INSERT INTO gcv_sales (
+                      reservation_id, excursion_id, tourist_user_id, tourist_name, tourist_email, tourist_cpf,
+                      guide_user_id, guide_name, guide_cpf, guide_cnpj, city_id, city_name, attraction_id,
+                      category_key, excursion_title, spots, sold_price_cents, unit_price_cents,
+                      guide_amount_cents, platform_revenue_cents, commission_pct_applied, commission_rule_id,
+                      business_mode, created_by_origin, sale_status, payout_status,
+                      excursion_starts_at, scheduled_payout_at, paid_at, include_transport, sold_at
+                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW())'
+                );
+                $ins->execute([
+                    $reservationId,
+                    $excursion ? (int)$excursion['id'] : null,
+                    null,
+                    trim((string)($reservation['name'] ?? $reservation['customer_name'] ?? '')) ?: null,
+                    trim((string)($reservation['email'] ?? '')) ?: null,
+                    preg_replace('/\D+/', '', (string)($reservation['cpf'] ?? '')) ?: null,
+                    $guide['user_id'],
+                    $guide['name'],
+                    $guide['cpf'],
+                    $guide['cnpj'],
+                    $excursion ? (int)($excursion['departure_city_id'] ?? 0) ?: null : null,
+                    $excursion['departure_city_name'] ?? null,
+                    $excursion ? (int)($excursion['attraction_id'] ?? 0) ?: null : null,
+                    null,
+                    $excursion['attraction_title'] ?? ($reservation['destino'] ?? null),
+                    $spots,
+                    $soldCents,
+                    $unitCents,
+                    $guideAmount,
+                    $platformRevenue,
+                    $commissionPct ?? 0,
+                    $ruleId ?? null,
+                    $businessMode,
+                    $createdByOrigin,
+                    $status,
+                    GcvPayoutStatus::PENDING,
+                    $startsAt,
+                    $scheduledPayoutAt,
+                    $paidAt,
+                    $withTransport ? 1 : 0,
+                ]);
+            } else {
+                $ins = $pdo->prepare(
+                    'INSERT INTO gcv_sales (
+                      reservation_id, excursion_id, tourist_user_id, tourist_name, tourist_email, tourist_cpf,
+                      guide_user_id, guide_name, guide_cpf, guide_cnpj, city_id, city_name, attraction_id,
+                      category_key, excursion_title, spots, sold_price_cents, unit_price_cents,
+                      guide_amount_cents, platform_revenue_cents, commission_pct_applied, commission_rule_id,
+                      business_mode, created_by_origin, sale_status, payout_status,
+                      excursion_starts_at, scheduled_payout_at, paid_at, sold_at
+                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW())'
+                );
+                $ins->execute([
+                    $reservationId,
+                    $excursion ? (int)$excursion['id'] : null,
+                    null,
+                    trim((string)($reservation['name'] ?? $reservation['customer_name'] ?? '')) ?: null,
+                    trim((string)($reservation['email'] ?? '')) ?: null,
+                    preg_replace('/\D+/', '', (string)($reservation['cpf'] ?? '')) ?: null,
+                    $guide['user_id'],
+                    $guide['name'],
+                    $guide['cpf'],
+                    $guide['cnpj'],
+                    $excursion ? (int)($excursion['departure_city_id'] ?? 0) ?: null : null,
+                    $excursion['departure_city_name'] ?? null,
+                    $excursion ? (int)($excursion['attraction_id'] ?? 0) ?: null : null,
+                    null,
+                    $excursion['attraction_title'] ?? ($reservation['destino'] ?? null),
+                    $spots,
+                    $soldCents,
+                    $unitCents,
+                    $guideAmount,
+                    $platformRevenue,
+                    $commissionPct ?? 0,
+                    $ruleId ?? null,
+                    $businessMode,
+                    $createdByOrigin,
+                    $status,
+                    GcvPayoutStatus::PENDING,
+                    $startsAt,
+                    $scheduledPayoutAt,
+                    $paidAt,
+                ]);
+            }
             $saleId = (int)$pdo->lastInsertId();
         }
 

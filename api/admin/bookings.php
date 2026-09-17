@@ -35,6 +35,14 @@ function gcv_admin_booking_row(array $row): array
         'reservation_id' => $row['reservation_id'] ?? null,
         'spots' => (int)($row['spots'] ?? 1),
         'total_cents' => (int)($row['total_cents'] ?? 0),
+        'platform_revenue_cents' => isset($row['platform_revenue_cents']) && $row['platform_revenue_cents'] !== null && $row['platform_revenue_cents'] !== ''
+            ? (int)$row['platform_revenue_cents']
+            : null,
+        'guide_amount_cents' => isset($row['guide_amount_cents']) && $row['guide_amount_cents'] !== null && $row['guide_amount_cents'] !== ''
+            ? (int)$row['guide_amount_cents']
+            : null,
+        'payout_status' => $row['payout_status'] ?? null,
+        'with_transport' => !empty($row['with_transport']),
         'status' => $status ?: 'pending',
         'created_at' => $row['created_at'] ?? null,
         'tour_title' => $row['tour_title'] ?? 'Passeio',
@@ -49,8 +57,15 @@ $rows = [];
 $seen = [];
 
 try {
+    $salesCols = gcv_marketplace_column_map(db(), 'gcv_sales') ?: [];
+    $saleTransportSql = isset($salesCols['include_transport'])
+        ? 's.include_transport AS sale_include_transport,'
+        : 'NULL AS sale_include_transport,';
     $sql =
         'SELECT s.id, s.reservation_id, s.spots, s.sold_price_cents AS total_cents,
+                s.guide_amount_cents, s.platform_revenue_cents, s.payout_status,
+                s.unit_price_cents, ' . $saleTransportSql . '
+                e.include_transport, e.offer_transport, e.price_cents, e.price_transport_cents,
                 s.sale_status AS status,
                 COALESCE(s.paid_at, s.sold_at, s.created_at) AS created_at,
                 COALESCE(NULLIF(s.excursion_title, \'\'), a.title_pt, \'Passeio\') AS tour_title,
@@ -76,6 +91,8 @@ try {
         if ($rid !== '') {
             $seen[$rid] = true;
         }
+        $pix = $rid !== '' ? gcv_pix_read_reservation($rid) : null;
+        $r['with_transport'] = gcv_sale_row_has_transport($r, $pix);
         $rows[] = gcv_admin_booking_row($r);
     }
 } catch (Throwable $e) {
@@ -116,18 +133,34 @@ try {
             $created = str_replace('T', ' ', $created);
         }
         $seen[$rid] = true;
+        $spots = (int)($res['qty'] ?? $res['people'] ?? $res['spots'] ?? 0);
+        if ($spots < 1 && !empty($res['trips']) && is_array($res['trips'])) {
+            foreach ($res['trips'] as $t) {
+                $spots += max(1, (int)($t['qty'] ?? 1));
+            }
+        }
+        if ($spots < 1) {
+            $spots = 1;
+        }
+        $guideName = (string)($res['guide_name'] ?? '');
+        if ($guideName === '' && !empty($res['trips'][0]['guiaNome'])) {
+            $guideName = (string)$res['trips'][0]['guiaNome'];
+        }
         $rows[] = gcv_admin_booking_row([
             'id' => $rid,
             'reservation_id' => $rid,
-            'spots' => (int)($res['qty'] ?? $res['people'] ?? $res['spots'] ?? 1),
+            'spots' => $spots,
             'total_cents' => (int)round($amount * 100),
+            'platform_revenue_cents' => $res['platform_revenue_cents'] ?? null,
+            'guide_amount_cents' => $res['guide_amount_cents'] ?? null,
             'status' => $st,
             'created_at' => $created,
             'tour_title' => $title,
             'client_name' => $res['name'] ?? $res['nome'] ?? $res['email'] ?? '—',
             'client_email' => $res['email'] ?? '',
-            'guide_name' => $res['guide_name'] ?? '—',
+            'guide_name' => $guideName !== '' ? $guideName : '—',
             'source' => 'pix',
+            'with_transport' => gcv_reservation_has_transport($res),
         ]);
     }
 } catch (Throwable $e) {
@@ -137,6 +170,8 @@ try {
 try {
     $legacy = db()->query(
         'SELECT b.id, b.spots, b.total_cents, b.status, b.created_at,
+                b.mp_marketplace_fee_cents AS platform_revenue_cents,
+                b.mp_guide_amount_cents AS guide_amount_cents,
                 t.title_pt AS tour_title, c.name AS client_name, c.email AS client_email,
                 g.name AS guide_name
          FROM gcv_bookings b
