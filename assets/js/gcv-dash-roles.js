@@ -39,7 +39,6 @@
     { code: 'pt', label: 'Português', flag: 'br', fixed: true },
     { code: 'en', label: 'Inglês', flag: 'us', fixed: false },
     { code: 'es', label: 'Espanhol', flag: 'es', fixed: false },
-    { code: 'cs', label: 'Tcheco', flag: 'cz', fixed: false },
   ];
 
   function normalizeGuideLangs(codes) {
@@ -184,7 +183,7 @@
   function quorumFieldHtml(prefix, quorumSelect) {
     return (
       '<div class="gcv-dash-field gcv-dash-confirm-quorum__quorum" id="' + prefix + 'quorum-wrap">' +
-      '<label class="gcv-dash-label" for="' + prefix + 'quorum">Quórum <span class="gcv-dash-label__hint">(somente para as novas inscrições)</span></label>' +
+      '<label class="gcv-dash-label" for="' + prefix + 'quorum">Quórum</label>' +
       (quorumSelect || quorumSelectHtml(prefix + 'quorum', DEFAULT_QUORUM)) +
       '</div>'
     );
@@ -1657,6 +1656,12 @@
   }
 
   function loadGuideAgenda() {
+    var pubBtn = document.getElementById('guide-agenda-goto-publish');
+    if (pubBtn) {
+      pubBtn.onclick = function () {
+        gotoDashSection('section-guide-create-tour');
+      };
+    }
     var list = document.getElementById('guide-tours-list');
     if (!list) return;
     list.innerHTML = 'Carregando…';
@@ -1673,7 +1678,7 @@
       var past = all.filter(function (e) { return !upcomingIds[e.id]; });
 
       if (!all.length) {
-        list.innerHTML = '<div class="gcv-dash-alert gcv-dash-alert--info">Nenhum passeio na agenda. Publique um passeio.</div>';
+        list.innerHTML = '<div class="gcv-dash-alert gcv-dash-alert--info">Nenhum passeio na agenda.</div>';
         return;
       }
 
@@ -1682,7 +1687,7 @@
         html += '<h3 class="gcv-dash-card__title" style="margin:0 0 0.75rem;">Próximas saídas</h3>';
         html += upcoming.map(renderAgendaCard).join('');
       } else {
-        html += '<div class="gcv-dash-alert gcv-dash-alert--info">Nenhuma saída próxima. Publique um passeio.</div>';
+        html += '<div class="gcv-dash-alert gcv-dash-alert--info">Nenhuma saída próxima.</div>';
       }
       if (past.length) {
         html += '<h3 class="gcv-dash-card__title" style="margin:1.5rem 0 0.75rem;">Anteriores e canceladas</h3>';
@@ -1982,6 +1987,7 @@
           '</div>' +
           '<div class="gcv-guide-net-pair">' +
           '<div class="gcv-guide-net-box">' +
+          '<div class="gcv-guide-net-box__title">Individual (SEM TRANSPORTE)</div>' +
           '<div class="gcv-dash-field gcv-guide-net-box__field">' +
           '<label class="gcv-dash-label gcv-guide-net-box__label" id="' + p + 'net-label" for="' + p + 'net">Valor a receber por Pessoa (limite de R$' + netMax + ') *</label>' +
           '<input class="gcv-dash-input gcv-guide-net-box__input" id="' + p + 'net" type="number" min="' + netMin + '" max="' + netMax + '" step="1" inputmode="decimal" required /></div>' +
@@ -1989,6 +1995,7 @@
           confirmedQuorumRowHtml(p, false) +
           '</div>' +
           '<div class="gcv-guide-net-box gcv-guide-net-box--transport is-disabled" id="' + p + 'transport-box">' +
+          '<div class="gcv-guide-net-box__title">Individual (COM TRANSPORTE)</div>' +
           '<label class="gcv-dash-label gcv-guide-net-box__transport"><input type="checkbox" id="' + p + 'transport" /> <span id="' + p + 'transport-label">Oferecer vagas com translado</span></label>' +
           '<div id="' + p + 'transport-fields" hidden>' +
           '<div class="gcv-dash-field gcv-guide-net-box__field">' +
@@ -2524,16 +2531,35 @@
         '<div id="ge-tours"></div>' +
         '<button type="button" class="gcv-dash-btn gcv-dash-btn--secondary gcv-dash-form__add gcv-tour-add-mobile" id="ge-add-tour">+ Adicionar passeio</button>' +
         '<div class="gcv-dash-form__footer">' +
+        '<div class="gcv-dash-form__footer-actions">' +
         '<button type="submit" class="gcv-dash-btn gcv-dash-btn--primary">Enviar para aprovação</button>' +
+        '<button type="button" class="gcv-dash-btn gcv-dash-btn--secondary" id="ge-cancel-publish">Cancelar</button>' +
+        '</div>' +
         '<div id="ge-err" class="gcv-dash-alert" hidden></div>' +
         '</div>';
 
       addTourBlock();
+      function resetPublishForm() {
+        var host = document.getElementById('ge-tours');
+        if (host) host.innerHTML = '';
+        nextIdx = 1;
+        activeTourIdx = null;
+        addTourBlock();
+        var errEl = document.getElementById('ge-err');
+        if (errEl) {
+          errEl.hidden = true;
+          errEl.textContent = '';
+        }
+      }
       function onAddTour() { addTourBlock(); }
       var addMobile = document.getElementById('ge-add-tour');
       var addDesk = document.getElementById('ge-add-tour-desk');
       if (addMobile) addMobile.onclick = onAddTour;
       if (addDesk) addDesk.onclick = onAddTour;
+      var cancelBtn = document.getElementById('ge-cancel-publish');
+      if (cancelBtn) {
+        cancelBtn.onclick = function () { resetPublishForm(); };
+      }
       form.setAttribute('data-ready', '1');
 
       form.onsubmit = function (ev) {
@@ -2586,11 +2612,11 @@
           if (errors.length) msg += ' ' + errors.join(' ');
           errEl.textContent = msg;
           if (okCount) {
-            document.getElementById('ge-tours').innerHTML = '';
-            nextIdx = 1;
-            activeTourIdx = null;
-            addTourBlock();
-            loadGuideAgenda();
+            var keepClass = errEl.className;
+            resetPublishForm();
+            errEl.hidden = false;
+            errEl.className = keepClass;
+            errEl.textContent = msg;
           }
         });
       };

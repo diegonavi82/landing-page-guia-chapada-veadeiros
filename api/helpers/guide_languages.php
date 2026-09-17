@@ -8,7 +8,7 @@ declare(strict_types=1);
 
 function gcv_guide_allowed_lang_codes(): array
 {
-    return ['pt', 'en', 'es', 'cs', 'ru'];
+    return ['pt', 'en', 'es', 'ru'];
 }
 
 /**

@@ -41,9 +41,8 @@
 
   function showSection(id) {
     if (id === 'section-pending-guides') id = 'section-cms-guides';
-    var visibleId = id === 'section-guide-create-tour' ? 'section-guide-tours' : id;
     document.querySelectorAll('.gcv-dash-section').forEach(function (s) { s.classList.remove('active'); });
-    var s = document.getElementById(visibleId);
+    var s = document.getElementById(id);
     if (s) s.classList.add('active');
     document.querySelectorAll('.gcv-dash-nav a, .gcv-dash-bottom-nav a').forEach(function (a) { a.classList.remove('active'); });
     document.querySelectorAll('[data-section="' + id + '"]').forEach(function (link) {
@@ -904,8 +903,8 @@
       ];
     } else if (role === 'guide' && status === 'active') {
       items = [
-        { id: 'section-guide-create-tour',  icon: '➕', label: 'Publicar passeio',  tab: 'Publicar',   tabIcon: 'publish', load: function () { if (window.GcvDashRoles) { window.GcvDashRoles.loadGuidePublish(); window.GcvDashRoles.loadGuideAgenda(); } } },
-        { id: 'section-guide-tours',        icon: '📅', label: 'Agenda',            tab: 'Agenda',      tabIcon: 'agenda',  load: function () { if (window.GcvDashRoles) { window.GcvDashRoles.loadGuidePublish(); window.GcvDashRoles.loadGuideAgenda(); } } },
+        { id: 'section-guide-create-tour',  icon: '➕', label: 'Publicar passeio',  tab: 'Publicar',   tabIcon: 'publish', load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuidePublish(); } },
+        { id: 'section-guide-tours',        icon: '📅', label: 'Agenda',            tab: 'Agenda',      tabIcon: 'agenda',  load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideAgenda(); } },
         { id: 'section-guide-financial',    icon: '🏦', label: 'Financeiro',       tab: 'Financeiro', tabIcon: 'money',   load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideEarnings(); } },
         { id: 'section-guide-profile',      icon: '👤', label: 'Meu perfil',        tab: 'Perfil',     tabIcon: 'profile', load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideProfile(); } },
       ];
@@ -937,10 +936,6 @@
       var sId = link.getAttribute('data-section');
       showSection(sId);
       if (loadMap[sId]) loadMap[sId]();
-      if (sId === 'section-guide-create-tour') {
-        var pubBox = document.getElementById('guide-agenda-publish');
-        if (pubBox && pubBox.scrollIntoView) pubBox.scrollIntoView({ block: 'start', behavior: 'smooth' });
-      }
     }
 
     navList.addEventListener('click', onNavClick);
@@ -983,8 +978,6 @@
       if (!wantScan && wantPublish) {
         showSection('section-guide-create-tour');
         if (loadMap['section-guide-create-tour']) loadMap['section-guide-create-tour']();
-        var pubBox = document.getElementById('guide-agenda-publish');
-        if (pubBox && pubBox.scrollIntoView) pubBox.scrollIntoView({ block: 'start' });
       } else if (!wantScan) {
         showSection(items[0].id);
         if (loadMap[items[0].id]) loadMap[items[0].id]();

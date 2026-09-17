@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="/assets/css/site.css?v=1.0.39" />
-<link rel="stylesheet" href="/assets/css/gcv-dashboard.css?v=1.1.00" />
+<link rel="stylesheet" href="/assets/css/gcv-dashboard.css?v=1.1.02" />
 <link rel="stylesheet" href="/assets/css/gcv-confirm.css?v=1.0.4" />
 <link rel="stylesheet" href="/assets/css/gcv-tours.css?v=1.0.1" />
 <link rel="stylesheet" href="/assets/css/gcv-payment.css?v=1.0.1" />
@@ -250,19 +250,21 @@
 
         <!-- ===== GUIDE SECTIONS ===== -->
 
-        <section class="gcv-dash-section" id="section-guide-tours">
-          <h2 class="gcv-dash-section-title">Agenda</h2>
-          <div class="gcv-dash-agenda-publish" id="guide-agenda-publish">
-            <h3 class="gcv-dash-agenda-publish__title">Publicar passeio</h3>
-            <form class="gcv-dash-form gcv-dash-form--publish" id="gcv-guide-create-tour-form" novalidate></form>
-          </div>
-          <p class="gcv-dash-hint" style="margin:0 0 1rem;color:#64748b;font-size:0.9rem;">
-            No dia do passeio, leia o QR de cada grupo. Sem leitura, o número de pessoas guiadas não é contabilizado.
-          </p>
-          <div id="guide-tours-list"></div>
+        <section class="gcv-dash-section" id="section-guide-create-tour">
+          <h2 class="gcv-dash-section-title">Publicar passeio</h2>
+          <form class="gcv-dash-form gcv-dash-form--publish" id="gcv-guide-create-tour-form" novalidate></form>
         </section>
 
-        <section class="gcv-dash-section" id="section-guide-create-tour" hidden></section>
+        <section class="gcv-dash-section" id="section-guide-tours">
+          <h2 class="gcv-dash-section-title">Agenda</h2>
+          <div class="gcv-dash-agenda-head">
+            <p class="gcv-dash-hint">
+              No dia do passeio, leia o QR de cada grupo. Sem leitura, o número de pessoas guiadas não é contabilizado.
+            </p>
+            <button type="button" class="gcv-dash-btn gcv-dash-btn--primary" id="guide-agenda-goto-publish">Publicar passeio</button>
+          </div>
+          <div id="guide-tours-list"></div>
+        </section>
 
         <section class="gcv-dash-section" id="section-guide-profile">
           <h2 class="gcv-dash-section-title">Meu perfil</h2>
@@ -373,11 +375,11 @@
   <script src="/assets/js/gcv-pix-receipt.js?v=1.0.44" defer></script>
   <script src="/assets/js/gcv-meeting-point.js?v=1.0.2" defer></script>
   <script src="/assets/js/gcv-datepicker.js?v=1.0.1" defer></script>
-  <script src="/assets/js/gcv-admin-cms.js?v=1.0.81" defer></script>
+  <script src="/assets/js/gcv-admin-cms.js?v=1.0.82" defer></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
-  <script src="/assets/js/gcv-dash-roles.js?v=1.1.04" defer></script>
+  <script src="/assets/js/gcv-dash-roles.js?v=1.1.06" defer></script>
   <script src="/assets/js/gcv-inbox.js?v=1.0.2" defer></script>
-  <script src="/assets/js/gcv-dashboard.js?v=1.0.85" defer></script>
+  <script src="/assets/js/gcv-dashboard.js?v=1.0.86" defer></script>
   <script src="/assets/js/gcv-payment.js?v=1.0.40" defer></script>
   <script src="/assets/js/site.js?v=1.0.40" defer></script>
 </body>

@@ -82,7 +82,6 @@
     { code: 'pt', label: 'Português', flag: 'br', fixed: true },
     { code: 'en', label: 'Inglês', flag: 'us', fixed: false },
     { code: 'es', label: 'Espanhol', flag: 'es', fixed: false },
-    { code: 'cs', label: 'Tcheco', flag: 'cz', fixed: false },
   ];
 
   function normalizeGuideLangs(codes) {
