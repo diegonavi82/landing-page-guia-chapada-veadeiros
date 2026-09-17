@@ -97,24 +97,35 @@ function gcv_diego_navi_stash_apply_if_needed(int $userId, string $email): void
     $newBioEn = trim((string)($row['bio_en'] ?? '')) !== '' ? (string)$row['bio_en'] : $bioEn;
     $newBioEs = trim((string)($row['bio_es'] ?? '')) !== '' ? (string)$row['bio_es'] : $bioEs;
 
+    $changed = ($newPhoto !== $curPhoto)
+        || ($new34 !== $cur34)
+        || ($newBioPt !== $curBio)
+        || ($newBioEn !== trim((string)($row['bio_en'] ?? '')))
+        || ($newBioEs !== trim((string)($row['bio_es'] ?? '')));
+    if (!$changed) {
+        return;
+    }
+
+    // Só preenche foto/bio vazios. Nunca zera profile_complete nem aprovação.
     $pdo->prepare(
         'UPDATE gcv_guides SET
-            photo_url = COALESCE(NULLIF(photo_url, ""), ?),
-            photo_3x4_url = COALESCE(NULLIF(photo_3x4_url, ""), ?),
-            bio_pt = COALESCE(NULLIF(bio_pt, ""), ?),
-            bio_en = COALESCE(NULLIF(bio_en, ""), ?),
-            bio_es = COALESCE(NULLIF(bio_es, ""), ?),
-            profile_complete = 0,
-            approved_at = NULL,
-            approved_by = NULL
+            photo_url = ?,
+            photo_3x4_url = ?,
+            bio_pt = ?,
+            bio_en = ?,
+            bio_es = ?
          WHERE user_id = ?'
     )->execute([$newPhoto, $new34, $newBioPt, $newBioEn, $newBioEs, $userId]);
 
     if ($newPhoto !== '') {
         try {
-            $pdo->prepare(
-                'UPDATE gcv_users SET avatar_url = COALESCE(NULLIF(avatar_url, ""), ?) WHERE id = ?'
-            )->execute([$newPhoto, $userId]);
+            $av = $pdo->prepare('SELECT avatar_url FROM gcv_users WHERE id = ? LIMIT 1');
+            $av->execute([$userId]);
+            $curAvatar = trim((string)($av->fetchColumn() ?: ''));
+            if ($curAvatar === '') {
+                $pdo->prepare('UPDATE gcv_users SET avatar_url = ? WHERE id = ?')
+                    ->execute([$newPhoto, $userId]);
+            }
         } catch (Throwable $e) {
             // ignore
         }

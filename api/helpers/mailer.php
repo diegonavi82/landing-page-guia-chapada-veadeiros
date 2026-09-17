@@ -143,8 +143,21 @@ function mail_guide_approved(string $to, string $name): void {
 }
 
 function mail_guide_rejected(string $to, string $name, string $reason = ''): void {
-    $body = "<p>Olá, <strong>{$name}</strong>.</p><p>Após análise, seu cadastro como guia não foi aprovado.</p>" . ($reason ? "<p><strong>Motivo:</strong> {$reason}</p>" : '') . "<p>Se tiver dúvidas, entre em contato conosco.</p>";
+    $safeName = htmlspecialchars($name, ENT_QUOTES, 'UTF-8');
+    $safeReason = htmlspecialchars($reason, ENT_QUOTES, 'UTF-8');
+    $body = "<p>Olá, <strong>{$safeName}</strong>.</p><p>Após análise, seu cadastro como guia não foi aprovado.</p>"
+        . ($safeReason !== '' ? "<p><strong>Motivo:</strong> {$safeReason}</p>" : '')
+        . "<p>Seu perfil permanece no sistema. Você poderá solicitar uma nova aprovação em 45 dias. O administrador pode aprovar a qualquer momento.</p>";
     send_mail($to, 'Atualização sobre seu cadastro de guia', $body, $name);
+}
+
+function mail_guide_blocked(string $to, string $name, string $reason = ''): void {
+    $safeName = htmlspecialchars($name, ENT_QUOTES, 'UTF-8');
+    $safeReason = htmlspecialchars($reason, ENT_QUOTES, 'UTF-8');
+    $body = "<p>Olá, <strong>{$safeName}</strong>.</p>"
+        . "<p>Seu pedido de cadastro como guia não foi aceito e este e-mail foi bloqueado para novas inscrições.</p>"
+        . ($safeReason !== '' ? "<p><strong>Motivo:</strong> {$safeReason}</p>" : '');
+    send_mail($to, 'Cadastro de guia bloqueado', $body, $name);
 }
 
 function mail_tour_pending_admin(string $tourTitle, string $guideName): void {

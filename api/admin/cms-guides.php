@@ -10,6 +10,8 @@ require_once __DIR__ . '/../helpers/auth.php';
 require_once __DIR__ . '/../helpers/cms_schema.php';
 require_once __DIR__ . '/../helpers/guide_languages.php';
 require_once __DIR__ . '/../helpers/guide_status.php';
+require_once __DIR__ . '/../helpers/guide_profile.php';
+require_once __DIR__ . '/../helpers/guide_registration.php';
 
 header('Content-Type: application/json; charset=utf-8');
 $admin = require_admin();
@@ -22,21 +24,57 @@ function gcv_cms_guide_hydrate(array $row): array
     $row['pix_ready'] = trim((string)($row['pix_key'] ?? '')) !== '';
     $row['was_approved'] = gcv_guide_was_approved($row);
     $row['profile_complete'] = (int)($row['profile_complete'] ?? 0) === 1;
+    $uid = (int)($row['user_id'] ?? 0);
+    if (($row['status'] ?? '') === 'pending' && !$row['profile_complete'] && $uid > 0
+        && function_exists('gcv_guide_profile_is_complete')
+        && gcv_guide_profile_is_complete($uid)
+    ) {
+        $row['profile_complete'] = true;
+        try {
+            db()->prepare(
+                'UPDATE gcv_guides SET profile_complete = 1 WHERE user_id = ? AND COALESCE(profile_complete, 0) = 0'
+            )->execute([$uid]);
+        } catch (Throwable $e) {
+            // ignore
+        }
+    }
     $row['account_label'] = gcv_guide_account_label((string)($row['status'] ?? ''), (bool)$row['was_approved']);
     if (($row['status'] ?? '') === 'pending' && !$row['profile_complete']) {
         $row['account_label'] = 'RASCUNHO';
+    } elseif (($row['status'] ?? '') === 'pending') {
+        $row['account_label'] = 'AGUARDANDO APROVAÇÃO';
+    } elseif (($row['status'] ?? '') === 'suspended' && !$row['was_approved']) {
+        $row['account_label'] = 'RECUSADO';
+        $row['rejection'] = [
+            'reason' => trim((string)($row['rejected_reason'] ?? '')),
+            'rejected_at' => $row['rejected_at'] ?? null,
+        ];
     }
     return $row;
+}
+
+function gcv_cms_guide_list_rank(array $row): int
+{
+    $st = (string)($row['status'] ?? '');
+    $complete = !empty($row['profile_complete']);
+    $wasApproved = !empty($row['was_approved']) || !empty($row['approved_at']);
+    if ($st === 'pending' && $complete) return 0; // aguardando aprovação
+    if ($st === 'active') return 1; // aprovados
+    if ($st === 'pending') return 2; // rascunho
+    if ($st === 'suspended' && !$wasApproved) return 3; // recusados
+    if ($st === 'inactive') return 4;
+    return 5; // cancelados e demais
 }
 
 function gcv_cms_guide_select_sql(): string
 {
     return 'SELECT u.id AS user_id, u.name, u.email, u.role, u.status, u.avatar_url,
                 g.id AS guide_id, g.nickname, g.full_name, g.phone, g.phone_ddi, g.phone_iso,
-                g.birth_date, g.base_city_id, g.cadastur, g.pix_key, g.pix_key_type, g.pix_holder_name,
+                g.birth_date, g.sexo, g.base_city_id, g.cadastur, g.pix_key, g.pix_key_type, g.pix_holder_name,
                 g.pix_verified_at, g.pix_verified_by,
                 g.photo_url, g.diploma_url, g.association_doc_url, g.photo_3x4_url,
                 g.bio_pt, g.bio_en, g.bio_es, g.languages_json, g.cpf, g.profile_complete, g.approved_at, g.approved_by,
+                g.rejected_at, g.rejected_reason,
                 c.name AS base_city_name
          FROM gcv_users u
          LEFT JOIN gcv_guides g ON g.user_id = u.id
@@ -67,9 +105,10 @@ function gcv_cms_guide_fetch(int $userId): ?array
 
 function gcv_cms_guides_list(): array
 {
-    $order = ' ORDER BY CASE WHEN u.status = \'pending\' THEN 0 ELSE 1 END, COALESCE(g.full_name, u.name) ASC';
+    $order = ' ORDER BY CASE WHEN u.status = \'pending\' THEN 0 WHEN u.status = \'suspended\' THEN 1 ELSE 2 END, COALESCE(g.full_name, u.name) ASC';
     $select = 'SELECT u.id AS user_id, u.name, u.email, u.status, u.avatar_url, g.nickname, g.full_name, g.phone, g.phone_ddi,
                 g.cadastur, g.pix_key, g.pix_key_type, g.pix_holder_name, g.pix_verified_at, g.approved_at,
+                g.rejected_at, g.rejected_reason, g.sexo,
                 g.photo_3x4_url, g.photo_url, g.languages_json, g.profile_complete, c.name AS base_city_name
          FROM gcv_users u
          LEFT JOIN gcv_guides g ON g.user_id = u.id
@@ -87,6 +126,16 @@ function gcv_cms_guides_list(): array
                 $r = gcv_cms_guide_hydrate($r);
             }
             unset($r);
+            usort($rows, static function ($a, $b) {
+                $ra = gcv_cms_guide_list_rank($a);
+                $rb = gcv_cms_guide_list_rank($b);
+                if ($ra !== $rb) {
+                    return $ra <=> $rb;
+                }
+                $na = (string)($a['full_name'] ?? $a['name'] ?? '');
+                $nb = (string)($b['full_name'] ?? $b['name'] ?? '');
+                return strcasecmp($na, $nb);
+            });
             return $rows;
         } catch (Throwable $e) {
             continue;
@@ -119,9 +168,9 @@ function gcv_cms_guide_set_status(array $admin, array $body): void
     $currentStatus = (string)($current['status'] ?? '');
     $wasApproved = gcv_guide_was_approved($current);
 
-    if ($status === 'suspended' && $currentStatus !== 'pending') {
+    if ($status === 'suspended') {
         http_response_code(422);
-        echo json_encode(['ok' => false, 'error' => 'Recusar é só para cadastro novo. Perfil já aprovado deve ser cancelado.']);
+        echo json_encode(['ok' => false, 'error' => 'Recusar cadastro novo exige motivo. Use Aprovar, Recusar ou Bloquear.']);
         return;
     }
     if ($status === 'cancelled' && !$wasApproved) {
@@ -140,19 +189,31 @@ function gcv_cms_guide_set_status(array $admin, array $body): void
 }
 
 if ($method === 'GET') {
-    $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-    if ($id > 0) {
-        $row = gcv_cms_guide_fetch($id);
-        if (!$row) {
-            http_response_code(404);
-            echo json_encode(['ok' => false, 'error' => 'Guia não encontrado']);
+    try {
+        $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+        $flags = JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE;
+        if ($id > 0) {
+            $row = gcv_cms_guide_fetch($id);
+            if (!$row) {
+                http_response_code(404);
+                echo json_encode(['ok' => false, 'error' => 'Guia não encontrado']);
+                exit;
+            }
+            echo json_encode(['ok' => true, 'data' => $row], $flags);
             exit;
         }
-        echo json_encode(['ok' => true, 'data' => $row]);
+        echo json_encode(['ok' => true, 'data' => [
+            'guides' => gcv_cms_guides_list(),
+            'blocked_emails' => function_exists('gcv_guide_blocked_emails_list') ? gcv_guide_blocked_emails_list() : [],
+            'reject_reasons' => function_exists('gcv_guide_reject_reason_presets') ? gcv_guide_reject_reason_presets() : [],
+        ]], $flags);
+        exit;
+    } catch (Throwable $e) {
+        error_log('cms-guides GET: ' . $e->getMessage());
+        http_response_code(500);
+        echo json_encode(['ok' => false, 'error' => 'Erro ao carregar guias']);
         exit;
     }
-    echo json_encode(['ok' => true, 'data' => ['guides' => gcv_cms_guides_list()]]);
-    exit;
 }
 
 $body = gcv_cms_json_body();
@@ -172,6 +233,7 @@ if ($method === 'POST') {
     $photo34 = trim((string)($body['photo_3x4_url'] ?? ''));
     $diploma = trim((string)($body['diploma_url'] ?? ''));
     $birth = trim((string)($body['birth_date'] ?? ''));
+    $sexo = gcv_normalize_sexo($body['sexo'] ?? '');
     $cityId = isset($body['base_city_id']) ? (int)$body['base_city_id'] : 0;
 
     $missing = [];
@@ -186,6 +248,7 @@ if ($method === 'POST') {
     if ($photoUrl === '' && $photo34 !== '') $photoUrl = $photo34;
     if ($photo34 === '' && $photoUrl === '') $missing[] = 'Foto';
     if ($birth === '') $missing[] = 'Data de nascimento';
+    if ($sexo === '') $missing[] = 'Sexo';
     if ($cityId <= 0) $missing[] = 'Cidade base';
     if ($missing) {
         http_response_code(400);
@@ -219,11 +282,11 @@ if ($method === 'POST') {
 
         $stmt = db()->prepare(
             'INSERT INTO gcv_guides (
-              user_id, nickname, full_name, phone, phone_ddi, phone_iso, birth_date, base_city_id,
+              user_id, nickname, full_name, phone, phone_ddi, phone_iso, birth_date, sexo, base_city_id,
               cadastur, pix_key, pix_key_type, pix_holder_name, photo_url, diploma_url,
               association_doc_url, photo_3x4_url, bio_pt, bio_en, bio_es, languages_json,
               profile_complete, approved_at, approved_by
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?)'
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?)'
         );
         $stmt->execute([
             $userId,
@@ -233,11 +296,12 @@ if ($method === 'POST') {
             trim((string)($body['phone_ddi'] ?? '+55')) ?: '+55',
             strtolower(substr(trim((string)($body['phone_iso'] ?? 'br')), 0, 2)) ?: 'br',
             $birth,
+            $sexo,
             $cityId,
             $cadastur,
             $pixKey,
             $pixType,
-            trim((string)($body['pix_holder_name'] ?? $fullName)) ?: $fullName,
+            $fullName,
             $photoUrl ?: $photo34,
             $diploma,
             $assoc,
@@ -293,6 +357,7 @@ if ($method === 'PUT') {
     if ($photoUrl === '' && $photo34 !== '') $photoUrl = $photo34;
     $diploma = trim((string)($body['diploma_url'] ?? $current['diploma_url'] ?? '')) ?: null;
     $birth = trim((string)($body['birth_date'] ?? $current['birth_date'] ?? ''));
+    $sexo = gcv_normalize_sexo($body['sexo'] ?? $current['sexo'] ?? '');
     $cityId = (int)($body['base_city_id'] ?? $current['base_city_id'] ?? 0);
 
     $missing = [];
@@ -304,6 +369,7 @@ if ($method === 'PUT') {
     if (!in_array($pixType, ['cpf', 'cnpj', 'email', 'phone', 'random'], true)) $missing[] = 'Tipo de chave PIX';
     if ($photo34 === '' && $photoUrl === '') $missing[] = 'Foto';
     if ($birth === '') $missing[] = 'Data de nascimento';
+    if ($sexo === '') $missing[] = 'Sexo';
     if ($cityId <= 0) $missing[] = 'Cidade base';
     if ($missing) {
         http_response_code(400);
@@ -316,7 +382,7 @@ if ($method === 'PUT') {
         (string)($current['status'] ?? 'pending')
     );
     $pixChanged = strcasecmp($pixKey, trim((string)($current['pix_key'] ?? ''))) !== 0;
-    $pixHolder = trim((string)($body['pix_holder_name'] ?? $current['pix_holder_name'] ?? $fullName)) ?: $fullName;
+    $pixHolder = $fullName;
 
     db()->beginTransaction();
     try {
@@ -325,7 +391,7 @@ if ($method === 'PUT') {
 
         if (!empty($current['guide_id'])) {
             db()->prepare(
-                'UPDATE gcv_guides SET nickname=?, full_name=?, phone=?, phone_ddi=?, phone_iso=?, birth_date=?,
+                'UPDATE gcv_guides SET nickname=?, full_name=?, phone=?, phone_ddi=?, phone_iso=?, birth_date=?, sexo=?,
                  base_city_id=?, cadastur=?, pix_key=?, pix_key_type=?, pix_holder_name=?, photo_url=?,
                  diploma_url=?, association_doc_url=?, photo_3x4_url=?, bio_pt=?, bio_en=?, bio_es=?,
                  languages_json=?, profile_complete=1,
@@ -337,6 +403,7 @@ if ($method === 'PUT') {
                 trim((string)($body['phone_ddi'] ?? $current['phone_ddi'] ?? '+55')) ?: '+55',
                 strtolower(substr(trim((string)($body['phone_iso'] ?? $current['phone_iso'] ?? 'br')), 0, 2)) ?: 'br',
                 $birth,
+                $sexo,
                 $cityId,
                 array_key_exists('cadastur', $body)
                     ? (trim((string)$body['cadastur']) ?: null)
@@ -363,14 +430,14 @@ if ($method === 'PUT') {
         } else {
             db()->prepare(
                 'INSERT INTO gcv_guides (
-                  user_id, nickname, full_name, phone, phone_ddi, phone_iso, birth_date, base_city_id,
+                  user_id, nickname, full_name, phone, phone_ddi, phone_iso, birth_date, sexo, base_city_id,
                   pix_key, pix_key_type, pix_holder_name, photo_url, photo_3x4_url, bio_pt, profile_complete
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,1)'
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1)'
             )->execute([
                 $userId, $nickname, $fullName, $phone,
                 trim((string)($body['phone_ddi'] ?? '+55')) ?: '+55',
                 strtolower(substr(trim((string)($body['phone_iso'] ?? 'br')), 0, 2)) ?: 'br',
-                $birth, $cityId,
+                $birth, $sexo, $cityId,
                 $pixKey, $pixType, $pixHolder, $photoUrl ?: $photo34, $photo34 ?: $photoUrl,
                 ($body['bio_pt'] ?? null),
             ]);

@@ -40,5 +40,16 @@
     </p>
   </div>
 </div>
+<script>
+(function () {
+  try {
+    var r = new URLSearchParams(location.search).get('redirect') || '';
+    if (!/dashboard/i.test(r)) return;
+    var as = '';
+    try { as = new URL(r, location.origin).searchParams.get('as') || ''; } catch (e) {}
+    location.replace((as === 'admin' ? '/admin/login.html' : '/guia/login.html') + location.search);
+  } catch (e) {}
+})();
+</script>
 </body>
 </html>

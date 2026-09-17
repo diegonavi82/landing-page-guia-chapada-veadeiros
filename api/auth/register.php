@@ -32,6 +32,13 @@ if ($role === 'client' && !gcv_client_area_enabled()) {
     json_response(false, null, 'Cadastro de cliente temporariamente indisponível.', 403);
 }
 
+if ($role === 'guide') {
+    require_once __DIR__ . '/../helpers/guide_registration.php';
+    if (gcv_guide_email_is_blocked($email)) {
+        json_response(false, null, gcv_guide_email_blocked_message(), 403);
+    }
+}
+
 $check = db()->prepare('SELECT id, role FROM gcv_users WHERE email = ?');
 $check->execute([$email]);
 $existing = $check->fetch();
@@ -64,7 +71,11 @@ try {
         $pdo->prepare(
             'INSERT INTO gcv_guides (user_id, cadastur) VALUES (?,?)'
         )->execute([$userId, $cadastur ?: null]);
-        gcv_diego_navi_stash_apply_if_needed($userId, $email);
+        try {
+            gcv_diego_navi_stash_apply_if_needed($userId, $email);
+        } catch (Throwable $e) {
+            error_log('register stash: ' . $e->getMessage());
+        }
     }
 
     $pdo->commit();
@@ -89,7 +100,7 @@ if ($role === 'guide') {
     } catch (Throwable $e) {
         error_log('register verify email: ' . $e->getMessage());
     }
-    destroy_session();
+    destroy_session('guide');
     create_session($userId, 'guide');
     json_response(true, [
         'message' => 'Conta criada! Confirme seu e-mail para continuar.',

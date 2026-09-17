@@ -1180,6 +1180,37 @@
     return digits.slice(0, country.max);
   }
 
+  function caretPosAfterDigits(masked, digitCount) {
+    var s = String(masked || "");
+    if (digitCount <= 0) return 0;
+    var seen = 0;
+    for (var i = 0; i < s.length; i++) {
+      var ch = s.charAt(i);
+      if (ch >= "0" && ch <= "9") {
+        seen++;
+        if (seen >= digitCount) return i + 1;
+      }
+    }
+    return s.length;
+  }
+
+  /** Remasca o campo e deixa o cursor depois dos dígitos já digitados (não atrás do "(" / "-"). */
+  function applyPhoneMaskToInput(input, iso) {
+    if (!input) return;
+    var value = String(input.value || "");
+    var start = input.selectionStart;
+    if (start == null || start < 0) start = value.length;
+    var digitsBefore = (value.slice(0, start).match(/\d/g) || []).length;
+    var masked = formatPhoneMask(value, iso);
+    if (input.value !== masked) input.value = masked;
+    try {
+      var pos = caretPosAfterDigits(masked, digitsBefore);
+      input.setSelectionRange(pos, pos);
+    } catch (err) {
+      /* */
+    }
+  }
+
   function formatPhoneMask(phone, iso) {
     var country = findPhoneCountry(iso || "br");
     var d = nationalPhoneDigits(phone, country.iso);
@@ -1690,6 +1721,7 @@
     buildPhoneDdiListHtml: buildPhoneDdiListHtml,
     normalizePhone: normalizePhone,
     formatPhoneMask: formatPhoneMask,
+    applyPhoneMaskToInput: applyPhoneMaskToInput,
     formatPhoneIntl: formatPhoneIntl,
     nationalPhoneDigits: nationalPhoneDigits,
     digitsOnly: digitsOnly,

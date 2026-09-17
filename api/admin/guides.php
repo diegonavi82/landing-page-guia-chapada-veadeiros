@@ -64,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
     }
 
     $stmt = db()->prepare(
-        'SELECT u.id, u.name, u.email, u.status, u.role, g.pix_key
+        'SELECT u.id, u.name, u.email, u.status, u.role, g.pix_key, g.full_name
          FROM gcv_users u
          JOIN gcv_guides g ON g.user_id = u.id
          WHERE u.id = ? AND u.role = \'guide\''
@@ -86,9 +86,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
         $fields[] = 'cadastur = ?';
         $params[] = sanitize_text((string)$data['cadastur'], 60);
     }
-    if (array_key_exists('pix_holder_name', $data)) {
+    $holderName = sanitize_text((string)($guide['full_name'] ?? $guide['name'] ?? ''), 120);
+    if ($holderName !== '') {
         $fields[] = 'pix_holder_name = ?';
-        $params[] = sanitize_text((string)$data['pix_holder_name'], 120);
+        $params[] = $holderName;
     }
 
     $pixChanged = false;

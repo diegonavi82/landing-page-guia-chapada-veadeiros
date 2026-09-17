@@ -24,11 +24,9 @@ function gcv_guide_financial_get(int $guideUserId): ?array
         return $row;
     }
 
-    // Espelha dados legados se existirem
+    // Espelha dados legados se existirem (SELECT * evita 500 se alguma coluna ainda não existir)
     $g = db()->prepare(
-        'SELECT user_id, full_name, pix_holder_name, cpf, cnpj, pix_key, pix_key_type,
-                bank_name, bank_agency, bank_account, pix_verified_at
-         FROM gcv_guides WHERE user_id = ? LIMIT 1'
+        'SELECT * FROM gcv_guides WHERE user_id = ? LIMIT 1'
     );
     $g->execute([$guideUserId]);
     $legacy = $g->fetch(PDO::FETCH_ASSOC);

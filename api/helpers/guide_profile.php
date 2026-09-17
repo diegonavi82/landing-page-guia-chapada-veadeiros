@@ -13,6 +13,19 @@ function gcv_guide_profile_digits(string $s): string
     return preg_replace('/\D+/', '', $s) ?? '';
 }
 
+/** @return 'M'|'F'|'' */
+function gcv_normalize_sexo($value): string
+{
+    $s = strtolower(trim((string)$value));
+    if (in_array($s, ['f', 'female', 'feminino', 'mulher', 'w'], true)) {
+        return 'F';
+    }
+    if (in_array($s, ['m', 'male', 'masculino', 'homem', 'h'], true)) {
+        return 'M';
+    }
+    return '';
+}
+
 /**
  * @param array<string,mixed> $p  Linha de gcv_guides + email + legal_name/pix
  * @return list<string>
@@ -33,6 +46,10 @@ function gcv_guide_profile_missing(array $p): array
     if (empty($p['birth_date'])) {
         $missing[] = 'birth_date';
     }
+    $sexo = gcv_normalize_sexo($p['sexo'] ?? '');
+    if ($sexo === '') {
+        $missing[] = 'sexo';
+    }
     if (empty($p['base_city_id'])) {
         $missing[] = 'base_city_id';
     }
@@ -41,19 +58,30 @@ function gcv_guide_profile_missing(array $p): array
     }
     $legal = trim((string)($p['legal_name'] ?? ''));
     if ($legal === '') {
+        $legal = trim((string)($p['full_name'] ?? ''));
+    }
+    if ($legal === '') {
         $missing[] = 'legal_name';
     }
     $person = strtoupper((string)($p['person_type'] ?? 'PF'));
     if ($person === 'CNPJ') {
         $person = 'PJ';
     }
+    $pixType = strtolower(trim((string)($p['pix_key_type'] ?? '')));
+    $pixDigits = gcv_guide_profile_digits((string)($p['pix_key'] ?? ''));
     if ($person === 'PJ') {
         $cnpj = gcv_guide_profile_digits((string)($p['cnpj'] ?? ''));
+        if (strlen($cnpj) !== 14 && $pixType === 'cnpj' && strlen($pixDigits) === 14) {
+            $cnpj = $pixDigits;
+        }
         if (strlen($cnpj) !== 14) {
             $missing[] = 'cpf_cnpj';
         }
     } else {
         $cpf = gcv_guide_profile_digits((string)($p['cpf'] ?? ''));
+        if (strlen($cpf) !== 11 && $pixType === 'cpf' && strlen($pixDigits) === 11) {
+            $cpf = $pixDigits;
+        }
         if (strlen($cpf) !== 11) {
             $missing[] = 'cpf_cnpj';
         }

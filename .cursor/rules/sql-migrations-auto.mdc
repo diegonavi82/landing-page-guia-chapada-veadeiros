@@ -9,9 +9,9 @@ Sempre que criar, alterar ou o usuário pedir para rodar um arquivo `.sql` em `a
 
 1. **Executar automaticamente** — não pedir para o usuário rodar no phpMyAdmin.
 2. Ordem de execução:
-   1. `npm run db:migrate -- <caminho-do-sql>` (tenta MySQL local/remoto via PHP)
-   2. Se falhar (Hostinger `localhost` inacessível da máquina), rodar `npm run db:migrate:remote` ou `node tools/upload-api-and-migrate.mjs` (FTP → document root real → one-shot HTTP)
+   1. `npm run db:migrate -- <caminho-do-sql>` (tenta MySQL local via PHP)
+   2. Se falhar, o mesmo comando sobe o SQL por FTP e executa `api/run-sql.php` na Hostinger
 3. Document root FTP real da Hostinger: `domains/guiachapadaveadeiros.com/public_html` (não confundir com `/public_html` da home FTP).
-4. Credenciais: `api/config.local.php` / `api/.env` (DB) e `.env.deploy` ou FileZilla (FTP).
+4. Credenciais: `api/config.local.php` / `api/.env` (DB) e `.env.deploy` (FTP).
 5. Após rodar, confirmar tabelas/colunas no output e informar o resultado ao usuário.
-6. One-shots em `api/_migrate_*_once.php` / `api/migrate_*_once.php`: apagar do servidor depois do sucesso quando for seguro.
+6. One-shots avulsos em `api/_migrate_*_once.php`: apagar do servidor depois do sucesso quando for seguro. O runner permanente é `api/run-sql.php` (chave).

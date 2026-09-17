@@ -6,6 +6,7 @@ require_once __DIR__ . '/../helpers/auth.php';
 require_once __DIR__ . '/../helpers/user_roles.php';
 require_once __DIR__ . '/../helpers/access_policy.php';
 require_once __DIR__ . '/../helpers/diego_navi_stash.php';
+require_once __DIR__ . '/../helpers/guide_registration.php';
 // mailer NÃO é carregado no boot — só quando for enviar e-mail (evita 500 se vendor ausente)
 
 auth_session_start();
@@ -157,6 +158,10 @@ if ($accessErr) {
     gcv_oauth_fail($appUrl, $loginPath, 'client_closed');
 }
 
+if ($context === 'guide' && gcv_guide_email_is_blocked($email)) {
+    gcv_oauth_fail($appUrl, $loginPath, 'blocked');
+}
+
 try {
     $pdo  = db();
     $stmt = $pdo->prepare('SELECT id, role, status FROM gcv_users WHERE email = ? OR google_id = ? LIMIT 1');
@@ -164,11 +169,13 @@ try {
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($user) {
-        if (($user['status'] ?? '') === 'suspended') {
+        $userId = (int)$user['id'];
+        if ($context === 'admin' && gcv_is_admin_allowlisted($email)) {
+            gcv_user_grant_role($userId, 'admin');
+            gcv_user_sync_primary_role($userId);
+        } elseif (($user['status'] ?? '') === 'suspended' && !gcv_guide_rejected_may_login($userId)) {
             gcv_oauth_fail($appUrl, $loginPath, 'suspended');
         }
-
-        $userId = (int)$user['id'];
         // Garante papéis migrados
         gcv_user_roles($userId);
 
@@ -192,15 +199,19 @@ try {
     } else {
         // Conta nova
         if ($context === 'admin') {
-            // Nunca cria admin via Google
-            gcv_oauth_fail($appUrl, $loginPath, 'admin_only');
-        }
-
-        if ($context === 'client') {
+            if (!gcv_is_admin_allowlisted($email)) {
+                gcv_oauth_fail($appUrl, $loginPath, 'admin_only');
+            }
+            $pdo->prepare(
+                'INSERT INTO gcv_users (name, email, google_id, avatar_url, role, status, email_verified)
+                 VALUES (?,?,?,?,\'admin\',\'active\',1)'
+            )->execute([$name, $email, $googleId, $avatarUrl]);
+            $userId = (int)$pdo->lastInsertId();
+            gcv_user_grant_role($userId, 'admin');
+            gcv_user_sync_primary_role($userId);
+        } elseif ($context === 'client') {
             gcv_oauth_fail($appUrl, $loginPath, 'client_closed');
-        }
-
-        if ($context === 'guide') {
+        } elseif ($context === 'guide') {
             $pdo->beginTransaction();
             try {
                 $pdo->prepare(
@@ -208,7 +219,11 @@ try {
                 )->execute([$name, $email, $googleId, $avatarUrl]);
                 $userId = (int)$pdo->lastInsertId();
                 $pdo->prepare('INSERT INTO gcv_guides (user_id, cadastur) VALUES (?, NULL)')->execute([$userId]);
-                gcv_diego_navi_stash_apply_if_needed($userId, $email);
+                try {
+                    gcv_diego_navi_stash_apply_if_needed($userId, $email);
+                } catch (Throwable $e) {
+                    error_log('google-callback stash: ' . $e->getMessage());
+                }
                 $pdo->commit();
                 gcv_user_grant_role($userId, 'guide');
                 // Não concede client enquanto a área do cliente estiver fechada
@@ -224,7 +239,8 @@ try {
 
     destroy_session();
     create_session($userId, $context);
-    header('Location: ' . $appUrl . '/dashboard/');
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    header('Location: ' . $appUrl . '/dashboard/?as=' . rawurlencode($context));
     exit;
 } catch (Throwable $e) {
     error_log('google-callback: ' . $e->getMessage());

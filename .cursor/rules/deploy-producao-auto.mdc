@@ -1,0 +1,17 @@
+---
+description: Sempre publicar alterações no site da Hostinger automaticamente
+alwaysApply: true
+---
+
+# Deploy automático em produção
+
+Toda alteração que afete o site **www.guiachapadaveadeiros.com** deve ser enviada à Hostinger **nesta mesma tarefa**, sem pedir FTP ao usuário.
+
+1. Depois de editar HTML/CSS/JS/PHP/imagens do site, rodar:
+   `npm run deploy:prod -- <arquivos-alterados>`
+2. Document root FTP: `domains/guiachapadaveadeiros.com/public_html`
+3. Credenciais: `.env.deploy`
+4. Confirmar no output que os arquivos subiram e, se for JS/CSS, que o `?v=` do HTML foi atualizado.
+5. Não deixar mudança só na máquina local.
+
+SQL: ver regra de migrations — criar o `.sql` e executar com `npm run db:migrate -- <arquivo.sql>` (já cai na Hostinger).

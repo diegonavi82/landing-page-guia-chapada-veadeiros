@@ -881,6 +881,172 @@ const API_ROUTES = {
     data: { total_revenue_cents: 150000, pending_payout_cents: 45000, total_bookings: 12 },
   }),
 
+  "/api/excursions/carousel.php": () => {
+    const guia = {
+      guiaNome: "Diego Navi",
+      guiaFoto: "/assets/img/imagens/guia-diego-navi.webp",
+      guiaIdiomas: ["pt", "en", "es"],
+    };
+    const courosWalk = {
+      dayNum: "19",
+      monthName: "setembro",
+      weekday: "Sábado",
+      dateISO: "2026-09-19",
+      embarque: "Alto Paraíso",
+      destino: "Cataratas dos Couros",
+      destinos: [
+        {
+          destino: "Cataratas dos Couros",
+          cardImg: "/assets/img/imagens/cataratas-couros-guia-chapada-veadeiros-alto-paraiso-1.webp",
+          atrativoPath: "atrativos/cataratas-dos-couros-guia-chapada-veadeiros-alto-paraiso.html",
+        },
+      ],
+      hora: "8:45",
+      valor: 140,
+      confirmada: false,
+      quorumMin: 3,
+      faltamPessoas: 2,
+      pessoasInscritas: 1,
+      grupoMaximo: 10,
+      vagasRestantes: 9,
+      cartSlug: "mock-couros-2026-09-19-0845",
+      cardImg: "/assets/img/imagens/cataratas-couros-guia-chapada-veadeiros-alto-paraiso-1.webp",
+      atrativoPath: "atrativos/cataratas-dos-couros-guia-chapada-veadeiros-alto-paraiso.html",
+      ...guia,
+    };
+    const sbBase = {
+      dayNum: "20",
+      monthName: "setembro",
+      weekday: "Domingo",
+      dateISO: "2026-09-20",
+      embarque: "Cavalcante",
+      destino: "Santa Bárbara",
+      destinos: [
+        {
+          destino: "Santa Bárbara",
+          cardImg: "/assets/img/imagens/cataratas-couros-guia-chapada-veadeiros-alto-paraiso-1.webp",
+          atrativoPath: "atrativos/cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante.html",
+        },
+      ],
+      hora: "9:00",
+      cardImg: "/assets/img/imagens/cataratas-couros-guia-chapada-veadeiros-alto-paraiso-1.webp",
+      atrativoPath: "atrativos/cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante.html",
+      ...guia,
+    };
+    const sbWalk = {
+      ...sbBase,
+      valor: 160,
+      confirmada: false,
+      quorumMin: 4,
+      faltamPessoas: 3,
+      pessoasInscritas: 1,
+      grupoMaximo: 10,
+      vagasRestantes: 7,
+      cartSlug: "mock-santa-barbara-2026-09-20-0900",
+    };
+    const sbVan = {
+      ...sbBase,
+      valor: 420,
+      comTransporte: true,
+      confirmada: false,
+      quorumMin: 3,
+      faltamPessoas: 1,
+      pessoasInscritas: 2,
+      grupoMaximo: 4,
+      vagasRestantes: 2,
+      cartSlug: "mock-santa-barbara-2026-09-20-0900-t",
+    };
+    const valeVanOnly = {
+      dayNum: "21",
+      monthName: "setembro",
+      weekday: "Segunda-feira",
+      dateISO: "2026-09-21",
+      embarque: "São Jorge",
+      destino: "Vale da Lua",
+      destinos: [
+        {
+          destino: "Vale da Lua",
+          cardImg: "/assets/img/imagens/cataratas-couros-guia-chapada-veadeiros-alto-paraiso-1.webp",
+          atrativoPath: "atrativos/vale-lua-guia-chapada-veadeiros-sao-jorge.html",
+        },
+      ],
+      hora: "8:00",
+      valor: 390,
+      comTransporte: true,
+      confirmada: true,
+      quorumMin: 2,
+      faltamPessoas: 0,
+      pessoasInscritas: 3,
+      grupoMaximo: 4,
+      vagasRestantes: 1,
+      cartSlug: "mock-vale-lua-2026-09-21-0800-t",
+      cardImg: "/assets/img/imagens/cataratas-couros-guia-chapada-veadeiros-alto-paraiso-1.webp",
+      atrativoPath: "atrativos/vale-lua-guia-chapada-veadeiros-sao-jorge.html",
+      ...guia,
+    };
+    const pratinhaWalk = {
+      dayNum: "22",
+      monthName: "setembro",
+      weekday: "Terça-feira",
+      dateISO: "2026-09-22",
+      embarque: "Alto Paraíso",
+      destino: "Pratinha",
+      destinos: [{ destino: "Pratinha", cardImg: "", atrativoPath: "" }],
+      hora: "9:00",
+      valor: 130,
+      confirmada: true,
+      quorumMin: 2,
+      faltamPessoas: 0,
+      pessoasInscritas: 2,
+      grupoMaximo: 10,
+      vagasRestantes: 8,
+      cartSlug: "mock-pratinha-2026-09-22-0900",
+      cardImg: "",
+      atrativoPath: "",
+      ...guia,
+    };
+    const localize = (row, month, weekday) => ({ ...row, monthName: month, weekday });
+    const pt = [courosWalk, sbWalk, sbVan, valeVanOnly, pratinhaWalk];
+    return {
+      ok: true,
+      data: {
+        pt,
+        en: pt.map((row) =>
+          localize(
+            row,
+            row.dateISO === "2026-09-19"
+              ? "September"
+              : row.dateISO === "2026-09-20"
+                ? "September"
+                : row.dateISO === "2026-09-21"
+                  ? "September"
+                  : "September",
+            row.dateISO === "2026-09-19"
+              ? "Saturday"
+              : row.dateISO === "2026-09-20"
+                ? "Sunday"
+                : row.dateISO === "2026-09-21"
+                  ? "Monday"
+                  : "Tuesday",
+          ),
+        ),
+        es: pt.map((row) =>
+          localize(
+            row,
+            "septiembre",
+            row.dateISO === "2026-09-19"
+              ? "Sábado"
+              : row.dateISO === "2026-09-20"
+                ? "Domingo"
+                : row.dateISO === "2026-09-21"
+                  ? "Lunes"
+                  : "Martes",
+          ),
+        ),
+      },
+    };
+  },
+
   "/api/tours/list.php": () => ({
     ok: true,
     data: {
@@ -1260,6 +1426,7 @@ server.listen(PORT, () => {
   console.log("    node tools/mock-server.mjs admin          → Administrador");
   console.log("    node tools/mock-server.mjs client         → Cliente");
   console.log("");
+  console.log("  Home (mock sem foto) → http://localhost:" + PORT + "/#excursoes-junho");
   console.log("  Abra as 3 portas de login:");
   console.log("    Cliente → http://localhost:" + PORT + "/login.html");
   console.log("    Guia    → http://localhost:" + PORT + "/guia/login.html");

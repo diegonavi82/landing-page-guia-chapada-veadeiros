@@ -41,13 +41,33 @@ try {
         json_response(false, null, 'Email ou senha incorretos', 401);
     }
 
-    if ($user['status'] === 'suspended' || $user['status'] === 'cancelled') {
-        json_response(false, null, 'Conta suspensa. Entre em contato com o suporte.', 403);
+    if ($context === 'guide') {
+        require_once __DIR__ . '/../helpers/guide_registration.php';
+        if (gcv_guide_email_is_blocked((string)$email)) {
+            json_response(false, null, gcv_guide_email_blocked_message(), 403);
+        }
+    }
+
+    if ($user['status'] === 'cancelled') {
+        json_response(false, null, 'Conta cancelada. Entre em contato com o suporte.', 403);
+    }
+
+    if ($user['status'] === 'suspended') {
+        require_once __DIR__ . '/../helpers/guide_registration.php';
+        if ($context === 'admin' && gcv_is_admin_allowlisted((string)$email)) {
+            // Admin allowlist entra mesmo com cadastro de guia recusado.
+        } elseif (!gcv_guide_rejected_may_login((int)$user['id'])) {
+            json_response(false, null, 'Conta suspensa. Entre em contato com o suporte.', 403);
+        } elseif ($context !== 'guide') {
+            json_response(false, null, 'Use a Área do Guia para acessar este cadastro.', 403);
+        }
     }
 
     // Guia pendente: só na porta guia (dashboard mostra “em análise”)
     if ($user['status'] === 'pending' && $context === 'guide') {
         // ok
+    } elseif ($user['status'] === 'pending' && $context === 'admin' && gcv_is_admin_allowlisted((string)$email)) {
+        // ok — o mesmo e-mail pode ser admin e guia em análise
     } elseif ($user['status'] === 'pending' && $context !== 'guide') {
         $roles = gcv_user_roles((int)$user['id']);
         if ($roles === ['guide'] || $roles === []) {

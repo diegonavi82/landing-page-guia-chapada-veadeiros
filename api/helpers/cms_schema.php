@@ -40,6 +40,12 @@ function gcv_cms_ensure_schema(): void
 
     gcv_cms_ensure_guide_columns($pdo);
     gcv_cms_ensure_user_status_enum($pdo);
+    try {
+        require_once __DIR__ . '/guide_registration.php';
+        gcv_blocked_guide_emails_ensure($pdo);
+    } catch (Throwable $e) {
+        error_log('cms blocked emails: ' . $e->getMessage());
+    }
     gcv_cms_ensure_excursion_columns($pdo);
     gcv_cms_ensure_client_profiles();
 
@@ -349,6 +355,7 @@ function gcv_cms_ensure_guide_columns(PDO $pdo): void
         'phone_ddi' => "VARCHAR(8) NULL DEFAULT '+55'",
         'phone_iso' => "CHAR(2) NULL DEFAULT 'br'",
         'birth_date' => "DATE NULL",
+        'sexo' => "ENUM('M','F') NULL",
         'base_city_id' => "INT UNSIGNED NULL",
         'cpf' => "VARCHAR(14) NULL",
         'id_document_url' => "VARCHAR(500) NULL",
@@ -356,6 +363,9 @@ function gcv_cms_ensure_guide_columns(PDO $pdo): void
         'association_doc_url' => "VARCHAR(500) NULL",
         'photo_3x4_url' => "VARCHAR(500) NULL",
         'profile_complete' => "TINYINT(1) NOT NULL DEFAULT 0",
+        'rejected_at' => "DATETIME NULL",
+        'rejected_reason' => "VARCHAR(500) NULL",
+        'rejected_by' => "INT UNSIGNED NULL",
         'languages_json' => "VARCHAR(80) NULL",
         'bio_en' => "TEXT NULL",
         'bio_es' => "TEXT NULL",

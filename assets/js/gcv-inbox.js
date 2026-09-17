@@ -8,6 +8,7 @@
   function get(url, cb) {
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url);
+    xhr.withCredentials = true;
     xhr.onload = function () {
       try { cb(null, JSON.parse(xhr.responseText)); }
       catch (e) { cb(e, {}); }
@@ -19,6 +20,7 @@
   function post(url, data, cb) {
     var xhr = new XMLHttpRequest();
     xhr.open('POST', url);
+    xhr.withCredentials = true;
     xhr.setRequestHeader('Content-Type', 'application/json');
     xhr.onload = function () {
       try { cb(null, JSON.parse(xhr.responseText)); }
@@ -84,7 +86,14 @@
 
   function loadList() {
     get('/api/inbox/list.php?limit=80', function (err, res) {
-      if (err || !res || !res.ok) return;
+      var root = document.getElementById('gcv-inbox-list');
+      if (err || !res || !res.ok) {
+        if (root) {
+          root.innerHTML = '<p class="gcv-dash-alert gcv-dash-alert--warning">' +
+            esc((res && res.error) || 'Não foi possível carregar as notificações.') + '</p>';
+        }
+        return;
+      }
       var data = res.data || {};
       setBadge(parseInt(data.unread, 10) || 0);
       renderList(data.items || []);

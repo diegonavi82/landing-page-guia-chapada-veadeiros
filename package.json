@@ -1,7 +1,7 @@
 {
   "name": "guia-chapada-landing-estatica",
   "private": true,
-  "version": "1.1.13",
+  "version": "1.1.22",
   "description": "Site 100% estático (HTML/CSS/JS) — sem API, sem MySQL.",
   "scripts": {
     "dev": "node tools/mock-server.mjs",
@@ -15,8 +15,10 @@
     "favicons": "node tools/generate-favicons.mjs",
     "build": "node tools/generate-favicons.mjs && node tools/build-site.mjs",
     "deploy": "node tools/deploy-ftp.mjs",
+    "deploy:prod": "node tools/deploy-prod.mjs",
     "build:deploy": "npm run build && npm run deploy",
     "db:migrate": "node tools/run-sql-migration.mjs",
+    "db:migrate:hostinger": "node tools/run-sql-on-hostinger.mjs",
     "db:migrate:marketplace": "node tools/run-sql-migration.mjs api/database/migration_marketplace_financeiro.sql",
     "db:migrate:remote": "node tools/upload-api-and-migrate.mjs",
     "vendor:qrcode": "esbuild node_modules/qrcode/lib/browser.js --bundle --format=iife --global-name=QRCode --outfile=assets/js/qrcode.min.js --minify",

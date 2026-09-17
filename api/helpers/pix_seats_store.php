@@ -374,9 +374,14 @@ function gcv_pix_seats_bump_cms_booked(PDO $pdo, array $pending): void
         return;
     }
     try {
-        $stmt = $pdo->prepare(
+        $stmtWalk = $pdo->prepare(
             'UPDATE gcv_excursions
              SET booked_people = LEAST(255, booked_people + ?)
+             WHERE id = ? OR cart_slug = ? OR cart_slug = ?'
+        );
+        $stmtVan = $pdo->prepare(
+            'UPDATE gcv_excursions
+             SET booked_people_transport = LEAST(255, booked_people_transport + ?)
              WHERE id = ? OR cart_slug = ? OR cart_slug = ?'
         );
         foreach ($pending as $cartId => $qty) {
@@ -388,8 +393,16 @@ function gcv_pix_seats_bump_cms_booked(PDO $pdo, array $pending): void
             if (preg_match('/^\d{4}-\d{2}-\d{2}-(.+)$/', $cartId, $m)) {
                 $slug = $m[1];
             }
-            $maybeId = ctype_digit($cartId) ? (int)$cartId : 0;
-            $stmt->execute([$qty, $maybeId, $cartId, $slug]);
+            $isTransport = str_ends_with($slug, '-t') || str_ends_with((string)$cartId, '-t');
+            if ($isTransport) {
+                $slug = preg_replace('/-t$/', '', $slug) ?? $slug;
+                $cartIdBase = preg_replace('/-t$/', '', (string)$cartId) ?? (string)$cartId;
+            } else {
+                $cartIdBase = (string)$cartId;
+            }
+            $maybeId = ctype_digit($cartIdBase) ? (int)$cartIdBase : 0;
+            $stmt = $isTransport ? $stmtVan : $stmtWalk;
+            $stmt->execute([$qty, $maybeId, $cartIdBase, $slug]);
         }
     } catch (Throwable $e) {
         error_log('gcv_pix_seats_bump_cms_booked: ' . $e->getMessage());

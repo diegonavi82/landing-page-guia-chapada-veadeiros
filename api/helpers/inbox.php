@@ -65,7 +65,7 @@ function gcv_inbox_push(int $userId, string $body, array $meta = []): void
     }
     gcv_inbox_ensure_schema();
     $title = gcv_inbox_title_from_body($body);
-    $kind = substr(trim((string)($meta['kind'] ?? '')), 0, 40);
+    $kind = substr(trim((string)($meta['kind'] ?? $meta['type'] ?? '')), 0, 40);
     $excId = isset($meta['excursion_id']) ? (int)$meta['excursion_id'] : null;
     $saleId = isset($meta['sale_id']) ? (int)$meta['sale_id'] : null;
     if ($excId !== null && $excId <= 0) {
@@ -76,7 +76,7 @@ function gcv_inbox_push(int $userId, string $body, array $meta = []): void
     }
     try {
         db()->prepare(
-            'INSERT INTO gcv_inbox (user_id, title, body, kind, excursion_id, sale_id)
+            'INSERT INTO gcv_inbox (user_id, title, body, `kind`, excursion_id, sale_id)
              VALUES (?,?,?,?,?,?)'
         )->execute([
             $userId,
@@ -118,7 +118,7 @@ function gcv_inbox_list(int $userId, int $limit = 80): array
     $limit = max(1, min(200, $limit));
     try {
         $st = db()->prepare(
-            "SELECT id, title, body, kind, excursion_id, sale_id, read_at, created_at
+            "SELECT id, title, body, `kind`, excursion_id, sale_id, read_at, created_at
              FROM gcv_inbox
              WHERE user_id = ?
              ORDER BY id DESC

@@ -40,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
         }
     }
 
-    if (in_array($keyName, ['guide_net_min_reais', 'guide_net_max_reais', 'guide_net_max_dragao_reais'], true)) {
+    if (in_array($keyName, ['guide_net_min_reais', 'guide_net_max_reais', 'guide_net_max_dragao_reais', 'guide_net_max_transport_reais'], true)) {
         $n = (int)round((float)$value);
         if ($n < 1 || $n > 10000) {
             json_response(false, null, 'Informe um valor em reais entre 1 e 10000', 422);

@@ -30,6 +30,12 @@ function gcv_excursion_validate(array $body, bool $creating): ?string
     }
     if ($creating || array_key_exists('departure_city_id', $body)) {
         if (empty($body['departure_city_id'])) return 'Cidade de saída obrigatória';
+        $st = db()->prepare("SELECT name FROM gcv_cities WHERE id = ? AND status = 'active'");
+        $st->execute([(int)$body['departure_city_id']]);
+        $cityName = (string)($st->fetchColumn() ?: '');
+        if ($cityName === '' || !gcv_is_allowed_guide_base_city($cityName)) {
+            return gcv_guide_base_city_error();
+        }
     }
     if ($creating || array_key_exists('meeting_point', $body)) {
         $mp = gcv_meeting_point_from_body($body, true);
@@ -46,8 +52,8 @@ function gcv_excursion_validate(array $body, bool $creating): ?string
         if (!isset($body['price_cents']) || (int)$body['price_cents'] <= 0) return 'Valor por pessoa obrigatório';
     }
     if ($creating || array_key_exists('quorum', $body)) {
-        $q = (int)($body['quorum'] ?? 0);
-        if ($q < 0 || $q > 4) return 'Quórum deve ser entre 0 e 4 pessoas';
+        $q = (int)($body['quorum'] ?? 4);
+        if ($q < 0 || $q > 4) return 'Quórum deve ser 0 (já confirmado) ou entre 1 e 4 pessoas';
     }
     if ($creating || array_key_exists('max_people', $body)) {
         if (!isset($body['max_people']) || (int)$body['max_people'] < 1) return 'Máximo de pessoas obrigatório';

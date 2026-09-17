@@ -22,11 +22,13 @@ require_once __DIR__ . '/../helpers/guide_payout_schema.php';
 require_once __DIR__ . '/../helpers/rate_limiter.php';
 require_once __DIR__ . '/../helpers/sicoob_pix_pay.php';
 require_once __DIR__ . '/../helpers/marketplace/guide_financial_service.php';
+require_once __DIR__ . '/../helpers/marketplace_schema.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
 $admin = require_admin();
 gcv_ensure_guide_payout_schema();
+gcv_marketplace_ensure_schema();
 
 const GCV_PAYOUT_MAX_CENTS = 5000000; // R$ 50.000,00
 
@@ -50,12 +52,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
     // Guias elegíveis para pagamento
     $eligible = db()->query(
-        'SELECT u.id AS user_id, u.name, u.email, g.pix_key, g.pix_key_type, g.pix_holder_name
+        'SELECT u.id AS user_id, u.name, u.email, g.full_name, g.nickname,
+                g.pix_key, g.pix_key_type, g.pix_holder_name
          FROM gcv_users u
          JOIN gcv_guides g ON g.user_id = u.id
-         WHERE u.role = \'guide\' AND u.status = \'active\'
+         WHERE u.status = \'active\'
            AND g.pix_verified_at IS NOT NULL
-         ORDER BY u.name ASC'
+           AND (u.role = \'guide\' OR EXISTS (
+                SELECT 1 FROM gcv_user_roles r WHERE r.user_id = u.id AND r.role = \'guide\'
+           ))
+         ORDER BY COALESCE(NULLIF(g.full_name, \'\'), u.name) ASC'
     )->fetchAll();
     foreach ($eligible as &$gRow) {
         $fin = gcv_guide_financial_get((int)$gRow['user_id']);
@@ -64,6 +70,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $gRow['pix_key_type'] = $fin['pix_key_type'] ?? $gRow['pix_key_type'];
             $gRow['pix_holder_name'] = $fin['pix_holder_name'] ?? $gRow['pix_holder_name'];
         }
+        $full = trim((string)($gRow['full_name'] ?? ''));
+        $gRow['name'] = $full !== '' ? $full : (string)($gRow['name'] ?? '');
     }
     unset($gRow);
     $eligible = array_values(array_filter($eligible, static function ($gRow) {
@@ -72,6 +80,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
     json_response(true, [
         'payouts' => $rows,
+        'history' => gcv_admin_payout_history(),
         'eligible_guides' => $eligible,
     ]);
 }
@@ -286,12 +295,15 @@ json_response(false, null, 'Ação inválida. Use create | confirm | cancel', 42
 function gcv_payout_load_eligible_guide(int $userId): ?array
 {
     $stmt = db()->prepare(
-        'SELECT u.id, u.name, u.email, u.status,
+        'SELECT u.id, u.name, u.email, u.status, g.full_name,
                 g.pix_key, g.pix_key_type, g.pix_holder_name, g.pix_verified_at
          FROM gcv_users u
          JOIN gcv_guides g ON g.user_id = u.id
-         WHERE u.id = ? AND u.role = \'guide\' AND u.status = \'active\'
+         WHERE u.id = ? AND u.status = \'active\'
            AND g.pix_verified_at IS NOT NULL
+           AND (u.role = \'guide\' OR EXISTS (
+                SELECT 1 FROM gcv_user_roles r WHERE r.user_id = u.id AND r.role = \'guide\'
+           ))
          LIMIT 1'
     );
     $stmt->execute([$userId]);
@@ -308,5 +320,102 @@ function gcv_payout_load_eligible_guide(int $userId): ?array
     if (trim((string)($row['pix_key'] ?? '')) === '') {
         return null;
     }
+    $full = trim((string)($row['full_name'] ?? ''));
+    if ($full !== '') {
+        $row['name'] = $full;
+    }
     return $row;
+}
+
+/**
+ * @return list<array<string,mixed>>
+ */
+function gcv_admin_payout_history(): array
+{
+    $history = [];
+
+    try {
+        $manual = db()->query(
+            'SELECT p.id, p.amount_cents, p.pix_key_snapshot AS pix_key, p.status,
+                    p.paid_at, p.created_at, p.description,
+                    COALESCE(NULLIF(g.full_name, \'\'), u.name) AS guide_name
+             FROM gcv_guide_payouts p
+             JOIN gcv_users u ON u.id = p.guide_user_id
+             LEFT JOIN gcv_guides g ON g.user_id = p.guide_user_id
+             WHERE p.status NOT IN (\'draft\', \'cancelled\')
+             ORDER BY COALESCE(p.paid_at, p.created_at) DESC
+             LIMIT 200'
+        )->fetchAll() ?: [];
+        foreach ($manual as $row) {
+            $history[] = gcv_admin_payout_history_row($row, 'manual', 'Manual');
+        }
+    } catch (Throwable $e) {
+        error_log('payout history manual: ' . $e->getMessage());
+    }
+
+    try {
+        $plat = db()->query(
+            'SELECT sp.id, sp.amount_cents, sp.pix_key, sp.status,
+                    sp.paid_at, sp.created_at, sp.sale_id,
+                    COALESCE(NULLIF(g.full_name, \'\'), u.name) AS guide_name
+             FROM gcv_sale_payouts sp
+             JOIN gcv_users u ON u.id = sp.guide_user_id
+             LEFT JOIN gcv_guides g ON g.user_id = sp.guide_user_id
+             WHERE sp.deleted_at IS NULL
+             ORDER BY COALESCE(sp.paid_at, sp.created_at) DESC
+             LIMIT 200'
+        )->fetchAll() ?: [];
+        foreach ($plat as $row) {
+            $item = gcv_admin_payout_history_row($row, 'platform', 'Plataforma');
+            if (!empty($row['sale_id'])) {
+                $item['note'] = 'Venda #' . (int)$row['sale_id'];
+            }
+            $history[] = $item;
+        }
+    } catch (Throwable $e) {
+        error_log('payout history platform: ' . $e->getMessage());
+    }
+
+    usort($history, static function ($a, $b) {
+        return strcmp((string)($b['when'] ?? ''), (string)($a['when'] ?? ''));
+    });
+    return array_slice($history, 0, 200);
+}
+
+/**
+ * @param array<string,mixed> $row
+ * @return array<string,mixed>
+ */
+function gcv_admin_payout_history_row(array $row, string $origin, string $originLabel): array
+{
+    $status = (string)($row['status'] ?? '');
+    return [
+        'id' => $origin . '-' . (int)($row['id'] ?? 0),
+        'origin' => $origin,
+        'origin_label' => $originLabel,
+        'guide_name' => (string)($row['guide_name'] ?? ''),
+        'amount_cents' => (int)($row['amount_cents'] ?? 0),
+        'pix_key' => (string)($row['pix_key'] ?? ''),
+        'status' => $status,
+        'status_label' => gcv_admin_payout_status_label($status),
+        'when' => (string)($row['paid_at'] ?: $row['created_at'] ?: ''),
+        'note' => (string)($row['description'] ?? ''),
+    ];
+}
+
+function gcv_admin_payout_status_label(string $status): string
+{
+    $map = [
+        'paid' => 'Pago',
+        'PAYOUT_PAID' => 'Pago',
+        'processing' => 'Enviando',
+        'queued' => 'Na fila',
+        'PAYOUT_PENDING' => 'Agendado',
+        'PAYOUT_REVIEW' => 'Em análise',
+        'failed' => 'Falhou',
+        'PAYOUT_BLOCKED' => 'Bloqueado',
+        'cancelled' => 'Cancelado',
+        'draft' => 'Rascunho',
+    ];
+    return $map[$status] ?? $status;
 }

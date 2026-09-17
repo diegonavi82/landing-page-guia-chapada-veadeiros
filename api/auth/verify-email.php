@@ -43,13 +43,13 @@ $roles = gcv_user_roles($userId);
 $context = in_array('guide', $roles, true) ? 'guide' : (string)($user['role'] ?? 'client');
 $current = current_user();
 if (!$current || (int)$current['id'] !== $userId) {
-    destroy_session();
+    destroy_session($context);
     create_session($userId, $context);
 }
 
 json_response(true, [
     'message' => 'E-mail confirmado! Complete seu perfil para enviar à aprovação.',
-    'redirect' => '/dashboard/',
+    'redirect' => '/dashboard/?as=' . rawurlencode($context),
     'email_verified' => true,
     'role' => $context,
     'status' => $user['status'] ?? 'pending',

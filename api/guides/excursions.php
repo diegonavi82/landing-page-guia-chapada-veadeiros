@@ -383,9 +383,9 @@ if ($method === 'GET') {
     }
     unset($a);
 
-    $cities = db()->query(
+    $cities = gcv_filter_guide_base_cities(db()->query(
         "SELECT id, name FROM gcv_cities WHERE status = 'active' ORDER BY name ASC"
-    )->fetchAll(PDO::FETCH_ASSOC);
+    )->fetchAll(PDO::FETCH_ASSOC) ?: []);
 
     $commission = gcv_commission_resolve(null, (int)$user['id'], null, null);
 
@@ -400,6 +400,7 @@ if ($method === 'GET') {
         'guide_net_min' => gcv_guide_net_min_cents() / 100,
         'guide_net_max' => gcv_guide_net_max_default_cents() / 100,
         'guide_net_max_dragao' => gcv_guide_net_max_dragao_cents() / 100,
+        'guide_net_max_transport' => gcv_guide_net_max_transport_cents() / 100,
         'commission_pct' => (float)$commission['pct'],
         'commission_scope' => (string)$commission['scope_type'],
         'profile_complete' => gcv_guide_profile_is_complete((int)$user['id']),
@@ -462,9 +463,27 @@ if ($method === 'POST') {
     if ($cityId <= 0 || $attrId <= 0) {
         json_response(false, null, 'Cidade e atrativo são obrigatórios', 422);
     }
-    $netRangeErr = gcv_guide_net_range_error($guideNetCents, $attrId);
+    $includeTransport = !empty($data['include_transport']) && empty($data['offer_transport']);
+    $netRangeErr = gcv_guide_net_range_error($guideNetCents, $attrId, null, $includeTransport);
     if ($netRangeErr !== null) {
         json_response(false, null, $netRangeErr, 422);
+    }
+    if (!empty($data['offer_transport'])) {
+        $netT = isset($data['guide_net_transport_cents'])
+            ? (int)$data['guide_net_transport_cents']
+            : (int)round(((float)($data['guide_net_transport'] ?? 0)) * 100);
+        $netTErr = gcv_guide_net_range_error($netT, $attrId, null, true);
+        if ($netTErr !== null) {
+            json_response(false, null, $netTErr, 422);
+        }
+        $maxT = gcv_clamp_max_people_transport($data['max_people_transport'] ?? 4, $maxPeople);
+        if ($maxT < 1) {
+            json_response(false, null, 'Vagas com transporte: informe de 1 a 4 pessoas', 422);
+        }
+        $quorumT = gcv_clamp_quorum($data['quorum_transport'] ?? 4);
+        if ($quorumT > $maxT) {
+            json_response(false, null, 'Quórum do transporte não pode ser maior que as vagas da van', 422);
+        }
     }
     if ($maxPeople < ($preconfirmed + $quorum)) {
         json_response(false, null, 'Vagas devem caber as pessoas confirmadas por fora e o quórum das novas inscrições', 422);
@@ -475,10 +494,11 @@ if ($method === 'POST') {
     if (!$a->fetch()) {
         json_response(false, null, 'Atrativo inválido ou não publicado pelo admin', 422);
     }
-    $c = db()->prepare("SELECT id FROM gcv_cities WHERE id = ? AND status = 'active'");
+    $c = db()->prepare("SELECT id, name FROM gcv_cities WHERE id = ? AND status = 'active'");
     $c->execute([$cityId]);
-    if (!$c->fetch()) {
-        json_response(false, null, 'Cidade de saída inválida', 422);
+    $cityRow = $c->fetch(PDO::FETCH_ASSOC);
+    if (!$cityRow || !gcv_is_allowed_guide_base_city((string)($cityRow['name'] ?? ''))) {
+        json_response(false, null, gcv_guide_base_city_error(), 422);
     }
 
     try {
@@ -495,7 +515,13 @@ if ($method === 'POST') {
             'quorum' => $quorum,
             'max_people' => $maxPeople,
             'preconfirmed_people' => $preconfirmed,
-            'include_transport' => !empty($data['include_transport']),
+            'include_transport' => !empty($data['include_transport']) || !empty($data['offer_transport']),
+            'offer_transport' => !empty($data['offer_transport']),
+            'guide_net_transport_cents' => isset($data['guide_net_transport_cents'])
+                ? (int)$data['guide_net_transport_cents']
+                : null,
+            'quorum_transport' => $data['quorum_transport'] ?? 0,
+            'max_people_transport' => $data['max_people_transport'] ?? 0,
             'include_entry' => !empty($data['include_entry']),
             'include_lunch' => !empty($data['include_lunch']),
             'notes_pt' => $notes !== '' ? $notes : null,

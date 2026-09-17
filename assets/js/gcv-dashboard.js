@@ -40,8 +40,10 @@
   }
 
   function showSection(id) {
+    if (id === 'section-pending-guides') id = 'section-cms-guides';
+    var visibleId = id === 'section-guide-create-tour' ? 'section-guide-tours' : id;
     document.querySelectorAll('.gcv-dash-section').forEach(function (s) { s.classList.remove('active'); });
-    var s = document.getElementById(id);
+    var s = document.getElementById(visibleId);
     if (s) s.classList.add('active');
     document.querySelectorAll('.gcv-dash-nav a, .gcv-dash-bottom-nav a').forEach(function (a) { a.classList.remove('active'); });
     document.querySelectorAll('[data-section="' + id + '"]').forEach(function (link) {
@@ -161,8 +163,6 @@
           '<div class="gcv-dash-field-row" style="margin-top:0.75rem;">' +
           '<div class="gcv-dash-field"><label class="gcv-dash-label">Chave PIX</label>' +
           '<input class="gcv-dash-input" data-pix-key type="text" value="' + escapeAttr(pixVal) + '" placeholder="CPF, CNPJ, e-mail, telefone ou aleatória" /></div>' +
-          '<div class="gcv-dash-field"><label class="gcv-dash-label">Titular</label>' +
-          '<input class="gcv-dash-input" data-pix-holder type="text" value="' + escapeAttr(g.pix_holder_name || '') + '" /></div>' +
           '<div class="gcv-dash-field"><label class="gcv-dash-label">Telefone</label>' +
           '<input class="gcv-dash-input" data-phone type="text" value="' + escapeAttr(g.phone || '') + '" /></div>' +
           '</div>' +
@@ -180,7 +180,6 @@
           put('/api/admin/guides.php', {
             user_id: uid,
             pix_key: card.querySelector('[data-pix-key]').value,
-            pix_holder_name: card.querySelector('[data-pix-holder]').value,
             phone: card.querySelector('[data-phone]').value,
           }, function (e2, r2) {
             alert(r2 && r2.ok ? 'Salvo. Agora clique em Verificar PIX.' : ((r2 && r2.error) || 'Erro'));
@@ -197,7 +196,6 @@
           put('/api/admin/guides.php', {
             user_id: uid,
             pix_key: card.querySelector('[data-pix-key]').value,
-            pix_holder_name: card.querySelector('[data-pix-holder]').value,
             verify_pix: true,
           }, function (e2, r2) {
             alert(r2 && r2.ok ? 'PIX verificado.' : ((r2 && r2.error) || 'Erro'));
@@ -319,79 +317,8 @@
   }
 
   function loadPendingGuides() {
-    var list = document.getElementById('pending-guides-list');
-    if (!list) return;
-    list.innerHTML = 'Carregando...';
-    get('/api/admin/pending-guides.php', function (err, res) {
-      if (!res.ok || !res.data.guides.length) {
-        list.innerHTML = '<div class="gcv-dash-alert gcv-dash-alert--info">Nenhum guia pendente.</div>';
-        return;
-      }
-      list.innerHTML = '';
-      res.data.guides.forEach(function (guide) {
-        var card = el('div', 'gcv-dash-pending-card');
-        card.innerHTML = '<div class="gcv-dash-pending-card__info">'
-          + '<div class="gcv-dash-pending-card__name">' + guide.name + '</div>'
-          + '<div class="gcv-dash-pending-card__meta">' + guide.email + (guide.cadastur ? ' · Cadastur: ' + guide.cadastur : '') + '</div>'
-          + '</div>'
-          + '<div class="gcv-dash-pending-card__actions">'
-          + '<button class="gcv-dash-btn gcv-dash-btn--success gcv-dash-btn--sm" data-approve-guide="' + guide.id + '">Aprovar</button>'
-          + '<button class="gcv-dash-btn gcv-dash-btn--danger gcv-dash-btn--sm" data-reject-guide="' + guide.id + '">Rejeitar</button>'
-          + '</div>';
-        card.querySelector('[data-approve-guide]').addEventListener('click', function () {
-          post('/api/admin/approve-guide.php', { user_id: guide.id }, function (e, r) {
-            if (r.ok) loadPendingGuides();
-            else alert(r.error || 'Erro');
-          });
-        });
-        card.querySelector('[data-reject-guide]').addEventListener('click', function () {
-          var reason = prompt('Motivo da rejeição (opcional):') || '';
-          post('/api/admin/reject-guide.php', { user_id: guide.id, reason: reason }, function (e, r) {
-            if (r.ok) loadPendingGuides();
-            else alert(r.error || 'Erro');
-          });
-        });
-        list.appendChild(card);
-      });
-    });
-  }
-
-  function loadPendingTours() {
-    var list = document.getElementById('pending-tours-list');
-    if (!list) return;
-    list.innerHTML = 'Carregando...';
-    get('/api/admin/pending-tours.php', function (err, res) {
-      if (!res.ok || !res.data.tours.length) {
-        list.innerHTML = '<div class="gcv-dash-alert gcv-dash-alert--info">Nenhum passeio pendente.</div>';
-        return;
-      }
-      list.innerHTML = '';
-      res.data.tours.forEach(function (tour) {
-        var card = el('div', 'gcv-dash-pending-card');
-        card.innerHTML = '<div class="gcv-dash-pending-card__info">'
-          + '<div class="gcv-dash-pending-card__name">' + tour.title_pt + '</div>'
-          + '<div class="gcv-dash-pending-card__meta">Guia: ' + tour.guide_name + ' · Data: ' + tour.departure_date + ' · R$ ' + (tour.price_cents/100).toFixed(2) + '</div>'
-          + '</div>'
-          + '<div class="gcv-dash-pending-card__actions">'
-          + '<button class="gcv-dash-btn gcv-dash-btn--success gcv-dash-btn--sm" data-approve-tour="' + tour.id + '">Aprovar</button>'
-          + '<button class="gcv-dash-btn gcv-dash-btn--danger gcv-dash-btn--sm" data-reject-tour="' + tour.id + '">Rejeitar</button>'
-          + '</div>';
-        card.querySelector('[data-approve-tour]').addEventListener('click', function () {
-          post('/api/admin/approve-tour.php', { tour_id: tour.id }, function (e, r) {
-            if (r.ok) loadPendingTours();
-            else alert(r.error || 'Erro');
-          });
-        });
-        card.querySelector('[data-reject-tour]').addEventListener('click', function () {
-          var reason = prompt('Motivo da rejeição:') || '';
-          post('/api/admin/reject-tour.php', { tour_id: tour.id, reason: reason }, function (e, r) {
-            if (r.ok) loadPendingTours();
-            else alert(r.error || 'Erro');
-          });
-        });
-        list.appendChild(card);
-      });
-    });
+    showSection('section-cms-guides');
+    if (window.GcvAdminCms) window.GcvAdminCms.open('guides');
   }
 
   function loadAdminBookings() {
@@ -439,6 +366,7 @@
       guide_net_min_reais: 'finance',
       guide_net_max_reais: 'finance',
       guide_net_max_dragao_reais: 'finance',
+      guide_net_max_transport_reais: 'finance',
       payout_after_hour: 'finance',
       payout_after_minute: 'finance',
       payout_delay_hours: 'finance'
@@ -450,7 +378,7 @@
       },
       finance: {
         title: 'Financeiro e repasse',
-        hint: 'A diária máxima é o valor que o guia pode pedir por pessoa. Ainda entra a taxa da plataforma e o arredondamento (5 e 8). Dragão pode ter teto próprio.'
+        hint: 'A diária máxima é o valor que o guia pode pedir por pessoa. Com transporte incluso o teto sobe. Ainda entra a taxa da plataforma e o arredondamento (5 e 8). Dragão pode ter teto próprio sem transporte.'
       },
       other: { title: 'Outras', hint: '' }
     };
@@ -681,10 +609,15 @@
 
   function refreshGuideBadge() {
     get('/api/admin/pending-guides.php', function (err, res) {
-      var n = (res && res.ok && res.data && res.data.guides) ? res.data.guides.length : 0;
+      var guides = (res && res.ok && res.data && res.data.guides) || [];
+      var n = guides.filter(function (g) {
+        return String(g.status || '') === 'pending';
+      }).length;
       var link = document.querySelector('#gcv-dash-nav-list [data-section="section-cms-guides"]');
       if (!link) return;
-      link.innerHTML = '🧭 Guias credenciados' + (n ? ' <span class="gcv-dash-nav-badge">' + n + '</span>' : '');
+      var label = n > 99 ? '99+' : String(n);
+      link.innerHTML = '🧭 Guias credenciados' +
+        (n ? ' <span class="gcv-dash-nav-badge" aria-label="' + n + ' cadastros aguardando aprovação">' + label + '</span>' : '');
     });
   }
 
@@ -952,9 +885,10 @@
   function buildNav(role, status) {
     var navList = document.getElementById('gcv-dash-nav-list');
     if (!navList) return;
+    var isAdmin = role === 'admin';
     var items = [];
 
-    if (role === 'admin') {
+    if (isAdmin) {
       items = [
         { id: 'section-cms-articles',      icon: '📰', label: 'Revista',           load: function () { if (window.GcvAdminCms) window.GcvAdminCms.open('articles'); } },
         { id: 'section-cms-attractions',   icon: '🏞️', label: 'Atrativos',         load: function () { if (window.GcvAdminCms) window.GcvAdminCms.open('attractions'); } },
@@ -962,20 +896,20 @@
         { id: 'section-cms-cities',        icon: '📍', label: 'Cidades',           load: function () { if (window.GcvAdminCms) window.GcvAdminCms.open('cities'); } },
         { id: 'section-cms-excursions',    icon: '🚌', label: 'Excursões',         load: function () { if (window.GcvAdminCms) window.GcvAdminCms.open('excursions'); } },
         { id: 'section-admin-payouts',     icon: '💸', label: 'Pagar guias',       load: loadAdminPayouts   },
-        { id: 'section-pending-tours',     icon: '🗺️', label: 'Passeios pendentes',load: loadPendingTours   },
         { id: 'section-admin-create-tour', icon: '➕', label: 'Criar passeio',     load: function () { loadGuidesList(); initCreateTourForm('gcv-create-tour-form'); document.getElementById('admin-guide-field').hidden = false; } },
         { id: 'section-admin-bookings',    icon: '📋', label: 'Todas as reservas', load: loadAdminBookings  },
         { id: 'section-admin-settings',    icon: '⚙️', label: 'Configurações',     load: loadSettings       },
         { id: 'section-admin-financial',   icon: '💰', label: 'Financeiro',        load: loadFinancial      },
+        { id: 'section-guide-profile',     icon: '👤', label: 'Meu perfil',        load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideProfile(); } },
       ];
     } else if (role === 'guide' && status === 'active') {
       items = [
-        { id: 'section-guide-tours',        icon: '📅', label: 'Agenda',            tab: 'Agenda',      tabIcon: 'agenda',  load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideAgenda(); } },
-        { id: 'section-guide-create-tour',  icon: '➕', label: 'Publicar passeio',  tab: 'Publicar',   tabIcon: 'publish', load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuidePublish(); } },
-        { id: 'section-guide-profile',      icon: '👤', label: 'Meu perfil',        tab: 'Perfil',     tabIcon: 'profile', load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideProfile(); } },
+        { id: 'section-guide-create-tour',  icon: '➕', label: 'Publicar passeio',  tab: 'Publicar',   tabIcon: 'publish', load: function () { if (window.GcvDashRoles) { window.GcvDashRoles.loadGuidePublish(); window.GcvDashRoles.loadGuideAgenda(); } } },
+        { id: 'section-guide-tours',        icon: '📅', label: 'Agenda',            tab: 'Agenda',      tabIcon: 'agenda',  load: function () { if (window.GcvDashRoles) { window.GcvDashRoles.loadGuidePublish(); window.GcvDashRoles.loadGuideAgenda(); } } },
         { id: 'section-guide-financial',    icon: '🏦', label: 'Financeiro',       tab: 'Financeiro', tabIcon: 'money',   load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideEarnings(); } },
+        { id: 'section-guide-profile',      icon: '👤', label: 'Meu perfil',        tab: 'Perfil',     tabIcon: 'profile', load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideProfile(); } },
       ];
-    } else if (role === 'guide' && status === 'pending') {
+    } else if (role === 'guide' && (status === 'pending' || status === 'suspended')) {
       items = [
         { id: 'section-guide-profile', icon: '👤', label: 'Meu perfil', load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideProfile(); } },
       ];
@@ -1003,6 +937,10 @@
       var sId = link.getAttribute('data-section');
       showSection(sId);
       if (loadMap[sId]) loadMap[sId]();
+      if (sId === 'section-guide-create-tour') {
+        var pubBox = document.getElementById('guide-agenda-publish');
+        if (pubBox && pubBox.scrollIntoView) pubBox.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      }
     }
 
     navList.addEventListener('click', onNavClick);
@@ -1045,6 +983,8 @@
       if (!wantScan && wantPublish) {
         showSection('section-guide-create-tour');
         if (loadMap['section-guide-create-tour']) loadMap['section-guide-create-tour']();
+        var pubBox = document.getElementById('guide-agenda-publish');
+        if (pubBox && pubBox.scrollIntoView) pubBox.scrollIntoView({ block: 'start' });
       } else if (!wantScan) {
         showSection(items[0].id);
         if (loadMap[items[0].id]) loadMap[items[0].id]();
@@ -1053,6 +993,9 @@
     if (role === 'admin') {
       refreshApprovalBadge();
       refreshGuideBadge();
+      if (!window.__gcvGuideBadgeTimer) {
+        window.__gcvGuideBadgeTimer = setInterval(refreshGuideBadge, 30000);
+      }
     }
   }
 
@@ -1062,26 +1005,38 @@
     var loading = document.getElementById('gcv-dash-loading');
     var app     = document.getElementById('gcv-dash-app');
 
-    get('/api/auth/me.php', function (err, res) {
+    var asQ = '';
+    try {
+      asQ = new URLSearchParams(location.search).get('as') || sessionStorage.getItem('gcv_porta') || '';
+    } catch (e0) {}
+    var meUrl = '/api/auth/me.php?t=' + Date.now() + (asQ ? ('&as=' + encodeURIComponent(asQ)) : '');
+    get(meUrl, function (err, res) {
       console.log('[dashboard] me.php:', err, JSON.stringify(res));
       if (err || !res || !res.ok) {
-        // Sem sessão: manda para a porta correta (admin se veio de /admin)
-        var fromAdmin = /\/admin\//.test(document.referrer || '') || /admin=1/.test(location.search || '');
-        window.location.href = fromAdmin
-          ? '/admin/login.html?redirect=' + encodeURIComponent('/dashboard/' + (location.hash || ''))
-          : '/login.html?redirect=' + encodeURIComponent('/dashboard/' + (location.hash || ''));
+        var as = '';
+        try {
+          as = (window.GcvPorta && window.GcvPorta.current())
+            || new URLSearchParams(location.search).get('as')
+            || '';
+        } catch (e2) {}
+        as = String(as || '').toLowerCase();
+        var next = '/dashboard/' + (as ? ('?as=' + encodeURIComponent(as)) : '') + (location.hash || '');
+        window.location.href = (as === 'admin' || /\/admin\//.test(document.referrer || ''))
+          ? '/admin/login.html?redirect=' + encodeURIComponent(next)
+          : '/guia/login.html?redirect=' + encodeURIComponent(next);
         return;
       }
       currentUser = res.data;
-      if (currentUser.role === 'guide' && !currentUser.email_verified) {
+      var tabRole = currentUser.role || currentUser.active_role || '';
+      if (tabRole === 'guide' && !currentUser.email_verified) {
         window.location.href = '/guia/confirmar-email.html?email=' + encodeURIComponent(currentUser.email || '');
         return;
       }
       document.body.classList.toggle(
         'gcv-dash-page--guide-locked',
-        currentUser.role === 'guide' && currentUser.status !== 'active'
+        tabRole === 'guide' && currentUser.status !== 'active'
       );
-      if (currentUser.role === 'admin' && window.GcvAdminCms && typeof window.GcvAdminCms.boot === 'function') {
+      if (tabRole === 'admin' && window.GcvAdminCms && typeof window.GcvAdminCms.boot === 'function') {
         window.GcvAdminCms.boot();
       }
 
@@ -1095,8 +1050,9 @@
 
       if (nameEl)   nameEl.textContent   = currentUser.name || '';
       if (roleEl) {
-        var label = roleMap[currentUser.role] || currentUser.role;
-        var extras = (currentUser.roles || []).filter(function (r) { return r !== currentUser.role; });
+        var displayRole = tabRole || currentUser.role;
+        var label = roleMap[displayRole] || displayRole;
+        var extras = (currentUser.roles || []).filter(function (r) { return r !== displayRole; });
         if (extras.length) {
           label += ' · também: ' + extras.map(function (r) { return roleMap[r] || r; }).join(', ');
         }
@@ -1117,7 +1073,7 @@
         });
       }
 
-      buildNav(currentUser.role, currentUser.status);
+      buildNav(tabRole || currentUser.role, currentUser.status);
       window.addEventListener('hashchange', function () {
         if (window.GcvDashRoles && typeof window.GcvDashRoles.consumeCheckinHash === 'function') {
           window.GcvDashRoles.consumeCheckinHash();
@@ -1174,6 +1130,7 @@
   window.GcvDashboard = {
     refreshApprovalBadge: refreshApprovalBadge,
     refreshGuideBadge: refreshGuideBadge,
+    loadPendingGuides: loadPendingGuides,
     showSection: showSection
   };
 }());

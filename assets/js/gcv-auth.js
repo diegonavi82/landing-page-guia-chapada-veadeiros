@@ -2,6 +2,56 @@
 (function () {
   'use strict';
 
+  /* Dual-papel: a aba /dashboard/?as=admin precisa enviar a porta em cada API,
+     senão o PHP usa o active_role da sessão (ex.: guide) e as rotas admin falham. */
+  (function patchApiPorta() {
+    function portaFromUrl() {
+      try {
+        var v = String(new URLSearchParams(window.location.search).get('as') || '').toLowerCase();
+        if (v === 'admin' || v === 'guide' || v === 'client') return v;
+      } catch (e) {}
+      return '';
+    }
+    function withAs(url, porta) {
+      if (!porta || typeof url !== 'string') return url;
+      if (url.indexOf('/api/') === -1 && url.indexOf('api/') === -1) return url;
+      if (/[?&]as=/.test(url)) return url;
+      return url + (url.indexOf('?') >= 0 ? '&' : '?') + 'as=' + encodeURIComponent(porta);
+    }
+    var origOpen = XMLHttpRequest.prototype.open;
+    var origSend = XMLHttpRequest.prototype.send;
+    XMLHttpRequest.prototype.open = function (method, url) {
+      var p = portaFromUrl();
+      if (p && typeof url === 'string') {
+        url = withAs(url, p);
+        arguments[1] = url;
+      }
+      this._gcvAs = p;
+      return origOpen.apply(this, arguments);
+    };
+    XMLHttpRequest.prototype.send = function () {
+      if (this._gcvAs) {
+        try { this.setRequestHeader('X-GCV-Porta', this._gcvAs); } catch (e) {}
+      }
+      return origSend.apply(this, arguments);
+    };
+    if (typeof window.fetch === 'function') {
+      var origFetch = window.fetch.bind(window);
+      window.fetch = function (input, init) {
+        var p = portaFromUrl();
+        if (!p) return origFetch(input, init);
+        init = Object.assign({}, init || {});
+        try {
+          var headers = init.headers ? new Headers(init.headers) : new Headers();
+          if (!headers.has('X-GCV-Porta')) headers.set('X-GCV-Porta', p);
+          init.headers = headers;
+        } catch (e) {}
+        if (typeof input === 'string') input = withAs(input, p);
+        return origFetch(input, init);
+      };
+    }
+  })();
+
   var BASE = '/api/auth';
   var i18n = {};
   var lang = 'pt';
@@ -171,6 +221,7 @@
         oauth_token: 'Não foi possível validar o login Google. Tente novamente.',
         oauth_userinfo: 'Não foi possível ler seus dados no Google.',
         oauth_user: 'Conta Google sem e-mail disponível.',
+        blocked: 'Este e-mail está bloqueado e não pode solicitar cadastro de guia.',
         suspended: 'Esta conta está suspensa. Fale conosco no WhatsApp.',
         admin_only: 'Acesso restrito à administração. Use a conta admin cadastrada.',
         admin_restricted: 'Acesso à Área Admin restrito.',
@@ -199,10 +250,9 @@
           return;
         }
 
-        var active = (res.data && (res.data.active_role || res.data.role)) || context;
-        // Sempre respeita a porta de login
-        if (active === 'admin' || context === 'admin') {
-          window.location.href = '/dashboard/';
+        try { sessionStorage.setItem('gcv_porta', context); } catch (e2) {}
+        if (context === 'admin') {
+          window.location.href = '/dashboard/?as=admin';
           return;
         }
         if (context === 'guide') {
@@ -211,7 +261,7 @@
             window.location.href = '/guia/confirmar-email.html' + (verifyEmail ? ('?email=' + encodeURIComponent(verifyEmail)) : '');
             return;
           }
-          window.location.href = '/dashboard/';
+          window.location.href = '/dashboard/?as=guide';
           return;
         }
         window.location.href = getRedirect();

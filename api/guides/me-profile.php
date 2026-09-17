@@ -13,13 +13,12 @@ require_once __DIR__ . '/../helpers/marketplace/guide_financial_service.php';
 require_once __DIR__ . '/../helpers/marketplace/constants.php';
 require_once __DIR__ . '/../helpers/guide_languages.php';
 require_once __DIR__ . '/../helpers/guide_profile.php';
-require_once __DIR__ . '/../helpers/mailer.php';
-require_once __DIR__ . '/../helpers/notify_ops.php';
 require_once __DIR__ . '/../helpers/diego_navi_stash.php';
+require_once __DIR__ . '/../helpers/guide_registration.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
-$user = require_role('guide');
+$user = require_held_role('guide');
 require_once __DIR__ . '/../helpers/email_verify.php';
 gcv_require_guide_email_verified($user);
 gcv_cms_ensure_schema();
@@ -66,9 +65,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     try {
         $profile = gcv_guide_profile_row((int)$user['id']);
         if (!$profile) {
-            db()->prepare('INSERT INTO gcv_guides (user_id) VALUES (?)')->execute([(int)$user['id']]);
+            db()->prepare('INSERT IGNORE INTO gcv_guides (user_id) VALUES (?)')->execute([(int)$user['id']]);
         }
-        gcv_diego_navi_stash_apply_if_needed((int)$user['id'], (string)($user['email'] ?? ''));
+        try {
+            gcv_diego_navi_stash_apply_if_needed((int)$user['id'], (string)($user['email'] ?? ''));
+        } catch (Throwable $e) {
+            error_log('me-profile stash: ' . $e->getMessage());
+        }
         $pack = gcv_guide_profile_payload((int)$user['id']);
         $cities = db()->query(
             "SELECT id, name FROM gcv_cities WHERE status = 'active' ORDER BY name ASC"
@@ -76,6 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $cities = array_values(array_filter($cities, static function ($c) {
             return gcv_is_allowed_guide_base_city((string)$c['name']);
         }));
+        $rejection = gcv_guide_submit_cooldown($pack['profile'] ?? null);
 
         json_response(true, [
             'profile' => $pack['profile'],
@@ -83,6 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'missing' => $pack['missing'],
             'complete' => $pack['complete'],
             'financial_ready' => $pack['financial_ready'],
+            'rejection' => $rejection,
             'limits' => [
                 'bio_max' => $BIO_MAX,
                 'bio_recommended' => $BIO_RECOMMENDED,
@@ -105,6 +110,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
     $before = gcv_guide_profile_payload($userId);
     $wasComplete = !empty($before['complete']);
     $userStatus = (string)(($before['profile']['user_status'] ?? $user['status'] ?? ''));
+    $cooldown = gcv_guide_submit_cooldown($before['profile'] ?? null);
+    $wantSubmit = !empty($data['submit_for_approval']);
+
+    if ($wantSubmit && !empty($cooldown['rejected']) && empty($cooldown['can_submit'])) {
+        $n = (int)$cooldown['days_left'];
+        json_response(
+            false,
+            null,
+            'Você poderá solicitar nova aprovação em ' . $n . ' dia' . ($n === 1 ? '' : 's') . '.',
+            423
+        );
+    }
 
     $fullName = sanitize_text((string)($data['full_name'] ?? ''), 160);
     $nickname = sanitize_text((string)($data['nickname'] ?? ''), 80);
@@ -121,6 +138,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
     $phone = $phoneCheck['phone'];
     $phoneIso = $phoneCheck['iso'];
     $birth = trim((string)($data['birth_date'] ?? ''));
+    $sexo = gcv_normalize_sexo($data['sexo'] ?? '');
     $baseCityId = (int)($data['base_city_id'] ?? 0);
     $idDoc = sanitize_text((string)($data['id_document_url'] ?? ''), 500);
     $photo34 = sanitize_text((string)($data['photo_3x4_url'] ?? ''), 500);
@@ -140,6 +158,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
     if (!$birthDt || $birthDt > $adult) {
         json_response(false, null, 'É necessário ter 18 anos ou mais', 422);
     }
+    if ($sexo === '') {
+        json_response(false, null, 'Sexo obrigatório', 422);
+    }
     if ($baseCityId <= 0) {
         json_response(false, null, 'Cidade obrigatória', 422);
     }
@@ -148,7 +169,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
     $cityStmt->execute([$baseCityId]);
     $cityName = (string)($cityStmt->fetchColumn() ?: '');
     if ($cityName === '' || !gcv_is_allowed_guide_base_city($cityName)) {
-        json_response(false, null, 'Cidade deve ser Alto Paraíso, São Jorge, Cavalcante, Teresina de Goiás ou São João d\'Aliança', 422);
+        json_response(false, null, gcv_guide_base_city_error(), 422);
     }
     if ($photo34 === '') {
         json_response(false, null, 'Foto 3x4 obrigatória', 422);
@@ -181,6 +202,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
     }
 
     $langJson = gcv_guide_languages_json($data['languages'] ?? $data['languages_json'] ?? ['pt']);
+    $resubmitted = false;
 
     try {
         $pdo->beginTransaction();
@@ -188,26 +210,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
             $pdo->prepare(
                 'UPDATE gcv_guides SET
                     full_name = ?, nickname = ?,
-                    phone = ?, phone_ddi = ?, phone_iso = ?, birth_date = ?, base_city_id = ?,
+                    phone = ?, phone_ddi = ?, phone_iso = ?, birth_date = ?, sexo = ?, base_city_id = ?,
                     id_document_url = ?, photo_3x4_url = ?, photo_url = ?, bio_pt = ?,
                     languages_json = ?
                  WHERE user_id = ?'
             )->execute([
                 $fullName, $nickname,
-                $phone, $phoneDdi, $phoneIso, $birth, $baseCityId,
+                $phone, $phoneDdi, $phoneIso, $birth, $sexo, $baseCityId,
                 $idDoc, $photo34, $photo34, $bio, $langJson, $userId,
             ]);
         } catch (Throwable $e) {
             $pdo->prepare(
                 'UPDATE gcv_guides SET
                     full_name = ?, nickname = ?,
-                    phone = ?, phone_ddi = ?, birth_date = ?, base_city_id = ?,
+                    phone = ?, phone_ddi = ?, birth_date = ?, sexo = ?, base_city_id = ?,
                     id_document_url = ?, photo_3x4_url = ?, photo_url = ?, bio_pt = ?,
                     languages_json = ?
                  WHERE user_id = ?'
             )->execute([
                 $fullName, $nickname,
-                $phone, $phoneDdi, $birth, $baseCityId,
+                $phone, $phoneDdi, $birth, $sexo, $baseCityId,
                 $idDoc, $photo34, $photo34, $bio, $langJson, $userId,
             ]);
         }
@@ -242,6 +264,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
                 'email' => 'e-mail',
                 'phone' => 'telefone',
                 'birth_date' => 'nascimento',
+                'sexo' => 'sexo',
                 'base_city_id' => 'cidade',
                 'photo_3x4_url' => 'foto',
                 'legal_name' => 'nome / razão social',
@@ -252,6 +275,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
                 return $labels[$k] ?? $k;
             }, $pack['missing']);
             json_response(false, null, 'Preencha os campos obrigatórios: ' . implode(', ', $faltam), 422);
+        }
+
+        $resubmitted = false;
+        if ($wantSubmit && !empty($cooldown['rejected']) && !empty($cooldown['can_submit'])) {
+            $pdo->prepare('UPDATE gcv_users SET status = \'pending\' WHERE id = ? AND status = \'suspended\'')
+                ->execute([$userId]);
+            $resubmitted = true;
         }
 
         $pdo->commit();
@@ -271,22 +301,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
     $submitted = false;
     if ($userStatus === 'pending' && !$wasComplete) {
         $submitted = true;
-        $notifyName = $fullName !== '' ? $fullName : (string)($user['name'] ?? 'Guia');
-        $notifyEmail = (string)($user['email'] ?? '');
-        try {
-            mail_guide_pending_admin($notifyName, $notifyEmail);
-        } catch (Throwable $e) {
-            error_log('me-profile mail_guide_pending_admin: ' . $e->getMessage());
-        }
-        try {
-            gcv_ops_notify_guide_registration_pending($userId);
-        } catch (Throwable $e) {
-            error_log('me-profile notify registration: ' . $e->getMessage());
-        }
+    }
+    if (!empty($resubmitted)) {
+        $submitted = true;
     }
 
     $pack = gcv_guide_profile_payload($userId);
-    json_response(true, [
+    $out = [
         'message' => $submitted ? 'Cadastro enviado para aprovação' : 'Perfil atualizado',
         'profile' => $pack['profile'],
         'financial' => $pack['financial'],
@@ -294,7 +315,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
         'complete' => $pack['complete'],
         'financial_ready' => $pack['financial_ready'],
         'submitted_for_approval' => $submitted,
-    ]);
+        'rejection' => gcv_guide_submit_cooldown($pack['profile'] ?? null),
+    ];
+
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['ok' => true, 'data' => $out], JSON_UNESCAPED_UNICODE);
+    if (function_exists('fastcgi_finish_request')) {
+        fastcgi_finish_request();
+    } else {
+        ignore_user_abort(true);
+        while (ob_get_level() > 0) {
+            ob_end_flush();
+        }
+        flush();
+    }
+
+    if ($submitted) {
+        $notifyName = $fullName !== '' ? $fullName : (string)($user['name'] ?? 'Guia');
+        $notifyEmail = (string)($user['email'] ?? '');
+        try {
+            require_once __DIR__ . '/../helpers/mailer.php';
+            mail_guide_pending_admin($notifyName, $notifyEmail);
+        } catch (Throwable $e) {
+            error_log('me-profile mail_guide_pending_admin: ' . $e->getMessage());
+        }
+        try {
+            require_once __DIR__ . '/../helpers/purchase_notify.php';
+            $guideText = "✅ Recebemos seu cadastro de guia.\n\n"
+                . 'Olá, ' . $notifyName . "!\n\n"
+                . "Seus dados foram enviados para análise. Você recebe outro WhatsApp neste número quando for aprovado, com o link para publicar sua primeira excursão.\n\n"
+                . 'Enquanto isso, acompanhe o status no perfil do painel.';
+            $guidePhone = gcv_whatsapp_normalize_phone($phone, preg_replace('/\D+/', '', $phoneDdi) ?: '55');
+            if ($guidePhone !== '') {
+                gcv_whatsapp_send_text($guidePhone, $guideText);
+            }
+            $adminPhone = gcv_admin_whatsapp_phone();
+            $adminText = "⏳ Novo guia aguardando aprovação\n\n"
+                . 'Nome: ' . $notifyName . "\n"
+                . 'Email: ' . $notifyEmail . "\n"
+                . ($guidePhone !== '' ? 'WhatsApp: ' . $guidePhone . "\n" : '')
+                . "\nAbrir painel:\n"
+                . rtrim((string)($_ENV['APP_URL'] ?? 'https://www.guiachapadaveadeiros.com'), '/') . '/dashboard/';
+            if ($adminPhone !== '') {
+                gcv_whatsapp_send_text($adminPhone, $adminText);
+            }
+        } catch (Throwable $e) {
+            error_log('me-profile notify registration: ' . $e->getMessage());
+        }
+    }
+    exit;
 }
 
 json_response(false, null, 'Método não permitido', 405);

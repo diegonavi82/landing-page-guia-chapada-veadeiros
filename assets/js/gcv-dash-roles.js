@@ -21,9 +21,11 @@
     xhr.setRequestHeader('Content-Type', 'application/json');
     xhr.onload = function () {
       try { cb(null, JSON.parse(xhr.responseText)); }
-      catch (e) { cb(e, {}); }
+      catch (e) {
+        cb(e, { ok: false, error: xhr.status >= 500 ? 'Erro ao salvar. Tente novamente.' : 'Resposta inválida do servidor.' });
+      }
     };
-    xhr.onerror = function () { cb(new Error('network'), {}); };
+    xhr.onerror = function () { cb(new Error('network'), { ok: false, error: 'Falha de rede. Tente novamente.' }); };
     xhr.send(JSON.stringify(data || {}));
   }
 
@@ -136,18 +138,12 @@
       .replace(/[\u0300-\u036f]/g, '');
   }
 
-  function isComboTitle(title) {
-    return String(title || '').indexOf(' + ') !== -1;
-  }
-
   function sortAttractionsCatalog(list) {
     return (list || []).slice().sort(function (a, b) {
-      var ta = a.title_pt || '';
-      var tb = b.title_pt || '';
-      var ca = isComboTitle(ta) ? 1 : 0;
-      var cb = isComboTitle(tb) ? 1 : 0;
-      if (ca !== cb) return ca - cb;
-      return ta.localeCompare(tb, 'pt', { sensitivity: 'base' });
+      return String(a.title_pt || '').localeCompare(String(b.title_pt || ''), 'pt', {
+        sensitivity: 'base',
+        numeric: true
+      });
     });
   }
 
@@ -161,6 +157,9 @@
   var GUIDE_NET_MIN = 50;
   var GUIDE_NET_MAX = 160;
   var GUIDE_NET_MAX_DRAGAO = 190;
+  var GUIDE_NET_MAX_TRANSPORT = 550;
+  var MAX_TRANSPORT_PEOPLE = 4;
+  var DEFAULT_MAX_TRANSPORT = 4;
 
   function attractionLooksLikeDragao(a) {
     if (!a) return false;
@@ -169,10 +168,94 @@
     return slug.indexOf('dragao') >= 0 || title.indexOf('dragao') >= 0;
   }
 
+  function confirmedYesNoHtml(prefix, confirmed, questionLabel) {
+    confirmed = !!confirmed;
+    var q = questionLabel || 'Passeio já confirmado?';
+    return (
+      '<div class="gcv-dash-field gcv-dash-confirm-quorum__confirmed">' +
+      '<span class="gcv-dash-label">' + q + '</span>' +
+      '<div class="gcv-dash-yesno" role="group" aria-label="' + q + '">' +
+      '<label class="gcv-dash-yesno__opt"><input type="checkbox" id="' + prefix + 'confirmed-yes"' + (confirmed ? ' checked' : '') + ' /> Sim</label>' +
+      '<label class="gcv-dash-yesno__opt"><input type="checkbox" id="' + prefix + 'confirmed-no"' + (confirmed ? '' : ' checked') + ' /> Não</label>' +
+      '</div></div>'
+    );
+  }
+
+  function quorumFieldHtml(prefix, quorumSelect) {
+    return (
+      '<div class="gcv-dash-field gcv-dash-confirm-quorum__quorum" id="' + prefix + 'quorum-wrap">' +
+      '<label class="gcv-dash-label" for="' + prefix + 'quorum">Quórum <span class="gcv-dash-label__hint">(somente para as novas inscrições)</span></label>' +
+      (quorumSelect || quorumSelectHtml(prefix + 'quorum', DEFAULT_QUORUM)) +
+      '</div>'
+    );
+  }
+
+  function confirmedQuorumRowHtml(prefix, confirmed, quorumSelect, questionLabel) {
+    confirmed = !!confirmed;
+    return (
+      '<div class="gcv-dash-confirm-quorum' + (confirmed ? ' is-confirmed' : ' is-unconfirmed') + '">' +
+      confirmedYesNoHtml(prefix, confirmed, questionLabel) +
+      quorumFieldHtml(prefix, quorumSelect) +
+      '</div>'
+    );
+  }
+
+  function paintConfirmedQuorum(prefix, confirmed) {
+    var wrap = document.getElementById(prefix + 'quorum-wrap');
+    var row = wrap
+      ? wrap.closest('.gcv-dash-confirm-quorum')
+      : (document.getElementById(prefix + 'confirmed-yes')
+        && document.getElementById(prefix + 'confirmed-yes').closest('.gcv-dash-confirm-quorum'));
+    if (!row) return;
+    row.classList.toggle('is-confirmed', !!confirmed);
+    row.classList.toggle('is-unconfirmed', !confirmed);
+  }
+
+  function bindConfirmedYesNo(prefix) {
+    var yes = document.getElementById(prefix + 'confirmed-yes');
+    var no = document.getElementById(prefix + 'confirmed-no');
+    var wrap = document.getElementById(prefix + 'quorum-wrap');
+    var sel = document.getElementById(prefix + 'quorum');
+    function apply() {
+      var confirmed = !!(yes && yes.checked);
+      if (no) no.checked = !confirmed;
+      if (wrap) wrap.hidden = confirmed;
+      paintConfirmedQuorum(prefix, confirmed);
+      if (sel) {
+        sel.disabled = confirmed;
+        sel.required = !confirmed;
+        if (!confirmed) {
+          var v = parseFiniteInt(sel.value, DEFAULT_QUORUM);
+          if (v < 1 || v > MAX_QUORUM) sel.value = String(DEFAULT_QUORUM);
+        }
+      }
+    }
+    if (yes) {
+      yes.addEventListener('change', function () {
+        if (yes.checked && no) no.checked = false;
+        if (!yes.checked && no) no.checked = true;
+        apply();
+      });
+    }
+    if (no) {
+      no.addEventListener('change', function () {
+        if (no.checked && yes) yes.checked = false;
+        if (!no.checked && yes) yes.checked = true;
+        apply();
+      });
+    }
+    apply();
+  }
+
+  function isTourConfirmed(prefix) {
+    var yes = document.getElementById(prefix + 'confirmed-yes');
+    return !!(yes && yes.checked);
+  }
+
   function quorumSelectHtml(id, selected) {
     var sel = parseFiniteInt(selected, DEFAULT_QUORUM);
+    if (sel < 1) sel = DEFAULT_QUORUM;
     var opts = [
-      { v: 0, t: 'sem quórum (✅ confirmado)' },
       { v: 1, t: '1' },
       { v: 2, t: '2' },
       { v: 3, t: '3' },
@@ -183,6 +266,43 @@
         return '<option value="' + o.v + '"' + (sel === o.v ? ' selected' : '') + '>' + o.t + '</option>';
       }).join('') +
       '</select>';
+  }
+
+  function transportMaxSelectHtml(id, selected) {
+    var sel = parseFiniteInt(selected, DEFAULT_MAX_TRANSPORT);
+    if (sel < 1 || sel > MAX_TRANSPORT_PEOPLE) sel = DEFAULT_MAX_TRANSPORT;
+    var html = '<select class="gcv-dash-select" id="' + id + '">';
+    var i;
+    for (i = 1; i <= MAX_TRANSPORT_PEOPLE; i++) {
+      html += '<option value="' + i + '"' + (sel === i ? ' selected' : '') + '>' + i + '</option>';
+    }
+    return html + '</select>';
+  }
+
+  function fillIntSelect(sel, min, max, selected) {
+    if (!sel) return 0;
+    min = parseFiniteInt(min, 1);
+    max = parseFiniteInt(max, min);
+    if (max < min) max = min;
+    var cur = parseFiniteInt(selected != null ? selected : sel.value, min);
+    if (cur > max) cur = max;
+    if (cur < min) cur = min;
+    var html = '';
+    var i;
+    for (i = min; i <= max; i++) {
+      html += '<option value="' + i + '"' + (i === cur ? ' selected' : '') + '>' + i + '</option>';
+    }
+    sel.innerHTML = html;
+    sel.value = String(cur);
+    return cur;
+  }
+
+  function quorumOnlyRowHtml(prefix, quorumSelect) {
+    return (
+      '<div class="gcv-dash-confirm-quorum is-unconfirmed">' +
+      quorumFieldHtml(prefix, quorumSelect) +
+      '</div>'
+    );
   }
 
   function quorumLabel(n) {
@@ -287,7 +407,12 @@
     function render(list) {
       active = -1;
       if (!list.length) {
-        box.innerHTML = '<div class="gcv-cms-muted">Nenhum passeio com esse nome</div>';
+        var leftover = availableCatalog().length;
+        box.innerHTML = '<div class="gcv-cms-muted">' +
+          (leftover === 0
+            ? 'Todos os passeios já foram selecionados em outros dias.'
+            : 'Nenhum passeio com esse nome') +
+          '</div>';
         setOpen(true);
         return;
       }
@@ -671,7 +796,11 @@
       if (flag) flag.className = 'fi fi-' + c.iso + ' gcv-cms-phone-flag';
       if (dial) dial.textContent = '+' + c.dial;
       if (phone) {
-        phone.value = formatMask(phone.value, c.iso);
+        if (document.activeElement === phone) {
+          applyMaskKeepCaret(phone);
+        } else {
+          phone.value = formatMask(phone.value, c.iso);
+        }
         phone.placeholder = (api && api.phonePlaceholderFor) ? api.phonePlaceholderFor(c.iso) : '(00) 00000-0000';
         phone.maxLength = c.mask === 'br' ? 16 : 20;
       }
@@ -713,13 +842,39 @@
       '<input type="tel" class="gcv-dash-input gcv-cms-phone-input" id="' + prefix + '-phone" autocomplete="tel-national" inputmode="numeric" required />' +
       '</div></div>';
 
+    function applyMaskKeepCaret(input) {
+      if (!input) return;
+      if (api && api.applyPhoneMaskToInput) {
+        api.applyPhoneMaskToInput(input, stateIso);
+        return;
+      }
+      var value = String(input.value || '');
+      var start = input.selectionStart;
+      if (start == null || start < 0) start = value.length;
+      var digitsBefore = (value.slice(0, start).match(/\d/g) || []).length;
+      var masked = formatMask(value, stateIso);
+      input.value = masked;
+      var seen = 0;
+      var pos = masked.length;
+      if (digitsBefore <= 0) {
+        pos = 0;
+      } else {
+        for (var i = 0; i < masked.length; i++) {
+          var ch = masked.charAt(i);
+          if (ch >= '0' && ch <= '9') {
+            seen++;
+            if (seen >= digitsBefore) { pos = i + 1; break; }
+          }
+        }
+      }
+      try { input.setSelectionRange(pos, pos); } catch (err) { /* */ }
+    }
+
     var phoneInput = wrapEl.querySelector('#' + prefix + '-phone');
     if (phoneInput) {
       phoneInput.value = formatMask(initialPhone || '', stateIso);
       phoneInput.addEventListener('input', function () {
-        var start = phoneInput.selectionStart;
-        phoneInput.value = formatMask(phoneInput.value, stateIso);
-        try { phoneInput.setSelectionRange(start, start); } catch (err) { /* */ }
+        applyMaskKeepCaret(phoneInput);
       });
     }
     wrapEl.querySelector('#' + prefix + '-ddi-trigger').onclick = function () {
@@ -770,12 +925,27 @@
     if (link) link.click();
   }
 
+  function profileUiLang() {
+    var lang = String((document.documentElement.lang || 'pt')).slice(0, 2).toLowerCase();
+    return (lang === 'en' || lang === 'es') ? lang : 'pt';
+  }
+
+  function sexoUi() {
+    var all = {
+      pt: { label: 'Sexo *', m: 'Masculino', f: 'Feminino', ph: 'Selecione…', err: 'Selecione o sexo.', missing: 'Sexo' },
+      en: { label: 'Gender *', m: 'Male', f: 'Female', ph: 'Select…', err: 'Select gender.', missing: 'Gender' },
+      es: { label: 'Sexo *', m: 'Masculino', f: 'Femenino', ph: 'Seleccione…', err: 'Seleccione el sexo.', missing: 'Sexo' }
+    };
+    return all[profileUiLang()] || all.pt;
+  }
+
   function profileMissingLabel(key) {
     var map = {
       full_name: 'Nome completo',
       email: 'E-mail',
       phone: 'Telefone',
       birth_date: 'Nascimento',
+      sexo: sexoUi().missing,
       base_city_id: 'Cidade',
       photo_3x4_url: 'Foto 3×4',
       legal_name: 'Nome / Razão social',
@@ -785,14 +955,118 @@
     return map[key] || key;
   }
 
+  function clearGuideFieldErrors(form) {
+    if (!form) return;
+    form.querySelectorAll('.is-error').forEach(function (el) { el.classList.remove('is-error'); });
+    form.querySelectorAll('.gcv-dash-field-error').forEach(function (el) {
+      el.hidden = true;
+      el.textContent = '';
+    });
+  }
+
+  function markGuideFieldError(target, message) {
+    if (!target) return null;
+    var field = target.closest ? (target.closest('.gcv-dash-field') || target.closest('.gcv-dash-photo-col') || target) : target;
+    field.classList.add('is-error');
+    var err = field.querySelector ? field.querySelector('.gcv-dash-field-error') : null;
+    if (!err && field.appendChild) {
+      err = document.createElement('p');
+      err.className = 'gcv-dash-field-error';
+      field.appendChild(err);
+    }
+    if (err) {
+      err.hidden = false;
+      err.textContent = message || 'Campo obrigatório';
+    }
+    return field;
+  }
+
+  function focusFirstGuideError(form) {
+    if (!form) return;
+    var first = form.querySelector('.is-error');
+    if (!first) return;
+    try {
+      first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } catch (e) {
+      first.scrollIntoView(true);
+    }
+    var focusable = first.querySelector('input:not([type="hidden"]):not([disabled]), select, textarea');
+    if (focusable) {
+      try { focusable.focus({ preventScroll: true }); } catch (err) { focusable.focus(); }
+    }
+  }
+
+  function showGuideFormBanner(text, kind) {
+    var msg = document.getElementById('gp-msg');
+    if (!msg) return;
+    msg.hidden = false;
+    msg.className = 'gcv-dash-alert ' + (kind === 'success' ? 'gcv-dash-alert--success' : 'gcv-dash-alert--error');
+    msg.textContent = text;
+  }
+
+  function mapGuideApiErrorToField(apiErr, els) {
+    var t = String(apiErr || '').toLowerCase();
+    if (!t) return null;
+    if (t.indexOf('foto') >= 0) return markGuideFieldError(els.photo, apiErr);
+    if (t.indexOf('nome completo') >= 0) return markGuideFieldError(els.full, apiErr);
+    if (t.indexOf('telefone') >= 0) return markGuideFieldError(els.phone, apiErr);
+    if (t.indexOf('nascimento') >= 0 || t.indexOf('18 anos') >= 0) return markGuideFieldError(els.birth, apiErr);
+    if (t.indexOf('sexo') >= 0 || t.indexOf('gender') >= 0) return markGuideFieldError(els.sexo, apiErr);
+    if (t.indexOf('cidade') >= 0) return markGuideFieldError(els.city, apiErr);
+    if (t.indexOf('cnpj') >= 0 || (t.indexOf('cpf') >= 0 && t.indexOf('pix') < 0)) return markGuideFieldError(els.doc, apiErr);
+    if (t.indexOf('razão') >= 0 || t.indexOf('razao') >= 0 || t.indexOf('nome /') >= 0) return markGuideFieldError(els.legal, apiErr);
+    if (t.indexOf('pix') >= 0) return markGuideFieldError(els.pix, apiErr);
+    return null;
+  }
+
   /* ---------- GUIA: PERFIL ---------- */
+  function fillGuideProfileInbox() {
+    var host = document.getElementById('gp-inbox-list');
+    if (!host) return;
+    get('/api/inbox/list.php?limit=30', function (err, res) {
+      if (!host) return;
+      if (err || !res || !res.ok) {
+        host.innerHTML = '<p class="gcv-dash-alert gcv-dash-alert--warning">' +
+          esc((res && res.error) || 'Não foi possível carregar as notificações.') + '</p>';
+        return;
+      }
+      var items = (res.data && res.data.items) || [];
+      if (!items.length) {
+        host.innerHTML = '<p class="gcv-dash-hint" style="margin:0;color:#64748b;">Nenhuma notificação ainda.</p>';
+        return;
+      }
+      host.innerHTML = items.map(function (it) {
+        var unread = !!it.unread;
+        var when = '';
+        if (it.created_at) {
+          var d = new Date(String(it.created_at).replace(' ', 'T'));
+          if (!isNaN(d.getTime())) {
+            var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+            when = pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear()
+              + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+          }
+        }
+        return (
+          '<article class="gcv-inbox-item' + (unread ? ' gcv-inbox-item--unread' : '') + '">' +
+            '<div class="gcv-inbox-item__head">' +
+              '<strong>' + esc(it.title) + '</strong>' +
+              (when ? '<time>' + esc(when) + '</time>' : '') +
+            '</div>' +
+            '<pre class="gcv-inbox-item__body">' + esc(it.body) + '</pre>' +
+          '</article>'
+        );
+      }).join('');
+    });
+  }
+
   function loadGuideProfile() {
     var root = document.getElementById('guide-profile-root');
     if (!root) return;
     root.innerHTML = 'Carregando perfil…';
     get('/api/guides/me-profile.php', function (err, res) {
       if (!res || !res.ok) {
-        root.innerHTML = '<p class="gcv-dash-alert">Erro ao carregar perfil.</p>';
+        var msg = (res && res.error) || 'Erro ao carregar perfil.';
+        root.innerHTML = '<p class="gcv-dash-alert">' + esc(msg) + '</p>';
         return;
       }
       var d = res.data || {};
@@ -811,16 +1085,38 @@
       var saveLabel = pendingFirst ? 'Enviar para Aprovação' : 'Salvar';
       var personType = (fin.person_type === 'PJ' || fin.person_type === 'CNPJ' || p.person_type === 'PJ') ? 'PJ' : 'PF';
       if (!fin.person_type && !p.person_type && fin.cnpj && !fin.cpf) personType = 'PJ';
+      var rejection = d.rejection || {};
+      var isRejected = !!rejection.rejected;
+      var canResubmit = isRejected && !!rejection.can_submit;
+      var daysLeft = parseInt(rejection.days_left, 10) || 0;
+      var statusBanner;
+      if (isRejected) {
+        statusBanner =
+          '<div class="gcv-dash-alert gcv-dash-alert--rejected"><strong>' +
+          ((window.GcvGuideGender && window.GcvGuideGender.isWoman(p)) ? 'RECUSADA' : 'RECUSADO') +
+          '</strong>' +
+          (rejection.reason ? '<p style="margin:0.55rem 0 0;font-weight:600;">' + esc(rejection.reason) + '</p>' : '') +
+          (canResubmit
+            ? '<p style="margin:0.55rem 0 0;font-weight:700;">Você já pode solicitar uma nova aprovação.</p>'
+            : '<p style="margin:0.55rem 0 0;font-weight:700;">Nova solicitação disponível em ' + daysLeft + ' dia' + (daysLeft === 1 ? '' : 's') + '.</p>') +
+          '</div>';
+      } else if (complete) {
+        statusBanner = String(p.user_status || '') === 'pending'
+          ? '<div class="gcv-dash-alert gcv-dash-alert--pending">Aguardando Aprovação</div>'
+          : '<div class="gcv-dash-alert gcv-dash-alert--success">Perfil completo. Você pode publicar passeios.</div>';
+      } else {
+        statusBanner = '<div class="gcv-dash-alert gcv-dash-alert--warning">Preencha os campos obrigatórios para enviar o cadastro.' +
+          (missingTxt ? ' Faltam: <strong>' + esc(missingTxt) + '</strong>' : '') + '</div>';
+      }
 
       root.innerHTML =
-        (complete
-          ? '<div class="gcv-dash-alert gcv-dash-alert--success">' +
-            (String(p.user_status || '') === 'pending'
-              ? 'Cadastro enviado para aprovação. Você receberá um WhatsApp quando for aprovado. Enquanto isso, só esta tela de perfil fica disponível.'
-              : 'Perfil completo. Você pode publicar passeios.') +
-            '</div>'
-          : '<div class="gcv-dash-alert gcv-dash-alert--warning">Preencha os campos obrigatórios para enviar o cadastro.' +
-            (missingTxt ? ' Faltam: <strong>' + esc(missingTxt) + '</strong>' : '') + '</div>') +
+        statusBanner +
+        '<div class="gcv-dash-card" id="gp-inbox-card">' +
+          '<h3 class="gcv-dash-card__title">Notificações</h3>' +
+          '<p class="gcv-dash-hint" style="margin:0 0 0.75rem;">Os mesmos avisos do sino: inscrição, aprovação e lembretes do passeio.</p>' +
+          '<div id="gp-inbox-list">Carregando…</div>' +
+        '</div>' +
+        '<div id="gp-msg" class="gcv-dash-alert" hidden style="margin-top:0.75rem;"></div>' +
         '<form class="gcv-dash-form gcv-dash-form--profile" id="guide-profile-form" novalidate>' +
 
         '<div class="gcv-dash-card gcv-dash-profile-hero">' +
@@ -838,10 +1134,12 @@
             '<p class="gcv-dash-photo-hint">Foto obrigatória — assim aparece no site</p>' +
             '<input type="hidden" id="gp-photo-url" value="' + esc(savedPhoto) + '" />' +
             '<p class="gcv-cms-muted" id="gp-photo-status" hidden></p>' +
+            '<p class="gcv-dash-field-error" hidden></p>' +
           '</div>' +
           '<div class="gcv-dash-profile-hero__fields">' +
             '<div class="gcv-dash-field"><label class="gcv-dash-label">Nome completo *</label>' +
-            '<input class="gcv-dash-input" id="gp-full" maxlength="160" value="' + esc(p.full_name || p.user_name || '') + '" required /></div>' +
+            '<input class="gcv-dash-input" id="gp-full" maxlength="160" value="' + esc(p.full_name || p.user_name || '') + '" required />' +
+            '<p class="gcv-dash-field-error" hidden></p></div>' +
             '<div class="gcv-dash-field-row">' +
             '<div class="gcv-dash-field"><label class="gcv-dash-label">Apelido</label>' +
             '<input class="gcv-dash-input" id="gp-nick" maxlength="80" value="' + esc(p.nickname || '') + '" /></div>' +
@@ -856,15 +1154,22 @@
           '<p class="gcv-dash-hint" style="margin:0 0 0.75rem;">Este número recebe os avisos: cadastro em aprovação, passeio enviado, aprovado, recusado e novo inscrito.</p>' +
           '<div class="gcv-dash-field"><label class="gcv-dash-label">Telefone com DDI *</label>' +
           '<div id="gp-phone-wrap"></div>' +
-          '<p class="gcv-dash-alert gcv-dash-alert--warning" id="gp-phone-err" hidden style="margin-top:0.6rem;"></p></div>' +
+          '<p class="gcv-dash-field-error" id="gp-phone-err" hidden></p></div>' +
           '<div class="gcv-dash-field"><label class="gcv-dash-label">Nascimento *</label>' +
-          '<input class="gcv-dash-input" id="gp-birth" type="date" value="' + esc(p.birth_date || '') + '" required /></div>' +
+          '<input class="gcv-dash-input" id="gp-birth" type="date" value="' + esc(p.birth_date || '') + '" required />' +
+          '<p class="gcv-dash-field-error" hidden></p></div>' +
+          '<div class="gcv-dash-field"><label class="gcv-dash-label">' + esc(sexoUi().label) + '</label>' +
+          '<select class="gcv-dash-select" id="gp-sexo" required>' +
+          '<option value="">' + esc(sexoUi().ph) + '</option>' +
+          '<option value="M"' + (String(p.sexo || '').toUpperCase() === 'M' ? ' selected' : '') + '>' + esc(sexoUi().m) + '</option>' +
+          '<option value="F"' + (String(p.sexo || '').toUpperCase() === 'F' ? ' selected' : '') + '>' + esc(sexoUi().f) + '</option>' +
+          '</select><p class="gcv-dash-field-error" hidden></p></div>' +
           '<div class="gcv-dash-field" style="margin-bottom:0;"><label class="gcv-dash-label">Cidade onde mora *</label>' +
           '<select class="gcv-dash-select" id="gp-city" required><option value="">Selecione…</option>' +
           cities.map(function (c) {
             return '<option value="' + c.id + '"' + (String(p.base_city_id) === String(c.id) ? ' selected' : '') + '>' + esc(c.name) + '</option>';
           }).join('') +
-          '</select></div>' +
+          '</select><p class="gcv-dash-field-error" hidden></p></div>' +
         '</div>' +
 
         '<div class="gcv-dash-card">' +
@@ -904,7 +1209,8 @@
               '<option value="PJ">CNPJ</option>' +
               '</select></div>' +
               '<div class="gcv-dash-field" style="margin-bottom:0;"><label class="gcv-dash-label" id="gf-doc-label">CPF *</label>' +
-              '<input class="gcv-dash-input" id="gf-doc" type="text" inputmode="numeric" autocomplete="off" required /></div>' +
+              '<input class="gcv-dash-input" id="gf-doc" type="text" inputmode="numeric" autocomplete="off" required />' +
+              '<p class="gcv-dash-field-error" hidden></p></div>' +
             '</div>' +
           '</div>' +
         '</div>' +
@@ -918,22 +1224,27 @@
           '</p>' +
           '<div class="gcv-dash-card">' +
             '<h3 class="gcv-dash-card__title">Recebimento PIX</h3>' +
-            '<div class="gcv-dash-field"><label class="gcv-dash-label">Nome / Razão social *</label>' +
-            '<input class="gcv-dash-input" id="gf-name" value="' + esc(fin.legal_name || p.full_name || p.user_name || '') + '" required /></div>' +
             '<div class="gcv-dash-field-row">' +
               '<div class="gcv-dash-field"><label class="gcv-dash-label">Tipo de chave *</label>' +
               '<select class="gcv-dash-select" id="gf-pix-type">' +
               '<option value="cpf">CPF</option><option value="cnpj">CNPJ</option><option value="email">E-mail</option>' +
               '<option value="phone">Telefone</option><option value="random">Aleatória</option>' +
-              '</select></div>' +
+              '</select><p class="gcv-dash-field-error" hidden></p></div>' +
               '<div class="gcv-dash-field"><label class="gcv-dash-label">Chave PIX *</label>' +
-              '<input class="gcv-dash-input" id="gf-pix" value="' + esc(fin.pix_key || '') + '" required /></div>' +
+              '<input class="gcv-dash-input" id="gf-pix" value="' + esc(fin.pix_key || '') + '" required />' +
+              '<p class="gcv-dash-field-error" hidden></p></div>' +
             '</div>' +
           '</div>' +
         '</div>' +
 
+        '<div class="gcv-dash-profile-actions">' +
         '<button type="submit" class="gcv-dash-btn gcv-dash-btn--primary" id="gp-save">' + esc(saveLabel) + '</button>' +
-        '<div id="gp-msg" class="gcv-dash-alert" hidden style="margin-top:1rem;"></div>' +
+        (isRejected
+          ? ('<button type="button" class="gcv-dash-btn gcv-dash-btn--primary" id="gp-submit-approval"' +
+            (canResubmit ? '' : ' disabled') + '>Enviar para aprovação</button>' +
+            (canResubmit ? '' : '<p class="gcv-cms-muted" style="margin:0.45rem 0 0;">O envio para aprovação fica desativado por 45 dias após a recusa. O perfil continua disponível.</p>'))
+          : '') +
+        '</div>' +
         '</form>';
 
       var bio = document.getElementById('gp-bio');
@@ -946,6 +1257,7 @@
       }
       if (bio) bio.addEventListener('input', updateBioCount);
       updateBioCount();
+      fillGuideProfileInbox();
 
       var gotoEarn = document.getElementById('gp-goto-earnings');
       if (gotoEarn) {
@@ -1043,52 +1355,75 @@
 
       document.getElementById('guide-profile-form').onsubmit = function (ev) {
         ev.preventDefault();
-        var msg = document.getElementById('gp-msg');
-        function warn(text) {
-          if (!msg) return;
-          msg.hidden = false;
-          msg.className = 'gcv-dash-alert gcv-dash-alert--warning';
-          msg.textContent = text;
+        var form = document.getElementById('guide-profile-form');
+        clearGuideFieldErrors(form);
+        var banner = document.getElementById('gp-msg');
+        if (banner) { banner.hidden = true; banner.textContent = ''; }
+
+        var errors = 0;
+        function addErr(el, text) {
+          markGuideFieldError(el, text);
+          errors++;
         }
-        var phoneErr = document.getElementById('gp-phone-err');
-        var phoneIssue = gpPhone.validate();
-        if (phoneIssue) {
-          if (phoneErr) {
-            phoneErr.hidden = false;
-            phoneErr.textContent = phoneIssue;
-          }
-          warn(phoneIssue);
-          return;
-        }
-        if (phoneErr) phoneErr.hidden = true;
+
         var photoUrlVal = (document.getElementById('gp-photo-url').value || '').trim();
         if (!photoUrlVal) {
-          warn('Envie a foto 3×4.');
-          return;
+          addErr(document.querySelector('.gcv-dash-photo-col'), 'Envie a foto 3×4.');
         }
-        if (!document.getElementById('gp-city').value) {
-          warn('Selecione a cidade onde mora.');
-          return;
+        var fullEl = document.getElementById('gp-full');
+        if (!fullEl || (fullEl.value || '').trim().length < 2) {
+          addErr(fullEl, 'Informe o nome completo.');
+        }
+        var phoneErrEl = document.getElementById('gp-phone-err');
+        var phoneIssue = gpPhone.validate();
+        if (phoneIssue) {
+          addErr(document.getElementById('gp-phone-wrap') || phoneErrEl, phoneIssue);
+        }
+        var birthEl = document.getElementById('gp-birth');
+        var birthVal = birthEl ? (birthEl.value || '').trim() : '';
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(birthVal)) {
+          addErr(birthEl, 'Informe a data de nascimento.');
+        } else {
+          var birthDt = new Date(birthVal + 'T00:00:00');
+          var adult = new Date();
+          adult.setFullYear(adult.getFullYear() - 18);
+          if (!(birthDt instanceof Date) || isNaN(birthDt.getTime()) || birthDt > adult) {
+            addErr(birthEl, 'É necessário ter 18 anos ou mais.');
+          }
+        }
+        var sexoEl = document.getElementById('gp-sexo');
+        if (!sexoEl || (sexoEl.value !== 'M' && sexoEl.value !== 'F')) {
+          addErr(sexoEl, sexoUi().err);
+        }
+        var cityEl = document.getElementById('gp-city');
+        if (!cityEl || !cityEl.value) {
+          addErr(cityEl, 'Selecione a cidade onde mora.');
         }
         var isPj = typeEl && typeEl.value === 'PJ';
         var docDigits = digitsOnly(docEl ? docEl.value : '');
         var docOk = isPj ? isValidCnpj(docDigits) : isValidCpf(docDigits);
         if (!docOk) {
-          warn(isPj ? 'CNPJ inválido. Confira os 14 dígitos.' : 'CPF inválido. Confira os 11 dígitos.');
-          if (docEl) docEl.focus();
+          addErr(docEl, isPj ? 'CNPJ inválido. Confira os 14 dígitos.' : 'CPF inválido. Confira os 11 dígitos.');
+        }
+        var legalEl = null;
+        var legalName = (fullEl && fullEl.value || '').trim();
+        var pixEl = document.getElementById('gf-pix');
+        var pixTypeEl = document.getElementById('gf-pix-type');
+        var pixKey = (pixEl && pixEl.value || '').trim();
+        var pixType = (pixTypeEl && pixTypeEl.value || '').trim();
+        if (!pixType) {
+          addErr(pixTypeEl, 'Selecione o tipo de chave PIX.');
+        }
+        if (!pixKey) {
+          addErr(pixEl, 'Informe a chave PIX.');
+        }
+
+        if (errors) {
+          showGuideFormBanner('Há ' + errors + (errors === 1 ? ' campo' : ' campos') + ' com erro. Corrija o destacado em amarelo.', 'error');
+          focusFirstGuideError(form);
           return;
         }
-        var legalName = (document.getElementById('gf-name').value || '').trim();
-        var pixKey = (document.getElementById('gf-pix').value || '').trim();
-        var pixType = (document.getElementById('gf-pix-type').value || '').trim();
-        if (legalName.length < 2) {
-          warn('Informe o nome / razão social.');
-          return;
-        }
-        if (!pixKey || !pixType) {
-          warn('Informe o tipo de chave e a chave PIX.');
-          return;
-        }
+
         var payload = {
           full_name: document.getElementById('gp-full').value.trim(),
           nickname: document.getElementById('gp-nick').value.trim(),
@@ -1096,6 +1431,7 @@
           phone_iso: gpPhone.getIso(),
           phone: gpPhone.getPhoneDigits(),
           birth_date: document.getElementById('gp-birth').value,
+          sexo: (document.getElementById('gp-sexo') && document.getElementById('gp-sexo').value) || '',
           base_city_id: parseInt(document.getElementById('gp-city').value, 10) || 0,
           bio_pt: document.getElementById('gp-bio').value.trim(),
           languages: readLanguagesPicker(document.getElementById('guide-profile-form')),
@@ -1106,30 +1442,67 @@
           cpf: isPj ? '' : docDigits,
           cnpj: isPj ? docDigits : '',
           pix_key: pixKey,
-          pix_key_type: pixType
+          pix_key_type: pixType,
+          submit_for_approval: form.getAttribute('data-submit-approval') === '1' ? 1 : 0
         };
+        form.setAttribute('data-submit-approval', '0');
         var saveBtn = document.getElementById('gp-save');
+        var submitBtn = document.getElementById('gp-submit-approval');
         if (saveBtn) saveBtn.disabled = true;
+        if (submitBtn) submitBtn.disabled = true;
         sendJson('PUT', '/api/guides/me-profile.php', payload, function (e, r) {
           if (saveBtn) saveBtn.disabled = false;
-          if (!msg) return;
-          msg.hidden = false;
+          if (submitBtn && !submitBtn.getAttribute('data-locked')) submitBtn.disabled = false;
           if (!r || !r.ok) {
-            msg.className = 'gcv-dash-alert gcv-dash-alert--warning';
-            msg.textContent = (r && r.error) || 'Erro ao salvar';
+            var apiErr = (r && r.error) || 'Erro ao salvar. Tente novamente.';
+            var mapped = mapGuideApiErrorToField(apiErr, {
+              full: document.getElementById('gp-full'),
+              phone: document.getElementById('gp-phone-wrap'),
+              birth: document.getElementById('gp-birth'),
+              sexo: document.getElementById('gp-sexo'),
+              city: document.getElementById('gp-city'),
+              photo: document.querySelector('.gcv-dash-photo-col'),
+              doc: docEl,
+              legal: legalEl,
+              pix: pixEl
+            });
+            showGuideFormBanner(apiErr, 'error');
+            if (mapped) focusFirstGuideError(form);
+            else {
+              var top = document.getElementById('gp-msg');
+              if (top) top.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
             return;
           }
           if (r.data && r.data.submitted_for_approval) {
-            msg.className = 'gcv-dash-alert gcv-dash-alert--success';
-            msg.textContent = 'Cadastro enviado para aprovação. Você e o administrador receberão um WhatsApp.';
-            window.setTimeout(function () { window.location.reload(); }, 900);
+            var pendingMsg = 'Cadastro enviado para aprovação. Você receberá um WhatsApp quando for aprovado. Enquanto isso, só esta tela de perfil fica disponível.';
+            var afterOk = function () { loadGuideProfile(); };
+            if (typeof global.gcvAlert === 'function') {
+              global.gcvAlert(pendingMsg).then(afterOk).catch(afterOk);
+            } else if (typeof global.gcvConfirm === 'function') {
+              global.gcvConfirm(pendingMsg, { alert: true, okText: 'Entendi' }).then(afterOk).catch(afterOk);
+            } else {
+              window.alert(pendingMsg);
+              afterOk();
+            }
             return;
           }
-          msg.className = 'gcv-dash-alert gcv-dash-alert--success';
-          msg.textContent = 'Perfil salvo!';
+          showGuideFormBanner('Perfil salvo!', 'success');
           loadGuideProfile();
         });
       };
+
+      var submitApprovalBtn = document.getElementById('gp-submit-approval');
+      if (submitApprovalBtn) {
+        if (!canResubmit) submitApprovalBtn.setAttribute('data-locked', '1');
+        submitApprovalBtn.addEventListener('click', function () {
+          var formEl = document.getElementById('guide-profile-form');
+          if (!formEl || submitApprovalBtn.disabled) return;
+          formEl.setAttribute('data-submit-approval', '1');
+          if (typeof formEl.requestSubmit === 'function') formEl.requestSubmit();
+          else formEl.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+        });
+      }
     });
   }
 
@@ -1344,6 +1717,7 @@
   function loadGuidePublish() {
     var form = document.getElementById('gcv-guide-create-tour-form');
     if (!form) return;
+    if (form.getAttribute('data-ready') === '1') return;
     form.innerHTML = 'Carregando…';
     get('/api/guides/excursions.php', function (err, res) {
       if (!res || !res.ok) {
@@ -1383,9 +1757,11 @@
       var netMin = d.guide_net_min != null ? parseFloat(d.guide_net_min) : GUIDE_NET_MIN;
       var netMax = d.guide_net_max != null ? parseFloat(d.guide_net_max) : GUIDE_NET_MAX;
       var netMaxDragao = d.guide_net_max_dragao != null ? parseFloat(d.guide_net_max_dragao) : GUIDE_NET_MAX_DRAGAO;
+      var netMaxTransport = d.guide_net_max_transport != null ? parseFloat(d.guide_net_max_transport) : GUIDE_NET_MAX_TRANSPORT;
       if (!isFinite(netMin) || netMin < 1) netMin = GUIDE_NET_MIN;
       if (!isFinite(netMax) || netMax < netMin) netMax = GUIDE_NET_MAX;
       if (!isFinite(netMaxDragao) || netMaxDragao < netMax) netMaxDragao = GUIDE_NET_MAX_DRAGAO;
+      if (!isFinite(netMaxTransport) || netMaxTransport < netMax) netMaxTransport = GUIDE_NET_MAX_TRANSPORT;
       var commissionPct = d.commission_pct != null ? parseFloat(d.commission_pct) : 10;
       if (!isFinite(commissionPct) || commissionPct < 0 || commissionPct >= 100) commissionPct = 10;
 
@@ -1398,13 +1774,18 @@
         return null;
       }
 
-      function netMaxForAttractionId(id) {
+      function netMaxForAttractionId(id, withTransport) {
         var a = attractionById(id);
+        var base = netMax;
         if (a && a.guide_net_max != null) {
           var m = parseFloat(a.guide_net_max);
-          if (isFinite(m) && m >= netMin) return m;
+          if (isFinite(m) && m >= netMin) base = m;
+          else if (attractionLooksLikeDragao(a)) base = netMaxDragao;
+        } else if (attractionLooksLikeDragao(a)) {
+          base = netMaxDragao;
         }
-        return attractionLooksLikeDragao(a) ? netMaxDragao : netMax;
+        if (withTransport && netMaxTransport > base) return netMaxTransport;
+        return base;
       }
       var commissionScope = String(d.commission_scope || 'settings');
       var nextIdx = 1;
@@ -1461,6 +1842,54 @@
           var hit = t.querySelector('.gcv-tour-tab__hit');
           if (hit) hit.setAttribute('aria-selected', on ? 'true' : 'false');
         });
+      }
+
+      function setDateLocked(dateEl, locked) {
+        if (!dateEl) return;
+        dateEl.readOnly = !!locked;
+        dateEl.tabIndex = locked ? -1 : 0;
+        var wrap = dateEl.closest('.gcv-datepicker');
+        if (wrap) {
+          wrap.classList.toggle('is-locked', !!locked);
+          var btn = wrap.querySelector('.gcv-datepicker__btn');
+          if (btn) {
+            btn.disabled = !!locked;
+            btn.setAttribute('aria-disabled', locked ? 'true' : 'false');
+            btn.title = locked ? 'A data segue o dia anterior' : '';
+          }
+        }
+      }
+
+      function syncSequentialDates() {
+        if (syncSequentialDates.busy) return;
+        syncSequentialDates.busy = true;
+        try {
+          var blocks = tourBlocks();
+          var prev = '';
+          var i;
+          for (i = 0; i < blocks.length; i++) {
+            var bidx = blocks[i].getAttribute('data-tour-idx');
+            var el = document.getElementById('ge-' + bidx + '-date');
+            if (!el) continue;
+            if (i === 0) {
+              setDateLocked(el, false);
+              prev = el.value || '';
+              continue;
+            }
+            setDateLocked(el, true);
+            if (prev) {
+              var next = addDaysIso(prev, 1);
+              if (next && el.value !== next) {
+                el.value = next;
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+              }
+              prev = next || prev;
+            }
+          }
+        } finally {
+          syncSequentialDates.busy = false;
+        }
+        refreshTourTabs();
       }
 
       function removeTourBlock(idx) {
@@ -1540,29 +1969,36 @@
           '<button type="button" class="gcv-dash-btn gcv-dash-btn--sm gcv-meeting-gps-btn" id="' + p + 'meeting-gps-btn" hidden>Usar minha localização</button>' +
           '</div>' +
           '<div id="' + p + 'meeting-suggest" class="gcv-cms-suggest"></div>' +
-          '<p class="gcv-cms-muted" id="' + p + 'meeting-gps">Digite o endereço e escolha uma sugestão.</p>' +
+          '<p class="gcv-cms-muted" id="' + p + 'meeting-gps">Digite o endereço do ponto de encontro.</p>' +
           '<div class="gcv-meeting-map" id="' + p + 'meeting-map" hidden><iframe class="gcv-meeting-map__frame" title="Mapa do ponto de encontro" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>' +
           '<input type="hidden" id="' + p + 'meeting-place" value="" />' +
           '<input type="hidden" id="' + p + 'meeting-lat" value="" />' +
           '<input type="hidden" id="' + p + 'meeting-lng" value="" /></div></div>' +
           '<div class="gcv-dash-field-row gcv-dash-field-row--2">' +
-          '<div class="gcv-dash-field"><label class="gcv-dash-label" for="' + p + 'quorum">Quórum (somente para as novas inscrições)</label>' +
-          quorumSelectHtml(p + 'quorum', DEFAULT_QUORUM) + '</div>' +
-          '</div>' +
-          '<div class="gcv-dash-field-row gcv-dash-field-row--2">' +
           '<div class="gcv-dash-field"><label class="gcv-dash-label">Pessoas confirmadas por fora (0 a 5)</label>' +
           '<input class="gcv-dash-input" id="' + p + 'preconfirmed" type="number" min="0" max="' + MAX_PRECONFIRMED + '" value="' + DEFAULT_PRECONFIRMED + '" /></div>' +
-          '<div class="gcv-dash-field"><label class="gcv-dash-label">Vagas * (máximo até 12)</label>' +
+          '<div class="gcv-dash-field"><label class="gcv-dash-label">Vagas * (máximo até 12, a pé + transporte)</label>' +
           '<input class="gcv-dash-input" id="' + p + 'max" type="number" min="1" max="' + maxCap + '" value="' + DEFAULT_MAX_PEOPLE + '" /></div>' +
           '</div>' +
+          '<div class="gcv-guide-net-pair">' +
           '<div class="gcv-guide-net-box">' +
           '<div class="gcv-dash-field gcv-guide-net-box__field">' +
-          '<label class="gcv-dash-label gcv-guide-net-box__label" for="' + p + 'net">Valor a receber (R$/por pessoa) *</label>' +
+          '<label class="gcv-dash-label gcv-guide-net-box__label" id="' + p + 'net-label" for="' + p + 'net">Valor a receber por Pessoa (limite de R$' + netMax + ') *</label>' +
           '<input class="gcv-dash-input gcv-guide-net-box__input" id="' + p + 'net" type="number" min="' + netMin + '" max="' + netMax + '" step="1" inputmode="decimal" required /></div>' +
           '<div id="' + p + 'preview" class="gcv-guide-net-box__hint">Digite o valor a receber (mín. R$ ' + netMin + ', máx. R$ ' + netMax + ').</div>' +
+          confirmedQuorumRowHtml(p, false) +
           '</div>' +
-          '<label class="gcv-dash-label"><input type="checkbox" id="' + p + 'transport" /> Inclui transporte</label> ' +
-          '<label class="gcv-dash-label"><input type="checkbox" id="' + p + 'entry" /> Inclui ingresso</label>' +
+          '<div class="gcv-guide-net-box gcv-guide-net-box--transport is-disabled" id="' + p + 'transport-box">' +
+          '<label class="gcv-dash-label gcv-guide-net-box__transport"><input type="checkbox" id="' + p + 'transport" /> <span id="' + p + 'transport-label">Oferecer vagas com translado</span></label>' +
+          '<div id="' + p + 'transport-fields" hidden>' +
+          '<div class="gcv-dash-field gcv-guide-net-box__field">' +
+          '<label class="gcv-dash-label gcv-guide-net-box__label" id="' + p + 'net-t-label" for="' + p + 'net-t">Valor a receber por Pessoa (limite de R$' + netMaxTransport + ') *</label>' +
+          '<input class="gcv-dash-input gcv-guide-net-box__input" id="' + p + 'net-t" type="number" min="' + netMin + '" max="' + netMaxTransport + '" step="1" inputmode="decimal" disabled /></div>' +
+          '<div id="' + p + 'preview-t" class="gcv-guide-net-box__hint">Marque para informar o valor com transporte.</div>' +
+          quorumOnlyRowHtml(p + 't-') +
+          '<div class="gcv-dash-field"><label class="gcv-dash-label" for="' + p + 'max-t">Vagas com transporte (máximo 4)</label>' +
+          transportMaxSelectHtml(p + 'max-t', DEFAULT_MAX_TRANSPORT) +
+          '</div></div></div></div>' +
           '<div class="gcv-dash-field" style="margin-top:0.75rem;"><label class="gcv-dash-label">Observações</label>' +
           '<textarea class="gcv-dash-textarea" id="' + p + 'notes" maxlength="2000" rows="3"></textarea></div>' +
           '</article>'
@@ -1594,18 +2030,30 @@
         var p = 'ge-' + idx + '-';
         var previewTimer = 0;
         var previewSeq = 0;
+        var previewTimerT = 0;
+        var previewSeqT = 0;
+
+        function blockHasTransport() {
+          var t = document.getElementById(p + 'transport');
+          return !!(t && t.checked);
+        }
 
         function blockNetMax() {
           var hid = document.getElementById(p + 'attr');
-          return netMaxForAttractionId(hid ? hid.value : '');
+          return netMaxForAttractionId(hid ? hid.value : '', false);
+        }
+
+        function blockNetMaxTransport() {
+          var hid = document.getElementById(p + 'attr');
+          return netMaxForAttractionId(hid ? hid.value : '', true);
         }
 
         function emptyHintText() {
           return 'Digite o valor a receber (mín. R$ ' + netMin + ', máx. R$ ' + blockNetMax() + ').';
         }
 
-        function rangeWarn(net) {
-          var max = blockNetMax();
+        function rangeWarn(net, maxOverride) {
+          var max = maxOverride != null ? maxOverride : blockNetMax();
           if (!isFinite(net)) return '';
           if (net < netMin || net > max) {
             return 'Informe um valor entre R$ ' + netMin + ' e R$ ' + max + '.';
@@ -1652,12 +2100,86 @@
           }
         }
 
+        function clampNetElT(el, forceMin) {
+          var max = blockNetMaxTransport();
+          var raw = String(el.value || '').trim().replace(',', '.');
+          if (raw === '') return;
+          var n = parseFloat(raw);
+          if (!isFinite(n)) {
+            el.value = '';
+            return;
+          }
+          if (n > max) {
+            el.value = String(max);
+            return;
+          }
+          if (n < 0) {
+            el.value = forceMin ? String(netMin) : '';
+            return;
+          }
+          if (forceMin && n < netMin) {
+            el.value = String(netMin);
+          }
+        }
+
+        function paintNetLabels() {
+          var lab = document.getElementById(p + 'net-label');
+          if (lab) lab.textContent = 'Valor a receber por Pessoa (limite de R$' + blockNetMax() + ') *';
+          var tlab = document.getElementById(p + 'transport-label');
+          if (tlab) tlab.textContent = 'Oferecer vagas com translado';
+          var tNetLab = document.getElementById(p + 'net-t-label');
+          if (tNetLab) tNetLab.textContent = 'Valor a receber por Pessoa (limite de R$' + blockNetMaxTransport() + ') *';
+        }
+
+        function syncTransportSeatsAndQuorum() {
+          var maxEl = document.getElementById(p + 'max');
+          var maxTEl = document.getElementById(p + 'max-t');
+          var qEl = document.getElementById(p + 't-quorum');
+          var total = clampRange(parseFiniteInt(maxEl ? maxEl.value : DEFAULT_MAX_PEOPLE, DEFAULT_MAX_PEOPLE), 1, maxCap);
+          var seatCap = Math.min(MAX_TRANSPORT_PEOPLE, total);
+          if (seatCap < 1) seatCap = 1;
+          var seats = fillIntSelect(maxTEl, 1, seatCap, maxTEl ? maxTEl.value : DEFAULT_MAX_TRANSPORT);
+          fillIntSelect(qEl, 1, seats, qEl ? qEl.value : DEFAULT_QUORUM);
+        }
+
+        function applyTransportEnabled() {
+          var on = blockHasTransport();
+          var box = document.getElementById(p + 'transport-box');
+          var fields = document.getElementById(p + 'transport-fields');
+          var netT = document.getElementById(p + 'net-t');
+          var maxT = document.getElementById(p + 'max-t');
+          if (box) box.classList.toggle('is-disabled', !on);
+          if (fields) fields.hidden = !on;
+          if (netT) {
+            netT.disabled = !on;
+            netT.required = on;
+            netT.setAttribute('max', String(blockNetMaxTransport()));
+          }
+          if (maxT) maxT.disabled = !on;
+          var tQ = document.getElementById(p + 't-quorum');
+          if (tQ) {
+            tQ.disabled = !on;
+            tQ.required = on;
+          }
+          if (on) {
+            syncTransportSeatsAndQuorum();
+            refreshPreviewT(true);
+          }
+        }
+
         function applyBlockNetMax() {
           var el = document.getElementById(p + 'net');
           if (el) {
             el.setAttribute('max', String(blockNetMax()));
             clampNetEl(el, false);
           }
+          var netT = document.getElementById(p + 'net-t');
+          if (netT) {
+            netT.setAttribute('max', String(blockNetMaxTransport()));
+            clampNetElT(netT, false);
+          }
+          paintNetLabels();
+          applyTransportEnabled();
           refreshPreview(true);
         }
 
@@ -1695,6 +2217,47 @@
           }
           if (previewTimer) clearTimeout(previewTimer);
           previewTimer = setTimeout(fetchServer, 160);
+        }
+
+        function emptyHintTextT() {
+          return 'Digite o valor a receber (mín. R$ ' + netMin + ', máx. R$ ' + blockNetMaxTransport() + ').';
+        }
+
+        function refreshPreviewT(immediateServer) {
+          var netEl = document.getElementById(p + 'net-t');
+          var cityEl = document.getElementById(p + 'city');
+          var box = document.getElementById(p + 'preview-t');
+          if (!box || !netEl) return;
+          if (!blockHasTransport()) {
+            box.textContent = 'Marque para informar o valor com transporte.';
+            return;
+          }
+          var raw = String(netEl.value || '').trim();
+          var net = parseFloat(raw.replace(',', '.'));
+          var cityId = cityEl ? (parseInt(cityEl.value, 10) || 0) : 0;
+          if (raw === '' || !isFinite(net) || net < 0) {
+            box.textContent = emptyHintTextT();
+            return;
+          }
+          var warn = rangeWarn(net, blockNetMaxTransport());
+          var localCents = estimateGuideFinalCents(net, commissionPct);
+          paintPreviewHtml(box, localCents, net, warn);
+          if (net < 1) return;
+          var seq = ++previewSeqT;
+          function fetchServer() {
+            var q = 'guide_net=' + encodeURIComponent(String(net)) + (cityId ? '&city_id=' + cityId : '');
+            get('/api/guides/pricing-preview.php?' + q, function (e, r) {
+              if (seq !== previewSeqT) return;
+              if (!r || !r.ok || !r.data || !r.data.pricing) return;
+              paintPreviewHtml(box, r.data.pricing.final_price_cents, net, warn);
+            });
+          }
+          if (immediateServer) {
+            fetchServer();
+            return;
+          }
+          if (previewTimerT) clearTimeout(previewTimerT);
+          previewTimerT = setTimeout(fetchServer, 160);
         }
 
         var netEl = document.getElementById(p + 'net');
@@ -1745,8 +2308,28 @@
             refreshPreview(true);
           });
         }
+        var netTEl = document.getElementById(p + 'net-t');
+        if (netTEl) {
+          netTEl.setAttribute('min', String(netMin));
+          netTEl.setAttribute('max', String(blockNetMaxTransport()));
+          netTEl.addEventListener('input', function () {
+            clampNetElT(netTEl, false);
+            refreshPreviewT(false);
+          });
+          netTEl.addEventListener('change', function () {
+            clampNetElT(netTEl, true);
+            refreshPreviewT(true);
+          });
+          netTEl.addEventListener('blur', function () {
+            clampNetElT(netTEl, true);
+            refreshPreviewT(true);
+          });
+        }
         var cityEl = document.getElementById(p + 'city');
-        if (cityEl) cityEl.addEventListener('change', function () { refreshPreview(true); });
+        if (cityEl) cityEl.addEventListener('change', function () {
+          refreshPreview(true);
+          refreshPreviewT(true);
+        });
         var dateEl = document.getElementById(p + 'date');
         if (dateEl) {
           if (typeof global.gcvBindDatePicker === 'function') {
@@ -1780,6 +2363,17 @@
           });
         }
         bindAttractionCombobox(p + 'attr-q', p + 'attr', p + 'attr-suggest', attrs, {
+          getExcludedIds: function () {
+            var ids = [];
+            tourBlocks().forEach(function (block) {
+              var bidx = block.getAttribute('data-tour-idx');
+              if (String(bidx) === String(idx)) return;
+              var hid = document.getElementById('ge-' + bidx + '-attr');
+              var id = hid ? parseInt(hid.value, 10) : 0;
+              if (id) ids.push(id);
+            });
+            return ids;
+          },
           onChange: function () {
             refreshTourTabs();
             applyBlockNetMax();
@@ -1790,6 +2384,20 @@
         clampField(document.getElementById(p + 'max'), 1, maxCap, DEFAULT_MAX_PEOPLE);
         clampField(document.getElementById(p + 'preconfirmed'), 0, MAX_PRECONFIRMED, DEFAULT_PRECONFIRMED);
         bindMeetingPlaces(idx);
+        bindConfirmedYesNo(p);
+        var maxEl = document.getElementById(p + 'max');
+        if (maxEl) {
+          maxEl.addEventListener('change', syncTransportSeatsAndQuorum);
+        }
+        var maxTEl = document.getElementById(p + 'max-t');
+        if (maxTEl) {
+          maxTEl.addEventListener('change', syncTransportSeatsAndQuorum);
+        }
+        applyTransportEnabled();
+        var transportEl = document.getElementById(p + 'transport');
+        if (transportEl) {
+          transportEl.addEventListener('change', function () { applyTransportEnabled(); });
+        }
         var block = form.querySelector('[data-tour-idx="' + idx + '"]');
         if (block) {
           var rm = block.querySelector('[data-remove-tour]');
@@ -1846,21 +2454,22 @@
         if (!time) return { error: label + ': informe o horário de saída.' };
         if (!cityId) return { error: label + ': selecione a cidade de saída.' };
         if (!meetingPoint) return { error: label + ': informe o ponto de encontro.' };
-        if (!net || !isFinite(net) || net < netMin || net > netMaxForAttractionId(attrId)) {
-          var thisMax = netMaxForAttractionId(attrId);
+        if (!net || !isFinite(net) || net < netMin || net > netMaxForAttractionId(attrId, false)) {
+          var thisMax = netMaxForAttractionId(attrId, false);
           return { error: label + ': valor a receber deve ser entre R$ ' + netMin + ' e R$ ' + thisMax + '.' };
         }
         var meetingLat = (el('meeting-lat').value || '').trim();
         var meetingLng = (el('meeting-lng').value || '').trim();
         var maxPeople = clampRange(parseFiniteInt(el('max').value, DEFAULT_MAX_PEOPLE), 1, maxCap);
         var preconfirmed = clampRange(parseFiniteInt(el('preconfirmed').value, DEFAULT_PRECONFIRMED), 0, MAX_PRECONFIRMED);
-        var quorum = clampRange(parseFiniteInt(el('quorum').value, DEFAULT_QUORUM), minQ, maxQ);
+        var confirmed = isTourConfirmed(p);
+        var quorum = confirmed ? 0 : clampRange(parseFiniteInt(el('quorum').value, DEFAULT_QUORUM), 1, maxQ);
         if (preconfirmed > maxPeople) preconfirmed = maxPeople;
         if (maxPeople < preconfirmed + quorum) {
           return { error: label + ': vagas devem caber as pessoas confirmadas por fora e o quórum das novas inscrições.' };
         }
-        return {
-          payload: {
+        var withTransport = !!(el('transport') && el('transport').checked);
+        var payload = {
             attraction_id: attrId,
             date_iso: dateIso,
             departure_time: time,
@@ -1873,11 +2482,28 @@
             quorum: quorum,
             preconfirmed_people: preconfirmed,
             max_people: maxPeople,
-            include_transport: el('transport').checked,
-            include_entry: el('entry').checked,
+            include_transport: withTransport,
+            offer_transport: withTransport,
             notes_pt: (el('notes').value || '').trim(),
-          }
         };
+        if (withTransport) {
+          var netT = parseFloat(el('net-t') ? el('net-t').value : '');
+          var maxTCap = netMaxForAttractionId(attrId, true);
+          if (!netT || !isFinite(netT) || netT < netMin || netT > maxTCap) {
+            return { error: label + ': valor com transporte deve ser entre R$ ' + netMin + ' e R$ ' + maxTCap + '.' };
+          }
+          var tQuorumEl = el('t-quorum');
+          var maxTEl = el('max-t');
+          var maxPeopleT = clampRange(parseFiniteInt(maxTEl ? maxTEl.value : DEFAULT_MAX_TRANSPORT, DEFAULT_MAX_TRANSPORT), 1, Math.min(MAX_TRANSPORT_PEOPLE, maxPeople));
+          var quorumT = clampRange(parseFiniteInt(tQuorumEl ? tQuorumEl.value : DEFAULT_QUORUM, DEFAULT_QUORUM), 1, maxPeopleT);
+          if (quorumT > maxPeopleT) {
+            return { error: label + ': quórum do transporte não pode ser maior que as vagas com transporte.' };
+          }
+          payload.guide_net_transport_cents = Math.round(netT * 100);
+          payload.quorum_transport = quorumT;
+          payload.max_people_transport = maxPeopleT;
+        }
+        return { payload: payload };
       }
 
       function sendAll(payloads, i, okCount, errors, done) {
@@ -1897,7 +2523,6 @@
         '</div>' +
         '<div id="ge-tours"></div>' +
         '<button type="button" class="gcv-dash-btn gcv-dash-btn--secondary gcv-dash-form__add gcv-tour-add-mobile" id="ge-add-tour">+ Adicionar passeio</button>' +
-        '<p class="gcv-cms-muted" style="margin:-0.5rem 0 1rem;">O passeio extra já vem com a data do anterior + 1 dia. Envie todos de uma vez para aprovação.</p>' +
         '<div class="gcv-dash-form__footer">' +
         '<button type="submit" class="gcv-dash-btn gcv-dash-btn--primary">Enviar para aprovação</button>' +
         '<div id="ge-err" class="gcv-dash-alert" hidden></div>' +
@@ -1909,6 +2534,7 @@
       var addDesk = document.getElementById('ge-add-tour-desk');
       if (addMobile) addMobile.onclick = onAddTour;
       if (addDesk) addDesk.onclick = onAddTour;
+      form.setAttribute('data-ready', '1');
 
       form.onsubmit = function (ev) {
         ev.preventDefault();
@@ -1927,6 +2553,19 @@
             return;
           }
           payloads.push(parsed.payload);
+        }
+        var seenAttr = {};
+        for (i = 0; i < payloads.length; i++) {
+          var aid = String(payloads[i].attraction_id || '');
+          if (aid && seenAttr[aid]) {
+            if (errEl) {
+              errEl.hidden = false;
+              errEl.className = 'gcv-dash-alert gcv-dash-alert--warning';
+              errEl.textContent = 'Não é possível repetir o mesmo passeio em mais de um dia.';
+            }
+            return;
+          }
+          if (aid) seenAttr[aid] = true;
         }
         var btn = form.querySelector('.gcv-dash-form__footer .gcv-dash-btn--primary');
         if (btn) btn.disabled = true;
@@ -2275,14 +2914,11 @@
         '<option value="">Selecione…</option>' +
         cities.map(function (c) { return '<option value="' + c.id + '">' + esc(c.name) + '</option>'; }).join('') +
         '</select></div>' +
-        '<div class="gcv-dash-field-row">' +
         '<div class="gcv-dash-field"><label class="gcv-dash-label">Valor por pessoa (R$) *</label>' +
         '<input class="gcv-dash-input" type="number" min="1" step="0.01" id="ce-price" /></div>' +
-        '<div class="gcv-dash-field"><label class="gcv-dash-label" for="ce-quorum">Quórum (somente para as novas inscrições)</label>' +
-        quorumSelectHtml('ce-quorum', DEFAULT_QUORUM) + '</div>' +
+        confirmedQuorumRowHtml('ce-', false) +
         '<div class="gcv-dash-field"><label class="gcv-dash-label">Vagas (máximo até 12)</label>' +
         '<input class="gcv-dash-input" type="number" min="1" max="' + maxCap + '" value="' + DEFAULT_MAX_PEOPLE + '" id="ce-max" /></div>' +
-        '</div>' +
         '<button type="submit" class="gcv-dash-btn gcv-dash-btn--primary">Enviar proposta</button>' +
         '<div id="ce-msg" class="gcv-dash-alert" hidden style="margin-top:1rem;"></div></form>' +
         '<h3 style="margin:1.5rem 0 0.75rem;font-size:1.05rem;">Minhas propostas</h3>' +
@@ -2296,6 +2932,7 @@
           : '<p class="gcv-cms-muted">Nenhuma proposta ainda.</p>');
 
       bindAttractionCombobox('ce-attr-q', 'ce-attr', 'ce-attr-suggest', attrs);
+      bindConfirmedYesNo('ce-');
       if (typeof global.gcvBindDatePicker === 'function') {
         global.gcvBindDatePicker(document.getElementById('ce-date'), {
           min: typeof global.gcvTodayIso === 'function' ? global.gcvTodayIso() : ''
@@ -2331,7 +2968,9 @@
           departure_time: time,
           departure_city_id: parseInt(document.getElementById('ce-city').value, 10) || 0,
           price_cents: Math.round((price || 0) * 100),
-          quorum: clampRange(parseFiniteInt(document.getElementById('ce-quorum').value, DEFAULT_QUORUM), minQ, maxQ),
+          quorum: isTourConfirmed('ce-')
+            ? 0
+            : clampRange(parseFiniteInt(document.getElementById('ce-quorum').value, DEFAULT_QUORUM), 1, maxQ),
           max_people: clampRange(parseFiniteInt(document.getElementById('ce-max').value, DEFAULT_MAX_PEOPLE), 1, maxCap),
         }, function (e, r) {
           var msg = document.getElementById('ce-msg');

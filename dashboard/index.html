@@ -10,8 +10,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="/assets/css/site.css?v=1.0.39" />
-<link rel="stylesheet" href="/assets/css/gcv-dashboard.css?v=1.0.80" />
-<link rel="stylesheet" href="/assets/css/gcv-confirm.css?v=1.0.1" />
+<link rel="stylesheet" href="/assets/css/gcv-dashboard.css?v=1.1.00" />
+<link rel="stylesheet" href="/assets/css/gcv-confirm.css?v=1.0.4" />
 <link rel="stylesheet" href="/assets/css/gcv-tours.css?v=1.0.1" />
 <link rel="stylesheet" href="/assets/css/gcv-payment.css?v=1.0.1" />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lipis/flag-icons@7.2.3/css/flag-icons.min.css" />
@@ -42,9 +42,6 @@
           </div>
           <button type="button" class="gcv-dash-mobile-toggle" id="gcv-dash-menu-toggle" aria-expanded="false" aria-controls="gcv-dash-nav">☰ Menu</button>
           <div class="gcv-dash-sidebar__actions">
-            <a href="/index.html" class="gcv-dash-icon-btn" title="Voltar ao site" aria-label="Voltar ao site">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
-            </a>
             <a href="#" class="gcv-dash-icon-btn js-gcv-dash-logout" title="Sair" aria-label="Sair">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
             </a>
@@ -55,12 +52,6 @@
             <!-- Rendered by gcv-dashboard.js -->
           </ul>
           <ul class="gcv-dash-nav gcv-dash-nav--footer">
-            <li>
-              <a href="/index.html">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
-                Voltar ao site
-              </a>
-            </li>
             <li>
               <a href="#" id="gcv-dash-logout" class="js-gcv-dash-logout">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -89,7 +80,7 @@
         <section class="gcv-dash-section" id="section-cms-guides">
           <h2 class="gcv-dash-section-title">Guias credenciados</h2>
           <p class="gcv-dash-hint" style="margin:0 0 1rem;color:#64748b;font-size:0.9rem;">
-            Cadastro, aprovação e PIX do guia ficam no <strong>perfil</strong>. Pagamentos só para guias ativos com PIX verificado.
+            Cadastro, aprovação e PIX ficam no <strong>perfil</strong>. Aprovar libera o guia. Recusar mantém o perfil e trava novo pedido por 45 dias. Bloquear elimina o perfil e impede novo cadastro deste e-mail. Pagamentos só para guias ativos com PIX verificado.
           </p>
           <div id="cms-guides-root"></div>
         </section>
@@ -102,16 +93,6 @@
         <section class="gcv-dash-section" id="section-cms-excursions">
           <h2 class="gcv-dash-section-title">Excursões (próximas saídas)</h2>
           <div id="cms-excursions-root"></div>
-        </section>
-
-        <section class="gcv-dash-section" id="section-pending-guides">
-          <h2 class="gcv-dash-section-title">Guias Pendentes</h2>
-          <div id="pending-guides-list"></div>
-        </section>
-
-        <section class="gcv-dash-section" id="section-pending-tours">
-          <h2 class="gcv-dash-section-title">Passeios Pendentes</h2>
-          <div id="pending-tours-list"></div>
         </section>
 
         <section class="gcv-dash-section" id="section-admin-create-tour">
@@ -238,9 +219,9 @@
         </section>
 
         <section class="gcv-dash-section" id="section-admin-payouts">
-          <h2 class="gcv-dash-section-title">Pagar guias (PIX)</h2>
+          <h2 class="gcv-dash-section-title">Pagamentos</h2>
           <div class="gcv-dash-alert gcv-dash-alert--info" style="margin-bottom:1rem;">
-            Pagamentos <strong>somente</strong> para chave PIX de guia cadastrado e verificado. Não é possível digitar chave avulsa.
+            Histórico de PIX da plataforma (repasse automático) e pagamentos manuais. Só é possível pagar chave PIX cadastrada e verificada do guia.
           </div>
           <form class="gcv-dash-form" id="admin-payout-form" novalidate>
             <div class="gcv-dash-field-row">
@@ -249,6 +230,7 @@
                 <select class="gcv-dash-select" id="payout-guide" name="guide_user_id" required>
                   <option value="">Selecione…</option>
                 </select>
+                <div id="payout-guide-preview" class="gcv-payout-preview" hidden></div>
               </div>
               <div class="gcv-dash-field">
                 <label class="gcv-dash-label" for="payout-amount">Valor (R$)</label>
@@ -259,10 +241,10 @@
               <label class="gcv-dash-label" for="payout-desc">Descrição</label>
               <input class="gcv-dash-input" id="payout-desc" name="description" type="text" maxlength="200" placeholder="Ex.: Repasse excursão 18/07" />
             </div>
-            <button type="submit" class="gcv-dash-btn gcv-dash-btn--primary">Criar rascunho</button>
+            <button type="submit" class="gcv-dash-btn gcv-dash-btn--primary">Fazer Pagamento</button>
           </form>
           <div id="admin-payout-draft" hidden style="margin-top:1.25rem;padding:1rem;border:1px solid #fbbf24;border-radius:10px;background:#fffbeb;"></div>
-          <h3 style="margin:1.75rem 0 0.75rem;font-size:1.05rem;">Histórico</h3>
+          <h3 style="margin:1.75rem 0 0.75rem;font-size:1.05rem;">Histórico de pagamentos</h3>
           <div id="admin-payouts-list"></div>
         </section>
 
@@ -270,16 +252,17 @@
 
         <section class="gcv-dash-section" id="section-guide-tours">
           <h2 class="gcv-dash-section-title">Agenda</h2>
+          <div class="gcv-dash-agenda-publish" id="guide-agenda-publish">
+            <h3 class="gcv-dash-agenda-publish__title">Publicar passeio</h3>
+            <form class="gcv-dash-form gcv-dash-form--publish" id="gcv-guide-create-tour-form" novalidate></form>
+          </div>
           <p class="gcv-dash-hint" style="margin:0 0 1rem;color:#64748b;font-size:0.9rem;">
-            No dia do passeio, leia o QR de cada grupo. Sem leitura, o repasse daquela reserva cai para 50%.
+            No dia do passeio, leia o QR de cada grupo. Sem leitura, o número de pessoas guiadas não é contabilizado.
           </p>
           <div id="guide-tours-list"></div>
         </section>
 
-        <section class="gcv-dash-section" id="section-guide-create-tour">
-          <h2 class="gcv-dash-section-title">Publicar passeio</h2>
-          <form class="gcv-dash-form gcv-dash-form--publish" id="gcv-guide-create-tour-form" novalidate></form>
-        </section>
+        <section class="gcv-dash-section" id="section-guide-create-tour" hidden></section>
 
         <section class="gcv-dash-section" id="section-guide-profile">
           <h2 class="gcv-dash-section-title">Meu perfil</h2>
@@ -385,16 +368,16 @@
     </div>
   </div>
 
-  <script src="/assets/js/gcv-auth.js?v=1.0.46" defer></script>
-  <script src="/assets/js/gcv-pix-receipt.js?v=1.0.43" defer></script>
-  <script src="/assets/js/gcv-meeting-point.js?v=1.0.1" defer></script>
+  <script src="/assets/js/gcv-confirm.js?v=1.0.4" defer></script>
+  <script src="/assets/js/gcv-auth.js?v=1.0.49" defer></script>
+  <script src="/assets/js/gcv-pix-receipt.js?v=1.0.44" defer></script>
+  <script src="/assets/js/gcv-meeting-point.js?v=1.0.2" defer></script>
   <script src="/assets/js/gcv-datepicker.js?v=1.0.1" defer></script>
-  <script src="/assets/js/gcv-admin-cms.js?v=1.0.66" defer></script>
+  <script src="/assets/js/gcv-admin-cms.js?v=1.0.81" defer></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
-  <script src="/assets/js/gcv-confirm.js?v=1.0.1" defer></script>
-  <script src="/assets/js/gcv-dash-roles.js?v=1.0.79" defer></script>
-  <script src="/assets/js/gcv-inbox.js?v=1.0.1" defer></script>
-  <script src="/assets/js/gcv-dashboard.js?v=1.0.71" defer></script>
+  <script src="/assets/js/gcv-dash-roles.js?v=1.1.04" defer></script>
+  <script src="/assets/js/gcv-inbox.js?v=1.0.2" defer></script>
+  <script src="/assets/js/gcv-dashboard.js?v=1.0.85" defer></script>
   <script src="/assets/js/gcv-payment.js?v=1.0.40" defer></script>
   <script src="/assets/js/site.js?v=1.0.40" defer></script>
 </body>

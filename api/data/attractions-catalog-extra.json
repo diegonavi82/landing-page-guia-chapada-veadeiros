@@ -113,9 +113,9 @@
     {
       "slug": "guardiao-4x4-guia-chapada-veadeiros",
       "status": "published",
-      "title_pt": "Guardião (4x4)",
-      "title_en": "Guardião (4x4)",
-      "title_es": "Guardião (4x4)",
+      "title_pt": "Guardião",
+      "title_en": "Guardião",
+      "title_es": "Guardião",
       "excerpt_pt": "Roteiro 4x4 em Cavalcante.",
       "excerpt_en": "4x4 tour in Cavalcante.",
       "excerpt_es": "Ruta 4x4 en Cavalcante."
@@ -139,6 +139,16 @@
       "excerpt_pt": "Roteiro em Cavalcante.",
       "excerpt_en": "Tour in Cavalcante.",
       "excerpt_es": "Ruta en Cavalcante."
+    },
+    {
+      "slug": "pratinha-guia-chapada-veadeiros",
+      "status": "published",
+      "title_pt": "Pratinha",
+      "title_en": "Pratinha",
+      "title_es": "Pratinha",
+      "excerpt_pt": "Cachoeira Pratinha no complexo do Rio da Prata, Cavalcante.",
+      "excerpt_en": "Pratinha waterfall in the Rio da Prata complex, Cavalcante.",
+      "excerpt_es": "Cascada Pratinha en el complejo del Río da Prata, Cavalcante."
     },
     {
       "slug": "canjica-aguas-lindas-guia-chapada-veadeiros",

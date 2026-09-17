@@ -259,7 +259,10 @@ function gcv_guide_update_excursion(array $ex, array $data, int $userId): array
         if ($newNet < $currentNet) {
             throw new InvalidArgumentException('O valor a receber só pode ser aumentado');
         }
-        $rangeErr = gcv_guide_net_range_error($newNet, (int)($ex['attraction_id'] ?? 0));
+        $withTransport = array_key_exists('include_transport', $data)
+            ? !empty($data['include_transport'])
+            : !empty($ex['include_transport']);
+        $rangeErr = gcv_guide_net_range_error($newNet, (int)($ex['attraction_id'] ?? 0), null, $withTransport);
         if ($rangeErr !== null) {
             throw new InvalidArgumentException($rangeErr);
         }

@@ -283,17 +283,93 @@ function cardSpotTransportBadgeSsr(s) {
   );
 }
 
+function destHasImg(d) {
+  return !!(d && String(d.cardImg || d.cover_url || "").trim());
+}
+
+function destHasPage(d) {
+  const p = d && (d.atrativoPath || d.path);
+  return !!(p && String(p).trim());
+}
+
+function destIsTitleOnly(d) {
+  return !destHasImg(d) || !destHasPage(d);
+}
+
+function splitDestinoPlusNames(name) {
+  return String(name || "")
+    .split(/\s*\+\s*/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+}
+
+function titleOnlyLineNamesFromDest(d) {
+  return splitDestinoPlusNames(d && d.destino);
+}
+
+function titleOnlyLineNames(e) {
+  const dests = destinosForCard(e);
+  const names = [];
+  dests.forEach((d) => {
+    titleOnlyLineNamesFromDest(d).forEach((n) => names.push(n));
+  });
+  if (!names.length) splitDestinoPlusNames(e && e.destino).forEach((n) => names.push(n));
+  return names;
+}
+
+function waterfallIconSsr() {
+  return `<i class="ti ti-waterfall gcv-excursoes-card__spot-fall" aria-hidden="true"></i>`;
+}
+
+function titleOnlyLinesSsr(names, destMod = "", subHtml = "") {
+  return (names || [])
+    .map((n, i) => {
+      const extra = i === names.length - 1 && subHtml ? subHtml : "";
+      return (
+        `<span class="gcv-excursoes-card__spot-titleonly-line">` +
+        waterfallIconSsr() +
+        `<span class="gcv-excursoes-card__dest gcv-excursoes-card__spot-dest${destMod}">${esc(n)}${extra}</span></span>`
+      );
+    })
+    .join("");
+}
+
+function cardIsTitleOnly(e) {
+  const dests = destinosForCard(e);
+  if (!dests.length) {
+    return destIsTitleOnly({
+      cardImg: e && e.cardImg,
+      atrativoPath: e && e.atrativoPath,
+    });
+  }
+  return dests.every(destIsTitleOnly);
+}
+
 function cardSpotRowSsr(d, locale, transportBadge) {
-  const href = atrativoHrefFrom(d.atrativoPath, locale);
+  const href = destHasPage(d) ? atrativoHrefFrom(d.atrativoPath || d.path, locale) : "";
   const label = esc(String(d.destino || "").trim());
-  const imgInner =
-    `<div class="gcv-excursoes-card__img-wrap gcv-excursoes-card__spot-img-wrap">` +
-    `<img class="gcv-excursoes-card__img" src="${esc(String(d.cardImg || ""))}" alt="${label}" loading="lazy" decoding="async"></div>`;
   const sub = d.destinoSub ? `<span class="gcv-excursoes-card__dest-sub">${esc(String(d.destinoSub))}</span>` : "";
   const destMod = sub ? " gcv-excursoes-card__spot-dest--has-sub" : "";
   const title = label
     ? `<span class="gcv-excursoes-card__dest gcv-excursoes-card__spot-dest${destMod}">${label}${sub}</span>`
     : "";
+  if (destIsTitleOnly(d)) {
+    let names = titleOnlyLineNamesFromDest(d);
+    if (!names.length && label) names = [String(d.destino || "").trim()];
+    const compact = `<div class="gcv-excursoes-card__spot-titleonly">${transportBadge || ""}${titleOnlyLinesSsr(names, destMod, sub)}</div>`;
+    const wrapClass = "gcv-excursoes-card__spot gcv-excursoes-card__spot--title-only";
+    if (href) {
+      return (
+        `<div class="${wrapClass}">` +
+        `<a class="gcv-excursoes-card__atrativo-link gcv-excursoes-card__atrativo-link--spot gcv-excursoes-card__atrativo-link--titleonly" href="${esc(href)}" title="${label}">` +
+        `${compact}</a></div>`
+      );
+    }
+    return `<div class="${wrapClass}">${compact}</div>`;
+  }
+  const imgInner =
+    `<div class="gcv-excursoes-card__img-wrap gcv-excursoes-card__spot-img-wrap">` +
+    `<img class="gcv-excursoes-card__img" src="${esc(String(d.cardImg || ""))}" alt="${label}" loading="lazy" decoding="async"></div>`;
   const photo =
     `<div class="gcv-excursoes-card__spot-photo">` +
     `<div class="gcv-excursoes-card__atrativo-link--img">${imgInner}</div>` +
@@ -369,8 +445,17 @@ function cardBandGroupSsr(e, s, isLotado) {
 
 function cardSpotsBlockSsr(e, locale, s) {
   const dests = destinosForCard(e);
-  const n = destinosSpotsCount(e);
   const badge = e.comTransporte === true && s ? cardSpotTransportBadgeSsr(s) : "";
+  if (cardIsTitleOnly(e)) {
+    const names = titleOnlyLineNames(e);
+    const compact = `<div class="gcv-excursoes-card__spot-titleonly">${badge}${titleOnlyLinesSsr(names)}</div>`;
+    return (
+      `<div class="gcv-excursoes-card__media">` +
+      `<div class="gcv-excursoes-card__spots gcv-excursoes-card__spots--count-1" data-spots="${Math.max(1, names.length)}">` +
+      `<div class="gcv-excursoes-card__spot gcv-excursoes-card__spot--title-only">${compact}</div></div></div>`
+    );
+  }
+  const n = destinosSpotsCount(e);
   const inner = `<div class="gcv-excursoes-card__spots gcv-excursoes-card__spots--count-${n}" data-spots="${n}">${dests.map((d) => cardSpotRowSsr(d, locale, badge)).join("")}</div>`;
   return `<div class="gcv-excursoes-card__media">${inner}</div>`;
 }
@@ -688,6 +773,7 @@ export function excursionsCarouselTrackSsrHtml(locale) {
       if (comTransporte) mod += " gcv-excursoes-card--transporte";
       mod += ` ${destinosSpotsClass(e)}`;
       if (destinosSpotsCount(e) > 1) mod += " gcv-excursoes-card--multi";
+      if (cardIsTitleOnly(e)) mod += " gcv-excursoes-card--title-only";
       const cap = grupoMaximoValor(e);
       const x = inscritosNoGrupo(e);
       const isLotado = vagasDisponiveis(e) < 1;

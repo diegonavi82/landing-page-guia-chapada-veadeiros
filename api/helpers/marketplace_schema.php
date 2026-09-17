@@ -244,6 +244,13 @@ function gcv_marketplace_ensure_excursion_finance_columns(PDO $pdo): void
         'approved_by' => 'INT UNSIGNED NULL',
         'deleted_at' => 'DATETIME NULL',
         'preconfirmed_people' => 'TINYINT UNSIGNED NOT NULL DEFAULT 0',
+        'offer_transport' => 'TINYINT(1) NOT NULL DEFAULT 0',
+        'guide_net_transport_cents' => 'INT UNSIGNED NULL',
+        'price_transport_cents' => 'INT UNSIGNED NULL',
+        'commission_transport_cents' => 'INT UNSIGNED NULL',
+        'quorum_transport' => 'TINYINT UNSIGNED NOT NULL DEFAULT 0',
+        'max_people_transport' => 'TINYINT UNSIGNED NOT NULL DEFAULT 0',
+        'booked_people_transport' => 'TINYINT UNSIGNED NOT NULL DEFAULT 0',
     ];
 
     $existing = gcv_marketplace_column_map($pdo, 'gcv_excursions');
@@ -543,6 +550,7 @@ function gcv_marketplace_ensure_settings(PDO $pdo): void
         ['guide_net_min_reais', '50', 'Diária mínima do guia (R$ por pessoa)', 'integer'],
         ['guide_net_max_reais', '160', 'Diária máxima do guia (R$ por pessoa)', 'integer'],
         ['guide_net_max_dragao_reais', '190', 'Diária máxima do guia na Cachoeira do Dragão (R$ por pessoa)', 'integer'],
+        ['guide_net_max_transport_reais', '550', 'Diária máxima do guia com transporte incluso (R$ por pessoa)', 'integer'],
         ['notify_guide_hours_long', '24', 'Guia: aviso longo (horas antes do passeio) — lista dos grupos', 'integer'],
         ['notify_guide_hours_short', '3', 'Guia: aviso curto (horas antes do início)', 'integer'],
         ['notify_client_hours_long', '24', 'Cliente: aviso longo (horas antes do passeio)', 'integer'],
@@ -601,6 +609,11 @@ function gcv_marketplace_ensure_settings(PDO $pdo): void
             "UPDATE gcv_settings
              SET label = 'Diária máxima do guia na Cachoeira do Dragão (R$ por pessoa)'
              WHERE key_name = 'guide_net_max_dragao_reais'"
+        );
+        $pdo->exec(
+            "UPDATE gcv_settings
+             SET label = 'Diária máxima do guia com transporte incluso (R$ por pessoa)'
+             WHERE key_name = 'guide_net_max_transport_reais'"
         );
     } catch (Throwable $e) {
         // ignore

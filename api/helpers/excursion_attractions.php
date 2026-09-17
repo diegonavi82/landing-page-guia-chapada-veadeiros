@@ -162,3 +162,126 @@ function gcv_attraction_public_html_path(?string $slug): string
     $file = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'atrativos' . DIRECTORY_SEPARATOR . $slug . '.html';
     return is_file($file) ? ('atrativos/' . $slug . '.html') : '';
 }
+
+function gcv_attraction_fold_name(string $s): string
+{
+    $s = trim(mb_strtolower($s, 'UTF-8'));
+    $map = [
+        'á'=>'a','à'=>'a','ã'=>'a','â'=>'a','ä'=>'a',
+        'é'=>'e','ê'=>'e','è'=>'e',
+        'í'=>'i','ì'=>'i',
+        'ó'=>'o','ô'=>'o','õ'=>'o','ò'=>'o',
+        'ú'=>'u','ü'=>'u',
+        'ç'=>'c',
+    ];
+    $s = strtr($s, $map);
+    $s = preg_replace('/[^a-z0-9]+/', ' ', $s) ?? $s;
+    return trim($s);
+}
+
+/**
+ * Atrativos do catálogo extra (sem HTML próprio) e nomes de combo → página + foto.
+ *
+ * @return array<string, array{path:string, img:string}>
+ */
+function gcv_attraction_card_aliases(): array
+{
+    static $map = null;
+    if ($map !== null) {
+        return $map;
+    }
+    $img = static function (string $file): string {
+        return '/assets/img/imagens/' . $file;
+    };
+    $page = static function (string $slug): string {
+        return 'atrativos/' . $slug . '.html';
+    };
+    $complexo = 'cachoeira-complexo-rio-prata-guia-chapada-veadeiros-cavalcante';
+    $complexoPage = $page($complexo);
+    $rows = [
+        'pratinha' => [$complexoPage, $img('complexo-cachoeiras-rio-prata-guia-chapada-veadeiros-cavalcante-1.jpg')],
+        'rei do prata' => [$complexoPage, $img('complexo-rio-prata-cachoeira-rei-guia-chapada-veadeiros-cavalcante.jpg')],
+        'pratinha-guia-chapada-veadeiros' => [$complexoPage, $img('complexo-cachoeiras-rio-prata-guia-chapada-veadeiros-cavalcante-1.jpg')],
+        'rei-do-prata-guia-chapada-veadeiros' => [$complexoPage, $img('complexo-rio-prata-cachoeira-rei-guia-chapada-veadeiros-cavalcante.jpg')],
+        'almecegas' => [$page('cachoeira-almecegas-poco-sao-bento-guia-chapada-veadeiros'), $img('cachoeira-almecegas-guia-chapada-veadeiros-alto-paraiso-10.jpg')],
+        'loquinhas' => [$page('cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso'), $img('cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso.jpg')],
+        'anjos e arcanjos' => [$page('cachoeira-anjos-arcanjos-guia-chapada-veadeiros-alto-paraiso'), $img('cachoeira-arcanjos-anjos-guia-chapada-veadeiros-alto-paraiso.jpg')],
+        'vale da lua' => [$page('vale-lua-guia-chapada-veadeiros-sao-jorge'), $img('vale-lua-guia-chapada-veadeiros-sao-jorge-1.jpg')],
+        'segredo' => [$page('cachoeira-segredo-guia-chapada-veadeiros-sao-jorge'), $img('cachoeira-segredo-guia-chapada-veadeiros-sao-jorge-10.jpg')],
+        'cordovil' => [$page('cachoeira-cordovil-poco-esmeralda-guia-chapada-veadeiros'), $img('cachoeira-cordovil-poco-esmeralda-guia-chapada-veadeiros-1.jpg')],
+        'santa barbara' => [$page('cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante'), $img('cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante.jpg')],
+        'cristais' => [$page('cachoeira-cristais-guia-chapada-veadeiros-alto-paraiso'), $img('cachoeira-cristais-veu-noiva-guia-chapada-veadeiros-alto-paraiso.jpg')],
+        'cataratas dos couros' => [$page('cataratas-dos-couros-guia-chapada-veadeiros-alto-paraiso'), $img('cataratas-couros-guia-chapada-veadeiros-alto-paraiso-1.webp')],
+    ];
+    $map = [];
+    foreach ($rows as $key => $pair) {
+        $map[$key] = ['path' => $pair[0], 'img' => $pair[1]];
+    }
+    return $map;
+}
+
+/** @return array{path:string, img:string}|null */
+function gcv_attraction_lookup_card_alias(string $titleOrSlug): ?array
+{
+    $folded = gcv_attraction_fold_name($titleOrSlug);
+    if ($folded === '') {
+        return null;
+    }
+    $aliases = gcv_attraction_card_aliases();
+    return $aliases[$folded] ?? null;
+}
+
+/**
+ * @param list<array<string,mixed>> $attrs
+ * @return list<array<string,mixed>>
+ */
+function gcv_excursion_card_destinos(array $attrs, string $lang): array
+{
+    $out = [];
+    foreach ($attrs as $a) {
+        $key = 'title_' . $lang;
+        $t = trim((string)($a[$key] ?? ''));
+        if ($t === '') {
+            $t = trim((string)($a['title_pt'] ?? ''));
+        }
+        $slug = (string)($a['slug'] ?? '');
+        $page = gcv_attraction_public_html_path($slug);
+        $cover = gcv_normalize_media_url((string)($a['cover_url'] ?? ''));
+        $entryRaw = $a['entry_price_cents'] ?? null;
+        $parts = preg_split('/\s*\+\s*/u', $t) ?: [];
+        $parts = array_values(array_filter(array_map('trim', $parts), static fn($p) => $p !== ''));
+        if (!$parts) {
+            $parts = [$t !== '' ? $t : $slug];
+        }
+        $split = count($parts) > 1;
+        foreach ($parts as $part) {
+            $useCover = $split ? '' : $cover;
+            $usePage = $split ? '' : $page;
+            $alias = gcv_attraction_lookup_card_alias($part) ?? gcv_attraction_lookup_card_alias($slug);
+            if ($alias) {
+                if ($usePage === '') {
+                    $usePage = $alias['path'];
+                }
+                if ($useCover === '') {
+                    $useCover = $alias['img'];
+                }
+            }
+            $item = [
+                'destino' => $part,
+                'cardImg' => $useCover,
+                'atrativoPath' => $usePage,
+                'title' => $part,
+                'slug' => $slug,
+                'path' => $usePage,
+            ];
+            if ($entryRaw !== null) {
+                $item['valorIngresso'] = (int)round(((int)$entryRaw) / 100);
+            }
+            $out[] = $item;
+            if (count($out) >= 4) {
+                return $out;
+            }
+        }
+    }
+    return $out;
+}

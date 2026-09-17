@@ -86,7 +86,7 @@ if (localOk) {
 }
 
 console.log('[db:migrate] MySQL local/remoto indisponível — usando FTP + one-shot Hostinger…');
-const remote = spawnSync(process.execPath, [path.join(root, 'tools', 'upload-api-and-migrate.mjs')], {
+const remote = spawnSync(process.execPath, [path.join(root, 'tools', 'run-sql-on-hostinger.mjs'), sqlRel], {
   encoding: 'utf8',
   cwd: root,
   env: process.env,

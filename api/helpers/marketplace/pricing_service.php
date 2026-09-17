@@ -88,27 +88,55 @@ function gcv_attraction_is_dragao(?int $attractionId = null, ?string $slug = nul
     return false;
 }
 
-/** Máximo do valor a receber por pessoa (guia), em centavos. */
-function gcv_guide_net_max_cents(?int $attractionId = null, ?string $attractionSlug = null, ?string $attractionTitle = null): int
+/** Máximo com transporte incluso, em centavos. */
+function gcv_guide_net_max_transport_cents(): int
 {
-    if (gcv_attraction_is_dragao($attractionId, $attractionSlug, $attractionTitle)) {
-        return gcv_guide_net_max_dragao_cents();
+    $base = (int)(gcv_guide_net_max_default_cents() / 100);
+    $transport = gcv_guide_net_setting_reais('guide_net_max_transport_reais', 550);
+    if ($transport < $base) {
+        $transport = $base;
     }
-    return gcv_guide_net_max_default_cents();
+    return $transport * 100;
+}
+
+/** Máximo do valor a receber por pessoa (guia), em centavos. */
+function gcv_guide_net_max_cents(
+    ?int $attractionId = null,
+    ?string $attractionSlug = null,
+    ?string $attractionTitle = null,
+    bool $includeTransport = false
+): int {
+    $max = gcv_attraction_is_dragao($attractionId, $attractionSlug, $attractionTitle)
+        ? gcv_guide_net_max_dragao_cents()
+        : gcv_guide_net_max_default_cents();
+    if ($includeTransport) {
+        $withTransport = gcv_guide_net_max_transport_cents();
+        if ($withTransport > $max) {
+            $max = $withTransport;
+        }
+    }
+    return $max;
 }
 
 /**
  * Valida faixa do valor a receber na publicação (não no preview ao digitar).
  */
-function gcv_guide_net_range_error(int $cents, ?int $attractionId = null, ?string $attractionSlug = null): ?string
-{
+function gcv_guide_net_range_error(
+    int $cents,
+    ?int $attractionId = null,
+    ?string $attractionSlug = null,
+    bool $includeTransport = false
+): ?string {
     $min = gcv_guide_net_min_cents();
     if ($cents < $min) {
         return 'Valor a receber por pessoa: mínimo R$ ' . number_format($min / 100, 2, ',', '.');
     }
-    $max = gcv_guide_net_max_cents($attractionId, $attractionSlug);
+    $max = gcv_guide_net_max_cents($attractionId, $attractionSlug, null, $includeTransport);
     if ($cents > $max) {
         $reais = number_format($max / 100, 2, ',', '.');
+        if ($includeTransport) {
+            return 'Valor a receber por pessoa: máximo R$ ' . $reais . ' (com transporte incluso)';
+        }
         if (gcv_attraction_is_dragao($attractionId, $attractionSlug)) {
             return 'Valor a receber por pessoa: máximo R$ ' . $reais . ' (Cachoeira do Dragão)';
         }

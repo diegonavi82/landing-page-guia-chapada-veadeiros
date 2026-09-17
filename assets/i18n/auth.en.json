@@ -11,7 +11,8 @@
     "create": "Create account",
     "error_invalid": "Incorrect email or password",
     "error_pending": "Account awaiting administrator approval",
-    "error_suspended": "Account suspended. Please contact support."
+    "error_suspended": "Account suspended. Please contact support.",
+    "error_blocked": "This email is blocked and cannot request a guide registration."
   },
   "register": {
     "title": "Create account",

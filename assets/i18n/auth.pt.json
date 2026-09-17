@@ -11,7 +11,8 @@
     "create": "Criar conta",
     "error_invalid": "Email ou senha incorretos",
     "error_pending": "Conta aguardando aprovação do administrador",
-    "error_suspended": "Conta suspensa. Entre em contato com o suporte."
+    "error_suspended": "Conta suspensa. Entre em contato com o suporte.",
+    "error_blocked": "Este e-mail está bloqueado e não pode solicitar cadastro de guia."
   },
   "register": {
     "title": "Criar conta",

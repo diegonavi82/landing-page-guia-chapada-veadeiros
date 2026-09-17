@@ -145,7 +145,12 @@
       });
     }
 
+    function isLocked() {
+      return !!(opts.locked || wrap.classList.contains('is-locked') || btn.disabled || input.readOnly || input.disabled);
+    }
+
     function open() {
+      if (isLocked()) return;
       closeAll(wrap);
       var cur = parseIso(input.value);
       view = cur ? new Date(cur.getFullYear(), cur.getMonth(), 1) : new Date();
@@ -161,6 +166,7 @@
 
     btn.addEventListener('click', function (ev) {
       ev.preventDefault();
+      if (isLocked()) return;
       if (wrap.classList.contains('is-open')) close();
       else open();
     });

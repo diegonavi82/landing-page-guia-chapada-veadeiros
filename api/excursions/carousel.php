@@ -50,6 +50,8 @@ try {
                 e.preconfirmed_people,
                 e.include_transport, e.include_entry, e.cart_slug, e.attraction_id, e.meeting_point,
                 e.meeting_point_place_id, e.meeting_point_lat, e.meeting_point_lng,
+                e.offer_transport, e.price_transport_cents, e.quorum_transport, e.max_people_transport,
+                e.booked_people_transport,
                 e.created_by_origin, e.business_mode, e.approved_at, e.approved_by, e.created_by, e.guide_user_id, e.deleted_at,
                 c.name AS city_name,
                 u.name AS guide_name,
@@ -278,11 +280,72 @@ function gcv_row_to_card(array $r, string $lang, array $months, array $weekdays)
     return $card;
 }
 
+/**
+ * Uma saída pode virar 2 cards: a pé e com van. O filtro do site mostra só uma modalidade.
+ *
+ * @return list<array<string,mixed>>
+ */
+function gcv_row_to_cards(array $r, string $lang, array $months, array $weekdays): array
+{
+    $walk = gcv_row_to_card($r, $lang, $months, $weekdays);
+    $offer = gcv_excursion_offers_transport($r);
+    $legacyTransportOnly = !empty($r['include_transport']) && !$offer;
+    $occupied = gcv_excursion_occupied_people($r);
+    $max = max(1, (int)($r['max_people'] ?? 1));
+    $remainingTotal = max(0, $max - $occupied);
+    $walkInscriptions = gcv_excursion_platform_inscriptions($r);
+    $walkQuorum = max(0, (int)($r['quorum'] ?? 0));
+    $walkMet = gcv_excursion_walking_quorum_met($r);
+    $vanMet = gcv_excursion_transport_quorum_met($r);
+
+    $walk['pessoasInscritas'] = $occupied;
+    $walk['grupoMaximo'] = $max;
+    $walk['quorumMin'] = $walkQuorum;
+    $walk['faltamPessoas'] = max(0, $walkQuorum - $walkInscriptions);
+    $walk['vagasRestantes'] = $remainingTotal;
+    $walk['confirmada'] = $walkMet || $vanMet;
+
+    if ($legacyTransportOnly) {
+        $walk['comTransporte'] = true;
+        return [$walk];
+    }
+
+    $walk['comTransporte'] = false;
+    $cards = [$walk];
+    if (!$offer) {
+        return $cards;
+    }
+    if (gcv_excursion_transport_cancelled($r)) {
+        return $cards;
+    }
+
+    $van = $walk;
+    $van['comTransporte'] = true;
+    $van['valor'] = (int)round(((int)($r['price_transport_cents'] ?? 0)) / 100);
+    $van['cartSlug'] = (string)($walk['cartSlug'] ?? '') . '-t';
+    $vanBooked = gcv_excursion_platform_inscriptions_transport($r);
+    $vanMax = max(0, (int)($r['max_people_transport'] ?? 0));
+    if ($vanMax < 1) {
+        $vanMax = 4;
+    }
+    $vanQuorum = max(0, (int)($r['quorum_transport'] ?? 0));
+    $van['pessoasInscritas'] = $vanBooked;
+    $van['grupoMaximo'] = min($vanMax, $max);
+    $van['quorumMin'] = $vanQuorum;
+    $van['faltamPessoas'] = max(0, $vanQuorum - $vanBooked);
+    $van['vagasRestantes'] = max(0, min($vanMax - $vanBooked, $remainingTotal));
+    $van['confirmada'] = $vanMet;
+    $cards[] = $van;
+    return $cards;
+}
+
 $out = ['pt' => [], 'en' => [], 'es' => []];
 $rows = array_values(array_filter(is_array($rows ?? null) ? $rows : [], 'gcv_excursion_is_publicly_bookable'));
 foreach ($rows as $r) {
     foreach (['pt', 'en', 'es'] as $lang) {
-        $out[$lang][] = gcv_row_to_card($r, $lang, $months, $weekdays);
+        foreach (gcv_row_to_cards($r, $lang, $months, $weekdays) as $card) {
+            $out[$lang][] = $card;
+        }
     }
 }
 

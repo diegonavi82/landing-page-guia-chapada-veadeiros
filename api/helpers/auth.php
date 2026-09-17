@@ -18,9 +18,40 @@ function auth_session_start(): void {
     }
 }
 
+function gcv_session_cookie_name(string $role): string
+{
+    return 'gcv_session_' . gcv_normalize_login_context($role);
+}
+
+function gcv_request_porta(): ?string
+{
+    $h = strtolower(trim((string)($_SERVER['HTTP_X_GCV_PORTA'] ?? '')));
+    if (in_array($h, ['admin', 'guide', 'client'], true)) {
+        return $h;
+    }
+    $q = strtolower(trim((string)($_GET['as'] ?? $_GET['porta'] ?? '')));
+    if (in_array($q, ['admin', 'guide', 'client'], true)) {
+        return $q;
+    }
+    return null;
+}
+
+function gcv_set_auth_cookie(string $name, string $value, int $expires): void
+{
+    setcookie($name, $value, [
+        'expires' => $expires,
+        'path' => '/',
+        'secure' => true,
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+}
+
 function current_user(): ?array {
-    $sessionId = $_COOKIE['gcv_session'] ?? null;
-    if (!$sessionId) return null;
+    $sessionId = (string)($_COOKIE['gcv_session'] ?? '');
+    if ($sessionId === '') {
+        return null;
+    }
 
     gcv_auth_ensure_role_schema();
 
@@ -35,7 +66,6 @@ function current_user(): ?array {
         $stmt->execute([$sessionId]);
         $user = $stmt->fetch();
     } catch (Throwable $e) {
-        // coluna active_role ainda não existe
         $stmt = db()->prepare(
             'SELECT u.id, u.name, u.email, u.role AS primary_role, u.avatar_url, u.lang, u.status, u.email_verified
              FROM gcv_sessions s
@@ -44,21 +74,26 @@ function current_user(): ?array {
         );
         $stmt->execute([$sessionId]);
         $user = $stmt->fetch();
-        if ($user) $user['active_role'] = $user['primary_role'];
+        if ($user) {
+            $user['active_role'] = $user['primary_role'];
+        }
     }
 
-    if (!$user) return null;
+    if (!$user) {
+        return null;
+    }
 
     $roles = gcv_user_roles((int)$user['id']);
+    $porta = gcv_request_porta();
     $active = gcv_normalize_login_context((string)($user['active_role'] ?? ''));
-    if (!in_array($active, $roles, true)) {
-        // sessão inválida para o papel — usa o primeiro disponível
+    if ($porta && in_array($porta, $roles, true)) {
+        $active = $porta;
+    } elseif (!in_array($active, $roles, true)) {
         $active = $roles[0] ?? (string)($user['primary_role'] ?? 'client');
     }
 
     $user['roles'] = $roles;
     $user['active_role'] = $active;
-    // Compat: "role" = papel da sessão (layout do painel)
     $user['role'] = $active;
     return $user;
 }
@@ -86,11 +121,23 @@ function require_role(string $role): array {
     return $user;
 }
 
+/** Tem o papel (admin logado ainda acessa o próprio perfil de guia). */
+function require_held_role(string $role): array {
+    $user = require_auth();
+    if (!gcv_user_has_role((int)$user['id'], $role)) {
+        http_response_code(403);
+        echo json_encode(['ok' => false, 'error' => 'Acesso negado para este perfil. Entre pela porta correta.']);
+        exit;
+    }
+    return $user;
+}
+
 function require_admin(): array {
     $user = require_auth();
     $roles = $user['roles'] ?? gcv_user_roles((int)$user['id']);
-    $active = (string)($user['active_role'] ?? $user['role'] ?? '');
-    if (!in_array('admin', $roles, true) || $active !== 'admin') {
+    // Dual-papel: a aba admin precisa da API mesmo se a sessão estiver
+    // com active_role=guide. Basta o usuário TER o papel admin.
+    if (!in_array('admin', $roles, true)) {
         http_response_code(403);
         echo json_encode(['ok' => false, 'error' => 'Acesso negado. Entre pela Área Admin.']);
         exit;
@@ -109,10 +156,21 @@ function require_admin(): array {
 function create_session(int $userId, string $activeRole = 'client'): string {
     gcv_auth_ensure_role_schema();
     $activeRole = gcv_normalize_login_context($activeRole);
-    $sessionId = bin2hex(random_bytes(64));
+    $sessionId = bin2hex(random_bytes(32));
     $ip        = $_SERVER['REMOTE_ADDR'] ?? null;
-    $ua        = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 300);
+    $ua        = substr((string)($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 300);
     $expires   = date('Y-m-d H:i:s', time() + 86400);
+
+    try {
+        db()->prepare('DELETE FROM gcv_sessions WHERE user_id = ? AND active_role = ?')
+            ->execute([$userId, $activeRole]);
+    } catch (Throwable $e) {
+        try {
+            db()->prepare('DELETE FROM gcv_sessions WHERE user_id = ?')->execute([$userId]);
+        } catch (Throwable $e2) {
+            // ignore
+        }
+    }
 
     try {
         db()->prepare(
@@ -124,27 +182,25 @@ function create_session(int $userId, string $activeRole = 'client'): string {
         )->execute([$sessionId, $userId, $ip, $ua, $expires]);
     }
 
-    setcookie('gcv_session', $sessionId, [
-        'expires'  => time() + 86400,
-        'path'     => '/',
-        'secure'   => true,
-        'httponly' => true,
-        'samesite' => 'Lax',
-    ]);
+    $optsExpire = time() + 86400;
+    gcv_set_auth_cookie('gcv_session', $sessionId, $optsExpire);
     return $sessionId;
 }
 
-function destroy_session(): void {
-    $sessionId = $_COOKIE['gcv_session'] ?? null;
-    if ($sessionId) {
-        db()->prepare('DELETE FROM gcv_sessions WHERE session_id = ?')->execute([$sessionId]);
-        setcookie('gcv_session', '', [
-            'expires'  => time() - 3600,
-            'path'     => '/',
-            'secure'   => true,
-            'httponly' => true,
-            'samesite' => 'Lax',
-        ]);
+function destroy_session(?string $role = null): void {
+    $sessionId = (string)($_COOKIE['gcv_session'] ?? '');
+    if ($sessionId !== '') {
+        try {
+            db()->prepare('DELETE FROM gcv_sessions WHERE session_id = ?')->execute([$sessionId]);
+        } catch (Throwable $e) {
+            // ignore
+        }
+    }
+    gcv_set_auth_cookie('gcv_session', '', time() - 3600);
+    unset($_COOKIE['gcv_session']);
+    foreach (['admin', 'guide', 'client'] as $r) {
+        gcv_set_auth_cookie(gcv_session_cookie_name($r), '', time() - 3600);
+        unset($_COOKIE[gcv_session_cookie_name($r)]);
     }
 }
 
@@ -173,6 +229,9 @@ function verify_csrf(): void {
 function json_response(bool $ok, $data = null, string $error = '', int $code = 200): void {
     http_response_code($code);
     header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    header('Pragma: no-cache');
+    header('Expires: 0');
     if ($ok) {
         echo json_encode(['ok' => true, 'data' => $data]);
     } else {

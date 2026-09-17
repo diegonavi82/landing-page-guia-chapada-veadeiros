@@ -377,13 +377,13 @@
       filterDateRange: "{{from}} → {{to}}",
       filterCalPrev: "Mês anterior",
       filterCalNext: "Próximo mês",
-      filterEmbarque: "Embarque",
+      filterEmbarque: "Cidade de Partida",
       filterEmbarqueAll: "Todos",
       filterPrice: "Valor por pessoa",
       filterTransport: "Precisa de transporte?",
-      filterTransportAll: "Todos",
-      filterTransportWith: "Com translado",
-      filterTransportWithout: "Sem translado",
+      filterTransportAll: "Escolha uma opção",
+      filterTransportWith: "Com translado, estou a pé",
+      filterTransportWithout: "Sem translado, tenho meu próprio veículo",
       filterStatus: "Status",
       filterStatusAll: "Todos",
       filterStatusConfirmed: "Confirmada",
@@ -534,13 +534,13 @@
       filterDateRange: "{{from}} → {{to}}",
       filterCalPrev: "Previous month",
       filterCalNext: "Next month",
-      filterEmbarque: "Meeting point",
+      filterEmbarque: "Departure city",
       filterEmbarqueAll: "All",
       filterPrice: "Price per person",
       filterTransport: "Need transport?",
-      filterTransportAll: "All",
-      filterTransportWith: "With transport",
-      filterTransportWithout: "Without transport",
+      filterTransportAll: "Choose one",
+      filterTransportWith: "With transfer, I'm on foot",
+      filterTransportWithout: "Without transfer, I have my own vehicle",
       filterStatus: "Status",
       filterStatusAll: "All",
       filterStatusConfirmed: "Confirmed",
@@ -691,13 +691,13 @@
       filterDateRange: "{{from}} → {{to}}",
       filterCalPrev: "Mes anterior",
       filterCalNext: "Mes siguiente",
-      filterEmbarque: "Embarque",
+      filterEmbarque: "Ciudad de salida",
       filterEmbarqueAll: "Todos",
       filterPrice: "Precio por persona",
       filterTransport: "¿Necesita transporte?",
-      filterTransportAll: "Todos",
-      filterTransportWith: "Con traslado",
-      filterTransportWithout: "Sin traslado",
+      filterTransportAll: "Elija una opción",
+      filterTransportWith: "Con traslado, voy a pie",
+      filterTransportWithout: "Sin traslado, tengo mi propio vehículo",
       filterStatus: "Estado",
       filterStatusAll: "Todos",
       filterStatusConfirmed: "Confirmada",
@@ -770,6 +770,82 @@
     return labelPlural + " (" + parts.join(" + ") + ")";
   }
 
+  function destHasImg(d) {
+    return !!(d && String(d.cardImg || d.cover_url || "").trim());
+  }
+
+  function destHasPage(d) {
+    var p = d && (d.atrativoPath || d.path);
+    return !!(p && String(p).trim());
+  }
+
+  /** Sem foto ou sem página do atrativo → faixa compacta só com o título. */
+  function destIsTitleOnly(d) {
+    return !destHasImg(d) || !destHasPage(d);
+  }
+
+  function splitDestinoPlusNames(name) {
+    return String(name || "")
+      .split(/\s*\+\s*/)
+      .map(function (p) {
+        return p.trim();
+      })
+      .filter(Boolean);
+  }
+
+  function titleOnlyLineNamesFromDest(d) {
+    return splitDestinoPlusNames(d && d.destino);
+  }
+
+  function titleOnlyLineNames(e) {
+    var dests = destinosForCard(e);
+    var names = [];
+    dests.forEach(function (d) {
+      titleOnlyLineNamesFromDest(d).forEach(function (n) {
+        names.push(n);
+      });
+    });
+    if (!names.length) {
+      splitDestinoPlusNames(e && e.destino).forEach(function (n) {
+        names.push(n);
+      });
+    }
+    return names;
+  }
+
+  function waterfallIconHtml() {
+    return '<i class="ti ti-waterfall gcv-excursoes-card__spot-fall" aria-hidden="true"></i>';
+  }
+
+  function titleOnlyLinesHtml(names, destMod, subHtml) {
+    return (names || [])
+      .map(function (n, i) {
+        var extra = i === names.length - 1 && subHtml ? subHtml : "";
+        return (
+          '<span class="gcv-excursoes-card__spot-titleonly-line">' +
+          waterfallIconHtml() +
+          '<span class="gcv-excursoes-card__dest gcv-excursoes-card__spot-dest' +
+          destMod +
+          '">' +
+          escapeHtml(n) +
+          extra +
+          "</span></span>"
+        );
+      })
+      .join("");
+  }
+
+  function cardIsTitleOnly(e) {
+    var dests = destinosForCard(e);
+    if (!dests.length) {
+      return destIsTitleOnly({
+        cardImg: e && e.cardImg,
+        atrativoPath: e && e.atrativoPath,
+      });
+    }
+    return dests.every(destIsTitleOnly);
+  }
+
   function getDestinos(e) {
     if (!e) return [];
     if (Array.isArray(e.destinos) && e.destinos.length) {
@@ -777,9 +853,8 @@
         var nome = d.destino || d.title || d.title_pt || "";
         return Object.assign({}, d, {
           destino: nome,
-          cardImg: d.cardImg || d.cover_url || e.cardImg || "",
-          atrativoPath:
-            d.atrativoPath || d.path || (d.slug ? "atrativos/" + d.slug + ".html" : e.atrativoPath || ""),
+          cardImg: String(d.cardImg || d.cover_url || "").trim(),
+          atrativoPath: String(d.atrativoPath || d.path || "").trim(),
           valorIngresso: d.valorIngresso != null ? d.valorIngresso : e.valorIngresso,
         });
       });
@@ -837,17 +912,8 @@
   }
 
   function cardSpotRowHtml(d, locale, transportBadge) {
-    var href = atrativoHrefFrom(d.atrativoPath, locale);
+    var href = destHasPage(d) ? atrativoHrefFrom(d.atrativoPath || d.path, locale) : "";
     var label = escapeHtml(String(d.destino || "").trim());
-    var hasImg = !!(d.cardImg && String(d.cardImg).trim());
-    var imgInner = hasImg
-      ? '<div class="gcv-excursoes-card__img-wrap gcv-excursoes-card__spot-img-wrap">' +
-        '<img class="gcv-excursoes-card__img" src="' +
-        escapeHtml(String(d.cardImg)) +
-        '" alt="' +
-        label +
-        '" loading="lazy" decoding="async"></div>'
-      : '<div class="gcv-excursoes-card__img-wrap gcv-excursoes-card__spot-img-wrap gcv-excursoes-card__spot-img-wrap--empty" aria-hidden="true"></div>';
     var sub = d.destinoSub
       ? '<span class="gcv-excursoes-card__dest-sub">' + escapeHtml(String(d.destinoSub)) + "</span>"
       : "";
@@ -860,6 +926,38 @@
         sub +
         "</span>"
       : "";
+    if (destIsTitleOnly(d)) {
+      var names = titleOnlyLineNamesFromDest(d);
+      if (!names.length && label) names = [String(d.destino || "").trim()];
+      var compact =
+        '<div class="gcv-excursoes-card__spot-titleonly">' +
+        (transportBadge || "") +
+        titleOnlyLinesHtml(names, destMod, sub) +
+        "</div>";
+      var wrapClass = "gcv-excursoes-card__spot gcv-excursoes-card__spot--title-only";
+      if (href) {
+        return (
+          '<div class="' +
+          wrapClass +
+          '">' +
+          '<a class="gcv-excursoes-card__atrativo-link gcv-excursoes-card__atrativo-link--spot gcv-excursoes-card__atrativo-link--titleonly" href="' +
+          escapeHtml(href) +
+          '" title="' +
+          label +
+          '">' +
+          compact +
+          "</a></div>"
+        );
+      }
+      return '<div class="' + wrapClass + '">' + compact + "</div>";
+    }
+    var imgInner =
+      '<div class="gcv-excursoes-card__img-wrap gcv-excursoes-card__spot-img-wrap">' +
+      '<img class="gcv-excursoes-card__img" src="' +
+      escapeHtml(String(d.cardImg)) +
+      '" alt="' +
+      label +
+      '" loading="lazy" decoding="async"></div>';
     // Título dentro da foto (mesmo stacking) — evita overlay sumir em alguns browsers
     var photo =
       '<div class="gcv-excursoes-card__spot-photo">' +
@@ -872,7 +970,7 @@
     // Imagem + título = um único link para a página do atrativo
     if (href) {
       return (
-        '<div class="gcv-excursoes-card__spot' + (hasImg ? "" : " gcv-excursoes-card__spot--no-img") + '">' +
+        '<div class="gcv-excursoes-card__spot">' +
         '<a class="gcv-excursoes-card__atrativo-link gcv-excursoes-card__atrativo-link--spot" href="' +
         escapeHtml(href) +
         '" title="' +
@@ -882,7 +980,7 @@
         "</a></div>"
       );
     }
-    return '<div class="gcv-excursoes-card__spot' + (hasImg ? "" : " gcv-excursoes-card__spot--no-img") + '">' + photo + "</div>";
+    return '<div class="gcv-excursoes-card__spot">' + photo + "</div>";
   }
 
   /** Nome(s) do(s) atrativo(s) para o cabeçalho do card / aba do dia. */
@@ -948,8 +1046,25 @@
 
   function cardSpotsBlockHtml(e, locale, s) {
     var dests = destinosForCard(e);
-    var n = destinosSpotsCount(e);
     var badge = e.comTransporte === true && s ? cardSpotTransportBadgeHtml(s) : "";
+    if (cardIsTitleOnly(e)) {
+      var names = titleOnlyLineNames(e);
+      var compact =
+        '<div class="gcv-excursoes-card__spot-titleonly">' +
+        badge +
+        titleOnlyLinesHtml(names, "", "") +
+        "</div>";
+      return (
+        '<div class="gcv-excursoes-card__media">' +
+        '<div class="gcv-excursoes-card__spots gcv-excursoes-card__spots--count-1" data-spots="' +
+        Math.max(1, names.length) +
+        '">' +
+        '<div class="gcv-excursoes-card__spot gcv-excursoes-card__spot--title-only">' +
+        compact +
+        "</div></div></div>"
+      );
+    }
+    var n = destinosSpotsCount(e);
     var inner =
       '<div class="gcv-excursoes-card__spots gcv-excursoes-card__spots--count-' +
       n +
@@ -1201,7 +1316,9 @@
     if (window.GcvExcBookings && typeof window.GcvExcBookings.vagasDisponiveis === "function") {
       return window.GcvExcBookings.vagasDisponiveis(e);
     }
-    if (e && e.confirmada) return numOrZero(e.vagasRestantes);
+    if (e && e.vagasRestantes != null && e.vagasRestantes !== "") {
+      return numOrZero(e.vagasRestantes);
+    }
     return Math.max(0, grupoMaximoValor(e) - inscritosNoGrupo(e));
   }
 
@@ -1408,24 +1525,19 @@
     if (price < f.priceMin || price > f.priceMax) return false;
     var transportCom = !!f.transportCom;
     var transportSem = !!f.transportSem;
-    if (!transportCom && !transportSem) return false;
-    if (transportCom && transportSem) {
-      /* ambos marcados: mostra todos */
-    } else if (transportCom && e.comTransporte !== true) return false;
-    else if (transportSem && e.comTransporte === true) return false;
+    if (!Object.prototype.hasOwnProperty.call(f, "transportCom") &&
+        !Object.prototype.hasOwnProperty.call(f, "transportSem")) {
+      transportSem = true;
+      transportCom = false;
+    }
+    if (transportCom === transportSem) return false;
+    if (transportCom && e.comTransporte !== true) return false;
+    if (transportSem && e.comTransporte === true) return false;
     if (f.status === "confirmada" && !e.confirmada) return false;
     if (f.status === "formando" && e.confirmada) return false;
     var vagas = vagasDisponiveis(e);
-    var availOpen = !!f.availabilityOpen;
-    var availSoldout = !!f.availabilitySoldout;
-    if (!availOpen && !availSoldout) return false;
-    if (!(availOpen && availSoldout)) {
-      if (availOpen && vagas < 1) return false;
-      if (availSoldout && vagas > 0) return false;
-    }
-    if (!(availSoldout && !availOpen)) {
-      if (vagas < f.spotsMin || vagas > f.spotsMax) return false;
-    }
+    if (vagas < 1) return false;
+    if (vagas < f.spotsMin || vagas > f.spotsMax) return false;
     return true;
   }
 
@@ -1879,7 +1991,7 @@
 
     var periodField = document.createElement("div");
     var embarqueField = document.createElement("div");
-    embarqueField.className = "gcv-excursoes-filters__field gcv-excursoes-filters__field--compact";
+    embarqueField.className = "gcv-excursoes-filters__field gcv-excursoes-filters__field--compact gcv-excursoes-filters__field--embarque";
     embarqueField.innerHTML =
       '<label class="gcv-excursoes-filters__label" for="gcv-exc-filter-embarque">' +
       escapeHtml(s.filterEmbarque) +
@@ -1901,45 +2013,34 @@
       escapeHtml(s.filterStatusForming) +
       "</option></select>";
 
+    var radioName = "gcv-exc-filter-transport-" + String(host.id || "main");
     var transportField = document.createElement("div");
     transportField.className =
       "gcv-excursoes-filters__field gcv-excursoes-filters__field--transport";
     transportField.innerHTML =
-      '<span class="gcv-excursoes-filters__label">' +
+      '<span class="gcv-excursoes-filters__label gcv-excursoes-filters__label--transport">' +
       escapeHtml(s.filterTransport) +
-      '</span><div class="gcv-excursoes-filters__checks" role="group" aria-label="' +
+      '</span><div class="gcv-excursoes-filters__transport-opts" role="radiogroup" aria-label="' +
       escapeHtml(s.filterTransport) +
       '">' +
-      '<label class="gcv-excursoes-filters__check gcv-excursoes-filters__check--com">' +
-      '<input class="gcv-excursoes-filters__checkbox" type="checkbox" data-gcv-transport-com value="1" checked />' +
-      "<span>" +
-      escapeHtml(s.filterTransportWith) +
-      "</span></label>" +
-      '<label class="gcv-excursoes-filters__check gcv-excursoes-filters__check--sem">' +
-      '<input class="gcv-excursoes-filters__checkbox" type="checkbox" data-gcv-transport-sem value="1" checked />' +
+      '<label class="gcv-excursoes-filters__transport-opt gcv-excursoes-filters__transport-opt--sem">' +
+      '<input class="gcv-excursoes-filters__checkbox" type="radio" name="' +
+      radioName +
+      '" data-gcv-transport-sem value="1" checked />' +
+      '<span class="gcv-excursoes-filters__transport-card">' +
+      '<i class="ti ti-car" aria-hidden="true"></i>' +
       "<span>" +
       escapeHtml(s.filterTransportWithout) +
-      "</span></label></div>";
-
-    var availabilityField = document.createElement("div");
-    availabilityField.className =
-      "gcv-excursoes-filters__field gcv-excursoes-filters__field--availability";
-    availabilityField.innerHTML =
-      '<span class="gcv-excursoes-filters__label">' +
-      escapeHtml(s.filterAvailability) +
-      '</span><div class="gcv-excursoes-filters__checks" role="group" aria-label="' +
-      escapeHtml(s.filterAvailability) +
-      '">' +
-      '<label class="gcv-excursoes-filters__check gcv-excursoes-filters__check--com">' +
-      '<input class="gcv-excursoes-filters__checkbox" type="checkbox" data-gcv-availability-open value="1" checked />' +
+      "</span></span></label>" +
+      '<label class="gcv-excursoes-filters__transport-opt gcv-excursoes-filters__transport-opt--com">' +
+      '<input class="gcv-excursoes-filters__checkbox" type="radio" name="' +
+      radioName +
+      '" data-gcv-transport-com value="1" />' +
+      '<span class="gcv-excursoes-filters__transport-card">' +
+      '<i class="ti ti-walk" aria-hidden="true"></i>' +
       "<span>" +
-      escapeHtml(s.filterAvailabilityOpen) +
-      "</span></label>" +
-      '<label class="gcv-excursoes-filters__check gcv-excursoes-filters__check--sem">' +
-      '<input class="gcv-excursoes-filters__checkbox" type="checkbox" data-gcv-availability-soldout value="1" />' +
-      "<span>" +
-      escapeHtml(s.filterAvailabilityFull) +
-      "</span></label></div>";
+      escapeHtml(s.filterTransportWith) +
+      "</span></span></label></div>";
 
     var priceField = document.createElement("div");
     priceField.className = "gcv-excursoes-filters__field gcv-excursoes-filters__field--range";
@@ -1982,12 +2083,15 @@
     rowPrimary.appendChild(periodField);
     rowPrimary.appendChild(embarqueField);
     rowPrimary.appendChild(statusField);
-    rowPrimary.appendChild(availabilityField);
-    rowPrimary.appendChild(transportField);
+
+    var rowTransport = document.createElement("div");
+    rowTransport.className = "gcv-excursoes-filters__row gcv-excursoes-filters__row--transport";
+    rowTransport.appendChild(transportField);
 
     rowSecondary.appendChild(priceField);
     rowSecondary.appendChild(spotsField);
 
+    grid.appendChild(rowTransport);
     grid.appendChild(rowPrimary);
     grid.appendChild(rowSecondary);
 
@@ -2014,8 +2118,6 @@
     var priceFillEl = panel.querySelector("[data-gcv-price-fill]");
     var transportComEl = panel.querySelector("[data-gcv-transport-com]");
     var transportSemEl = panel.querySelector("[data-gcv-transport-sem]");
-    var availabilityOpenEl = panel.querySelector("[data-gcv-availability-open]");
-    var availabilitySoldoutEl = panel.querySelector("[data-gcv-availability-soldout]");
     var statusEl = panel.querySelector('[data-gcv-filter="status"]');
     var spotsMinEl = panel.querySelector('[data-gcv-filter="spotsMin"]');
     var spotsMaxEl = panel.querySelector('[data-gcv-filter="spotsMax"]');
@@ -2057,14 +2159,6 @@
       spotsMaxEl.value = String(bounds.spotsMax);
     }
 
-    function syncAvailabilityUi() {
-      var open = availabilityOpenEl ? availabilityOpenEl.checked : true;
-      var soldout = availabilitySoldoutEl ? availabilitySoldoutEl.checked : false;
-      if (spotsField) {
-        spotsField.classList.toggle("gcv-excursoes-filters__field--disabled", soldout && !open);
-      }
-    }
-
     function updateRangeLabels() {
       if (priceLabelEl && priceMinEl && priceMaxEl) {
         priceLabelEl.textContent = tpl(s.filterPriceValue, {
@@ -2092,18 +2186,15 @@
         embarque: embarqueEl ? embarqueEl.value : "",
         priceMin: priceMinEl ? parseInt(String(priceMinEl.value), 10) : bounds.priceMin,
         priceMax: priceMaxEl ? parseInt(String(priceMaxEl.value), 10) : bounds.priceMax,
-        transportCom: transportComEl ? transportComEl.checked : true,
+        transportCom: transportComEl ? transportComEl.checked : false,
         transportSem: transportSemEl ? transportSemEl.checked : true,
         status: statusEl ? statusEl.value : "",
-        availabilityOpen: availabilityOpenEl ? availabilityOpenEl.checked : true,
-        availabilitySoldout: availabilitySoldoutEl ? availabilitySoldoutEl.checked : false,
         spotsMin: spotsMinEl ? parseInt(String(spotsMinEl.value), 10) : 0,
         spotsMax: spotsMaxEl ? parseInt(String(spotsMaxEl.value), 10) : bounds.spotsMax,
       };
     }
 
     function emit() {
-      syncAvailabilityUi();
       updateRangeLabels();
       onChange(readFilters(), resultsEl);
     }
@@ -2113,53 +2204,23 @@
       if (embarqueEl) embarqueEl.value = "";
       if (priceMinEl) priceMinEl.value = String(bounds.priceMin);
       if (priceMaxEl) priceMaxEl.value = String(bounds.priceMax);
-      if (transportComEl) transportComEl.checked = true;
+      if (transportComEl) transportComEl.checked = false;
       if (transportSemEl) transportSemEl.checked = true;
       if (statusEl) statusEl.value = "";
-      if (availabilityOpenEl) availabilityOpenEl.checked = true;
-      if (availabilitySoldoutEl) availabilitySoldoutEl.checked = false;
       if (spotsMinEl) spotsMinEl.value = "0";
       if (spotsMaxEl) spotsMaxEl.value = String(bounds.spotsMax);
       emit();
     }
 
-    function onTransportCheckChange(changedEl) {
-      if (!transportComEl || !transportSemEl) return;
-      if (!transportComEl.checked && !transportSemEl.checked) {
-        changedEl.checked = true;
-        return;
-      }
-      emit();
-    }
-
-    function onAvailabilityCheckChange(changedEl) {
-      if (!availabilityOpenEl || !availabilitySoldoutEl) return;
-      if (!availabilityOpenEl.checked && !availabilitySoldoutEl.checked) {
-        changedEl.checked = true;
-        return;
-      }
+    function onTransportCheckChange() {
       emit();
     }
 
     if (transportComEl) {
-      transportComEl.addEventListener("change", function () {
-        onTransportCheckChange(transportComEl);
-      });
+      transportComEl.addEventListener("change", onTransportCheckChange);
     }
     if (transportSemEl) {
-      transportSemEl.addEventListener("change", function () {
-        onTransportCheckChange(transportSemEl);
-      });
-    }
-    if (availabilityOpenEl) {
-      availabilityOpenEl.addEventListener("change", function () {
-        onAvailabilityCheckChange(availabilityOpenEl);
-      });
-    }
-    if (availabilitySoldoutEl) {
-      availabilitySoldoutEl.addEventListener("change", function () {
-        onAvailabilityCheckChange(availabilitySoldoutEl);
-      });
+      transportSemEl.addEventListener("change", onTransportCheckChange);
     }
 
     panel.querySelectorAll("[data-gcv-filter]").forEach(function (el) {
@@ -3176,6 +3237,7 @@
     if (comTransporte) mod += " gcv-excursoes-card--transporte";
     if (isDestinosDuo(e)) mod += " gcv-excursoes-card--multi";
     mod += " " + destinosSpotsClass(e);
+    if (cardIsTitleOnly(e)) mod += " gcv-excursoes-card--title-only";
     var hora = horaExcursao(e);
     var timeLabel = escapeHtml(s.departureTimeLabel || "Saída");
     var embarqueLabel = escapeHtml(s.embarqueLabel || "Embarque");

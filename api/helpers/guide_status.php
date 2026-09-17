@@ -2,8 +2,8 @@
 declare(strict_types=1);
 
 /**
- * Status da conta do guia: pending / active / inactive / suspended / cancelled.
- * Recusar = só cadastro novo (pending → suspended).
+ * Status da conta do guia: pending / active / inactive / cancelled.
+ * Cadastro novo: AGUARDANDO → APROVADO (active) | RECUSADO (perfil apagado) | BLOQUEADO (e-mail na blocklist).
  * Cancelar = perfil já aprovado (→ cancelled).
  * Inativo = 90 dias sem publicar, ou ação manual do admin.
  */
@@ -24,7 +24,7 @@ function gcv_guide_was_approved(array $row): bool
 function gcv_guide_account_label(string $status, bool $wasApproved = false): string
 {
     if ($status === 'active') {
-        return 'ATIVO';
+        return 'APROVADO';
     }
     if ($status === 'inactive') {
         return 'INATIVO';
@@ -36,7 +36,7 @@ function gcv_guide_account_label(string $status, bool $wasApproved = false): str
         return 'RECUSADO';
     }
     if ($status === 'pending') {
-        return 'PENDENTE';
+        return 'AGUARDANDO';
     }
     return strtoupper($status);
 }

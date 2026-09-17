@@ -77,18 +77,20 @@ function gcv_clamp_preconfirmed($value, int $maxPeople = 12, int $bookedPeople =
 }
 
 /**
- * Ocupação real do grupo: PIX (booked_people) + pessoas que o guia já confirmou por fora.
- * Serve para vagas / lotação — não para o quórum.
+ * Ocupação real do grupo: PIX a pé + PIX com transporte + confirmados por fora.
+ * Serve para vagas / lotação total — não para o quórum de cada modalidade.
  *
  * @param array<string,mixed> $e
  */
 function gcv_excursion_occupied_people(array $e): int
 {
-    return max(0, (int)($e['booked_people'] ?? 0)) + max(0, (int)($e['preconfirmed_people'] ?? 0));
+    return max(0, (int)($e['booked_people'] ?? 0))
+        + max(0, (int)($e['booked_people_transport'] ?? 0))
+        + max(0, (int)($e['preconfirmed_people'] ?? 0));
 }
 
 /**
- * Novas inscrições na plataforma (Pix pago). Confirmados por fora não entram.
+ * Novas inscrições a pé (Pix pago). Confirmados por fora e van não entram.
  *
  * @param array<string,mixed> $e
  */
@@ -97,16 +99,71 @@ function gcv_excursion_platform_inscriptions(array $e): int
     return max(0, (int)($e['booked_people'] ?? 0));
 }
 
+function gcv_excursion_platform_inscriptions_transport(array $e): int
+{
+    return max(0, (int)($e['booked_people_transport'] ?? 0));
+}
+
+function gcv_excursion_offers_transport(array $e): bool
+{
+    if (!empty($e['offer_transport'])) {
+        return true;
+    }
+    return (int)($e['price_transport_cents'] ?? 0) > 0;
+}
+
 /**
- * Quórum vale somente para novas inscrições.
- * Quórum 0 = sem quórum (passeio já confirmado).
+ * Quórum da caminhada (novas inscrições a pé). Quórum 0 = já confirmado.
+ *
+ * @param array<string,mixed> $e
+ */
+function gcv_excursion_walking_quorum_met(array $e): bool
+{
+    $quorum = max(0, (int)($e['quorum'] ?? 0));
+    return gcv_excursion_platform_inscriptions($e) >= $quorum;
+}
+
+/**
+ * Quórum do transporte (0–4). Só vale se a saída oferece van.
+ *
+ * @param array<string,mixed> $e
+ */
+function gcv_excursion_transport_quorum_met(array $e): bool
+{
+    if (!gcv_excursion_offers_transport($e)) {
+        return false;
+    }
+    $quorum = max(0, (int)($e['quorum_transport'] ?? 0));
+    return gcv_excursion_platform_inscriptions_transport($e) >= $quorum;
+}
+
+/**
+ * Van cancelada: caminhada formou com quórum positivo e a van não formou.
+ * Quórum 0 na caminhada (já confirmado) não cancela a van — ela ainda pode formar.
+ *
+ * @param array<string,mixed> $e
+ */
+function gcv_excursion_transport_cancelled(array $e): bool
+{
+    if (!gcv_excursion_offers_transport($e)) {
+        return false;
+    }
+    if (gcv_excursion_transport_quorum_met($e)) {
+        return false;
+    }
+    $walkQuorum = max(0, (int)($e['quorum'] ?? 0));
+    return $walkQuorum > 0 && gcv_excursion_walking_quorum_met($e);
+}
+
+/**
+ * Passeio confirmado se a caminhada OU o transporte atingiu o quórum.
+ * Van formada confirma o grupo inteiro (a pé também vai).
  *
  * @param array<string,mixed> $e
  */
 function gcv_excursion_quorum_met(array $e): bool
 {
-    $quorum = max(0, (int)($e['quorum'] ?? 0));
-    return gcv_excursion_platform_inscriptions($e) >= $quorum;
+    return gcv_excursion_walking_quorum_met($e) || gcv_excursion_transport_quorum_met($e);
 }
 
 /**
@@ -160,7 +217,7 @@ function gcv_excursion_lifecycle_label(string $code): string
     };
 }
 
-/** Cidades-base permitidas para perfil do guia (slug normalizado). */
+/** Cidades-base permitidas para perfil do guia e cidade de saída (slug normalizado). */
 function gcv_guide_base_city_names(): array
 {
     return [
@@ -168,8 +225,6 @@ function gcv_guide_base_city_names(): array
         'Alto Paraíso de Goiás',
         'São Jorge',
         'Cavalcante',
-        'Teresina de Goiás',
-        "São João d'Aliança",
     ];
 }
 
@@ -181,12 +236,28 @@ function gcv_is_allowed_guide_base_city(string $name): bool
         ['a', 'a', 'a', 'a', 'e', 'e', 'i', 'o', 'o', 'o', 'u', 'c', "'", "'"],
         $n
     );
-    foreach (['alto paraiso', 'sao jorge', 'cavalcante', 'teresina', 'sao joao'] as $ok) {
+    foreach (['alto paraiso', 'sao jorge', 'cavalcante'] as $ok) {
         if (str_contains($n, $ok)) {
             return true;
         }
     }
     return false;
+}
+
+function gcv_guide_base_city_error(): string
+{
+    return 'Cidade deve ser Alto Paraíso, São Jorge ou Cavalcante';
+}
+
+/**
+ * @param list<array<string,mixed>> $cities
+ * @return list<array<string,mixed>>
+ */
+function gcv_filter_guide_base_cities(array $cities): array
+{
+    return array_values(array_filter($cities, static function ($c) {
+        return gcv_is_allowed_guide_base_city((string)($c['name'] ?? ''));
+    }));
 }
 
 /** Horário HH:MM:SS com minutos 00/10/20/30/40/50. */

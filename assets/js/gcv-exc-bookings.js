@@ -209,7 +209,11 @@
 
   function vagasDisponiveis(e) {
     var cap = grupoMaximo(e);
-    return Math.max(0, cap - totalInscritos(e));
+    var byCount = Math.max(0, cap - totalInscritos(e));
+    if (e && e.vagasRestantes != null && e.vagasRestantes !== "") {
+      return Math.min(byCount, numOrZero(e.vagasRestantes));
+    }
+    return byCount;
   }
 
   function applyToExcursao(e) {
@@ -228,6 +232,9 @@
       ? (confirmada ? 0 : Math.max(0, numOrZero(e.faltamPessoas)))
       : (confirmada ? 0 : Math.max(0, quorum - total));
     var vagas = Math.max(0, cap - total);
+    if (e.vagasRestantes != null && e.vagasRestantes !== "") {
+      vagas = Math.min(vagas, numOrZero(e.vagasRestantes));
+    }
 
     var sameCount = numOrZero(e.pessoasInscritas) === total;
     var sameConfirm = !!e.confirmada === confirmada;

@@ -25,6 +25,51 @@
     xhr.send(JSON.stringify(data || {}));
   }
 
+  var WOMAN_FIRST_NAMES = {};
+  (
+    'alice aline beatriz beatrix carmen celeste claire clare crystal denise ' +
+    'edith elaine eliane elis elisabete elisabeth elizabete ester esther eunice ' +
+    'gisele giselle heloise ingrid ines irene iris isabel isabele isabeli isabelly isabelle ivone ' +
+    'jacqueline jennifer jeniffer joyce karen karine katherine kelly keli ketlen ketlin ' +
+    'lais leonor lis lisiane lourdes marlene mercedes michelle michele milene mylene ' +
+    'nadine nathalie nicole noemi noemy raquel rachel rose ruth suelen suellen sueli ' +
+    'tais thais teres valerie yasmin yasmim iazmin camile camille cecile solange ' +
+    'cristiane luciene josiane iraci nair kerolyn lily lili mary nancy wendy ' +
+    'isis sirlene darlene zuleide vanilde'
+  ).split(/\s+/).forEach(function (n) { if (n) WOMAN_FIRST_NAMES[n] = 1; });
+  var MAN_NAMES_ENDING_A = { luca: 1, nicola: 1, josafa: 1 };
+
+  function foldGuideName(s) {
+    return String(s || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function guideIsWoman(g) {
+    var sx = String((g && (g.sexo || g.gender || g.sex)) || '').toUpperCase();
+    if (sx === 'F' || sx === 'FEMININO' || sx === 'FEMALE') return true;
+    if (sx === 'M' || sx === 'MASCULINO' || sx === 'MALE') return false;
+    var raw = typeof g === 'string' ? g : ((g && (g.full_name || g.name || g.nickname)) || '');
+    var folded = foldGuideName(raw).replace(/^(dra|dr|sra|srta|sr|dona)\s+/, '');
+    var first = folded.split(' ')[0] || '';
+    if (!first) return false;
+    if (WOMAN_FIRST_NAMES[first]) return true;
+    if (MAN_NAMES_ENDING_A[first]) return false;
+    if (first.charAt(first.length - 1) === 'a') return true;
+    if (/(ine|ene|ane|elle|ette|elly)$/.test(first)) return true;
+    return false;
+  }
+
+  function gWord(g, masc, fem) {
+    return guideIsWoman(g) ? fem : masc;
+  }
+
+  global.GcvGuideGender = { isWoman: guideIsWoman };
+
   function esc(s) {
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;')
@@ -324,8 +369,9 @@
     get('/api/admin/articles.php', function (err, res) {
       var list = root('cms-article-list');
       if (!list) return;
-      if (err || !res.ok) {
-        list.innerHTML = '<p class="gcv-dash-alert">Erro ao carregar artigos. Rode migration_cms.sql.</p>';
+      if (err || !res || !res.ok) {
+        var artMsg = (res && res.error) ? String(res.error) : 'Erro ao carregar artigos.';
+        list.innerHTML = '<p class="gcv-dash-alert">' + esc(artMsg) + '</p>';
         return;
       }
       var rows = (res.data && res.data.articles) || [];
@@ -637,15 +683,15 @@
   function guideAccountBadge(g) {
     var st = String((g && g.status) || '');
     var approved = guideWasApproved(g);
-    if (st === 'active') return '<span class="gcv-badge gcv-badge--active">ATIVO</span>';
-    if (st === 'inactive') return '<span class="gcv-badge gcv-badge--muted">INATIVO</span>';
+    if (st === 'active') return '<span class="gcv-badge gcv-badge--active">' + gWord(g, 'APROVADO', 'APROVADA') + '</span>';
+    if (st === 'inactive') return '<span class="gcv-badge gcv-badge--muted">' + gWord(g, 'INATIVO', 'INATIVA') + '</span>';
     if (st === 'cancelled' || (st === 'suspended' && approved)) {
-      return '<span class="gcv-badge gcv-badge--cancelled">CANCELADO</span>';
+      return '<span class="gcv-badge gcv-badge--cancelled">' + gWord(g, 'CANCELADO', 'CANCELADA') + '</span>';
     }
-    if (st === 'suspended') return '<span class="gcv-badge gcv-badge--rejected">RECUSADO</span>';
+    if (st === 'suspended') return '<span class="gcv-badge gcv-badge--rejected">' + gWord(g, 'RECUSADO', 'RECUSADA') + '</span>';
     if (st === 'pending') {
       if (g && g.profile_complete === false) return '<span class="gcv-badge gcv-badge--muted">RASCUNHO</span>';
-      return '<span class="gcv-badge gcv-badge--pending">PENDENTE</span>';
+      return '<span class="gcv-badge gcv-badge--pending">AGUARDANDO APROVAÇÃO</span>';
     }
     return '';
   }
@@ -712,6 +758,27 @@
     });
   }
 
+  var cachedRejectReasons = [];
+
+  function askGuideReason(kind) {
+    var isBlock = kind === 'block';
+    var fn = window.gcvReasonDialog;
+    var intro = isBlock
+      ? 'Escolha uma mensagem pré-gravada ou escreva o motivo. O perfil será eliminado e este e-mail não poderá se cadastrar de novo.'
+      : 'Escolha uma mensagem pré-gravada ou escreva o motivo. O perfil permanece. O guia não poderá solicitar nova aprovação por 45 dias, e o admin pode aprovar a qualquer momento.';
+    if (typeof fn !== 'function') {
+      var typed = window.prompt(intro);
+      return Promise.resolve(typed && typed.trim() ? typed.trim() : null);
+    }
+    return fn({
+      title: isBlock ? 'Bloquear cadastro' : 'Recusar cadastro',
+      intro: intro,
+      okText: isBlock ? 'Bloquear e eliminar' : 'Recusar cadastro',
+      danger: true,
+      reasons: cachedRejectReasons.length ? cachedRejectReasons : (window.GCV_REJECT_REASONS || [])
+    });
+  }
+
   function setGuideStatus(userId, status, extra) {
     extra = extra || {};
     var done = function () {
@@ -722,20 +789,35 @@
     if (status === 'active' && extra.fromPending) {
       sendJson('POST', '/api/admin/approve-guide.php', { user_id: userId }, function (e, r) {
         if (!r || !r.ok) { alert((r && r.error) || 'Erro ao aprovar'); return; }
+        if (extra.stayInEdit) extra.stayInEdit = false;
         done();
       });
       return;
     }
     if (status === 'suspended' && extra.fromPending) {
-      var reason = extra.reason;
-      if (reason == null) {
-        reason = prompt('Motivo da recusa (opcional):');
-        if (reason === null) return;
-      }
-      sendJson('POST', '/api/admin/reject-guide.php', { user_id: userId, reason: reason || '' }, function (e, r) {
-        if (!r || !r.ok) { alert((r && r.error) || 'Erro ao recusar'); return; }
-        done();
-      });
+      var goReject = function (reason) {
+        if (!reason) return;
+        sendJson('POST', '/api/admin/reject-guide.php', { user_id: userId, reason: reason }, function (e, r) {
+          if (!r || !r.ok) { alert((r && r.error) || 'Erro ao recusar'); return; }
+          extra.stayInEdit = true;
+          done();
+        });
+      };
+      if (extra.reason) goReject(extra.reason);
+      else askGuideReason('reject').then(goReject);
+      return;
+    }
+    if (status === 'blocked' && extra.fromPending) {
+      var goBlock = function (reason) {
+        if (!reason) return;
+        sendJson('POST', '/api/admin/block-guide.php', { user_id: userId, reason: reason }, function (e, r) {
+          if (!r || !r.ok) { alert((r && r.error) || 'Erro ao bloquear'); return; }
+          extra.stayInEdit = false;
+          done();
+        });
+      };
+      if (extra.reason) goBlock(extra.reason);
+      else askGuideReason('block').then(goBlock);
       return;
     }
     sendJson('POST', '/api/admin/cms-guides.php', {
@@ -767,17 +849,57 @@
       '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary" id="cms-guide-new">+ Novo guia</button>' +
       '</div>' +
       '<div id="cms-guide-form" class="gcv-cms-card" hidden></div>' +
-      '<div id="cms-guide-list" class="gcv-cms-list">Carregando…</div>';
+      '<div id="cms-guide-list" class="gcv-cms-list">Carregando…</div>' +
+      '<h3 class="gcv-dash-section-title" style="margin-top:1.5rem;font-size:1.05rem;">E-mails bloqueados</h3>' +
+      '<div id="cms-blocked-emails" class="gcv-cms-list">Carregando…</div>';
     root('cms-guide-new').onclick = function () { openGuideForm(null); };
     get('/api/admin/cms-guides.php', function (err, res) {
       var list = root('cms-guide-list');
       if (!list) return;
-      if (err || !res.ok) {
-        list.innerHTML = '<p class="gcv-dash-alert">Erro ao carregar guias.</p>';
+      if (err || !res || !res.ok) {
+        var gMsg = (res && res.error) ? String(res.error) : 'Erro ao carregar guias.';
+        list.innerHTML = '<p class="gcv-dash-alert">' + esc(gMsg) + '</p>';
         return;
       }
+      if (res.data && res.data.reject_reasons) {
+        cachedRejectReasons = res.data.reject_reasons;
+      }
       paintGuidesList((res.data && res.data.guides) || []);
+      paintCmsBlockedEmails((res.data && res.data.blocked_emails) || []);
       refreshGuideBadges();
+    });
+  }
+
+  function paintCmsBlockedEmails(rows) {
+    var box = root('cms-blocked-emails');
+    if (!box) return;
+    rows = rows || [];
+    if (!rows.length) {
+      box.innerHTML = '<p class="gcv-cms-muted">Nenhum e-mail bloqueado.</p>';
+      return;
+    }
+    box.innerHTML = rows.map(function (row) {
+      return '<article class="gcv-cms-row">' +
+        '<div class="gcv-cms-row__body"><div class="gcv-cms-row__main">' +
+        '<div class="gcv-cms-row__titleline"><strong>' + esc(row.email) + '</strong>' +
+        '<span class="gcv-badge gcv-badge--blocked">BLOQUEADO</span></div>' +
+        '<div class="gcv-cms-row__meta">' + esc(row.reason || 'Sem motivo registrado') + '</div>' +
+        '</div></div>' +
+        '<div class="gcv-cms-row-side">' +
+        '<button type="button" class="gcv-dash-btn gcv-dash-btn--sm" data-unblock-email="' + esc(row.email) + '">Desbloquear</button>' +
+        '</div></article>';
+    }).join('');
+    box.querySelectorAll('[data-unblock-email]').forEach(function (btn) {
+      btn.onclick = function () {
+        var email = btn.getAttribute('data-unblock-email') || '';
+        gcvConfirm('Desbloquear ' + email + '? A pessoa poderá se cadastrar de novo.', { okText: 'Desbloquear' }).then(function (ok) {
+          if (!ok) return;
+          sendJson('POST', '/api/admin/block-guide.php', { action: 'unblock', email: email }, function (e, r) {
+            if (!r || !r.ok) { alert((r && r.error) || 'Erro ao desbloquear'); return; }
+            renderGuides();
+          });
+        });
+      };
     });
   }
 
@@ -785,30 +907,49 @@
     var list = root('cms-guide-list');
     if (!list) return;
     rows = (rows || []).slice().sort(function (a, b) {
-      var pa = (a.status === 'pending' && a.profile_complete) ? 0 : 1;
-      var pb = (b.status === 'pending' && b.profile_complete) ? 0 : 1;
+      function rank(g) {
+        var st = String((g && g.status) || '');
+        var complete = !!(g && g.profile_complete);
+        var approved = guideWasApproved(g);
+        if (st === 'pending' && complete) return 0;
+        if (st === 'active') return 1;
+        if (st === 'pending') return 2;
+        if (st === 'suspended' && !approved) return 3;
+        if (st === 'inactive') return 4;
+        return 5;
+      }
+      var pa = rank(a);
+      var pb = rank(b);
       if (pa !== pb) return pa - pb;
       return String(a.full_name || a.name || '').localeCompare(String(b.full_name || b.name || ''), 'pt');
     });
     state.guides = rows;
     list.innerHTML = rows.length ? rows.map(function (g) {
       var pending = g.status === 'pending' && !!g.profile_complete;
+      var recusado = g.status === 'suspended' && !guideWasApproved(g);
       var name = g.full_name || g.name || g.nickname || 'Guia';
-      var approve = pending
-        ? ('<button type="button" class="gcv-dash-btn gcv-dash-btn--primary gcv-dash-btn--sm" data-approve-guide="' + g.user_id + '">Aprovar</button>')
-        : '';
+      var decide = '';
+      if (pending) {
+        decide = '<div class="gcv-cms-row__decide" style="margin-top:0.45rem;">' +
+          '<button type="button" class="gcv-dash-btn gcv-dash-btn--success gcv-dash-btn--sm" data-approve-guide="' + g.user_id + '">Aprovar</button>' +
+          '<button type="button" class="gcv-dash-btn gcv-dash-btn--danger gcv-dash-btn--sm" data-reject-guide="' + g.user_id + '">Recusar</button>' +
+          '<button type="button" class="gcv-dash-btn gcv-dash-btn--block gcv-dash-btn--sm" data-block-guide="' + g.user_id + '">Bloquear</button>' +
+          '</div>';
+      } else if (recusado) {
+        decide = '<div class="gcv-cms-row__decide" style="margin-top:0.45rem;">' +
+          '<button type="button" class="gcv-dash-btn gcv-dash-btn--success gcv-dash-btn--sm" data-approve-guide="' + g.user_id + '">Aprovar</button>' +
+          '<button type="button" class="gcv-dash-btn gcv-dash-btn--block gcv-dash-btn--sm" data-block-guide="' + g.user_id + '">Bloquear</button>' +
+          '</div>';
+      }
       return (
-        '<article class="gcv-cms-row' + (pending ? ' gcv-cms-row--pending' : '') + '">' +
+        '<article class="gcv-cms-row gcv-cms-row--guide' + (pending || recusado ? ' gcv-cms-row--pending' : '') + '">' +
         '<div class="gcv-cms-row__body">' +
         guideListPhotoHtml(g) +
         '<div class="gcv-cms-row__main">' +
-        '<div class="gcv-cms-row__titleline">' +
-        '<strong>' + esc(name) + '</strong>' +
-        guidePixBadge(g) +
-        guideAccountBadge(g) +
-        approve +
-        '</div>' +
+        '<div class="gcv-cms-row__status">' + guideAccountBadge(g) + '</div>' +
+        '<strong class="gcv-cms-row__name">' + esc(name) + '</strong>' +
         guideListMetaHtml(g) +
+        decide +
         '</div></div>' +
         '<div class="gcv-cms-row-side">' +
         cmsRowActions('data-edit-guide="' + g.user_id + '"') +
@@ -825,10 +966,25 @@
     });
     list.querySelectorAll('[data-approve-guide]').forEach(function (btn) {
       btn.onclick = function () {
-        gcvConfirm('Aprovar este guia? O status passará a Ativo.', { okText: 'Aprovar' }).then(function (ok) {
+        var uid = parseInt(btn.getAttribute('data-approve-guide'), 10);
+        var row = (state.guides || []).filter(function (x) { return parseInt(x.user_id, 10) === uid; })[0];
+        gcvConfirm(
+          gWord(row, 'Aprovar este guia? O status passará a Aprovado.', 'Aprovar esta guia? O status passará a Aprovada.'),
+          { okText: 'Aprovar' }
+        ).then(function (ok) {
           if (!ok) return;
-          setGuideStatus(parseInt(btn.getAttribute('data-approve-guide'), 10), 'active', { fromPending: true });
+          setGuideStatus(uid, 'active', { fromPending: true });
         });
+      };
+    });
+    list.querySelectorAll('[data-reject-guide]').forEach(function (btn) {
+      btn.onclick = function () {
+        setGuideStatus(parseInt(btn.getAttribute('data-reject-guide'), 10), 'suspended', { fromPending: true });
+      };
+    });
+    list.querySelectorAll('[data-block-guide]').forEach(function (btn) {
+      btn.onclick = function () {
+        setGuideStatus(parseInt(btn.getAttribute('data-block-guide'), 10), 'blocked', { fromPending: true });
       };
     });
   }
@@ -836,35 +992,41 @@
   function guideEditStatusHtml(g) {
     if (!g) return '';
     var uid = g.user_id;
+    var approved = guideWasApproved(g);
     var awaiting = g.status === 'pending' && !!g.profile_complete;
     var draft = g.status === 'pending' && !g.profile_complete;
-    var approved = guideWasApproved(g);
+    var recusado = g.status === 'suspended' && !approved;
     var actions;
     if (awaiting) {
       actions =
-        '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary gcv-dash-btn--sm" data-guide-edit-status="active" data-from-pending="1">Aprovar</button>' +
-        '<button type="button" class="gcv-dash-btn gcv-dash-btn--danger gcv-dash-btn--sm" data-guide-edit-status="suspended" data-from-pending="1">Recusar</button>';
+        '<button type="button" class="gcv-dash-btn gcv-dash-btn--success gcv-dash-btn--sm" data-guide-edit-status="active" data-from-pending="1">Aprovar</button>' +
+        '<button type="button" class="gcv-dash-btn gcv-dash-btn--danger gcv-dash-btn--sm" data-guide-edit-status="suspended" data-from-pending="1">Recusar</button>' +
+        '<button type="button" class="gcv-dash-btn gcv-dash-btn--block gcv-dash-btn--sm" data-guide-edit-status="blocked" data-from-pending="1">Bloquear</button>';
     } else if (draft) {
-      actions = '<span class="gcv-cms-muted">Aguardando o guia completar o cadastro.</span>';
+      actions = '<span class="gcv-cms-muted">' + gWord(g, 'Aguardando o guia completar o cadastro.', 'Aguardando a guia completar o cadastro.') + '</span>';
+    } else if (recusado) {
+      actions =
+        '<button type="button" class="gcv-dash-btn gcv-dash-btn--success gcv-dash-btn--sm" data-guide-edit-status="active" data-from-pending="1">Aprovar</button>' +
+        '<button type="button" class="gcv-dash-btn gcv-dash-btn--block gcv-dash-btn--sm" data-guide-edit-status="blocked" data-from-pending="1">Bloquear</button>';
+      if (g.rejected_reason) {
+        actions += '<p class="gcv-cms-muted" style="flex-basis:100%;margin:0.35rem 0 0;">Motivo: ' + esc(g.rejected_reason) + '</p>';
+      }
     } else if (approved) {
       actions =
-        guideStatusChip('active', g.status, uid, 'Ativo', 'ok') +
-        guideStatusChip('inactive', g.status, uid, 'Inativo', 'muted') +
-        guideStatusChip('cancelled', g.status, uid, 'Cancelado', 'no');
+        guideStatusChip('active', g.status, uid, gWord(g, 'Aprovado', 'Aprovada'), 'ok') +
+        guideStatusChip('inactive', g.status, uid, gWord(g, 'Inativo', 'Inativa'), 'muted') +
+        guideStatusChip('cancelled', g.status, uid, gWord(g, 'Cancelado', 'Cancelada'), 'no');
     } else {
-      actions =
-        '<span class="gcv-exc-status gcv-exc-status--no is-on">Recusado</span>' +
-        '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary gcv-dash-btn--sm" data-guide-edit-status="active" data-from-pending="1">Aprovar</button>';
+      actions = '<span class="gcv-exc-status gcv-exc-status--no is-on">' + gWord(g, 'Recusado', 'Recusada') + '</span>';
     }
     return (
       '<div class="gcv-cms-guide-status-box">' +
       '<div class="gcv-cms-guide-status-box__head">' +
       '<h4>Status da conta</h4>' +
-      guidePixBadge(g) +
       guideAccountBadge(g) +
       '</div>' +
       '<div class="gcv-cms-row__decide" style="margin-top:0.55rem;">' + actions + '</div>' +
-      '<p class="gcv-cms-muted" style="margin:0.65rem 0 0;">Recusar vale só para cadastro novo. Perfil já aprovado pode ser inativado ou cancelado. Sem publicação por 90 dias o sistema passa a Inativo.</p>' +
+      '<p class="gcv-cms-muted" style="margin:0.65rem 0 0;">Recusar mantém o perfil e trava novo pedido de aprovação por 45 dias. O admin pode aprovar a qualquer momento. Bloquear elimina o perfil e impede novo cadastro deste e-mail.</p>' +
       '</div>'
     );
   }
@@ -875,28 +1037,38 @@
     function run(status, fromPending) {
       var extra = { stayInEdit: true, fromPending: !!fromPending };
       if (status === 'suspended' && fromPending) {
-        gcvConfirm('Recusar este cadastro? O guia não será aprovado.', { danger: true, okText: 'Recusar' }).then(function (ok) {
-          if (!ok) return;
-          setGuideStatus(uid, 'suspended', extra);
-        });
+        setGuideStatus(uid, 'suspended', extra);
+        return;
+      }
+      if (status === 'blocked' && fromPending) {
+        setGuideStatus(uid, 'blocked', extra);
         return;
       }
       if (status === 'cancelled') {
-        gcvConfirm('Cancelar este perfil? O guia não poderá mais publicar.', { danger: true, okText: 'Cancelar perfil' }).then(function (ok) {
+        gcvConfirm(
+          gWord(g, 'Cancelar este perfil? O guia não poderá mais publicar.', 'Cancelar este perfil? A guia não poderá mais publicar.'),
+          { danger: true, okText: 'Cancelar perfil' }
+        ).then(function (ok) {
           if (!ok) return;
           setGuideStatus(uid, 'cancelled', extra);
         });
         return;
       }
       if (status === 'inactive') {
-        gcvConfirm('Inativar este guia? Ele deixa de aparecer no site até ser reativado.', { okText: 'Inativar' }).then(function (ok) {
+        gcvConfirm(
+          gWord(g, 'Inativar este guia? Ele deixa de aparecer no site até ser reativado.', 'Inativar esta guia? Ela deixa de aparecer no site até ser reativada.'),
+          { okText: 'Inativar' }
+        ).then(function (ok) {
           if (!ok) return;
           setGuideStatus(uid, 'inactive', extra);
         });
         return;
       }
       if (status === 'active' && fromPending) {
-        gcvConfirm('Aprovar este guia? O status passará a Ativo.', { okText: 'Aprovar' }).then(function (ok) {
+        gcvConfirm(
+          gWord(g, 'Aprovar este guia? O status passará a Aprovado.', 'Aprovar esta guia? O status passará a Aprovada.'),
+          { okText: 'Aprovar' }
+        ).then(function (ok) {
           if (!ok) return;
           setGuideStatus(uid, 'active', extra);
         });
@@ -914,8 +1086,17 @@
     });
   }
 
+  function isAllowedGuideCity(name) {
+    var n = String(name || '').toLowerCase()
+      .replace(/[áàãâ]/g, 'a').replace(/[éê]/g, 'e').replace(/í/g, 'i')
+      .replace(/[óôõ]/g, 'o').replace(/ú/g, 'u').replace(/ç/g, 'c');
+    return n.indexOf('alto paraiso') >= 0 || n.indexOf('sao jorge') >= 0 || n.indexOf('cavalcante') >= 0;
+  }
+
   function cityOptionsHtml(selected) {
-    return (state.cities || []).map(function (c) {
+    return (state.cities || []).filter(function (c) {
+      return isAllowedGuideCity(c && c.name);
+    }).map(function (c) {
       return '<option value="' + c.id + '"' + (String(selected) === String(c.id) ? ' selected' : '') + '>' + esc(c.name) + '</option>';
     }).join('');
   }
@@ -988,7 +1169,11 @@
       if (flag) flag.className = 'fi fi-' + c.iso + ' gcv-cms-phone-flag';
       if (dial) dial.textContent = '+' + c.dial;
       if (phone) {
-        phone.value = formatMask(phone.value, c.iso);
+        if (document.activeElement === phone && api && api.applyPhoneMaskToInput) {
+          api.applyPhoneMaskToInput(phone, c.iso);
+        } else {
+          phone.value = formatMask(phone.value, c.iso);
+        }
         phone.placeholder = (api && api.phonePlaceholderFor) ? api.phonePlaceholderFor(c.iso) : '(00) 00000-0000';
         phone.maxLength = c.mask === 'br' ? 16 : 20;
       }
@@ -1037,9 +1222,11 @@
     if (phoneInput) {
       phoneInput.value = formatMask(initialPhone || '', stateIso);
       phoneInput.addEventListener('input', function () {
-        var start = phoneInput.selectionStart;
+        if (api && api.applyPhoneMaskToInput) {
+          api.applyPhoneMaskToInput(phoneInput, stateIso);
+          return;
+        }
         phoneInput.value = formatMask(phoneInput.value, stateIso);
-        try { phoneInput.setSelectionRange(start, start); } catch (err) { /* */ }
       });
     }
     wrapEl.querySelector('#g-ddi-trigger').onclick = function () {
@@ -1102,6 +1289,12 @@
         '<div class="gcv-dash-field"><label class="gcv-dash-label">E-mail *</label><input class="gcv-dash-input" id="g-email" type="email" value="' + esc(g && g.email || '') + '" ' + (g ? 'readonly' : '') + ' /></div>' +
         '<div class="gcv-dash-field"><label class="gcv-dash-label">Nascimento *</label><input class="gcv-dash-input" id="g-birth" type="date" value="' + esc(g && g.birth_date || '') + '" /></div>' +
         '</div>' +
+        '<div class="gcv-dash-field"><label class="gcv-dash-label">Sexo *</label>' +
+        '<select class="gcv-dash-select" id="g-sexo">' +
+        '<option value="">Selecione…</option>' +
+        '<option value="M"' + (g && String(g.sexo).toUpperCase() === 'M' ? ' selected' : '') + '>Masculino</option>' +
+        '<option value="F"' + (g && String(g.sexo).toUpperCase() === 'F' ? ' selected' : '') + '>Feminino</option>' +
+        '</select></div>' +
         '<div class="gcv-dash-field"><label class="gcv-dash-label">Telefone / WhatsApp *</label><div id="g-phone-wrap"></div></div>' +
         '<div class="gcv-dash-field"><label class="gcv-dash-label">Cidade base *</label><select class="gcv-dash-select" id="g-city"><option value="">Selecione…</option>' + cityOptionsHtml(g && g.base_city_id) + '</select></div>' +
         '<div class="gcv-cms-pix-box">' +
@@ -1114,7 +1307,6 @@
         '<div class="gcv-dash-field"><label class="gcv-dash-label">Tipo da chave *</label><select class="gcv-dash-select" id="g-pix-type"><option value="">Selecione…</option><option value="cpf">CPF</option><option value="cnpj">CNPJ</option><option value="email">E-mail</option><option value="phone">Telefone</option><option value="random">Aleatória</option></select></div>' +
         '<div class="gcv-dash-field"><label class="gcv-dash-label">Chave PIX *</label><input class="gcv-dash-input" id="g-pix" value="' + esc(g && g.pix_key || '') + '" placeholder="CPF, CNPJ, e-mail, telefone ou aleatória" /></div>' +
         '</div>' +
-        '<div class="gcv-dash-field"><label class="gcv-dash-label">Titular da chave *</label><input class="gcv-dash-input" id="g-pix-holder" value="' + esc(g && (g.pix_holder_name || g.full_name) || '') + '" /></div>' +
         (g
           ? '<div style="margin-top:0.75rem;"><button type="button" class="gcv-dash-btn gcv-dash-btn--sm" id="g-verify-pix"' + (g.pix_key && g.status === 'active' ? '' : ' disabled') + '>Verificar PIX</button></div>'
           : '') +
@@ -1181,7 +1373,7 @@
           sendJson('PUT', '/api/admin/guides.php', {
             user_id: g.user_id,
             pix_key: pixVal,
-            pix_holder_name: root('g-pix-holder').value.trim(),
+            pix_holder_name: root('g-full').value.trim(),
             verify_pix: true,
           }, function (e, r) {
             verifyBtn.disabled = false;
@@ -1216,8 +1408,8 @@
           alert('Informe a chave PIX.');
           return;
         }
-        if (!root('g-pix-holder').value.trim()) {
-          alert('Informe o titular da chave PIX.');
+        if (!root('g-sexo').value) {
+          alert('Selecione o sexo.');
           return;
         }
         var payload = {
@@ -1226,12 +1418,13 @@
           nickname: root('g-nick').value.trim(),
           email: root('g-email').value.trim(),
           birth_date: root('g-birth').value,
+          sexo: root('g-sexo').value,
           phone_ddi: phoneCtl.getDial(),
           phone_iso: phoneCtl.getIso(),
           phone: phoneDigits,
           pix_key_type: root('g-pix-type').value,
           pix_key: root('g-pix').value.trim(),
-          pix_holder_name: root('g-pix-holder').value.trim(),
+          pix_holder_name: root('g-full').value.trim(),
           base_city_id: parseInt(root('g-city').value, 10) || 0,
           photo_url: savedPhoto,
           photo_3x4_url: savedPhoto,
@@ -1470,7 +1663,7 @@
             '<p class="gcv-cms-muted" id="ex-meeting-gps">' +
             (ex && ex.meeting_point_lat != null && ex.meeting_point_lng != null
               ? 'GPS gravado'
-              : 'Digite o endereço e escolha uma sugestão.') +
+              : 'Digite o endereço do ponto de encontro.') +
             '</p>' +
             '<div class="gcv-meeting-map" id="ex-meeting-map" hidden><iframe class="gcv-meeting-map__frame" title="Mapa do ponto de encontro" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>' +
             '<input type="hidden" id="ex-meeting-place" value="' + esc(ex && ex.meeting_point_place_id || '') + '" />' +
@@ -1488,12 +1681,20 @@
             '<div class="gcv-dash-field-row">' +
             '<div class="gcv-dash-field"><label class="gcv-dash-label">Valor/pessoa final (R$) *</label><input class="gcv-dash-input" id="ex-price" value="' + esc(ex ? centsToMoney(ex.price_cents) : '') + '" /></div>' +
             '<div class="gcv-dash-field"><label class="gcv-dash-label">Repasse previsto ao guia (R$) *</label><input class="gcv-dash-input" id="ex-guide-payout" value="' + esc(ex ? centsToMoney(ex.guide_payout_planned_cents != null ? ex.guide_payout_planned_cents : ex.guide_net_cents) : '') + '" /></div>' +
-            '<div class="gcv-dash-field"><label class="gcv-dash-label" for="ex-quorum">Quórum (somente para as novas inscrições)</label>' +
+            '</div>' +
+            '<div class="gcv-dash-confirm-quorum' + (ex && parseInt(ex.quorum, 10) === 0 ? ' is-confirmed' : ' is-unconfirmed') + '">' +
+            '<div class="gcv-dash-field gcv-dash-confirm-quorum__confirmed">' +
+            '<span class="gcv-dash-label">Passeio já confirmado?</span>' +
+            '<div class="gcv-dash-yesno" role="group" aria-label="Passeio já confirmado?">' +
+            '<label class="gcv-dash-yesno__opt"><input type="checkbox" id="ex-confirmed-yes"' + (ex && parseInt(ex.quorum, 10) === 0 ? ' checked' : '') + ' /> Sim</label>' +
+            '<label class="gcv-dash-yesno__opt"><input type="checkbox" id="ex-confirmed-no"' + (ex && parseInt(ex.quorum, 10) === 0 ? '' : ' checked') + ' /> Não</label>' +
+            '</div></div>' +
+            '<div class="gcv-dash-field gcv-dash-confirm-quorum__quorum" id="ex-quorum-wrap">' +
+            '<label class="gcv-dash-label" for="ex-quorum">Quórum <span class="gcv-dash-label__hint">(somente para as novas inscrições)</span></label>' +
             (function () {
               var sel = parseInt(ex && ex.quorum != null ? ex.quorum : 4, 10);
-              if (!Number.isFinite(sel)) sel = 4;
+              if (!Number.isFinite(sel) || sel < 1) sel = 4;
               var opts = [
-                { v: 0, t: 'sem quórum (✅ confirmado)' },
                 { v: 1, t: '1' },
                 { v: 2, t: '2' },
                 { v: 3, t: '3' },
@@ -1502,13 +1703,13 @@
               return '<select class="gcv-dash-select" id="ex-quorum">' + opts.map(function (o) {
                 return '<option value="' + o.v + '"' + (sel === o.v ? ' selected' : '') + '>' + o.t + '</option>';
               }).join('') + '</select>';
-            }()) + '</div>' +
+            }()) + '</div></div>' +
+            '<div class="gcv-dash-field-row gcv-dash-field-row--2">' +
             '<div class="gcv-dash-field"><label class="gcv-dash-label">Pessoas confirmadas por fora (0 a 5)</label><input class="gcv-dash-input" id="ex-preconfirmed" type="number" min="0" max="5" value="' + esc(ex && ex.preconfirmed_people != null ? ex.preconfirmed_people : 0) + '" /></div>' +
             '<div class="gcv-dash-field"><label class="gcv-dash-label">Vagas * (máximo até 12)</label><input class="gcv-dash-input" id="ex-max" type="number" min="1" max="12" value="' + esc(ex && ex.max_people || 10) + '" /></div>' +
-            '<div class="gcv-dash-field"><label class="gcv-dash-label">Inscritos</label><input class="gcv-dash-input" id="ex-booked" type="number" min="0" value="' + esc(ex && ex.booked_people || 0) + '" readonly disabled tabindex="-1" title="Contador automático das reservas pagas no site" /><p class="gcv-cms-muted" style="margin:0.3rem 0 0;">Atualiza sozinho quando alguém paga no site. Não é editável.</p></div>' +
             '</div>' +
-            '<label class="gcv-dash-label"><input type="checkbox" id="ex-transport"' + (ex && Number(ex.include_transport) ? ' checked' : '') + ' /> Inclui transporte</label> ' +
-            '<label class="gcv-dash-label"><input type="checkbox" id="ex-entry"' + (ex && Number(ex.include_entry) ? ' checked' : '') + ' /> Inclui ingresso</label>' +
+            '<div class="gcv-dash-field"><label class="gcv-dash-label">Inscritos</label><input class="gcv-dash-input" id="ex-booked" type="number" min="0" value="' + esc(ex && ex.booked_people || 0) + '" readonly disabled tabindex="-1" title="Contador automático das reservas pagas no site" /><p class="gcv-cms-muted" style="margin:0.3rem 0 0;">Atualiza sozinho quando alguém paga no site. Não é editável.</p></div>' +
+            '<label class="gcv-dash-label"><input type="checkbox" id="ex-transport"' + (ex && Number(ex.include_transport) ? ' checked' : '') + ' /> Transporte Incluso</label>' +
             '<p class="gcv-cms-muted" style="margin:0 0 0.75rem;">Modo ADMINISTRATIVE: você define o preço final e o repasse ao guia. A margem da plataforma é registrada automaticamente.</p>' +
             '<div class="gcv-dash-field"><label class="gcv-dash-label">Slug do carrinho (opcional)</label><input class="gcv-dash-input" id="ex-cart" value="' + esc(ex && ex.cart_slug || '') + '" placeholder="ex.: mirante-da-janela-2026-07-09" /></div>' +
             '<div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.75rem;">' +
@@ -1538,6 +1739,41 @@
               get: get,
               esc: esc
             });
+          })();
+
+          (function bindConfirmedYesNo() {
+            var yes = root('ex-confirmed-yes');
+            var no = root('ex-confirmed-no');
+            var wrap = root('ex-quorum-wrap');
+            var sel = root('ex-quorum');
+            function apply() {
+              var confirmed = !!(yes && yes.checked);
+              if (no) no.checked = !confirmed;
+              if (wrap) wrap.hidden = confirmed;
+              var row = wrap && wrap.closest ? wrap.closest('.gcv-dash-confirm-quorum') : null;
+              if (row) {
+                row.classList.toggle('is-confirmed', confirmed);
+                row.classList.toggle('is-unconfirmed', !confirmed);
+              }
+              if (sel) {
+                sel.disabled = confirmed;
+                if (!confirmed) {
+                  var v = parseInt(sel.value, 10);
+                  if (!Number.isFinite(v) || v < 1) sel.value = '4';
+                }
+              }
+            }
+            if (yes) yes.onchange = function () {
+              if (yes.checked && no) no.checked = false;
+              if (!yes.checked && no) no.checked = true;
+              apply();
+            };
+            if (no) no.onchange = function () {
+              if (no.checked && yes) yes.checked = false;
+              if (!no.checked && yes) yes.checked = true;
+              apply();
+            };
+            apply();
           })();
 
           if (typeof global.gcvBindDatePicker === 'function') {
@@ -1662,11 +1898,14 @@
               alert('Defina o guia antes de publicar a excursão.');
               return;
             }
-            var quorum = parseInt(root('ex-quorum').value, 10);
-            if (!Number.isFinite(quorum)) quorum = 0;
-            if (quorum < 0 || quorum > 4) {
-              alert('Quórum deve ser entre 0 e 4 pessoas.');
-              return;
+            var confirmed = !!(root('ex-confirmed-yes') && root('ex-confirmed-yes').checked);
+            var quorum = confirmed ? 0 : parseInt(root('ex-quorum').value, 10);
+            if (!confirmed) {
+              if (!Number.isFinite(quorum)) quorum = 4;
+              if (quorum < 1 || quorum > 4) {
+                alert('Quórum deve ser entre 1 e 4 pessoas.');
+                return;
+              }
             }
             var maxPeople = parseInt(root('ex-max').value, 10);
             if (!Number.isFinite(maxPeople) || maxPeople < 1) {
@@ -1710,7 +1949,6 @@
               max_people: maxPeople,
               preconfirmed_people: Math.max(0, Math.min(5, parseInt(root('ex-preconfirmed').value, 10) || 0)),
               include_transport: !!(root('ex-transport') && root('ex-transport').checked),
-              include_entry: !!(root('ex-entry') && root('ex-entry').checked),
               cart_slug: root('ex-cart').value.trim() || null,
             };
             if ((statusVal === 'published' || statusVal === 'soldout') && !payload.guide_payout_planned_cents) {
