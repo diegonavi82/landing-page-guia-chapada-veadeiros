@@ -327,7 +327,8 @@
     tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#888;">Carregando…</td></tr>';
     get('/api/admin/bookings.php', function (err, res) {
       if (!res || !res.ok) {
-        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#888;">Erro ao carregar reservas.</td></tr>';
+        var msg = (res && res.error) ? String(res.error) : 'Erro ao carregar reservas.';
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#888;">' + escapeHtml(msg) + '</td></tr>';
         return;
       }
       var rows = (res.data && res.data.bookings) || [];
@@ -375,12 +376,18 @@
       guide_net_max_transport_reais: 'finance',
       payout_after_hour: 'finance',
       payout_after_minute: 'finance',
-      payout_delay_hours: 'finance'
+      payout_delay_hours: 'finance',
+      transfer_offer_hours: 'transfer',
+      transfer_cancel_hours: 'transfer'
     };
     var groupMeta = {
       notify: {
         title: 'Notificações de passeio',
         hint: 'WhatsApp, e-mail e o sino do painel usam estes prazos. 0 em “chegada” desliga o aviso de 15 minutos.'
+      },
+      transfer: {
+        title: 'Troca de passeio (quórum)',
+        hint: 'Dois prazos, sem cruzar: a lista de troca abre antes (padrão 48 h) e o cancelamento automático só depois (padrão 12 h). Só inscrição em formação pode ir para um passeio já confirmado no mesmo dia e mesma cidade. Se não houver opção, vale só o cancelamento 100%.'
       },
       finance: {
         title: 'Financeiro e repasse',
@@ -390,13 +397,13 @@
     };
     get('/api/admin/settings.php', function (err, res) {
       if (!res || !res.ok) return;
-      var buckets = { notify: [], finance: [], other: [] };
+      var buckets = { notify: [], transfer: [], finance: [], other: [] };
       (res.data.settings || []).forEach(function (s) {
         var g = groupOf[s.key_name] || 'other';
         buckets[g].push(s);
       });
       form.innerHTML = '';
-      ['notify', 'finance', 'other'].forEach(function (gid) {
+      ['notify', 'transfer', 'finance', 'other'].forEach(function (gid) {
         var list = buckets[gid];
         if (!list.length) return;
         var box = el('div', 'gcv-dash-settings-group');
@@ -982,9 +989,28 @@
       var hash = (location.hash || '').replace(/^#/, '');
       var wantPublish = role === 'guide' && status === 'active'
         && (hash === 'publicar' || hash === 'section-guide-create-tour');
+      var wantReservas = hash === 'reservas' || hash === 'section-client-bookings';
+      var guideHashMap = {
+        agenda: 'section-guide-tours',
+        'section-guide-tours': 'section-guide-tours',
+        publicar: 'section-guide-create-tour',
+        'section-guide-create-tour': 'section-guide-create-tour',
+        financeiro: 'section-guide-financial',
+        'section-guide-financial': 'section-guide-financial',
+        perfil: 'section-guide-profile',
+        'section-guide-profile': 'section-guide-profile'
+      };
+      var hashedGuide = guideHashMap[hash];
       if (!wantScan && wantPublish) {
         showSection('section-guide-create-tour');
         if (loadMap['section-guide-create-tour']) loadMap['section-guide-create-tour']();
+      } else if (!wantScan && wantReservas && loadMap['section-client-bookings']) {
+        showSection('section-client-bookings');
+        loadMap['section-client-bookings']();
+      } else if (!wantScan && role === 'guide' && status === 'active' && loadMap['section-guide-tours']) {
+        var openGuide = (hashedGuide && loadMap[hashedGuide]) ? hashedGuide : 'section-guide-tours';
+        showSection(openGuide);
+        loadMap[openGuide]();
       } else if (!wantScan) {
         showSection(items[0].id);
         if (loadMap[items[0].id]) loadMap[items[0].id]();

@@ -203,11 +203,21 @@
     return Math.max(local, server);
   }
 
+  function isCmsExcursao(e) {
+    return !!(e && e.id != null && Number(e.id) > 0);
+  }
+
   function totalInscritos(e) {
+    if (isCmsExcursao(e)) {
+      return numOrZero(e.pessoasInscritas);
+    }
     return baseInscritos(e) + pixBookedQty(cartIdFromExcursao(e));
   }
 
   function vagasDisponiveis(e) {
+    if (isCmsExcursao(e) && e.vagasRestantes != null && e.vagasRestantes !== "") {
+      return numOrZero(e.vagasRestantes);
+    }
     var cap = grupoMaximo(e);
     var byCount = Math.max(0, cap - totalInscritos(e));
     if (e && e.vagasRestantes != null && e.vagasRestantes !== "") {

@@ -18,25 +18,63 @@
 <link rel="stylesheet" href="/assets/css/gcv-auth.css?v=1.0.2" />
 </head>
 <body>
-<div class="gcv-auth-page">
+<div class="gcv-auth-page gcv-auth-page--client">
   <div class="gcv-auth-card">
     <a class="gcv-auth-logo" href="/index.html">
       <img src="/assets/img/imagens/logo-guia-chapada-veadeiros-oficial.png" alt="Guia Chapada Veadeiros" width="180" height="33" />
     </a>
-    <h1 class="gcv-auth-title">Criar conta — Cliente</h1>
-    <p class="gcv-auth-subtitle">Temporariamente indisponível</p>
+    <div class="gcv-auth-badge">Cliente</div>
+    <h1 class="gcv-auth-title">Criar conta</h1>
+    <p class="gcv-auth-subtitle">Acompanhe reservas e vouchers no painel</p>
 
-    <div class="gcv-auth-error" role="status">
-      O cadastro de clientes está temporariamente desativado.
-      Se você é guia, use a área de cadastro de guias.
+    <div id="gcv-auth-error" class="gcv-auth-error" hidden></div>
+    <div id="gcv-auth-success" class="gcv-auth-success" hidden></div>
+
+    <a class="gcv-auth-btn gcv-auth-btn--google" href="/api/auth/google-redirect.php?context=client">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+      Continuar com Google
+    </a>
+
+    <div class="gcv-auth-divider">ou</div>
+
+    <form id="gcv-register-form" novalidate data-locale="pt" data-context="client">
+      <input type="hidden" id="register-role" name="role" value="client" />
+      <div class="gcv-auth-field">
+        <label class="gcv-auth-label" for="register-name">Nome completo</label>
+        <input class="gcv-auth-input" id="register-name" name="name" type="text" autocomplete="name" required />
+      </div>
+      <div class="gcv-auth-field">
+        <label class="gcv-auth-label" for="register-email">Email</label>
+        <input class="gcv-auth-input" id="register-email" name="email" type="email" autocomplete="email" required />
+      </div>
+      <div class="gcv-auth-field">
+        <label class="gcv-auth-label" for="register-password">Senha</label>
+        <input class="gcv-auth-input" id="register-password" name="password" type="password" autocomplete="new-password" required />
+        <div class="gcv-auth-strength" id="gcv-strength-bars" aria-hidden="true">
+          <div class="gcv-auth-strength-bar"></div>
+          <div class="gcv-auth-strength-bar"></div>
+          <div class="gcv-auth-strength-bar"></div>
+        </div>
+        <div class="gcv-auth-strength-label" id="gcv-strength-label"></div>
+      </div>
+      <div class="gcv-auth-field">
+        <label class="gcv-auth-label" for="register-confirm">Confirmar senha</label>
+        <input class="gcv-auth-input" id="register-confirm" name="password_confirm" type="password" autocomplete="new-password" required />
+      </div>
+      <button class="gcv-auth-btn gcv-auth-btn--primary" type="submit" id="gcv-register-btn">Criar conta</button>
+    </form>
+
+    <div class="gcv-auth-links">
+      Já tem conta? <a href="/login.html">Entrar na Área do Cliente</a>
     </div>
 
-    <div class="gcv-auth-links" style="margin-top:1.25rem;">
-      <a href="/index.html">← Voltar ao site</a>
-      &nbsp;·&nbsp;
-      <a href="/guia/cadastro.html">Sou guia — cadastrar</a>
-    </div>
+    <div class="gcv-auth-separator"></div>
+    <p class="gcv-auth-switch">
+      É guia credenciado?
+      <a href="/guia/cadastro.html" class="gcv-auth-switch__link">Cadastro de Guia →</a>
+    </p>
   </div>
 </div>
+<script src="/assets/js/gcv-auth.js?v=1.0.49" defer></script>
 </body>
 </html>

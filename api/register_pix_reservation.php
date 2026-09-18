@@ -6,6 +6,7 @@ header('Content-Type: application/json; charset=utf-8');
 
 require_once __DIR__ . '/helpers/pix_reservation_store.php';
 require_once __DIR__ . '/helpers/sicoob_api.php';
+require_once __DIR__ . '/helpers/excursion_status.php';
 
 gcv_pix_cors_headers();
 

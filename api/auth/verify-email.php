@@ -47,9 +47,14 @@ if (!$current || (int)$current['id'] !== $userId) {
     create_session($userId, $context);
 }
 
+$redirect = '/dashboard/?as=' . rawurlencode($context);
+if ($context === 'guide') {
+    $redirect .= '#agenda';
+}
+
 json_response(true, [
     'message' => 'E-mail confirmado! Complete seu perfil para enviar à aprovação.',
-    'redirect' => '/dashboard/?as=' . rawurlencode($context),
+    'redirect' => $redirect,
     'email_verified' => true,
     'role' => $context,
     'status' => $user['status'] ?? 'pending',

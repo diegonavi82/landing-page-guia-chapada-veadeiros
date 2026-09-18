@@ -84,6 +84,22 @@
     }).join('');
   }
 
+  function markAllRead(cb) {
+    setBadge(0);
+    var list = document.getElementById('gcv-inbox-list');
+    if (list) {
+      list.querySelectorAll('.gcv-inbox-item--unread').forEach(function (el) {
+        el.classList.remove('gcv-inbox-item--unread');
+      });
+    }
+    post('/api/inbox/read.php', { all: true }, function (err, res) {
+      var n = 0;
+      if (res && res.ok && res.data) n = parseInt(res.data.unread, 10) || 0;
+      setBadge(n);
+      if (typeof cb === 'function') cb();
+    });
+  }
+
   function loadList() {
     get('/api/inbox/list.php?limit=80', function (err, res) {
       var root = document.getElementById('gcv-inbox-list');
@@ -115,7 +131,7 @@
       var s = document.getElementById('section-inbox');
       if (s) s.classList.add('active');
     }
-    loadList();
+    markAllRead(loadList);
   }
 
   function bind() {

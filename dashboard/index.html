@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="/assets/css/site.css?v=1.0.39" />
-<link rel="stylesheet" href="/assets/css/gcv-dashboard.css?v=1.1.24" />
+<link rel="stylesheet" href="/assets/css/gcv-dashboard.css?v=1.1.37" />
 <link rel="stylesheet" href="/assets/css/gcv-confirm.css?v=1.0.4" />
 <link rel="stylesheet" href="/assets/css/gcv-tours.css?v=1.0.1" />
 <link rel="stylesheet" href="/assets/css/gcv-payment.css?v=1.0.1" />
@@ -296,8 +296,9 @@
         <section class="gcv-dash-section" id="section-client-bookings">
           <h2 class="gcv-dash-section-title">Minhas reservas</h2>
           <p class="gcv-dash-hint" style="margin:0 0 0.75rem;color:#64748b;font-size:0.85rem;">
-            Em formação: pode cancelar. Confirmado: cancelamento sem ressarcimento.
+            Em formação: você recebe opções de passeio já confirmado no mesmo dia. Se não houver, só o cancelamento com 100%. Confirmado: cancelamento sem ressarcimento.
           </p>
+          <div id="client-transfer-pix" class="gcv-transfer-pix" hidden></div>
           <div class="gcv-dash-table-wrap">
             <table class="gcv-dash-table">
               <thead><tr><th>Passeio</th><th>Data</th><th>Vagas</th><th>Total</th><th>Status</th><th>Ação</th></tr></thead>
@@ -346,8 +347,11 @@
   </div>
 
   <div id="gcv-checkin-modal" class="gcv-checkin-modal" hidden>
-    <div class="gcv-checkin-sheet" role="dialog" aria-labelledby="gcv-checkin-title">
-      <h3 id="gcv-checkin-title">Ler QR da reserva</h3>
+    <div class="gcv-checkin-sheet" role="dialog" aria-modal="true" aria-labelledby="gcv-checkin-title">
+      <div class="gcv-checkin-sheet__head">
+        <h3 id="gcv-checkin-title">Ler QR da reserva</h3>
+        <button type="button" class="gcv-checkin-x" id="gcv-checkin-close" aria-label="Fechar">×</button>
+      </div>
       <p class="gcv-dash-hint" style="margin:0 0 0.5rem;">Aponte a câmera para o QR CODE da reserva do cliente.</p>
       <div id="gcv-checkin-reader" class="gcv-checkin-reader"></div>
       <p id="gcv-checkin-result" class="gcv-checkin-result" hidden role="status"></p>
@@ -355,22 +359,19 @@
         <input id="gcv-checkin-manual" type="text" maxlength="12" placeholder="GCV-XXXXXX" autocomplete="off" />
         <button type="button" class="gcv-dash-btn gcv-dash-btn--primary" id="gcv-checkin-manual-btn">OK</button>
       </div>
-      <p style="margin:0.75rem 0 0;text-align:right;">
-        <button type="button" class="gcv-dash-btn" id="gcv-checkin-close">Fechar</button>
-      </p>
     </div>
   </div>
 
   <script src="/assets/js/gcv-confirm.js?v=1.0.4" defer></script>
-  <script src="/assets/js/gcv-auth.js?v=1.0.49" defer></script>
+  <script src="/assets/js/gcv-auth.js?v=1.0.51" defer></script>
   <script src="/assets/js/gcv-pix-receipt.js?v=1.0.44" defer></script>
   <script src="/assets/js/gcv-meeting-point.js?v=1.0.2" defer></script>
   <script src="/assets/js/gcv-datepicker.js?v=1.0.1" defer></script>
-  <script src="/assets/js/gcv-admin-cms.js?v=1.0.82" defer></script>
+  <script src="/assets/js/gcv-admin-cms.js?v=1.0.86" defer></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
-  <script src="/assets/js/gcv-dash-roles.js?v=1.1.23" defer></script>
-  <script src="/assets/js/gcv-inbox.js?v=1.0.3" defer></script>
-  <script src="/assets/js/gcv-dashboard.js?v=1.0.88" defer></script>
+  <script src="/assets/js/gcv-dash-roles.js?v=1.1.39" defer></script>
+  <script src="/assets/js/gcv-inbox.js?v=1.0.5" defer></script>
+  <script src="/assets/js/gcv-dashboard.js?v=1.0.93" defer></script>
   <script src="/assets/js/gcv-payment.js?v=1.0.40" defer></script>
   <script src="/assets/js/site.js?v=1.0.40" defer></script>
 </body>

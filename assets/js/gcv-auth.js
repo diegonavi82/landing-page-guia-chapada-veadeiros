@@ -10,6 +10,10 @@
         var v = String(new URLSearchParams(window.location.search).get('as') || '').toLowerCase();
         if (v === 'admin' || v === 'guide' || v === 'client') return v;
       } catch (e) {}
+      try {
+        var s = String(sessionStorage.getItem('gcv_porta') || '').toLowerCase();
+        if (s === 'admin' || s === 'guide' || s === 'client') return s;
+      } catch (e2) {}
       return '';
     }
     function withAs(url, porta) {
@@ -261,7 +265,7 @@
             window.location.href = '/guia/confirmar-email.html' + (verifyEmail ? ('?email=' + encodeURIComponent(verifyEmail)) : '');
             return;
           }
-          window.location.href = '/dashboard/?as=guide';
+          window.location.href = '/dashboard/?as=guide#agenda';
           return;
         }
         window.location.href = getRedirect();

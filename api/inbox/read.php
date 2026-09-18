@@ -20,8 +20,26 @@ if (!is_array($body)) {
 }
 $id = isset($body['id']) ? (int)$body['id'] : 0;
 $all = !empty($body['all']);
+$idsRaw = $body['ids'] ?? null;
+$ids = [];
+if (is_array($idsRaw)) {
+    foreach ($idsRaw as $one) {
+        $nId = (int)$one;
+        if ($nId > 0) {
+            $ids[] = $nId;
+        }
+    }
+}
 
-$n = gcv_inbox_mark_read($uid, $all ? null : ($id > 0 ? $id : null));
+if ($all) {
+    $n = gcv_inbox_mark_read($uid, null);
+} elseif ($ids) {
+    $n = gcv_inbox_mark_read_ids($uid, $ids);
+} elseif ($id > 0) {
+    $n = gcv_inbox_mark_read($uid, $id);
+} else {
+    json_response(false, null, 'Informe o aviso', 422);
+}
 
 json_response(true, [
     'marked' => $n,

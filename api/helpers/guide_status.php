@@ -6,6 +6,7 @@ declare(strict_types=1);
  * Cadastro novo: AGUARDANDO → APROVADO (active) | RECUSADO (perfil apagado) | BLOQUEADO (e-mail na blocklist).
  * Cancelar = perfil já aprovado (→ cancelled).
  * Inativo = 90 dias sem publicar, ou ação manual do admin.
+ * Rascunho após aprovação: pending + needs_resubmit (sai do site até nova aprovação).
  */
 
 function gcv_guide_account_statuses(): array
@@ -39,6 +40,11 @@ function gcv_guide_account_label(string $status, bool $wasApproved = false): str
         return 'AGUARDANDO';
     }
     return strtoupper($status);
+}
+
+function gcv_guide_needs_resubmit(array $row): bool
+{
+    return !empty($row['needs_resubmit']);
 }
 
 /**

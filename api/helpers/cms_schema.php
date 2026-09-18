@@ -363,6 +363,7 @@ function gcv_cms_ensure_guide_columns(PDO $pdo): void
         'association_doc_url' => "VARCHAR(500) NULL",
         'photo_3x4_url' => "VARCHAR(500) NULL",
         'profile_complete' => "TINYINT(1) NOT NULL DEFAULT 0",
+        'needs_resubmit' => "TINYINT(1) NOT NULL DEFAULT 0",
         'rejected_at' => "DATETIME NULL",
         'rejected_reason' => "VARCHAR(500) NULL",
         'rejected_by' => "INT UNSIGNED NULL",

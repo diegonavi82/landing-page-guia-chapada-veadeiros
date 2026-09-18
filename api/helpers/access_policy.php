@@ -10,10 +10,10 @@ if (!function_exists('gcv_normalize_login_context')) {
     require_once __DIR__ . '/user_roles.php';
 }
 
-/** Área do cliente (login + cadastro) — desligada por enquanto. */
+/** Área do cliente (login + cadastro). */
 function gcv_client_area_enabled(): bool
 {
-    return false;
+    return true;
 }
 
 /**
@@ -24,6 +24,7 @@ function gcv_admin_allowlist_emails(): array
 {
     return [
         'diegonavi82@gmail.com',
+        'diegocsp82@gmail.com',
     ];
 }
 

@@ -290,19 +290,17 @@ function gcv_row_to_cards(array $r, string $lang, array $months, array $weekdays
     $walk = gcv_row_to_card($r, $lang, $months, $weekdays);
     $offer = gcv_excursion_offers_transport($r);
     $legacyTransportOnly = !empty($r['include_transport']) && !$offer;
-    $occupied = gcv_excursion_occupied_people($r);
-    $max = max(1, (int)($r['max_people'] ?? 1));
-    $remainingTotal = max(0, $max - $occupied);
-    $walkInscriptions = gcv_excursion_platform_inscriptions($r);
+    $occ = gcv_excursion_group_occupancy($r);
+    $walkInscriptions = $occ['walk'];
     $walkQuorum = max(0, (int)($r['quorum'] ?? 0));
     $walkMet = gcv_excursion_walking_quorum_met($r);
     $vanMet = gcv_excursion_transport_quorum_met($r);
 
-    $walk['pessoasInscritas'] = $occupied;
-    $walk['grupoMaximo'] = $max;
+    $walk['pessoasInscritas'] = $walkInscriptions;
+    $walk['grupoMaximo'] = max(1, $occ['walk_slots']);
     $walk['quorumMin'] = $walkQuorum;
     $walk['faltamPessoas'] = max(0, $walkQuorum - $walkInscriptions);
-    $walk['vagasRestantes'] = $remainingTotal;
+    $walk['vagasRestantes'] = $occ['remaining'];
     $walk['confirmada'] = $walkMet || $vanMet;
 
     if ($legacyTransportOnly) {
@@ -311,11 +309,9 @@ function gcv_row_to_cards(array $r, string $lang, array $months, array $weekdays
     }
 
     $walk['comTransporte'] = false;
+    $walk['walkGuideSeatOk'] = gcv_walk_has_spare_guide_seat($r);
     $cards = [$walk];
-    if (!$offer) {
-        return $cards;
-    }
-    if (gcv_excursion_transport_cancelled($r)) {
+    if (!$offer || !empty($occ['transport_cancelled'])) {
         return $cards;
     }
 
@@ -323,18 +319,16 @@ function gcv_row_to_cards(array $r, string $lang, array $months, array $weekdays
     $van['comTransporte'] = true;
     $van['valor'] = (int)round(((int)($r['price_transport_cents'] ?? 0)) / 100);
     $van['cartSlug'] = (string)($walk['cartSlug'] ?? '') . '-t';
-    $vanBooked = gcv_excursion_platform_inscriptions_transport($r);
-    $vanMax = max(0, (int)($r['max_people_transport'] ?? 0));
-    if ($vanMax < 1) {
-        $vanMax = 4;
-    }
+    $vanBooked = $occ['transport'];
+    $vanSlots = max(0, $occ['transport_slots']);
     $vanQuorum = max(0, (int)($r['quorum_transport'] ?? 0));
     $van['pessoasInscritas'] = $vanBooked;
-    $van['grupoMaximo'] = min($vanMax, $max);
+    $van['grupoMaximo'] = max(1, $vanSlots);
     $van['quorumMin'] = $vanQuorum;
     $van['faltamPessoas'] = max(0, $vanQuorum - $vanBooked);
-    $van['vagasRestantes'] = max(0, min($vanMax - $vanBooked, $remainingTotal));
+    $van['vagasRestantes'] = max(0, $vanSlots - $vanBooked);
     $van['confirmada'] = $vanMet;
+    $van['walkGuideSeatOk'] = true;
     $cards[] = $van;
     return $cards;
 }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 require_once __DIR__ . '/excursion_status.php';
 require_once __DIR__ . '/meeting_point.php';
 require_once __DIR__ . '/marketplace/pricing_service.php';
+require_once __DIR__ . '/marketplace/publish_service.php';
+require_once __DIR__ . '/excursion_attractions.php';
 
 /**
  * Regras da Agenda do guia (editar / excluir / campos bloqueados).
@@ -11,14 +13,36 @@ require_once __DIR__ . '/marketplace/pricing_service.php';
  * @param array<string,mixed> $e
  * @return array<string,mixed>
  */
+function gcv_guide_tour_is_archived(array $e, ?string $today = null): bool
+{
+    $life = (string)($e['lifecycle'] ?? (function_exists('gcv_resolve_excursion_lifecycle')
+        ? gcv_resolve_excursion_lifecycle($e)
+        : ''));
+    if (in_array($life, ['rejeitada', 'cancelada', 'concluida'], true)) {
+        return true;
+    }
+    $status = (string)($e['status'] ?? '');
+    if (in_array($status, ['cancelled', 'rejected'], true)) {
+        return true;
+    }
+    if ($today === null) {
+        $today = (new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo')))->format('Y-m-d');
+    }
+    return (string)($e['date_iso'] ?? '') < $today;
+}
+
 function gcv_guide_agenda_flags(array $e): array
 {
     $life = (string)($e['lifecycle'] ?? (function_exists('gcv_resolve_excursion_lifecycle')
         ? gcv_resolve_excursion_lifecycle($e)
         : ''));
-    $insc = function_exists('gcv_excursion_platform_inscriptions')
+    $walkInsc = function_exists('gcv_excursion_platform_inscriptions')
         ? gcv_excursion_platform_inscriptions($e)
         : max(0, (int)($e['booked_people'] ?? 0));
+    $vanInsc = function_exists('gcv_excursion_platform_inscriptions_transport')
+        ? gcv_excursion_platform_inscriptions_transport($e)
+        : max(0, (int)($e['booked_people_transport'] ?? 0));
+    $insc = $walkInsc + $vanInsc;
     $occupied = function_exists('gcv_excursion_occupied_people')
         ? gcv_excursion_occupied_people($e)
         : $insc + max(0, (int)($e['preconfirmed_people'] ?? 0));
@@ -29,23 +53,24 @@ function gcv_guide_agenda_flags(array $e): array
     $forming = $life === 'em_formacao';
     $confirmed = $life === 'confirmada';
     $pending = $life === 'aguardando_aprovacao';
-    $canEdit = !$cancelled && !$done;
+    $canEdit = $insc === 0 && !$cancelled && !$done;
     $canDelete = $canEdit && ($pending || $future) && !($confirmed && $insc > 0);
 
     return [
         'can_edit' => $canEdit,
         'can_delete' => $canDelete,
+        'archived' => gcv_guide_tour_is_archived($e),
         'can_scan' => !$pending && !$cancelled && !$done && $life !== 'rejeitada',
-        'can_change_date' => $canEdit && $insc === 0,
-        'can_change_city' => $canEdit && $insc === 0,
+        'can_change_date' => $canEdit,
+        'can_change_city' => $canEdit,
         'can_change_time' => $canEdit,
         'can_change_meeting' => $canEdit,
         'can_change_price' => $canEdit,
         'can_change_max' => $canEdit,
-        'can_change_quorum' => $canEdit && $forming,
+        'can_change_quorum' => $canEdit,
         'can_confirm' => $canEdit && $forming,
         'can_change_preconfirmed' => $canEdit,
-        'can_change_includes' => $canEdit && $insc === 0,
+        'can_change_includes' => $canEdit,
         'can_transfer' => $canEdit,
         'platform_inscriptions' => $insc,
         'occupied' => $occupied,
@@ -144,6 +169,9 @@ function gcv_guide_update_excursion(array $ex, array $data, int $userId): array
         if ($maxPeople < $occupied) {
             throw new InvalidArgumentException('Vagas não podem ser menores que o grupo atual');
         }
+        if ($quorum > $maxPeople) {
+            $quorum = $maxPeople;
+        }
     }
 
     if (array_key_exists('preconfirmed_people', $data) && !empty($flags['can_change_preconfirmed'])) {
@@ -153,13 +181,7 @@ function gcv_guide_update_excursion(array $ex, array $data, int $userId): array
     if (!empty($data['confirm_now']) && !empty($flags['can_confirm'])) {
         $quorum = 0;
     } elseif (array_key_exists('quorum', $data) && !empty($flags['can_change_quorum'])) {
-        $quorum = (int)$data['quorum'];
-        if ($quorum < 0) {
-            $quorum = 0;
-        }
-        if ($quorum > 4) {
-            $quorum = 4;
-        }
+        $quorum = gcv_clamp_walk_quorum($data['quorum'], $maxPeople);
     }
 
     if ($maxPeople < ($preconfirmed + $quorum)) {
@@ -225,18 +247,39 @@ function gcv_guide_update_excursion(array $ex, array $data, int $userId): array
         $params[] = $mp['lng'] ?? null;
     }
 
-    if (array_key_exists('include_transport', $data) || array_key_exists('include_entry', $data)) {
+    $attrId = (int)($ex['attraction_id'] ?? 0);
+    if (array_key_exists('attraction_id', $data)) {
+        $newAttr = (int)$data['attraction_id'];
+        if ($newAttr <= 0) {
+            throw new InvalidArgumentException('Atrativo inválido');
+        }
+        $a = db()->prepare("SELECT id FROM gcv_attractions WHERE id = ? AND status = 'published'");
+        $a->execute([$newAttr]);
+        if (!$a->fetch()) {
+            throw new InvalidArgumentException('Atrativo inválido ou não publicado pelo admin');
+        }
+        $attrId = $newAttr;
+        $sets[] = 'attraction_id = ?';
+        $params[] = $attrId;
+    }
+
+    if (array_key_exists('notes_pt', $data)) {
+        $notes = trim((string)$data['notes_pt']);
+        if (function_exists('mb_substr')) {
+            $notes = mb_substr($notes, 0, 2000);
+        } else {
+            $notes = substr($notes, 0, 2000);
+        }
+        $sets[] = 'notes_pt = ?';
+        $params[] = $notes !== '' ? $notes : null;
+    }
+
+    if (array_key_exists('include_entry', $data)) {
         if (empty($flags['can_change_includes'])) {
-            throw new InvalidArgumentException('Transporte e ingresso só podem ser alterados se não houver inscrição');
+            throw new InvalidArgumentException('Ingresso só pode ser alterado se não houver inscrição');
         }
-        if (array_key_exists('include_transport', $data)) {
-            $sets[] = 'include_transport = ?';
-            $params[] = !empty($data['include_transport']) ? 1 : 0;
-        }
-        if (array_key_exists('include_entry', $data)) {
-            $sets[] = 'include_entry = ?';
-            $params[] = !empty($data['include_entry']) ? 1 : 0;
-        }
+        $sets[] = 'include_entry = ?';
+        $params[] = !empty($data['include_entry']) ? 1 : 0;
     }
 
     $currentNet = (int)($ex['guide_net_cents'] ?? 0);
@@ -256,13 +299,16 @@ function gcv_guide_update_excursion(array $ex, array $data, int $userId): array
         $newNet = isset($data['guide_net_cents'])
             ? (int)$data['guide_net_cents']
             : (int)round(((float)$data['guide_net']) * 100);
-        if ($newNet < $currentNet) {
+        if ($newNet < $currentNet && $insc > 0) {
             throw new InvalidArgumentException('O valor a receber só pode ser aumentado');
         }
+        $attrForPrice = array_key_exists('attraction_id', $data)
+            ? (int)$data['attraction_id']
+            : (int)($ex['attraction_id'] ?? 0);
         $withTransport = array_key_exists('include_transport', $data)
             ? !empty($data['include_transport'])
             : !empty($ex['include_transport']);
-        $rangeErr = gcv_guide_net_range_error($newNet, (int)($ex['attraction_id'] ?? 0), null, $withTransport);
+        $rangeErr = gcv_guide_net_range_error($newNet, $attrForPrice, null, $withTransport);
         if ($rangeErr !== null) {
             throw new InvalidArgumentException($rangeErr);
         }
@@ -326,6 +372,33 @@ function gcv_guide_update_excursion(array $ex, array $data, int $userId): array
     $params[] = (int)$ex['id'];
     $sql = 'UPDATE gcv_excursions SET ' . implode(', ', $sets) . ' WHERE id = ?';
     db()->prepare($sql)->execute($params);
+
+    if (array_key_exists('attraction_id', $data) && function_exists('gcv_excursion_save_attractions')) {
+        gcv_excursion_save_attractions((int)$ex['id'], [$attrId]);
+    }
+
+    if (
+        array_key_exists('offer_transport', $data)
+        || array_key_exists('include_transport', $data)
+        || array_key_exists('guide_net_transport_cents', $data)
+        || array_key_exists('guide_net_transport', $data)
+    ) {
+        if (empty($flags['can_change_includes'])) {
+            throw new InvalidArgumentException('Transporte só pode ser alterado se não houver inscrição');
+        }
+        $payloadT = $data;
+        $payloadT['offer_transport'] = !empty($data['offer_transport']) || !empty($data['include_transport']);
+        $payloadT['max_people'] = $maxPeople;
+        gcv_publish_save_transport_offer(
+            db(),
+            (int)$ex['id'],
+            $payloadT,
+            $attrId,
+            $userId,
+            null,
+            isset($data['departure_city_id']) ? (int)$data['departure_city_id'] : (int)($ex['departure_city_id'] ?? 0)
+        );
+    }
 
     $st = db()->prepare('SELECT * FROM gcv_excursions WHERE id = ?');
     $st->execute([(int)$ex['id']]);

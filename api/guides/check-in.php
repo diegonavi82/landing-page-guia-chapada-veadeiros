@@ -42,7 +42,7 @@ $sale = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$sale) {
     json_response(false, null, 'Reserva não encontrada', 404);
 }
-if ((int)($sale['guide_user_id'] ?? 0) !== $guideId) {
+if ((int)($sale['guide_user_id'] ?? 0) !== $guideId && !gcv_ops_guide_can_checkin($guideId, $sale)) {
     json_response(false, null, 'Esta reserva não é da sua saída', 403);
 }
 if (($sale['sale_status'] ?? '') !== GcvSaleStatus::PAID) {
@@ -59,6 +59,11 @@ if ($att === 'checked_in' && !empty($sale['checked_in_at'])) {
         'spots' => (int)($sale['spots'] ?? 1),
         'message' => 'Presença já confirmada',
     ]);
+}
+
+$win = gcv_ops_checkin_window($sale);
+if (!$win['ok']) {
+    json_response(false, null, $win['error'], 409);
 }
 
 $payoutDone = ($sale['payout_status'] ?? '') === GcvPayoutStatus::PAID;
@@ -81,7 +86,7 @@ db()->prepare(
 $sale['attendance_status'] = 'checked_in';
 $sale['checked_in_at'] = gmdate('c');
 $exc = gcv_ops_load_excursion((int)($sale['excursion_id'] ?? 0)) ?: [];
-gcv_ops_notify_checkin($sale, $exc);
+gcv_ops_notify_checkin($sale, $exc, $guideId);
 
 json_response(true, [
     'reservation_id' => $code,

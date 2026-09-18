@@ -12,7 +12,11 @@ require_once __DIR__ . '/../helpers/pix_reservation_store.php';
 header('Content-Type: application/json; charset=utf-8');
 
 require_admin();
-gcv_marketplace_ensure_schema();
+try {
+    gcv_marketplace_ensure_schema();
+} catch (Throwable $e) {
+    error_log('admin bookings schema: ' . $e->getMessage());
+}
 
 $statusFilter = strtoupper(trim((string)($_GET['status'] ?? '')));
 $limit = min(200, max(1, (int)($_GET['limit'] ?? 100)));
@@ -58,14 +62,24 @@ $seen = [];
 
 try {
     $salesCols = gcv_marketplace_column_map(db(), 'gcv_sales') ?: [];
+    $excCols = gcv_marketplace_column_map(db(), 'gcv_excursions') ?: [];
     $saleTransportSql = isset($salesCols['include_transport'])
         ? 's.include_transport AS sale_include_transport,'
         : 'NULL AS sale_include_transport,';
+    $excTransportSql = isset($excCols['include_transport'])
+        ? 'e.include_transport,'
+        : 'NULL AS include_transport,';
+    $excOfferSql = isset($excCols['offer_transport'])
+        ? 'e.offer_transport,'
+        : 'NULL AS offer_transport,';
+    $excPriceSql = isset($excCols['price_cents'])
+        ? 'e.price_cents, e.price_transport_cents,'
+        : 'NULL AS price_cents, NULL AS price_transport_cents,';
     $sql =
         'SELECT s.id, s.reservation_id, s.spots, s.sold_price_cents AS total_cents,
                 s.guide_amount_cents, s.platform_revenue_cents, s.payout_status,
                 s.unit_price_cents, ' . $saleTransportSql . '
-                e.include_transport, e.offer_transport, e.price_cents, e.price_transport_cents,
+                ' . $excTransportSql . ' ' . $excOfferSql . ' ' . $excPriceSql . '
                 s.sale_status AS status,
                 COALESCE(s.paid_at, s.sold_at, s.created_at) AS created_at,
                 COALESCE(NULLIF(s.excursion_title, \'\'), a.title_pt, \'Passeio\') AS tour_title,

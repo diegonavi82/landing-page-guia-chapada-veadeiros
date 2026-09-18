@@ -240,7 +240,11 @@ try {
     destroy_session();
     create_session($userId, $context);
     header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-    header('Location: ' . $appUrl . '/dashboard/?as=' . rawurlencode($context));
+    $dest = $appUrl . '/dashboard/?as=' . rawurlencode($context);
+    if ($context === 'guide') {
+        $dest .= '#agenda';
+    }
+    header('Location: ' . $dest);
     exit;
 } catch (Throwable $e) {
     error_log('google-callback: ' . $e->getMessage());

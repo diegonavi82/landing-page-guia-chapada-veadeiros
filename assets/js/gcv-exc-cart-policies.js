@@ -111,6 +111,15 @@
           ],
         },
         {
+          heading: "4.2 Vaga do guia em passeios sem translado",
+          paragraphs: [
+            "Nos passeios contratados apenas como diária de guia, sem a contratação do translado da plataforma, o guia utiliza o veículo do grupo (carro de passeio de 5 lugares, sendo 1 assento reservado ao guia).",
+            "Se o grupo lotar o veículo sem deixar vaga para o guia — em especial inscrições de 5 pessoas quando não houver outra inscrição na modalidade sem transporte com menos de 5 pessoas — a CONTRATADA poderá cancelar o passeio por inviabilidade operacional (falta de espaço para o guia no transporte).",
+            "Nessa hipótese, o CONTRATANTE terá direito ao reembolso integral (100%) dos valores pagos ou à utilização do valor pago como crédito para reagendamento de outro passeio disponível, nos termos desta Política.",
+            "O CONTRATANTE declara ciência dessa condição ao confirmar a inscrição de 5 pessoas sem translado.",
+          ],
+        },
+        {
           heading: "5. Condições Climáticas",
           paragraphs: [
             "Os passeios são realizados em ambiente natural e estão sujeitos às condições climáticas típicas da Chapada dos Veadeiros.",

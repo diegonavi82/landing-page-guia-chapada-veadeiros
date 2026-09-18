@@ -48,6 +48,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
         $value = (string)$n;
     }
 
+    if (in_array($keyName, ['transfer_offer_hours', 'transfer_cancel_hours'], true)) {
+        $n = (int)round((float)$value);
+        if ($n < 0 || $n > 96) {
+            json_response(false, null, 'Informe um prazo entre 0 e 96 horas', 422);
+        }
+        $offer = $keyName === 'transfer_offer_hours' ? $n : (int)setting('transfer_offer_hours', 48);
+        $cancel = $keyName === 'transfer_cancel_hours' ? $n : (int)setting('transfer_cancel_hours', 12);
+        if ($offer < 2) {
+            json_response(false, null, 'A oferta de troca precisa de pelo menos 2 horas de antecedência', 422);
+        }
+        if ($cancel >= $offer) {
+            json_response(false, null, 'Os prazos não podem se cruzar. A troca abre ANTES (mais horas) e o cancelamento automático vem DEPOIS (menos horas). Ex.: troca em 48h, cancela em 12h.', 422);
+        }
+        $value = (string)$n;
+    }
+
     db()->prepare(
         'UPDATE gcv_settings SET value = ?, updated_by = ? WHERE key_name = ?'
     )->execute([$value, $admin['id'], $keyName]);

@@ -320,6 +320,19 @@
       bookQtyMinus: "Menos uma pessoa",
       bookQtyPlus: "Mais uma pessoa",
       bookQtyAria: "Número de pessoas",
+      guideSeatNote:
+        "O guia vai no seu veículo. Reserve 1 assento (máx. 4 pessoas por carro de 5 lugares).",
+      guideSeatCars: "Carros do grupo",
+      guideSeatCars1: "1 carro (até 4 pessoas)",
+      guideSeatCars2: "2 carros ou veículo maior (até 9 pessoas)",
+      guideSeatCars3: "3 ou mais carros",
+      guideSeatBlocked:
+        "O guia vai no seu carro. Com 1 carro de 5 lugares cabem no máximo 4 pessoas. Escolha 2 ou mais carros se o grupo for maior.",
+      guideSeatConfirm:
+        "Neste passeio o guia vai no carro do grupo.\n\nCom 5 pessoas o veículo fica lotado e não sobra assento para o guia. Se não houver outra inscrição com vaga (menos de 5 pessoas, sem transporte), o passeio poderá ser cancelado por falta de espaço para o guia, com reembolso conforme a Política de Cancelamento.\n\nDeseja continuar mesmo assim?",
+      guideSeatConfirmOk: "Continuar",
+      guideSeatConfirmCancel: "Voltar",
+      guideSeatWaiting: "Aguardando outro grupo para vaga do guia",
       cartTitle: "Carrinho",
       cartEmpty: "Seu carrinho está vazio",
       cartCheckout: "Pagar com PIX",
@@ -477,6 +490,19 @@
       bookQtyMinus: "Remove one person",
       bookQtyPlus: "Add one person",
       bookQtyAria: "Number of people",
+      guideSeatNote:
+        "The guide rides in your vehicle. Keep 1 seat free (max 4 people in a 5-seat car).",
+      guideSeatCars: "Group cars",
+      guideSeatCars1: "1 car (up to 4 people)",
+      guideSeatCars2: "2 cars or a larger vehicle (up to 9 people)",
+      guideSeatCars3: "3 or more cars",
+      guideSeatBlocked:
+        "The guide rides in your car. A 5-seat car fits at most 4 people plus the guide. Choose 2 or more cars if your group is larger.",
+      guideSeatConfirm:
+        "On this tour the guide rides in the group's car.\n\nWith 5 people the vehicle is full and there is no seat left for the guide. If nobody else is booked with a spare seat (fewer than 5 people, without transfer), the tour may be cancelled because there is no room for the guide, with a refund under the Cancellation Policy.\n\nDo you still want to continue?",
+      guideSeatConfirmOk: "Continue",
+      guideSeatConfirmCancel: "Go back",
+      guideSeatWaiting: "Waiting for another group so the guide has a seat",
       cartTitle: "Cart",
       cartEmpty: "Your cart is empty",
       cartCheckout: "Pay with PIX",
@@ -634,6 +660,19 @@
       bookQtyMinus: "Quitar una persona",
       bookQtyPlus: "Añadir una persona",
       bookQtyAria: "Número de personas",
+      guideSeatNote:
+        "El guía va en tu vehículo. Reserva 1 asiento (máx. 4 personas en un coche de 5 plazas).",
+      guideSeatCars: "Coches del grupo",
+      guideSeatCars1: "1 coche (hasta 4 personas)",
+      guideSeatCars2: "2 coches o un vehículo más grande (hasta 9 personas)",
+      guideSeatCars3: "3 o más coches",
+      guideSeatBlocked:
+        "El guía va en tu coche. Un coche de 5 plazas admite como máximo 4 personas más el guía. Elige 2 o más coches si el grupo es mayor.",
+      guideSeatConfirm:
+        "En este paseo el guía va en el coche del grupo.\n\nCon 5 personas el vehículo queda lleno y no queda asiento para el guía. Si no hay otra inscripción con plaza libre (menos de 5 personas, sin traslado), el paseo podrá cancelarse por falta de espacio para el guía, con reembolso según la Política de Cancelación.\n\n¿Quieres continuar igualmente?",
+      guideSeatConfirmOk: "Continuar",
+      guideSeatConfirmCancel: "Volver",
+      guideSeatWaiting: "Esperando otro grupo para la plaza del guía",
       cartTitle: "Carrito",
       cartEmpty: "Tu carrito está vacío",
       cartCheckout: "Pagar con PIX",
@@ -1029,6 +1068,9 @@
     if (faltaN === 1) return s.quorumNeed1 || s.falta1 || "Falta 1 para confirmar";
     if (faltaN > 1) {
       return tpl(s.quorumNeedMany || s.faltaMany || "Faltam {{n}} para confirmar", { n: faltaN });
+    }
+    if (!e.comTransporte && e.walkGuideSeatOk !== true && e.walkGuideSeatOk !== 1) {
+      return s.guideSeatWaiting || "Aguardando outro grupo para vaga do guia";
     }
     return s.falta0 || "";
   }
@@ -2543,6 +2585,8 @@
       item.dateIso = excursaoDateIso(e);
       if (e.guiaNome) item.guiaNome = String(e.guiaNome);
       if (e.guiaTelefone) item.guiaTelefone = String(e.guiaTelefone);
+      item.comTransporte = e.comTransporte === true;
+      item.walkGuideSeatOk = e.walkGuideSeatOk === true;
       if (e.meetingPoint) item.meetingPoint = String(e.meetingPoint);
       if (e.meetingLat != null && e.meetingLat !== "") item.meetingLat = e.meetingLat;
       if (e.meetingLng != null && e.meetingLng !== "") item.meetingLng = e.meetingLng;
@@ -2558,6 +2602,78 @@
       }
     }
     return item;
+  }
+
+  function isTransportTrip(trip, e) {
+    if (e && e.comTransporte === true) return true;
+    if (trip && trip.comTransporte === true) return true;
+    var id = String((trip && trip.cartId) || (trip && trip.id) || "");
+    return id.slice(-2) === "-t";
+  }
+
+  function walkHasGuideSeat(e, trip) {
+    if (e && (e.walkGuideSeatOk === true || e.walkGuideSeatOk === 1)) return true;
+    if (trip && (trip.walkGuideSeatOk === true || trip.walkGuideSeatOk === 1)) return true;
+    var walk = parseInt(e && e.pessoasInscritas, 10);
+    if (!Number.isFinite(walk)) walk = 0;
+    return walk > 0 && walk < 5;
+  }
+
+  function tripNeedsGuideSeatConfirm(trip, rows) {
+    var qty = parseInt(String(trip && trip.qty), 10) || 0;
+    if (qty !== 5) return false;
+    var e = null;
+    var cartId = String((trip && (trip.cartId || trip.id)) || "");
+    if (cartId && rows && rows.length) {
+      for (var i = 0; i < rows.length; i++) {
+        if (excursaoCartId(rows[i]) === cartId) {
+          e = rows[i];
+          break;
+        }
+      }
+    }
+    if (isTransportTrip(trip, e)) return false;
+    return !walkHasGuideSeat(e, trip);
+  }
+
+  function confirmGuideSeatIfNeeded(opts, done) {
+    var need = false;
+    var strings = (opts && opts.strings) || STRINGS.pt;
+    if (opts && opts.trips && opts.trips.length) {
+      var root = document.getElementById("excursoes-junho");
+      var rows = root ? getMergedExcursaoRows(root) : [];
+      need = opts.trips.some(function (t) {
+        return tripNeedsGuideSeatConfirm(t, rows);
+      });
+    } else if (opts && opts.excursao && parseInt(opts.qty, 10) === 5) {
+      need = !isTransportTrip(null, opts.excursao) && !walkHasGuideSeat(opts.excursao, null);
+    }
+    if (!need) {
+      done(true);
+      return;
+    }
+    var msg = strings.guideSeatConfirm || STRINGS.pt.guideSeatConfirm;
+    var okText = strings.guideSeatConfirmOk || "Continuar";
+    var cancelText = strings.guideSeatConfirmCancel || "Voltar";
+    if (typeof window.gcvConfirm === "function") {
+      window.gcvConfirm(msg, { okText: okText, cancelText: cancelText }).then(function (ok) {
+        done(!!ok);
+      }).catch(function () {
+        done(false);
+      });
+      return;
+    }
+    done(window.confirm(msg));
+  }
+
+  function addExcursaoToCartWithGuideSeat(block, strings) {
+    if (!window.GcvExcCart || typeof window.GcvExcCart.add !== "function") return;
+    var e = excursaoFromBookBlock(block);
+    var data = readBookBlock(block);
+    confirmGuideSeatIfNeeded({ qty: data.qty, excursao: e, strings: strings }, function (ok) {
+      if (!ok) return;
+      window.GcvExcCart.add(cartItemFromBook(block));
+    });
   }
 
   function syncCartFromBook(block) {
@@ -5756,7 +5872,7 @@
           if (alreadyInCart) {
             removeExcursaoFromCart(cartData.cartId);
           } else if (typeof window.GcvExcCart.add === "function") {
-            window.GcvExcCart.add(cartItemFromBook(block));
+            addExcursaoToCartWithGuideSeat(block, strings);
           }
           return;
         }
@@ -6044,7 +6160,7 @@
       return true;
     }
     if (typeof window.GcvExcCart.add === "function") {
-      window.GcvExcCart.add(cartItemFromBook(block));
+      addExcursaoToCartWithGuideSeat(block, STRINGS[detectLocale(block.closest("#excursoes-junho") || document.documentElement)] || STRINGS.pt);
       return true;
     }
     return false;
@@ -6286,7 +6402,10 @@
           refreshExcursaoCarouselNow();
           return;
         }
-        openPixModal(total, detail, trigger, loc, strings);
+        confirmGuideSeatIfNeeded({ trips: (detail && detail.trips) || [], strings: strings }, function (ok) {
+          if (!ok) return;
+          openPixModal(total, detail, trigger, loc, strings);
+        });
       },
       resolveDepartureMs: function (item) {
         if (!item || !item.id) return NaN;

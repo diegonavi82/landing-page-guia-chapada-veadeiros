@@ -9,7 +9,7 @@ declare(strict_types=1);
  */
 
 header('Content-Type: application/json; charset=utf-8');
-header('Cache-Control: public, max-age=15');
+header('Cache-Control: no-store, no-cache, must-revalidate');
 
 require_once __DIR__ . '/../helpers/pix_reservation_store.php';
 require_once __DIR__ . '/../helpers/pix_seats_store.php';
@@ -28,10 +28,14 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') {
 }
 
 $store = gcv_pix_seats_sync_from_paid_reservations();
+$seats = $store['seats'];
+if (function_exists('gcv_pix_seats_without_cms_tours')) {
+    $seats = gcv_pix_seats_without_cms_tours($seats);
+}
 $storage = gcv_pix_seats_db() ? 'mysql' : 'json';
 
 echo json_encode([
     'success' => true,
-    'seats' => $store['seats'],
+    'seats' => $seats,
     'storage' => $storage,
 ], JSON_UNESCAPED_UNICODE);

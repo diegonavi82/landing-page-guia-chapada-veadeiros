@@ -89,7 +89,7 @@ function gcv_publish_save_transport_offer(
     }
     $quorumT = gcv_clamp_quorum($payload['quorum_transport'] ?? 4);
     if ($quorumT > $maxT) {
-        throw new InvalidArgumentException('Quórum do transporte não pode ser maior que as vagas da van');
+        throw new InvalidArgumentException('Quórum do transporte não pode ser maior que as vagas com transporte');
     }
 
     $guideNetT = isset($payload['guide_net_transport_cents'])
@@ -174,8 +174,8 @@ function gcv_publish_administrative(array $payload, int $adminUserId, string $cr
     }
 
     $pdo = db();
-    $quorum = gcv_clamp_quorum($payload['quorum'] ?? 4);
     $maxPeople = gcv_clamp_max_people($payload['max_people'] ?? 10);
+    $quorum = gcv_clamp_walk_quorum($payload['quorum'] ?? 4, $maxPeople);
     $preconfirmed = gcv_clamp_preconfirmed(
         $payload['preconfirmed_people'] ?? 0,
         $maxPeople,
@@ -291,8 +291,8 @@ function gcv_publish_guide_marketplace(array $payload, int $guideUserId, array $
     $pricing = gcv_pricing_from_guide_net($guideNet, null, $guideUserId, $categoryKey, $cityId > 0 ? $cityId : null);
 
     $pdo = db();
-    $quorum = gcv_clamp_quorum($payload['quorum'] ?? 4);
     $maxPeople = gcv_clamp_max_people($payload['max_people'] ?? 10);
+    $quorum = gcv_clamp_walk_quorum($payload['quorum'] ?? 4, $maxPeople);
     $preconfirmed = gcv_clamp_preconfirmed($payload['preconfirmed_people'] ?? 0, $maxPeople, 0);
     $stmt = $pdo->prepare(
         'INSERT INTO gcv_excursions (

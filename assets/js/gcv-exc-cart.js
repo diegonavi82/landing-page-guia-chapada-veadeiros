@@ -770,6 +770,8 @@
           hora: it.hora || "",
           qty: parseInt(String(it.qty), 10) || 1,
           cartId: it.id || "",
+          comTransporte: it.comTransporte === true,
+          walkGuideSeatOk: it.walkGuideSeatOk === true,
           valorUnit: parseInt(String(it.valorUnit), 10) || 0,
           guiaNome: it.guiaNome || "",
           guiaTelefone: it.guiaTelefone || "",

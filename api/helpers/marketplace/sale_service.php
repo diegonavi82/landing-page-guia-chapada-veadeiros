@@ -24,6 +24,12 @@ require_once __DIR__ . '/audit_service.php';
 function gcv_sale_capture_from_pix_reservation(array $reservation, string $source = 'webhook'): array
 {
     gcv_marketplace_ensure_schema();
+    if (!empty($reservation['kind']) && (string)$reservation['kind'] === 'transfer') {
+        require_once __DIR__ . '/transfer_service.php';
+        gcv_transfer_on_balance_paid($reservation);
+        return ['ok' => true, 'kind' => 'transfer', 'sale_status' => 'PAID'];
+    }
+
     $reservationId = strtoupper(trim((string)($reservation['reservation_id'] ?? '')));
     if ($reservationId === '' || !preg_match('/^GCV-[A-Z0-9]{6}$/', $reservationId)) {
         throw new InvalidArgumentException('reservation_id inválido');
@@ -325,9 +331,29 @@ function gcv_sale_capture_from_pix_reservation(array $reservation, string $sourc
             $excId = (int)($sale['excursion_id'] ?? 0);
         }
         if ($excId > 0) {
-            gcv_sale_refresh_booked_people($excId);
+            $justConfirmed = gcv_sale_refresh_booked_people($excId);
+            try {
+                $exSt = db()->prepare(
+                    'SELECT e.*, a.title_pt AS attraction_title, c.name AS departure_city_name
+                     FROM gcv_excursions e
+                     LEFT JOIN gcv_attractions a ON a.id = e.attraction_id
+                     LEFT JOIN gcv_cities c ON c.id = e.departure_city_id
+                     WHERE e.id = ? LIMIT 1'
+                );
+                $exSt->execute([$excId]);
+                $fresh = $exSt->fetch(PDO::FETCH_ASSOC);
+                if ($fresh) {
+                    $excursion = $fresh;
+                }
+            } catch (Throwable $e) {
+                // usa snapshot anterior
+            }
+            if (!$justConfirmed) {
+                gcv_sale_notify_guide_new_booking($sale, $excursion, $spots);
+            }
+        } else {
+            gcv_sale_notify_guide_new_booking($sale, $excursion, $spots);
         }
-        gcv_sale_notify_guide_new_booking($sale, $excursion, $spots);
         try {
             require_once dirname(__DIR__) . '/notify_ops.php';
             gcv_ops_notify_client_pix_paid($sale, $excursion);
@@ -344,10 +370,10 @@ function gcv_sale_capture_from_pix_reservation(array $reservation, string $sourc
     return $sale;
 }
 
-function gcv_sale_refresh_booked_people(int $excursionId): void
+function gcv_sale_refresh_booked_people(int $excursionId): bool
 {
     if ($excursionId <= 0) {
-        return;
+        return false;
     }
     $beforeLife = '';
     try {
@@ -374,7 +400,7 @@ function gcv_sale_refresh_booked_people(int $excursionId): void
         )->execute([$excursionId]);
     } catch (Throwable $e) {
         error_log('gcv_sale_refresh_booked_people: ' . $e->getMessage());
-        return;
+        return false;
     }
     try {
         $row = db()->prepare('SELECT * FROM gcv_excursions WHERE id = ? LIMIT 1');
@@ -383,10 +409,12 @@ function gcv_sale_refresh_booked_people(int $excursionId): void
         if ($after && $beforeLife !== 'confirmada' && gcv_resolve_excursion_lifecycle($after) === 'confirmada') {
             require_once dirname(__DIR__) . '/notify_ops.php';
             gcv_ops_notify_guide_confirmed($excursionId);
+            return true;
         }
     } catch (Throwable $e) {
         error_log('gcv_sale_refresh_booked_people notify: ' . $e->getMessage());
     }
+    return false;
 }
 
 /**
@@ -394,7 +422,7 @@ function gcv_sale_refresh_booked_people(int $excursionId): void
  *
  * @return array<string,mixed>
  */
-function gcv_sale_cancel_reservation(string $reservationId, string $email): array
+function gcv_sale_cancel_reservation(string $reservationId, string $email, bool $notifyClient = true): array
 {
     gcv_marketplace_ensure_schema();
     $reservationId = strtoupper(trim($reservationId));
@@ -448,7 +476,7 @@ function gcv_sale_cancel_reservation(string $reservationId, string $email): arra
         $exc = $s->fetch(PDO::FETCH_ASSOC) ?: $exc;
     }
     require_once dirname(__DIR__) . '/notify_ops.php';
-    gcv_ops_notify_guide_cancelled($sale, $exc, $life);
+    gcv_ops_notify_guide_cancelled($sale, $exc, $life, $notifyClient);
     return ['ok' => true, 'lifecycle' => $life, 'sale' => $sale];
 }
 
@@ -458,58 +486,10 @@ function gcv_sale_cancel_reservation(string $reservationId, string $email): arra
  */
 function gcv_sale_notify_guide_new_booking(array $sale, ?array $excursion, int $spots): void
 {
-    $guideId = (int)($sale['guide_user_id'] ?? ($excursion['guide_user_id'] ?? 0));
     try {
         gcv_ops_notify_guide_new_booking($sale, $excursion, $spots);
     } catch (Throwable $e) {
         error_log('gcv_ops_notify_guide_new_booking: ' . $e->getMessage());
-    }
-
-    if ($guideId <= 0) {
-        return;
-    }
-    $excursion = is_array($excursion) ? $excursion : [];
-    try {
-        $stmt = db()->prepare(
-            'SELECT u.name, u.email, g.full_name, g.nickname
-             FROM gcv_users u
-             LEFT JOIN gcv_guides g ON g.user_id = u.id
-             WHERE u.id = ?
-             ORDER BY g.id DESC
-             LIMIT 1'
-        );
-        $stmt->execute([$guideId]);
-        $guide = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
-        $email = strtolower(trim((string)($guide['email'] ?? '')));
-        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            return;
-        }
-        $title = (string)($sale['excursion_title'] ?? $excursion['attraction_title'] ?? 'Passeio');
-        $date = (string)($excursion['date_iso'] ?? '');
-        if ($date !== '' && preg_match('/^(\d{4})-(\d{2})-(\d{2})/', $date, $m)) {
-            $date = $m[3] . '/' . $m[2] . '/' . $m[1];
-        }
-        $time = substr((string)($excursion['departure_time'] ?? ''), 0, 5);
-        $client = trim((string)($sale['tourist_name'] ?? '')) ?: 'Cliente';
-        $clientEmail = trim((string)($sale['tourist_email'] ?? ''));
-        $clientPhone = trim((string)($sale['tourist_phone'] ?? ''));
-        $people = max(1, $spots);
-        $guideName = (string)($guide['full_name'] ?? $guide['nickname'] ?? $guide['name'] ?? $sale['guide_name'] ?? 'Guia');
-        $amountCents = (int)($sale['sold_price_cents'] ?? 0);
-        mail_guide_new_booking(
-            $email,
-            $guideName,
-            $title,
-            $date,
-            $time,
-            $client,
-            $clientEmail,
-            $clientPhone,
-            $people,
-            $amountCents
-        );
-    } catch (Throwable $e) {
-        error_log('gcv_sale_notify_guide_new_booking mail: ' . $e->getMessage());
     }
 }
 

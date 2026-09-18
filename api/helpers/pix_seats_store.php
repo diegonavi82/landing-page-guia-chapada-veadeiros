@@ -33,6 +33,87 @@ function gcv_pix_seats_normalize_cart_id(string $cartId): string
     return trim($id, '-');
 }
 
+/**
+ * Overlay do carrossel estático não vale para saídas do CMS (ocupação vem de gcv_sales).
+ *
+ * @param array<string,int> $seats
+ * @return array<string,int>
+ */
+function gcv_pix_seats_without_cms_tours(array $seats): array
+{
+    if (!$seats) {
+        return $seats;
+    }
+    $pdo = gcv_pix_seats_db();
+    if (!$pdo) {
+        return $seats;
+    }
+    try {
+        $rows = $pdo->query(
+            "SELECT e.cart_slug, e.date_iso, e.departure_time, a.slug AS attraction_slug
+             FROM gcv_excursions e
+             LEFT JOIN gcv_attractions a ON a.id = e.attraction_id
+             WHERE e.status IN ('published','soldout','pending_approval')"
+        )->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) {
+        return $seats;
+    }
+    $index = [];
+    foreach ($rows as $row) {
+        $date = substr(trim((string)($row['date_iso'] ?? '')), 0, 10);
+        $hora5 = substr(trim((string)($row['departure_time'] ?? '')), 0, 5);
+        $hora = str_replace(':', '', $hora5);
+        $attr = gcv_pix_seats_normalize_cart_id((string)($row['attraction_slug'] ?? ''));
+        $stored = gcv_pix_seats_normalize_cart_id((string)($row['cart_slug'] ?? ''));
+        $synth = '';
+        if ($attr !== '' && $date !== '' && $hora !== '') {
+            $synth = gcv_pix_seats_normalize_cart_id($attr . '-' . $date . '-' . $hora);
+        }
+        foreach ([$stored, $synth] as $slug) {
+            if ($slug === '') {
+                continue;
+            }
+            $index[$slug] = true;
+            if ($date !== '') {
+                $index[gcv_pix_seats_normalize_cart_id($date . '-' . $slug)] = true;
+            }
+        }
+        if ($date !== '' && $attr !== '') {
+            $index['__pair__' . $date . '|' . $attr] = true;
+        }
+    }
+    if (!$index) {
+        return $seats;
+    }
+    $out = [];
+    foreach ($seats as $id => $qty) {
+        $canon = gcv_pix_seats_normalize_cart_id((string)$id);
+        $stripped = $canon;
+        if (preg_match('/^\d{4}-\d{2}-\d{2}-(.+)$/', $canon, $m)) {
+            $stripped = (string)$m[1];
+        }
+        if (isset($index[$canon]) || isset($index[$stripped])) {
+            continue;
+        }
+        $skip = false;
+        foreach ($index as $key => $_ok) {
+            if (!is_string($key) || strpos($key, '__pair__') !== 0) {
+                continue;
+            }
+            $pair = explode('|', substr($key, 8), 2);
+            if (count($pair) === 2 && strpos($canon, $pair[0]) !== false && strpos($canon, $pair[1]) !== false) {
+                $skip = true;
+                break;
+            }
+        }
+        if ($skip) {
+            continue;
+        }
+        $out[$id] = $qty;
+    }
+    return $out;
+}
+
 function gcv_pix_seats_db(): ?PDO
 {
     static $pdo = null;

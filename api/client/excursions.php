@@ -22,7 +22,6 @@ if (($user['role'] ?? '') !== 'client') {
 gcv_cms_ensure_schema();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $MIN_QUORUM = 0;
-$MAX_QUORUM = 4;
 $MAX_PEOPLE_CAP = 12;
 
 if ($method === 'GET') {
@@ -56,7 +55,7 @@ if ($method === 'GET') {
         'attractions' => $attrs,
         'cities' => $cities,
         'min_quorum' => $MIN_QUORUM,
-        'max_quorum' => $MAX_QUORUM,
+        'max_quorum' => $MAX_PEOPLE_CAP,
         'max_people_cap' => $MAX_PEOPLE_CAP,
         'my_proposals' => $rows,
     ]);
@@ -71,13 +70,6 @@ if ($method === 'POST') {
     $priceCents = isset($data['price_cents'])
         ? (int)$data['price_cents']
         : (int)round(((float)($data['price'] ?? 0)) * 100);
-    $quorum = (int)($data['quorum'] ?? 4);
-    if ($quorum < $MIN_QUORUM) {
-        $quorum = $MIN_QUORUM;
-    }
-    if ($quorum > $MAX_QUORUM) {
-        $quorum = $MAX_QUORUM;
-    }
     $maxPeople = (int)($data['max_people'] ?? 10);
     if ($maxPeople < 1) {
         $maxPeople = 1;
@@ -85,6 +77,7 @@ if ($method === 'POST') {
     if ($maxPeople > $MAX_PEOPLE_CAP) {
         $maxPeople = $MAX_PEOPLE_CAP;
     }
+    $quorum = gcv_clamp_walk_quorum($data['quorum'] ?? 4, $maxPeople);
     $notes = sanitize_textarea((string)($data['notes_pt'] ?? ''), 2000);
 
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {

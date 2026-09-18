@@ -179,13 +179,17 @@ function mail_tour_rejected(string $to, string $guideName, string $tourTitle, st
 }
 
 function mail_booking_confirmed(string $to, string $clientName, string $tourTitle, string $date, int $spots, int $totalCents): void {
+    $appUrl = rtrim((string)($_ENV['APP_URL'] ?? 'https://www.guiachapadaveadeiros.com'), '/');
+    $login = $appUrl . '/login.html';
     $total = 'R$ ' . number_format($totalCents / 100, 2, ',', '.');
-    $body  = "<p>Olá, <strong>{$clientName}</strong>!</p><p>Sua reserva foi confirmada:</p><ul><li><strong>Passeio:</strong> {$tourTitle}</li><li><strong>Data:</strong> {$date}</li><li><strong>Vagas:</strong> {$spots}</li><li><strong>Total:</strong> {$total}</li></ul><p>Você receberá os detalhes de encontro em breve.</p>";
+    $body  = "<p>Olá, <strong>{$clientName}</strong>!</p><p>Sua reserva foi confirmada:</p><ul><li><strong>Passeio:</strong> {$tourTitle}</li><li><strong>Data:</strong> {$date}</li><li><strong>Vagas:</strong> {$spots}</li><li><strong>Total:</strong> {$total}</li></ul><p>Acompanhe tudo na sua área: <a href='{$login}'>{$login}</a></p>";
     send_mail($to, 'Reserva confirmada — ' . $tourTitle, $body, $clientName);
 }
 
 function mail_payment_approved(string $to, string $clientName, string $tourTitle): void {
-    $body = "<p>Olá, <strong>{$clientName}</strong>!</p><p>Seu pagamento para <strong>\"{$tourTitle}\"</strong> foi confirmado. Até logo na trilha!</p>";
+    $appUrl = rtrim((string)($_ENV['APP_URL'] ?? 'https://www.guiachapadaveadeiros.com'), '/');
+    $login = $appUrl . '/login.html';
+    $body = "<p>Olá, <strong>{$clientName}</strong>!</p><p>Seu pagamento para <strong>\"{$tourTitle}\"</strong> foi confirmado. Até logo na trilha!</p><p>Área do cliente: <a href='{$login}'>{$login}</a></p>";
     send_mail($to, 'Pagamento confirmado — ' . $tourTitle, $body, $clientName);
 }
 

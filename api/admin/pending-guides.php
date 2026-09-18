@@ -26,6 +26,7 @@ $sql = 'SELECT u.id, u.name, u.email, u.created_at, u.status,
         FROM gcv_users u
         INNER JOIN gcv_guides g ON g.user_id = u.id
         WHERE COALESCE(g.profile_complete, 0) = 1
+          AND COALESCE(g.needs_resubmit, 0) = 0
           AND g.approved_at IS NULL
           AND u.status IN (\'pending\', \'suspended\')';
 
@@ -50,6 +51,7 @@ try {
          INNER JOIN gcv_guides g ON g.user_id = u.id
          WHERE u.status = \'pending\'
            AND COALESCE(g.profile_complete, 0) = 1
+           AND COALESCE(g.needs_resubmit, 0) = 0
            AND u.role = \'guide\'
          ORDER BY u.created_at ASC'
     );

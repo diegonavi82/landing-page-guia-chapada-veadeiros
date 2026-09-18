@@ -24,8 +24,9 @@ function gcv_cms_guide_hydrate(array $row): array
     $row['pix_ready'] = trim((string)($row['pix_key'] ?? '')) !== '';
     $row['was_approved'] = gcv_guide_was_approved($row);
     $row['profile_complete'] = (int)($row['profile_complete'] ?? 0) === 1;
+    $row['needs_resubmit'] = (int)($row['needs_resubmit'] ?? 0) === 1;
     $uid = (int)($row['user_id'] ?? 0);
-    if (($row['status'] ?? '') === 'pending' && !$row['profile_complete'] && $uid > 0
+    if (($row['status'] ?? '') === 'pending' && !$row['profile_complete'] && !$row['needs_resubmit'] && $uid > 0
         && function_exists('gcv_guide_profile_is_complete')
         && gcv_guide_profile_is_complete($uid)
     ) {
@@ -39,7 +40,7 @@ function gcv_cms_guide_hydrate(array $row): array
         }
     }
     $row['account_label'] = gcv_guide_account_label((string)($row['status'] ?? ''), (bool)$row['was_approved']);
-    if (($row['status'] ?? '') === 'pending' && !$row['profile_complete']) {
+    if (($row['status'] ?? '') === 'pending' && ($row['needs_resubmit'] || !$row['profile_complete'])) {
         $row['account_label'] = 'RASCUNHO';
     } elseif (($row['status'] ?? '') === 'pending') {
         $row['account_label'] = 'AGUARDANDO APROVAÇÃO';
@@ -58,9 +59,10 @@ function gcv_cms_guide_list_rank(array $row): int
     $st = (string)($row['status'] ?? '');
     $complete = !empty($row['profile_complete']);
     $wasApproved = !empty($row['was_approved']) || !empty($row['approved_at']);
-    if ($st === 'pending' && $complete) return 0; // aguardando aprovação
+    $resubmit = !empty($row['needs_resubmit']);
+    if ($st === 'pending' && $complete && !$resubmit) return 0; // aguardando aprovação
     if ($st === 'active') return 1; // aprovados
-    if ($st === 'pending') return 2; // rascunho
+    if ($st === 'pending') return 2; // rascunho (inclui devolvido após aprovação)
     if ($st === 'suspended' && !$wasApproved) return 3; // recusados
     if ($st === 'inactive') return 4;
     return 5; // cancelados e demais
@@ -73,7 +75,7 @@ function gcv_cms_guide_select_sql(): string
                 g.birth_date, g.sexo, g.base_city_id, g.cadastur, g.pix_key, g.pix_key_type, g.pix_holder_name,
                 g.pix_verified_at, g.pix_verified_by,
                 g.photo_url, g.diploma_url, g.association_doc_url, g.photo_3x4_url,
-                g.bio_pt, g.bio_en, g.bio_es, g.languages_json, g.cpf, g.profile_complete, g.approved_at, g.approved_by,
+                g.bio_pt, g.bio_en, g.bio_es, g.languages_json, g.cpf, g.profile_complete, g.needs_resubmit, g.approved_at, g.approved_by,
                 g.rejected_at, g.rejected_reason,
                 c.name AS base_city_name
          FROM gcv_users u
@@ -109,6 +111,13 @@ function gcv_cms_guides_list(): array
     $select = 'SELECT u.id AS user_id, u.name, u.email, u.status, u.avatar_url, g.nickname, g.full_name, g.phone, g.phone_ddi,
                 g.cadastur, g.pix_key, g.pix_key_type, g.pix_holder_name, g.pix_verified_at, g.approved_at,
                 g.rejected_at, g.rejected_reason, g.sexo,
+                g.photo_3x4_url, g.photo_url, g.languages_json, g.profile_complete, g.needs_resubmit, c.name AS base_city_name
+         FROM gcv_users u
+         LEFT JOIN gcv_guides g ON g.user_id = u.id
+         LEFT JOIN gcv_cities c ON c.id = g.base_city_id';
+    $selectLegacy = 'SELECT u.id AS user_id, u.name, u.email, u.status, u.avatar_url, g.nickname, g.full_name, g.phone, g.phone_ddi,
+                g.cadastur, g.pix_key, g.pix_key_type, g.pix_holder_name, g.pix_verified_at, g.approved_at,
+                g.rejected_at, g.rejected_reason, g.sexo,
                 g.photo_3x4_url, g.photo_url, g.languages_json, g.profile_complete, c.name AS base_city_name
          FROM gcv_users u
          LEFT JOIN gcv_guides g ON g.user_id = u.id
@@ -118,6 +127,7 @@ function gcv_cms_guides_list(): array
             SELECT 1 FROM gcv_user_roles r WHERE r.user_id = u.id AND r.role = \'guide\'
          )' . $order,
         $select . ' WHERE u.role = \'guide\'' . $order,
+        $selectLegacy . ' WHERE u.role = \'guide\'' . $order,
     ];
     foreach ($queries as $sql) {
         try {
@@ -178,12 +188,45 @@ function gcv_cms_guide_set_status(array $admin, array $body): void
         echo json_encode(['ok' => false, 'error' => 'Cancelar é só para perfil já aprovado. Cadastro novo deve ser recusado.']);
         return;
     }
+    if ($status === 'pending') {
+        if (!in_array($currentStatus, ['active', 'inactive', 'cancelled'], true)) {
+            http_response_code(422);
+            echo json_encode(['ok' => false, 'error' => 'Só é possível devolver ao rascunho um perfil já aprovado.']);
+            return;
+        }
+        db()->prepare('UPDATE gcv_users SET status = ? WHERE id = ?')->execute(['pending', $userId]);
+        try {
+            db()->prepare(
+                'UPDATE gcv_guides SET approved_at = NULL, approved_by = NULL, needs_resubmit = 1 WHERE user_id = ?'
+            )->execute([$userId]);
+        } catch (Throwable $e) {
+            error_log('cms-guides return draft: ' . $e->getMessage());
+            db()->prepare('UPDATE gcv_guides SET approved_at = NULL, approved_by = NULL WHERE user_id = ?')->execute([$userId]);
+        }
+        echo json_encode(['ok' => true, 'data' => gcv_cms_guide_fetch($userId)]);
+        if (function_exists('fastcgi_finish_request')) {
+            fastcgi_finish_request();
+        }
+        try {
+            require_once __DIR__ . '/../helpers/notify_ops.php';
+            gcv_ops_notify_guide_returned_to_draft($userId);
+        } catch (Throwable $e) {
+            error_log('cms-guides notify draft: ' . $e->getMessage());
+        }
+        return;
+    }
 
     db()->prepare('UPDATE gcv_users SET status = ? WHERE id = ?')->execute([$status, $userId]);
     if ($status === 'active') {
-        db()->prepare(
-            'UPDATE gcv_guides SET approved_at = COALESCE(approved_at, NOW()), approved_by = COALESCE(approved_by, ?) WHERE user_id = ?'
-        )->execute([(int)$admin['id'], $userId]);
+        try {
+            db()->prepare(
+                'UPDATE gcv_guides SET approved_at = COALESCE(approved_at, NOW()), approved_by = COALESCE(approved_by, ?), needs_resubmit = 0 WHERE user_id = ?'
+            )->execute([(int)$admin['id'], $userId]);
+        } catch (Throwable $e) {
+            db()->prepare(
+                'UPDATE gcv_guides SET approved_at = COALESCE(approved_at, NOW()), approved_by = COALESCE(approved_by, ?) WHERE user_id = ?'
+            )->execute([(int)$admin['id'], $userId]);
+        }
     }
     echo json_encode(['ok' => true, 'data' => gcv_cms_guide_fetch($userId)]);
 }

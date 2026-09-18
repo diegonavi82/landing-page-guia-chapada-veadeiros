@@ -49,6 +49,7 @@ function gcv_guide_profile_payload(int $userId): array
         return ['profile' => null, 'financial' => null, 'missing' => ['full_name'], 'complete' => false];
     }
     $profile['languages'] = gcv_guide_languages_normalize($profile['languages_json'] ?? null);
+    $profile['needs_resubmit'] = (int)($profile['needs_resubmit'] ?? 0) === 1;
     $financial = gcv_guide_financial_get($userId);
     $merged = gcv_guide_profile_merge_financial($profile, $financial);
     $missing = gcv_guide_profile_missing($merged);
@@ -110,6 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
     $before = gcv_guide_profile_payload($userId);
     $wasComplete = !empty($before['complete']);
     $userStatus = (string)(($before['profile']['user_status'] ?? $user['status'] ?? ''));
+    $needsResubmit = !empty($before['profile']['needs_resubmit']);
     $cooldown = gcv_guide_submit_cooldown($before['profile'] ?? null);
     $wantSubmit = !empty($data['submit_for_approval']);
 
@@ -173,6 +175,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
     }
     if ($photo34 === '') {
         json_response(false, null, 'Foto 3x4 obrigatória', 422);
+    }
+    if ($idDoc === '') {
+        json_response(false, null, 'Documento (RG/CNH) obrigatório', 422);
     }
     if (mb_strlen($bio) > $BIO_MAX) {
         json_response(false, null, "Descrição: máximo {$BIO_MAX} caracteres", 422);
@@ -278,6 +283,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
         }
 
         $resubmitted = false;
+        if ($complete && $needsResubmit && $userStatus === 'pending') {
+            try {
+                $pdo->prepare('UPDATE gcv_guides SET needs_resubmit = 0 WHERE user_id = ?')->execute([$userId]);
+            } catch (Throwable $e) {
+                error_log('me-profile needs_resubmit: ' . $e->getMessage());
+            }
+            $resubmitted = true;
+        }
         if ($wantSubmit && !empty($cooldown['rejected']) && !empty($cooldown['can_submit'])) {
             $pdo->prepare('UPDATE gcv_users SET status = \'pending\' WHERE id = ? AND status = \'suspended\'')
                 ->execute([$userId]);

@@ -78,6 +78,24 @@
       .replace(/"/g, '&quot;');
   }
 
+  function fillWalkQuorumSelect(sel, maxPeople, selected) {
+    if (!sel) return 0;
+    maxPeople = parseInt(maxPeople, 10);
+    if (!Number.isFinite(maxPeople) || maxPeople < 1) maxPeople = 10;
+    if (maxPeople > 12) maxPeople = 12;
+    var cur = parseInt(selected != null ? selected : sel.value, 10);
+    if (!Number.isFinite(cur) || cur < 1) cur = Math.min(4, maxPeople);
+    if (cur > maxPeople) cur = maxPeople;
+    var html = '';
+    var i;
+    for (i = 1; i <= maxPeople; i++) {
+      html += '<option value="' + i + '"' + (i === cur ? ' selected' : '') + '>' + i + '</option>';
+    }
+    sel.innerHTML = html;
+    sel.value = String(cur);
+    return cur;
+  }
+
   var GUIDE_LANG_OPTS = [
     { code: 'pt', label: 'Português', flag: 'br', fixed: true },
     { code: 'en', label: 'Inglês', flag: 'us', fixed: false },
@@ -689,7 +707,7 @@
     }
     if (st === 'suspended') return '<span class="gcv-badge gcv-badge--rejected">' + gWord(g, 'RECUSADO', 'RECUSADA') + '</span>';
     if (st === 'pending') {
-      if (g && g.profile_complete === false) return '<span class="gcv-badge gcv-badge--muted">RASCUNHO</span>';
+      if (g && (g.needs_resubmit || g.profile_complete === false)) return '<span class="gcv-badge gcv-badge--muted">RASCUNHO</span>';
       return '<span class="gcv-badge gcv-badge--pending">AGUARDANDO APROVAÇÃO</span>';
     }
     return '';
@@ -910,7 +928,8 @@
         var st = String((g && g.status) || '');
         var complete = !!(g && g.profile_complete);
         var approved = guideWasApproved(g);
-        if (st === 'pending' && complete) return 0;
+        var resubmit = !!(g && g.needs_resubmit);
+        if (st === 'pending' && complete && !resubmit) return 0;
         if (st === 'active') return 1;
         if (st === 'pending') return 2;
         if (st === 'suspended' && !approved) return 3;
@@ -924,11 +943,12 @@
     });
     state.guides = rows;
     list.innerHTML = rows.length ? rows.map(function (g) {
-      var pending = g.status === 'pending' && !!g.profile_complete;
+      var pending = g.status === 'pending' && !!g.profile_complete && !g.needs_resubmit;
       var recusado = g.status === 'suspended' && !guideWasApproved(g);
+      var draftReturn = g.status === 'pending' && !!g.needs_resubmit;
       var name = g.full_name || g.name || g.nickname || 'Guia';
       var decide = '';
-      if (pending) {
+      if (pending || draftReturn) {
         decide = '<div class="gcv-cms-row__decide" style="margin-top:0.45rem;">' +
           '<button type="button" class="gcv-dash-btn gcv-dash-btn--success gcv-dash-btn--sm" data-approve-guide="' + g.user_id + '">Aprovar</button>' +
           '<button type="button" class="gcv-dash-btn gcv-dash-btn--danger gcv-dash-btn--sm" data-reject-guide="' + g.user_id + '">Recusar</button>' +
@@ -941,7 +961,7 @@
           '</div>';
       }
       return (
-        '<article class="gcv-cms-row gcv-cms-row--guide' + (pending || recusado ? ' gcv-cms-row--pending' : '') + '">' +
+        '<article class="gcv-cms-row gcv-cms-row--guide' + (pending || recusado || draftReturn ? ' gcv-cms-row--pending' : '') + '">' +
         '<div class="gcv-cms-row__body">' +
         guideListPhotoHtml(g) +
         '<div class="gcv-cms-row__main">' +
@@ -992,15 +1012,19 @@
     if (!g) return '';
     var uid = g.user_id;
     var approved = guideWasApproved(g);
-    var awaiting = g.status === 'pending' && !!g.profile_complete;
-    var draft = g.status === 'pending' && !g.profile_complete;
+    var awaiting = g.status === 'pending' && !!g.profile_complete && !g.needs_resubmit;
+    var draft = g.status === 'pending' && !g.profile_complete && !g.needs_resubmit;
+    var draftReturn = g.status === 'pending' && !!g.needs_resubmit;
     var recusado = g.status === 'suspended' && !approved;
     var actions;
-    if (awaiting) {
+    if (awaiting || draftReturn) {
       actions =
         '<button type="button" class="gcv-dash-btn gcv-dash-btn--success gcv-dash-btn--sm" data-guide-edit-status="active" data-from-pending="1">Aprovar</button>' +
         '<button type="button" class="gcv-dash-btn gcv-dash-btn--danger gcv-dash-btn--sm" data-guide-edit-status="suspended" data-from-pending="1">Recusar</button>' +
         '<button type="button" class="gcv-dash-btn gcv-dash-btn--block gcv-dash-btn--sm" data-guide-edit-status="blocked" data-from-pending="1">Bloquear</button>';
+      if (draftReturn) {
+        actions += '<p class="gcv-cms-muted" style="flex-basis:100%;margin:0.35rem 0 0;">Devolvido ao rascunho para correção. O guia sai do site até ser aprovado de novo.</p>';
+      }
     } else if (draft) {
       actions = '<span class="gcv-cms-muted">' + gWord(g, 'Aguardando o guia completar o cadastro.', 'Aguardando a guia completar o cadastro.') + '</span>';
     } else if (recusado) {
@@ -1013,6 +1037,7 @@
     } else if (approved) {
       actions =
         guideStatusChip('active', g.status, uid, gWord(g, 'Aprovado', 'Aprovada'), 'ok') +
+        guideStatusChip('pending', g.status, uid, 'Rascunho', 'draft') +
         guideStatusChip('inactive', g.status, uid, gWord(g, 'Inativo', 'Inativa'), 'muted') +
         guideStatusChip('cancelled', g.status, uid, gWord(g, 'Cancelado', 'Cancelada'), 'no');
     } else {
@@ -1025,7 +1050,7 @@
       guideAccountBadge(g) +
       '</div>' +
       '<div class="gcv-cms-row__decide" style="margin-top:0.55rem;">' + actions + '</div>' +
-      '<p class="gcv-cms-muted" style="margin:0.65rem 0 0;">Recusar mantém o perfil e trava novo pedido de aprovação por 45 dias. O admin pode aprovar a qualquer momento. Bloquear elimina o perfil e impede novo cadastro deste e-mail.</p>' +
+      '<p class="gcv-cms-muted" style="margin:0.65rem 0 0;">Rascunho tira o guia do site para correção; depois precisa ser aprovado de novo. Recusar mantém o perfil e trava novo pedido de aprovação por 45 dias. O admin pode aprovar a qualquer momento. Bloquear elimina o perfil e impede novo cadastro deste e-mail.</p>' +
       '</div>'
     );
   }
@@ -1060,6 +1085,20 @@
         ).then(function (ok) {
           if (!ok) return;
           setGuideStatus(uid, 'inactive', extra);
+        });
+        return;
+      }
+      if (status === 'pending') {
+        gcvConfirm(
+          gWord(
+            g,
+            'Devolver este guia ao rascunho? Ele sai do site até corrigir o cadastro e ser aprovado de novo.',
+            'Devolver esta guia ao rascunho? Ela sai do site até corrigir o cadastro e ser aprovada de novo.'
+          ),
+          { okText: 'Devolver ao rascunho' }
+        ).then(function (ok) {
+          if (!ok) return;
+          setGuideStatus(uid, 'pending', extra);
         });
         return;
       }
@@ -1511,7 +1550,13 @@
         var pa = a.status === 'pending_approval' ? 0 : 1;
         var pb = b.status === 'pending_approval' ? 0 : 1;
         if (pa !== pb) return pa - pb;
-        return String(a.date_iso || '').localeCompare(String(b.date_iso || ''));
+        var da = String(a.date_iso || '');
+        var db = String(b.date_iso || '');
+        if (da !== db) return db.localeCompare(da);
+        var ta = String(a.departure_time || '');
+        var tb = String(b.departure_time || '');
+        if (ta !== tb) return tb.localeCompare(ta);
+        return (parseInt(b.id, 10) || 0) - (parseInt(a.id, 10) || 0);
       });
       list.innerHTML = rows.length ? rows.map(function (e) {
         var pending = e.status === 'pending_approval';
@@ -1691,21 +1736,22 @@
             '<div class="gcv-dash-field gcv-dash-confirm-quorum__quorum" id="ex-quorum-wrap">' +
             '<label class="gcv-dash-label" for="ex-quorum">Quórum <span class="gcv-dash-label__hint">(somente para as novas inscrições)</span></label>' +
             (function () {
+              var maxP = parseInt(ex && ex.max_people != null ? ex.max_people : 10, 10);
+              if (!Number.isFinite(maxP) || maxP < 1) maxP = 10;
+              if (maxP > 12) maxP = 12;
               var sel = parseInt(ex && ex.quorum != null ? ex.quorum : 4, 10);
               if (!Number.isFinite(sel) || sel < 1) sel = 4;
-              var opts = [
-                { v: 1, t: '1' },
-                { v: 2, t: '2' },
-                { v: 3, t: '3' },
-                { v: 4, t: '4' }
-              ];
+              if (sel > maxP) sel = maxP;
+              var opts = [];
+              var i;
+              for (i = 1; i <= maxP; i++) opts.push(i);
               return '<select class="gcv-dash-select" id="ex-quorum">' + opts.map(function (o) {
-                return '<option value="' + o.v + '"' + (sel === o.v ? ' selected' : '') + '>' + o.t + '</option>';
+                return '<option value="' + o + '"' + (sel === o ? ' selected' : '') + '>' + o + '</option>';
               }).join('') + '</select>';
             }()) + '</div></div>' +
             '<div class="gcv-dash-field-row gcv-dash-field-row--2">' +
             '<div class="gcv-dash-field"><label class="gcv-dash-label">Pessoas confirmadas por fora (0 a 5)</label><input class="gcv-dash-input" id="ex-preconfirmed" type="number" min="0" max="5" value="' + esc(ex && ex.preconfirmed_people != null ? ex.preconfirmed_people : 0) + '" /></div>' +
-            '<div class="gcv-dash-field"><label class="gcv-dash-label">Vagas * (máximo até 12)</label><input class="gcv-dash-input" id="ex-max" type="number" min="1" max="12" value="' + esc(ex && ex.max_people || 10) + '" /></div>' +
+            '<div class="gcv-dash-field"><label class="gcv-dash-label">Vagas *</label><input class="gcv-dash-input" id="ex-max" type="number" min="1" max="12" value="' + esc(ex && ex.max_people || 10) + '" /></div>' +
             '</div>' +
             '<div class="gcv-dash-field"><label class="gcv-dash-label">Inscritos</label><input class="gcv-dash-input" id="ex-booked" type="number" min="0" value="' + esc(ex && ex.booked_people || 0) + '" readonly disabled tabindex="-1" title="Contador automático das reservas pagas no site" /><p class="gcv-cms-muted" style="margin:0.3rem 0 0;">Atualiza sozinho quando alguém paga no site. Não é editável.</p></div>' +
             '<label class="gcv-dash-label"><input type="checkbox" id="ex-transport"' + (ex && Number(ex.include_transport) ? ' checked' : '') + ' /> Transporte Incluso</label>' +
@@ -1757,8 +1803,12 @@
               if (sel) {
                 sel.disabled = confirmed;
                 if (!confirmed) {
+                  var maxP = parseInt(root('ex-max') && root('ex-max').value, 10);
+                  if (!Number.isFinite(maxP) || maxP < 1) maxP = 10;
+                  if (maxP > 12) maxP = 12;
                   var v = parseInt(sel.value, 10);
-                  if (!Number.isFinite(v) || v < 1) sel.value = '4';
+                  if (!Number.isFinite(v) || v < 1) sel.value = String(Math.min(4, maxP));
+                  else if (v > maxP) sel.value = String(maxP);
                 }
               }
             }
@@ -1773,6 +1823,17 @@
               apply();
             };
             apply();
+          })();
+
+          (function bindWalkQuorumToVagas() {
+            var maxEl = root('ex-max');
+            var qEl = root('ex-quorum');
+            function sync() {
+              fillWalkQuorumSelect(qEl, maxEl && maxEl.value, qEl ? qEl.value : 4);
+            }
+            if (maxEl) {
+              maxEl.addEventListener('change', sync);
+            }
           })();
 
           if (typeof global.gcvBindDatePicker === 'function') {
@@ -1898,14 +1959,6 @@
               return;
             }
             var confirmed = !!(root('ex-confirmed-yes') && root('ex-confirmed-yes').checked);
-            var quorum = confirmed ? 0 : parseInt(root('ex-quorum').value, 10);
-            if (!confirmed) {
-              if (!Number.isFinite(quorum)) quorum = 4;
-              if (quorum < 1 || quorum > 4) {
-                alert('Quórum deve ser entre 1 e 4 pessoas.');
-                return;
-              }
-            }
             var maxPeople = parseInt(root('ex-max').value, 10);
             if (!Number.isFinite(maxPeople) || maxPeople < 1) {
               alert('Informe o máximo de pessoas.');
@@ -1914,6 +1967,14 @@
             if (maxPeople > 12) {
               alert('Máximo de pessoas é 12.');
               return;
+            }
+            var quorum = confirmed ? 0 : parseInt(root('ex-quorum').value, 10);
+            if (!confirmed) {
+              if (!Number.isFinite(quorum)) quorum = Math.min(4, maxPeople);
+              if (quorum < 1 || quorum > maxPeople) {
+                alert('Quórum deve ser entre 1 e o número de vagas (' + maxPeople + ').');
+                return;
+              }
             }
             var meetingPoint = (root('ex-meeting') && root('ex-meeting').value || '').trim();
             if (!meetingPoint) {

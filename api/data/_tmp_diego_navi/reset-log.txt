@@ -1,0 +1,9 @@
+OK db
+ALVO user_id=16 email=diegonavi82@gmail.com status=pending full_name=Diego Navi Marques Carvalho
+STASH atualizado
+OK guides stripped
+OK user status=pending
+OK financial deleted rows=1
+OK excursions retracted rows=0
+VERIFY {"id":16,"email":"diegonavi82@gmail.com","status":"pending","full_name":null,"nickname":null,"phone":null,"cpf":null,"pix_key":null,"cadastur":null,"birth_date":null,"sexo":null,"base_city_id":null,"profile_complete":0,"approved_at":null,"id_document_url":null,"bio_len":797,"photo_3x4_url":"\/assets\/img\/imagens\/guia-diego-navi.webp","photo_url":"\/assets\/img\/imagens\/guia-diego-navi.webp"}
+FEITO

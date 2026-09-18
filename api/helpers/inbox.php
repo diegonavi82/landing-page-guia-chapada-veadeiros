@@ -163,3 +163,36 @@ function gcv_inbox_mark_read(int $userId, ?int $id = null): int
         return 0;
     }
 }
+
+/**
+ * @param list<int> $ids
+ */
+function gcv_inbox_mark_read_ids(int $userId, array $ids): int
+{
+    if ($userId <= 0) {
+        return 0;
+    }
+    $clean = [];
+    foreach ($ids as $id) {
+        $n = (int)$id;
+        if ($n > 0) {
+            $clean[$n] = $n;
+        }
+    }
+    $clean = array_values($clean);
+    if (!$clean) {
+        return 0;
+    }
+    gcv_inbox_ensure_schema();
+    try {
+        $placeholders = implode(',', array_fill(0, count($clean), '?'));
+        $st = db()->prepare(
+            "UPDATE gcv_inbox SET read_at = NOW()
+             WHERE user_id = ? AND read_at IS NULL AND id IN ({$placeholders})"
+        );
+        $st->execute(array_merge([$userId], $clean));
+        return $st->rowCount();
+    } catch (Throwable $e) {
+        return 0;
+    }
+}

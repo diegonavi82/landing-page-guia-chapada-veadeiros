@@ -46,6 +46,8 @@ function gcv_marketplace_ensure_schema(): void
     gcv_marketplace_ensure_reviews($pdo);
     gcv_marketplace_ensure_settings($pdo);
     gcv_marketplace_retract_unapproved_guide_excursions($pdo);
+    require_once __DIR__ . '/marketplace/transfer_service.php';
+    gcv_transfer_ensure_schema();
     require_once __DIR__ . '/inbox.php';
     gcv_inbox_ensure_schema();
 }
@@ -621,6 +623,8 @@ function gcv_marketplace_ensure_settings(PDO $pdo): void
         ['notify_client_hours_short', '2', 'Cliente: aviso curto (horas antes do passeio)', 'integer'],
         ['notify_arrive_minutes', '15', 'Chegada: minutos de antecedência (0 = não enviar)', 'integer'],
         ['notify_late_tolerance_minutes', '15', 'Excursão: tolerância de atraso em minutos (0 = sem frase de tolerância)', 'integer'],
+        ['transfer_offer_hours', '48', 'Troca: horas antes da saída para oferecer a lista (só em formação → passeio confirmado do mesmo dia)', 'integer'],
+        ['transfer_cancel_hours', '12', 'Cancelamento automático: horas antes da saída se o quórum não fechou (sempre depois da troca)', 'integer'],
     ];
     $check = $pdo->prepare('SELECT id FROM gcv_settings WHERE key_name = ? LIMIT 1');
     $ins = $pdo->prepare(
@@ -678,6 +682,16 @@ function gcv_marketplace_ensure_settings(PDO $pdo): void
             "UPDATE gcv_settings
              SET label = 'Diária máxima do guia com transporte incluso (R$ por pessoa)'
              WHERE key_name = 'guide_net_max_transport_reais'"
+        );
+        $pdo->exec(
+            "UPDATE gcv_settings
+             SET label = 'Troca: horas antes da saída para oferecer a lista (só em formação → passeio confirmado do mesmo dia)'
+             WHERE key_name = 'transfer_offer_hours'"
+        );
+        $pdo->exec(
+            "UPDATE gcv_settings
+             SET label = 'Cancelamento automático: horas antes da saída se o quórum não fechou (sempre depois da troca)'
+             WHERE key_name = 'transfer_cancel_hours'"
         );
     } catch (Throwable $e) {
         // ignore

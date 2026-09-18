@@ -1,0 +1,23 @@
+CREATE TABLE IF NOT EXISTS gcv_transfer_offers (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  sale_id BIGINT UNSIGNED NOT NULL,
+  from_excursion_id INT UNSIGNED NOT NULL,
+  to_excursion_id INT UNSIGNED NOT NULL,
+  spots INT UNSIGNED NOT NULL DEFAULT 1,
+  original_cents INT UNSIGNED NOT NULL DEFAULT 0,
+  target_cents INT UNSIGNED NOT NULL DEFAULT 0,
+  delta_cents INT NOT NULL DEFAULT 0,
+  status VARCHAR(32) NOT NULL DEFAULT 'offered',
+  pix_reservation_id VARCHAR(32) NULL,
+  pix_brcode TEXT NULL,
+  refund_cents INT UNSIGNED NOT NULL DEFAULT 0,
+  notified_at DATETIME NULL,
+  accepted_at DATETIME NULL,
+  completed_at DATETIME NULL,
+  expires_at DATETIME NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_transfer_sale (sale_id, status),
+  INDEX idx_transfer_pix (pix_reservation_id),
+  INDEX idx_transfer_from (from_excursion_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

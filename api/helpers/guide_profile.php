@@ -3,8 +3,8 @@ declare(strict_types=1);
 
 /**
  * Regras de campos obrigatórios do cadastro do guia.
- * Foto, e-mail, telefone, nascimento, cidade, nome/razão, CPF/CNPJ e PIX.
- * Apelido, descrição e documento de identidade são opcionais.
+ * Foto, documento (RG/CNH), e-mail, telefone, nascimento, cidade, nome/razão, CPF/CNPJ e PIX.
+ * Apelido e descrição são opcionais.
  */
 require_once __DIR__ . '/marketplace/guide_financial_service.php';
 
@@ -55,6 +55,9 @@ function gcv_guide_profile_missing(array $p): array
     }
     if (empty($p['photo_3x4_url']) && empty($p['photo_url'])) {
         $missing[] = 'photo_3x4_url';
+    }
+    if (trim((string)($p['id_document_url'] ?? '')) === '') {
+        $missing[] = 'id_document_url';
     }
     $legal = trim((string)($p['legal_name'] ?? ''));
     if ($legal === '') {

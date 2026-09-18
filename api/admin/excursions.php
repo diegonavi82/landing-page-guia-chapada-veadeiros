@@ -53,7 +53,16 @@ function gcv_excursion_validate(array $body, bool $creating): ?string
     }
     if ($creating || array_key_exists('quorum', $body)) {
         $q = (int)($body['quorum'] ?? 4);
-        if ($q < 0 || $q > 4) return 'Quórum deve ser 0 (já confirmado) ou entre 1 e 4 pessoas';
+        $maxP = (int)($body['max_people'] ?? 10);
+        if ($maxP < 1) {
+            $maxP = 1;
+        }
+        if ($maxP > 12) {
+            $maxP = 12;
+        }
+        if ($q < 0 || $q > $maxP) {
+            return 'Quórum deve ser 0 (já confirmado) ou até o número de vagas';
+        }
     }
     if ($creating || array_key_exists('max_people', $body)) {
         if (!isset($body['max_people']) || (int)$body['max_people'] < 1) return 'Máximo de pessoas obrigatório';
@@ -137,7 +146,7 @@ if ($method === 'GET') {
          LEFT JOIN gcv_cities c ON c.id = e.departure_city_id
          LEFT JOIN gcv_users u ON u.id = e.guide_user_id
          WHERE e.deleted_at IS NULL
-         ORDER BY e.date_iso ASC, e.departure_time ASC'
+         ORDER BY e.date_iso DESC, e.departure_time DESC, e.id DESC'
     )->fetchAll();
     $out = [];
     foreach ($rows as $row) {
@@ -204,14 +213,8 @@ if ($method === 'POST') {
         exit;
     }
 
-    $quorum = (int)$body['quorum'];
-    if ($quorum < 0) {
-        $quorum = 0;
-    }
-    if ($quorum > 4) {
-        $quorum = 4;
-    }
     $maxPeople = min(12, max(1, (int)$body['max_people']));
+    $quorum = gcv_clamp_walk_quorum($body['quorum'], $maxPeople);
     $bookedPeople = 0;
     $preconfirmed = gcv_clamp_preconfirmed($body['preconfirmed_people'] ?? 0, $maxPeople, $bookedPeople);
     $stmt = db()->prepare(
@@ -336,14 +339,8 @@ if ($method === 'PUT') {
         : (int)($ex['guide_payout_planned_cents'] ?? $ex['guide_net_cents'] ?? 0);
     $margin = max(0, $priceCents - $guidePayout);
 
-    $quorum = (int)($body['quorum'] ?? $ex['quorum']);
-    if ($quorum < 0) {
-        $quorum = 0;
-    }
-    if ($quorum > 4) {
-        $quorum = 4;
-    }
     $maxPeople = min(12, max(1, (int)($body['max_people'] ?? $ex['max_people'])));
+    $quorum = gcv_clamp_walk_quorum($body['quorum'] ?? $ex['quorum'], $maxPeople);
     $bookedPeople = (int)($ex['booked_people'] ?? 0);
     $preconfirmed = gcv_clamp_preconfirmed(
         $body['preconfirmed_people'] ?? ($ex['preconfirmed_people'] ?? 0),

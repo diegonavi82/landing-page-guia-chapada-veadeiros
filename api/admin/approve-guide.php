@@ -6,6 +6,7 @@ require_once __DIR__ . '/../helpers/auth.php';
 require_once __DIR__ . '/../helpers/validator.php';
 require_once __DIR__ . '/../helpers/user_roles.php';
 require_once __DIR__ . '/../helpers/access_policy.php';
+require_once __DIR__ . '/../helpers/cms_schema.php';
 require_once __DIR__ . '/../helpers/guide_registration.php';
 
 header('Content-Type: application/json; charset=utf-8');
@@ -15,6 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 $admin = require_admin();
+gcv_cms_ensure_schema();
 $data = body_json();
 $userId = (int)($data['user_id'] ?? 0);
 
@@ -39,9 +41,15 @@ if (gcv_client_area_enabled()) {
 }
 gcv_user_sync_primary_role($userId);
 
-db()->prepare(
-    'UPDATE gcv_guides SET approved_at = NOW(), approved_by = ? WHERE user_id = ?'
-)->execute([(int)$admin['id'], $userId]);
+try {
+    db()->prepare(
+        'UPDATE gcv_guides SET approved_at = NOW(), approved_by = ?, needs_resubmit = 0 WHERE user_id = ?'
+    )->execute([(int)$admin['id'], $userId]);
+} catch (Throwable $e) {
+    db()->prepare(
+        'UPDATE gcv_guides SET approved_at = NOW(), approved_by = ? WHERE user_id = ?'
+    )->execute([(int)$admin['id'], $userId]);
+}
 
 echo json_encode(['ok' => true, 'data' => ['message' => 'Guia aprovado com sucesso', 'status' => 'APROVADO']], JSON_UNESCAPED_UNICODE);
 gcv_finish_http_response();

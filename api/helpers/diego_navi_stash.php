@@ -42,23 +42,12 @@ function gcv_diego_navi_stash_bio_for_form(string $bio, int $max = 800): string
     if ($bio === '' || mb_strlen($bio) <= $max) {
         return $bio;
     }
-    $parts = preg_split("/\n\n+/", $bio) ?: [$bio];
-    $out = '';
-    foreach ($parts as $p) {
-        $p = trim((string)$p);
-        if ($p === '') {
-            continue;
-        }
-        $next = $out === '' ? $p : ($out . "\n\n" . $p);
-        if (mb_strlen($next) > $max) {
-            break;
-        }
-        $out = $next;
+    $cut = mb_substr($bio, 0, $max - 1);
+    $sp = mb_strrpos($cut, ' ');
+    if ($sp !== false && $sp > (int) ($max * 0.6)) {
+        $cut = mb_substr($cut, 0, $sp);
     }
-    if ($out !== '') {
-        return $out;
-    }
-    return rtrim(mb_substr($bio, 0, $max - 1)) . '…';
+    return rtrim($cut) . '…';
 }
 
 /**
