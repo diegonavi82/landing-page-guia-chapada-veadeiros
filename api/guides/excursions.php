@@ -415,7 +415,7 @@ if ($method === 'GET') {
     }
 
     $attrs = db()->query(
-        "SELECT id, title_pt, slug, city_id, entry_price_cents
+        "SELECT id, title_pt, slug, city_id, entry_price_cents, cover_url
          FROM gcv_attractions
          WHERE status = 'published'
          ORDER BY title_pt ASC"

@@ -18,7 +18,8 @@
     "mirante-janela-cachoeira-abismo-guia-chapada-veadeiros-sao-jorge",
     "parque-nacional-chapada-veadeiros-saltos-rio-preto-sao-jorge",
     "parque-nacional-chapada-veadeiros-canions-carioquinhas-sao-jorge",
-    "cachoeira-macacao-guia-chapada-veadeiros-sao-joao-alianca"
+    "cachoeira-macacao-guia-chapada-veadeiros-sao-joao-alianca",
+    "caracol-guia-chapada-veadeiros"
   ],
   "localeSlugToBase": {
     "pt": {
@@ -39,7 +40,8 @@
       "parque-nacional-chapada-veadeiros-saltos-rio-preto-sao-jorge": "parque-nacional-chapada-veadeiros-saltos-rio-preto-sao-jorge",
       "parque-nacional-chapada-veadeiros-canions-carioquinhas-sao-jorge": "parque-nacional-chapada-veadeiros-canions-carioquinhas-sao-jorge",
       "cachoeira-macacao-guia-chapada-veadeiros-sao-joao-alianca": "cachoeira-macacao-guia-chapada-veadeiros-sao-joao-alianca",
-      "cachoeira-ponte-de-pedra-guia-chapada-veadeiros-cavalcante": "cachoeira-ponte-de-pedra-guia-chapada-veadeiros-cavalcante"
+      "cachoeira-ponte-de-pedra-guia-chapada-veadeiros-cavalcante": "cachoeira-ponte-de-pedra-guia-chapada-veadeiros-cavalcante",
+      "caracol-guia-chapada-veadeiros": "caracol-guia-chapada-veadeiros"
     },
     "en": {
       "cachoeira-almecegas-poco-sao-bento-guia-chapada-veadeiros": "cachoeira-almecegas-poco-sao-bento-guia-chapada-veadeiros",
@@ -59,7 +61,8 @@
       "parque-nacional-chapada-veadeiros-saltos-rio-preto-sao-jorge": "parque-nacional-chapada-veadeiros-saltos-rio-preto-sao-jorge",
       "parque-nacional-chapada-veadeiros-canions-carioquinhas-sao-jorge": "parque-nacional-chapada-veadeiros-canions-carioquinhas-sao-jorge",
       "cachoeira-macacao-guia-chapada-veadeiros-sao-joao-alianca": "cachoeira-macacao-guia-chapada-veadeiros-sao-joao-alianca",
-      "cachoeira-ponte-de-pedra-guia-chapada-veadeiros-cavalcante": "cachoeira-ponte-de-pedra-guia-chapada-veadeiros-cavalcante"
+      "cachoeira-ponte-de-pedra-guia-chapada-veadeiros-cavalcante": "cachoeira-ponte-de-pedra-guia-chapada-veadeiros-cavalcante",
+      "caracol-guia-chapada-veadeiros": "caracol-guia-chapada-veadeiros"
     },
     "es": {
       "cachoeira-almecegas-poco-sao-bento-guia-chapada-veadeiros": "cachoeira-almecegas-poco-sao-bento-guia-chapada-veadeiros",
@@ -79,7 +82,8 @@
       "parque-nacional-chapada-veadeiros-saltos-rio-preto-sao-jorge": "parque-nacional-chapada-veadeiros-saltos-rio-preto-sao-jorge",
       "parque-nacional-chapada-veadeiros-canions-carioquinhas-sao-jorge": "parque-nacional-chapada-veadeiros-canions-carioquinhas-sao-jorge",
       "cachoeira-macacao-guia-chapada-veadeiros-sao-joao-alianca": "cachoeira-macacao-guia-chapada-veadeiros-sao-joao-alianca",
-      "cachoeira-ponte-de-pedra-guia-chapada-veadeiros-cavalcante": "cachoeira-ponte-de-pedra-guia-chapada-veadeiros-cavalcante"
+      "cachoeira-ponte-de-pedra-guia-chapada-veadeiros-cavalcante": "cachoeira-ponte-de-pedra-guia-chapada-veadeiros-cavalcante",
+      "caracol-guia-chapada-veadeiros": "caracol-guia-chapada-veadeiros"
     }
   },
   "locales": {

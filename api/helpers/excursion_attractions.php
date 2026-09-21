@@ -212,6 +212,9 @@ function gcv_attraction_card_aliases(): array
         'santa barbara' => [$page('cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante'), $img('cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante.jpg')],
         'cristais' => [$page('cachoeira-cristais-guia-chapada-veadeiros-alto-paraiso'), $img('cachoeira-cristais-veu-noiva-guia-chapada-veadeiros-alto-paraiso.jpg')],
         'cataratas dos couros' => [$page('cataratas-dos-couros-guia-chapada-veadeiros-alto-paraiso'), $img('cataratas-couros-guia-chapada-veadeiros-alto-paraiso-1.webp')],
+        'caracol' => [$page('caracol-guia-chapada-veadeiros'), $img('cachoeira-caracol-complexo-caldeira-guia-chapada-veadeiros-alto-paraiso.jpg')],
+        'caracol guia chapada veadeiros' => [$page('caracol-guia-chapada-veadeiros'), $img('cachoeira-caracol-complexo-caldeira-guia-chapada-veadeiros-alto-paraiso.jpg')],
+        'cachoeira caracol' => [$page('caracol-guia-chapada-veadeiros'), $img('cachoeira-caracol-complexo-caldeira-guia-chapada-veadeiros-alto-paraiso.jpg')],
     ];
     $map = [];
     foreach ($rows as $key => $pair) {

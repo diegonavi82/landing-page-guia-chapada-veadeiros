@@ -282,6 +282,8 @@ const DETAIL_IMAGE_BY_SLUG = {
     "/imagens/cachoeira-poco-encantado-guia-chapada-veadeiros-teresina-4.jpg",
   "cachoeira-macaquinhos-guia-chapada-veadeiros-sao-joao-alianca":
     "/imagens/cachoeira-macaquinhos-guia-chapada-veadeiros-6.jpg",
+  "caracol-guia-chapada-veadeiros":
+    "/imagens/cachoeira-caracol-complexo-caldeira-guia-chapada-veadeiros-alto-paraiso.jpg",
 };
 
 function esc(s) {
@@ -2356,13 +2358,16 @@ function atrativoDetailMain(locale, localeSlug, ap, pathKey) {
   const rawDetailImage =
     (cms?.featuredImage && String(cms.featuredImage).trim()) ||
     DETAIL_IMAGE_BY_SLUG[base] ||
-    firstImage?.src;
-  const detailRel = toPublicAssetRel(rawDetailImage);
-  const detailImgHref = detailRel ? `${ap}assets/img/${detailRel}` : null;
-  const detailImgAlt = (firstImage?.alt && String(firstImage.alt).trim()) || title;
-
+    firstImage?.src ||
+    p.image;
   const galleryItems = ATTRACTION_GALLERIES[base];
   const hasManifestGallery = Array.isArray(galleryItems) && galleryItems.length > 0;
+  const galleryAlt = hasManifestGallery ? String(galleryItems[0].alt || "").trim() : "";
+  const detailImgAlt =
+    (firstImage?.alt && String(firstImage.alt).trim()) ||
+    galleryAlt ||
+    p.lead[locale] ||
+    title;
 
   let mainColumnHtml = "";
 

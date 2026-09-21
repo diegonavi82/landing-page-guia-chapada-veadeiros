@@ -349,9 +349,23 @@
       "title_pt": "Caracol",
       "title_en": "Caracol",
       "title_es": "Caracol",
-      "excerpt_pt": "Roteiro em Alto Paraíso de Goiás.",
-      "excerpt_en": "Tour in Alto Paraíso de Goiás.",
-      "excerpt_es": "Ruta en Alto Paraíso de Goiás."
+      "excerpt_pt": "Cachoeira Caracol no Complexo Caldeira, Alto Paraíso de Goiás.",
+      "excerpt_en": "Caracol waterfall at Complexo Caldeira, Alto Paraíso de Goiás.",
+      "excerpt_es": "Cascada Caracol en el Complejo Caldeira, Alto Paraíso de Goiás.",
+      "cover_url": "/assets/img/imagens/cachoeira-caracol-complexo-caldeira-guia-chapada-veadeiros-alto-paraiso.jpg",
+      "seo_title_pt": "Cachoeira Caracol | Complexo Caldeira | Guia Chapada Veadeiros (GCV)",
+      "seo_title_en": "Caracol Waterfall | Complexo Caldeira | Guia Chapada Veadeiros (GCV)",
+      "seo_title_es": "Cascada Caracol | Complejo Caldeira | Guia Chapada Veadeiros (GCV)",
+      "seo_desc_pt": "Cachoeira Caracol no Complexo Caldeira, Alto Paraíso de Goiás — poço para banho e queda em gruta. Guia Chapada Veadeiros (GCV).",
+      "seo_desc_en": "Caracol waterfall at Complexo Caldeira, Alto Paraíso de Goiás — swimming pool and cave fall. Guia Chapada Veadeiros (GCV).",
+      "seo_desc_es": "Cascada Caracol en el Complejo Caldeira, Alto Paraíso de Goiás — poza para baño y salto en gruta. Guia Chapada Veadeiros (GCV).",
+      "gallery": [
+        {
+          "url": "/assets/img/imagens/cachoeira-caracol-complexo-caldeira-guia-chapada-veadeiros-alto-paraiso.jpg",
+          "alt": "Cachoeira Caracol no Complexo Caldeira, Alto Paraíso de Goiás — Guia Chapada Veadeiros (GCV)",
+          "sort_order": 0
+        }
+      ]
     }
   ]
 }

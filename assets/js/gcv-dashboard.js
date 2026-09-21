@@ -3,6 +3,74 @@
   'use strict';
 
   var currentUser = null;
+  var dashLoadMap = {};
+  var dashHashLock = false;
+
+  var SECTION_HASH = {
+    'section-cms-articles': 'revista',
+    'section-cms-attractions': 'atrativos',
+    'section-cms-guides': 'guias',
+    'section-cms-cities': 'cidades',
+    'section-cms-excursions': 'excursoes',
+    'section-admin-payouts': 'pagar-guias',
+    'section-admin-create-tour': 'criar-passeio',
+    'section-admin-bookings': 'reservas',
+    'section-admin-settings': 'configuracoes',
+    'section-admin-financial': 'financeiro',
+    'section-guide-profile': 'perfil',
+    'section-guide-create-tour': 'publicar',
+    'section-guide-tours': 'agenda',
+    'section-guide-financial': 'financeiro',
+    'section-client-tours': 'passeios',
+    'section-client-bookings': 'reservas',
+    'section-client-publish': 'propor',
+    'section-client-profile': 'perfil',
+    'section-inbox': 'notificacoes'
+  };
+
+  function hashForSection(id) {
+    return SECTION_HASH[id] || String(id || '').replace(/^section-/, '');
+  }
+
+  function sectionForHash(hash) {
+    hash = String(hash || '').replace(/^#/, '').split('?')[0].split('&')[0];
+    if (!hash || hash.indexOf('checkin') === 0) return '';
+    if (dashLoadMap[hash]) return hash;
+    var found = '';
+    Object.keys(SECTION_HASH).forEach(function (id) {
+      if (SECTION_HASH[id] === hash && dashLoadMap[id]) found = id;
+    });
+    return found;
+  }
+
+  function syncSectionHash(id) {
+    if (!id || dashHashLock) return;
+    var slug = hashForSection(id);
+    if (!slug) return;
+    var next = '#' + slug;
+    if ((location.hash || '') === next) return;
+    try {
+      history.replaceState(null, '', location.pathname + location.search + next);
+    } catch (err) {
+      location.hash = slug;
+    }
+    try {
+      sessionStorage.setItem('gcv_dash_section', id);
+    } catch (err2) {}
+  }
+
+  function showSection(id, skipHash) {
+    if (id === 'section-pending-guides') id = 'section-cms-guides';
+    document.querySelectorAll('.gcv-dash-section').forEach(function (s) { s.classList.remove('active'); });
+    var s = document.getElementById(id);
+    if (s) s.classList.add('active');
+    document.querySelectorAll('.gcv-dash-nav a, .gcv-dash-bottom-nav a').forEach(function (a) { a.classList.remove('active'); });
+    document.querySelectorAll('[data-section="' + id + '"]').forEach(function (link) {
+      link.classList.add('active');
+    });
+    closeMobileNav();
+    if (!skipHash) syncSectionHash(id);
+  }
 
   function get(url, cb) {
     var xhr = new XMLHttpRequest();
@@ -37,18 +105,6 @@
     };
     xhr.onerror = function () { cb(new Error('network'), {}); };
     xhr.send(JSON.stringify(data));
-  }
-
-  function showSection(id) {
-    if (id === 'section-pending-guides') id = 'section-cms-guides';
-    document.querySelectorAll('.gcv-dash-section').forEach(function (s) { s.classList.remove('active'); });
-    var s = document.getElementById(id);
-    if (s) s.classList.add('active');
-    document.querySelectorAll('.gcv-dash-nav a, .gcv-dash-bottom-nav a').forEach(function (a) { a.classList.remove('active'); });
-    document.querySelectorAll('[data-section="' + id + '"]').forEach(function (link) {
-      link.classList.add('active');
-    });
-    closeMobileNav();
   }
 
   function closeMobileNav() {
@@ -942,6 +998,7 @@
 
     var loadMap = {};
     items.forEach(function (item) { loadMap[item.id] = item.load; });
+    dashLoadMap = loadMap;
 
     function onNavClick(e) {
       var link = e.target.closest('[data-section]');
@@ -982,38 +1039,20 @@
       }
     }
 
-    // Show first section
     if (items.length) {
       var wantScan = window.GcvDashRoles && typeof window.GcvDashRoles.consumeCheckinHash === 'function'
         && window.GcvDashRoles.consumeCheckinHash();
-      var hash = (location.hash || '').replace(/^#/, '');
-      var wantPublish = role === 'guide' && status === 'active'
-        && (hash === 'publicar' || hash === 'section-guide-create-tour');
-      var wantReservas = hash === 'reservas' || hash === 'section-client-bookings';
-      var guideHashMap = {
-        agenda: 'section-guide-tours',
-        'section-guide-tours': 'section-guide-tours',
-        publicar: 'section-guide-create-tour',
-        'section-guide-create-tour': 'section-guide-create-tour',
-        financeiro: 'section-guide-financial',
-        'section-guide-financial': 'section-guide-financial',
-        perfil: 'section-guide-profile',
-        'section-guide-profile': 'section-guide-profile'
-      };
-      var hashedGuide = guideHashMap[hash];
-      if (!wantScan && wantPublish) {
-        showSection('section-guide-create-tour');
-        if (loadMap['section-guide-create-tour']) loadMap['section-guide-create-tour']();
-      } else if (!wantScan && wantReservas && loadMap['section-client-bookings']) {
-        showSection('section-client-bookings');
-        loadMap['section-client-bookings']();
-      } else if (!wantScan && role === 'guide' && status === 'active' && loadMap['section-guide-tours']) {
-        var openGuide = (hashedGuide && loadMap[hashedGuide]) ? hashedGuide : 'section-guide-tours';
-        showSection(openGuide);
-        loadMap[openGuide]();
-      } else if (!wantScan) {
-        showSection(items[0].id);
-        if (loadMap[items[0].id]) loadMap[items[0].id]();
+      if (!wantScan) {
+        var stored = '';
+        try { stored = sessionStorage.getItem('gcv_dash_section') || ''; } catch (e) { stored = ''; }
+        var openId = sectionForHash(location.hash) || (loadMap[stored] ? stored : '');
+        if (!openId || !loadMap[openId]) {
+          openId = (role === 'guide' && status === 'active' && loadMap['section-guide-tours'])
+            ? 'section-guide-tours'
+            : items[0].id;
+        }
+        showSection(openId);
+        if (loadMap[openId]) loadMap[openId]();
       }
     }
     if (role === 'admin') {
@@ -1102,8 +1141,14 @@
       buildNav(tabRole || currentUser.role, currentUser.status);
       window.addEventListener('hashchange', function () {
         if (window.GcvDashRoles && typeof window.GcvDashRoles.consumeCheckinHash === 'function') {
-          window.GcvDashRoles.consumeCheckinHash();
+          if (window.GcvDashRoles.consumeCheckinHash()) return;
         }
+        var openId = sectionForHash(location.hash);
+        if (!openId || !dashLoadMap[openId]) return;
+        dashHashLock = true;
+        showSection(openId, true);
+        dashHashLock = false;
+        if (dashLoadMap[openId]) dashLoadMap[openId]();
       });
       if (window.GcvInbox && typeof window.GcvInbox.start === 'function'
           && !(currentUser.role === 'guide' && currentUser.status !== 'active')) {
@@ -1142,7 +1187,10 @@
       // Check PIX/Sicoob notification (legado: mp_connected)
       var params = new URLSearchParams(window.location.search);
       if (params.get('mp_connected') || params.get('pix_ok')) {
-        window.history.replaceState({}, '', '/dashboard/');
+        params.delete('mp_connected');
+        params.delete('pix_ok');
+        var q = params.toString();
+        window.history.replaceState({}, '', location.pathname + (q ? '?' + q : '') + (location.hash || ''));
       }
     });
   }

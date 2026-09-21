@@ -2286,25 +2286,60 @@
         });
       }
 
-      function scrollTourIntoView(idx) {
+      var tourScrollLock = false;
+      var tourScrollLockTimer = 0;
+      function lockTourScroll(ms) {
+        tourScrollLock = true;
+        if (tourScrollLockTimer) clearTimeout(tourScrollLockTimer);
+        tourScrollLockTimer = setTimeout(function () {
+          tourScrollLock = false;
+          tourScrollLockTimer = 0;
+        }, ms || 420);
+      }
+
+      function scrollTabIntoView(idx) {
+        var tabs = document.getElementById('ge-tour-tabs');
+        var tab = tabs && tabs.querySelector('.gcv-tour-tab--panel[data-tour-tab="' + String(idx) + '"]');
+        if (!tabs || !tab) return;
+        var tabsRect = tabs.getBoundingClientRect();
+        var tabRect = tab.getBoundingClientRect();
+        var pad = 6;
+        var delta = 0;
+        if (tabRect.left < tabsRect.left + pad) {
+          delta = tabRect.left - tabsRect.left - pad;
+        } else if (tabRect.right > tabsRect.right - pad) {
+          delta = tabRect.right - tabsRect.right + pad;
+        }
+        if (delta) tabs.scrollLeft += delta;
+      }
+
+      function scrollTourIntoView(idx, instant) {
         var host = document.getElementById('ge-tours');
         var block = form.querySelector('.gcv-dash-tour-block[data-tour-idx="' + idx + '"]');
-        if (!host || !block || !isMobileTourCarousel()) return;
+        if (!host || !block || !isMobileTourCarousel()) {
+          scrollTabIntoView(idx);
+          return;
+        }
         var left = host.scrollLeft + (block.getBoundingClientRect().left - host.getBoundingClientRect().left);
+        if (left < 0) left = 0;
+        lockTourScroll(instant ? 80 : 450);
         if (typeof host.scrollTo === 'function') {
-          host.scrollTo({ left: left, behavior: 'smooth' });
+          host.scrollTo({ left: left, behavior: instant ? 'auto' : 'smooth' });
         } else {
           host.scrollLeft = left;
         }
+        scrollTabIntoView(idx);
       }
 
       function selectTourTab(idx) {
         markTourActive(idx);
-        scrollTourIntoView(idx);
+        requestAnimationFrame(function () {
+          scrollTourIntoView(idx);
+        });
       }
 
       function syncCarouselActive() {
-        if (!isMobileTourCarousel()) return;
+        if (!isMobileTourCarousel() || tourScrollLock) return;
         var host = document.getElementById('ge-tours');
         var blocks = tourBlocks();
         if (!host || !blocks.length) return;
@@ -2322,6 +2357,7 @@
         });
         var idx = best.getAttribute('data-tour-idx');
         if (String(idx) !== String(activeTourIdx)) markTourActive(idx);
+        scrollTabIntoView(idx);
       }
 
       function setDateLocked(dateEl, locked) {
@@ -2419,8 +2455,14 @@
             '</div>';
         });
         host.innerHTML = html;
-        form.classList.toggle('is-tour-carousel', blocks.length >= 2);
-        requestAnimationFrame(pinTourTabsBar);
+        form.classList.toggle('is-tour-carousel', blocks.length >= 1);
+        requestAnimationFrame(function () {
+          pinTourTabsBar();
+          if (activeTourIdx) {
+            scrollTabIntoView(activeTourIdx);
+            scrollTourIntoView(activeTourIdx, true);
+          }
+        });
         host.querySelectorAll('.gcv-tour-tab__hit').forEach(function (hit) {
           hit.onclick = function () {
             var panel = hit.closest('[data-tour-tab]');
@@ -3065,7 +3107,7 @@
         });
       }
 
-      form.classList.add('gcv-dash-form--publish');
+      form.classList.add('gcv-dash-form--publish', 'is-tour-carousel');
       form.innerHTML =
         '<div class="gcv-tour-tabs-wrap">' +
         '<div class="gcv-tour-tabs" id="ge-tour-tabs" role="tablist"></div>' +
@@ -3278,6 +3320,18 @@
             carouselTick = false;
             syncCarouselActive();
           });
+        }, { passive: true });
+        var tourSnapTimer = 0;
+        carouselHost.addEventListener('scrollend', function () {
+          if (tourScrollLock) return;
+          if (activeTourIdx) scrollTourIntoView(activeTourIdx);
+        });
+        carouselHost.addEventListener('scroll', function () {
+          if (tourScrollLock) return;
+          if (tourSnapTimer) clearTimeout(tourSnapTimer);
+          tourSnapTimer = setTimeout(function () {
+            if (!tourScrollLock && activeTourIdx) scrollTourIntoView(activeTourIdx);
+          }, 120);
         }, { passive: true });
         window.addEventListener('resize', function () {
           pinTourTabsBar();

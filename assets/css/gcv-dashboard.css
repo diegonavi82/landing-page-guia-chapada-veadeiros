@@ -640,9 +640,11 @@ body.gcv-dash-page main.gcv-dash-main {
     color: #0f3d2e;
     border-color: #d1d5db;
     box-shadow: 0 -1px 0 #fff;
-    z-index: 1;
+    z-index: 2;
     margin-bottom: -2px;
     padding-bottom: 2px;
+    position: sticky;
+    left: 0;
   }
   .gcv-tour-tab__hit {
     flex: 1;
@@ -714,6 +716,7 @@ body.gcv-dash-page main.gcv-dash-main {
 }
 
 @media (max-width: 768px) {
+  .gcv-dash-form--publish .gcv-tour-add-mobile { display: none; }
   .gcv-dash-form--publish {
     overflow: visible;
   }
@@ -790,6 +793,10 @@ body.gcv-dash-page main.gcv-dash-main {
     background: #0f3d2e;
     color: #fff;
     border-color: #0f3d2e;
+    position: sticky;
+    left: 0;
+    z-index: 4;
+    box-shadow: 6px 0 12px rgba(15, 61, 46, 0.22);
   }
   .gcv-dash-form--publish.is-tour-carousel .gcv-tour-tab__hit {
     flex: 1;

@@ -174,10 +174,12 @@ function gcv_row_to_card(array $r, string $lang, array $months, array $weekdays)
     $quorum = max(0, (int)$r['quorum']);
     $vagas = max(0, $max - $occupied);
     $destino = gcv_excursion_titles_joined($attrs, $lang);
+    $destinos = gcv_excursion_card_destinos($attrs, $lang);
     $primary = $attrs[0] ?? null;
+    $firstDest = $destinos[0] ?? [];
     $slug = (string)($primary['slug'] ?? '');
-    $page = gcv_attraction_public_html_path($slug);
-    $cover = (string)($primary['cover_url'] ?? '');
+    $page = (string)($firstDest['atrativoPath'] ?? gcv_attraction_public_html_path($slug));
+    $cover = (string)($firstDest['cardImg'] ?? $primary['cover_url'] ?? '');
     $entryRaw = $primary['entry_price_cents'] ?? null;
     $cartSlug = trim((string)($r['cart_slug'] ?? ''));
     if ($cartSlug === '') {
@@ -213,29 +215,7 @@ function gcv_row_to_card(array $r, string $lang, array $months, array $weekdays)
         'meetingLng' => $meetingLng,
         'meetingMapsUrl' => $meetingMapsUrl,
         'destino' => $destino,
-        'destinos' => array_map(static function ($a) use ($lang) {
-            $key = 'title_' . $lang;
-            $t = trim((string)($a[$key] ?? ''));
-            if ($t === '') $t = (string)($a['title_pt'] ?? '');
-            $slug = (string)($a['slug'] ?? '');
-            $page = gcv_attraction_public_html_path($slug);
-            $cover = (string)($a['cover_url'] ?? '');
-            $entryRaw = $a['entry_price_cents'] ?? null;
-            $item = [
-                // Campos que o carrossel JS já usa (payload estático)
-                'destino' => $t,
-                'cardImg' => $cover,
-                'atrativoPath' => $page,
-                // Aliases (compat)
-                'title' => $t,
-                'slug' => $slug,
-                'path' => $page,
-            ];
-            if ($entryRaw !== null) {
-                $item['valorIngresso'] = (int)round(((int)$entryRaw) / 100);
-            }
-            return $item;
-        }, $attrs),
+        'destinos' => $destinos,
         'cartSlug' => $cartSlug,
         'hora' => $hora,
         'valor' => (int)round(((int)$r['price_cents']) / 100),

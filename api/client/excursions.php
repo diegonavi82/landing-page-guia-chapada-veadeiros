@@ -26,7 +26,7 @@ $MAX_PEOPLE_CAP = 12;
 
 if ($method === 'GET') {
     $attrs = db()->query(
-        "SELECT id, title_pt, slug FROM gcv_attractions WHERE status = 'published' ORDER BY title_pt ASC"
+        "SELECT id, title_pt, slug, cover_url FROM gcv_attractions WHERE status = 'published' ORDER BY title_pt ASC"
     )->fetchAll(PDO::FETCH_ASSOC);
     $attrs = gcv_sort_attractions_catalog($attrs);
     $cities = db()->query(

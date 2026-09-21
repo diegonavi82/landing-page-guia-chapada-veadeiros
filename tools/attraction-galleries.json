@@ -776,5 +776,12 @@
       "src": "/imagens/cachoeira-ponte-de-pedra-poco-xamanico-banho-guia-chapada-veadeiros-cavalcante-10.jpg",
       "alt": "Turista boiando no Poço Xamânico cercado de rochas na Reserva Renascer, Cavalcante"
     }
+  ],
+  "caracol-guia-chapada-veadeiros": [
+    {
+      "src": "/imagens/cachoeira-caracol-complexo-caldeira-guia-chapada-veadeiros-alto-paraiso.jpg",
+      "alt": "Cachoeira Caracol no Complexo Caldeira, Alto Paraíso de Goiás — poço para banho e queda em gruta. Guia Chapada Veadeiros (GCV)",
+      "title": "Cachoeira Caracol — Complexo Caldeira"
+    }
   ]
 }
