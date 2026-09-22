@@ -23,6 +23,7 @@ require_once __DIR__ . '/../helpers/rate_limiter.php';
 require_once __DIR__ . '/../helpers/sicoob_pix_pay.php';
 require_once __DIR__ . '/../helpers/marketplace/guide_financial_service.php';
 require_once __DIR__ . '/../helpers/marketplace_schema.php';
+require_once __DIR__ . '/../helpers/notify_ops.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -229,38 +230,54 @@ if ($action === 'confirm') {
     }
 
     gcv_payout_audit($payoutId, (int)$admin['id'], 'payout_confirm_start', null);
+    @set_time_limit(90);
 
+    $existingE2e = gcv_payout_existing_e2e($payout);
     $result = gcv_sicoob_send_pix_payment(
         (string)$guide['pix_key'],
         (string)$guide['pix_key_type'],
         (int)$payout['amount_cents'],
         (string)$payout['description'],
-        (string)$payout['idempotency_key']
+        (string)$payout['idempotency_key'],
+        $existingE2e
     );
 
+    $e2e = trim((string)($result['endToEndId'] ?? $existingE2e));
     if ($result['ok']) {
         db()->prepare(
             'UPDATE gcv_guide_payouts SET status = \'paid\', paid_at = NOW(),
              sicoob_end_to_end = ?, sicoob_response = ?, error_message = NULL WHERE id = ?'
         )->execute([
-            $result['endToEndId'] ?? null,
+            $e2e !== '' ? $e2e : null,
             json_encode($result['raw'] ?? [], JSON_UNESCAPED_UNICODE),
             $payoutId,
         ]);
-        gcv_payout_audit($payoutId, (int)$admin['id'], 'payout_paid', (string)($result['endToEndId'] ?? ''));
+        gcv_payout_audit($payoutId, (int)$admin['id'], 'payout_paid', $e2e);
+        $waSent = false;
+        try {
+            $payout['id'] = $payoutId;
+            $waSent = gcv_ops_notify_guide_manual_pix($payout, $guide, $e2e);
+        } catch (Throwable $e) {
+            error_log('notify manual pix wa: ' . $e->getMessage());
+        }
         json_response(true, [
             'payout_id' => $payoutId,
             'status' => 'paid',
-            'endToEndId' => $result['endToEndId'] ?? null,
-            'message' => 'PIX enviado com sucesso',
+            'endToEndId' => $e2e !== '' ? $e2e : null,
+            'whatsapp_sent' => $waSent,
+            'message' => $waSent
+                ? 'PIX enviado com sucesso. Aviso enviado ao WhatsApp do guia.'
+                : 'PIX enviado com sucesso. Não foi possível avisar o guia no WhatsApp.',
         ]);
     }
 
     db()->prepare(
-        'UPDATE gcv_guide_payouts SET status = \'failed\', error_message = ?, sicoob_response = ? WHERE id = ?'
+        'UPDATE gcv_guide_payouts SET status = \'failed\', error_message = ?,
+         sicoob_response = ?, sicoob_end_to_end = COALESCE(NULLIF(?, \'\'), sicoob_end_to_end) WHERE id = ?'
     )->execute([
         mb_substr((string)($result['error'] ?? 'Falha desconhecida'), 0, 500),
         json_encode($result['raw'] ?? [], JSON_UNESCAPED_UNICODE),
+        $e2e,
         $payoutId,
     ]);
     gcv_payout_audit($payoutId, (int)$admin['id'], 'payout_failed', (string)($result['error'] ?? ''));
@@ -290,6 +307,25 @@ if ($action === 'cancel') {
 }
 
 json_response(false, null, 'Ação inválida. Use create | confirm | cancel', 422);
+
+function gcv_payout_existing_e2e(array $payout): string
+{
+    $direct = trim((string)($payout['sicoob_end_to_end'] ?? ''));
+    if ($direct !== '') {
+        return $direct;
+    }
+    $raw = json_decode((string)($payout['sicoob_response'] ?? ''), true);
+    if (!is_array($raw)) {
+        return '';
+    }
+    if (function_exists('gcv_sicoob_pay_extract_e2e')) {
+        $fromInit = gcv_sicoob_pay_extract_e2e(is_array($raw['init'] ?? null) ? $raw['init'] : $raw);
+        if ($fromInit !== '') {
+            return $fromInit;
+        }
+    }
+    return trim((string)($raw['init']['endToEndId'] ?? $raw['endToEndId'] ?? ''));
+}
 
 /** @return array<string, mixed>|null */
 function gcv_payout_load_eligible_guide(int $userId): ?array
@@ -337,7 +373,7 @@ function gcv_admin_payout_history(): array
     try {
         $manual = db()->query(
             'SELECT p.id, p.amount_cents, p.pix_key_snapshot AS pix_key, p.status,
-                    p.paid_at, p.created_at, p.description,
+                    p.paid_at, p.created_at, p.description, p.error_message,
                     COALESCE(NULLIF(g.full_name, \'\'), u.name) AS guide_name
              FROM gcv_guide_payouts p
              JOIN gcv_users u ON u.id = p.guide_user_id
@@ -356,7 +392,7 @@ function gcv_admin_payout_history(): array
     try {
         $plat = db()->query(
             'SELECT sp.id, sp.amount_cents, sp.pix_key, sp.status,
-                    sp.paid_at, sp.created_at, sp.sale_id,
+                    sp.paid_at, sp.created_at, sp.sale_id, sp.notes AS error_message,
                     COALESCE(NULLIF(g.full_name, \'\'), u.name) AS guide_name
              FROM gcv_sale_payouts sp
              JOIN gcv_users u ON u.id = sp.guide_user_id
@@ -389,8 +425,14 @@ function gcv_admin_payout_history(): array
 function gcv_admin_payout_history_row(array $row, string $origin, string $originLabel): array
 {
     $status = (string)($row['status'] ?? '');
+    $error = trim((string)($row['error_message'] ?? ''));
+    $note = trim((string)($row['description'] ?? ''));
+    if ($status === 'failed' && $error !== '') {
+        $note = $error;
+    }
     return [
         'id' => $origin . '-' . (int)($row['id'] ?? 0),
+        'payout_id' => (int)($row['id'] ?? 0),
         'origin' => $origin,
         'origin_label' => $originLabel,
         'guide_name' => (string)($row['guide_name'] ?? ''),
@@ -399,7 +441,8 @@ function gcv_admin_payout_history_row(array $row, string $origin, string $origin
         'status' => $status,
         'status_label' => gcv_admin_payout_status_label($status),
         'when' => (string)($row['paid_at'] ?: $row['created_at'] ?: ''),
-        'note' => (string)($row['description'] ?? ''),
+        'note' => $note,
+        'error' => $error,
     ];
 }
 

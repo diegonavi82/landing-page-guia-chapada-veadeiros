@@ -30,15 +30,12 @@ function gcv_pix_key_normalize(string $raw): array
 
     $digits = preg_replace('/\D+/', '', $raw) ?? '';
 
-    // Telefone E.164 BR: 11 dígitos (DDD+número) → +55...
-    if (preg_match('/^\+?55?\d{10,11}$/', preg_replace('/[\s()-]/', '', $raw) ?? '')) {
+    // Telefone E.164 BR: DDD+número (10/11) ou 55+DDD+número (12/13) → +55...
+    if (gcv_pix_looks_phone($digits)) {
         if (strlen($digits) === 10 || strlen($digits) === 11) {
             $digits = '55' . $digits;
         }
-        if (strlen($digits) === 12 || strlen($digits) === 13) {
-            if (!str_starts_with($digits, '55')) {
-                return ['ok' => false, 'error' => 'Telefone PIX inválido'];
-            }
+        if ((strlen($digits) === 12 || strlen($digits) === 13) && str_starts_with($digits, '55')) {
             return ['ok' => true, 'key' => '+' . $digits, 'type' => 'phone'];
         }
     }
@@ -95,6 +92,72 @@ function gcv_pix_cnpj_valid(string $cnpj): bool
     }
     $d2 = $sum % 11 < 2 ? 0 : 11 - ($sum % 11);
     return (int)$cnpj[13] === $d2;
+}
+
+function gcv_pix_looks_phone(string $digits): bool
+{
+    if (strlen($digits) === 10 || strlen($digits) === 11) {
+        $ddd = (int)substr($digits, 0, 2);
+        if ($ddd < 11 || $ddd > 99) {
+            return false;
+        }
+        if (strlen($digits) === 11) {
+            return $digits[2] === '9';
+        }
+        return true;
+    }
+    if ((strlen($digits) === 12 || strlen($digits) === 13) && str_starts_with($digits, '55')) {
+        return gcv_pix_looks_phone(substr($digits, 2));
+    }
+    return false;
+}
+
+/**
+ * Formata a chave no padrão que o DICT/Sicoob espera, respeitando o tipo cadastrado.
+ *
+ * @return array{ok:bool, key?:string, type?:string, error?:string}
+ */
+function gcv_pix_key_for_sicoob(string $raw, string $type = ''): array
+{
+    $type = strtolower(trim($type));
+    $norm = gcv_pix_key_normalize($raw);
+    if (!empty($norm['ok']) && !empty($norm['key'])) {
+        if ($type === '' || $type === ($norm['type'] ?? '') || $type === 'random') {
+            return $norm;
+        }
+    }
+
+    $trimmed = trim($raw);
+    if ($type === 'phone') {
+        $digits = preg_replace('/\D+/', '', $trimmed) ?? '';
+        if (strlen($digits) === 10 || strlen($digits) === 11) {
+            $digits = '55' . $digits;
+        }
+        if ((strlen($digits) === 12 || strlen($digits) === 13) && str_starts_with($digits, '55')) {
+            return ['ok' => true, 'key' => '+' . $digits, 'type' => 'phone'];
+        }
+        return ['ok' => false, 'error' => 'Telefone PIX inválido'];
+    }
+    if ($type === 'cpf') {
+        $digits = preg_replace('/\D+/', '', $trimmed) ?? '';
+        if (strlen($digits) === 11) {
+            return ['ok' => true, 'key' => $digits, 'type' => 'cpf'];
+        }
+    }
+    if ($type === 'cnpj') {
+        $digits = preg_replace('/\D+/', '', $trimmed) ?? '';
+        if (strlen($digits) === 14) {
+            return ['ok' => true, 'key' => $digits, 'type' => 'cnpj'];
+        }
+    }
+    if ($type === 'email' && str_contains($trimmed, '@')) {
+        return ['ok' => true, 'key' => strtolower($trimmed), 'type' => 'email'];
+    }
+    if ($type === 'random' && $trimmed !== '') {
+        return ['ok' => true, 'key' => $trimmed, 'type' => 'random'];
+    }
+
+    return $norm['ok'] ? $norm : ['ok' => false, 'error' => (string)($norm['error'] ?? 'Chave PIX inválida')];
 }
 
 function gcv_pix_keys_equal(string $a, string $b): bool

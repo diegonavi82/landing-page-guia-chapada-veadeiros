@@ -45,7 +45,7 @@
     var link = document.createElement('link');
     link.id = 'gcv-confirm-css-link';
     link.rel = 'stylesheet';
-    link.href = '/assets/css/gcv-confirm.css?v=1.0.4';
+    link.href = '/assets/css/gcv-confirm.css?v=1.0.6';
     (document.head || document.documentElement).appendChild(link);
   }
 
@@ -59,7 +59,7 @@
     overlay.setAttribute('aria-hidden', 'true');
     overlay.innerHTML =
       '<div class="gcv-confirm__dialog" role="dialog" aria-modal="true" aria-labelledby="gcv-confirm-msg">' +
-      '<p class="gcv-confirm__msg" id="gcv-confirm-msg"></p>' +
+      '<div class="gcv-confirm__msg" id="gcv-confirm-msg"></div>' +
       '<div class="gcv-confirm__actions">' +
       '<button type="button" class="gcv-confirm__btn gcv-confirm__btn--cancel" data-gcv-confirm-cancel></button>' +
       '<button type="button" class="gcv-confirm__btn gcv-confirm__btn--ok" data-gcv-confirm-ok></button>' +
@@ -117,7 +117,13 @@
         var labels = pack();
         var isAlert = !!opts.alert;
         overlay._gcvAlert = isAlert;
-        msgEl.textContent = String(message == null ? '' : message);
+        var dialog = overlay.querySelector('.gcv-confirm__dialog');
+        if (dialog) dialog.classList.toggle('gcv-confirm__dialog--list', !!opts.html);
+        if (opts.html) {
+          msgEl.innerHTML = String(opts.html);
+        } else {
+          msgEl.textContent = String(message == null ? '' : message);
+        }
         cancelBtn.hidden = isAlert;
         cancelBtn.textContent = opts.cancelText || labels.cancel;
         okBtn.textContent = opts.okText || (isAlert ? labels.gotIt : labels.ok);

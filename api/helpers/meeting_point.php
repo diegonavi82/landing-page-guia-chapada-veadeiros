@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/google_places.php';
+require_once __DIR__ . '/meeting_points_catalog.php';
 
 /**
  * Extrai e valida campos de ponto de encontro do body.
@@ -9,38 +10,30 @@ require_once __DIR__ . '/google_places.php';
  * @param array<string,mixed> $body
  * @return array{point:string,place_id:?string,lat:?float,lng:?float}|array{error:string}
  */
-function gcv_meeting_point_from_body(array $body, bool $required = true): array
+function gcv_meeting_point_from_body(array $body, bool $required = true, ?string $cityName = null): array
 {
     $point = trim((string)($body['meeting_point'] ?? ''));
-    if ($point === '' && $required) {
-        return ['error' => 'Ponto de encontro obrigatório'];
-    }
-    if (mb_strlen($point) > 300) {
-        return ['error' => 'Ponto de encontro: máximo 300 caracteres'];
-    }
     $placeId = trim((string)($body['meeting_point_place_id'] ?? ''));
-    if ($placeId === '') {
-        $placeId = null;
+    if ($point === '' && $placeId === '') {
+        return $required ? ['error' => 'Selecione o ponto de encontro'] : [
+            'point' => '',
+            'place_id' => null,
+            'lat' => null,
+            'lng' => null,
+        ];
     }
-    $lat = null;
-    $lng = null;
-    if (isset($body['meeting_point_lat']) && $body['meeting_point_lat'] !== '' && $body['meeting_point_lat'] !== null) {
-        $lat = (float)$body['meeting_point_lat'];
-        if ($lat < -90 || $lat > 90) {
-            return ['error' => 'Latitude inválida'];
-        }
+    if ($cityName === null || $cityName === '') {
+        $cityName = gcv_city_name_by_id((int)($body['departure_city_id'] ?? 0));
     }
-    if (isset($body['meeting_point_lng']) && $body['meeting_point_lng'] !== '' && $body['meeting_point_lng'] !== null) {
-        $lng = (float)$body['meeting_point_lng'];
-        if ($lng < -180 || $lng > 180) {
-            return ['error' => 'Longitude inválida'];
-        }
+    $match = gcv_meeting_point_match($point, $placeId !== '' ? $placeId : null, $cityName);
+    if (!$match) {
+        return ['error' => 'Selecione um ponto de encontro da lista desta cidade'];
     }
     return [
-        'point' => $point,
-        'place_id' => $placeId,
-        'lat' => $lat,
-        'lng' => $lng,
+        'point' => $match['label_pt'],
+        'place_id' => $match['id'],
+        'lat' => null,
+        'lng' => null,
     ];
 }
 

@@ -305,7 +305,7 @@
       pixModalExpiredTitle: "Tempo expirado",
       pixModalExpiredLead: "O Pix expirou. Gere um novo Pix para continuar.",
       pixModalRegenBtn: "Gerar novo Pix",
-      pixModalEmbarque: "Embarque",
+      pixModalEmbarque: "Saída",
       pixModalTime: "Horário",
       pixModalPeople: "Pessoas",
       pixModalPerson: "Pessoa",
@@ -344,7 +344,7 @@
       cartSelectedBadge: "Selecionado",
       cartUnselectAria: "Remover do carrinho",
       cartClose: "Fechar carrinho",
-      cartEmbarqueLabel: "Embarque:",
+      cartEmbarqueLabel: "Saída:",
       cartDateLabel: "Data",
       cartSeatOne: "Pessoa",
       cartSeatsMany: "Pessoas",
@@ -354,7 +354,7 @@
       dateTabCountOne: "1 passeio",
       dateTabCountMany: "{{n}} passeios",
       departureTimeLabel: "Saída",
-      embarqueLabel: "Embarque",
+      embarqueLabel: "Cidade",
       dayListEmpty: "Nenhum passeio neste dia.",
       dayPagerPrev: "Página anterior",
       dayPagerNext: "Próxima página",
@@ -475,7 +475,7 @@
       pixModalExpiredTitle: "Time expired",
       pixModalExpiredLead: "The Pix payment window expired. Generate a new Pix to continue.",
       pixModalRegenBtn: "Generate new Pix",
-      pixModalEmbarque: "Meeting point",
+      pixModalEmbarque: "Departure",
       pixModalTime: "Time",
       pixModalPeople: "People",
       pixModalPerson: "person",
@@ -514,7 +514,7 @@
       cartSelectedBadge: "Selected",
       cartUnselectAria: "Remove from cart",
       cartClose: "Close cart",
-      cartEmbarqueLabel: "Meeting point:",
+      cartEmbarqueLabel: "Departure:",
       cartDateLabel: "Date",
       cartSeatOne: "person",
       cartSeatsMany: "people",
@@ -524,7 +524,7 @@
       dateTabCountOne: "1 tour",
       dateTabCountMany: "{{n}} tours",
       departureTimeLabel: "Departure",
-      embarqueLabel: "Departure",
+      embarqueLabel: "City",
       dayListEmpty: "No tours on this day.",
       dayPagerPrev: "Previous page",
       dayPagerNext: "Next page",
@@ -645,7 +645,7 @@
       pixModalExpiredTitle: "Tiempo expirado",
       pixModalExpiredLead: "El Pix expiró. Genera un nuevo Pix para continuar.",
       pixModalRegenBtn: "Generar nuevo Pix",
-      pixModalEmbarque: "Embarque",
+      pixModalEmbarque: "Salida",
       pixModalTime: "Horario",
       pixModalPeople: "Personas",
       pixModalPerson: "persona",
@@ -684,7 +684,7 @@
       cartSelectedBadge: "Seleccionado",
       cartUnselectAria: "Quitar del carrito",
       cartClose: "Cerrar carrito",
-      cartEmbarqueLabel: "Embarque:",
+      cartEmbarqueLabel: "Salida:",
       cartDateLabel: "Fecha",
       cartSeatOne: "persona",
       cartSeatsMany: "personas",
@@ -694,7 +694,7 @@
       dateTabCountOne: "1 paseo",
       dateTabCountMany: "{{n}} paseos",
       departureTimeLabel: "Salida",
-      embarqueLabel: "Embarque",
+      embarqueLabel: "Ciudad",
       dayListEmpty: "Ningún paseo en este día.",
       dayPagerPrev: "Página anterior",
       dayPagerNext: "Página siguiente",
@@ -813,14 +813,36 @@
     return !!(d && String(d.cardImg || d.cover_url || "").trim());
   }
 
+  function cardPictureHtml(src, altText) {
+    var url = String(src || "").trim();
+    var alt = escapeHtml(String(altText || "").trim());
+    if (!url) return "";
+    var img =
+      '<img class="gcv-excursoes-card__img" src="' +
+      escapeHtml(url) +
+      '" alt="' +
+      alt +
+      '" loading="lazy" decoding="async" width="230" height="230">';
+    if (/\.jpe?g$/i.test(url)) {
+      return (
+        "<picture><source srcset=\"" +
+        escapeHtml(url.replace(/\.jpe?g$/i, ".webp")) +
+        '" type="image/webp">' +
+        img +
+        "</picture>"
+      );
+    }
+    return img;
+  }
+
   function destHasPage(d) {
     var p = d && (d.atrativoPath || d.path);
     return !!(p && String(p).trim());
   }
 
-  /** Sem foto ou sem página do atrativo → faixa compacta só com o título. */
+  /** Sem foto → faixa compacta só com o título. Página do atrativo é opcional. */
   function destIsTitleOnly(d) {
-    return !destHasImg(d) || !destHasPage(d);
+    return !destHasImg(d);
   }
 
   function splitDestinoPlusNames(name) {
@@ -992,11 +1014,8 @@
     }
     var imgInner =
       '<div class="gcv-excursoes-card__img-wrap gcv-excursoes-card__spot-img-wrap">' +
-      '<img class="gcv-excursoes-card__img" src="' +
-      escapeHtml(String(d.cardImg)) +
-      '" alt="' +
-      label +
-      '" loading="lazy" decoding="async"></div>';
+      cardPictureHtml(d.cardImg, d.cardImgAlt || d.destino) +
+      "</div>";
     // Título dentro da foto (mesmo stacking) — evita overlay sumir em alguns browsers
     var photo =
       '<div class="gcv-excursoes-card__spot-photo">' +
@@ -1039,7 +1058,10 @@
     if (Number.isFinite(faltam) && faltam >= 0) return faltam;
     var q = parseInt(String(e.quorumMin), 10);
     if (!Number.isFinite(q) || q < 1) return 0;
-    return Math.max(0, q - inscritosNoGrupo(e));
+    var site = e.inscricoesPlataforma != null && e.inscricoesPlataforma !== ""
+      ? numOrZero(e.inscricoesPlataforma)
+      : inscritosNoGrupo(e);
+    return Math.max(0, q - site);
   }
 
   function cardBandFlagsHtml(e, s, isLotado) {
@@ -1126,11 +1148,9 @@
     if (!e.cardImg) return "";
     var href = atrativoHref(e, locale);
     var inner =
-      '<div class="gcv-excursoes-card__img-wrap"><img class="gcv-excursoes-card__img" src="' +
-      escapeHtml(String(e.cardImg)) +
-      '" alt="' +
-      escapeHtml(String(e.destino)) +
-      '" loading="lazy" width="230" height="230"></div>';
+      '<div class="gcv-excursoes-card__img-wrap">' +
+      cardPictureHtml(e.cardImg, e.cardImgAlt || e.destino) +
+      "</div>";
     if (!href) return inner;
     return (
       '<a class="gcv-excursoes-card__atrativo-link gcv-excursoes-card__atrativo-link--img" href="' +
@@ -3205,7 +3225,7 @@
   function formatPixTripSubline(trip, s) {
     var parts = [];
     if (trip.embarque) {
-      parts.push((s.pixModalEmbarque || "Embarque") + ": " + trip.embarque);
+      parts.push((s.pixModalEmbarque || "Saída") + ": " + trip.embarque);
     }
     if (trip.hora) {
       parts.push(String(trip.hora).replace(":", "h"));
@@ -3359,7 +3379,7 @@
     if (cardIsTitleOnly(e)) mod += " gcv-excursoes-card--title-only";
     var hora = horaExcursao(e);
     var timeLabel = escapeHtml(s.departureTimeLabel || "Saída");
-    var embarqueLabel = escapeHtml(s.embarqueLabel || "Embarque");
+    var embarqueLabel = escapeHtml(s.embarqueLabel || "Saída");
     var cityName = escapeHtml(excursaoEmbarque(e, s));
     var toggleAddAria = escapeHtml(s.cardToggleAddAria || "Adicionar ao carrinho");
 

@@ -310,7 +310,7 @@ function gcv_publish_guide_marketplace(array $payload, int $guideUserId, array $
         $payload['departure_time'],
         $cityId,
         $attrId,
-        $guideUserId,
+        $guideUserId > 0 ? $guideUserId : null,
         $pricing['final_price_cents'],
         $quorum,
         $maxPeople,

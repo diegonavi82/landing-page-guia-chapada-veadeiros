@@ -476,6 +476,18 @@ function gcv_places_text_search(string $textQuery, string $language = 'pt-BR'): 
 
 function gcv_maps_url_from_meeting(?string $label, $lat, $lng, ?string $placeId = null): string
 {
+    if (!function_exists('gcv_meeting_point_public')) {
+        $catalog = __DIR__ . '/meeting_points_catalog.php';
+        if (is_file($catalog)) {
+            require_once $catalog;
+        }
+    }
+    if (function_exists('gcv_meeting_point_public')) {
+        $pub = gcv_meeting_point_public($placeId, (string)$label, 'pt');
+        if (($pub['maps_url'] ?? '') !== '') {
+            return (string)$pub['maps_url'];
+        }
+    }
     $latF = is_numeric($lat) ? (float)$lat : null;
     $lngF = is_numeric($lng) ? (float)$lng : null;
     if ($latF !== null && $lngF !== null) {

@@ -191,15 +191,21 @@ function gcv_row_to_card(array $r, string $lang, array $months, array $weekdays)
         isset($r['guide_phone_ddi']) ? (string)$r['guide_phone_ddi'] : null,
         isset($r['guide_phone']) ? (string)$r['guide_phone'] : null
     );
-    $meetingPoint = trim((string)($r['meeting_point'] ?? ''));
+    if (!function_exists('gcv_meeting_point_public')) {
+        require_once __DIR__ . '/../helpers/meeting_points_catalog.php';
+    }
     $meetingPlaceId = trim((string)($r['meeting_point_place_id'] ?? ''));
+    $meetingFallback = trim((string)($r['meeting_point'] ?? ''));
+    $meetingPub = gcv_meeting_point_public($meetingPlaceId !== '' ? $meetingPlaceId : null, $meetingFallback, $lang);
+    $meetingPoint = (string)($meetingPub['label'] ?? $meetingFallback);
     $meetingLat = isset($r['meeting_point_lat']) && $r['meeting_point_lat'] !== null && $r['meeting_point_lat'] !== ''
         ? (float)$r['meeting_point_lat'] : null;
     $meetingLng = isset($r['meeting_point_lng']) && $r['meeting_point_lng'] !== null && $r['meeting_point_lng'] !== ''
         ? (float)$r['meeting_point_lng'] : null;
-    $meetingMapsUrl = $meetingPoint !== ''
-        ? gcv_maps_url_from_meeting($meetingPoint, $meetingLat, $meetingLng, $meetingPlaceId !== '' ? $meetingPlaceId : null)
-        : '';
+    $meetingMapsUrl = (string)($meetingPub['maps_url'] ?? '');
+    if ($meetingMapsUrl === '' && $meetingPoint !== '') {
+        $meetingMapsUrl = gcv_maps_url_from_meeting($meetingPoint, $meetingLat, $meetingLng, $meetingPlaceId !== '' ? $meetingPlaceId : null);
+    }
     $entry = $entryRaw !== null ? ((int)$entryRaw / 100) : null;
 
     $card = [
@@ -226,6 +232,7 @@ function gcv_row_to_card(array $r, string $lang, array $months, array $weekdays)
         'faltamPessoas' => max(0, $quorum - $inscriptions),
         'vagasRestantes' => $vagas,
         'cardImg' => $cover,
+        'cardImgAlt' => (string)($firstDest['cardImgAlt'] ?? $destino),
         'atrativoPath' => $page,
         'status' => (string)$r['status'],
     ];
@@ -271,15 +278,19 @@ function gcv_row_to_cards(array $r, string $lang, array $months, array $weekdays
     $offer = gcv_excursion_offers_transport($r);
     $legacyTransportOnly = !empty($r['include_transport']) && !$offer;
     $occ = gcv_excursion_group_occupancy($r);
-    $walkInscriptions = $occ['walk'];
+    $walkOccupied = $occ['walk'];
+    $walkInscriptions = $occ['walk_inscriptions'] ?? gcv_excursion_platform_inscriptions($r);
     $walkQuorum = max(0, (int)($r['quorum'] ?? 0));
     $walkMet = gcv_excursion_walking_quorum_met($r);
     $vanMet = gcv_excursion_transport_quorum_met($r);
 
-    $walk['pessoasInscritas'] = $walkInscriptions;
+    $walk['pessoasInscritas'] = $walkOccupied;
+    $walk['inscricoesPlataforma'] = $walkInscriptions;
     $walk['grupoMaximo'] = max(1, $occ['walk_slots']);
     $walk['quorumMin'] = $walkQuorum;
-    $walk['faltamPessoas'] = max(0, $walkQuorum - $walkInscriptions);
+    $walk['faltamPessoas'] = function_exists('gcv_excursion_walking_quorum_remaining')
+        ? gcv_excursion_walking_quorum_remaining($r)
+        : max(0, $walkQuorum - $walkInscriptions);
     $walk['vagasRestantes'] = $occ['remaining'];
     $walk['confirmada'] = $walkMet || $vanMet;
 

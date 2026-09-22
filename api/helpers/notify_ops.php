@@ -1149,6 +1149,22 @@ function gcv_ops_notify_guide_approved(int $excursionId): void
     }
 }
 
+function gcv_ops_maybe_notify_confirmed(?array $before, ?array $after): void
+{
+    if (!$after) {
+        return;
+    }
+    $id = (int)($after['id'] ?? 0);
+    if ($id <= 0) {
+        return;
+    }
+    $beforeLife = $before ? gcv_resolve_excursion_lifecycle($before) : '';
+    $afterLife = gcv_resolve_excursion_lifecycle($after);
+    if ($beforeLife !== 'confirmada' && $afterLife === 'confirmada') {
+        gcv_ops_notify_guide_confirmed($id);
+    }
+}
+
 function gcv_ops_notify_guide_confirmed(int $excursionId): void
 {
     $exc = gcv_ops_load_excursion($excursionId);
@@ -1159,17 +1175,28 @@ function gcv_ops_notify_guide_confirmed(int $excursionId): void
         return;
     }
     try {
-        db()->prepare('UPDATE gcv_excursions SET notify_confirmed_at = NOW() WHERE id = ? AND notify_confirmed_at IS NULL')
-            ->execute([$excursionId]);
+        $lock = db()->prepare('UPDATE gcv_excursions SET notify_confirmed_at = NOW() WHERE id = ? AND notify_confirmed_at IS NULL');
+        $lock->execute([$excursionId]);
+        if ($lock->rowCount() < 1) {
+            return;
+        }
     } catch (Throwable $e) {
-        return;
-    }
-    if (!$okGuide && !$okAgency) {
         return;
     }
     $guideId = (int)($exc['guide_user_id'] ?? 0);
     $title = gcv_ops_excursion_title($exc);
     $when = trim(gcv_ops_date_br((string)$exc['date_iso']) . ' às ' . substr((string)($exc['departure_time'] ?? ''), 0, 5));
+    $city = trim((string)($exc['departure_city_name'] ?? 'Alto Paraíso'));
+    $textAdmin = "✅ Passeio CONFIRMADO (Em formação → Confirmado)\n\n"
+        . 'Destino: ' . $title . "\n"
+        . 'Data: ' . $when . "\n"
+        . 'Saída: ' . ($city !== '' ? $city : 'Alto Paraíso') . "\n"
+        . 'Ponto: ' . gcv_ops_meeting_point_text($exc) . "\n"
+        . gcv_ops_group_update_text($excursionId, $exc) . "\n"
+        . 'Excursão #' . $excursionId;
+    gcv_ops_wa_agency($textAdmin);
+    gcv_ops_mail_plain('diegonavi82@gmail.com', 'Passeio confirmado — ' . $title, $textAdmin);
+
     $textGuide = "✅ Passeio CONFIRMADO!\n\n"
         . 'Destino: ' . $title . "\n"
         . 'Data: ' . $when . "\n"
@@ -1179,9 +1206,15 @@ function gcv_ops_notify_guide_confirmed(int $excursionId): void
         . 'Os dados dos clientes também estão na Agenda.' . "\n"
         . gcv_ops_guide_qr_scan_lines();
     if ($guideId > 0) {
-        gcv_ops_wa_guide($guideId, $textGuide);
+        $guidePhone = (string)(gcv_ops_guide_contact($guideId)['phone'] ?? '');
+        $agency = function_exists('gcv_admin_whatsapp_phone') ? gcv_admin_whatsapp_phone() : '5521996039027';
+        if ($guidePhone === '' || !gcv_ops_phones_same($guidePhone, $agency)) {
+            gcv_ops_wa_guide($guideId, $textGuide);
+        } elseif (function_exists('gcv_inbox_push')) {
+            gcv_inbox_push($guideId, $textGuide, ['kind' => 'confirmed', 'excursion_id' => $excursionId]);
+        }
         $email = trim((string)(gcv_ops_guide_contact($guideId)['email'] ?? ''));
-        if ($email !== '') {
+        if ($email !== '' && strtolower($email) !== 'diegonavi82@gmail.com') {
             gcv_ops_mail_plain($email, 'Passeio confirmado — ' . $title, $textGuide);
         }
     }
@@ -1919,6 +1952,51 @@ function gcv_ops_notify_client_review(array $sale, array $exc): bool
     }
     gcv_ops_wa_client($sale, $text);
     return true;
+}
+
+/**
+ * WhatsApp ao guia após PIX manual (admin → Pagamentos).
+ *
+ * @param array<string,mixed> $payout
+ * @param array<string,mixed> $guide
+ */
+function gcv_ops_notify_guide_manual_pix(array $payout, array $guide, string $e2e = ''): bool
+{
+    $guideId = (int)($payout['guide_user_id'] ?? $guide['id'] ?? $guide['user_id'] ?? 0);
+    $name = trim((string)($guide['name'] ?? $guide['full_name'] ?? 'Guia'));
+    $amount = gcv_ops_brl((int)($payout['amount_cents'] ?? 0));
+    $pix = trim((string)($payout['pix_key_snapshot'] ?? $guide['pix_key'] ?? ''));
+    $desc = trim((string)($payout['description'] ?? ''));
+    $payoutId = (int)($payout['id'] ?? 0);
+    try {
+        $now = new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo'));
+        $when = $now->format('d/m/Y') . ' às ' . $now->format('H:i');
+    } catch (Throwable $e) {
+        $when = date('d/m/Y H:i');
+    }
+
+    $text = "💸 PIX enviado pela Guia Chapada Veadeiros\n\n"
+        . 'Olá, ' . $name . "!\n"
+        . "Acabamos de enviar um PIX para a sua chave cadastrada.\n\n"
+        . 'Valor: ' . $amount . "\n"
+        . ($pix !== '' ? 'Chave PIX: ' . $pix . "\n" : '')
+        . ($desc !== '' ? 'Descrição: ' . $desc . "\n" : '')
+        . ($e2e !== '' ? 'ID da transação: ' . $e2e . "\n" : '')
+        . 'Quando: ' . $when . "\n"
+        . ($payoutId > 0 ? 'Pagamento: #' . $payoutId . "\n" : '')
+        . "\nO valor já deve aparecer na sua conta. Qualquer dúvida, fale com a gente.";
+
+    $ok = gcv_ops_wa_guide($guideId, $text, [
+        'kind' => 'manual_pix',
+        'payout_id' => $payoutId,
+    ]);
+
+    $agency = function_exists('gcv_admin_whatsapp_phone') ? gcv_admin_whatsapp_phone() : '';
+    $guidePhone = (string)(gcv_ops_guide_contact($guideId)['phone'] ?? '');
+    if ($agency !== '' && function_exists('gcv_whatsapp_send_text') && !gcv_ops_phones_same($agency, $guidePhone)) {
+        gcv_whatsapp_send_text($agency, $text);
+    }
+    return $ok;
 }
 
 function gcv_ops_notify_guide_payout(array $sale, bool $ok, string $error = '', ?string $e2e = null): void

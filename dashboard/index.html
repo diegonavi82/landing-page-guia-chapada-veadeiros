@@ -10,8 +10,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="/assets/css/site.css?v=1.0.39" />
-<link rel="stylesheet" href="/assets/css/gcv-dashboard.css?v=1.1.39" />
-<link rel="stylesheet" href="/assets/css/gcv-confirm.css?v=1.0.4" />
+<link rel="stylesheet" href="/assets/css/gcv-dashboard.css?v=1.1.55" />
+<link rel="stylesheet" href="/assets/css/gcv-confirm.css?v=1.0.6" />
 <link rel="stylesheet" href="/assets/css/gcv-tours.css?v=1.0.1" />
 <link rel="stylesheet" href="/assets/css/gcv-payment.css?v=1.0.1" />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lipis/flag-icons@7.2.3/css/flag-icons.min.css" />
@@ -51,7 +51,7 @@
           <ul class="gcv-dash-nav" id="gcv-dash-nav-list">
             <!-- Rendered by gcv-dashboard.js -->
           </ul>
-          <ul class="gcv-dash-nav gcv-dash-nav--footer">
+          <ul class="gcv-dash-nav gcv-dash-nav--footer" id="gcv-dash-nav-footer">
             <li>
               <a href="#" id="gcv-dash-logout" class="js-gcv-dash-logout">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -78,11 +78,34 @@
         </section>
 
         <section class="gcv-dash-section" id="section-cms-guides">
-          <h2 class="gcv-dash-section-title">Guias credenciados</h2>
+          <div class="gcv-dash-section-head" id="cms-guides-section-head">
+            <h2 class="gcv-dash-section-title">Guias credenciados</h2>
+            <div class="gcv-exc-sheet-title-actions">
+              <button type="button" class="gcv-dash-btn gcv-dash-btn--primary" id="cms-guide-new">+ Novo guia</button>
+            </div>
+          </div>
           <p class="gcv-dash-hint" style="margin:0 0 1rem;color:#64748b;font-size:0.9rem;">
             Cadastro, aprovação e PIX ficam no <strong>perfil</strong>. Aprovar libera o guia. Recusar mantém o perfil e trava novo pedido por 45 dias. Bloquear elimina o perfil e impede novo cadastro deste e-mail. Pagamentos só para guias ativos com PIX verificado.
           </p>
           <div id="cms-guides-root"></div>
+        </section>
+
+        <section class="gcv-dash-section" id="section-admin-broadcast">
+          <div class="gcv-dash-section-head">
+            <h2 class="gcv-dash-section-title" id="gcv-wa-title">WhatsApp</h2>
+          </div>
+          <div class="gcv-wa-tabs" role="tablist" aria-label="WhatsApp">
+            <button type="button" class="gcv-wa-tab is-on" data-wa-tab="send" id="gcv-wa-tab-send">Broadcast</button>
+            <button type="button" class="gcv-wa-tab" data-wa-tab="inbox" id="gcv-wa-tab-inbox">Mensagens</button>
+          </div>
+          <p class="gcv-dash-hint" id="gcv-wa-hint-send" style="margin:0 0 1rem;color:#64748b;font-size:0.9rem;">
+            Envia pelo WhatsApp da agência <strong>+55 62 98250-6891</strong> (servidor HPS). A mesma mensagem vai um a um, como lista de transmissão: cada guia recebe no chat normal e o histórico do número da agência também atualiza conversa por conversa.
+          </p>
+          <p class="gcv-dash-hint" id="gcv-wa-hint-inbox" hidden style="margin:0 0 1rem;color:#64748b;font-size:0.9rem;">
+            WhatsApp Business Web da agência no servidor HPS. Abra um chat existente ou comece uma conversa nova com qualquer número.
+          </p>
+          <div id="admin-broadcast-root"></div>
+          <div id="admin-messages-root" hidden></div>
         </section>
 
         <section class="gcv-dash-section" id="section-cms-cities">
@@ -91,7 +114,20 @@
         </section>
 
         <section class="gcv-dash-section" id="section-cms-excursions">
-          <h2 class="gcv-dash-section-title">Excursões (próximas saídas)</h2>
+          <div class="gcv-dash-section-head" id="cms-exc-section-head">
+            <h2 class="gcv-dash-section-title">Excursões (próximas saídas)</h2>
+            <div class="gcv-exc-sheet-title-actions">
+              <div class="gcv-exc-sheet-savebar" id="cms-exc-savebar">
+                <span class="gcv-exc-sheet-savebar__count" id="cms-exc-savebar-count"></span>
+                <button type="button" class="gcv-dash-btn gcv-dash-btn--sm" id="cms-exc-cancel">Cancelar</button>
+                <button type="button" class="gcv-dash-btn gcv-dash-btn--primary gcv-dash-btn--sm" id="cms-exc-save">Salvar</button>
+              </div>
+              <button type="button" class="gcv-dash-btn gcv-dash-btn--primary" id="cms-exc-new">+ Criar passeio</button>
+            </div>
+          </div>
+          <p class="gcv-dash-hint" style="margin:0 0 1rem;color:#64748b;font-size:0.9rem;">
+            Planilha das saídas: filtre por guia, atrativo, data de aprovação e status. Edite as células e clique em Salvar para validar.
+          </p>
           <div id="cms-excursions-root"></div>
         </section>
 
@@ -221,7 +257,7 @@
         <section class="gcv-dash-section" id="section-admin-payouts">
           <h2 class="gcv-dash-section-title">Pagamentos</h2>
           <div class="gcv-dash-alert gcv-dash-alert--info" style="margin-bottom:1rem;">
-            Histórico de PIX da plataforma (repasse automático) e pagamentos manuais. Só é possível pagar chave PIX cadastrada e verificada do guia.
+            Histórico de PIX da plataforma (repasse automático) e pagamentos manuais. Só é possível pagar com chave PIX cadastrada e verificada do guia.
           </div>
           <form class="gcv-dash-form" id="admin-payout-form" novalidate>
             <div class="gcv-dash-field-row">
@@ -362,16 +398,16 @@
     </div>
   </div>
 
-  <script src="/assets/js/gcv-confirm.js?v=1.0.4" defer></script>
+  <script src="/assets/js/gcv-confirm.js?v=1.0.6" defer></script>
   <script src="/assets/js/gcv-auth.js?v=1.0.51" defer></script>
   <script src="/assets/js/gcv-pix-receipt.js?v=1.0.44" defer></script>
-  <script src="/assets/js/gcv-meeting-point.js?v=1.0.2" defer></script>
-  <script src="/assets/js/gcv-datepicker.js?v=1.0.1" defer></script>
-  <script src="/assets/js/gcv-admin-cms.js?v=1.0.86" defer></script>
+  <script src="/assets/js/gcv-meeting-point.js?v=1.0.3" defer></script>
+  <script src="/assets/js/gcv-datepicker.js?v=1.0.2" defer></script>
+  <script src="/assets/js/gcv-admin-cms.js?v=1.0.96" defer></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
-  <script src="/assets/js/gcv-dash-roles.js?v=1.1.41" defer></script>
+  <script src="/assets/js/gcv-dash-roles.js?v=1.1.48" defer></script>
   <script src="/assets/js/gcv-inbox.js?v=1.0.5" defer></script>
-  <script src="/assets/js/gcv-dashboard.js?v=1.0.94" defer></script>
+  <script src="/assets/js/gcv-dashboard.js?v=1.1.02" defer></script>
   <script src="/assets/js/gcv-payment.js?v=1.0.40" defer></script>
   <script src="/assets/js/site.js?v=1.0.40" defer></script>
 </body>

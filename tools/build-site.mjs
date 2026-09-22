@@ -939,30 +939,43 @@ function staggerWords(text, startMs, stepMs) {
     .join("");
 }
 
-function buildHeroAnim(title, lead, sub) {
+function buildHeroAnim(title, lead, sub, bullets = []) {
   const tw = title.trim().split(/\s+/).filter(Boolean).length;
   const lw = lead.trim().split(/\s+/).filter(Boolean).length;
   const st = sub.trim();
   const sw = st ? st.split(/\s+/).filter(Boolean).length : 0;
+  const bn = Array.isArray(bullets) ? bullets.length : 0;
   const badgeMs = 40;
   const titleStartMs = 120;
   const leadStartMs = titleStartMs + tw * 72 + 140;
   const subStartMs = leadStartMs + lw * 42 + 140;
-  const afterBody = sw > 0 ? subStartMs + sw * 42 : leadStartMs + lw * 42;
+  const afterLead = sw > 0 ? subStartMs + sw * 42 : leadStartMs + lw * 42;
+  const bulletsStartMs = afterLead + 140;
+  const afterBody = bn > 0 ? bulletsStartMs + bn * 90 : afterLead;
   const ctaStartMs = afterBody + 140 + 160;
-  return { badgeMs, titleStartMs, leadStartMs, subStartMs, ctaStartMs };
+  return { badgeMs, titleStartMs, leadStartMs, subStartMs, bulletsStartMs, ctaStartMs };
 }
 
-function heroPictureBg(ap, rel, eagerFirst, alt = "") {
+function heroPictureBg(ap, rel, eagerFirst, alt = "", on = true) {
   const m = rel.match(/^(.*)\.(jpe?g|png)$/i);
   const basePath = m ? m[1] : rel;
   const webpPath = `${ap}assets/img/${basePath}.webp`;
   const fallbackPath = `${ap}assets/img/${rel}`;
   const loading = eagerFirst ? "eager" : "lazy";
-  return `<picture class="gcv-hero__picture">
+  const onClass = on ? " is-on" : "";
+  return `<picture class="gcv-hero__picture${onClass}" data-gcv-hero-bg>
   <source srcset="${esc(webpPath)}" type="image/webp" />
   <img class="gcv-hero__bg" src="${esc(fallbackPath)}" alt="${esc(alt)}" width="1600" height="900" loading="${loading}" decoding="async" />
 </picture>`;
+}
+
+function heroPicturesBg(ap, slide, eagerFirst, alt = "") {
+  const rels = Array.isArray(slide.images) && slide.images.length
+    ? slide.images
+    : [slide.image].filter(Boolean);
+  return rels
+    .map((rel, i) => heroPictureBg(ap, rel, eagerFirst && i === 0, i === 0 ? alt : "", i === 0))
+    .join("\n");
 }
 
 function mapHotspotsHtml(locale, fromOutRel, hotspotBaseClass, activeSlug) {
@@ -1777,7 +1790,8 @@ function homeMainHtml(locale, ap, instagramPosts, reviewsPool) {
       if (slide.kind === "petzen") {
         return heroPetzenSlideHtml(ap, first, duration, slide);
       }
-      const anim = buildHeroAnim(slide.title, slide.lead, slide.sub || "");
+      const bullets = Array.isArray(slide.bullets) ? slide.bullets.filter(Boolean) : [];
+      const anim = buildHeroAnim(slide.title, slide.lead, slide.sub || "", bullets);
       const contactHref = relBetweenSync(cur, outRelPath(locale, "contato.html"));
       const plainChip =
         slide.ctaKind === "whatsapp" || slide.ctaKind === "contact" || slide.ctaKind === "none";
@@ -1785,7 +1799,19 @@ function homeMainHtml(locale, ap, instagramPosts, reviewsPool) {
       const titleWords = staggerWords(slide.title, anim.titleStartMs, 72);
       const leadWords = staggerWords(slide.lead, anim.leadStartMs, 42);
       const subTrim = (slide.sub || "").trim();
+      const badgeTrim = (slide.badge || "").trim();
+      const badgeHtml = badgeTrim
+        ? `<span class="${badgeClass}" style="animation-delay:${anim.badgeMs}ms">${esc(badgeTrim)}</span>`
+        : "";
       const subHtml = subTrim ? `<p class="gcv-hero__sub">${staggerWords(subTrim, anim.subStartMs, 42)}</p>` : "";
+      const bulletsHtml = bullets.length
+        ? `<ul class="gcv-hero-bullets">${bullets
+            .map(
+              (b, bi) =>
+                `<li class="gcv-hero-line" style="animation-delay:${anim.bulletsStartMs + bi * 90}ms">${esc(b)}</li>`,
+            )
+            .join("")}</ul>`
+        : "";
       const ctaHtml =
         slide.ctaKind === "none"
           ? ""
@@ -1797,13 +1823,14 @@ function homeMainHtml(locale, ap, instagramPosts, reviewsPool) {
       const heroAlt = first ? (HOME_SEO[locale] || HOME_SEO.pt).heroAlt : "";
 
       return `<div class="gcv-hero__slide${first ? " is-active" : ""}" data-gcv-hero-slide data-gcv-hero-duration="${duration}" aria-hidden="${first ? "false" : "true"}">
-  ${heroPictureBg(ap, slide.image, first, heroAlt)}
+  ${heroPicturesBg(ap, slide, first, heroAlt)}
   <div class="gcv-hero__gradient" aria-hidden="true"></div>
   <div class="gcv-hero-overlay-text">
-    <span class="${badgeClass}" style="animation-delay:${anim.badgeMs}ms">${esc(slide.badge)}</span>
+    ${badgeHtml}
     <${headingTag}>${titleWords}</${headingTag}>
     <p class="gcv-hero-lead">${leadWords}</p>
     ${subHtml}
+    ${bulletsHtml}
     ${ctaHtml}
   </div>
 </div>`;
@@ -2362,6 +2389,8 @@ function atrativoDetailMain(locale, localeSlug, ap, pathKey) {
     p.image;
   const galleryItems = ATTRACTION_GALLERIES[base];
   const hasManifestGallery = Array.isArray(galleryItems) && galleryItems.length > 0;
+  const detailImgRel = toPublicAssetRel(rawDetailImage);
+  const detailImgHref = detailImgRel ? `${ap}assets/img/${detailImgRel}` : "";
   const galleryAlt = hasManifestGallery ? String(galleryItems[0].alt || "").trim() : "";
   const detailImgAlt =
     (firstImage?.alt && String(firstImage.alt).trim()) ||
@@ -2437,7 +2466,7 @@ function atrativoDetailMain(locale, localeSlug, ap, pathKey) {
   }
 
   const gal = attractionPhotoGalleryHtml(locale, ap, base, title);
-  const heroImgRel = detailRel || p.image;
+  const heroImgRel = detailImgRel || p.image;
   const pageUrl = `${SITE_ORIGIN}${localePathToUrl(locale, `atrativos/${localeSlug}.html`)}`;
   const pageId = `attraction:${base}`;
   const primaryPillar = getPrimaryPillarForPage(pageId);

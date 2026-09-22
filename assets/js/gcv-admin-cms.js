@@ -3,6 +3,19 @@
   'use strict';
 
   var state = { module: null, editingId: null, cities: [], attractions: [], guides: [] };
+  var guideSheet = { filters: { q: '', status: '', city: '' } };
+  var excSheet = {
+    rows: [],
+    guides: [],
+    attractions: [],
+    filters: { q: '', guide: '', attraction: '', approvedFrom: '', approvedTo: '', status: '' },
+    timers: {},
+    saving: {},
+    drafts: {},
+    changes: {},
+    originals: {},
+    confirmOpen: false
+  };
 
   function get(url, cb) {
     var xhr = new XMLHttpRequest();
@@ -149,6 +162,30 @@
     return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>';
   }
 
+  function icoPerson() {
+    return '<svg class="gcv-exc-ico gcv-exc-ico--person" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.4"/><path d="M5.2 20c.8-3.8 3.4-5.6 6.8-5.6s6 1.8 6.8 5.6"/></svg>';
+  }
+
+  function icoCar() {
+    return '<svg class="gcv-exc-ico gcv-exc-ico--car" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 13 5.2 8.2A1.5 1.5 0 0 1 6.5 7.5h7.8a1.5 1.5 0 0 1 1.4.9L18.4 13"/><path d="M3 13h16.5v3.2H3z"/><circle cx="7" cy="17.4" r="1.5"/><circle cx="16" cy="17.4" r="1.5"/><path d="M9 8v5M14 8v5"/></svg>';
+  }
+
+  function icoCheck() {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>';
+  }
+
+  function icoHourglass() {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12M6 21h12"/><path d="M8 3v4.2L12 12l4-4.8V3"/><path d="M8 21v-4.2L12 12l4 4.8V21"/></svg>';
+  }
+
+  function icoCancel() {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m15 9-6 6M9 9l6 6"/></svg>';
+  }
+
+  function thIco(ico, label, title) {
+    return '<span class="gcv-exc-th" title="' + esc(title) + '">' + ico + (label ? '<span class="gcv-exc-th__txt">' + label + '</span>' : '') + '</span>';
+  }
+
   function cmsIconEdit(attrHtml) {
     return '<button type="button" class="gcv-cms-icon-btn" ' + attrHtml + ' title="Editar" aria-label="Editar">' + icoPencil() + '</button>';
   }
@@ -251,7 +288,7 @@
   }
 
   function centsToMoney(c) {
-    return ((parseInt(c, 10) || 0) / 100).toFixed(2).replace('.', ',');
+    return String(Math.round((parseInt(c, 10) || 0) / 100));
   }
 
   /* ---------- CIDADES ---------- */
@@ -654,16 +691,16 @@
     var section = document.getElementById('section-cms-guides');
     var list = root('cms-guide-list');
     var toolbar = root('cms-guide-toolbar');
+    var wrap = root('cms-guide-sheet-wrap');
+    var meta = root('cms-guide-meta');
+    var blocked = root('cms-blocked-wrap');
     var hint = section ? section.querySelector('.gcv-dash-hint') : null;
     if (section) section.classList.toggle('is-editing', !visible);
-    if (list) {
-      list.hidden = !visible;
-      list.setAttribute('aria-hidden', visible ? 'false' : 'true');
-    }
-    if (toolbar) {
-      toolbar.hidden = !visible;
-      toolbar.setAttribute('aria-hidden', visible ? 'false' : 'true');
-    }
+    [list, toolbar, wrap, meta, blocked].forEach(function (el) {
+      if (!el) return;
+      el.hidden = !visible;
+      el.setAttribute('aria-hidden', visible ? 'false' : 'true');
+    });
     if (hint) hint.hidden = !visible;
   }
 
@@ -854,6 +891,76 @@
     return '<button type="button" class="' + cls + '" data-guide-status="' + value + '" data-guide-id="' + uid + '">' + label + '</button>';
   }
 
+  function guideFilterKey(g) {
+    var st = String((g && g.status) || '');
+    var approved = guideWasApproved(g);
+    if (st === 'active') return 'approved';
+    if (st === 'inactive') return 'inactive';
+    if (st === 'cancelled' || (st === 'suspended' && approved)) return 'cancelled';
+    if (st === 'suspended') return 'rejected';
+    if (st === 'pending') {
+      if (g && (g.needs_resubmit || g.profile_complete === false)) return 'draft';
+      return 'awaiting';
+    }
+    return '';
+  }
+
+  function uniqueGuideCities(rows) {
+    var seen = {};
+    var out = [];
+    (rows || []).forEach(function (g) {
+      var city = String((g && g.base_city_name) || '').trim();
+      if (!city || seen[city]) return;
+      seen[city] = 1;
+      out.push(city);
+    });
+    out.sort(function (a, b) { return a.localeCompare(b, 'pt'); });
+    return out;
+  }
+
+  function filterGuideRows(rows) {
+    var f = guideSheet.filters;
+    var q = String(f.q || '').toLowerCase().trim();
+    return (rows || []).filter(function (g) {
+      if (f.status && guideFilterKey(g) !== f.status) return false;
+      if (f.city && String((g && g.base_city_name) || '') !== f.city) return false;
+      if (q) {
+        var hay = [
+          g.full_name, g.name, g.nickname, g.email, g.pix_key, g.phone, g.base_city_name, formatGuidePhone(g)
+        ].join(' ').toLowerCase();
+        if (hay.indexOf(q) === -1) return false;
+      }
+      return true;
+    });
+  }
+
+  function bindGuideSheetFilters() {
+    var q = root('cms-guide-q');
+    var st = root('cms-guide-status');
+    var city = root('cms-guide-city');
+    if (q) {
+      q.value = guideSheet.filters.q || '';
+      q.oninput = function () {
+        guideSheet.filters.q = q.value;
+        paintGuidesList();
+      };
+    }
+    if (st) {
+      st.value = guideSheet.filters.status || '';
+      st.onchange = function () {
+        guideSheet.filters.status = st.value;
+        paintGuidesList();
+      };
+    }
+    if (city) {
+      city.value = guideSheet.filters.city || '';
+      city.onchange = function () {
+        guideSheet.filters.city = city.value;
+        paintGuidesList();
+      };
+    }
+  }
+
   function renderGuides() {
     var box = root('cms-guides-root');
     if (!box) return;
@@ -861,15 +968,34 @@
     if (section) section.classList.remove('is-editing');
     var hint = section ? section.querySelector('.gcv-dash-hint') : null;
     if (hint) hint.hidden = false;
+    var newBtn = document.getElementById('cms-guide-new');
+    if (newBtn) newBtn.onclick = function () { openGuideForm(null); };
     box.innerHTML =
-      '<div class="gcv-cms-toolbar" id="cms-guide-toolbar">' +
-      '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary" id="cms-guide-new">+ Novo guia</button>' +
-      '</div>' +
+      '<div class="gcv-exc-sheet-toolbar" id="cms-guide-toolbar">' +
+      '<div class="gcv-exc-sheet-filters">' +
+      '<div class="gcv-exc-sheet-filter gcv-exc-sheet-filter--q"><label for="cms-guide-q">Buscar</label>' +
+      '<input class="gcv-dash-input" id="cms-guide-q" type="search" placeholder="Nome, e-mail, PIX ou celular" autocomplete="off" /></div>' +
+      '<div class="gcv-exc-sheet-filter"><label for="cms-guide-status">Status</label>' +
+      '<select class="gcv-dash-select" id="cms-guide-status">' +
+      '<option value="">Todos</option>' +
+      '<option value="awaiting">Aguardando</option>' +
+      '<option value="approved">Aprovado</option>' +
+      '<option value="draft">Rascunho</option>' +
+      '<option value="rejected">Recusado</option>' +
+      '<option value="inactive">Inativo</option>' +
+      '<option value="cancelled">Cancelado</option>' +
+      '</select></div>' +
+      '<div class="gcv-exc-sheet-filter"><label for="cms-guide-city">Cidade</label>' +
+      '<select class="gcv-dash-select" id="cms-guide-city"><option value="">Todas</option></select></div>' +
+      '</div></div>' +
+      '<p class="gcv-exc-sheet-meta" id="cms-guide-meta"></p>' +
       '<div id="cms-guide-form" class="gcv-cms-card" hidden></div>' +
-      '<div id="cms-guide-list" class="gcv-cms-list">Carregando…</div>' +
-      '<h3 class="gcv-dash-section-title" style="margin-top:1.5rem;font-size:1.05rem;">E-mails bloqueados</h3>' +
-      '<div id="cms-blocked-emails" class="gcv-cms-list">Carregando…</div>';
-    root('cms-guide-new').onclick = function () { openGuideForm(null); };
+      '<div class="gcv-exc-sheet-wrap gcv-guide-sheet-wrap" id="cms-guide-sheet-wrap">' +
+      '<div id="cms-guide-list">Carregando…</div></div>' +
+      '<div id="cms-blocked-wrap">' +
+      '<h3 class="gcv-guide-sheet-sub">E-mails bloqueados</h3>' +
+      '<div id="cms-blocked-emails">Carregando…</div></div>';
+    bindGuideSheetFilters();
     get('/api/admin/cms-guides.php', function (err, res) {
       var list = root('cms-guide-list');
       if (!list) return;
@@ -895,17 +1021,23 @@
       box.innerHTML = '<p class="gcv-cms-muted">Nenhum e-mail bloqueado.</p>';
       return;
     }
-    box.innerHTML = rows.map(function (row) {
-      return '<article class="gcv-cms-row">' +
-        '<div class="gcv-cms-row__body"><div class="gcv-cms-row__main">' +
-        '<div class="gcv-cms-row__titleline"><strong>' + esc(row.email) + '</strong>' +
-        '<span class="gcv-badge gcv-badge--blocked">BLOQUEADO</span></div>' +
-        '<div class="gcv-cms-row__meta">' + esc(row.reason || 'Sem motivo registrado') + '</div>' +
-        '</div></div>' +
-        '<div class="gcv-cms-row-side">' +
-        '<button type="button" class="gcv-dash-btn gcv-dash-btn--sm" data-unblock-email="' + esc(row.email) + '">Desbloquear</button>' +
-        '</div></article>';
-    }).join('');
+    box.innerHTML =
+      '<div class="gcv-exc-sheet-wrap gcv-guide-sheet-wrap gcv-guide-sheet-wrap--blocked">' +
+      '<table class="gcv-exc-sheet gcv-guide-sheet"><thead><tr>' +
+      '<th><span class="gcv-exc-th"><span class="gcv-exc-th__txt">E-mail</span></span></th>' +
+      '<th><span class="gcv-exc-th"><span class="gcv-exc-th__txt">Motivo</span></span></th>' +
+      '<th><span class="gcv-exc-th"><span class="gcv-exc-th__txt">Status</span></span></th>' +
+      '<th><span class="gcv-exc-th"><span class="gcv-exc-th__txt">Ações</span></span></th>' +
+      '</tr></thead><tbody>' +
+      rows.map(function (row) {
+        return '<tr>' +
+          '<td><strong class="gcv-guide-sheet__name">' + esc(row.email) + '</strong></td>' +
+          '<td class="gcv-guide-sheet__reason">' + esc(row.reason || 'Sem motivo registrado') + '</td>' +
+          '<td><span class="gcv-badge gcv-badge--blocked">BLOQUEADO</span></td>' +
+          '<td class="gcv-guide-sheet__actions"><button type="button" class="gcv-dash-btn gcv-dash-btn--sm" data-unblock-email="' + esc(row.email) + '">Desbloquear</button></td>' +
+          '</tr>';
+      }).join('') +
+      '</tbody></table></div>';
     box.querySelectorAll('[data-unblock-email]').forEach(function (btn) {
       btn.onclick = function () {
         var email = btn.getAttribute('data-unblock-email') || '';
@@ -923,58 +1055,114 @@
   function paintGuidesList(rows) {
     var list = root('cms-guide-list');
     if (!list) return;
-    rows = (rows || []).slice().sort(function (a, b) {
-      function rank(g) {
-        var st = String((g && g.status) || '');
-        var complete = !!(g && g.profile_complete);
-        var approved = guideWasApproved(g);
-        var resubmit = !!(g && g.needs_resubmit);
-        if (st === 'pending' && complete && !resubmit) return 0;
-        if (st === 'active') return 1;
-        if (st === 'pending') return 2;
-        if (st === 'suspended' && !approved) return 3;
-        if (st === 'inactive') return 4;
-        return 5;
+    if (rows) {
+      rows = rows.slice().sort(function (a, b) {
+        function rank(g) {
+          var st = String((g && g.status) || '');
+          var complete = !!(g && g.profile_complete);
+          var approved = guideWasApproved(g);
+          var resubmit = !!(g && g.needs_resubmit);
+          if (st === 'pending' && complete && !resubmit) return 0;
+          if (st === 'active') return 1;
+          if (st === 'pending') return 2;
+          if (st === 'suspended' && !approved) return 3;
+          if (st === 'inactive') return 4;
+          return 5;
+        }
+        var pa = rank(a);
+        var pb = rank(b);
+        if (pa !== pb) return pa - pb;
+        return String(a.full_name || a.name || '').localeCompare(String(b.full_name || b.name || ''), 'pt');
+      });
+      state.guides = rows;
+    }
+    var all = state.guides || [];
+    var citySel = root('cms-guide-city');
+    if (citySel) {
+      var curCity = guideSheet.filters.city || citySel.value || '';
+      citySel.innerHTML = '<option value="">Todas</option>' + uniqueGuideCities(all).map(function (city) {
+        return '<option value="' + esc(city) + '">' + esc(city) + '</option>';
+      }).join('');
+      citySel.value = curCity;
+      if (citySel.value !== curCity) {
+        guideSheet.filters.city = '';
+        citySel.value = '';
       }
-      var pa = rank(a);
-      var pb = rank(b);
-      if (pa !== pb) return pa - pb;
-      return String(a.full_name || a.name || '').localeCompare(String(b.full_name || b.name || ''), 'pt');
-    });
-    state.guides = rows;
-    list.innerHTML = rows.length ? rows.map(function (g) {
-      var pending = g.status === 'pending' && !!g.profile_complete && !g.needs_resubmit;
-      var recusado = g.status === 'suspended' && !guideWasApproved(g);
-      var draftReturn = g.status === 'pending' && !!g.needs_resubmit;
-      var name = g.full_name || g.name || g.nickname || 'Guia';
-      var decide = '';
-      if (pending || draftReturn) {
-        decide = '<div class="gcv-cms-row__decide" style="margin-top:0.45rem;">' +
-          '<button type="button" class="gcv-dash-btn gcv-dash-btn--success gcv-dash-btn--sm" data-approve-guide="' + g.user_id + '">Aprovar</button>' +
-          '<button type="button" class="gcv-dash-btn gcv-dash-btn--danger gcv-dash-btn--sm" data-reject-guide="' + g.user_id + '">Recusar</button>' +
-          '<button type="button" class="gcv-dash-btn gcv-dash-btn--block gcv-dash-btn--sm" data-block-guide="' + g.user_id + '">Bloquear</button>' +
-          '</div>';
-      } else if (recusado) {
-        decide = '<div class="gcv-cms-row__decide" style="margin-top:0.45rem;">' +
-          '<button type="button" class="gcv-dash-btn gcv-dash-btn--success gcv-dash-btn--sm" data-approve-guide="' + g.user_id + '">Aprovar</button>' +
-          '<button type="button" class="gcv-dash-btn gcv-dash-btn--block gcv-dash-btn--sm" data-block-guide="' + g.user_id + '">Bloquear</button>' +
-          '</div>';
-      }
-      return (
-        '<article class="gcv-cms-row gcv-cms-row--guide' + (pending || recusado || draftReturn ? ' gcv-cms-row--pending' : '') + '">' +
-        '<div class="gcv-cms-row__body">' +
-        guideListPhotoHtml(g) +
-        '<div class="gcv-cms-row__main">' +
-        '<div class="gcv-cms-row__status">' + guideAccountBadge(g) + '</div>' +
-        '<strong class="gcv-cms-row__name">' + esc(name) + '</strong>' +
-        guideListMetaHtml(g) +
-        decide +
-        '</div></div>' +
-        '<div class="gcv-cms-row-side">' +
-        cmsRowActions('data-edit-guide="' + g.user_id + '"') +
-        '</div></article>'
-      );
-    }).join('') : '<p>Nenhum guia credenciado. Clique em <strong>+ Novo guia</strong>.</p>';
+    }
+    var shown = filterGuideRows(all);
+    var meta = root('cms-guide-meta');
+    if (meta) {
+      var noun = shown.length === 1 ? 'guia' : 'guias';
+      meta.innerHTML = shown.length === all.length
+        ? '<strong>' + shown.length + '</strong> ' + noun
+        : '<strong>' + shown.length + '</strong> de ' + all.length + ' ' + noun;
+    }
+    if (!all.length) {
+      list.innerHTML = '<p class="gcv-cms-muted" style="padding:0.9rem 1rem;">Nenhum guia credenciado. Clique em <strong>+ Novo guia</strong>.</p>';
+      return;
+    }
+    if (!shown.length) {
+      list.innerHTML = '<p class="gcv-cms-muted" style="padding:0.9rem 1rem;">Nenhum guia com estes filtros.</p>';
+      return;
+    }
+    list.innerHTML =
+      '<table class="gcv-exc-sheet gcv-guide-sheet"><thead><tr>' +
+      '<th class="gcv-guide-sheet__th-photo"><span class="gcv-exc-th"><span class="gcv-exc-th__txt">Foto</span></span></th>' +
+      '<th><span class="gcv-exc-th"><span class="gcv-exc-th__txt">Status</span></span></th>' +
+      '<th><span class="gcv-exc-th"><span class="gcv-exc-th__txt">Nome</span></span></th>' +
+      '<th><span class="gcv-exc-th"><span class="gcv-exc-th__txt">Cidade</span></span></th>' +
+      '<th><span class="gcv-exc-th"><span class="gcv-exc-th__txt">PIX</span></span></th>' +
+      '<th><span class="gcv-exc-th"><span class="gcv-exc-th__txt">Celular</span></span></th>' +
+      '<th><span class="gcv-exc-th"><span class="gcv-exc-th__txt">Ações</span></span></th>' +
+      '</tr></thead><tbody>' +
+      shown.map(function (g) {
+        var pending = g.status === 'pending' && !!g.profile_complete && !g.needs_resubmit;
+        var recusado = g.status === 'suspended' && !guideWasApproved(g);
+        var draftReturn = g.status === 'pending' && !!g.needs_resubmit;
+        var name = g.full_name || g.name || g.nickname || 'Guia';
+        var email = String(g.email || '').trim();
+        var city = String(g.base_city_name || '').trim() || '—';
+        var pix = String(g.pix_key || '').trim();
+        var phone = formatGuidePhone(g);
+        var wa = guideWaHref(g);
+        var decide = '';
+        if (pending || draftReturn) {
+          decide = '<div class="gcv-guide-sheet__decide">' +
+            '<button type="button" class="gcv-dash-btn gcv-dash-btn--success gcv-dash-btn--sm" data-approve-guide="' + g.user_id + '">Aprovar</button>' +
+            '<button type="button" class="gcv-dash-btn gcv-dash-btn--danger gcv-dash-btn--sm" data-reject-guide="' + g.user_id + '">Recusar</button>' +
+            '<button type="button" class="gcv-dash-btn gcv-dash-btn--block gcv-dash-btn--sm" data-block-guide="' + g.user_id + '">Bloquear</button>' +
+            '</div>';
+        } else if (recusado) {
+          decide = '<div class="gcv-guide-sheet__decide">' +
+            '<button type="button" class="gcv-dash-btn gcv-dash-btn--success gcv-dash-btn--sm" data-approve-guide="' + g.user_id + '">Aprovar</button>' +
+            '<button type="button" class="gcv-dash-btn gcv-dash-btn--block gcv-dash-btn--sm" data-block-guide="' + g.user_id + '">Bloquear</button>' +
+            '</div>';
+        }
+        var phoneHtml = phone
+          ? (wa
+            ? '<a class="gcv-guide-sheet__phone" href="' + esc(wa) + '" target="_blank" rel="noopener">' + esc(phone) + '</a>'
+            : '<strong class="gcv-guide-sheet__phone">' + esc(phone) + '</strong>')
+          : '<span class="gcv-exc-sheet__muted">—</span>';
+        return (
+          '<tr class="' + (pending || recusado || draftReturn ? 'is-pending' : '') + '">' +
+          '<td class="gcv-guide-sheet__photo">' + guideListPhotoHtml(g) + '</td>' +
+          '<td class="gcv-guide-sheet__status">' + guideAccountBadge(g) + decide + '</td>' +
+          '<td class="gcv-guide-sheet__name-cell">' +
+          '<strong class="gcv-guide-sheet__name">' + esc(name) + '</strong>' +
+          (email ? '<span class="gcv-guide-sheet__email">' + esc(email) + '</span>' : '') +
+          '</td>' +
+          '<td class="gcv-guide-sheet__city-cell"><strong class="gcv-guide-sheet__city">' + esc(city) + '</strong></td>' +
+          '<td class="gcv-guide-sheet__pix-cell" title="' + esc(pix || 'PIX pendente') + '">' +
+          '<strong class="gcv-guide-sheet__pix-key">' + esc(pix || '—') + '</strong>' +
+          guidePixBadge(g) +
+          '</td>' +
+          '<td class="gcv-guide-sheet__phone-cell">' + phoneHtml + '</td>' +
+          '<td class="gcv-guide-sheet__actions">' +
+          cmsRowActions('data-edit-guide="' + g.user_id + '"') +
+          '</td></tr>'
+        );
+      }).join('') +
+      '</tbody></table>';
 
     list.querySelectorAll('[data-edit-guide]').forEach(function (btn) {
       btn.onclick = function () {
@@ -1531,21 +1719,118 @@
   function renderExcursions() {
     var box = root('cms-excursions-root');
     if (!box) return;
-    box.innerHTML =
-      '<div class="gcv-cms-toolbar">' +
-      '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary" id="cms-exc-new">+ Nova saída</button>' +
-      '</div>' +
-      '<div id="cms-exc-form" class="gcv-cms-card" hidden></div>' +
-      '<div id="cms-exc-list" class="gcv-cms-list">Carregando…</div>';
-    root('cms-exc-new').onclick = function () { openExcursionForm(null); };
-    get('/api/admin/excursions.php', function (err, res) {
-      var list = root('cms-exc-list');
-      if (!list) return;
-      if (err || !res.ok) {
-        list.innerHTML = '<p class="gcv-dash-alert">Erro ao carregar excursões.</p>';
-        return;
+    if (!root('cms-exc-sheet-wrap')) {
+      box.innerHTML =
+        '<div class="gcv-exc-sheet-toolbar" id="cms-exc-toolbar">' +
+        '<div class="gcv-exc-sheet-filters">' +
+        '<div class="gcv-exc-sheet-filter gcv-exc-sheet-filter--q"><label for="cms-exc-q">Buscar</label>' +
+        '<input class="gcv-dash-input" id="cms-exc-q" type="search" placeholder="Atrativo, guia, cidade…" /></div>' +
+        '<div class="gcv-exc-sheet-filter"><label for="cms-exc-f-guide">Guia</label>' +
+        '<select class="gcv-dash-select" id="cms-exc-f-guide"><option value="">Todos</option></select></div>' +
+        '<div class="gcv-exc-sheet-filter"><label for="cms-exc-f-attr">Atrativo</label>' +
+        '<select class="gcv-dash-select" id="cms-exc-f-attr"><option value="">Todos</option></select></div>' +
+        '<div class="gcv-exc-sheet-filter gcv-exc-sheet-filter--date"><label for="cms-exc-f-ap-from">Aprovação de</label>' +
+        '<input class="gcv-dash-input" id="cms-exc-f-ap-from" type="date" /></div>' +
+        '<div class="gcv-exc-sheet-filter gcv-exc-sheet-filter--date"><label for="cms-exc-f-ap-to">Aprovação até</label>' +
+        '<input class="gcv-dash-input" id="cms-exc-f-ap-to" type="date" /></div>' +
+        '<div class="gcv-exc-sheet-filter"><label for="cms-exc-f-status">Status</label>' +
+        '<select class="gcv-dash-select" id="cms-exc-f-status">' +
+        '<option value="">Todos</option>' +
+        '<option value="em_formacao">Em formação</option>' +
+        '<option value="confirmada">Confirmada</option>' +
+        '<option value="pending_approval">Aguardando aprovação</option>' +
+        '<option value="approved">Aprovada</option>' +
+        '<option value="rejected">Recusada</option>' +
+        '<option value="draft">Rascunho</option>' +
+        '<option value="soldout">Esgotada</option>' +
+        '<option value="cancelled">Cancelada</option>' +
+        '<option value="concluida">Concluída</option>' +
+        '</select></div>' +
+        '</div></div>' +
+        '<p class="gcv-exc-sheet-meta" id="cms-exc-meta">Edite as células e clique em Salvar para validar.</p>' +
+        '<div id="cms-exc-form" class="gcv-cms-card" hidden></div>' +
+        '<div id="cms-exc-sheet-wrap" class="gcv-exc-sheet-wrap"><p class="gcv-exc-sheet-empty">Carregando…</p></div>';
+      bindExcSheetChrome();
+    }
+    loadExcursionSheetData(paintExcSheet);
+    try {
+      if (sessionStorage.getItem('gcv_open_create_tour') === '1') {
+        sessionStorage.removeItem('gcv_open_create_tour');
+        openExcursionForm(null);
       }
-      var rows = (res.data && res.data.excursions) || [];
+    } catch (errOpen) {}
+  }
+
+  function bindExcSheetChrome() {
+    var newBtn = root('cms-exc-new');
+    if (newBtn) newBtn.onclick = function () { openExcursionForm(null); };
+    var saveBtn = root('cms-exc-save');
+    if (saveBtn) saveBtn.onclick = function () { promptSaveChanges(false); };
+    var cancelBtn = root('cms-exc-cancel');
+    if (cancelBtn) cancelBtn.onclick = function () { revertSheetDrafts(); };
+    ['cms-exc-q', 'cms-exc-f-guide', 'cms-exc-f-attr', 'cms-exc-f-ap-from', 'cms-exc-f-ap-to', 'cms-exc-f-status'].forEach(function (id) {
+      var el = root(id);
+      if (!el) return;
+      var ev = el.tagName === 'SELECT' || el.type === 'date' ? 'change' : 'input';
+      el.addEventListener(ev, function () {
+        readExcSheetFilters();
+        paintExcSheet(true);
+      });
+    });
+  }
+
+  function readExcSheetFilters() {
+    var f = excSheet.filters;
+    f.q = (root('cms-exc-q') && root('cms-exc-q').value || '').trim();
+    f.guide = (root('cms-exc-f-guide') && root('cms-exc-f-guide').value) || '';
+    f.attraction = (root('cms-exc-f-attr') && root('cms-exc-f-attr').value) || '';
+    f.approvedFrom = (root('cms-exc-f-ap-from') && root('cms-exc-f-ap-from').value) || '';
+    f.approvedTo = (root('cms-exc-f-ap-to') && root('cms-exc-f-ap-to').value) || '';
+    f.status = (root('cms-exc-f-status') && root('cms-exc-f-status').value) || '';
+  }
+
+  function writeExcSheetFilterOptions() {
+    var gSel = root('cms-exc-f-guide');
+    var aSel = root('cms-exc-f-attr');
+    var f = excSheet.filters;
+    if (gSel) {
+      gSel.innerHTML = '<option value="">Todos</option>' + (excSheet.guides || []).map(function (g) {
+        var id = g.user_id || g.id;
+        var label = (g.full_name || g.nickname || g.name || '') + (g.nickname && g.full_name ? ' (' + g.nickname + ')' : '');
+        return '<option value="' + id + '"' + (String(f.guide) === String(id) ? ' selected' : '') + '>' + esc(label) + '</option>';
+      }).join('');
+    }
+    if (aSel) {
+      var usable = (excSheet.attractions || []).filter(function (a) { return a.status !== 'archived'; }).slice();
+      usable.sort(function (a, b) {
+        return String(a.title_pt || '').localeCompare(String(b.title_pt || ''), 'pt');
+      });
+      aSel.innerHTML = '<option value="">Todos</option>' + usable.map(function (a) {
+        return '<option value="' + a.id + '"' + (String(f.attraction) === String(a.id) ? ' selected' : '') + '>' + esc(a.title_pt || a.slug) + '</option>';
+      }).join('');
+    }
+    var map = {
+      'cms-exc-q': f.q,
+      'cms-exc-f-ap-from': f.approvedFrom,
+      'cms-exc-f-ap-to': f.approvedTo,
+      'cms-exc-f-status': f.status
+    };
+    Object.keys(map).forEach(function (id) {
+      var el = root(id);
+      if (el && map[id] != null && el.value !== map[id]) el.value = map[id];
+    });
+  }
+
+  function loadExcursionSheetData(done) {
+    var pending = 3;
+    function tick() {
+      pending -= 1;
+      if (pending > 0) return;
+      if (typeof done === 'function') done();
+    }
+    get('/api/admin/excursions.php', function (err, res) {
+      excSheet.loadError = !!(err || !res || !res.ok);
+      var rows = (res && res.data && res.data.excursions) || [];
       rows = rows.slice().sort(function (a, b) {
         var pa = a.status === 'pending_approval' ? 0 : 1;
         var pb = b.status === 'pending_approval' ? 0 : 1;
@@ -1553,53 +1838,912 @@
         var da = String(a.date_iso || '');
         var db = String(b.date_iso || '');
         if (da !== db) return db.localeCompare(da);
-        var ta = String(a.departure_time || '');
-        var tb = String(b.departure_time || '');
-        if (ta !== tb) return tb.localeCompare(ta);
         return (parseInt(b.id, 10) || 0) - (parseInt(a.id, 10) || 0);
       });
-      list.innerHTML = rows.length ? rows.map(function (e) {
-        var pending = e.status === 'pending_approval';
-        var rejected = e.status === 'rejected';
-        var approved = e.status === 'published' || e.status === 'soldout';
-        var lead = '';
-        if (pending) {
-          lead =
-            '<span class="gcv-cms-row__decide">' +
-            '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary gcv-dash-btn--sm" data-approve-exc="' + e.id + '">Aprovar</button>' +
-            '<button type="button" class="gcv-dash-btn gcv-dash-btn--danger gcv-dash-btn--sm" data-reject-exc="' + e.id + '">Recusar</button>' +
-            '</span>';
-        } else if (approved) {
-          lead = '<span class="gcv-exc-status gcv-exc-status--ok">Aprovada</span>';
-        } else if (rejected) {
-          lead = '<span class="gcv-exc-status gcv-exc-status--no">Recusada</span>';
+      excSheet.rows = rows;
+      tick();
+    });
+    get('/api/admin/cms-guides.php', function (e2, r2) {
+      var guides = (r2 && r2.data && r2.data.guides) || [];
+      excSheet.guides = guides.filter(function (g) { return !g.status || g.status === 'active'; });
+      tick();
+    });
+    get('/api/admin/attractions.php', function (e3, r3) {
+      excSheet.attractions = (r3 && r3.data && r3.data.attractions) || [];
+      if (!excSheet.attractions.length) {
+        seedAttractions(function (err, res) {
+          if (res && res.ok) {
+            get('/api/admin/attractions.php', function (e4, r4) {
+              excSheet.attractions = (r4 && r4.data && r4.data.attractions) || [];
+              tick();
+            });
+          } else tick();
+        });
+        return;
+      }
+      tick();
+    });
+  }
+
+  function filterExcSheetRows(rows) {
+    var f = excSheet.filters;
+    var q = String(f.q || '').toLowerCase();
+    return (rows || []).filter(function (e) {
+      if (f.guide && String(e.guide_user_id || '') !== String(f.guide)) return false;
+      if (f.attraction) {
+        var ids = (e.attraction_ids || []).map(String);
+        if (ids.indexOf(String(f.attraction)) === -1 && String(e.attraction_id || '') !== String(f.attraction)) return false;
+      }
+      var approvedDay = String(e.approved_at || '').slice(0, 10);
+      if (f.approvedFrom && (!approvedDay || approvedDay < f.approvedFrom)) return false;
+      if (f.approvedTo && (!approvedDay || approvedDay > f.approvedTo)) return false;
+      if (f.status) {
+        var st = String(e.status || '');
+        var life = String(e.lifecycle || '');
+        if (f.status === 'approved') {
+          if (st !== 'published' && st !== 'soldout') return false;
+        } else if (f.status === 'em_formacao' || f.status === 'confirmada' || f.status === 'concluida') {
+          if (life !== f.status) return false;
+        } else if (st !== f.status && life !== f.status) {
+          return false;
         }
-        var metaStatus = pending
-          ? '<strong>aguardando sua aprovação</strong>'
-          : (approved || rejected ? '' : esc(e.status));
-        return (
-          '<article class="gcv-cms-row' + (pending ? ' gcv-cms-row--pending' : '') + '">' +
-          '<div class="gcv-cms-row__main">' +
-          '<div class="gcv-cms-row__titleline">' + lead +
-          '<strong>' + esc(e.date_iso) + ' · ' + esc(e.attraction_title || '') + '</strong></div>' +
-          '<div class="gcv-cms-muted">' + esc(e.departure_city_name || '') + ' · ' + esc(String(e.departure_time || '').slice(0, 5)) +
-          ' · R$ ' + esc(centsToMoney(e.price_cents)) +
-          (metaStatus ? ' · ' + metaStatus : '') +
-          (e.guide_name ? ' · guia: ' + esc(e.guide_name) : ' · sem guia') +
-          (e.attraction_ids && e.attraction_ids.length > 1 ? ' · ' + e.attraction_ids.length + ' atrativos' : '') +
-          '</div></div>' +
-          '<div class="gcv-cms-row-side">' +
-          cmsRowActions(
-            'data-edit-exc="' + e.id + '"',
-            'data-del-exc="' + e.id + '" data-del-label="' + esc(e.date_iso + ' · ' + (e.attraction_title || '')) + '"'
-          ) +
-          '</div></article>'
-        );
-      }).join('') : '<p>Nenhuma excursão. Clique em <strong>+ Nova saída</strong> e escolha de 1 a 4 atrativos.</p>';
-      list.querySelectorAll('[data-approve-exc]').forEach(function (btn) {
-        btn.onclick = function () {
-          gcvConfirm('Aprovar este passeio e publicar no site?', { okText: 'Aprovar' }).then(function (ok) {
-            if (!ok) return;
+      }
+      if (q) {
+        var hay = [
+          e.attraction_title, e.guide_name, e.departure_city_name, e.date_iso, e.status,
+          e.lifecycle_label, e.lifecycle
+        ].join(' ').toLowerCase();
+        if (hay.indexOf(q) === -1) return false;
+      }
+      return true;
+    });
+  }
+
+  function fmtDateBr(iso) {
+    var s = String(iso || '').slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return '—';
+    return s.slice(8, 10) + '/' + s.slice(5, 7) + '/' + s.slice(0, 4);
+  }
+
+  function numSelectHtml(field, id, min, max, selected, extraClass) {
+    var cur = parseInt(selected, 10);
+    if (!Number.isFinite(cur)) cur = min;
+    var html = '<select class="gcv-exc-sheet__in ' + (extraClass || 'gcv-exc-sheet__num') + '" data-field="' + field + '" data-exc-id="' + id + '">';
+    var i;
+    for (i = min; i <= max; i++) {
+      html += '<option value="' + i + '"' + (i === cur ? ' selected' : '') + '>' + i + '</option>';
+    }
+    return html + '</select>';
+  }
+
+  function excGuideSelectHtml(e) {
+    var html = '<select class="gcv-exc-sheet__in gcv-exc-sheet__guide" data-field="guide_user_id" data-exc-id="' + e.id + '"><option value="">Sem guia</option>';
+    (excSheet.guides || []).forEach(function (g) {
+      var id = g.user_id || g.id;
+      var label = g.full_name || g.nickname || g.name || ('#' + id);
+      html += '<option value="' + id + '"' + (String(e.guide_user_id) === String(id) ? ' selected' : '') + '>' + esc(label) + '</option>';
+    });
+    return html + '</select>';
+  }
+
+  function excHasTransport(e) {
+    return !!(e && (Number(e.offer_transport) || Number(e.max_people_transport) > 0 || Number(e.price_transport_cents) > 0));
+  }
+
+  function excAttrSelectHtml(e) {
+    var selected = (e.attraction_ids && e.attraction_ids[0]) || e.attraction_id || '';
+    var extra = (e.attraction_ids && e.attraction_ids.length > 1) ? (e.attraction_ids.length - 1) : 0;
+    var html = '<select class="gcv-exc-sheet__in gcv-exc-sheet__attr" data-field="attraction_id" data-exc-id="' + e.id + '" title="' + esc(e.attraction_title || e.departure_city_name || '') + '"><option value="">—</option>';
+    var usable = (excSheet.attractions || []).filter(function (a) { return a.status !== 'archived'; }).slice();
+    var seen = {};
+    usable.forEach(function (a) { seen[String(a.id)] = 1; });
+    if (selected && !seen[String(selected)]) {
+      usable.unshift({ id: selected, title_pt: e.attraction_title || ('#' + selected) });
+    }
+    usable.sort(function (a, b) {
+      return String(a.title_pt || '').localeCompare(String(b.title_pt || ''), 'pt');
+    });
+    usable.forEach(function (a) {
+      html += '<option value="' + a.id + '"' + (String(a.id) === String(selected) ? ' selected' : '') + '>' + esc(a.title_pt || a.slug) + '</option>';
+    });
+    html += '</select>';
+    if (extra) html += '<span class="gcv-exc-sheet__sub">+' + extra + '</span>';
+    return html;
+  }
+
+  function walkQuorumMet(e) {
+    var q = parseInt(e && e.quorum, 10);
+    if (!Number.isFinite(q) || q < 0) q = 0;
+    return (parseInt(e && e.booked_people, 10) || 0) >= q;
+  }
+
+  function transportQuorumMet(e) {
+    if (!excHasTransport(e)) return true;
+    var qT = parseInt(e && e.quorum_transport, 10);
+    if (!Number.isFinite(qT) || qT <= 0) return true;
+    return (parseInt(e && e.booked_people_transport, 10) || 0) >= qT;
+  }
+
+  function isTransportPendingOnConfirmed(e) {
+    if (!e || !excHasTransport(e) || transportQuorumMet(e)) return false;
+    var st = sheetStatusValue(e);
+    return st === 'confirmada' || walkQuorumMet(e);
+  }
+
+  function grupoCellHtml(e) {
+    var walk = parseInt(e.booked_people, 10) || 0;
+    var withT = parseInt(e.booked_people_transport, 10) || 0;
+    var html = '<div class="gcv-exc-insc">' +
+      '<span class="gcv-exc-insc__item" title="Inscritos sem translado">' + icoPerson() + ' ' + walk + '</span>';
+    if (excHasTransport(e)) {
+      html += '<span class="gcv-exc-insc__item" title="Inscritos com translado">' + icoCar() + ' ' + withT + '</span>';
+    }
+    return html + '</div>';
+  }
+
+  function lifeBadgeHtml(e) {
+    var life = e.lifecycle || '';
+    var label = e.lifecycle_label || life || '—';
+    var cls = 'gcv-exc-life';
+    if (life === 'em_formacao') cls += ' gcv-exc-life--form';
+    else if (life === 'confirmada') cls += ' gcv-exc-life--ok';
+    else if (life === 'cancelada' || life === 'rejeitada') cls += ' gcv-exc-life--no';
+    else cls += ' gcv-exc-life--muted';
+    return '<span class="' + cls + '">' + esc(label) + '</span>';
+  }
+
+  function approvalHoverTitle(e) {
+    if (e.status === 'pending_approval') {
+      return e.created_at ? ('Enviada em ' + fmtDateBr(e.created_at)) : 'Aguardando aprovação';
+    }
+    if (e.status === 'published' || e.status === 'soldout') {
+      return e.approved_at ? ('Aprovada em ' + fmtDateBr(e.approved_at)) : 'Aprovada';
+    }
+    if (e.status === 'rejected') {
+      return e.approved_at ? ('Recusada em ' + fmtDateBr(e.approved_at)) : 'Recusada';
+    }
+    if (e.status === 'cancelled') {
+      return 'Cancelada';
+    }
+    return e.status || '';
+  }
+
+  function approvalCellHtml(e) {
+    var tip = approvalHoverTitle(e);
+    if (e.status === 'pending_approval') {
+      return (
+        '<span class="gcv-exc-appr gcv-exc-appr--wait" title="' + esc(tip) + '">' + icoHourglass() + '</span>' +
+        '<span class="gcv-exc-appr-btns">' +
+        '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary gcv-dash-btn--sm" data-approve-exc="' + e.id + '">Aprovar</button>' +
+        '<button type="button" class="gcv-dash-btn gcv-dash-btn--danger gcv-dash-btn--sm" data-reject-exc="' + e.id + '">Recusar</button>' +
+        '</span>'
+      );
+    }
+    if (e.status === 'published' || e.status === 'soldout') {
+      return '<span class="gcv-exc-appr gcv-exc-appr--ok" title="' + esc(tip) + '">' + icoCheck() + '</span>';
+    }
+    if (e.status === 'rejected') {
+      return '<span class="gcv-exc-appr gcv-exc-appr--no" title="' + esc(tip) + '">' + icoCancel() + '</span>';
+    }
+    if (e.status === 'cancelled') {
+      return '<span class="gcv-exc-appr gcv-exc-appr--no" title="' + esc(tip) + '">' + icoCancel() + '</span>';
+    }
+    if (e.status === 'draft') {
+      return '<span class="gcv-exc-appr gcv-exc-appr--muted" title="Rascunho">—</span>';
+    }
+    return '<span class="gcv-exc-appr gcv-exc-appr--muted" title="' + esc(e.status || '') + '">—</span>';
+  }
+
+  function sheetStatusValue(e) {
+    if (e && e._sheet_status) return e._sheet_status;
+    var st = String((e && e.status) || '');
+    var life = String((e && e.lifecycle) || '');
+    if (st === 'rejected' || life === 'rejeitada') return 'recusada';
+    if (st === 'cancelled' || life === 'cancelada') return 'cancelada';
+    if (st === 'pending_approval' || life === 'aguardando_aprovacao') return 'aguardando';
+    if (st === 'draft' || life === 'rascunho') return 'rascunho';
+    if (life === 'concluida') return 'concluida';
+    if (life === 'confirmada' || walkQuorumMet(e)) return 'confirmada';
+    return 'em_formacao';
+  }
+
+  function sheetStatusLabel(val) {
+    var map = {
+      em_formacao: 'Em formação',
+      confirmada: 'Confirmada',
+      recusada: 'Recusada',
+      cancelada: 'Cancelada',
+      concluida: 'Concluída',
+      aguardando: 'Aguardando aprovação',
+      rascunho: 'Rascunho'
+    };
+    return map[val] || val || '—';
+  }
+
+  function sheetStatusClass(val) {
+    if (val === 'confirmada' || val === 'concluida') return 'gcv-exc-status-sel--ok';
+    if (val === 'recusada' || val === 'cancelada') return 'gcv-exc-status-sel--no';
+    if (val === 'em_formacao') return 'gcv-exc-status-sel--form';
+    if (val === 'aguardando') return 'gcv-exc-status-sel--wait';
+    return 'gcv-exc-status-sel--muted';
+  }
+
+  function statusSelectHtml(e) {
+    var cur = sheetStatusValue(e);
+    var pending = e.status === 'pending_approval' || cur === 'aguardando';
+    var vanPending = isTransportPendingOnConfirmed(e);
+    var opts = [
+      ['em_formacao', 'Em formação'],
+      ['confirmada', 'Confirmada'],
+      ['recusada', 'Recusada']
+    ];
+    if (cur === 'cancelada') opts.push(['cancelada', 'Cancelada']);
+    if (cur === 'concluida') opts.push(['concluida', 'Concluída']);
+    if (cur === 'aguardando') opts.unshift(['aguardando', 'Aguardando aprovação']);
+    if (cur === 'rascunho') opts.unshift(['rascunho', 'Rascunho']);
+    var html = '<div class="gcv-exc-status-wrap' + (vanPending ? ' is-van-pending' : '') + '">' +
+      '<select class="gcv-exc-sheet__in gcv-exc-status-sel ' + sheetStatusClass(cur) + '" data-field="sheet_status" data-exc-id="' + e.id + '" title="' +
+      (vanPending ? 'Confirmada. O quórum com transporte ainda não foi atingido.' : 'Status') + '"' +
+      (pending ? ' disabled' : '') + '>';
+    opts.forEach(function (o) {
+      html += '<option value="' + o[0] + '"' + (cur === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
+    });
+    html += '</select>';
+    if (vanPending) {
+      html += '<span class="gcv-exc-status-van" title="Quórum com transporte ainda não atingido" aria-hidden="true">' +
+        '<span class="gcv-exc-status-van__car">' + icoCar() + '</span>' +
+        '<span class="gcv-exc-status-van__x">' + icoCancel() + '</span>' +
+        '</span>';
+    }
+    return html + '</div>';
+  }
+
+  function transportCellsHtml(e) {
+    if (!excHasTransport(e)) {
+      return (
+        '<td class="gcv-exc-sheet__sem-t" colspan="3" data-col="transport">' +
+        '<button type="button" class="gcv-exc-sheet__sem-btn" data-enable-t="' + e.id + '" title="Oferecer vagas com translado">' +
+        icoCar() + ' Sem translado</button></td>'
+      );
+    }
+    var maxT = parseInt(e.max_people_transport, 10);
+    if (!Number.isFinite(maxT) || maxT < 1) maxT = 4;
+    var qT = parseInt(e.quorum_transport, 10);
+    if (!Number.isFinite(qT) || qT < 0) qT = 0;
+    return (
+      '<td class="gcv-exc-sheet__t" title="Vagas com translado">' + numSelectHtml('max_people_transport', e.id, 0, 4, maxT) + '</td>' +
+      '<td class="gcv-exc-sheet__t" title="Quórum com translado">' + numSelectHtml('quorum_transport', e.id, 0, 4, Math.min(qT, 4)) + '</td>' +
+      '<td class="gcv-exc-sheet__t gcv-exc-sheet__rs" title="Valor com translado"><input class="gcv-exc-sheet__in gcv-exc-sheet__money" data-field="price_transport_cents" data-exc-id="' + e.id + '" inputmode="numeric" value="' + esc(centsToMoney(e.price_transport_cents || 0)) + '" /></td>'
+    );
+  }
+
+  function excSheetRowHtml(e) {
+    e = rowWithDraft(e);
+    var pending = e.status === 'pending_approval';
+    var dirty = !!excSheet.drafts[String(e.id)];
+    var timeVal = String(e.departure_time || '').slice(0, 5);
+    var maxP = parseInt(e.max_people, 10);
+    if (!Number.isFinite(maxP) || maxP < 1) maxP = 10;
+    if (maxP > 12) maxP = 12;
+    var q = parseInt(e.quorum, 10);
+    if (!Number.isFinite(q) || q < 0) q = 4;
+    var rowClass = [];
+    if (pending) rowClass.push('is-pending');
+    if (dirty) rowClass.push('is-dirty');
+    return (
+      '<tr data-exc-row="' + e.id + '"' + (rowClass.length ? ' class="' + rowClass.join(' ') + '"' : '') + '>' +
+      '<td class="gcv-exc-sheet__appr" data-col="approval">' + approvalCellHtml(e) + '</td>' +
+      '<td class="gcv-exc-sheet__status" data-col="status">' + statusSelectHtml(e) + '</td>' +
+      '<td class="gcv-exc-sheet__datecell"><input class="gcv-exc-sheet__in gcv-exc-sheet__date" data-field="date_iso" data-exc-id="' + e.id + '" type="date" value="' + esc(e.date_iso || '') + '" /></td>' +
+      '<td class="gcv-exc-sheet__timecell"><input class="gcv-exc-sheet__in gcv-exc-sheet__time" data-field="departure_time" data-exc-id="' + e.id + '" type="time" step="600" value="' + esc(timeVal) + '" /></td>' +
+      '<td class="gcv-exc-sheet__clip gcv-exc-sheet__name" title="' + esc((e.attraction_title || '') + (e.departure_city_name ? ' · ' + e.departure_city_name : '')) + '">' + excAttrSelectHtml(e) + '</td>' +
+      '<td class="gcv-exc-sheet__clip gcv-exc-sheet__name" title="' + esc(e.guide_name || '') + '">' + excGuideSelectHtml(e) + '</td>' +
+      '<td class="gcv-exc-sheet__grupo" data-col="grupo">' + grupoCellHtml(e) + '</td>' +
+      '<td title="Máximo de vagas">' + numSelectHtml('max_people', e.id, 1, 12, maxP) + '</td>' +
+      '<td class="gcv-exc-sheet__walk" title="Quórum sem translado">' + numSelectHtml('quorum', e.id, 0, maxP, Math.min(q, maxP)) + '</td>' +
+      '<td title="Inscritos por fora">' + numSelectHtml('preconfirmed_people', e.id, 0, 5, e.preconfirmed_people || 0) + '</td>' +
+      transportCellsHtml(e) +
+      '<td class="gcv-exc-sheet__walk gcv-exc-sheet__rs" title="Valor sem translado"><input class="gcv-exc-sheet__in gcv-exc-sheet__money" data-field="price_cents" data-exc-id="' + e.id + '" inputmode="numeric" value="' + esc(centsToMoney(e.price_cents || 0)) + '" /></td>' +
+      '<td class="gcv-exc-sheet__actions">' +
+      cmsRowActions(
+        'data-edit-exc="' + e.id + '"',
+        'data-del-exc="' + e.id + '" data-del-label="' + esc((e.date_iso || '') + ' · ' + (e.attraction_title || '')) + '"'
+      ) +
+      '</td></tr>'
+    );
+  }
+
+  function paintExcSheet(keepOptions) {
+    var wrap = root('cms-exc-sheet-wrap');
+    var meta = root('cms-exc-meta');
+    if (!wrap) return;
+    if (!keepOptions) writeExcSheetFilterOptions();
+    if (excSheet.loadError) {
+      wrap.innerHTML = '<p class="gcv-dash-alert">Erro ao carregar excursões.</p>';
+      return;
+    }
+    var rows = filterExcSheetRows(excSheet.rows);
+    if (meta) {
+      meta.innerHTML = '<strong>' + rows.length + '</strong> de ' + excSheet.rows.length +
+        ' saídas · edite as células e clique em <strong>Salvar</strong> para validar';
+    }
+    if (!excSheet.rows.length) {
+      wrap.innerHTML = '<p class="gcv-exc-sheet-empty">Nenhuma excursão. Clique em <strong>+ Criar passeio</strong> para publicar.</p>';
+      return;
+    }
+    if (!rows.length) {
+      wrap.innerHTML = '<p class="gcv-exc-sheet-empty">Nenhuma saída com esses filtros.</p>';
+      return;
+    }
+    wrap.innerHTML =
+      '<table class="gcv-exc-sheet">' +
+      '<thead><tr>' +
+      '<th>Aprovação</th><th>Status</th>' +
+      '<th>Data</th><th>Hora</th><th class="gcv-exc-sheet__name">Atrativo</th><th class="gcv-exc-sheet__name">Guia</th>' +
+      '<th>Inscrições</th><th>Máx.</th>' +
+      '<th>' + thIco(icoPerson(), 'Quórum', 'Quórum sem translado') + '</th>' +
+      '<th>Por fora</th>' +
+      '<th>' + thIco(icoCar(), 'Vagas', 'Vagas com translado') + '</th>' +
+      '<th>' + thIco(icoCar(), 'Quórum', 'Quórum com translado') + '</th>' +
+      '<th class="gcv-exc-sheet__rs">' + thIco(icoCar(), 'R$', 'Valor com translado') + '</th>' +
+      '<th class="gcv-exc-sheet__rs">' + thIco(icoPerson(), 'R$', 'Valor sem translado') + '</th>' +
+      '<th class="gcv-exc-sheet__actions"></th>' +
+      '</tr></thead><tbody>' +
+      rows.map(excSheetRowHtml).join('') +
+      '</tbody></table>';
+    bindExcSheetTable(wrap);
+    syncSheetSaveBar();
+  }
+
+  function findExcRow(id) {
+    var i;
+    for (i = 0; i < excSheet.rows.length; i++) {
+      if (String(excSheet.rows[i].id) === String(id)) return i;
+    }
+    return -1;
+  }
+
+  function mergeExcRow(updated) {
+    if (!updated || !updated.id) return;
+    var idx = findExcRow(updated.id);
+    if (idx >= 0) excSheet.rows[idx] = updated;
+    else excSheet.rows.unshift(updated);
+  }
+
+  function patchValueFromInput(field, raw) {
+    if (field === 'price_cents' || field === 'price_transport_cents') return moneyToCents(raw);
+    if (field === 'forming') return !(raw === '0' || raw === '' || raw === 'false');
+    if (field === 'sheet_status') return String(raw || '');
+    if (field === 'guide_user_id' || field === 'attraction_id') {
+      var n = parseInt(raw, 10);
+      return Number.isFinite(n) && n > 0 ? n : null;
+    }
+    if (field === 'max_people' || field === 'quorum' || field === 'preconfirmed_people' || field === 'max_people_transport' || field === 'quorum_transport') {
+      return parseInt(raw, 10) || 0;
+    }
+    return raw;
+  }
+
+  function sameExcValue(e, field, next) {
+    if (field === 'sheet_status') return sheetStatusValue(e) === String(next || '');
+    if (field === 'forming') {
+      var curForming = e.lifecycle === 'em_formacao';
+      return !!next === !!curForming && !(next === false && parseInt(e.quorum, 10) !== 0) && !(next === true && parseInt(e.quorum, 10) === 0);
+    }
+    if (field === 'price_cents' || field === 'price_transport_cents') {
+      return (parseInt(e[field], 10) || 0) === (parseInt(next, 10) || 0);
+    }
+    if (field === 'departure_time') {
+      return String(e.departure_time || '').slice(0, 5) === String(next || '').slice(0, 5);
+    }
+    if (field === 'guide_user_id' || field === 'attraction_id') {
+      return String(e[field] || '') === String(next || '');
+    }
+    if (field === 'offer_transport') {
+      return !!excHasTransport(e) === !!next;
+    }
+    return String(e[field] == null ? '' : e[field]) === String(next == null ? '' : next);
+  }
+
+  function payloadForField(field, value) {
+    var payload = { patch: 1 };
+    payload[field] = value;
+    if (field === 'attraction_id') {
+      payload.attraction_ids = value ? [value] : [];
+    }
+    if (field === 'max_people_transport') {
+      payload.offer_transport = (parseInt(value, 10) || 0) > 0;
+      if (!payload.offer_transport) {
+        payload.quorum_transport = 0;
+        payload.price_transport_cents = 0;
+      }
+    }
+    if (field === 'price_transport_cents' && (parseInt(value, 10) || 0) > 0) {
+      payload.offer_transport = true;
+    }
+    if (field === 'forming') {
+      payload.lifecycle = value ? 'em_formacao' : 'confirmada';
+    }
+    if (field === 'sheet_status') {
+      delete payload.sheet_status;
+      if (value === 'em_formacao') {
+        payload.forming = true;
+        payload.lifecycle = 'em_formacao';
+      } else if (value === 'confirmada') {
+        payload.forming = false;
+        payload.lifecycle = 'confirmada';
+      } else if (value === 'recusada') {
+        payload.status = 'rejected';
+      } else if (value === 'cancelada') {
+        payload.status = 'cancelled';
+      }
+    }
+    if (field === 'offer_transport') {
+      payload.offer_transport = value ? 1 : 0;
+      if (value) {
+        payload.max_people_transport = payload.max_people_transport || 4;
+        payload.quorum_transport = payload.quorum_transport || 4;
+      } else {
+        payload.max_people_transport = 0;
+        payload.quorum_transport = 0;
+        payload.price_transport_cents = 0;
+      }
+    }
+    return payload;
+  }
+
+  function fieldLabel(field) {
+    var map = {
+      date_iso: 'Data',
+      departure_time: 'Hora',
+      attraction_id: 'Atrativo',
+      guide_user_id: 'Guia',
+      max_people: 'Máximo',
+      quorum: 'Quórum',
+      preconfirmed_people: 'Por fora',
+      max_people_transport: 'Vagas com translado',
+      quorum_transport: 'Quórum com translado',
+      price_transport_cents: 'Valor com translado',
+      price_cents: 'Valor sem translado',
+      sheet_status: 'Status',
+      forming: 'Status',
+      offer_transport: 'Translado'
+    };
+    return map[field] || field;
+  }
+
+  function findGuideLabel(id) {
+    if (!id) return 'Sem guia';
+    var i;
+    for (i = 0; i < (excSheet.guides || []).length; i++) {
+      var g = excSheet.guides[i];
+      if (String(g.user_id || g.id) === String(id)) return g.full_name || g.nickname || g.name || ('#' + id);
+    }
+    return '#' + id;
+  }
+
+  function findAttrLabel(id) {
+    if (!id) return '—';
+    var i;
+    for (i = 0; i < (excSheet.attractions || []).length; i++) {
+      var a = excSheet.attractions[i];
+      if (String(a.id) === String(id)) return a.title_pt || a.slug || ('#' + id);
+    }
+    return '#' + id;
+  }
+
+  function formatSheetValue(e, field, value) {
+    if (field === 'sheet_status') return sheetStatusLabel(value);
+    if (field === 'forming') return value ? 'Em formação' : 'Confirmada';
+    if (field === 'date_iso') return fmtDateBr(value);
+    if (field === 'departure_time') return String(value || '').slice(0, 5) || '—';
+    if (field === 'guide_user_id') return findGuideLabel(value);
+    if (field === 'attraction_id') return findAttrLabel(value);
+    if (field === 'price_cents' || field === 'price_transport_cents') return centsToMoney(value || 0);
+    if (field === 'offer_transport') return value ? 'Com translado' : 'Sem translado';
+    if (value == null || value === '') return '—';
+    return String(value);
+  }
+
+  function currentFieldValue(e, field) {
+    if (field === 'sheet_status') return sheetStatusValue(e);
+    if (field === 'forming') return e.lifecycle === 'em_formacao';
+    if (field === 'offer_transport') return excHasTransport(e) ? 1 : 0;
+    if (field === 'departure_time') return String(e.departure_time || '').slice(0, 5);
+    if (field === 'guide_user_id' || field === 'attraction_id') {
+      var n = parseInt(e[field], 10);
+      return Number.isFinite(n) && n > 0 ? n : null;
+    }
+    return e[field];
+  }
+
+  function rowWithDraft(e) {
+    if (!e) return e;
+    var d = excSheet.drafts[String(e.id)];
+    if (!d) return e;
+    var copy = {};
+    Object.keys(e).forEach(function (k) { copy[k] = e[k]; });
+    Object.keys(d).forEach(function (k) {
+      if (k === 'sheet_status') {
+        copy._sheet_status = d[k];
+        return;
+      }
+      copy[k] = d[k];
+    });
+    if (d.sheet_status === 'recusada') {
+      copy.status = 'rejected';
+      copy.lifecycle = 'rejeitada';
+    } else if (d.sheet_status === 'cancelada') {
+      copy.status = 'cancelled';
+      copy.lifecycle = 'cancelada';
+    } else if (d.sheet_status === 'confirmada') {
+      if (copy.status !== 'pending_approval') copy.status = 'published';
+      copy.lifecycle = 'confirmada';
+      copy.forming = false;
+    } else if (d.sheet_status === 'em_formacao') {
+      if (copy.status !== 'pending_approval') copy.status = 'published';
+      copy.lifecycle = 'em_formacao';
+      copy.forming = true;
+    }
+    if (d.attraction_id) {
+      copy.attraction_id = d.attraction_id;
+      copy.attraction_ids = [d.attraction_id];
+      copy.attraction_title = findAttrLabel(d.attraction_id);
+    }
+    if (Object.prototype.hasOwnProperty.call(d, 'guide_user_id')) {
+      copy.guide_user_id = d.guide_user_id;
+      copy.guide_name = findGuideLabel(d.guide_user_id);
+    }
+    return copy;
+  }
+
+  function hasUnsavedSheet() {
+    return Object.keys(excSheet.drafts).length > 0;
+  }
+
+  function countSheetChanges() {
+    var n = 0;
+    Object.keys(excSheet.changes).forEach(function (id) {
+      n += Object.keys(excSheet.changes[id] || {}).length;
+    });
+    return n;
+  }
+
+  function syncSheetSaveBar() {
+    var bar = root('cms-exc-savebar');
+    var countEl = root('cms-exc-savebar-count');
+    var n = countSheetChanges();
+    var tours = Object.keys(excSheet.drafts).length;
+    if (!bar) return;
+    if (n < 1) {
+      bar.classList.remove('is-on');
+      return;
+    }
+    bar.classList.add('is-on');
+    if (countEl) {
+      countEl.textContent = n + (n === 1 ? ' alteração' : ' alterações') +
+        (tours > 1 ? ' em ' + tours + ' passeios' : '');
+    }
+  }
+
+  function clearSheetDrafts() {
+    excSheet.drafts = {};
+    excSheet.changes = {};
+    syncSheetSaveBar();
+  }
+
+  function revertSheetDrafts() {
+    clearSheetDrafts();
+    paintExcSheet(true);
+  }
+
+  function queueExcSheetChange(id, field, next, extra) {
+    extra = extra || {};
+    var idx = findExcRow(id);
+    if (idx < 0) return;
+    var base = excSheet.rows[idx];
+    var key = String(id);
+    var fromVal = currentFieldValue(rowWithDraft(base), field);
+    if (!excSheet.changes[key] || !excSheet.changes[key][field]) {
+      fromVal = currentFieldValue(base, field);
+    } else {
+      fromVal = excSheet.changes[key][field].from;
+    }
+    if (!excSheet.drafts[key]) excSheet.drafts[key] = {};
+    if (!excSheet.changes[key]) excSheet.changes[key] = {};
+    if (sameExcValue(base, field, next)) {
+      delete excSheet.drafts[key][field];
+      delete excSheet.changes[key][field];
+      if (!Object.keys(excSheet.drafts[key]).length) delete excSheet.drafts[key];
+      if (!Object.keys(excSheet.changes[key] || {}).length) delete excSheet.changes[key];
+    } else {
+      excSheet.drafts[key][field] = next;
+      excSheet.changes[key][field] = {
+        from: fromVal,
+        to: next,
+        fromLabel: formatSheetValue(base, field, fromVal),
+        toLabel: formatSheetValue(base, field, next),
+        fieldLabel: fieldLabel(field)
+      };
+    }
+    syncSheetSaveBar();
+    var display = rowWithDraft(base);
+    if (extra.replaceRow) {
+      replaceExcSheetRow(display);
+      return;
+    }
+    var tr = document.querySelector('[data-exc-row="' + id + '"]');
+    if (tr) {
+      tr.classList.toggle('is-dirty', !!excSheet.drafts[key]);
+      if (field === 'sheet_status' || field === 'quorum' || field === 'quorum_transport' || field === 'max_people_transport' || field === 'offer_transport' || field === 'preconfirmed_people') {
+        refreshStatusCell(tr, display);
+      }
+    }
+  }
+
+  function buildDiffHtml(leaving) {
+    var lead = leaving
+      ? 'Há alterações não salvas. Confirmar o salvamento destas mudanças?'
+      : 'Confirmar o salvamento destas alterações?';
+    var items = '';
+    Object.keys(excSheet.changes).forEach(function (id) {
+      var idx = findExcRow(id);
+      var e = idx >= 0 ? rowWithDraft(excSheet.rows[idx]) : { id: id };
+      var title = (e.attraction_title || ('Passeio #' + id)) + ' · ' + fmtDateBr(e.date_iso);
+      var lis = '';
+      Object.keys(excSheet.changes[id]).forEach(function (field) {
+        var ch = excSheet.changes[id][field];
+        lis += '<li>' + esc(ch.fieldLabel) + ': ' + esc(ch.fromLabel) + ' → ' + esc(ch.toLabel) + '</li>';
+      });
+      items += '<li><span class="gcv-exc-diff__tour">' + esc(title) + '</span><ul class="gcv-exc-diff__list">' + lis + '</ul></li>';
+    });
+    return '<p class="gcv-confirm__lead">' + lead + '</p><ul class="gcv-exc-diff">' + items + '</ul>';
+  }
+
+  function promptSaveChanges(leaving, onSaved) {
+    if (!hasUnsavedSheet()) {
+      if (typeof onSaved === 'function') onSaved(true);
+      return;
+    }
+    if (excSheet.confirmOpen) return;
+    excSheet.confirmOpen = true;
+    gcvConfirm('', {
+      html: buildDiffHtml(!!leaving),
+      okText: 'Sim',
+      cancelText: 'Cancelar'
+    }).then(function (ok) {
+      excSheet.confirmOpen = false;
+      if (!ok) {
+        revertSheetDrafts();
+        return;
+      }
+      saveAllSheetDrafts(function (saved) {
+        if (saved && typeof onSaved === 'function') onSaved(true);
+      });
+    });
+  }
+
+  function saveAllSheetDrafts(done) {
+    var ids = Object.keys(excSheet.drafts);
+    if (!ids.length) {
+      if (typeof done === 'function') done(true);
+      return;
+    }
+    var pending = ids.length;
+    var failed = false;
+    ids.forEach(function (id) {
+      var d = excSheet.drafts[id] || {};
+      var payload = { patch: 1, id: parseInt(id, 10) };
+      Object.keys(d).forEach(function (field) {
+        var part = payloadForField(field, d[field]);
+        Object.keys(part).forEach(function (k) {
+          if (k === 'patch') return;
+          payload[k] = part[k];
+        });
+      });
+      if (d.sheet_status === 'em_formacao' || d.sheet_status === 'confirmada') {
+        var idxSt = findExcRow(id);
+        var curSt = idxSt >= 0 ? String(excSheet.rows[idxSt].status || '') : '';
+        if (curSt === 'rejected' || curSt === 'cancelled' || curSt === 'draft') {
+          payload.status = 'published';
+        }
+      }
+      var tr = document.querySelector('[data-exc-row="' + id + '"]');
+      saveExcSheetPatch(parseInt(id, 10), payload, tr, {
+        field: 'bundle',
+        replaceRow: true,
+        onSuccess: function () {
+          delete excSheet.drafts[id];
+          delete excSheet.changes[id];
+          pending -= 1;
+          if (pending > 0) return;
+          syncSheetSaveBar();
+          if (typeof done === 'function') done(!failed);
+        },
+        onError: function () {
+          failed = true;
+          pending -= 1;
+          if (pending > 0) return;
+          syncSheetSaveBar();
+          if (typeof done === 'function') done(false);
+        }
+      });
+    });
+  }
+
+  function guardLeave(proceed) {
+    if (!hasUnsavedSheet()) return true;
+    promptSaveChanges(true, function () {
+      if (typeof proceed === 'function') proceed();
+    });
+    return false;
+  }
+
+  function refreshStatusCell(tr, e) {
+    var cell = tr && tr.querySelector('[data-col="status"]');
+    if (!cell) return;
+    cell.innerHTML = statusSelectHtml(e);
+    bindExcSheetTable(cell);
+  }
+
+  function applyDerivedCells(tr, e) {
+    if (!tr || !e) return;
+    var grupo = tr.querySelector('[data-col="grupo"]');
+    if (grupo) grupo.innerHTML = grupoCellHtml(e);
+    refreshStatusCell(tr, e);
+  }
+
+  function replaceExcSheetRow(e) {
+    var tr = document.querySelector('[data-exc-row="' + e.id + '"]');
+    if (!tr || !e) return;
+    var tmp = document.createElement('tbody');
+    tmp.innerHTML = excSheetRowHtml(e);
+    var next = tmp.firstElementChild;
+    if (!next) return;
+    tr.parentNode.replaceChild(next, tr);
+    bindExcSheetTable(next);
+  }
+
+  function saveExcSheetPatch(id, payload, tr, extra) {
+    extra = extra || {};
+    payload = payload || {};
+    payload.patch = 1;
+    payload.id = id;
+    var key = id + ':' + (extra.field || 'patch');
+    if (excSheet.saving[key]) {
+      if (typeof extra.onError === 'function') extra.onError();
+      return;
+    }
+    if (tr) {
+      tr.classList.remove('is-saved', 'is-error');
+      tr.classList.add('is-saving');
+    }
+    excSheet.saving[key] = true;
+    sendJson('PUT', '/api/admin/excursions.php', payload, function (err, res) {
+      delete excSheet.saving[key];
+      if (!res || !res.ok) {
+        if (tr) {
+          tr.classList.remove('is-saving');
+          tr.classList.add('is-error');
+        }
+        alert((res && res.error) || 'Não foi possível salvar');
+        if (typeof extra.onError === 'function') extra.onError();
+        return;
+      }
+      mergeExcRow(res.data);
+      delete excSheet.drafts[String(id)];
+      delete excSheet.changes[String(id)];
+      if (typeof extra.onSuccess === 'function') extra.onSuccess(res.data);
+      if (extra.replaceRow) {
+        replaceExcSheetRow(res.data);
+        return;
+      }
+      var rowEl = document.querySelector('[data-exc-row="' + id + '"]') || tr;
+      if (rowEl) {
+        rowEl.classList.remove('is-saving', 'is-error');
+        rowEl.classList.add('is-saved');
+        applyDerivedCells(rowEl, res.data);
+        setTimeout(function () { rowEl.classList.remove('is-saved'); }, 900);
+      }
+    });
+  }
+
+  function effectiveSheetField(e, field) {
+    var d = e && excSheet.drafts[String(e.id)];
+    if (d && Object.prototype.hasOwnProperty.call(d, field)) return d[field];
+    if (field === 'date_iso') return e.date_iso;
+    if (field === 'guide_user_id') return e.guide_user_id;
+    return e[field];
+  }
+
+  function guideDateConflict(exceptId, guideId, dateIso) {
+    if (!guideId || !dateIso) return null;
+    var i;
+    for (i = 0; i < excSheet.rows.length; i++) {
+      var row = excSheet.rows[i];
+      if (String(row.id) === String(exceptId)) continue;
+      var st = String(row.status || '');
+      if (st === 'cancelled' || st === 'rejected') continue;
+      var g = effectiveSheetField(row, 'guide_user_id');
+      var d = String(effectiveSheetField(row, 'date_iso') || '').slice(0, 10);
+      if (String(g || '') === String(guideId) && d === String(dateIso).slice(0, 10)) {
+        return row;
+      }
+    }
+    return null;
+  }
+
+  function warnGuideDateConflict(hit, dateIso) {
+    var when = fmtDateBr(dateIso);
+    var title = (hit && (hit.attraction_title || ('#' + hit.id))) || 'outro passeio';
+    var msg = 'Este guia já possui um passeio em ' + when + ' (' + title + ').\nEscolha outra data.';
+    if (typeof window.gcvAlert === 'function') window.gcvAlert(msg);
+    else window.alert(msg);
+  }
+
+  function revertInputToCurrent(el, e, field) {
+    var cur = currentFieldValue(rowWithDraft(e), field);
+    if (field === 'guide_user_id' || field === 'attraction_id') {
+      el.value = cur ? String(cur) : '';
+    } else if (field === 'date_iso') {
+      el.value = cur || '';
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    } else {
+      el.value = cur == null ? '' : String(cur);
+    }
+  }
+
+  function saveExcSheetField(el) {
+    var id = parseInt(el.getAttribute('data-exc-id'), 10);
+    var field = el.getAttribute('data-field');
+    if (!id || !field) return;
+    var idx = findExcRow(id);
+    if (idx < 0) return;
+    var next = patchValueFromInput(field, el.value);
+    var e = excSheet.rows[idx];
+    if (field === 'date_iso' || field === 'guide_user_id') {
+      var nextDate = field === 'date_iso' ? next : effectiveSheetField(rowWithDraft(e), 'date_iso');
+      var nextGuide = field === 'guide_user_id' ? next : effectiveSheetField(rowWithDraft(e), 'guide_user_id');
+      var hit = guideDateConflict(id, nextGuide, nextDate);
+      if (hit) {
+        warnGuideDateConflict(hit, nextDate);
+        revertInputToCurrent(el, e, field);
+        return;
+      }
+    }
+    var hadT = excHasTransport(rowWithDraft(e));
+    var willDropT = field === 'max_people_transport' && !(parseInt(next, 10) > 0);
+    var willAddT = field === 'max_people_transport' && (parseInt(next, 10) > 0) && !hadT;
+    queueExcSheetChange(id, field, next, { replaceRow: willDropT || willAddT || field === 'sheet_status' });
+  }
+
+  function bindExcSheetTable(wrap) {
+    if (!wrap || !wrap.querySelectorAll) return;
+    wrap.querySelectorAll('[data-field]').forEach(function (el) {
+      if (el.tagName === 'SELECT' || el.type === 'date' || el.type === 'time') {
+        el.addEventListener('change', function () { saveExcSheetField(el); });
+      } else {
+        el.addEventListener('change', function () { saveExcSheetField(el); });
+        el.addEventListener('keydown', function (ev) {
+          if (ev.key === 'Enter') {
+            ev.preventDefault();
+            el.blur();
+          }
+        });
+      }
+    });
+    wrap.querySelectorAll('[data-enable-t]').forEach(function (btn) {
+      btn.onclick = function () {
+        var id = parseInt(btn.getAttribute('data-enable-t'), 10);
+        queueExcSheetChange(id, 'offer_transport', 1, { replaceRow: true });
+        queueExcSheetChange(id, 'max_people_transport', 4);
+        queueExcSheetChange(id, 'quorum_transport', 4, { replaceRow: true });
+      };
+    });
+    wrap.querySelectorAll('[data-approve-exc]').forEach(function (btn) {
+      btn.onclick = function () {
+        gcvConfirm('Aprovar este passeio e publicar no site?', { okText: 'Aprovar' }).then(function (ok) {
+          if (!ok) return;
           btn.disabled = true;
           sendJson('POST', '/api/admin/excursion-approvals.php', {
             id: parseInt(btn.getAttribute('data-approve-exc'), 10),
@@ -1616,45 +2760,45 @@
               window.GcvDashboard.refreshApprovalBadge();
             }
           });
-          });
-        };
-      });
-      list.querySelectorAll('[data-reject-exc]').forEach(function (btn) {
-        btn.onclick = function () {
-          var reason = prompt('Motivo da rejeição:');
-          if (!reason) return;
-          btn.disabled = true;
-          sendJson('POST', '/api/admin/excursion-approvals.php', {
-            id: parseInt(btn.getAttribute('data-reject-exc'), 10),
-            action: 'reject',
-            rejection_reason: reason,
-          }, function (e, r) {
-            btn.disabled = false;
-            if (!r || !r.ok) {
-              alert((r && r.error) || 'Erro ao rejeitar');
-              return;
-            }
-            alert('Passeio recusado. O guia foi avisado no WhatsApp' + (reason ? ' com a justificativa.' : '.'));
-            renderExcursions();
-            if (window.GcvDashboard && typeof window.GcvDashboard.refreshApprovalBadge === 'function') {
-              window.GcvDashboard.refreshApprovalBadge();
-            }
-          });
-        };
-      });
-      list.querySelectorAll('[data-edit-exc]').forEach(function (btn) {
-        btn.onclick = function () {
-          get('/api/admin/excursions.php?id=' + btn.getAttribute('data-edit-exc'), function (e, r) {
-            if (r && r.ok) openExcursionForm(r.data);
-          });
-        };
-      });
-      list.querySelectorAll('[data-del-exc]').forEach(function (btn) {
-        btn.onclick = function () {
-          var id = btn.getAttribute('data-del-exc');
-          var label = btn.getAttribute('data-del-label') || ('#' + id);
-          gcvConfirm('Excluir permanentemente a saída\n' + label + '?\n\nEsta ação não pode ser desfeita.', { danger: true, okText: 'Excluir' }).then(function (ok) {
-            if (!ok) return;
+        });
+      };
+    });
+    wrap.querySelectorAll('[data-reject-exc]').forEach(function (btn) {
+      btn.onclick = function () {
+        var reason = prompt('Motivo da rejeição:');
+        if (!reason) return;
+        btn.disabled = true;
+        sendJson('POST', '/api/admin/excursion-approvals.php', {
+          id: parseInt(btn.getAttribute('data-reject-exc'), 10),
+          action: 'reject',
+          rejection_reason: reason,
+        }, function (e, r) {
+          btn.disabled = false;
+          if (!r || !r.ok) {
+            alert((r && r.error) || 'Erro ao rejeitar');
+            return;
+          }
+          alert('Passeio recusado. O guia foi avisado no WhatsApp' + (reason ? ' com a justificativa.' : '.'));
+          renderExcursions();
+          if (window.GcvDashboard && typeof window.GcvDashboard.refreshApprovalBadge === 'function') {
+            window.GcvDashboard.refreshApprovalBadge();
+          }
+        });
+      };
+    });
+    wrap.querySelectorAll('[data-edit-exc]').forEach(function (btn) {
+      btn.onclick = function () {
+        get('/api/admin/excursions.php?id=' + btn.getAttribute('data-edit-exc'), function (e, r) {
+          if (r && r.ok) openExcursionForm(r.data);
+        });
+      };
+    });
+    wrap.querySelectorAll('[data-del-exc]').forEach(function (btn) {
+      btn.onclick = function () {
+        var id = btn.getAttribute('data-del-exc');
+        var label = btn.getAttribute('data-del-label') || ('#' + id);
+        gcvConfirm('Excluir permanentemente a saída\n' + label + '?\n\nEsta ação não pode ser desfeita.', { danger: true, okText: 'Excluir' }).then(function (ok) {
+          if (!ok) return;
           btn.disabled = true;
           sendJson('DELETE', '/api/admin/excursions.php', { id: parseInt(id, 10) }, function (e, r) {
             if (!r || !r.ok) {
@@ -1662,389 +2806,78 @@
               alert((r && r.error) || 'Erro ao excluir');
               return;
             }
-            renderExcursions();
+            var idx = findExcRow(id);
+            if (idx >= 0) excSheet.rows.splice(idx, 1);
+            delete excSheet.drafts[String(id)];
+            delete excSheet.changes[String(id)];
+            paintExcSheet(true);
           });
-          });
-        };
-      });
+        });
+      };
+    });
+    bindSheetDatePickers(wrap);
+  }
+
+  function bindSheetDatePickers(scope) {
+    if (!scope || typeof window.gcvBindDatePicker !== 'function') return;
+    var list = scope.querySelectorAll ? scope.querySelectorAll('.gcv-exc-sheet__date') : [];
+    Array.prototype.forEach.call(list, function (input) {
+      window.gcvBindDatePicker(input, { hideIcon: true, compact: true });
     });
   }
 
-  function openExcursionForm(ex) {
-    ensureCities(function () {
-      function loadForm(attrs) {
-        function withGuides(guides) {
-          guides = (guides || []).filter(function (g) { return !g.status || g.status === 'active'; });
-          var form = root('cms-exc-form');
-          if (!form) return;
-          state.attractions = attrs || [];
-          var selectedIds = selectedAttractionIdsFromEx(ex);
-          form.hidden = false;
-          form.innerHTML =
-            '<h3>' + (ex ? 'Editar saída' : 'Nova saída de excursão') + '</h3>' +
-            '<div class="gcv-dash-field-row">' +
-            '<div class="gcv-dash-field"><label class="gcv-dash-label">Data *</label><input class="gcv-dash-input" id="ex-date" type="date" value="' + esc(ex && ex.date_iso || '') + '" /></div>' +
-            '<div class="gcv-dash-field"><label class="gcv-dash-label">Horário de saída *</label>' +
-            timeSelectHtml('ex-time-h', 'ex-time-m', ex && String(ex.departure_time || '').slice(0, 5) || '10:00') + '</div>' +
-            '<div class="gcv-dash-field"><label class="gcv-dash-label">Status</label><select class="gcv-dash-select" id="ex-status">' +
-            [['draft','Rascunho'],['pending_approval','Aguardando aprovação'],['published','Publicada'],['soldout','Esgotada'],['rejected','Rejeitada'],['cancelled','Cancelada']].map(function (opt) {
-              return '<option value="' + opt[0] + '">' + opt[1] + '</option>';
-            }).join('') +
-            '</select></div>' +
-            '</div>' +
-            '<div class="gcv-dash-field">' +
-            '<label class="gcv-dash-label">Atrativos do dia * <span class="gcv-cms-muted" id="ex-attr-count"></span></label>' +
-            '<div id="ex-attr-picker-wrap">' + renderAttractionPickerMulti(attrs, selectedIds) + '</div>' +
-            '</div>' +
-            '<div class="gcv-dash-field"><label class="gcv-dash-label">Cidade de saída *</label><select class="gcv-dash-select" id="ex-city"><option value="">Selecione…</option>' + cityOptionsHtml(ex && ex.departure_city_id) + '</select></div>' +
-            '<div class="gcv-dash-field"><label class="gcv-dash-label">Ponto de encontro *</label>' +
-            '<div class="gcv-meeting-point">' +
-            '<div class="gcv-meeting-point__row">' +
-            '<input class="gcv-dash-input" id="ex-meeting" maxlength="300" autocomplete="off" value="' + esc(ex && ex.meeting_point || '') + '" placeholder="Digite o endereço — ex.: Padaria Santa Maria" />' +
-            '<button type="button" class="gcv-dash-btn gcv-dash-btn--sm gcv-meeting-gps-btn" id="ex-meeting-gps-btn" hidden>Usar minha localização</button>' +
-            '</div>' +
-            '<div id="ex-meeting-suggest" class="gcv-cms-suggest"></div>' +
-            '<p class="gcv-cms-muted" id="ex-meeting-gps">' +
-            (ex && ex.meeting_point_lat != null && ex.meeting_point_lng != null
-              ? 'GPS gravado'
-              : 'Digite o endereço do ponto de encontro.') +
-            '</p>' +
-            '<div class="gcv-meeting-map" id="ex-meeting-map" hidden><iframe class="gcv-meeting-map__frame" title="Mapa do ponto de encontro" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>' +
-            '<input type="hidden" id="ex-meeting-place" value="' + esc(ex && ex.meeting_point_place_id || '') + '" />' +
-            '<input type="hidden" id="ex-meeting-lat" value="' + esc(ex && ex.meeting_point_lat != null ? ex.meeting_point_lat : '') + '" />' +
-            '<input type="hidden" id="ex-meeting-lng" value="' + esc(ex && ex.meeting_point_lng != null ? ex.meeting_point_lng : '') + '" />' +
-            '</div></div>' +
-            '<div class="gcv-dash-field"><label class="gcv-dash-label">Guia * (obrigatório ao publicar)</label><select class="gcv-dash-select" id="ex-guide"><option value="">Selecione o guia…</option>' +
-            (guides.length ? guides.map(function (g) {
-              var label = (g.full_name || g.nickname || g.name || '') + (g.nickname && g.full_name ? ' (' + g.nickname + ')' : '');
-              return '<option value="' + g.user_id + '"' + (ex && String(ex.guide_user_id) === String(g.user_id) ? ' selected' : '') + '>' + esc(label) + '</option>';
-            }).join('') : '') +
-            '</select>' +
-            (guides.length ? '' : '<p class="gcv-dash-alert" style="margin-top:0.4rem;">Nenhum guia cadastrado. Cadastre em <strong>Guias credenciados</strong>.</p>') +
-            '</div>' +
-            '<div class="gcv-dash-field-row">' +
-            '<div class="gcv-dash-field"><label class="gcv-dash-label">Valor/pessoa final (R$) *</label><input class="gcv-dash-input" id="ex-price" value="' + esc(ex ? centsToMoney(ex.price_cents) : '') + '" /></div>' +
-            '<div class="gcv-dash-field"><label class="gcv-dash-label">Repasse previsto ao guia (R$) *</label><input class="gcv-dash-input" id="ex-guide-payout" value="' + esc(ex ? centsToMoney(ex.guide_payout_planned_cents != null ? ex.guide_payout_planned_cents : ex.guide_net_cents) : '') + '" /></div>' +
-            '</div>' +
-            '<div class="gcv-dash-confirm-quorum' + (ex && parseInt(ex.quorum, 10) === 0 ? ' is-confirmed' : ' is-unconfirmed') + '">' +
-            '<div class="gcv-dash-field gcv-dash-confirm-quorum__confirmed">' +
-            '<span class="gcv-dash-label">Passeio já confirmado?</span>' +
-            '<div class="gcv-dash-yesno" role="group" aria-label="Passeio já confirmado?">' +
-            '<label class="gcv-dash-yesno__opt"><input type="checkbox" id="ex-confirmed-yes"' + (ex && parseInt(ex.quorum, 10) === 0 ? ' checked' : '') + ' /> Sim</label>' +
-            '<label class="gcv-dash-yesno__opt"><input type="checkbox" id="ex-confirmed-no"' + (ex && parseInt(ex.quorum, 10) === 0 ? '' : ' checked') + ' /> Não</label>' +
-            '</div></div>' +
-            '<div class="gcv-dash-field gcv-dash-confirm-quorum__quorum" id="ex-quorum-wrap">' +
-            '<label class="gcv-dash-label" for="ex-quorum">Quórum <span class="gcv-dash-label__hint">(somente para as novas inscrições)</span></label>' +
-            (function () {
-              var maxP = parseInt(ex && ex.max_people != null ? ex.max_people : 10, 10);
-              if (!Number.isFinite(maxP) || maxP < 1) maxP = 10;
-              if (maxP > 12) maxP = 12;
-              var sel = parseInt(ex && ex.quorum != null ? ex.quorum : 4, 10);
-              if (!Number.isFinite(sel) || sel < 1) sel = 4;
-              if (sel > maxP) sel = maxP;
-              var opts = [];
-              var i;
-              for (i = 1; i <= maxP; i++) opts.push(i);
-              return '<select class="gcv-dash-select" id="ex-quorum">' + opts.map(function (o) {
-                return '<option value="' + o + '"' + (sel === o ? ' selected' : '') + '>' + o + '</option>';
-              }).join('') + '</select>';
-            }()) + '</div></div>' +
-            '<div class="gcv-dash-field-row gcv-dash-field-row--2">' +
-            '<div class="gcv-dash-field"><label class="gcv-dash-label">Pessoas confirmadas por fora (0 a 5)</label><input class="gcv-dash-input" id="ex-preconfirmed" type="number" min="0" max="5" value="' + esc(ex && ex.preconfirmed_people != null ? ex.preconfirmed_people : 0) + '" /></div>' +
-            '<div class="gcv-dash-field"><label class="gcv-dash-label">Vagas *</label><input class="gcv-dash-input" id="ex-max" type="number" min="1" max="12" value="' + esc(ex && ex.max_people || 10) + '" /></div>' +
-            '</div>' +
-            '<div class="gcv-dash-field"><label class="gcv-dash-label">Inscritos</label><input class="gcv-dash-input" id="ex-booked" type="number" min="0" value="' + esc(ex && ex.booked_people || 0) + '" readonly disabled tabindex="-1" title="Contador automático das reservas pagas no site" /><p class="gcv-cms-muted" style="margin:0.3rem 0 0;">Atualiza sozinho quando alguém paga no site. Não é editável.</p></div>' +
-            '<label class="gcv-dash-label"><input type="checkbox" id="ex-transport"' + (ex && Number(ex.include_transport) ? ' checked' : '') + ' /> Transporte Incluso</label>' +
-            '<p class="gcv-cms-muted" style="margin:0 0 0.75rem;">Modo ADMINISTRATIVE: você define o preço final e o repasse ao guia. A margem da plataforma é registrada automaticamente.</p>' +
-            '<div class="gcv-dash-field"><label class="gcv-dash-label">Slug do carrinho (opcional)</label><input class="gcv-dash-input" id="ex-cart" value="' + esc(ex && ex.cart_slug || '') + '" placeholder="ex.: mirante-da-janela-2026-07-09" /></div>' +
-            '<div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.75rem;">' +
-            '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary" id="ex-save">Salvar</button>' +
-            '<button type="button" class="gcv-dash-btn" id="ex-cancel">Fechar</button>' +
-            (ex && ex.id
-              ? '<button type="button" class="gcv-cms-icon-btn gcv-cms-icon-btn--danger" id="ex-delete" style="margin-left:auto;" title="Excluir" aria-label="Excluir">' + icoTrash() + '</button>'
-              : '') +
-            '</div>';
-
-          var selected = selectedIds.slice();
-
-          (function bindMeetingPlaces() {
-            if (typeof global.gcvBindMeetingPoint !== 'function') return;
-            global.gcvBindMeetingPoint({
-              input: root('ex-meeting'),
-              box: root('ex-meeting-suggest'),
-              gpsEl: root('ex-meeting-gps'),
-              mapEl: root('ex-meeting-map'),
-              gpsBtn: root('ex-meeting-gps-btn'),
-              placeEl: root('ex-meeting-place'),
-              latEl: root('ex-meeting-lat'),
-              lngEl: root('ex-meeting-lng'),
-              getCityId: function () {
-                return root('ex-city') ? root('ex-city').value : '';
-              },
-              get: get,
-              esc: esc
-            });
-          })();
-
-          (function bindConfirmedYesNo() {
-            var yes = root('ex-confirmed-yes');
-            var no = root('ex-confirmed-no');
-            var wrap = root('ex-quorum-wrap');
-            var sel = root('ex-quorum');
-            function apply() {
-              var confirmed = !!(yes && yes.checked);
-              if (no) no.checked = !confirmed;
-              if (wrap) wrap.hidden = confirmed;
-              var row = wrap && wrap.closest ? wrap.closest('.gcv-dash-confirm-quorum') : null;
-              if (row) {
-                row.classList.toggle('is-confirmed', confirmed);
-                row.classList.toggle('is-unconfirmed', !confirmed);
-              }
-              if (sel) {
-                sel.disabled = confirmed;
-                if (!confirmed) {
-                  var maxP = parseInt(root('ex-max') && root('ex-max').value, 10);
-                  if (!Number.isFinite(maxP) || maxP < 1) maxP = 10;
-                  if (maxP > 12) maxP = 12;
-                  var v = parseInt(sel.value, 10);
-                  if (!Number.isFinite(v) || v < 1) sel.value = String(Math.min(4, maxP));
-                  else if (v > maxP) sel.value = String(maxP);
-                }
-              }
-            }
-            if (yes) yes.onchange = function () {
-              if (yes.checked && no) no.checked = false;
-              if (!yes.checked && no) no.checked = true;
-              apply();
-            };
-            if (no) no.onchange = function () {
-              if (no.checked && yes) yes.checked = false;
-              if (!no.checked && yes) yes.checked = true;
-              apply();
-            };
-            apply();
-          })();
-
-          (function bindWalkQuorumToVagas() {
-            var maxEl = root('ex-max');
-            var qEl = root('ex-quorum');
-            function sync() {
-              fillWalkQuorumSelect(qEl, maxEl && maxEl.value, qEl ? qEl.value : 4);
-            }
-            if (maxEl) {
-              maxEl.addEventListener('change', sync);
-            }
-          })();
-
-          if (typeof global.gcvBindDatePicker === 'function') {
-            global.gcvBindDatePicker(root('ex-date'), {
-              min: typeof global.gcvTodayIso === 'function' ? global.gcvTodayIso() : ''
-            });
-          }
-
-          function refreshPicker() {
-            var wrap = root('ex-attr-picker-wrap');
-            if (wrap) wrap.innerHTML = renderAttractionPickerMulti(attrs, selected);
-            bindChips();
-            updateHint();
-          }
-
-          function updateHint() {
-            var hint = root('ex-attr-selected-hint');
-            var countEl = root('ex-attr-count');
-            if (countEl) countEl.textContent = '(' + selected.length + '/' + EX_ATTR_MAX + ')';
-            if (!hint) return;
-            if (selected.length === 0) {
-              hint.textContent = 'Nenhum selecionado — escolha pelo menos 1.';
-              hint.style.color = '#b91c1c';
-            } else {
-              var names = selected.map(function (id) {
-                var found = (attrs || []).find(function (a) { return String(a.id) === String(id); });
-                return found ? (found.title_pt || found.slug) : ('#' + id);
-              });
-              hint.textContent = 'Selecionados: ' + names.join(' + ');
-              hint.style.color = '';
-            }
-          }
-
-          function bindChips() {
-            form.querySelectorAll('[data-attr-id]').forEach(function (chip) {
-              chip.onclick = function () {
-                var id = parseInt(chip.getAttribute('data-attr-id'), 10);
-                var idx = selected.indexOf(id);
-                if (idx !== -1) {
-                  selected.splice(idx, 1);
-                } else {
-                  if (selected.length >= EX_ATTR_MAX) {
-                    alert('Máximo de ' + EX_ATTR_MAX + ' atrativos por dia.');
-                    return;
-                  }
-                  selected.push(id);
-                }
-                refreshPicker();
-              };
-            });
-          }
-
-          bindChips();
-          updateHint();
-
-          (function bindAdminAttrOverlay() {
-            var wrap = root('ex-attr-picker-wrap');
-            if (!wrap) return;
-            var field = wrap.closest('.gcv-dash-field');
-            if (!field) return;
-            var scrim = field.querySelector(':scope > .gcv-dash-attr-ac__scrim');
-            if (!scrim) {
-              scrim = document.createElement('div');
-              scrim.className = 'gcv-dash-attr-ac__scrim';
-              scrim.hidden = true;
-              field.insertBefore(scrim, field.firstChild);
-            }
-            function openOverlay() {
-              field.classList.add('is-attr-picking');
-              scrim.hidden = false;
-              document.body.classList.add('gcv-attr-picking');
-            }
-            function closeOverlay() {
-              field.classList.remove('is-attr-picking');
-              scrim.hidden = true;
-              if (!document.querySelector('.gcv-dash-attr-ac.is-open')) {
-                document.body.classList.remove('gcv-attr-picking');
-              }
-            }
-            wrap.addEventListener('click', openOverlay);
-            scrim.onmousedown = function (ev) {
-              ev.preventDefault();
-              closeOverlay();
-            };
-          })();
-
-          if (ex && ex.status) root('ex-status').value = ex.status;
-          root('ex-cancel').onclick = function () { form.hidden = true; };
-
-          var delBtn = root('ex-delete');
-          if (delBtn && ex && ex.id) {
-            delBtn.onclick = function () {
-              var label = (ex.date_iso || '') + ' · ' + (ex.attraction_title || '');
-              gcvConfirm('Excluir permanentemente a saída\n' + label + '?\n\nEsta ação não pode ser desfeita.', { danger: true, okText: 'Excluir' }).then(function (ok) {
-                if (!ok) return;
-              delBtn.disabled = true;
-              sendJson('DELETE', '/api/admin/excursions.php', { id: ex.id }, function (e, r) {
-                if (!r || !r.ok) {
-                  delBtn.disabled = false;
-                  alert((r && r.error) || 'Erro ao excluir');
-                  return;
-                }
-                form.hidden = true;
-                renderExcursions();
-              });
-              });
-            };
-          }
-
-          root('ex-save').onclick = function () {
-            var statusVal = root('ex-status').value;
-            var guideId = parseInt(root('ex-guide').value, 10) || null;
-            if (selected.length < EX_ATTR_MIN) {
-              alert('Selecione pelo menos ' + EX_ATTR_MIN + ' atrativo.');
-              return;
-            }
-            if (selected.length > EX_ATTR_MAX) {
-              alert('Máximo de ' + EX_ATTR_MAX + ' atrativos por dia.');
-              return;
-            }
-            if ((statusVal === 'published' || statusVal === 'soldout') && !guideId) {
-              alert('Defina o guia antes de publicar a excursão.');
-              return;
-            }
-            var confirmed = !!(root('ex-confirmed-yes') && root('ex-confirmed-yes').checked);
-            var maxPeople = parseInt(root('ex-max').value, 10);
-            if (!Number.isFinite(maxPeople) || maxPeople < 1) {
-              alert('Informe o máximo de pessoas.');
-              return;
-            }
-            if (maxPeople > 12) {
-              alert('Máximo de pessoas é 12.');
-              return;
-            }
-            var quorum = confirmed ? 0 : parseInt(root('ex-quorum').value, 10);
-            if (!confirmed) {
-              if (!Number.isFinite(quorum)) quorum = Math.min(4, maxPeople);
-              if (quorum < 1 || quorum > maxPeople) {
-                alert('Quórum deve ser entre 1 e o número de vagas (' + maxPeople + ').');
-                return;
-              }
-            }
-            var meetingPoint = (root('ex-meeting') && root('ex-meeting').value || '').trim();
-            if (!meetingPoint) {
-              alert('Informe o ponto de encontro.');
-              return;
-            }
-            var timeVal = readTimeSelect('ex-time-h', 'ex-time-m');
-            if (!timeVal) {
-              alert('Informe o horário de saída.');
-              return;
-            }
-            var meetingLat = (root('ex-meeting-lat') && root('ex-meeting-lat').value || '').trim();
-            var meetingLng = (root('ex-meeting-lng') && root('ex-meeting-lng').value || '').trim();
-            var payload = {
-              id: ex && ex.id,
-              date_iso: root('ex-date').value,
-              departure_time: timeVal,
-              status: statusVal,
-              attraction_ids: selected.slice(),
-              attraction_id: selected[0],
-              departure_city_id: parseInt(root('ex-city').value, 10) || 0,
-              meeting_point: meetingPoint,
-              meeting_point_place_id: (root('ex-meeting-place') && root('ex-meeting-place').value || '').trim() || null,
-              meeting_point_lat: meetingLat !== '' ? meetingLat : null,
-              meeting_point_lng: meetingLng !== '' ? meetingLng : null,
-              guide_user_id: guideId,
-              price_cents: moneyToCents(root('ex-price').value),
-              guide_payout_planned_cents: moneyToCents(root('ex-guide-payout').value),
-              business_mode: 'ADMINISTRATIVE',
-              created_by_origin: 'ADMIN',
-              quorum: quorum,
-              max_people: maxPeople,
-              preconfirmed_people: Math.max(0, Math.min(5, parseInt(root('ex-preconfirmed').value, 10) || 0)),
-              include_transport: !!(root('ex-transport') && root('ex-transport').checked),
-              cart_slug: root('ex-cart').value.trim() || null,
-            };
-            if ((statusVal === 'published' || statusVal === 'soldout') && !payload.guide_payout_planned_cents) {
-              alert('Informe o valor previsto de repasse ao guia.');
-              return;
-            }
-            sendJson(ex ? 'PUT' : 'POST', '/api/admin/excursions.php', payload, function (e, r) {
-              if (!r || !r.ok) { alert((r && r.error) || 'Erro'); return; }
-              form.hidden = true;
-              renderExcursions();
-            });
-          };
-        }
-
-        get('/api/admin/cms-guides.php', function (e2, r2) {
-          withGuides((r2 && r2.data && r2.data.guides) || []);
-        });
-      }
-
-      get('/api/admin/attractions.php', function (e1, r1) {
-        var attrs = (r1 && r1.data && r1.data.attractions) || [];
-        if (attrs.length === 0) {
-          seedAttractions(function (err, res) {
-            if (res && res.ok) {
-              get('/api/admin/attractions.php', function (e3, r3) {
-                loadForm((r3 && r3.data && r3.data.attractions) || []);
-              });
-            } else {
-              loadForm([]);
-            }
-          });
-          return;
-        }
-        loadForm(attrs);
-      });
+  function closeAdminPublishForm() {
+    var host = root('cms-exc-form');
+    if (host) {
+      host.hidden = true;
+      host.innerHTML = '';
+      host.classList.remove('gcv-cms-card--publish');
+    }
+    ['cms-exc-toolbar', 'cms-exc-sheet-wrap', 'cms-exc-meta'].forEach(function (id) {
+      var el = root(id);
+      if (el) el.hidden = false;
     });
+    var head = root('cms-exc-section-head');
+    if (head) head.hidden = false;
+    var title = head && head.querySelector('.gcv-dash-section-title');
+    if (title) title.textContent = 'Excursões (próximas saídas)';
+  }
+
+  function openExcursionForm(ex) {
+    var host = root('cms-exc-form');
+    if (!host) return;
+    if (!window.GcvDashRoles || typeof window.GcvDashRoles.loadGuidePublish !== 'function') {
+      alert('Formulário de passeio indisponível. Recarregue a página.');
+      return;
+    }
+    ['cms-exc-toolbar', 'cms-exc-sheet-wrap', 'cms-exc-meta'].forEach(function (id) {
+      var el = root(id);
+      if (el) el.hidden = true;
+    });
+    var pageHead = root('cms-exc-section-head');
+    if (pageHead) pageHead.hidden = true;
+    host.hidden = false;
+    host.classList.add('gcv-cms-card--publish');
+    host.innerHTML =
+      '<div class="gcv-dash-section-head">' +
+      '<h3 class="gcv-dash-section-title" style="margin:0;padding:0;border:0">' + (ex ? 'Editar passeio' : 'Criar passeio') + '</h3>' +
+      '<div style="display:flex;gap:0.5rem;flex-wrap:wrap">' +
+      '<button type="button" class="gcv-dash-btn gcv-dash-btn--sm" id="cms-exc-form-back">Voltar</button>' +
+      '<button type="button" class="gcv-dash-btn gcv-dash-btn--blue gcv-dash-btn--sm" id="ge-clear-publish">' + (ex ? 'Cancelar' : 'Limpar') + '</button>' +
+      '</div></div>' +
+      '<form class="gcv-dash-form gcv-dash-form--publish" id="gcv-admin-create-tour-form" novalidate></form>';
+    var back = root('cms-exc-form-back');
+    if (back) back.onclick = function () { closeAdminPublishForm(); };
+    window.GcvDashRoles.loadGuidePublish({
+      admin: true,
+      form: document.getElementById('gcv-admin-create-tour-form'),
+      edit: ex || null,
+      onDone: function () {
+        closeAdminPublishForm();
+        renderExcursions();
+      }
+    });
+    try { host.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (err) {}
   }
 
   function open(module) {
@@ -2057,8 +2890,14 @@
   }
 
   function boot() {
-    // no-op placeholder for future init
+    if (window.__gcvExcSheetUnload) return;
+    window.__gcvExcSheetUnload = true;
+    window.addEventListener('beforeunload', function (ev) {
+      if (!hasUnsavedSheet()) return;
+      ev.preventDefault();
+      ev.returnValue = '';
+    });
   }
 
-  global.GcvAdminCms = { open: open, boot: boot };
+  global.GcvAdminCms = { open: open, boot: boot, guardLeave: guardLeave, hasUnsaved: hasUnsavedSheet };
 })(typeof window !== 'undefined' ? window : globalThis);

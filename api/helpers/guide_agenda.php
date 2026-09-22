@@ -142,10 +142,24 @@ function gcv_guide_incoming_transfers(int $toUserId): array
  * @param array<string,mixed> $data
  * @return array<string,mixed>
  */
-function gcv_guide_update_excursion(array $ex, array $data, int $userId): array
+function gcv_guide_update_excursion(array $ex, array $data, int $userId, bool $asAdmin = false): array
 {
     $mapped = function_exists('gcv_map_excursion_row') ? gcv_map_excursion_row($ex) : $ex;
     $flags = gcv_guide_agenda_flags($mapped);
+    if ($asAdmin) {
+        $flags['can_edit'] = true;
+        $flags['can_change_date'] = true;
+        $flags['can_change_city'] = true;
+        $flags['can_change_time'] = true;
+        $flags['can_change_meeting'] = true;
+        $flags['can_change_price'] = true;
+        $flags['can_change_max'] = true;
+        $flags['can_change_quorum'] = true;
+        $flags['can_confirm'] = true;
+        $flags['can_change_preconfirmed'] = true;
+        $flags['can_change_includes'] = true;
+        $flags['can_transfer'] = true;
+    }
     if (empty($flags['can_edit'])) {
         throw new InvalidArgumentException('Este passeio não pode ser editado');
     }
@@ -233,7 +247,11 @@ function gcv_guide_update_excursion(array $ex, array $data, int $userId): array
     }
 
     if (!empty($flags['can_change_meeting']) && (isset($data['meeting_point']) || isset($data['meeting_point_place_id']))) {
-        $mp = gcv_meeting_point_from_body($data, true);
+        $cityName = (string)($ex['departure_city_name'] ?? '');
+        if (!empty($data['departure_city_id'])) {
+            $cityName = gcv_city_name_by_id((int)$data['departure_city_id']) ?: $cityName;
+        }
+        $mp = gcv_meeting_point_from_body($data, true, $cityName);
         if (isset($mp['error'])) {
             throw new InvalidArgumentException((string)$mp['error']);
         }
@@ -299,7 +317,7 @@ function gcv_guide_update_excursion(array $ex, array $data, int $userId): array
         $newNet = isset($data['guide_net_cents'])
             ? (int)$data['guide_net_cents']
             : (int)round(((float)$data['guide_net']) * 100);
-        if ($newNet < $currentNet && $insc > 0) {
+        if ($newNet < $currentNet && $insc > 0 && !$asAdmin) {
             throw new InvalidArgumentException('O valor a receber só pode ser aumentado');
         }
         $attrForPrice = array_key_exists('attraction_id', $data)

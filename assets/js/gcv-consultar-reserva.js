@@ -32,6 +32,7 @@
       backExc: "← Voltar às excursões",
       person: "pessoa",
       people: "pessoas",
+      embarque: "Saída",
       statusCANCELLED: "Reserva cancelada",
       cancelBtn: "Cancelar reserva",
       cancelConfirmForming: "Cancelar esta reserva? O guia será avisado e o valor será reembolsado conforme a política (em formação).",
@@ -63,6 +64,7 @@
       backExc: "← Back to tours",
       person: "person",
       people: "people",
+      embarque: "Departure",
       statusCANCELLED: "Reservation cancelled",
       cancelBtn: "Cancel reservation",
       cancelConfirmForming: "Cancel this reservation? The guide will be notified. Full refund applies while the tour is forming.",
@@ -94,6 +96,7 @@
       backExc: "← Volver a las excursiones",
       person: "persona",
       people: "personas",
+      embarque: "Salida",
       statusCANCELLED: "Reserva cancelada",
       cancelBtn: "Cancelar reserva",
       cancelConfirmForming: "¿Cancelar esta reserva? Se avisará al guía. Reembolso integral mientras el paseo esté en formación.",
@@ -335,7 +338,7 @@
         html +=
           "<li>" +
           escapeHtml(
-            [t.dateLabel || t.dateShort, t.destino, t.embarque ? "Embarque: " + t.embarque : "", qty + " " + qtyLabel]
+            [t.dateLabel || t.dateShort, t.destino, t.embarque ? s(loc, "embarque") + ": " + t.embarque : "", qty + " " + qtyLabel]
               .filter(Boolean)
               .join(" · "),
           ) +

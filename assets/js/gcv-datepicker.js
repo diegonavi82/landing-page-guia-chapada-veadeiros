@@ -39,7 +39,10 @@
 
   function closeAll(except) {
     document.querySelectorAll('.gcv-datepicker.is-open').forEach(function (el) {
-      if (el !== except) el.classList.remove('is-open');
+      if (el === except) return;
+      el.classList.remove('is-open');
+      var p = el._gcvPop || el.querySelector('.gcv-datepicker__pop');
+      if (p) p.hidden = true;
     });
   }
 
@@ -59,16 +62,20 @@
     var btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'gcv-datepicker__btn';
-    btn.innerHTML =
-      '<span class="gcv-datepicker__text"></span>' +
-      '<svg class="gcv-datepicker__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">' +
-      '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>';
+    btn.innerHTML = opts.hideIcon
+      ? '<span class="gcv-datepicker__text"></span>'
+      : ('<span class="gcv-datepicker__text"></span>' +
+        '<svg class="gcv-datepicker__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">' +
+        '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>');
     wrap.appendChild(btn);
+    if (opts.hideIcon) wrap.classList.add('gcv-datepicker--plain');
+    if (opts.compact) wrap.classList.add('gcv-datepicker--compact');
 
     var pop = document.createElement('div');
     pop.className = 'gcv-datepicker__pop';
     pop.hidden = true;
     wrap.appendChild(pop);
+    wrap._gcvPop = pop;
 
     var textEl = btn.querySelector('.gcv-datepicker__text');
     var view = parseIso(input.value) || new Date();
@@ -149,14 +156,43 @@
       return !!(opts.locked || wrap.classList.contains('is-locked') || btn.disabled || input.readOnly || input.disabled);
     }
 
+    function placePop() {
+      var r = btn.getBoundingClientRect();
+      var gap = 6;
+      pop.style.position = 'fixed';
+      pop.style.left = r.left + 'px';
+      pop.style.top = (r.bottom + gap) + 'px';
+      pop.style.right = 'auto';
+      pop.style.zIndex = '90';
+      requestAnimationFrame(function () {
+        var pr = pop.getBoundingClientRect();
+        var left = r.left;
+        if (pr.right > window.innerWidth - 8) {
+          left = Math.max(8, window.innerWidth - pr.width - 8);
+        }
+        var top = r.bottom + gap;
+        if (pr.bottom > window.innerHeight - 8 && r.top - pr.height - gap > 8) {
+          top = r.top - pr.height - gap;
+        }
+        pop.style.left = left + 'px';
+        pop.style.top = top + 'px';
+      });
+    }
+
+    function onWinChange() {
+      if (wrap.classList.contains('is-open')) placePop();
+    }
+
     function open() {
       if (isLocked()) return;
       closeAll(wrap);
       var cur = parseIso(input.value);
       view = cur ? new Date(cur.getFullYear(), cur.getMonth(), 1) : new Date();
+      if (pop.parentNode !== document.body) document.body.appendChild(pop);
       render();
       wrap.classList.add('is-open');
       pop.hidden = false;
+      placePop();
     }
 
     function close() {
@@ -171,6 +207,9 @@
       else open();
     });
 
+    window.addEventListener('resize', onWinChange);
+    window.addEventListener('scroll', onWinChange, true);
+
     input.addEventListener('change', syncBtn);
     input.addEventListener('input', syncBtn);
     syncBtn();
@@ -179,8 +218,9 @@
   document.addEventListener('mousedown', function (ev) {
     document.querySelectorAll('.gcv-datepicker.is-open').forEach(function (el) {
       if (el.contains(ev.target)) return;
+      if (el._gcvPop && el._gcvPop.contains(ev.target)) return;
       el.classList.remove('is-open');
-      var p = el.querySelector('.gcv-datepicker__pop');
+      var p = el._gcvPop || el.querySelector('.gcv-datepicker__pop');
       if (p) p.hidden = true;
     });
   });
@@ -189,7 +229,7 @@
     if (ev.key !== 'Escape') return;
     document.querySelectorAll('.gcv-datepicker.is-open').forEach(function (el) {
       el.classList.remove('is-open');
-      var pop = el.querySelector('.gcv-datepicker__pop');
+      var pop = el._gcvPop || el.querySelector('.gcv-datepicker__pop');
       if (pop) pop.hidden = true;
     });
   });

@@ -287,13 +287,25 @@ function destHasImg(d) {
   return !!(d && String(d.cardImg || d.cover_url || "").trim());
 }
 
+function cardPictureSsr(src, altText) {
+  const url = String(src || "").trim();
+  const alt = esc(String(altText || "").trim());
+  if (!url) return "";
+  const img =
+    `<img class="gcv-excursoes-card__img" src="${esc(url)}" alt="${alt}" loading="lazy" decoding="async" width="230" height="230">`;
+  if (/\.jpe?g$/i.test(url)) {
+    return `<picture><source srcset="${esc(url.replace(/\.jpe?g$/i, ".webp"))}" type="image/webp">${img}</picture>`;
+  }
+  return img;
+}
+
 function destHasPage(d) {
   const p = d && (d.atrativoPath || d.path);
   return !!(p && String(p).trim());
 }
 
 function destIsTitleOnly(d) {
-  return !destHasImg(d) || !destHasPage(d);
+  return !destHasImg(d);
 }
 
 function splitDestinoPlusNames(name) {
@@ -369,7 +381,8 @@ function cardSpotRowSsr(d, locale, transportBadge) {
   }
   const imgInner =
     `<div class="gcv-excursoes-card__img-wrap gcv-excursoes-card__spot-img-wrap">` +
-    `<img class="gcv-excursoes-card__img" src="${esc(String(d.cardImg || ""))}" alt="${label}" loading="lazy" decoding="async"></div>`;
+    cardPictureSsr(d.cardImg, d.cardImgAlt || d.destino) +
+    `</div>`;
   const photo =
     `<div class="gcv-excursoes-card__spot-photo">` +
     `<div class="gcv-excursoes-card__atrativo-link--img">${imgInner}</div>` +
@@ -398,7 +411,10 @@ function faltamParaConfirmarSsr(e) {
   if (Number.isFinite(faltam) && faltam >= 0) return faltam;
   const q = parseInt(String(e.quorumMin), 10);
   if (!Number.isFinite(q) || q < 1) return 0;
-  return Math.max(0, q - inscritosNoGrupo(e));
+  const site = e.inscricoesPlataforma != null && e.inscricoesPlataforma !== ""
+    ? (parseInt(String(e.inscricoesPlataforma), 10) || 0)
+    : inscritosNoGrupo(e);
+  return Math.max(0, q - site);
 }
 
 function cardBandFlagsSsr(e, s, x, cap, labelAria, isLotado) {
@@ -464,7 +480,7 @@ function cardImgBlockSsr(e, locale) {
   if (!e.cardImg) return "";
   const href = atrativoHref(e, locale);
   const inner =
-    `<div class="gcv-excursoes-card__img-wrap"><img class="gcv-excursoes-card__img" src="${esc(String(e.cardImg))}" alt="${esc(String(e.destino))}" loading="lazy" width="230" height="230"></div>`;
+    `<div class="gcv-excursoes-card__img-wrap">${cardPictureSsr(e.cardImg, e.cardImgAlt || e.destino)}</div>`;
   if (!href) return inner;
   return `<a class="gcv-excursoes-card__atrativo-link gcv-excursoes-card__atrativo-link--img" href="${esc(href)}">${inner}</a>`;
 }
@@ -761,7 +777,7 @@ export function excursionsCarouselTrackSsrHtml(locale) {
     : allRows;
   const s = SSR[locale] || SSR.pt;
   const timeLabel = locale === "en" ? "Departure" : locale === "es" ? "Salida" : "Saída";
-  const embarqueLabel = locale === "en" ? "Meeting point" : "Embarque";
+  const embarqueLabel = locale === "en" ? "City" : locale === "es" ? "Ciudad" : "Cidade";
   const toggleAdd =
     locale === "en" ? "Add to cart" : locale === "es" ? "Agregar al carrito" : "Adicionar ao carrinho";
   return rows

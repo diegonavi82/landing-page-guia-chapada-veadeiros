@@ -123,7 +123,7 @@ function gcv_excursion_offers_transport(array $e): bool
  * - 4 no carro: a pé passa a 0/6
  *
  * @return array{
- *   total:int, walk:int, transport:int, occupied:int, remaining:int,
+ *   total:int, walk:int, walk_inscriptions:int, transport:int, occupied:int, remaining:int,
  *   walk_slots:int, transport_slots:int, transport_cap:int,
  *   transport_cancelled:bool, transport_full:bool
  * }
@@ -131,7 +131,8 @@ function gcv_excursion_offers_transport(array $e): bool
 function gcv_excursion_group_occupancy(array $e): array
 {
     $total = max(1, (int)($e['max_people'] ?? 10));
-    $walk = gcv_excursion_platform_inscriptions($e) + max(0, (int)($e['preconfirmed_people'] ?? 0));
+    $walkInscriptions = gcv_excursion_platform_inscriptions($e);
+    $walk = $walkInscriptions + max(0, (int)($e['preconfirmed_people'] ?? 0));
     $transport = gcv_excursion_platform_inscriptions_transport($e);
     $cap = max(0, (int)($e['max_people_transport'] ?? 0));
     $offer = gcv_excursion_offers_transport($e);
@@ -159,6 +160,7 @@ function gcv_excursion_group_occupancy(array $e): array
     return [
         'total' => $total,
         'walk' => $walk,
+        'walk_inscriptions' => $walkInscriptions,
         'transport' => $transport,
         'occupied' => $walk + $transport,
         'remaining' => max(0, $total - $walk - $transport),
@@ -175,6 +177,13 @@ function gcv_excursion_group_occupancy(array $e): array
  *
  * @param array<string,mixed> $e
  */
+/** Quantas inscrições pelo site ainda faltam para o quórum a pé. “Por fora” não entra. */
+function gcv_excursion_walking_quorum_remaining(array $e): int
+{
+    $quorum = max(0, (int)($e['quorum'] ?? 0));
+    return max(0, $quorum - gcv_excursion_platform_inscriptions($e));
+}
+
 function gcv_excursion_walking_quorum_met(array $e): bool
 {
     $quorum = max(0, (int)($e['quorum'] ?? 0));

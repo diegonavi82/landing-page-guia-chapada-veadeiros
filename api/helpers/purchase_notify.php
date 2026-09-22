@@ -443,7 +443,10 @@ function gcv_whatsapp_send_zapi(string $phone, string $text): bool
     ]);
 }
 
-function gcv_whatsapp_send_evolution(string $phone, string $text): bool
+/**
+ * @param array{delay?:int,presence?:string} $opts
+ */
+function gcv_whatsapp_send_evolution(string $phone, string $text, array $opts = []): bool
 {
     $base = rtrim(gcv_env_str('EVOLUTION_API_URL', 'https://wa.guiachapadaveadeiros.com'), '/');
     $key = gcv_env_str('EVOLUTION_API_KEY');
@@ -454,20 +457,85 @@ function gcv_whatsapp_send_evolution(string $phone, string $text): bool
     }
     $url = $base . '/message/sendText/' . rawurlencode($instance);
     $headers = ['apikey: ' . $key];
-    if (gcv_whatsapp_post_json($url, $headers, [
+    $delay = max(0, (int)($opts['delay'] ?? 0));
+    $presence = trim((string)($opts['presence'] ?? ''));
+    $timeout = $delay > 0 ? max(20, (int)ceil($delay / 1000) + 12) : 8;
+
+    $payload = [
         'number' => $phone,
         'text' => $text,
-    ], 8)) {
+    ];
+    if ($delay > 0) {
+        $payload['delay'] = $delay;
+    }
+    if ($presence !== '') {
+        $payload['presence'] = $presence;
+    }
+    if (gcv_whatsapp_post_json($url, $headers, $payload, $timeout)) {
         return true;
     }
     $http = gcv_whatsapp_last_http();
     if ($http === 0 || $http >= 500) {
         return false;
     }
-    return gcv_whatsapp_post_json($url, $headers, [
+    $legacy = [
         'number' => $phone,
         'textMessage' => ['text' => $text],
-    ], 8);
+    ];
+    if ($delay > 0 || $presence !== '') {
+        $legacy['options'] = array_filter([
+            'delay' => $delay > 0 ? $delay : null,
+            'presence' => $presence !== '' ? $presence : null,
+        ], static fn($v) => $v !== null && $v !== '');
+    }
+    return gcv_whatsapp_post_json($url, $headers, $legacy, $timeout);
+}
+
+function gcv_whatsapp_hps_configured(): bool
+{
+    return gcv_env_str('EVOLUTION_API_KEY') !== '';
+}
+
+function gcv_whatsapp_hps_sender(): string
+{
+    foreach (['WHATSAPP_PHONE_E164', 'PURCHASE_NOTIFY_WHATSAPP'] as $key) {
+        $n = preg_replace('/\D+/', '', gcv_env_str($key)) ?? '';
+        if ($n !== '') {
+            return $n;
+        }
+    }
+    return '5562982506891';
+}
+
+/**
+ * Envio 1 a 1 pelo WhatsApp do servidor HPS (Evolution).
+ * Aparece no chat normal do remetente e do destinatário, como digitado à mão.
+ */
+function gcv_whatsapp_send_broadcast(string $phone, string $text): bool
+{
+    $phone = gcv_whatsapp_normalize_phone($phone);
+    $text = trim($text);
+    if ($phone === '' || $text === '' || !gcv_whatsapp_hps_configured()) {
+        return false;
+    }
+    foreach (gcv_whatsapp_number_candidates($phone) as $candidate) {
+        try {
+            if (gcv_whatsapp_send_evolution($candidate, $text, [
+                'delay' => 1200,
+                'presence' => 'composing',
+            ])) {
+                return true;
+            }
+            $http = gcv_whatsapp_last_http();
+            if ($http === 0 || $http >= 500) {
+                break;
+            }
+        } catch (Throwable $e) {
+            error_log('whatsapp broadcast: ' . $e->getMessage());
+            break;
+        }
+    }
+    return false;
 }
 
 function gcv_whatsapp_send_evolution_image(string $phone, string $caption, string $pngBinary): bool

@@ -16,9 +16,10 @@
       "title_pt": "Dragão",
       "title_en": "Dragão",
       "title_es": "Dragão",
-      "excerpt_pt": "Roteiro 4x4 em Alto Paraíso de Goiás.",
-      "excerpt_en": "4x4 tour in Alto Paraíso de Goiás.",
-      "excerpt_es": "Ruta 4x4 en Alto Paraíso de Goiás."
+      "excerpt_pt": "Cachoeira do Dragão em Alto Paraíso de Goiás — queda alta em cânion.",
+      "excerpt_en": "Dragão waterfall in Alto Paraíso de Goiás — a tall fall in a canyon.",
+      "excerpt_es": "Cascada del Dragão en Alto Paraíso de Goiás — salto alto en un cañón.",
+      "cover_url": "/assets/img/imagens/cachoeira-dragao-guia-chapada-veadeiros-alto-paraiso.jpg"
     },
     {
       "slug": "sertao-zen-guia-chapada-veadeiros",
@@ -36,9 +37,10 @@
       "title_pt": "Simão Correia",
       "title_en": "Simão Correia",
       "title_es": "Simão Correia",
-      "excerpt_pt": "Roteiro em Alto Paraíso de Goiás.",
-      "excerpt_en": "Tour in Alto Paraíso de Goiás.",
-      "excerpt_es": "Ruta en Alto Paraíso de Goiás."
+      "excerpt_pt": "Cachoeira Simão Correia em Alto Paraíso de Goiás — queda alta no cerrado.",
+      "excerpt_en": "Simão Correia waterfall in Alto Paraíso de Goiás — a tall fall in the cerrado.",
+      "excerpt_es": "Cascada Simão Correia en Alto Paraíso de Goiás — salto alto en el cerrado.",
+      "cover_url": "/assets/img/imagens/cachoeira-simao-correia-guia-chapada-veadeiros-alto-paraiso.jpg"
     },
     {
       "slug": "bocaina-de-farias-guia-chapada-veadeiros",
@@ -159,14 +161,14 @@
       "excerpt_pt": "Cachoeira da borda infinita no Canjica, Cavalcante.",
       "excerpt_en": "Infinity-edge waterfall at Canjica, Cavalcante.",
       "excerpt_es": "Cascada de borde infinito en Canjica, Cavalcante.",
-      "cover_url": "/assets/img/imagens/cachoeira-borda-infinita-canjica-aguas-lindas-guia-chapada-veadeiros-cavalcante.jpg",
+      "cover_url": "/assets/img/imagens/aguas-lindas-canjica-guia-chapada-veadeiros-alto-paraiso.jpg",
       "seo_title_pt": "Canjica e Águas Lindas | Guia Chapada Veadeiros (GCV)",
       "seo_title_en": "Canjica and Águas Lindas | Guia Chapada Veadeiros (GCV)",
       "seo_title_es": "Canjica y Águas Lindas | Guia Chapada Veadeiros (GCV)",
       "seo_desc_pt": "Cachoeira da borda infinita no Canjica e Águas Lindas, Cavalcante — Guia Chapada Veadeiros (GCV).",
       "gallery": [
         {
-          "url": "/assets/img/imagens/cachoeira-borda-infinita-canjica-aguas-lindas-guia-chapada-veadeiros-cavalcante.jpg",
+          "url": "/assets/img/imagens/aguas-lindas-canjica-guia-chapada-veadeiros-alto-paraiso.jpg",
           "alt": "Cachoeira da borda infinita no Canjica e Águas Lindas, Cavalcante — Guia Chapada Veadeiros (GCV)",
           "sort_order": 0
         }
@@ -352,7 +354,7 @@
       "excerpt_pt": "Cachoeira Caracol no Complexo Caldeira, Alto Paraíso de Goiás.",
       "excerpt_en": "Caracol waterfall at Complexo Caldeira, Alto Paraíso de Goiás.",
       "excerpt_es": "Cascada Caracol en el Complejo Caldeira, Alto Paraíso de Goiás.",
-      "cover_url": "/assets/img/imagens/cachoeira-caracol-complexo-caldeira-guia-chapada-veadeiros-alto-paraiso.jpg",
+      "cover_url": "/assets/img/imagens/cachoeira-caracol-poco-guia-chapada-veadeiros-alto-paraiso.jpg",
       "seo_title_pt": "Cachoeira Caracol | Complexo Caldeira | Guia Chapada Veadeiros (GCV)",
       "seo_title_en": "Caracol Waterfall | Complexo Caldeira | Guia Chapada Veadeiros (GCV)",
       "seo_title_es": "Cascada Caracol | Complejo Caldeira | Guia Chapada Veadeiros (GCV)",
@@ -361,7 +363,7 @@
       "seo_desc_es": "Cascada Caracol en el Complejo Caldeira, Alto Paraíso de Goiás — poza para baño y salto en gruta. Guia Chapada Veadeiros (GCV).",
       "gallery": [
         {
-          "url": "/assets/img/imagens/cachoeira-caracol-complexo-caldeira-guia-chapada-veadeiros-alto-paraiso.jpg",
+          "url": "/assets/img/imagens/cachoeira-caracol-poco-guia-chapada-veadeiros-alto-paraiso.jpg",
           "alt": "Cachoeira Caracol no Complexo Caldeira, Alto Paraíso de Goiás — Guia Chapada Veadeiros (GCV)",
           "sort_order": 0
         }

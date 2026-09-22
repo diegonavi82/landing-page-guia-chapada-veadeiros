@@ -212,9 +212,34 @@ function gcv_attraction_card_aliases(): array
         'santa barbara' => [$page('cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante'), $img('cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante.jpg')],
         'cristais' => [$page('cachoeira-cristais-guia-chapada-veadeiros-alto-paraiso'), $img('cachoeira-cristais-veu-noiva-guia-chapada-veadeiros-alto-paraiso.jpg')],
         'cataratas dos couros' => [$page('cataratas-dos-couros-guia-chapada-veadeiros-alto-paraiso'), $img('cataratas-couros-guia-chapada-veadeiros-alto-paraiso-1.webp')],
-        'caracol' => [$page('caracol-guia-chapada-veadeiros'), $img('cachoeira-caracol-complexo-caldeira-guia-chapada-veadeiros-alto-paraiso.jpg')],
-        'caracol guia chapada veadeiros' => [$page('caracol-guia-chapada-veadeiros'), $img('cachoeira-caracol-complexo-caldeira-guia-chapada-veadeiros-alto-paraiso.jpg')],
-        'cachoeira caracol' => [$page('caracol-guia-chapada-veadeiros'), $img('cachoeira-caracol-complexo-caldeira-guia-chapada-veadeiros-alto-paraiso.jpg')],
+        'caracol' => [$page('caracol-guia-chapada-veadeiros'), $img('cachoeira-caracol-poco-guia-chapada-veadeiros-alto-paraiso.jpg')],
+        'caracol guia chapada veadeiros' => [$page('caracol-guia-chapada-veadeiros'), $img('cachoeira-caracol-poco-guia-chapada-veadeiros-alto-paraiso.jpg')],
+        'cachoeira caracol' => [$page('caracol-guia-chapada-veadeiros'), $img('cachoeira-caracol-poco-guia-chapada-veadeiros-alto-paraiso.jpg')],
+        'caracol-guia-chapada-veadeiros' => [$page('caracol-guia-chapada-veadeiros'), $img('cachoeira-caracol-poco-guia-chapada-veadeiros-alto-paraiso.jpg')],
+        'canjica e aguas lindas' => ['', $img('aguas-lindas-canjica-guia-chapada-veadeiros-alto-paraiso.jpg')],
+        'aguas lindas e canjica' => ['', $img('aguas-lindas-canjica-guia-chapada-veadeiros-alto-paraiso.jpg')],
+        'canjica-aguas-lindas-guia-chapada-veadeiros' => ['', $img('aguas-lindas-canjica-guia-chapada-veadeiros-alto-paraiso.jpg')],
+        'dragao' => ['', $img('cachoeira-dragao-guia-chapada-veadeiros-alto-paraiso.jpg')],
+        'cachoeira do dragao' => ['', $img('cachoeira-dragao-guia-chapada-veadeiros-alto-paraiso.jpg')],
+        'dragao-4x4-guia-chapada-veadeiros' => ['', $img('cachoeira-dragao-guia-chapada-veadeiros-alto-paraiso.jpg')],
+        'simao correia' => ['', $img('cachoeira-simao-correia-guia-chapada-veadeiros-alto-paraiso.jpg')],
+        'simao-correia-guia-chapada-veadeiros' => ['', $img('cachoeira-simao-correia-guia-chapada-veadeiros-alto-paraiso.jpg')],
+        'mirante da janela' => [
+            $page('mirante-janela-cachoeira-abismo-guia-chapada-veadeiros-sao-jorge'),
+            $img('mirante-janela-guia-chapada-veadeiros-sao-jorge-parque-nacional-1.jpg'),
+        ],
+        'mirante da janela noturno' => [
+            $page('mirante-janela-cachoeira-abismo-guia-chapada-veadeiros-sao-jorge'),
+            $img('mirante-janela-guia-chapada-veadeiros-sao-jorge-parque-nacional-1.jpg'),
+        ],
+        'mirante-da-janela-noturno-guia-chapada-veadeiros' => [
+            $page('mirante-janela-cachoeira-abismo-guia-chapada-veadeiros-sao-jorge'),
+            $img('mirante-janela-guia-chapada-veadeiros-sao-jorge-parque-nacional-1.jpg'),
+        ],
+        'mirante-janela-cachoeira-abismo-guia-chapada-veadeiros-sao-jorge' => [
+            $page('mirante-janela-cachoeira-abismo-guia-chapada-veadeiros-sao-jorge'),
+            $img('mirante-janela-guia-chapada-veadeiros-sao-jorge-parque-nacional-1.jpg'),
+        ],
     ];
     $map = [];
     foreach ($rows as $key => $pair) {
@@ -250,6 +275,11 @@ function gcv_excursion_card_destinos(array $attrs, string $lang): array
         $slug = (string)($a['slug'] ?? '');
         $page = gcv_attraction_public_html_path($slug);
         $cover = gcv_normalize_media_url((string)($a['cover_url'] ?? ''));
+        $altSuffix = [
+            'pt' => ' — Guia Chapada Veadeiros (GCV)',
+            'en' => ' — Guia Chapada Veadeiros (GCV)',
+            'es' => ' — Guia Chapada Veadeiros (GCV)',
+        ];
         $entryRaw = $a['entry_price_cents'] ?? null;
         $parts = preg_split('/\s*\+\s*/u', $t) ?: [];
         $parts = array_values(array_filter(array_map('trim', $parts), static fn($p) => $p !== ''));
@@ -272,6 +302,9 @@ function gcv_excursion_card_destinos(array $attrs, string $lang): array
             $item = [
                 'destino' => $part,
                 'cardImg' => $useCover,
+                'cardImgAlt' => $part !== ''
+                    ? ($part . ($altSuffix[$lang] ?? $altSuffix['pt']))
+                    : 'Guia Chapada Veadeiros (GCV)',
                 'atrativoPath' => $usePage,
                 'title' => $part,
                 'slug' => $slug,

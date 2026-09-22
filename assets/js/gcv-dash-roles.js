@@ -96,22 +96,36 @@
     return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
   }
 
+  var TIME_MINUTES = [15, 30, 45];
+
+  function snapTimeMinutes(m) {
+    var n = parseInt(m, 10);
+    if (!Number.isFinite(n) || n < 0) n = 15;
+    var best = TIME_MINUTES[0];
+    var dist = 99;
+    TIME_MINUTES.forEach(function (mm) {
+      var d = Math.abs(mm - n);
+      if (d < dist) {
+        dist = d;
+        best = mm;
+      }
+    });
+    return best;
+  }
+
   function timeSelectHtml(hourId, minId, selectedHHmm) {
-    var raw = String(selectedHHmm || '10:00');
+    var raw = String(selectedHHmm || '10:15');
     var parts = raw.split(':');
     var h = parseInt(parts[0], 10);
-    var m = parseInt(parts[1], 10);
+    var m = snapTimeMinutes(parts[1]);
     if (!Number.isFinite(h) || h < 0 || h > 23) h = 10;
-    if (!Number.isFinite(m) || m < 0) m = 0;
-    m = Math.round(m / 10) * 10;
-    if (m >= 60) m = 50;
     var hours = '';
     var i;
     for (i = 0; i < 24; i++) {
       hours += '<option value="' + pad2(i) + '"' + (i === h ? ' selected' : '') + '>' + pad2(i) + 'h</option>';
     }
     var mins = '';
-    [0, 10, 20, 30, 40, 50].forEach(function (mm) {
+    TIME_MINUTES.forEach(function (mm) {
       mins += '<option value="' + pad2(mm) + '"' + (mm === m ? ' selected' : '') + '>' + pad2(mm) + '</option>';
     });
     return (
@@ -277,16 +291,18 @@
     fillIntSelect(qEl, 1, walkQuorumMaxFromPrefix(prefix), qEl ? qEl.value : DEFAULT_QUORUM);
   }
 
-  function quorumSelectHtml(id, selected, maxN) {
+  function quorumSelectHtml(id, selected, maxN, minN) {
     maxN = parseFiniteInt(maxN, DEFAULT_MAX_PEOPLE);
-    if (maxN < 1) maxN = 1;
+    minN = parseFiniteInt(minN, 1);
+    if (minN < 0) minN = 0;
+    if (maxN < minN) maxN = minN;
     if (maxN > MAX_PEOPLE_CAP) maxN = MAX_PEOPLE_CAP;
     var sel = parseFiniteInt(selected, DEFAULT_QUORUM);
-    if (sel < 1) sel = DEFAULT_QUORUM;
+    if (sel < minN) sel = minN === 0 ? 0 : DEFAULT_QUORUM;
     if (sel > maxN) sel = maxN;
     var html = '<select class="gcv-dash-select" id="' + id + '" required>';
     var i;
-    for (i = 1; i <= maxN; i++) {
+    for (i = minN; i <= maxN; i++) {
       html += '<option value="' + i + '"' + (sel === i ? ' selected' : '') + '>' + i + '</option>';
     }
     return html + '</select>';
@@ -1837,17 +1853,18 @@
 
   function occupancyRowHtml(opts) {
     var filled = Math.max(0, parseFiniteInt(opts.filled, 0));
+    var quorumCount = opts.quorumCount != null ? Math.max(0, parseFiniteInt(opts.quorumCount, 0)) : filled;
     var quorum = parseFiniteInt(opts.quorum, 0);
     var cancelled = !!opts.cancelled;
     var locked = !!opts.locked;
-    var formed = !cancelled && !locked && (quorum <= 0 || filled >= quorum);
+    var formed = !cancelled && !locked && (quorum <= 0 || quorumCount >= quorum);
     if (opts.kind === 'walk' && filled >= 1 && !opts.guideSeatOk && !opts.transportFormed) {
       formed = false;
     }
     var state = cancelled ? 'Cancelado' : (locked ? 'Sem vaga no grupo' : (formed ? 'Confirmado' : 'Em formação'));
     var quorumHtml = '';
     if (!cancelled && !locked && !formed) {
-      var need = Math.max(0, quorum - filled);
+      var need = Math.max(0, quorum - quorumCount);
       if (need > 0) {
         quorumHtml = '<em class="gcv-agenda-lot__quorum">Faltam ' + need + ' para o quórum</em>';
       } else if (opts.kind === 'walk' && !opts.guideSeatOk) {
@@ -1932,6 +1949,7 @@
       icon: agendaWalkIcon(),
       title: 'Sem transporte',
       filled: st.walk,
+      quorumCount: parseFiniteInt(e.booked_people, 0),
       total: st.walkSlots,
       quorum: e.quorum,
       locked: st.offer && st.walkSlots < 1,
@@ -2119,9 +2137,14 @@
 
   /* ---------- GUIA: PUBLICAR ---------- */
   function confirmClearPublish(form) {
-    if (form && form.getAttribute('data-edit-id')) {
+    if (!form) return;
+    if (form.getAttribute('data-edit-id')) {
       pendingEditExcursion = null;
       if (typeof form._gcvSetPublishEditMode === 'function') form._gcvSetPublishEditMode(false);
+      if (form.getAttribute('data-admin') === '1' && typeof form._gcvAdminOnDone === 'function') {
+        form._gcvAdminOnDone();
+        return;
+      }
       if (typeof form._gcvResetPublish === 'function') form._gcvResetPublish();
       gotoDashSection('section-guide-tours');
       return;
@@ -2148,22 +2171,29 @@
     });
   }
 
-  function loadGuidePublish() {
-    var form = document.getElementById('gcv-guide-create-tour-form');
+  function loadGuidePublish(opts) {
+    opts = opts || {};
+    var isAdmin = !!opts.admin;
+    var form = opts.form || document.getElementById('gcv-guide-create-tour-form');
+    var onDone = typeof opts.onDone === 'function' ? opts.onDone : null;
+    if (isAdmin) pendingEditExcursion = opts.edit || null;
     if (!form) return;
     bindClearPublishButtons(form);
-    if (form.getAttribute('data-ready') === '1') {
+    if (!isAdmin && form.getAttribute('data-ready') === '1') {
       if (typeof form._gcvApplyPendingEdit === 'function') form._gcvApplyPendingEdit();
       return;
     }
     form.innerHTML = 'Carregando…';
-    get('/api/guides/excursions.php', function (err, res) {
+    var optionsUrl = isAdmin
+      ? '/api/admin/excursions.php?publish_options=1'
+      : '/api/guides/excursions.php';
+    get(optionsUrl, function (err, res) {
       if (!res || !res.ok) {
         form.innerHTML = '<p class="gcv-dash-alert">Erro ao carregar opções.</p>';
         return;
       }
       var d = res.data || {};
-      if (!d.profile_complete) {
+      if (!isAdmin && !d.profile_complete) {
         form.innerHTML =
           '<div class="gcv-dash-alert gcv-dash-alert--warning">' +
           'Complete seu <strong>perfil</strong> antes de publicar passeios. ' +
@@ -2175,7 +2205,7 @@
         });
         return;
       }
-      if (!d.financial_ready) {
+      if (!isAdmin && !d.financial_ready) {
         form.innerHTML =
           '<div class="gcv-dash-alert gcv-dash-alert--warning">' +
           'Cadastre CPF/CNPJ e chave PIX em <strong>Meu perfil → Dados financeiros</strong> para publicar passeios. ' +
@@ -2492,19 +2522,16 @@
           '<div class="gcv-dash-field-row">' +
           '<div class="gcv-dash-field"><label class="gcv-dash-label">Data *</label><input class="gcv-dash-input" id="' + p + 'date" type="date" required /></div>' +
           '<div class="gcv-dash-field"><label class="gcv-dash-label">Horário de saída *</label>' +
-          timeSelectHtml(p + 'time-h', p + 'time-m', '10:00') + '</div>' +
+          timeSelectHtml(p + 'time-h', p + 'time-m', '10:15') + '</div>' +
           '<div class="gcv-dash-field"><label class="gcv-dash-label">Cidade de saída *</label>' +
           '<select class="gcv-dash-select" id="' + p + 'city" required>' + cityOptionsHtml() + '</select></div>' +
           '</div>' +
           '<div class="gcv-dash-field"><label class="gcv-dash-label">Ponto de encontro *</label>' +
           '<div class="gcv-meeting-point">' +
-          '<div class="gcv-meeting-point__row">' +
-          '<input class="gcv-dash-input" id="' + p + 'meeting" maxlength="300" required autocomplete="off" placeholder="Digite o endereço — ex.: Padaria Santa Maria" />' +
-          '<button type="button" class="gcv-dash-btn gcv-dash-btn--sm gcv-meeting-gps-btn" id="' + p + 'meeting-gps-btn" hidden>Usar minha localização</button>' +
-          '</div>' +
-          '<div id="' + p + 'meeting-suggest" class="gcv-cms-suggest"></div>' +
-          '<p class="gcv-cms-muted" id="' + p + 'meeting-gps">Digite o endereço do ponto de encontro.</p>' +
-          '<div class="gcv-meeting-map" id="' + p + 'meeting-map" hidden><iframe class="gcv-meeting-map__frame" title="Mapa do ponto de encontro" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>' +
+          '<select class="gcv-dash-select" id="' + p + 'meeting" required>' +
+          '<option value="">Selecione a cidade de saída primeiro</option></select>' +
+          '<p class="gcv-cms-muted" id="' + p + 'meeting-gps">Selecione a cidade de saída para ver os pontos oficiais.</p>' +
+          '<a class="gcv-meeting-maps" id="' + p + 'meeting-maps" hidden target="_blank" rel="noopener noreferrer">Abrir no Google Maps</a>' +
           '<input type="hidden" id="' + p + 'meeting-place" value="" />' +
           '<input type="hidden" id="' + p + 'meeting-lat" value="" />' +
           '<input type="hidden" id="' + p + 'meeting-lng" value="" /></div></div>' +
@@ -2514,12 +2541,13 @@
           '<div class="gcv-dash-field"><label class="gcv-dash-label">Vagas *</label>' +
           '<input class="gcv-dash-input" id="' + p + 'max" type="number" min="1" max="' + maxCap + '" value="' + DEFAULT_MAX_PEOPLE + '" /></div>' +
           '</div>' +
+          '<p class="gcv-guide-net-limit">Limite a receber por pessoa <strong>R$' + netMax + '</strong> / Dragão <strong>R$' + netMaxDragao + '</strong></p>' +
           '<div class="gcv-guide-net-pair">' +
           '<div class="gcv-guide-net-box">' +
           '<div class="gcv-guide-net-box__title">Individual (SEM TRANSPORTE)</div>' +
           confirmedCheckboxHtml(p, false) +
           '<div class="gcv-dash-field gcv-guide-net-box__field">' +
-          '<label class="gcv-dash-label gcv-guide-net-box__label" id="' + p + 'net-label" for="' + p + 'net">Valor a receber por Pessoa (limite de R$' + netMax + ') *</label>' +
+          '<label class="gcv-dash-label gcv-guide-net-box__label" id="' + p + 'net-label" for="' + p + 'net">Valor a receber por Pessoa *</label>' +
           '<input class="gcv-dash-input gcv-guide-net-box__input" id="' + p + 'net" type="number" min="' + netMin + '" max="' + netMax + '" step="1" inputmode="decimal" required /></div>' +
           '<div id="' + p + 'preview" class="gcv-guide-net-box__hint" hidden></div>' +
           quorumOnlyRowHtml(p) +
@@ -2532,7 +2560,7 @@
           '<label class="gcv-dash-label gcv-guide-net-box__label" id="' + p + 'net-t-label" for="' + p + 'net-t">Valor a receber por Pessoa (limite de R$' + netMaxTransport + ') *</label>' +
           '<input class="gcv-dash-input gcv-guide-net-box__input" id="' + p + 'net-t" type="number" min="' + netMin + '" max="' + netMaxTransport + '" step="1" inputmode="decimal" disabled /></div>' +
           '<div id="' + p + 'preview-t" class="gcv-guide-net-box__hint" hidden></div>' +
-          quorumOnlyRowHtml(p + 't-', quorumSelectHtml(p + 't-quorum', DEFAULT_QUORUM, MAX_TRANSPORT_PEOPLE)) +
+          quorumOnlyRowHtml(p + 't-', quorumSelectHtml(p + 't-quorum', DEFAULT_QUORUM, MAX_TRANSPORT_PEOPLE, 0)) +
           '<div class="gcv-dash-field"><label class="gcv-dash-label" for="' + p + 'max-t">Vagas com transporte (máximo 4)</label>' +
           transportMaxSelectHtml(p + 'max-t', DEFAULT_MAX_TRANSPORT) +
           '</div></div></div></div>' +
@@ -2545,20 +2573,20 @@
       function bindMeetingPlaces(idx) {
         var p = 'ge-' + idx + '-';
         if (typeof global.gcvBindMeetingPoint !== 'function') return;
+        var cityEl = document.getElementById(p + 'city');
         global.gcvBindMeetingPoint({
-          input: document.getElementById(p + 'meeting'),
-          box: document.getElementById(p + 'meeting-suggest'),
+          select: document.getElementById(p + 'meeting'),
           gpsEl: document.getElementById(p + 'meeting-gps'),
-          mapEl: document.getElementById(p + 'meeting-map'),
-          gpsBtn: document.getElementById(p + 'meeting-gps-btn'),
+          linkEl: document.getElementById(p + 'meeting-maps'),
           placeEl: document.getElementById(p + 'meeting-place'),
           latEl: document.getElementById(p + 'meeting-lat'),
           lngEl: document.getElementById(p + 'meeting-lng'),
-          getCityId: function () {
-            var cityEl = document.getElementById(p + 'city');
-            return cityEl ? cityEl.value : '';
+          cityEl: cityEl,
+          getCityKey: function () {
+            return global.GcvMeetingPoints
+              ? global.GcvMeetingPoints.cityKeyFromSelect(cityEl)
+              : '';
           },
-          get: get,
           esc: esc
         });
       }
@@ -2658,7 +2686,7 @@
 
         function paintNetLabels() {
           var lab = document.getElementById(p + 'net-label');
-          if (lab) lab.textContent = 'Valor a receber por Pessoa (limite de R$' + blockNetMax() + ') *';
+          if (lab) lab.textContent = 'Valor a receber por Pessoa *';
           var tlab = document.getElementById(p + 'transport-label');
           if (tlab) tlab.textContent = 'Oferecer vagas com translado';
           var tNetLab = document.getElementById(p + 'net-t-label');
@@ -2673,7 +2701,7 @@
           var seatCap = Math.min(MAX_TRANSPORT_PEOPLE, total);
           if (seatCap < 1) seatCap = 1;
           var seats = fillIntSelect(maxTEl, 1, seatCap, maxTEl ? maxTEl.value : DEFAULT_MAX_TRANSPORT);
-          fillIntSelect(qEl, 1, seats, qEl ? qEl.value : DEFAULT_QUORUM);
+          fillIntSelect(qEl, 0, seats, qEl ? qEl.value : DEFAULT_QUORUM);
         }
 
         function applyTransportEnabled() {
@@ -2959,14 +2987,16 @@
         var dateIso = (el('date').value || '').trim();
         var time = readTimeSelect(p + 'time-h', p + 'time-m');
         var cityId = parseInt(el('city').value, 10) || 0;
-        var meetingPoint = (el('meeting').value || '').trim();
+        var meetingId = (el('meeting').value || '').trim();
+        var meetingRow = global.GcvMeetingPoints ? global.GcvMeetingPoints.byId(meetingId) : null;
+        var meetingPoint = meetingRow ? (meetingRow.label.pt || meetingRow.label[Object.keys(meetingRow.label)[0]]) : meetingId;
         var net = parseFloat(el('net').value);
         var label = 'Passeio ' + n;
         if (!attrId) return { error: label + ': selecione um atrativo da lista.' };
         if (!dateIso) return { error: label + ': informe a data.' };
         if (!time) return { error: label + ': informe o horário de saída.' };
         if (!cityId) return { error: label + ': selecione a cidade de saída.' };
-        if (!meetingPoint) return { error: label + ': informe o ponto de encontro.' };
+        if (!meetingId || !meetingRow) return { error: label + ': selecione o ponto de encontro da lista.' };
         if (!net || !isFinite(net) || net < netMin || net > netMaxForAttractionId(attrId, false)) {
           var thisMax = netMaxForAttractionId(attrId, false);
           return { error: label + ': valor a receber deve ser entre R$ ' + netMin + ' e R$ ' + thisMax + '.' };
@@ -2988,7 +3018,7 @@
             departure_time: time,
             departure_city_id: cityId,
             meeting_point: meetingPoint,
-            meeting_point_place_id: (el('meeting-place').value || '').trim() || null,
+            meeting_point_place_id: meetingId || ((el('meeting-place').value || '').trim() || null),
             meeting_point_lat: meetingLat !== '' ? meetingLat : null,
             meeting_point_lng: meetingLng !== '' ? meetingLng : null,
             guide_net_cents: Math.round(net * 100),
@@ -3008,7 +3038,7 @@
           var tQuorumEl = el('t-quorum');
           var maxTEl = el('max-t');
           var maxPeopleT = clampRange(parseFiniteInt(maxTEl ? maxTEl.value : DEFAULT_MAX_TRANSPORT, DEFAULT_MAX_TRANSPORT), 1, Math.min(MAX_TRANSPORT_PEOPLE, maxPeople));
-          var quorumT = clampRange(parseFiniteInt(tQuorumEl ? tQuorumEl.value : DEFAULT_QUORUM, DEFAULT_QUORUM), 1, maxPeopleT);
+          var quorumT = clampRange(parseFiniteInt(tQuorumEl ? tQuorumEl.value : DEFAULT_QUORUM, DEFAULT_QUORUM), 0, maxPeopleT);
           if (quorumT > maxPeopleT) {
             return { error: label + ': quórum do transporte não pode ser maior que as vagas com transporte.' };
           }
@@ -3064,7 +3094,7 @@
           var cityId = parseInt(el('city') && el('city').value, 10) || 0;
           if (!cityId) return issue(el('city'), 'Selecione a cidade de saída.');
           if (!(el('meeting') && (el('meeting').value || '').trim())) {
-            return issue(el('meeting'), 'Informe o ponto de encontro.');
+            return issue(el('meeting'), 'Selecione o ponto de encontro da lista.');
           }
           var net = parseFloat(el('net') && el('net').value);
           var maxNet = netMaxForAttractionId(attrId, false);
@@ -3089,7 +3119,7 @@
             var tQuorumEl = el('t-quorum');
             var maxTEl = el('max-t');
             var maxPeopleT = clampRange(parseFiniteInt(maxTEl ? maxTEl.value : DEFAULT_MAX_TRANSPORT, DEFAULT_MAX_TRANSPORT), 1, Math.min(MAX_TRANSPORT_PEOPLE, maxPeople));
-            var quorumT = clampRange(parseFiniteInt(tQuorumEl ? tQuorumEl.value : DEFAULT_QUORUM, DEFAULT_QUORUM), 1, maxPeopleT);
+            var quorumT = clampRange(parseFiniteInt(tQuorumEl ? tQuorumEl.value : DEFAULT_QUORUM, DEFAULT_QUORUM), 0, maxPeopleT);
             if (quorumT > maxPeopleT) {
               return issue(tQuorumEl, 'O quórum do transporte não pode ser maior que as vagas com transporte.');
             }
@@ -3098,17 +3128,62 @@
         return null;
       }
 
+      function attachAdminGuide(payload) {
+        if (!isAdmin) return payload;
+        var g = document.getElementById('ge-admin-guide');
+        payload.guide_user_id = g ? (parseInt(g.value, 10) || 0) : 0;
+        payload.status = 'published';
+        return payload;
+      }
+
+      function publishUrl() {
+        return isAdmin ? '/api/admin/excursions.php' : '/api/guides/excursions.php';
+      }
+
       function sendAll(payloads, i, okCount, errors, done) {
         if (i >= payloads.length) return done(okCount, errors);
-        sendJson('POST', '/api/guides/excursions.php', payloads[i], function (e, r) {
+        sendJson('POST', publishUrl(), attachAdminGuide(payloads[i]), function (e, r) {
           if (r && r.ok) okCount += 1;
           else errors.push('Passeio ' + (i + 1) + ': ' + ((r && r.error) || 'erro ao enviar'));
           sendAll(payloads, i + 1, okCount, errors, done);
         });
       }
 
+      var adminGuideHtml = '';
+      if (isAdmin) {
+        var guides = (d.guides || []).filter(function (g) {
+          var st = String(g.status || '').toLowerCase();
+          return !st || st === 'active' || st === 'approved';
+        });
+        var editGuideId = pendingEditExcursion ? pendingEditExcursion.guide_user_id : '';
+        adminGuideHtml =
+          '<div class="gcv-dash-field" id="ge-admin-guide-wrap">' +
+          '<label class="gcv-dash-label" for="ge-admin-guide">Guia <span class="gcv-cms-muted">(opcional)</span></label>' +
+          '<select class="gcv-dash-select" id="ge-admin-guide">' +
+          '<option value="">Sem guia</option>' +
+          guides.map(function (g) {
+            var gid = g.user_id || g.id;
+            var label = (g.full_name || g.nickname || g.name || '') + (g.nickname && g.full_name ? ' (' + g.nickname + ')' : '');
+            return '<option value="' + gid + '"' + (String(editGuideId) === String(gid) ? ' selected' : '') + '>' + esc(label) + '</option>';
+          }).join('') +
+          '</select>' +
+          (function () {
+            var ex = pendingEditExcursion;
+            if (!ex) return '';
+            var bits = [];
+            if (ex.approved_at) bits.push('Aprovado em ' + String(ex.approved_at).slice(8, 10) + '/' + String(ex.approved_at).slice(5, 7) + '/' + String(ex.approved_at).slice(0, 4));
+            else if (ex.created_at) bits.push('Enviado em ' + String(ex.created_at).slice(8, 10) + '/' + String(ex.created_at).slice(5, 7) + '/' + String(ex.created_at).slice(0, 4));
+            if (!bits.length) return '';
+            return '<p class="gcv-cms-muted" id="ge-admin-approved" style="margin:0.4rem 0 0;">' + esc(bits.join(' · ')) + '</p>';
+          }()) +
+          '</div>';
+      }
+
       form.classList.add('gcv-dash-form--publish', 'is-tour-carousel');
+      form.setAttribute('data-admin', isAdmin ? '1' : '0');
+      form._gcvAdminOnDone = onDone;
       form.innerHTML =
+        adminGuideHtml +
         '<div class="gcv-tour-tabs-wrap">' +
         '<div class="gcv-tour-tabs" id="ge-tour-tabs" role="tablist"></div>' +
         '<button type="button" class="gcv-tour-tab gcv-tour-tab--add" id="ge-add-tour-desk" aria-label="Adicionar passeio">+</button>' +
@@ -3117,7 +3192,7 @@
         '<button type="button" class="gcv-dash-btn gcv-dash-btn--secondary gcv-dash-form__add gcv-tour-add-mobile" id="ge-add-tour">+ Adicionar passeio</button>' +
         '<div class="gcv-dash-form__footer">' +
         '<div class="gcv-dash-form__footer-actions">' +
-        '<button type="submit" class="gcv-dash-btn gcv-dash-btn--success">Enviar para aprovação</button>' +
+        '<button type="submit" class="gcv-dash-btn gcv-dash-btn--success">' + (isAdmin ? 'Publicar passeio' : 'Enviar para aprovação') + '</button>' +
         '<button type="button" class="gcv-dash-btn gcv-dash-btn--blue" id="ge-clear-publish-footer">Limpar</button>' +
         '</div>' +
         '</div>';
@@ -3352,9 +3427,7 @@
         var h = parseInt(parts[0], 10);
         var m = parseInt(parts[1], 10);
         if (!Number.isFinite(h) || h < 0 || h > 23) h = 10;
-        if (!Number.isFinite(m) || m < 0) m = 0;
-        m = Math.round(m / 10) * 10;
-        if (m >= 60) m = 50;
+        m = snapTimeMinutes(m);
         if (hEl) hEl.value = pad2(h);
         if (mEl) mEl.value = pad2(m);
       }
@@ -3366,7 +3439,7 @@
         if (addM) addM.hidden = !!on;
         if (addD) addD.hidden = !!on;
         var submit = form.querySelector('.gcv-dash-form__footer button[type="submit"]');
-        if (submit) submit.textContent = on ? 'Salvar' : 'Enviar para aprovação';
+        if (submit) submit.textContent = on ? 'Salvar' : (form.getAttribute('data-admin') === '1' ? 'Publicar passeio' : 'Enviar para aprovação');
         var clear = document.getElementById('ge-clear-publish-footer');
         var clearTop = document.getElementById('ge-clear-publish');
         if (clear) clear.textContent = on ? 'Cancelar' : 'Limpar';
@@ -3396,11 +3469,18 @@
           el('city').value = String(e.departure_city_id || '');
           el('city').dispatchEvent(new Event('change', { bubbles: true }));
         }
-        if (el('meeting')) el('meeting').value = e.meeting_point || '';
         if (el('meeting-place')) el('meeting-place').value = e.meeting_point_place_id || '';
         if (el('meeting-lat')) el('meeting-lat').value = e.meeting_point_lat != null ? String(e.meeting_point_lat) : '';
         if (el('meeting-lng')) el('meeting-lng').value = e.meeting_point_lng != null ? String(e.meeting_point_lng) : '';
-        if (el('meeting')) el('meeting').dispatchEvent(new Event('input', { bubbles: true }));
+        if (el('meeting') && global.GcvMeetingPoints) {
+          var saved = global.GcvMeetingPoints.matchSaved(
+            e.meeting_point_place_id || '',
+            e.meeting_point || '',
+            global.GcvMeetingPoints.cityKeyFromSelect(el('city'))
+          );
+          el('meeting').value = saved ? saved.id : '';
+          el('meeting').dispatchEvent(new Event('change', { bubbles: true }));
+        }
         if (el('net')) {
           el('net').value = centsToReais(e.guide_net_cents);
           el('net').dispatchEvent(new Event('input', { bubbles: true }));
@@ -3432,6 +3512,8 @@
           if (el('max-t')) el('max-t').value = String(parseFiniteInt(e.max_people_transport, DEFAULT_MAX_TRANSPORT));
           if (el('t-quorum')) el('t-quorum').value = String(parseFiniteInt(e.quorum_transport, DEFAULT_QUORUM));
         }
+        var adminGuide = document.getElementById('ge-admin-guide');
+        if (adminGuide && e.guide_user_id) adminGuide.value = String(e.guide_user_id);
       }
       function applyPendingEdit() {
         if (!pendingEditExcursion) {
@@ -3468,10 +3550,10 @@
         var editId = parseInt(form.getAttribute('data-edit-id') || '0', 10);
         if (editId > 0) {
           if (btn) btn.disabled = true;
-          sendJson('PUT', '/api/guides/excursions.php', Object.assign({
+          sendJson('PUT', publishUrl(), Object.assign({
             id: editId,
             action: 'update'
-          }, payloads[0] || {}), function (e, r) {
+          }, attachAdminGuide(payloads[0] || {})), function (e, r) {
             if (btn) btn.disabled = false;
             var msg = (r && r.data && r.data.message) || (r && r.error) || 'Erro ao salvar';
             if (typeof global.gcvAlert === 'function') global.gcvAlert(msg);
@@ -3480,7 +3562,8 @@
               pendingEditExcursion = null;
               setPublishEditMode(false);
               resetPublishForm();
-              gotoDashSection('section-guide-tours');
+              if (isAdmin && typeof form._gcvAdminOnDone === 'function') form._gcvAdminOnDone();
+              else gotoDashSection('section-guide-tours');
             }
           });
           return;
@@ -3495,13 +3578,20 @@
             else window.alert(msg);
             return;
           }
-          msg = okCount === 1
-            ? '1 passeio enviado para aprovação. Só aparece no site depois que o administrador aprovar.'
-            : okCount + ' passeios enviados para aprovação. Só aparecem no site depois que o administrador aprovar.';
+          if (isAdmin) {
+            msg = okCount === 1
+              ? '1 passeio publicado no site.'
+              : okCount + ' passeios publicados no site.';
+          } else {
+            msg = okCount === 1
+              ? '1 passeio enviado para aprovação. Só aparece no site depois que o administrador aprovar.'
+              : okCount + ' passeios enviados para aprovação. Só aparecem no site depois que o administrador aprovar.';
+          }
           if (errors.length) msg += ' ' + errors.join(' ');
           if (okCount) resetPublishForm();
           if (typeof global.gcvAlert === 'function') global.gcvAlert(msg);
           else window.alert(msg);
+          if (isAdmin && okCount && typeof form._gcvAdminOnDone === 'function') form._gcvAdminOnDone();
         });
       };
     });
@@ -3882,7 +3972,7 @@
         '<div class="gcv-dash-field-row">' +
         '<div class="gcv-dash-field"><label class="gcv-dash-label">Data *</label><input class="gcv-dash-input" type="date" id="ce-date" /></div>' +
         '<div class="gcv-dash-field"><label class="gcv-dash-label">Horário de saída *</label>' +
-        timeSelectHtml('ce-time-h', 'ce-time-m', '10:00') + '</div>' +
+        timeSelectHtml('ce-time-h', 'ce-time-m', '10:15') + '</div>' +
         '</div>' +
         '<div class="gcv-dash-field"><label class="gcv-dash-label">Saída *</label><select class="gcv-dash-select" id="ce-city">' +
         '<option value="">Selecione…</option>' +

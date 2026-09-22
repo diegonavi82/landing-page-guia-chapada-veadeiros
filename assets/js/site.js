@@ -27,6 +27,7 @@
 
     var idx = 0;
     var timer = null;
+    var bgTimer = null;
     var AUTO_MS = 10000;
     var reduceMotion =
       typeof window.matchMedia === "function" &&
@@ -54,6 +55,28 @@
         clearTimeout(timer);
         timer = null;
       }
+      if (bgTimer) {
+        clearTimeout(bgTimer);
+        bgTimer = null;
+      }
+    }
+
+    function resetSlideBgs(slide) {
+      var pics = slide.querySelectorAll("[data-gcv-hero-bg]");
+      pics.forEach(function (p, i) {
+        p.classList.toggle("is-on", i === 0);
+      });
+    }
+
+    function scheduleBgSwap(slide, duration) {
+      var pics = slide.querySelectorAll("[data-gcv-hero-bg]");
+      if (pics.length < 2 || reduceMotion) return;
+      var half = Math.max(900, Math.floor(duration / pics.length));
+      bgTimer = setTimeout(function () {
+        pics.forEach(function (p, i) {
+          p.classList.toggle("is-on", i === 1);
+        });
+      }, half);
     }
 
     function scheduleNext() {
@@ -70,8 +93,10 @@
         var active = j === idx;
         s.classList.toggle("is-active", active);
         s.setAttribute("aria-hidden", active ? "false" : "true");
+        resetSlideBgs(s);
         if (active) restartPetzenAnim(s);
       });
+      scheduleBgSwap(slides[idx], slideDuration(idx));
       dots.forEach(function (d, j) {
         d.classList.toggle("is-active", j === idx);
         d.setAttribute("aria-selected", j === idx ? "true" : "false");
