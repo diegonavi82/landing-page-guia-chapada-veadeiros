@@ -1184,6 +1184,38 @@
     return null;
   }
 
+  function loadGuidePublicReviews(box, guideUserId) {
+    if (!box) return;
+    if (!guideUserId) {
+      box.innerHTML = '<h2 class="gcv-dash-section-title gcv-dash-section-title--sub">Avaliações dos clientes</h2><p class="gcv-dash-hint">As avaliações aparecem aqui depois que o cliente responde o WhatsApp do dia seguinte ao passeio.</p>';
+      return;
+    }
+    get('/api/reviews/public.php?guide_user_id=' + encodeURIComponent(String(guideUserId)), function (err, res) {
+      var data = res && res.data ? res.data : null;
+      if (!res || !res.ok || !data) {
+        box.innerHTML = '<h2 class="gcv-dash-section-title gcv-dash-section-title--sub">Avaliações dos clientes</h2><p class="gcv-dash-hint">Não foi possível carregar as avaliações agora.</p>';
+        return;
+      }
+      var list = data.reviews || [];
+      var head = '<h2 class="gcv-dash-section-title gcv-dash-section-title--sub">Avaliações dos clientes</h2>';
+      if (!list.length) {
+        box.innerHTML = head + '<p class="gcv-dash-hint">Ainda não há avaliações. No dia seguinte ao último dia do passeio, o cliente que teve o QR lido recebe o link no WhatsApp.</p>';
+        return;
+      }
+      var avg = data.avg != null ? Number(data.avg).toFixed(2).replace('.', ',') : '—';
+      var html = head + '<p class="gcv-dash-hint">Média ' + esc(avg) + ' · ' + list.length + ' avaliação' + (list.length === 1 ? '' : 'ões') + '</p>';
+      list.forEach(function (rv) {
+        html += '<article style="padding:0.75rem 0;border-top:1px solid rgba(0,0,0,.08)">' +
+          '<strong>' + esc(rv.tourist_name || 'Cliente') + '</strong>' +
+          ' <span class="gcv-dash-hint">' + esc(String(rv.score_avg != null ? Number(rv.score_avg).toFixed(2).replace('.', ',') : '')) + '</span>' +
+          (rv.excursion_title ? '<div class="gcv-dash-hint">' + esc(rv.excursion_title) + '</div>' : '') +
+          (rv.comment ? '<p style="margin:0.35rem 0 0">' + esc(rv.comment) + '</p>' : '') +
+          '</article>';
+      });
+      box.innerHTML = html;
+    });
+  }
+
   /* ---------- GUIA: PERFIL ---------- */
   function loadGuideProfile() {
     var root = document.getElementById('guide-profile-root');
@@ -1336,7 +1368,7 @@
 
         '<div class="gcv-dash-profile-finance">' +
           '<h2 class="gcv-dash-section-title gcv-dash-section-title--sub">Dados financeiros</h2>' +
-          '<p class="gcv-dash-hint">Chave PIX para receber o repasse automático após as 16h20 do dia do passeio.' +
+          '<p class="gcv-dash-hint">Chave PIX do repasse automático. O depósito sai só para os clientes cujo QR você leu no dia do passeio.' +
           (String(p.user_status || '') === 'active'
             ? ' <a href="#financeiro" id="gp-goto-earnings">Ver painel de recebimentos</a>.'
             : '') +
@@ -1467,6 +1499,13 @@
         p.phone_iso || p.phone_ddi || 'br',
         p.phone || ''
       );
+
+      var reviewsBox = document.createElement('div');
+      reviewsBox.className = 'gcv-dash-card';
+      reviewsBox.style.marginTop = '1rem';
+      reviewsBox.innerHTML = '<h2 class="gcv-dash-section-title gcv-dash-section-title--sub">Avaliações dos clientes</h2><p class="gcv-dash-hint">Carregando…</p>';
+      root.appendChild(reviewsBox);
+      loadGuidePublicReviews(reviewsBox, parseInt(p.user_id, 10) || 0);
 
       document.getElementById('guide-profile-form').onsubmit = function (ev) {
         ev.preventDefault();
@@ -3698,7 +3737,7 @@
       root.innerHTML =
         '<div class="gcv-dash-alert ' + (pixReady && pixVerified && autoPix ? 'gcv-dash-alert--success' : 'gcv-dash-alert--info') + '">' +
         (autoPix
-          ? 'O PIX é <strong>enviado automaticamente</strong> para a chave cadastrada em Meu perfil, <strong>após as ' + afterLabel + ' do dia do passeio</strong>.'
+          ? 'O PIX é <strong>enviado automaticamente</strong> para a chave cadastrada em Meu perfil, <strong>após as ' + afterLabel + ' do dia do passeio</strong>, somente dos clientes cujo QR você leu. Sem a leitura, essas pessoas não entram na guiagem e o depósito não é feito.'
           : 'O envio automático de PIX ainda não está ativo no banco. O admin pode pagar manualmente; a chave continua em Meu perfil.') +
         (pixReady ? '' : ' Cadastre CPF/CNPJ e PIX em <a href="#perfil" id="ge-goto-profile">Meu perfil</a>.') +
         (pixReady && !pixVerified ? ' A chave ainda <strong>aguarda verificação do admin</strong> antes do primeiro envio automático.' : '') +

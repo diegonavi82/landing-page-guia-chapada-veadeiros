@@ -371,16 +371,26 @@ function gcv_payout_auto_execute(int $saleId): array
     }
 
     $att = strtolower(trim((string)($sale['attendance_status'] ?? 'pending')));
-    if ($att === '' || $att === 'pending') {
+    if ($att !== 'checked_in') {
         try {
             require_once dirname(__DIR__) . '/notify_ops.php';
             gcv_ops_apply_noshow($sale);
         } catch (Throwable $e) {
             error_log('payout noshow mark: ' . $e->getMessage());
         }
+        return [
+            'ok' => false,
+            'executed' => false,
+            'sale_id' => $saleId,
+            'reasons' => ['qr_not_scanned'],
+            'message' => 'Sem leitura do QR o repasse automático não é feito',
+        ];
     }
 
-    $guideUserId = (int)($sale['guide_user_id'] ?? 0);
+    $guideUserId = (int)($sale['checked_in_by'] ?? 0);
+    if ($guideUserId <= 0) {
+        $guideUserId = (int)($sale['guide_user_id'] ?? 0);
+    }
     $fin = gcv_payout_load_guide_financial($guideUserId);
     if (!$fin) {
         gcv_payout_notify_failure($sale, 'missing_pix');

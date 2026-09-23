@@ -215,6 +215,7 @@
       foto: (e && e.guiaFoto) || staticP.foto || "",
       idiomas: idiomas,
       bio: bio,
+      guideUserId: parseInt(String((e && (e.guideUserId || e.guiaId)) || 0), 10) || 0,
     };
   }
 
@@ -379,6 +380,8 @@
       guiaModalClose: "Fechar",
       guiaModalBack: "Voltar",
       guiaBioEmpty: "Este guia ainda não adicionou uma descrição.",
+      guiaReviewsTitle: "Avaliações",
+      guiaReviewsEmpty: "Ainda não há avaliações de clientes.",
       filterTitle: "Filtrar saídas",
       filterPeriod: "Período",
       filterDateFrom: "De",
@@ -549,6 +552,8 @@
       guiaModalClose: "Close",
       guiaModalBack: "Back",
       guiaBioEmpty: "This guide has not added a description yet.",
+      guiaReviewsTitle: "Reviews",
+      guiaReviewsEmpty: "No guest reviews yet.",
       filterTitle: "Filter departures",
       filterPeriod: "Period",
       filterDateFrom: "From",
@@ -719,6 +724,8 @@
       guiaModalClose: "Cerrar",
       guiaModalBack: "Volver",
       guiaBioEmpty: "Este guía aún no agregó una descripción.",
+      guiaReviewsTitle: "Valoraciones",
+      guiaReviewsEmpty: "Todavía no hay valoraciones de clientes.",
       filterTitle: "Filtrar salidas",
       filterPeriod: "Período",
       filterDateFrom: "Desde",
@@ -3541,6 +3548,7 @@
       '<div class="gcv-guia-modal__langs"></div>' +
       "</div></div>" +
       '<div class="gcv-guia-modal__bio"></div>' +
+      '<div class="gcv-guia-modal__reviews" hidden></div>' +
       "</div>";
     document.body.appendChild(modal);
     return modal;
@@ -6483,6 +6491,42 @@
     syncExcursaoCartSelection(locale);
   }
 
+  function paintGuiaReviews(modal, guideUserId, s) {
+    var box = modal.querySelector(".gcv-guia-modal__reviews");
+    if (!box) return;
+    var seq = (modal._gcvReviewSeq = (modal._gcvReviewSeq || 0) + 1);
+    box.hidden = true;
+    box.innerHTML = "";
+    if (!guideUserId) return;
+    var title = (s && s.guiaReviewsTitle) || "Avaliações";
+    var empty = (s && s.guiaReviewsEmpty) || "Ainda não há avaliações de clientes.";
+    fetch("/api/reviews/public.php?guide_user_id=" + encodeURIComponent(String(guideUserId)))
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        if (modal._gcvReviewSeq !== seq || !modal.classList.contains("is-open")) return;
+        var data = res && res.data ? res.data : {};
+        var list = data.reviews || [];
+        var html = '<h3 style="margin:0.2rem 0 0.4rem;font-size:1.05rem">' + escapeHtml(title);
+        if (data.avg != null && list.length) {
+          html += " · " + escapeHtml(Number(data.avg).toFixed(1).replace(".", ","));
+        }
+        html += "</h3>";
+        if (!list.length) {
+          html += "<p>" + escapeHtml(empty) + "</p>";
+        } else {
+          list.slice(0, 6).forEach(function (rv) {
+            var bits = [];
+            if (rv.tourist_name) bits.push("<strong>" + escapeHtml(rv.tourist_name) + "</strong>");
+            if (rv.comment) bits.push(escapeHtml(rv.comment));
+            html += '<p style="margin:0 0 0.55rem">' + bits.join(" — ") + "</p>";
+          });
+        }
+        box.innerHTML = html;
+        box.hidden = false;
+      })
+      .catch(function () {});
+  }
+
   function openGuiaModal(slug, trigger, locale, s, profiles) {
     var card = trigger && trigger.closest ? trigger.closest(".gcv-excursoes-card") : null;
     var row = null;
@@ -6539,6 +6583,7 @@
         "</button></div>";
     }
 
+    paintGuiaReviews(modal, profile.guideUserId, s);
     modal._gcvGuiaTrigger = trigger || null;
     modal.hidden = false;
     modal.setAttribute("aria-hidden", "false");

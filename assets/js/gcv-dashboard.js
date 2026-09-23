@@ -1383,6 +1383,8 @@
       payout_after_hour: 'finance',
       payout_after_minute: 'finance',
       payout_delay_hours: 'finance',
+      checkin_open_before_minutes: 'finance',
+      checkin_close_before_payout_minutes: 'finance',
       transfer_offer_hours: 'transfer',
       transfer_cancel_hours: 'transfer'
     };
@@ -1397,7 +1399,7 @@
       },
       finance: {
         title: 'Financeiro e repasse',
-        hint: 'A diária máxima é o valor que o guia pode pedir por pessoa. Com transporte incluso o teto sobe. Ainda entra a taxa da plataforma e o arredondamento (5 e 8). Dragão pode ter teto próprio sem transporte.'
+        hint: 'A diária máxima é o valor que o guia pode pedir por pessoa. O PIX automático sai no horário abaixo, só para clientes cujo QR o guia leu. A leitura abre X minutos antes da saída e fecha X minutos antes desse PIX.'
       },
       other: { title: 'Outras', hint: '' }
     };

@@ -612,6 +612,8 @@ function gcv_marketplace_ensure_settings(PDO $pdo): void
         ['payout_delay_hours', '6', 'Legado — o repasse automático usa 16h20 do dia do passeio', 'integer'],
         ['payout_after_hour', '16', 'Hora (Brasília) do PIX automático ao guia no dia do passeio', 'integer'],
         ['payout_after_minute', '20', 'Minuto (Brasília) do PIX automático ao guia no dia do passeio', 'integer'],
+        ['checkin_open_before_minutes', '60', 'Leitura do QR: minutos antes do início do passeio em que a conferência abre', 'integer'],
+        ['checkin_close_before_payout_minutes', '60', 'Leitura do QR: minutos antes do PIX automático em que a conferência fecha', 'integer'],
         ['platform_commission_pct', '10', 'Comissão da plataforma (%) aplicada em todos os passeios', 'percent'],
         ['guide_net_min_reais', '50', 'Diária mínima do guia (R$ por pessoa)', 'integer'],
         ['guide_net_max_reais', '160', 'Diária máxima do guia (R$ por pessoa)', 'integer'],

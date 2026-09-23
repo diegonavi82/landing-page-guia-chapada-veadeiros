@@ -9,6 +9,26 @@ require_once __DIR__ . '/payout_service.php';
 require_once __DIR__ . '/guide_financial_service.php';
 require_once __DIR__ . '/../sicoob_pix_pay.php';
 
+/** O repasse e a guiagem só contam se este guia leu o QR do cliente. */
+function gcv_guide_sale_confirmed_for(int $guideUserId, array $sale): bool
+{
+    if (strtoupper((string)($sale['sale_status'] ?? '')) !== GcvSaleStatus::PAID) {
+        return false;
+    }
+    $att = strtolower(trim((string)($sale['attendance_status'] ?? '')));
+    if ($att !== 'checked_in') {
+        return false;
+    }
+    if (($sale['payout_status'] ?? '') === GcvPayoutStatus::BLOCKED) {
+        return false;
+    }
+    $scanner = (int)($sale['checked_in_by'] ?? 0);
+    if ($scanner > 0) {
+        return $scanner === $guideUserId;
+    }
+    return (int)($sale['guide_user_id'] ?? 0) === $guideUserId;
+}
+
 /**
  * Resumo financeiro do guia: todos os passeios (inclusive sem venda).
  *
@@ -36,12 +56,12 @@ function gcv_guide_earnings_dashboard(int $guideUserId): array
                 s.tourist_phone, s.spots, s.sold_price_cents, s.guide_amount_cents,
                 s.platform_revenue_cents, s.sale_status, s.payout_status,
                 s.paid_at, s.sold_at, s.scheduled_payout_at, s.excursion_starts_at,
-                s.attendance_status
+                s.attendance_status, s.checked_in_by, s.guide_user_id
          FROM gcv_sales s
-         WHERE s.guide_user_id = ? AND s.deleted_at IS NULL
+         WHERE s.deleted_at IS NULL AND (s.guide_user_id = ? OR s.checked_in_by = ?)
          ORDER BY s.sold_at DESC"
     );
-    $saleStmt->execute([$guideUserId]);
+    $saleStmt->execute([$guideUserId, $guideUserId]);
     $sales = $saleStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
     $payoutStmt = db()->prepare(
@@ -89,12 +109,14 @@ function gcv_guide_earnings_dashboard(int $guideUserId): array
         $pendingOut = 0;
         foreach ($list as $sale) {
             $row = gcv_guide_earnings_map_sale($sale, $payoutBySale[(int)$sale['id']] ?? null);
+            $confirmed = gcv_guide_sale_confirmed_for($guideUserId, $sale);
+            $row['in_guiagem'] = $confirmed;
             $mapped[] = $row;
-            if ($row['sale_status'] === 'PAID') {
+            if ($row['sale_status'] === 'PAID' && (int)($sale['guide_user_id'] ?? 0) === $guideUserId) {
                 $people += $row['people'];
-                if (!empty($row['in_guiagem'])) {
-                    $guiagem += $row['people'];
-                }
+            }
+            if ($confirmed) {
+                $guiagem += $row['people'];
                 $billed += $row['sold_price_cents'];
                 $guide += $row['guide_amount_cents'];
                 if ($row['payout_status'] === GcvPayoutStatus::PAID) {
@@ -142,6 +164,19 @@ function gcv_guide_earnings_dashboard(int $guideUserId): array
         ];
     }
 
+    $ownExc = [];
+    foreach ($excursions as $exc) {
+        $ownExc[(int)$exc['id']] = true;
+    }
+    foreach ($salesByExc as $eid => $list) {
+        if (!empty($ownExc[(int)$eid])) {
+            continue;
+        }
+        foreach ($list as $sale) {
+            $orphanSales[] = $sale;
+        }
+    }
+
     if ($orphanSales) {
         $mapped = [];
         $people = 0;
@@ -152,12 +187,14 @@ function gcv_guide_earnings_dashboard(int $guideUserId): array
         $pendingOut = 0;
         foreach ($orphanSales as $sale) {
             $row = gcv_guide_earnings_map_sale($sale, $payoutBySale[(int)$sale['id']] ?? null);
+            $confirmed = gcv_guide_sale_confirmed_for($guideUserId, $sale);
+            $row['in_guiagem'] = $confirmed;
             $mapped[] = $row;
-            if ($row['sale_status'] === 'PAID') {
+            if ($row['sale_status'] === 'PAID' && (int)($sale['guide_user_id'] ?? 0) === $guideUserId) {
                 $people += $row['people'];
-                if (!empty($row['in_guiagem'])) {
-                    $guiagem += $row['people'];
-                }
+            }
+            if ($confirmed) {
+                $guiagem += $row['people'];
                 $billed += $row['sold_price_cents'];
                 $guide += $row['guide_amount_cents'];
                 if ($row['payout_status'] === GcvPayoutStatus::PAID) {

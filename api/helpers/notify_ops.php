@@ -91,35 +91,107 @@ function gcv_ops_sale_period(array $sale): array
     return ['start' => $dates[0], 'end' => $dates[count($dates) - 1]];
 }
 
+function gcv_ops_checkin_minutes(string $key, int $fallback): int
+{
+    $n = (int)setting($key, (string)$fallback);
+    if ($n < 0) {
+        return 0;
+    }
+    if ($n > 360) {
+        return 360;
+    }
+    return $n;
+}
+
+function gcv_ops_fmt_dt(DateTimeImmutable $dt): string
+{
+    return $dt->format('d/m/Y') . ' às ' . $dt->format('H:i');
+}
+
 /**
- * Check-in liberado do 1º ao último dia do grupo (inclusive), fuso Brasília.
+ * Leitura do QR: de N minutos antes da saída até N minutos antes do PIX automático.
+ * Horários em Configurações (Brasília).
  *
  * @param array<string,mixed> $sale
- * @return array{ok:bool,start:string,end:string,error:string}
+ * @return array{ok:bool,start:string,end:string,open_at:string,close_at:string,error:string}
  */
 function gcv_ops_checkin_window(array $sale, ?DateTimeImmutable $now = null): array
 {
     $tz = new DateTimeZone('America/Sao_Paulo');
     $now = $now ?: new DateTimeImmutable('now', $tz);
-    $today = $now->format('Y-m-d');
     $p = gcv_ops_sale_period($sale);
-    if ($today < $p['start']) {
-        return [
+    $fail = [
+        'ok' => false,
+        'start' => $p['start'],
+        'end' => $p['end'],
+        'open_at' => '',
+        'close_at' => '',
+        'error' => 'Não foi possível calcular o horário desta saída.',
+    ];
+
+    $excId = (int)($sale['excursion_id'] ?? 0);
+    $exc = $excId > 0 ? gcv_ops_load_excursion($excId) : null;
+    $startAt = is_array($exc) ? gcv_ops_starts_at($exc) : null;
+    if (!$startAt && !empty($sale['excursion_starts_at'])) {
+        try {
+            $startAt = new DateTimeImmutable((string)$sale['excursion_starts_at'], $tz);
+        } catch (Throwable $e) {
+            $startAt = null;
+        }
+    }
+    if (!$startAt) {
+        return $fail;
+    }
+
+    $openMin = gcv_ops_checkin_minutes('checkin_open_before_minutes', 60);
+    $closeMin = gcv_ops_checkin_minutes('checkin_close_before_payout_minutes', 60);
+    $payoutAt = null;
+    if (!empty($sale['scheduled_payout_at'])) {
+        try {
+            $payoutAt = new DateTimeImmutable((string)$sale['scheduled_payout_at'], $tz);
+        } catch (Throwable $e) {
+            $payoutAt = null;
+        }
+    }
+    if (!$payoutAt) {
+        $hour = (int)setting('payout_after_hour', '16');
+        $min = (int)setting('payout_after_minute', '20');
+        if ($hour < 0 || $hour > 23) {
+            $hour = 16;
+        }
+        if ($min < 0 || $min > 59) {
+            $min = 20;
+        }
+        $payoutAt = $startAt->setTime($hour, $min, 0);
+    }
+
+    $openAt = $startAt->modify('-' . $openMin . ' minutes');
+    $closeAt = $payoutAt->modify('-' . $closeMin . ' minutes');
+    $base = [
+        'start' => $openAt->format('Y-m-d'),
+        'end' => $closeAt->format('Y-m-d'),
+        'open_at' => $openAt->format('Y-m-d H:i:s'),
+        'close_at' => $closeAt->format('Y-m-d H:i:s'),
+    ];
+    if ($closeAt <= $openAt) {
+        return $base + [
             'ok' => false,
-            'start' => $p['start'],
-            'end' => $p['end'],
-            'error' => 'A conferência deste grupo abre em ' . gcv_ops_date_br($p['start']) . '.',
+            'error' => 'Este passeio começa depois do horário limite de leitura do QR. Ajuste a saída ou as configurações de conferência.',
         ];
     }
-    if ($today > $p['end']) {
-        return [
+    if ($now < $openAt) {
+        return $base + [
             'ok' => false,
-            'start' => $p['start'],
-            'end' => $p['end'],
-            'error' => 'O período deste grupo encerrou em ' . gcv_ops_date_br($p['end']) . '. Não é mais possível fazer o check-in.',
+            'error' => 'A leitura do QR abre em ' . gcv_ops_fmt_dt($openAt) . ' (' . $openMin . ' min antes do início).',
         ];
     }
-    return ['ok' => true, 'start' => $p['start'], 'end' => $p['end'], 'error' => ''];
+    if ($now > $closeAt) {
+        return $base + [
+            'ok' => false,
+            'error' => 'A leitura do QR encerrou em ' . gcv_ops_fmt_dt($closeAt) . '. Sem a conferência, o repasse automático desta reserva não é feito.',
+        ];
+    }
+    return $base + ['ok' => true, 'error' => ''];
 }
 
 /**
@@ -427,8 +499,20 @@ function gcv_ops_checkin_url(): string
 
 function gcv_ops_guide_qr_scan_lines(): string
 {
-    return "Leia o QR CODE de cada reserva no embarque para registrar a guiagem.\n"
-        . "Sem leitura o PIX segue integral, mas essas pessoas não entram na sua guiagem.\n"
+    $open = gcv_ops_checkin_minutes('checkin_open_before_minutes', 60);
+    $close = gcv_ops_checkin_minutes('checkin_close_before_payout_minutes', 60);
+    $hour = (int)setting('payout_after_hour', '16');
+    $min = (int)setting('payout_after_minute', '20');
+    if ($hour < 0 || $hour > 23) {
+        $hour = 16;
+    }
+    if ($min < 0 || $min > 59) {
+        $min = 20;
+    }
+    $clock = $min === 0 ? ($hour . 'h') : ($hour . 'h' . str_pad((string)$min, 2, '0', STR_PAD_LEFT));
+    return "Leia o QR CODE de cada cliente no embarque.\n"
+        . "A leitura abre {$open} min antes do início e fecha {$close} min antes do PIX das {$clock}.\n"
+        . "Sem a leitura, esse cliente não entra na sua guiagem e o repasse automático não é feito.\n"
         . 'Abrir leitor: ' . gcv_ops_checkin_url();
 }
 
@@ -2093,22 +2177,43 @@ function gcv_ops_apply_noshow(array $sale): bool
         return false;
     }
     $att = strtolower(trim((string)($sale['attendance_status'] ?? 'pending')));
-    if ($att === 'checked_in' || $att === 'no_show') {
+    if ($att === 'checked_in') {
+        return false;
+    }
+    if ($att === 'no_show' && ($sale['payout_status'] ?? '') !== GcvPayoutStatus::PENDING) {
         return false;
     }
     if (($sale['sale_status'] ?? '') !== GcvSaleStatus::PAID) {
         return false;
     }
     $win = gcv_ops_checkin_window($sale);
-    $today = (new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo')))->format('Y-m-d');
-    if ($today <= $win['end']) {
+    $tz = new DateTimeZone('America/Sao_Paulo');
+    $now = new DateTimeImmutable('now', $tz);
+    $closeRaw = (string)($win['close_at'] ?? '');
+    if ($closeRaw === '') {
+        return false;
+    }
+    try {
+        $closeAt = new DateTimeImmutable($closeRaw, $tz);
+    } catch (Throwable $e) {
+        return false;
+    }
+    if ($now <= $closeAt) {
+        return false;
+    }
+    if (($sale['payout_status'] ?? '') === GcvPayoutStatus::PAID) {
         return false;
     }
     try {
         $st = db()->prepare(
             "UPDATE gcv_sales
-             SET attendance_status = 'no_show'
-             WHERE id = ? AND (attendance_status IS NULL OR attendance_status = 'pending')"
+             SET attendance_status = IF(attendance_status IS NULL OR attendance_status IN ('', 'pending'), 'no_show', attendance_status),
+                 payout_status = IF(payout_status = 'PAYOUT_PENDING', 'PAYOUT_BLOCKED', payout_status),
+                 updated_at = NOW()
+             WHERE id = ?
+               AND sale_status = 'PAID'
+               AND payout_status = 'PAYOUT_PENDING'
+               AND (attendance_status IS NULL OR attendance_status IN ('', 'pending', 'no_show'))"
         );
         $st->execute([$id]);
         if ($st->rowCount() < 1) {
@@ -2121,11 +2226,11 @@ function gcv_ops_apply_noshow(array $sale): bool
     $guideId = (int)($sale['guide_user_id'] ?? 0);
     $code = strtoupper(trim((string)($sale['reservation_id'] ?? '')));
     $pax = max(1, (int)($sale['spots'] ?? 1));
-    $text = "ℹ️ QR não lido nesta reserva — ela não entra na sua guiagem.\n\n"
+    $text = "ℹ️ QR não lido nesta reserva — ela não entra na sua guiagem e o PIX automático não será enviado.\n\n"
         . 'Código: ' . $code . "\n"
         . 'Cliente: ' . trim((string)($sale['tourist_name'] ?? 'Cliente')) . "\n"
         . 'Pessoas: ' . $pax . "\n"
-        . 'O PIX de repasse segue o valor integral da reserva paga.';
+        . 'O depósito automático vale só para quem apresentou o QR e para o guia que fez a leitura.';
     gcv_ops_wa_guide($guideId, $text);
     return true;
 }
@@ -2206,19 +2311,36 @@ function gcv_ops_cron_tick(): array
                 gcv_ops_notify_client_dayof($sale, $exc);
                 $reminders++;
             }
-            if ($isNextDay && (int)$now->format('G') >= 10 && $hoursSinceStart >= 20 && empty($sale['notify_review_sent_at'])) {
-                if (gcv_ops_notify_client_review($sale, $exc)) {
-                    $review++;
-                }
-            }
-            $pastPeriod = $now->format('Y-m-d') > gcv_ops_sale_period($sale)['end'];
             $att = strtolower(trim((string)($sale['attendance_status'] ?? 'pending')));
-            if ($pastPeriod && ($att === '' || $att === 'pending')) {
-                if (gcv_ops_apply_noshow($sale)) {
-                    $noshow++;
-                }
+            if ($att !== 'checked_in' && gcv_ops_apply_noshow($sale)) {
+                $noshow++;
             }
         }
+    }
+
+    try {
+        $revStmt = db()->query(
+            "SELECT * FROM gcv_sales
+             WHERE deleted_at IS NULL
+               AND sale_status = 'PAID'
+               AND attendance_status = 'checked_in'
+               AND notify_review_sent_at IS NULL
+               AND COALESCE(excursion_starts_at, sold_at) >= DATE_SUB(NOW(), INTERVAL 21 DAY)"
+        );
+        $revRows = $revStmt ? ($revStmt->fetchAll(PDO::FETCH_ASSOC) ?: []) : [];
+        foreach ($revRows as $sale) {
+            $period = gcv_ops_sale_period($sale);
+            $reviewDay = (new DateTimeImmutable($period['end'], $tz))->modify('+1 day')->format('Y-m-d');
+            if ($now->format('Y-m-d') !== $reviewDay || (int)$now->format('G') < 10) {
+                continue;
+            }
+            $exc = gcv_ops_load_excursion((int)($sale['excursion_id'] ?? 0)) ?: [];
+            if (gcv_ops_notify_client_review($sale, $exc)) {
+                $review++;
+            }
+        }
+    } catch (Throwable $e) {
+        error_log('ops review tick: ' . $e->getMessage());
     }
 
     $pixRecover = ['checked' => 0, 'recovered' => 0, 'ids' => []];
