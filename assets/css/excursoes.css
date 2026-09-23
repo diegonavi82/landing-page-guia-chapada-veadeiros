@@ -5056,6 +5056,10 @@ html.gcv-waitlist-modal-open {
     align-self: center;
   }
 
+  .gcv-excursoes__shell--by-date .gcv-excursoes__nav[hidden] {
+    display: none !important;
+  }
+
   .gcv-excursoes__shell--by-date .gcv-excursoes__nav--prev {
     grid-area: prev;
   }

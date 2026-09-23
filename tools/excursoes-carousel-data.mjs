@@ -256,9 +256,44 @@ function registeredAtMs(e) {
   return Number.isFinite(ms) ? ms : Number.POSITIVE_INFINITY;
 }
 
-/** Ordem: data + hora (mais cedo) e, no empate, registro mais antigo. */
+function inscritosSortCount(e) {
+  var n = parseInt(String(e && e.pessoasInscritas), 10);
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+}
+
+function hasGuiaDefinidoSort(e) {
+  if (!e || e.guiaPendente === true || e.guiaPending === true) return false;
+  if (String(e.guiaNome || "").trim()) return true;
+  var id = parseInt(String(e.guideUserId || 0), 10);
+  return Number.isFinite(id) && id > 0;
+}
+
+/** 0 confirmado, 1 com guia definido, 2 em formação. */
+function dayPriorityRank(e) {
+  if (e && e.confirmada) return 0;
+  if (hasGuiaDefinidoSort(e)) return 1;
+  return 2;
+}
+
+/**
+ * Dias em ordem cronológica. Dentro do dia:
+ * confirmados, depois guia definido (quem publicou antes), depois em formação
+ * (mais inscritos primeiro).
+ */
 export function sortExcursaoByDeparture(list) {
   return (list || []).slice().sort(function (a, b) {
+    var da = String((a && a.dateISO) || "").slice(0, 10) || "9999-99-99";
+    var db = String((b && b.dateISO) || "").slice(0, 10) || "9999-99-99";
+    if (da < db) return -1;
+    if (da > db) return 1;
+    var rank = dayPriorityRank(a) - dayPriorityRank(b);
+    if (rank !== 0) return rank;
+    if (dayPriorityRank(a) === 1) {
+      var pub = registeredAtMs(a) - registeredAtMs(b);
+      if (pub !== 0) return pub;
+    }
+    var ins = inscritosSortCount(b) - inscritosSortCount(a);
+    if (ins !== 0) return ins;
     var dep = excursaoDepartureEpochMsSort(a) - excursaoDepartureEpochMsSort(b);
     if (dep !== 0) return dep;
     return registeredAtMs(a) - registeredAtMs(b);

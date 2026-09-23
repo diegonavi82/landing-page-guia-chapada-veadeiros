@@ -207,6 +207,160 @@ export const HERO_SLIDES = {
   ],
 };
 
+/** Slider principal da home (exclusivo / compartilhado / reserva online). */
+export const HERO_OFFERS = {
+  pt: {
+    h1: "Passeios na Chapada dos Veadeiros com guia local",
+    aria: "Passeios na Chapada dos Veadeiros",
+    role: "carrossel",
+    tabsAria: "Escolher slide",
+    pause: "Pausar slider",
+    play: "Continuar slider",
+    slides: [
+      {
+        theme: "exclusivo",
+        alt: "Grupo em passeio exclusivo com guia diante de uma cachoeira na Chapada dos Veadeiros",
+        tag: "Passeio exclusivo",
+        lines: ["A Chapada", "só para o", "seu grupo."],
+        text: "Passeios com guia local particular no ritmo do seu grupo.",
+        points: ["Grupo fechado", "Horário flexível", "Roteiro sob medida"],
+        actions: [
+          { href: "exclusivo", label: "Reservar exclusivo", main: true },
+          { href: "list", label: "Ver roteiros" },
+        ],
+        tab: "Exclusivo",
+        tabSub: "Só o seu grupo",
+      },
+      {
+        theme: "compartilhado",
+        alt: "Viajantes em passeio compartilhado posando em frente a uma cachoeira na Chapada dos Veadeiros",
+        tag: "Passeio compartilhado",
+        lines: ["Saia sozinho.", "Volte com", "amigos."],
+        text: "Divida o passeio, pague menos e conheça as cachoeiras da Chapada dos Veadeiros em boa companhia.",
+        points: ["Melhor custo-benefício", "Novas conexões", "Amigos para a vida toda"],
+        actions: [
+          { href: "compartilhado", label: "Garantir minha vaga", main: true },
+          { href: "list", label: "Ver próximas saídas" },
+        ],
+        tab: "Compartilhado",
+        tabSub: "Melhor preço",
+      },
+      {
+        theme: "online",
+        alt: "Turista relaxando nas pedras de um poço durante passeio guiado na Chapada dos Veadeiros",
+        tag: "Reserva online",
+        lines: ["Escolha, pague", "e garanta", "sua vaga."],
+        text: "Todos os passeios na Chapada dos Veadeiros, exclusivos ou compartilhados, são comprados aqui no site.",
+        stepsAria: "Como reservar",
+        steps: ["Escolha o passeio", "Selecione a data", "Pague online"],
+        actions: [{ href: "list", label: "Reservar agora", main: true }],
+        tab: "Compre online",
+        tabSub: "Vaga garantida",
+      },
+    ],
+  },
+  en: {
+    h1: "Tours in Chapada dos Veadeiros with a local guide",
+    aria: "Tours in Chapada dos Veadeiros",
+    role: "carousel",
+    tabsAria: "Choose a slide",
+    pause: "Pause slider",
+    play: "Resume slider",
+    slides: [
+      {
+        theme: "exclusivo",
+        alt: "Group on a private tour with a guide in front of a waterfall in Chapada dos Veadeiros",
+        tag: "Private tour",
+        lines: ["The Chapada", "just for", "your group."],
+        text: "Private tours with a local guide, at your group's pace.",
+        points: ["Private group", "Flexible timing", "Tailor-made route"],
+        actions: [
+          { href: "exclusivo", label: "Book private", main: true },
+          { href: "list", label: "See itineraries" },
+        ],
+        tab: "Private",
+        tabSub: "Just your group",
+      },
+      {
+        theme: "compartilhado",
+        alt: "Travelers on a shared tour posing in front of a waterfall in Chapada dos Veadeiros",
+        tag: "Shared tour",
+        lines: ["Leave on your own.", "Come back with", "friends."],
+        text: "Split the tour, pay less and see the waterfalls of Chapada dos Veadeiros in good company.",
+        points: ["Best value", "New connections", "Friends for life"],
+        actions: [
+          { href: "compartilhado", label: "Save my spot", main: true },
+          { href: "list", label: "See upcoming dates" },
+        ],
+        tab: "Shared",
+        tabSub: "Best price",
+      },
+      {
+        theme: "online",
+        alt: "Traveler relaxing on the rocks of a pool during a guided tour in Chapada dos Veadeiros",
+        tag: "Book online",
+        lines: ["Choose, pay", "and lock in", "your spot."],
+        text: "Every tour in Chapada dos Veadeiros, private or shared, is booked right here on the site.",
+        stepsAria: "How to book",
+        steps: ["Choose the tour", "Pick the date", "Pay online"],
+        actions: [{ href: "list", label: "Book now", main: true }],
+        tab: "Buy online",
+        tabSub: "Spot guaranteed",
+      },
+    ],
+  },
+  es: {
+    h1: "Paseos en la Chapada dos Veadeiros con guía local",
+    aria: "Paseos en la Chapada dos Veadeiros",
+    role: "carrusel",
+    tabsAria: "Elegir diapositiva",
+    pause: "Pausar carrusel",
+    play: "Reanudar carrusel",
+    slides: [
+      {
+        theme: "exclusivo",
+        alt: "Grupo en un paseo exclusivo con guía frente a una cascada en la Chapada dos Veadeiros",
+        tag: "Paseo exclusivo",
+        lines: ["La Chapada", "solo para", "tu grupo."],
+        text: "Paseos con guía local particular, al ritmo de tu grupo.",
+        points: ["Grupo cerrado", "Horario flexible", "Ruta a medida"],
+        actions: [
+          { href: "exclusivo", label: "Reservar exclusivo", main: true },
+          { href: "list", label: "Ver rutas" },
+        ],
+        tab: "Exclusivo",
+        tabSub: "Solo tu grupo",
+      },
+      {
+        theme: "compartilhado",
+        alt: "Viajeros en un paseo compartido posando frente a una cascada en la Chapada dos Veadeiros",
+        tag: "Paseo compartido",
+        lines: ["Sal solo.", "Vuelve con", "amigos."],
+        text: "Comparte el paseo, paga menos y conoce las cascadas de la Chapada dos Veadeiros en buena compañía.",
+        points: ["Mejor precio", "Nuevas conexiones", "Amigos para toda la vida"],
+        actions: [
+          { href: "compartilhado", label: "Asegurar mi lugar", main: true },
+          { href: "list", label: "Ver próximas salidas" },
+        ],
+        tab: "Compartido",
+        tabSub: "Mejor precio",
+      },
+      {
+        theme: "online",
+        alt: "Turista relajándose en las piedras de un pozo durante un paseo guiado en la Chapada dos Veadeiros",
+        tag: "Reserva online",
+        lines: ["Elige, paga", "y asegura", "tu lugar."],
+        text: "Todos los paseos en la Chapada dos Veadeiros, exclusivos o compartidos, se compran aquí en el sitio.",
+        stepsAria: "Cómo reservar",
+        steps: ["Elige el paseo", "Selecciona la fecha", "Paga online"],
+        actions: [{ href: "list", label: "Reservar ahora", main: true }],
+        tab: "Compra online",
+        tabSub: "Plaza garantizada",
+      },
+    ],
+  },
+};
+
 /** Destaques da home (8 cards — mesma ordem do Home.tsx). meta = dificuldade + distância da trilha (não distância de carro). */
 export const HOME_FEATURED = {
   pt: [
@@ -244,12 +398,12 @@ export const HOME_FEATURED = {
 /** SEO da home — palavra-chave principal e consultas de conversão (pt / en / es). */
 export const HOME_SEO = {
   pt: {
-    title: "Chapada dos Veadeiros | Passeios com guia local",
-    desc: "Passeios na Chapada dos Veadeiros com guia local credenciado. Contrate guia, reserve cachoeiras, trilhas e o Parque Nacional em Alto Paraíso de Goiás.",
+    title: "Passeios na Chapada dos Veadeiros com Guia Local | Cachoeiras e Trilhas",
+    desc: "Passeios exclusivos e compartilhados na Chapada dos Veadeiros com guia local. Conheça as melhores cachoeiras e reserve online com vaga garantida.",
     keywords:
       "chapada dos veadeiros, passeios na chapada dos veadeiros, guia chapada veadeiros, contratar guia na chapada dos veadeiros, guia local alto paraíso, parque nacional chapada dos veadeiros",
-    ogImageAlt: "Passeios na Chapada dos Veadeiros com guia local credenciado",
-    heroAlt: "Chapada dos Veadeiros — passeios com guia local em Alto Paraíso de Goiás",
+    ogImageAlt: "Grupo em passeio exclusivo com guia diante de uma cachoeira na Chapada dos Veadeiros",
+    heroAlt: "Grupo em passeio exclusivo com guia diante de uma cachoeira na Chapada dos Veadeiros",
     chip: "Chapada dos Veadeiros · Goiás",
     h2: "Passeios e guia local na Chapada dos Veadeiros",
     intro:
@@ -300,12 +454,12 @@ export const HOME_SEO = {
     ],
   },
   en: {
-    title: "Chapada dos Veadeiros | Tours with a local guide",
-    desc: "Chapada dos Veadeiros tours with a licensed local guide. Hire a guide, book waterfalls, trails and the National Park in Alto Paraíso, Goiás, Brazil.",
+    title: "Tours in Chapada dos Veadeiros with a Local Guide | Waterfalls and Trails",
+    desc: "Private and shared tours in Chapada dos Veadeiros with a local guide. See the best waterfalls and book online with a guaranteed spot.",
     keywords:
       "chapada dos veadeiros, chapada dos veadeiros tours, chapada veadeiros guide, hire a guide in chapada dos veadeiros, local guide alto paraiso, chapada national park",
-    ogImageAlt: "Chapada dos Veadeiros tours with a licensed local guide",
-    heroAlt: "Chapada dos Veadeiros — guided tours in Alto Paraíso de Goiás, Brazil",
+    ogImageAlt: "Group on a private tour with a guide in front of a waterfall in Chapada dos Veadeiros",
+    heroAlt: "Group on a private tour with a guide in front of a waterfall in Chapada dos Veadeiros",
     chip: "Chapada dos Veadeiros · Brazil",
     h2: "Tours and a local guide in Chapada dos Veadeiros",
     intro:
@@ -356,12 +510,12 @@ export const HOME_SEO = {
     ],
   },
   es: {
-    title: "Chapada dos Veadeiros | Excursiones con guía local",
-    desc: "Excursiones en Chapada dos Veadeiros con guía local acreditado. Contrata guía, reserva cascadas, senderos y el Parque Nacional en Alto Paraíso, Goiás, Brasil.",
+    title: "Paseos en la Chapada dos Veadeiros con Guía Local | Cascadas y Senderos",
+    desc: "Paseos exclusivos y compartidos en la Chapada dos Veadeiros con guía local. Conoce las mejores cascadas y reserva online con plaza garantizada.",
     keywords:
       "chapada dos veadeiros, paseos en chapada dos veadeiros, guía chapada veadeiros, contratar guía en chapada dos veadeiros, guía local alto paraíso, parque nacional chapada dos veadeiros",
-    ogImageAlt: "Excursiones en Chapada dos Veadeiros con guía local acreditado",
-    heroAlt: "Chapada dos Veadeiros — excursiones con guía local en Alto Paraíso de Goiás",
+    ogImageAlt: "Grupo en un paseo exclusivo con guía frente a una cascada en la Chapada dos Veadeiros",
+    heroAlt: "Grupo en un paseo exclusivo con guía frente a una cascada en la Chapada dos Veadeiros",
     chip: "Chapada dos Veadeiros · Brasil",
     h2: "Excursiones y guía local en Chapada dos Veadeiros",
     intro:

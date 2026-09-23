@@ -218,7 +218,8 @@ function gcv_excursion_enrich(array $row): array
         'id', 'price_cents', 'price_transport_cents', 'quorum', 'max_people', 'booked_people',
         'booked_people_transport', 'preconfirmed_people', 'quorum_transport', 'max_people_transport',
         'guide_user_id', 'departure_city_id', 'attraction_id', 'offer_transport', 'include_transport',
-        'guide_payout_planned_cents', 'guide_net_cents',
+        'guide_payout_planned_cents', 'guide_net_cents', 'guide_net_transport_cents',
+        'commission_cents', 'commission_transport_cents',
     ] as $k) {
         if (array_key_exists($k, $row) && $row[$k] !== null && $row[$k] !== '') {
             $row[$k] = (int)$row[$k];
@@ -332,7 +333,40 @@ function gcv_admin_apply_sheet_patch(array $body, array $ex, int $adminId): arra
             (int)($ex['booked_people'] ?? 0)
         );
     }
-    if (array_key_exists('price_cents', $body)) {
+    if (array_key_exists('guide_net_cents', $body)) {
+        $newNet = (int)$body['guide_net_cents'];
+        if ($newNet < 100) {
+            throw new InvalidArgumentException('Informe o valor que o guia pediu (mínimo R$ 1)');
+        }
+        $cityId = (int)($ex['departure_city_id'] ?? 0);
+        $pricingWalk = gcv_pricing_from_guide_net(
+            $newNet,
+            $id,
+            $nextGuide > 0 ? $nextGuide : null,
+            null,
+            $cityId > 0 ? $cityId : null
+        );
+        $sets[] = 'guide_net_cents = ?';
+        $params[] = $pricingWalk['guide_net_cents'];
+        $sets[] = 'price_cents = ?';
+        $params[] = $pricingWalk['final_price_cents'];
+        $sets[] = 'commission_pct_applied = ?';
+        $params[] = $pricingWalk['commission_pct'];
+        $sets[] = 'commission_cents = ?';
+        $params[] = $pricingWalk['commission_cents'];
+        $sets[] = 'price_before_round_cents = ?';
+        $params[] = $pricingWalk['price_before_round_cents'];
+        $sets[] = 'rounding_diff_cents = ?';
+        $params[] = $pricingWalk['rounding_diff_cents'];
+        $sets[] = 'guide_payout_planned_cents = ?';
+        $params[] = $pricingWalk['guide_net_cents'];
+        $sets[] = 'platform_margin_cents = ?';
+        $params[] = $pricingWalk['commission_cents'];
+        if (!empty($pricingWalk['commission_rule_id'])) {
+            $sets[] = 'commission_rule_id = ?';
+            $params[] = $pricingWalk['commission_rule_id'];
+        }
+    } elseif (array_key_exists('price_cents', $body)) {
         $price = (int)$body['price_cents'];
         if ($price <= 0) {
             throw new InvalidArgumentException('Valor por pessoa obrigatório');
@@ -341,9 +375,34 @@ function gcv_admin_apply_sheet_patch(array $body, array $ex, int $adminId): arra
         $params[] = $price;
     }
 
+    $pricingTransport = null;
+    if (array_key_exists('guide_net_transport_cents', $body)) {
+        $netT = (int)$body['guide_net_transport_cents'];
+        if ($netT > 0) {
+            if ($netT < 100) {
+                throw new InvalidArgumentException('Informe o valor com translado que o guia pediu (mínimo R$ 1)');
+            }
+            $cityIdT = (int)($ex['departure_city_id'] ?? 0);
+            $pricingTransport = gcv_pricing_from_guide_net(
+                $netT,
+                $id,
+                $nextGuide > 0 ? $nextGuide : null,
+                null,
+                $cityIdT > 0 ? $cityIdT : null
+            );
+            $body['price_transport_cents'] = $pricingTransport['final_price_cents'];
+            if (!array_key_exists('offer_transport', $body)) {
+                $body['offer_transport'] = 1;
+            }
+        } else {
+            $body['price_transport_cents'] = 0;
+        }
+    }
+
     $touchTransport = array_key_exists('offer_transport', $body)
         || array_key_exists('max_people_transport', $body)
         || array_key_exists('price_transport_cents', $body)
+        || array_key_exists('guide_net_transport_cents', $body)
         || array_key_exists('quorum_transport', $body);
     if ($touchTransport) {
         $tr = gcv_admin_transport_from_body($body, $ex, $maxPeople);
@@ -357,6 +416,17 @@ function gcv_admin_apply_sheet_patch(array $body, array $ex, int $adminId): arra
         $params[] = $tr['quorum_transport'];
         $sets[] = 'max_people_transport = ?';
         $params[] = $tr['max_people_transport'];
+        if (empty($tr['offer_transport']) || ($pricingTransport === null && array_key_exists('guide_net_transport_cents', $body) && (int)$body['guide_net_transport_cents'] <= 0)) {
+            $sets[] = 'guide_net_transport_cents = ?';
+            $params[] = null;
+            $sets[] = 'commission_transport_cents = ?';
+            $params[] = null;
+        } elseif ($pricingTransport) {
+            $sets[] = 'guide_net_transport_cents = ?';
+            $params[] = $pricingTransport['guide_net_cents'];
+            $sets[] = 'commission_transport_cents = ?';
+            $params[] = $pricingTransport['commission_cents'];
+        }
     }
 
     if (array_key_exists('status', $body)) {

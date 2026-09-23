@@ -1331,10 +1331,50 @@
     return Number.isFinite(ms) ? ms : Number.POSITIVE_INFINITY;
   }
 
+  /** Guia nomeado no card. "A definir" / pendente não conta. */
+  function hasGuiaDefinido(e) {
+    if (!e || e.guiaPendente === true || e.guiaPending === true) return false;
+    if (String(e.guiaNome || "").trim()) return true;
+    var id = parseInt(String(e.guideUserId || e.guiaId || 0), 10);
+    return Number.isFinite(id) && id > 0;
+  }
+
+  /**
+   * No mesmo dia: 0 confirmado, 1 com guia definido, 2 em formação (sem guia).
+   */
+  function dayPriorityRank(e) {
+    if (e && e.confirmada) return 0;
+    if (hasGuiaDefinido(e)) return 1;
+    return 2;
+  }
+
+  /**
+   * Dias em ordem cronológica. Dentro do dia:
+   * 1) confirmados (mais inscritos primeiro)
+   * 2) com guia definido (quem publicou antes)
+   * 3) em formação (mais inscritos primeiro)
+   */
   function sortExcursaoByDeparture(list) {
     return (list || []).slice().sort(function (a, b) {
-      var dep = excursaoDepartureEpochMs(a) - excursaoDepartureEpochMs(b);
-      if (dep !== 0) return dep;
+      var da = excursaoDateIso(a) || "9999-99-99";
+      var db = excursaoDateIso(b) || "9999-99-99";
+      if (da < db) return -1;
+      if (da > db) return 1;
+      var rank = dayPriorityRank(a) - dayPriorityRank(b);
+      if (rank !== 0) return rank;
+      if (dayPriorityRank(a) === 1) {
+        var pub = registeredAtMs(a) - registeredAtMs(b);
+        if (pub !== 0) return pub;
+      }
+      var ins = inscritosNoGrupo(b) - inscritosNoGrupo(a);
+      if (ins !== 0) return ins;
+      var depA = excursaoDepartureEpochMs(a);
+      var depB = excursaoDepartureEpochMs(b);
+      if (depA !== depB) {
+        if (!Number.isFinite(depA)) return 1;
+        if (!Number.isFinite(depB)) return -1;
+        return depA - depB;
+      }
       return registeredAtMs(a) - registeredAtMs(b);
     });
   }
@@ -6731,7 +6771,6 @@
     var dotsEl = root.querySelector(".gcv-excursoes__dots");
     if (dotsEl) dotsEl.remove();
 
-    var VISIBLE_PER_PAGE = 4;
     var CARD = 230;
     var GAP = 16;
     var selectedDateIso = "";
@@ -6984,50 +7023,35 @@
       return !fitsEntireTrack() && cardCount() > 1;
     }
 
-    function firstVisibleCardIndex() {
+    function scrollStepPx() {
       var cards = track.querySelectorAll(".gcv-excursoes-card");
-      var sl = viewport.scrollLeft;
-      for (var i = 0; i < cards.length; i++) {
-        if (cards[i].offsetLeft + cards[i].offsetWidth > sl + 0.5) return i;
+      if (cards.length >= 2) {
+        var delta = cards[1].getBoundingClientRect().left - cards[0].getBoundingClientRect().left;
+        if (delta > 8) return delta;
       }
-      return Math.max(0, cards.length - 1);
+      var card = cards[0];
+      return (card && card.offsetWidth > 0 ? card.offsetWidth : CARD) + GAP;
     }
 
-    function maxPageStart() {
-      return Math.max(0, cardCount() - VISIBLE_PER_PAGE);
+    function canScrollRight() {
+      return canScrollTrack() && viewport.scrollLeft < maxScrollLeft() - 1;
     }
 
-    function scrollToCardIndex(startIdx, smooth) {
-      var cards = track.querySelectorAll(".gcv-excursoes-card");
-      var el = cards[startIdx];
-      if (!el) return;
-      // Índice 0 = início real do trilho (scrollLeft 0), não offsetLeft do card (padding do track).
-      var target =
-        startIdx === 0 ? 0 : Math.max(0, Math.min(el.offsetLeft, maxScrollLeft()));
-      try {
-        viewport.scrollTo({
-          left: target,
-          behavior: smooth ? "smooth" : "auto",
-        });
-      } catch (err) {
-        viewport.scrollLeft = target;
-      }
+    function canScrollLeft() {
+      return canScrollTrack() && viewport.scrollLeft > 1;
     }
 
     function syncNavButtons() {
       var hide = !canScrollTrack();
-      var first = firstVisibleCardIndex();
-      var atStart = viewport.scrollLeft <= 1;
-      var atEnd = first >= maxPageStart() || viewport.scrollLeft >= maxScrollLeft() - 1;
       if (prev) {
         prev.hidden = hide;
         prev.setAttribute("aria-hidden", hide ? "true" : "false");
-        prev.disabled = hide || atStart;
+        prev.disabled = hide || !canScrollLeft();
       }
       if (next) {
         next.hidden = hide;
         next.setAttribute("aria-hidden", hide ? "true" : "false");
-        next.disabled = hide || atEnd;
+        next.disabled = hide || !canScrollRight();
       }
     }
 
@@ -7036,29 +7060,40 @@
       syncNavButtons();
     }
 
+    function scrollTrackByCards(dir) {
+      var maxL = maxScrollLeft();
+      var current = viewport.scrollLeft;
+      var step = scrollStepPx();
+      var target = dir > 0 ? Math.min(current + step, maxL) : Math.max(current - step, 0);
+      if (Math.abs(target - current) < 1) return;
+      try {
+        viewport.scrollTo({ left: target, behavior: "smooth" });
+      } catch (err) {
+        viewport.scrollLeft = target;
+      }
+    }
+
     function arrowNext() {
-      if (!canScrollTrack()) return;
-      var first = firstVisibleCardIndex();
-      var nextStart = Math.min(first + VISIBLE_PER_PAGE, maxPageStart());
-      if (nextStart === first) return;
-      scrollToCardIndex(nextStart, true);
+      if (!canScrollRight()) return;
+      scrollTrackByCards(1);
     }
 
     function arrowPrev() {
-      if (!canScrollTrack()) return;
-      var first = firstVisibleCardIndex();
-      var prevStart = Math.max(first - VISIBLE_PER_PAGE, 0);
-      if (prevStart === first && viewport.scrollLeft <= 1) return;
-      scrollToCardIndex(prevStart, true);
+      if (!canScrollLeft()) return;
+      scrollTrackByCards(-1);
     }
 
-    if (prev) {
-      prev.addEventListener("click", function () {
+    if (prev && !prev._gcvBound) {
+      prev._gcvBound = true;
+      prev.addEventListener("click", function (ev) {
+        ev.preventDefault();
         arrowPrev();
       });
     }
-    if (next) {
-      next.addEventListener("click", function () {
+    if (next && !next._gcvBound) {
+      next._gcvBound = true;
+      next.addEventListener("click", function (ev) {
+        ev.preventDefault();
         arrowNext();
       });
     }

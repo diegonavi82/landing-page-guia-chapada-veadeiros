@@ -1,7 +1,7 @@
 {
   "name": "guia-chapada-landing-estatica",
   "private": true,
-  "version": "1.1.29",
+  "version": "1.1.31",
   "description": "Site 100% estático (HTML/CSS/JS) — sem API, sem MySQL.",
   "scripts": {
     "dev": "node tools/mock-server.mjs",
@@ -10,6 +10,7 @@
     "dev:client": "node tools/mock-server.mjs client",
     "sync:media": "node tools/sync-media.mjs",
     "images:webp": "node tools/to-webp.mjs",
+    "images:hero": "node scripts/otimizar-hero.mjs",
     "sync:instagram": "node tools/sync-instagram.mjs",
     "fetch:instagram": "node tools/fetch-instagram-images.mjs",
     "favicons": "node tools/generate-favicons.mjs",

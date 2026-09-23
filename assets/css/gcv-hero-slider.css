@@ -1,0 +1,529 @@
+/* Slider da home — exclusivo / compartilhado / compre online.
+   Escopo .gcv-hero--offers para não herdar o hero antigo. */
+
+.gcv-hero.gcv-hero--offers {
+  --verde: #1f6b45;
+  --verde-claro: #5fbf7f;
+  --laranja: #f07a2e;
+  --tinta: #10231a;
+  --dur: 7000ms;
+  position: relative;
+  width: 100%;
+  max-width: none;
+  margin: 12px 0 0;
+  height: 680px;
+  min-height: 0;
+  aspect-ratio: auto;
+  display: grid;
+  border-radius: 24px;
+  overflow: hidden;
+  background: var(--tinta);
+  box-shadow: none;
+  cursor: auto;
+  user-select: text;
+  touch-action: pan-y;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: #fff;
+  isolation: isolate;
+}
+
+.gcv-hero.gcv-hero--offers:active {
+  cursor: auto;
+}
+
+.gcv-hero--offers * {
+  box-sizing: border-box;
+}
+
+#excursoes,
+#excursoes-junho {
+  scroll-margin-top: 5.5rem;
+}
+
+.gcv-hero--offers .gcv-h1 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.gcv-hero--offers .gcv-slide {
+  grid-area: 1 / 1;
+  position: relative;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.9s ease, visibility 0s linear 0.9s;
+}
+
+.gcv-hero--offers .gcv-slide.is-active {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.9s ease;
+}
+
+.gcv-hero--offers .gcv-media {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  display: block;
+  margin: 0;
+}
+
+.gcv-hero--offers .gcv-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: right center;
+  display: block;
+  transform-origin: 70% 50%;
+}
+
+.gcv-hero--offers .gcv-slide.is-active .gcv-media img {
+  animation: gcvZoom calc(var(--dur) + 1500ms) ease-out forwards;
+}
+
+@keyframes gcvZoom {
+  from { transform: scale(1); }
+  to { transform: scale(1.06); }
+}
+
+.gcv-hero--offers .gcv-shade {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(8, 20, 14, 0.92) 0%, rgba(8, 20, 14, 0.72) 38%, rgba(8, 20, 14, 0) 62%),
+    linear-gradient(0deg, rgba(8, 20, 14, 0.8) 0%, rgba(8, 20, 14, 0) 28%);
+}
+
+.gcv-hero--offers [data-theme="compartilhado"] .gcv-shade {
+  background:
+    linear-gradient(90deg, rgba(10, 28, 52, 0.92) 0%, rgba(10, 28, 52, 0.7) 38%, rgba(10, 28, 52, 0) 62%),
+    linear-gradient(0deg, rgba(10, 28, 52, 0.8) 0%, rgba(10, 28, 52, 0) 28%);
+}
+
+.gcv-hero--offers [data-theme="online"] .gcv-shade {
+  background:
+    linear-gradient(90deg, rgba(40, 18, 4, 0.92) 0%, rgba(40, 18, 4, 0.7) 38%, rgba(40, 18, 4, 0) 62%),
+    linear-gradient(0deg, rgba(40, 18, 4, 0.8) 0%, rgba(40, 18, 4, 0) 28%);
+}
+
+.gcv-hero--offers .gcv-content {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+  padding: 64px 64px 128px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  max-width: 600px;
+}
+
+.gcv-hero--offers .gcv-tag {
+  align-self: flex-start;
+  font-weight: 700;
+  font-size: 14px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: var(--verde-claro);
+  color: var(--tinta);
+  margin-bottom: 16px;
+}
+
+.gcv-hero--offers [data-theme="compartilhado"] .gcv-tag {
+  background: #7cc8ff;
+  color: #0a1c34;
+}
+
+.gcv-hero--offers [data-theme="online"] .gcv-tag {
+  background: var(--laranja);
+  color: #fff;
+}
+
+.gcv-hero--offers .gcv-title {
+  font-family: "Bricolage Grotesque", Inter, sans-serif;
+  font-weight: 700;
+  font-size: clamp(32px, 4.2vw, 48px);
+  line-height: 0.98;
+  letter-spacing: -0.02em;
+  margin: 0 0 16px;
+  text-shadow: none;
+}
+
+.gcv-hero--offers .gcv-line {
+  display: block;
+}
+
+.gcv-hero--offers .gcv-big {
+  font-weight: 800;
+  font-size: 1.3em;
+  color: var(--verde-claro);
+}
+
+.gcv-hero--offers [data-theme="compartilhado"] .gcv-big {
+  color: #7cc8ff;
+}
+
+.gcv-hero--offers [data-theme="online"] .gcv-big {
+  color: #ffb27a;
+}
+
+.gcv-hero--offers .gcv-text {
+  font-size: 16px;
+  line-height: 1.55;
+  max-width: 46ch;
+  margin: 0 0 16px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.gcv-hero--offers .gcv-points {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 22px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gcv-hero--offers .gcv-points li {
+  font-size: 14px;
+  font-weight: 600;
+  padding: 7px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(6px);
+}
+
+.gcv-hero--offers .gcv-points li::before {
+  content: "✓ ";
+  color: var(--verde-claro);
+}
+
+.gcv-hero--offers [data-theme="compartilhado"] .gcv-points li::before {
+  color: #7cc8ff;
+}
+
+.gcv-hero--offers .gcv-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.gcv-hero--offers .gcv-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 50px;
+  padding: 0 26px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 16px;
+  text-decoration: none;
+  transition: transform 0.2s, background 0.2s;
+}
+
+.gcv-hero--offers .gcv-btn:focus-visible,
+.gcv-hero--offers .gcv-tab:focus-visible,
+.gcv-hero--offers .gcv-pause:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+}
+
+.gcv-hero--offers .gcv-btn-main {
+  background: var(--laranja);
+  color: #fff;
+  box-shadow: 0 10px 30px -10px rgba(240, 122, 46, 0.9);
+}
+
+.gcv-hero--offers .gcv-btn-main:hover {
+  transform: translateY(-2px);
+  background: #ff8a3d;
+  color: #fff;
+}
+
+.gcv-hero--offers .gcv-btn-ghost {
+  color: #fff;
+  border: 2px solid rgba(255, 255, 255, 0.7);
+}
+
+.gcv-hero--offers .gcv-btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.gcv-hero--offers .gcv-steps {
+  list-style: none;
+  margin: 0 0 22px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.gcv-hero--offers .gcv-steps li {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--tinta);
+  font-weight: 600;
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.gcv-hero--offers .gcv-steps b {
+  flex: 0 0 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--verde);
+  color: #fff;
+  font-family: "Bricolage Grotesque", sans-serif;
+}
+
+.gcv-hero--offers .gcv-slide.is-active .gcv-tag { animation: gcvUp 0.6s 0.15s both; }
+.gcv-hero--offers .gcv-slide.is-active .gcv-line:nth-child(1) { animation: gcvUp 0.7s 0.25s both; }
+.gcv-hero--offers .gcv-slide.is-active .gcv-line:nth-child(2) { animation: gcvUp 0.7s 0.38s both; }
+.gcv-hero--offers .gcv-slide.is-active .gcv-line:nth-child(3) { animation: gcvPop 0.8s 0.52s both; }
+.gcv-hero--offers .gcv-slide.is-active .gcv-text { animation: gcvUp 0.7s 0.7s both; }
+.gcv-hero--offers .gcv-slide.is-active .gcv-points li,
+.gcv-hero--offers .gcv-slide.is-active .gcv-steps li { animation: gcvUp 0.5s both; }
+.gcv-hero--offers .gcv-slide.is-active :is(.gcv-points, .gcv-steps) li:nth-child(1) { animation-delay: 0.85s; }
+.gcv-hero--offers .gcv-slide.is-active :is(.gcv-points, .gcv-steps) li:nth-child(2) { animation-delay: 0.95s; }
+.gcv-hero--offers .gcv-slide.is-active :is(.gcv-points, .gcv-steps) li:nth-child(3) { animation-delay: 1.05s; }
+.gcv-hero--offers .gcv-slide.is-active .gcv-actions { animation: gcvUp 0.6s 1.1s both; }
+
+@keyframes gcvUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes gcvPop {
+  from { opacity: 0; transform: translateY(30px) scale(0.9); }
+  to { opacity: 1; transform: none; }
+}
+
+.gcv-hero--offers .gcv-tabs {
+  position: absolute;
+  z-index: 3;
+  left: 24px;
+  right: 24px;
+  bottom: 22px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.gcv-hero--offers .gcv-tab {
+  position: relative;
+  overflow: hidden;
+  text-align: left;
+  cursor: pointer;
+  border: 0;
+  border-radius: 14px;
+  padding: 14px 16px 16px;
+  background: rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(10px);
+  color: #fff;
+  font: inherit;
+  transition: background 0.3s;
+}
+
+.gcv-hero--offers .gcv-tab:hover {
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.gcv-hero--offers .gcv-tab.is-active {
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--tinta);
+}
+
+.gcv-hero--offers .gcv-tab-label {
+  display: block;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.gcv-hero--offers .gcv-tab-sub {
+  display: block;
+  font-size: 13px;
+  opacity: 0.75;
+}
+
+.gcv-hero--offers .gcv-bar {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 4px;
+  width: 0;
+  background: var(--laranja);
+}
+
+.gcv-hero--offers .gcv-tab.is-active .gcv-bar {
+  animation: gcvBar var(--dur) linear forwards;
+}
+
+.gcv-hero--offers.is-paused .gcv-bar {
+  animation-play-state: paused;
+}
+
+@keyframes gcvBar {
+  to { width: 100%; }
+}
+
+.gcv-hero--offers .gcv-pause {
+  position: absolute;
+  z-index: 4;
+  top: 16px;
+  right: 16px;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 0;
+  cursor: pointer;
+  background: rgba(0, 0, 0, 0.35);
+  color: #fff;
+  font-size: 11px;
+  line-height: 1;
+}
+
+/* Celular: foto em cima (pessoas inteiras), texto embaixo, abas numa linha */
+@media (max-width: 780px) {
+  .gcv-hero.gcv-hero--offers {
+    height: auto;
+    border-radius: 18px;
+  }
+
+  .gcv-hero--offers .gcv-slide {
+    background: var(--tinta);
+    padding-bottom: 78px;
+  }
+
+  .gcv-hero--offers .gcv-slide:not(.is-active) {
+    position: absolute;
+    width: 100%;
+    height: 0;
+    overflow: hidden;
+    padding: 0;
+    pointer-events: none;
+  }
+
+  .gcv-hero--offers [data-theme="compartilhado"] {
+    background: #0a1c34;
+  }
+
+  .gcv-hero--offers [data-theme="online"] {
+    background: #281204;
+  }
+
+  .gcv-hero--offers .gcv-media {
+    position: relative;
+    inset: auto;
+    aspect-ratio: 9 / 10;
+    -webkit-mask-image: linear-gradient(180deg, #000 78%, transparent 100%);
+    mask-image: linear-gradient(180deg, #000 78%, transparent 100%);
+  }
+
+  .gcv-hero--offers .gcv-media img {
+    object-position: center top;
+    animation: none;
+  }
+
+  .gcv-hero--offers .gcv-shade {
+    display: none;
+  }
+
+  .gcv-hero--offers .gcv-content {
+    height: auto;
+    max-width: none;
+    padding: 0 20px 16px;
+    margin-top: -48px;
+  }
+
+  .gcv-hero--offers .gcv-title {
+    font-size: 34px;
+  }
+
+  .gcv-hero--offers .gcv-text {
+    font-size: 15px;
+  }
+
+  .gcv-hero--offers .gcv-btn {
+    min-height: 46px;
+    padding: 0 20px;
+    font-size: 15px;
+  }
+
+  .gcv-hero--offers .gcv-steps li {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    font-size: 12px;
+    padding: 8px;
+  }
+
+  .gcv-hero--offers .gcv-steps b {
+    flex: 0 0 26px;
+    width: 26px;
+    height: 26px;
+  }
+
+  .gcv-hero--offers .gcv-points li {
+    font-size: 13px;
+  }
+
+  .gcv-hero--offers .gcv-actions {
+    margin-bottom: 4px;
+  }
+
+  .gcv-hero--offers .gcv-tabs {
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    gap: 6px;
+  }
+
+  .gcv-hero--offers .gcv-tab {
+    padding: 10px 8px 12px;
+  }
+
+  .gcv-hero--offers .gcv-tab-label {
+    font-size: 12px;
+    white-space: nowrap;
+    letter-spacing: -0.01em;
+  }
+
+  .gcv-hero--offers .gcv-tab-sub {
+    display: none;
+  }
+}
+
+@media (max-width: 390px) {
+  .gcv-hero--offers .gcv-tab {
+    padding: 9px 4px 11px;
+  }
+
+  .gcv-hero--offers .gcv-tab-label {
+    font-size: 11px;
+  }
+
+  .gcv-hero--offers .gcv-title {
+    font-size: 30px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gcv-hero--offers * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

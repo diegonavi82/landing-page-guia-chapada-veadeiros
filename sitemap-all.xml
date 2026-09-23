@@ -15,8 +15,72 @@
     <xhtml:link rel="alternate" hreflang="es" href="https://www.guiachapadaveadeiros.com/es/" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://www.guiachapadaveadeiros.com/" />
     <image:image>
-      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/imagens/hero-slide-01-guias-locais-cachoeira.png</image:loc>
-      <image:title>Chapada dos Veadeiros | Passeios com guia local</image:title>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/hero/passeio-exclusivo-cachoeira-chapada-dos-veadeiros-desktop.webp</image:loc>
+      <image:title>Grupo em passeio exclusivo com guia diante de uma cachoeira na Chapada dos Veadeiros</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/hero/passeio-exclusivo-cachoeira-chapada-dos-veadeiros-mobile.webp</image:loc>
+      <image:title>Grupo em passeio exclusivo com guia diante de uma cachoeira na Chapada dos Veadeiros</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/hero/passeio-compartilhado-cachoeira-chapada-dos-veadeiros-desktop.webp</image:loc>
+      <image:title>Viajantes em passeio compartilhado posando em frente a uma cachoeira na Chapada dos Veadeiros</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/hero/passeio-compartilhado-cachoeira-chapada-dos-veadeiros-mobile.webp</image:loc>
+      <image:title>Viajantes em passeio compartilhado posando em frente a uma cachoeira na Chapada dos Veadeiros</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/hero/reserva-online-passeios-chapada-dos-veadeiros-desktop.webp</image:loc>
+      <image:title>Turista relaxando nas pedras de um poço durante passeio guiado na Chapada dos Veadeiros</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/hero/reserva-online-passeios-chapada-dos-veadeiros-mobile.webp</image:loc>
+      <image:title>Turista relaxando nas pedras de um poço durante passeio guiado na Chapada dos Veadeiros</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/hero/passeio-exclusivo-guia-local-mirante-cachoeira-chapada-dos-veadeiros-02-desktop.webp</image:loc>
+      <image:title>Família em passeio exclusivo com guia local no mirante de uma cachoeira na Chapada dos Veadeiros</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/hero/passeio-exclusivo-guia-local-amigos-cachoeira-chapada-dos-veadeiros-03-desktop.webp</image:loc>
+      <image:title>Quatro amigos em passeio exclusivo com guia local diante de uma cachoeira alta na Chapada dos Veadeiros</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/hero/passeio-exclusivo-guia-local-mirante-cachoeiras-chapada-dos-veadeiros-04-desktop.webp</image:loc>
+      <image:title>Três amigas abraçadas observando cachoeiras em sequência durante passeio com guia local na Chapada dos Veadeiros</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/hero/passeio-exclusivo-guia-local-familia-banho-de-argila-chapada-dos-veadeiros-05-desktop.webp</image:loc>
+      <image:title>Família em passeio exclusivo com guia local após banho de argila à beira de um lago na Chapada dos Veadeiros</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/hero/passeio-compartilhado-guia-local-grupo-rio-chapada-dos-veadeiros-02-desktop.webp</image:loc>
+      <image:title>Grupo de viajantes meditando nas pedras ao lado do rio em passeio compartilhado com guia local na Chapada dos Veadeiros</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/hero/passeio-compartilhado-guia-local-trilha-canion-cachoeira-chapada-dos-veadeiros-03-desktop.webp</image:loc>
+      <image:title>Grupo em passeio compartilhado com guia local na trilha à beira de um cânion com cachoeira na Chapada dos Veadeiros</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/hero/passeio-compartilhado-guia-local-banho-cachoeira-chapada-dos-veadeiros-04-desktop.webp</image:loc>
+      <image:title>Viajantes nadando no poço de uma cachoeira em passeio compartilhado com guia local na Chapada dos Veadeiros</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/hero/passeio-compartilhado-guia-local-poco-natural-chapada-dos-veadeiros-05-desktop.webp</image:loc>
+      <image:title>Amigas relaxando em um poço natural de águas cor de âmbar durante passeio com guia local na Chapada dos Veadeiros</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/hero/passeio-compartilhado-guia-local-paredao-de-pedra-chapada-dos-veadeiros-06-desktop.webp</image:loc>
+      <image:title>Grupo de passeio compartilhado com guia local posando diante de um paredão de pedra perto das cachoeiras da Chapada dos Veadeiros</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/hero/passeio-compartilhado-guia-local-grupo-cachoeira-chapada-dos-veadeiros-07-desktop.webp</image:loc>
+      <image:title>Grupo sobre uma laje de pedra em frente à cachoeira em passeio compartilhado com guia local na Chapada dos Veadeiros</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/hero/passeio-compartilhado-guia-local-trilha-dos-saltos-chapada-dos-veadeiros-08-mobile.webp</image:loc>
+      <image:title>Grupo de viajantes na placa da trilha dos Saltos, Carrossel e Corredeiras em passeio com guia local na Chapada dos Veadeiros</image:title>
     </image:image>
   </url>
   <url>

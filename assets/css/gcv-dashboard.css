@@ -3672,21 +3672,37 @@ body.gcv-spot-open { overflow: hidden; }
 }
 .gcv-exc-sheet__sem-btn .gcv-exc-ico { color: #e11d48; }
 .gcv-exc-sheet__num { width: 100%; text-align: center; }
-.gcv-exc-sheet__money {
-  width: 6.4rem;
-  max-width: 7.2rem;
-  min-width: 6.2rem;
+.gcv-exc-sheet__price {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 100%;
+}
+.gcv-exc-sheet td .gcv-exc-sheet__money {
+  width: 4.2rem;
+  max-width: 4.6rem;
+  min-width: 3.4rem;
+  flex: 0 0 auto;
   text-align: right;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   padding-left: 0.35rem;
   padding-right: 0.4rem;
 }
+.gcv-exc-sheet__fee {
+  color: #1d4ed8;
+  font-weight: 800;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  line-height: 1;
+}
 .gcv-exc-sheet td.gcv-exc-sheet__rs,
 .gcv-exc-sheet th.gcv-exc-sheet__rs {
-  width: 7.2rem;
-  min-width: 7.2rem;
-  max-width: 8rem;
+  width: auto;
+  min-width: 8.4rem;
+  max-width: none;
+  overflow: visible;
   white-space: nowrap;
   padding-left: 0.4rem;
   padding-right: 0.45rem;

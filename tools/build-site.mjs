@@ -16,7 +16,7 @@ import {
   SEASON_ROWS,
   MONTH_NAME,
   BADGE_LABEL,
-  HERO_SLIDES,
+  HERO_OFFERS,
   HOME_FEATURED,
   hotspotsForMap,
   MAP_IMAGE,
@@ -25,6 +25,13 @@ import { excursaoPayloadForSite, excursaoRowsForLocale } from "./excursoes-carou
 import { excursionsCarouselTrackSsrHtml } from "./excursoes-carousel-ssr.mjs";
 import { guiaProfilesForSite } from "./excursoes-guides-profiles.mjs";
 import { rewriteHtmlMediaUrls, htmlWithStaticAssetPrefix, toPublicAssetRel } from "./media-url.mjs";
+import {
+  heroAgencyImageUrls,
+  heroImageObjectsLd,
+  heroRotationHeadScript,
+  heroRotationPicture,
+  heroRotationSitemapImages,
+} from "./hero-rotacao.mjs";
 import {
   extractFirstImage,
   prepareDetailContent,
@@ -785,9 +792,12 @@ function writeAdvancedSitemapsAndFeed() {
       changefreq: meta.changefreq || "weekly",
       priority: meta.priority ?? 0.8,
       alternates,
-      images: meta.ogImageRel
-        ? [{ loc: `${SITE_ORIGIN}/assets/img/${meta.ogImageRel.replace(/^\//, "")}`, title: meta.title }]
-        : undefined,
+      images:
+        Array.isArray(meta.images) && meta.images.length
+          ? meta.images
+          : meta.ogImageRel
+            ? [{ loc: `${SITE_ORIGIN}/assets/img/${meta.ogImageRel.replace(/^\//, "")}`, title: meta.title }]
+            : undefined,
     };
     buckets[bucket].push(entry);
   }
@@ -1544,7 +1554,8 @@ function homeExcursionsSection(locale) {
   const shellHiddenAttrs = hasStaticRows
     ? ""
     : ' hidden aria-hidden="true" style="display:none"';
-  return `    <section id="excursoes-junho" class="gcv-excursoes" data-locale="${esc(locale)}" aria-labelledby="gcv-excursoes-heading"${shellHiddenAttrs}>
+  return `    <div id="excursoes"></div>
+    <section id="excursoes-junho" class="gcv-excursoes" data-locale="${esc(locale)}" aria-labelledby="gcv-excursoes-heading"${shellHiddenAttrs}>
       <script type="application/json" id="gcv-excursoes-payload">${safeJsonLd(excursaoPayloadForSite())}</script>
       <script type="application/json" id="gcv-guia-profiles">${safeJsonLd(guiaProfilesForSite())}</script>
       <div class="gcv-excursoes__head">
@@ -1773,81 +1784,136 @@ ${faqItems}
 `;
 }
 
+const HERO_OFFER_BASE = {
+  exclusivo: "passeio-exclusivo-cachoeira-chapada-dos-veadeiros",
+  compartilhado: "passeio-compartilhado-cachoeira-chapada-dos-veadeiros",
+  online: "reserva-online-passeios-chapada-dos-veadeiros",
+};
+
+const HERO_OG_IMAGE = "hero/passeio-exclusivo-cachoeira-chapada-dos-veadeiros-desktop-1x.webp";
+
+function heroOfferHref(kind) {
+  if (kind === "exclusivo") return "?tipo=exclusivo#excursoes";
+  if (kind === "compartilhado") return "?tipo=compartilhado#excursoes";
+  return "#excursoes";
+}
+
+function heroImg(url) {
+  return `${url}?v=3`;
+}
+
+function heroOfferPicture(ap, locale, theme, alt, eager) {
+  if (theme === "exclusivo" || theme === "compartilhado") {
+    return heroRotationPicture(ap, locale, theme, eager);
+  }
+  const base = `${ap}assets/img/hero/${HERO_OFFER_BASE[theme]}`;
+  const loading = eager ? `fetchpriority="high"` : `loading="lazy"`;
+  return `<picture class="gcv-media">
+      <source type="image/avif" media="(max-width:780px)" srcset="${esc(heroImg(`${base}-mobile-1x.avif`))} 1x, ${esc(heroImg(`${base}-mobile.avif`))} 2x" width="1080" height="1200">
+      <source type="image/webp" media="(max-width:780px)" srcset="${esc(heroImg(`${base}-mobile-1x.webp`))} 1x, ${esc(heroImg(`${base}-mobile.webp`))} 2x" width="1080" height="1200">
+      <source type="image/avif" media="(min-width:781px)" srcset="${esc(heroImg(`${base}-desktop-1x.avif`))} 1x, ${esc(heroImg(`${base}-desktop.avif`))} 2x" width="2160" height="1240">
+      <source type="image/webp" media="(min-width:781px)" srcset="${esc(heroImg(`${base}-desktop-1x.webp`))} 1x, ${esc(heroImg(`${base}-desktop.webp`))} 2x" width="2160" height="1240">
+      <img src="${esc(heroImg(`${base}-desktop.webp`))}" width="2160" height="1240" ${loading} decoding="async" alt="${esc(alt)}">
+    </picture>`;
+}
+
+function heroPreloadLinks(ap, locale) {
+  return heroRotationHeadScript(ap, locale);
+}
+
+function heroSitemapImages() {
+  const alts = (HERO_OFFERS.pt?.slides || []).reduce((acc, slide) => {
+    acc[slide.theme] = slide.alt;
+    return acc;
+  }, {});
+  const seen = new Set();
+  const images = [];
+  const push = (loc, title) => {
+    if (!loc || seen.has(loc)) return;
+    seen.add(loc);
+    images.push({ loc, title: title || "Passeios na Chapada dos Veadeiros" });
+  };
+  for (const image of heroRotationSitemapImages()) push(image.loc, image.title);
+  push(
+    `${SITE_ORIGIN}/assets/img/hero/passeio-exclusivo-cachoeira-chapada-dos-veadeiros-mobile.webp`,
+    alts.exclusivo,
+  );
+  push(
+    `${SITE_ORIGIN}/assets/img/hero/passeio-compartilhado-cachoeira-chapada-dos-veadeiros-mobile.webp`,
+    alts.compartilhado,
+  );
+  push(
+    `${SITE_ORIGIN}/assets/img/hero/reserva-online-passeios-chapada-dos-veadeiros-desktop.webp`,
+    alts.online,
+  );
+  push(
+    `${SITE_ORIGIN}/assets/img/hero/reserva-online-passeios-chapada-dos-veadeiros-mobile.webp`,
+    alts.online,
+  );
+  return images;
+}
+
+function heroOffersSection(locale, ap) {
+  const copy = HERO_OFFERS[locale] || HERO_OFFERS.pt;
+  const n = copy.slides.length;
+  const slidesHtml = copy.slides
+    .map((slide, i) => {
+      const first = i === 0;
+      const lines = slide.lines
+        .map((line, li) => {
+          const big = li === slide.lines.length - 1 ? " gcv-big" : "";
+          return `<span class="gcv-line${big}">${esc(line)}</span>`;
+        })
+        .join("");
+      const listHtml = slide.steps
+        ? `<ol class="gcv-steps" aria-label="${esc(slide.stepsAria || "")}">${slide.steps
+            .map((label, si) => `<li><b>${si + 1}</b><span>${esc(label)}</span></li>`)
+            .join("")}</ol>`
+        : `<ul class="gcv-points">${(slide.points || []).map((p) => `<li>${esc(p)}</li>`).join("")}</ul>`;
+      const actions = (slide.actions || [])
+        .map((action) => {
+          const cls = action.main ? "gcv-btn gcv-btn-main" : "gcv-btn gcv-btn-ghost";
+          return `<a class="${cls}" href="${esc(heroOfferHref(action.href))}">${esc(action.label)}</a>`;
+        })
+        .join("\n        ");
+      const pos = locale === "en" ? `${i + 1} of ${n}` : `${i + 1} de ${n}`;
+      return `<article class="gcv-slide${first ? " is-active" : ""}" data-theme="${esc(slide.theme)}" aria-label="${esc(pos)}" aria-hidden="${first ? "false" : "true"}">
+    ${heroOfferPicture(ap, locale, slide.theme, slide.alt, first)}
+    <div class="gcv-shade"></div>
+    <div class="gcv-content">
+      <span class="gcv-tag">${esc(slide.tag)}</span>
+      <h2 class="gcv-title">${lines}</h2>
+      <p class="gcv-text">${esc(slide.text)}</p>
+      ${listHtml}
+      <div class="gcv-actions">
+        ${actions}
+      </div>
+    </div>
+  </article>`;
+    })
+    .join("\n");
+
+  const tabsHtml = copy.slides
+    .map((slide, i) => {
+      const first = i === 0;
+      return `<button type="button" class="gcv-tab${first ? " is-active" : ""}" data-go="${i}" aria-current="${first ? "true" : "false"}"><span class="gcv-tab-label">${esc(slide.tab)}</span><span class="gcv-tab-sub">${esc(slide.tabSub)}</span><i class="gcv-bar"></i></button>`;
+    })
+    .join("\n    ");
+
+  return `    <section class="gcv-hero gcv-hero--offers" aria-roledescription="${esc(copy.role)}" aria-label="${esc(copy.aria)}">
+  <h1 class="gcv-h1">${esc(copy.h1)}</h1>
+${slidesHtml}
+  <nav class="gcv-tabs" aria-label="${esc(copy.tabsAria)}">
+    ${tabsHtml}
+  </nav>
+  <button type="button" class="gcv-pause" data-label-pause="${esc(copy.pause)}" data-label-play="${esc(copy.play)}" aria-label="${esc(copy.pause)}">❚❚</button>
+</section>`;
+}
+
 function homeMainHtml(locale, ap, instagramPosts, reviewsPool) {
   const S = STRINGS[locale];
   const home = S.home;
   const cur = outRelPath(locale, "");
-  const slides = (HERO_SLIDES[locale] || []).filter((slide) => !slide.hidden);
-  const n = slides.length;
-  const roleDesc = locale === "en" ? "Carousel" : locale === "es" ? "Carrusel" : "Carrossel";
-  const dotsNav =
-    locale === "en" ? "Highlight navigation" : locale === "es" ? "Navegación de destacados" : "Navegação dos destaques";
-
-  const slidesHtml = slides
-    .map((slide, i) => {
-      const first = i === 0;
-      const duration = slide.duration > 0 ? slide.duration : 10000;
-      if (slide.kind === "petzen") {
-        return heroPetzenSlideHtml(ap, first, duration, slide);
-      }
-      const bullets = Array.isArray(slide.bullets) ? slide.bullets.filter(Boolean) : [];
-      const anim = buildHeroAnim(slide.title, slide.lead, slide.sub || "", bullets);
-      const contactHref = relBetweenSync(cur, outRelPath(locale, "contato.html"));
-      const plainChip =
-        slide.ctaKind === "whatsapp" || slide.ctaKind === "contact" || slide.ctaKind === "none";
-      const badgeClass = `gcv-hero-line gcv-hero-badge${plainChip ? " gcv-hero-plain-chip" : ""}`;
-      const titleWords = staggerWords(slide.title, anim.titleStartMs, 72);
-      const leadWords = staggerWords(slide.lead, anim.leadStartMs, 42);
-      const subTrim = (slide.sub || "").trim();
-      const badgeTrim = (slide.badge || "").trim();
-      const badgeHtml = badgeTrim
-        ? `<span class="${badgeClass}" style="animation-delay:${anim.badgeMs}ms">${esc(badgeTrim)}</span>`
-        : "";
-      const subHtml = subTrim ? `<p class="gcv-hero__sub">${staggerWords(subTrim, anim.subStartMs, 42)}</p>` : "";
-      const bulletsHtml = bullets.length
-        ? `<ul class="gcv-hero-bullets">${bullets
-            .map(
-              (b, bi) =>
-                `<li class="gcv-hero-line" style="animation-delay:${anim.bulletsStartMs + bi * 90}ms">${esc(b)}</li>`,
-            )
-            .join("")}</ul>`
-        : "";
-      const ctaHtml =
-        slide.ctaKind === "none"
-          ? ""
-          : slide.ctaKind === "whatsapp"
-            ? `<a class="gcv-hero-line gcv-hero-plain-chip gcv-hero-cta" href="${esc(waUrl(locale))}" target="_blank" rel="noopener noreferrer" style="animation-delay:${anim.ctaStartMs}ms">${WA_SVG}${esc(slide.ctaLabel)}</a>`
-            : `<a class="gcv-hero-line gcv-hero-plain-chip gcv-hero-cta" href="${esc(contactHref)}" style="animation-delay:${anim.ctaStartMs}ms">${esc(slide.ctaLabel)}</a>`;
-
-      const headingTag = first ? "h1" : "h2";
-      const heroAlt = first ? (HOME_SEO[locale] || HOME_SEO.pt).heroAlt : "";
-
-      return `<div class="gcv-hero__slide${first ? " is-active" : ""}" data-gcv-hero-slide data-gcv-hero-duration="${duration}" aria-hidden="${first ? "false" : "true"}">
-  ${heroPicturesBg(ap, slide, first, heroAlt)}
-  <div class="gcv-hero__gradient" aria-hidden="true"></div>
-  <div class="gcv-hero-overlay-text">
-    ${badgeHtml}
-    <${headingTag}>${titleWords}</${headingTag}>
-    <p class="gcv-hero-lead">${leadWords}</p>
-    ${subHtml}
-    ${bulletsHtml}
-    ${ctaHtml}
-  </div>
-</div>`;
-    })
-    .join("\n");
-
-  const dotsHtml = slides
-    .map((_, i) => {
-      const label =
-        locale === "en" ? `Highlight ${i + 1} of ${n}` : locale === "es" ? `Destacado ${i + 1} de ${n}` : `Destaque ${i + 1} de ${n}`;
-      const first = i === 0;
-
-      return `<button type="button" class="gcv-hero__dot${first ? " is-active" : ""}" data-gcv-hero-dot role="tab" aria-selected="${first ? "true" : "false"}" aria-label="${esc(
-        label,
-      )}"></button>`;
-    })
-    .join("\n");
 
   const atrativosAllHref = relBetweenSync(cur, outRelPath(locale, "atrativos.html"));
   const featuredPtBySlug = new Map(HOME_FEATURED.pt.map((item) => [item.slug, item]));
@@ -1871,10 +1937,7 @@ function homeMainHtml(locale, ap, instagramPosts, reviewsPool) {
     .filter(Boolean)
     .join("\n");
 
-  const ogHeroImage =
-    slides.find((s) => s.kind !== "petzen" && s.image)?.image ||
-    slides[0]?.image ||
-    "imagens/hero-slide-01-guias-locais-cachoeira.png";
+  const ogHeroImage = HERO_OG_IMAGE;
 
   const jsonLd = travelAgencyJsonLd(
     SITE_ORIGIN,
@@ -1882,6 +1945,7 @@ function homeMainHtml(locale, ap, instagramPosts, reviewsPool) {
     S.seo.homeDesc,
     `${SITE_ORIGIN}/assets/img/${ogHeroImage}`,
   );
+  jsonLd.image = heroAgencyImageUrls();
   const destLd = touristDestinationJsonLd(SITE_ORIGIN);
   const pageLd = homeWebPageJsonLd(SITE_ORIGIN, locale, S.htmlLang, {
     name: S.seo.homeTitle,
@@ -1900,18 +1964,7 @@ function homeMainHtml(locale, ap, instagramPosts, reviewsPool) {
 
   return `<div class="official-home-shell gcv-page-pad">
   <div class="gcv-home-max">
-    <section class="gcv-hero" data-gcv-hero role="region" aria-roledescription="${esc(roleDesc)}" aria-label="${esc(
-      locale === "en" ? `Highlight 1 of ${n}` : locale === "es" ? `Destacado 1 de ${n}` : `Destaque 1 de ${n}`,
-    )}">
-      <div class="gcv-hero__viewport">
-${slidesHtml}
-      </div>
-      <button type="button" class="gcv-hero__arrow gcv-hero__prev" data-gcv-hero-prev aria-label="${esc(home.heroCarouselPrev)}">‹</button>
-      <button type="button" class="gcv-hero__arrow gcv-hero__next" data-gcv-hero-next aria-label="${esc(home.heroCarouselNext)}">›</button>
-      <div class="gcv-hero__dots" role="tablist" aria-label="${esc(dotsNav)}">
-${dotsHtml}
-      </div>
-    </section>
+${heroOffersSection(locale, ap)}
 
 ${homeExcursionsSection(locale)}
     <section class="gcv-home-card">
@@ -1968,6 +2021,7 @@ ${homeSeoSection(locale, cur)}
 <script type="application/ld+json">${safeJsonLd(pageLd)}</script>
 <script type="application/ld+json">${safeJsonLd(destLd)}</script>
 <script type="application/ld+json">${safeJsonLd(jsonLd)}</script>
+<script type="application/ld+json">${safeJsonLd(heroImageObjectsLd(locale))}</script>
 <script type="application/ld+json">${safeJsonLd(faqLd)}</script>
 ${globalJsonLdScripts(locale)}`;
 }
@@ -2930,7 +2984,11 @@ for (const locale of LOCALES) {
     const HERO_SLIDE_OG = "imagens/hero-slide-01-guias-locais-cachoeira.png";
     let ogImageWidth;
     let ogImageHeight;
-    if (og === HERO_SLIDE_OG) {
+    if (pk === "") {
+      og = HERO_OG_IMAGE;
+      ogImageWidth = 1080;
+      ogImageHeight = 620;
+    } else if (og === HERO_SLIDE_OG) {
       ogImageWidth = 1600;
       ogImageHeight = 900;
     }
@@ -2938,14 +2996,20 @@ for (const locale of LOCALES) {
     // Home sempre carrega o carrossel: a API MySQL pode ter saídas mesmo com seed estático vazio.
     const homeIsLanding = (locale === "pt" || locale === "en" || locale === "es") && pk === "";
     const homeExcursionsHideScript = `  <script>(function(){var r=document.getElementById("excursoes-junho");if(!r)return;var t=r.querySelector(".gcv-excursoes__track");if(!t||!t.querySelector(".gcv-excursoes-card")){r.hidden=true;r.style.display="none";r.setAttribute("aria-hidden","true");}})();</script>\n`;
+    const homeAp = assetPrefix(outPk);
     const homeExcursionsHead = homeIsLanding
       ? {
-          extraCss: [`assets/css/excursoes.css${BUILD_ASSET_QUERY}`],
-          extraHead: `    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+          extraCss: [
+            `assets/css/gcv-hero-slider.css?v=1.1.31`,
+            `assets/css/excursoes.css${BUILD_ASSET_QUERY}`,
+          ],
+          extraHead: `${heroPreloadLinks(homeAp, locale)}
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" crossorigin="anonymous" />`,
           extraFooterScripts:
             homeExcursionsHideScript +
-            `  <script src="${esc(publicJsSrc("qrcode.min.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix-receipt.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix-polling.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-confirm.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-bookings.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-waitlist.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-cart-policies.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-cart.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("excursoes-carousel.js", outPk))}" defer></script>\n`,
+            `  <script src="${esc(publicJsSrc("gcv-hero-slider.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("qrcode.min.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix-receipt.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix-polling.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-confirm.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-bookings.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-waitlist.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-cart-policies.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-cart.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("excursoes-carousel.js", outPk))}" defer></script>\n`,
         }
       : {};
     const homeConsultarScript = "";
@@ -2975,6 +3039,7 @@ for (const locale of LOCALES) {
       changefreq: pk === "" ? "daily" : "weekly",
       ogImageRel: og,
       title,
+      ...(pk === "" ? { images: heroSitemapImages() } : {}),
     });
   }
 

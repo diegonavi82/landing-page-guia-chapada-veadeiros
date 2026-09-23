@@ -2098,6 +2098,90 @@
     return html + '</div>';
   }
 
+  function sheetCommissionPct(e) {
+    var pct = parseFloat(e && e.commission_pct_applied);
+    if (!isFinite(pct) || pct < 0 || pct >= 100) pct = 10;
+    return pct;
+  }
+
+  function commercialRoundReais(amount) {
+    var n = Math.ceil(Number(amount) - 1e-9);
+    if (!isFinite(n) || n < 0) n = 0;
+    while (n % 5 !== 0 && n % 8 !== 0) n += 1;
+    return n;
+  }
+
+  function finalCentsFromGuideNet(netCents, pct) {
+    netCents = parseInt(netCents, 10) || 0;
+    if (netCents < 100) return 0;
+    var divisor = 1 - (Number(pct) / 100);
+    if (!isFinite(divisor) || divisor <= 0) return 0;
+    return commercialRoundReais(Math.round(netCents / divisor) / 100) * 100;
+  }
+
+  function displayedGuideNetCents(e, transport) {
+    if (!e) return 0;
+    var raw = transport ? e.guide_net_transport_cents : e.guide_net_cents;
+    if (raw != null && raw !== '') return parseInt(raw, 10) || 0;
+    var price = parseInt(transport ? e.price_transport_cents : e.price_cents, 10) || 0;
+    if (price <= 0) return 0;
+    var keep = 1 - (sheetCommissionPct(e) / 100);
+    if (!(keep > 0 && keep < 1)) keep = 0.9;
+    return Math.max(0, Math.round(price * keep));
+  }
+
+  function displayedPlatformCents(e, transport) {
+    if (!e) return 0;
+    var netField = transport ? 'guide_net_transport_cents' : 'guide_net_cents';
+    var priceField = transport ? 'price_transport_cents' : 'price_cents';
+    var draft = excSheet.drafts[String(e.id)];
+    if (draft && Object.prototype.hasOwnProperty.call(draft, netField)) {
+      return finalCentsFromGuideNet(draft[netField], sheetCommissionPct(e));
+    }
+    var stored = parseInt(e[priceField], 10) || 0;
+    if (stored > 0) return stored;
+    return finalCentsFromGuideNet(displayedGuideNetCents(e, transport), sheetCommissionPct(e));
+  }
+
+  function platformFeeHtml(cents) {
+    if (!(parseInt(cents, 10) > 0)) {
+      return '<span class="gcv-exc-sheet__fee" title="Valor na plataforma, com a taxa" hidden></span>';
+    }
+    return '<span class="gcv-exc-sheet__fee" title="Valor na plataforma, com a taxa">R$ ' + esc(centsToMoney(cents)) + '</span>';
+  }
+
+  function guideNetCellInner(e, field) {
+    var transport = field === 'guide_net_transport_cents';
+    var net = displayedGuideNetCents(e, transport);
+    var title = transport
+      ? 'Valor que o guia pediu, com translado'
+      : 'Valor que o guia pediu, sem translado';
+    return '<span class="gcv-exc-sheet__price">' +
+      '<input class="gcv-exc-sheet__in gcv-exc-sheet__money" data-field="' + field + '" data-exc-id="' + e.id +
+      '" inputmode="numeric" title="' + title + '" value="' + esc(net > 0 ? centsToMoney(net) : '') + '" />' +
+      platformFeeHtml(displayedPlatformCents(e, transport)) +
+      '</span>';
+  }
+
+  function paintSheetFeeLabel(input) {
+    if (!input) return;
+    var field = input.getAttribute('data-field');
+    if (field !== 'guide_net_cents' && field !== 'guide_net_transport_cents') return;
+    var fee = input.parentNode && input.parentNode.querySelector('.gcv-exc-sheet__fee');
+    if (!fee) return;
+    var id = parseInt(input.getAttribute('data-exc-id'), 10);
+    var idx = findExcRow(id);
+    var row = idx >= 0 ? excSheet.rows[idx] : null;
+    var platform = finalCentsFromGuideNet(moneyToCents(input.value), sheetCommissionPct(row));
+    if (platform > 0) {
+      fee.hidden = false;
+      fee.textContent = 'R$ ' + centsToMoney(platform);
+    } else {
+      fee.hidden = true;
+      fee.textContent = '';
+    }
+  }
+
   function transportCellsHtml(e) {
     if (!excHasTransport(e)) {
       return (
@@ -2113,7 +2197,8 @@
     return (
       '<td class="gcv-exc-sheet__t" title="Vagas com translado">' + numSelectHtml('max_people_transport', e.id, 0, 4, maxT) + '</td>' +
       '<td class="gcv-exc-sheet__t" title="Quórum com translado">' + numSelectHtml('quorum_transport', e.id, 0, 4, Math.min(qT, 4)) + '</td>' +
-      '<td class="gcv-exc-sheet__t gcv-exc-sheet__rs" title="Valor com translado"><input class="gcv-exc-sheet__in gcv-exc-sheet__money" data-field="price_transport_cents" data-exc-id="' + e.id + '" inputmode="numeric" value="' + esc(centsToMoney(e.price_transport_cents || 0)) + '" /></td>'
+      '<td class="gcv-exc-sheet__t gcv-exc-sheet__rs" title="Valor que o guia pediu, com translado. Em azul: valor na plataforma, com a taxa">' +
+      guideNetCellInner(e, 'guide_net_transport_cents') + '</td>'
     );
   }
 
@@ -2143,7 +2228,8 @@
       '<td class="gcv-exc-sheet__walk" title="Quórum sem translado">' + numSelectHtml('quorum', e.id, 0, maxP, Math.min(q, maxP)) + '</td>' +
       '<td title="Inscritos por fora">' + numSelectHtml('preconfirmed_people', e.id, 0, 5, e.preconfirmed_people || 0) + '</td>' +
       transportCellsHtml(e) +
-      '<td class="gcv-exc-sheet__walk gcv-exc-sheet__rs" title="Valor sem translado"><input class="gcv-exc-sheet__in gcv-exc-sheet__money" data-field="price_cents" data-exc-id="' + e.id + '" inputmode="numeric" value="' + esc(centsToMoney(e.price_cents || 0)) + '" /></td>' +
+      '<td class="gcv-exc-sheet__walk gcv-exc-sheet__rs" title="Valor que o guia pediu, sem translado. Em azul: valor na plataforma, com a taxa">' +
+      guideNetCellInner(e, 'guide_net_cents') + '</td>' +
       '<td class="gcv-exc-sheet__actions">' +
       cmsRowActions(
         'data-edit-exc="' + e.id + '"',
@@ -2185,8 +2271,8 @@
       '<th>Por fora</th>' +
       '<th>' + thIco(icoCar(), 'Vagas', 'Vagas com translado') + '</th>' +
       '<th>' + thIco(icoCar(), 'Quórum', 'Quórum com translado') + '</th>' +
-      '<th class="gcv-exc-sheet__rs">' + thIco(icoCar(), 'R$', 'Valor com translado') + '</th>' +
-      '<th class="gcv-exc-sheet__rs">' + thIco(icoPerson(), 'R$', 'Valor sem translado') + '</th>' +
+      '<th class="gcv-exc-sheet__rs">' + thIco(icoCar(), 'R$', 'Valor que o guia pediu, com translado. Em azul: valor na plataforma') + '</th>' +
+      '<th class="gcv-exc-sheet__rs">' + thIco(icoPerson(), 'R$', 'Valor que o guia pediu, sem translado. Em azul: valor na plataforma') + '</th>' +
       '<th class="gcv-exc-sheet__actions"></th>' +
       '</tr></thead><tbody>' +
       rows.map(excSheetRowHtml).join('') +
@@ -2211,7 +2297,7 @@
   }
 
   function patchValueFromInput(field, raw) {
-    if (field === 'price_cents' || field === 'price_transport_cents') return moneyToCents(raw);
+    if (field === 'price_cents' || field === 'price_transport_cents' || field === 'guide_net_cents' || field === 'guide_net_transport_cents') return moneyToCents(raw);
     if (field === 'forming') return !(raw === '0' || raw === '' || raw === 'false');
     if (field === 'sheet_status') return String(raw || '');
     if (field === 'guide_user_id' || field === 'attraction_id') {
@@ -2232,6 +2318,9 @@
     }
     if (field === 'price_cents' || field === 'price_transport_cents') {
       return (parseInt(e[field], 10) || 0) === (parseInt(next, 10) || 0);
+    }
+    if (field === 'guide_net_cents' || field === 'guide_net_transport_cents') {
+      return displayedGuideNetCents(e, field === 'guide_net_transport_cents') === (parseInt(next, 10) || 0);
     }
     if (field === 'departure_time') {
       return String(e.departure_time || '').slice(0, 5) === String(next || '').slice(0, 5);
@@ -2256,9 +2345,13 @@
       if (!payload.offer_transport) {
         payload.quorum_transport = 0;
         payload.price_transport_cents = 0;
+        payload.guide_net_transport_cents = 0;
       }
     }
     if (field === 'price_transport_cents' && (parseInt(value, 10) || 0) > 0) {
+      payload.offer_transport = true;
+    }
+    if (field === 'guide_net_transport_cents' && (parseInt(value, 10) || 0) > 0) {
       payload.offer_transport = true;
     }
     if (field === 'forming') {
@@ -2287,6 +2380,7 @@
         payload.max_people_transport = 0;
         payload.quorum_transport = 0;
         payload.price_transport_cents = 0;
+        payload.guide_net_transport_cents = 0;
       }
     }
     return payload;
@@ -2305,6 +2399,8 @@
       quorum_transport: 'Quórum com translado',
       price_transport_cents: 'Valor com translado',
       price_cents: 'Valor sem translado',
+      guide_net_transport_cents: 'Valor do guia (com translado)',
+      guide_net_cents: 'Valor do guia (sem translado)',
       sheet_status: 'Status',
       forming: 'Status',
       offer_transport: 'Translado'
@@ -2339,7 +2435,7 @@
     if (field === 'departure_time') return String(value || '').slice(0, 5) || '—';
     if (field === 'guide_user_id') return findGuideLabel(value);
     if (field === 'attraction_id') return findAttrLabel(value);
-    if (field === 'price_cents' || field === 'price_transport_cents') return centsToMoney(value || 0);
+    if (field === 'price_cents' || field === 'price_transport_cents' || field === 'guide_net_cents' || field === 'guide_net_transport_cents') return centsToMoney(value || 0);
     if (field === 'offer_transport') return value ? 'Com translado' : 'Sem translado';
     if (value == null || value === '') return '—';
     return String(value);
@@ -2353,6 +2449,9 @@
     if (field === 'guide_user_id' || field === 'attraction_id') {
       var n = parseInt(e[field], 10);
       return Number.isFinite(n) && n > 0 ? n : null;
+    }
+    if (field === 'guide_net_cents' || field === 'guide_net_transport_cents') {
+      return displayedGuideNetCents(e, field === 'guide_net_transport_cents');
     }
     return e[field];
   }
@@ -2723,6 +2822,7 @@
       if (el.tagName === 'SELECT' || el.type === 'date' || el.type === 'time') {
         el.addEventListener('change', function () { saveExcSheetField(el); });
       } else {
+        el.addEventListener('input', function () { paintSheetFeeLabel(el); });
         el.addEventListener('change', function () { saveExcSheetField(el); });
         el.addEventListener('keydown', function (ev) {
           if (ev.key === 'Enter') {

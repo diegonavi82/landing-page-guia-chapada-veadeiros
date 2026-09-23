@@ -52,7 +52,8 @@ try {
                 e.meeting_point_place_id, e.meeting_point_lat, e.meeting_point_lng,
                 e.offer_transport, e.price_transport_cents, e.quorum_transport, e.max_people_transport,
                 e.booked_people_transport,
-                e.created_by_origin, e.business_mode, e.approved_at, e.approved_by, e.created_by, e.guide_user_id, e.deleted_at,
+                e.created_by_origin, e.business_mode, e.approved_at, e.approved_by, e.created_by, e.created_at,
+                e.guide_user_id AS excursion_guide_id, e.deleted_at,
                 c.name AS city_name,
                 u.name AS guide_name,
                 g.nickname AS guide_nickname, g.full_name AS guide_full_name,
@@ -236,6 +237,15 @@ function gcv_row_to_card(array $r, string $lang, array $months, array $weekdays)
         'atrativoPath' => $page,
         'status' => (string)$r['status'],
     ];
+    $created = trim((string)($r['created_at'] ?? ''));
+    if ($created !== '') {
+        // Quem publicou antes tem prioridade entre passeios com guia no mesmo dia.
+        $card['registeredAt'] = str_replace(' ', 'T', substr($created, 0, 19));
+    }
+    $guideId = (int)($r['excursion_guide_id'] ?? $r['guide_user_id'] ?? 0);
+    if ($guideId > 0) {
+        $card['guideUserId'] = $guideId;
+    }
     if ($guideName !== '') {
         $card['guiaNome'] = $guideName;
         if ($guidePhoto !== '') $card['guiaFoto'] = $guidePhoto;
@@ -324,6 +334,65 @@ function gcv_row_to_cards(array $r, string $lang, array $months, array $weekdays
     return $cards;
 }
 
+/**
+ * Mesma ordem do carrossel: no dia, confirmados, depois guia definido
+ * (quem publicou antes), depois em formação (mais inscritos primeiro).
+ *
+ * @param list<array<string,mixed>> $cards
+ * @return list<array<string,mixed>>
+ */
+function gcv_carousel_sort_cards(array $cards): array
+{
+    usort($cards, static function (array $a, array $b): int {
+        $da = substr((string)($a['dateISO'] ?? ''), 0, 10) ?: '9999-99-99';
+        $db = substr((string)($b['dateISO'] ?? ''), 0, 10) ?: '9999-99-99';
+        if ($da !== $db) {
+            return $da <=> $db;
+        }
+        $rank = static function (array $e): int {
+            if (!empty($e['confirmada'])) {
+                return 0;
+            }
+            $pending = !empty($e['guiaPendente']) || !empty($e['guiaPending']);
+            $named = trim((string)($e['guiaNome'] ?? '')) !== '';
+            $guideId = (int)($e['guideUserId'] ?? 0);
+            if (!$pending && ($named || $guideId > 0)) {
+                return 1;
+            }
+            return 2;
+        };
+        $ra = $rank($a);
+        $rb = $rank($b);
+        if ($ra !== $rb) {
+            return $ra <=> $rb;
+        }
+        $published = static function (array $e): int {
+            $raw = (string)($e['registeredAt'] ?? '');
+            if ($raw === '') {
+                return PHP_INT_MAX;
+            }
+            $ts = strtotime($raw);
+            return $ts === false ? PHP_INT_MAX : $ts;
+        };
+        if ($ra === 1) {
+            $pub = $published($a) <=> $published($b);
+            if ($pub !== 0) {
+                return $pub;
+            }
+        }
+        $ins = ((int)($b['pessoasInscritas'] ?? 0)) <=> ((int)($a['pessoasInscritas'] ?? 0));
+        if ($ins !== 0) {
+            return $ins;
+        }
+        $hora = ((string)($a['hora'] ?? '')) <=> ((string)($b['hora'] ?? ''));
+        if ($hora !== 0) {
+            return $hora;
+        }
+        return $published($a) <=> $published($b);
+    });
+    return $cards;
+}
+
 $out = ['pt' => [], 'en' => [], 'es' => []];
 $rows = array_values(array_filter(is_array($rows ?? null) ? $rows : [], 'gcv_excursion_is_publicly_bookable'));
 foreach ($rows as $r) {
@@ -332,6 +401,9 @@ foreach ($rows as $r) {
             $out[$lang][] = $card;
         }
     }
+}
+foreach ($out as $lang => $cards) {
+    $out[$lang] = gcv_carousel_sort_cards($cards);
 }
 
 json_response(true, $out);
