@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS gcv_cities (
   state_code      CHAR(2) NOT NULL DEFAULT 'GO',
   country         VARCHAR(80) NOT NULL DEFAULT 'Brasil',
   country_code    CHAR(2) NOT NULL DEFAULT 'BR',
+  region          VARCHAR(160) NULL,
   place_id        VARCHAR(255) NULL,
   formatted_address VARCHAR(400) NULL,
   lat             DECIMAL(10,7) NULL,

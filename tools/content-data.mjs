@@ -222,7 +222,7 @@ export const HERO_OFFERS = {
         alt: "Grupo em passeio exclusivo com guia diante de uma cachoeira na Chapada dos Veadeiros",
         tag: "Passeio exclusivo",
         lines: ["A Chapada", "só para o", "seu grupo."],
-        text: "Passeios com guia local particular no ritmo do seu grupo.",
+        text: "Escolha o guia de sua preferência.",
         points: ["Grupo fechado", "Horário flexível", "Roteiro sob medida"],
         actions: [
           { href: "exclusivo", label: "Reservar exclusivo", main: true },
@@ -272,7 +272,7 @@ export const HERO_OFFERS = {
         alt: "Group on a private tour with a guide in front of a waterfall in Chapada dos Veadeiros",
         tag: "Private tour",
         lines: ["The Chapada", "just for", "your group."],
-        text: "Private tours with a local guide, at your group's pace.",
+        text: "Choose the guide you prefer.",
         points: ["Private group", "Flexible timing", "Tailor-made route"],
         actions: [
           { href: "exclusivo", label: "Book private", main: true },
@@ -322,7 +322,7 @@ export const HERO_OFFERS = {
         alt: "Grupo en un paseo exclusivo con guía frente a una cascada en la Chapada dos Veadeiros",
         tag: "Paseo exclusivo",
         lines: ["La Chapada", "solo para", "tu grupo."],
-        text: "Paseos con guía local particular, al ritmo de tu grupo.",
+        text: "Elige el guía de tu preferencia.",
         points: ["Grupo cerrado", "Horario flexible", "Ruta a medida"],
         actions: [
           { href: "exclusivo", label: "Reservar exclusivo", main: true },

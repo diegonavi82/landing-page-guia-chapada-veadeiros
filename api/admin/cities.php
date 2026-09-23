@@ -10,6 +10,18 @@ $admin = require_admin();
 gcv_cms_ensure_schema();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
+function gcv_city_region_from_body(array $body): ?string
+{
+    $region = trim((string)($body['region'] ?? ''));
+    if ($region === '') {
+        return null;
+    }
+    if (function_exists('mb_substr')) {
+        return mb_substr($region, 0, 160);
+    }
+    return substr($region, 0, 160);
+}
+
 if ($method === 'GET') {
     $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
     if ($id > 0) {
@@ -49,8 +61,8 @@ if ($method === 'POST') {
         exit;
     }
     $stmt = db()->prepare(
-        'INSERT INTO gcv_cities (name, state, state_code, country, country_code, place_id, formatted_address, lat, lng, is_base, status)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?)'
+        'INSERT INTO gcv_cities (name, state, state_code, country, country_code, region, place_id, formatted_address, lat, lng, is_base, status)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?)'
     );
     $stmt->execute([
         $name,
@@ -58,6 +70,7 @@ if ($method === 'POST') {
         strtoupper(substr(trim((string)($body['state_code'] ?? 'GO')), 0, 2)) ?: 'GO',
         trim((string)($body['country'] ?? 'Brasil')) ?: 'Brasil',
         strtoupper(substr(trim((string)($body['country_code'] ?? 'BR')), 0, 2)) ?: 'BR',
+        gcv_city_region_from_body($body),
         ($body['place_id'] ?? null) ?: null,
         ($body['formatted_address'] ?? null) ?: $name,
         isset($body['lat']) && $body['lat'] !== '' ? (float)$body['lat'] : null,
@@ -80,7 +93,7 @@ if ($method === 'PUT') {
         exit;
     }
     $stmt = db()->prepare(
-        'UPDATE gcv_cities SET name=?, state=?, state_code=?, country=?, country_code=?, place_id=?, formatted_address=?, lat=?, lng=?, is_base=?, status=? WHERE id=?'
+        'UPDATE gcv_cities SET name=?, state=?, state_code=?, country=?, country_code=?, region=?, place_id=?, formatted_address=?, lat=?, lng=?, is_base=?, status=? WHERE id=?'
     );
     $stmt->execute([
         trim((string)($body['name'] ?? '')),
@@ -88,6 +101,7 @@ if ($method === 'PUT') {
         strtoupper(substr(trim((string)($body['state_code'] ?? 'GO')), 0, 2)),
         trim((string)($body['country'] ?? 'Brasil')),
         strtoupper(substr(trim((string)($body['country_code'] ?? 'BR')), 0, 2)),
+        gcv_city_region_from_body($body),
         ($body['place_id'] ?? null) ?: null,
         ($body['formatted_address'] ?? null) ?: null,
         isset($body['lat']) && $body['lat'] !== '' ? (float)$body['lat'] : null,

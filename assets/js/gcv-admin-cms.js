@@ -317,9 +317,11 @@
         return;
       }
       list.innerHTML = state.cities.map(function (c) {
+        var place = c.formatted_address || ((c.state || '') + ' / ' + (c.country || ''));
+        var meta = c.region ? (c.region + ' · ' + place) : place;
         return (
           '<article class="gcv-cms-row">' +
-          '<div><strong>' + esc(c.name) + '</strong><div class="gcv-cms-muted">' + esc(c.formatted_address || (c.state + ' / ' + c.country)) + '</div></div>' +
+          '<div><strong>' + esc(c.name) + '</strong><div class="gcv-cms-muted">' + esc(meta) + '</div></div>' +
           '<div class="gcv-cms-row-side">' +
           cmsRowActions(
             'data-edit-city="' + c.id + '"',
@@ -339,10 +341,24 @@
     });
   }
 
+  var CITY_REGIONS = ['Chapada dos Veadeiros'];
+
+  function cityRegionOptions(selected) {
+    var current = selected == null ? '' : String(selected);
+    var values = CITY_REGIONS.slice();
+    if (current && values.indexOf(current) < 0) values.push(current);
+    var html = '<option value="">Não informada</option>';
+    values.forEach(function (name) {
+      html += '<option value="' + esc(name) + '"' + (name === current ? ' selected' : '') + '>' + esc(name) + '</option>';
+    });
+    return html;
+  }
+
   function openCityForm(city) {
     var form = root('cms-city-form');
     if (!form) return;
     form.hidden = false;
+    var regionValue = city ? (city.region || '') : 'Chapada dos Veadeiros';
     form.innerHTML =
       '<h3>' + (city ? 'Editar cidade' : 'Nova cidade') + '</h3>' +
       '<div class="gcv-dash-field"><label class="gcv-dash-label">Buscar no Google</label>' +
@@ -352,6 +368,7 @@
       '<div class="gcv-dash-field"><label class="gcv-dash-label">Nome *</label><input class="gcv-dash-input" id="cms-city-name" value="' + esc(city && city.name || '') + '" /></div>' +
       '<div class="gcv-dash-field"><label class="gcv-dash-label">UF</label><input class="gcv-dash-input" id="cms-city-uf" value="' + esc(city && city.state_code || 'GO') + '" maxlength="2" /></div>' +
       '</div>' +
+      '<div class="gcv-dash-field"><label class="gcv-dash-label">Região</label><select class="gcv-dash-select" id="cms-city-region">' + cityRegionOptions(regionValue) + '</select></div>' +
       '<div class="gcv-dash-field"><label class="gcv-dash-label">Endereço formatado</label><input class="gcv-dash-input" id="cms-city-addr" value="' + esc(city && city.formatted_address || '') + '" /></div>' +
       '<input type="hidden" id="cms-city-place" value="' + esc(city && city.place_id || '') + '" />' +
       '<input type="hidden" id="cms-city-lat" value="' + esc(city && city.lat || '') + '" />' +
@@ -396,6 +413,7 @@
         name: root('cms-city-name').value.trim(),
         state_code: root('cms-city-uf').value.trim() || 'GO',
         state: 'Goiás',
+        region: root('cms-city-region').value.trim(),
         formatted_address: root('cms-city-addr').value.trim(),
         place_id: root('cms-city-place').value.trim() || null,
         lat: root('cms-city-lat').value || null,

@@ -7,7 +7,7 @@
   var slides = hero.querySelectorAll(".gcv-slide");
   var tabs = hero.querySelectorAll(".gcv-tab");
   var pauseBtn = hero.querySelector(".gcv-pause");
-  if (!slides.length || !tabs.length || !pauseBtn) return;
+  if (!slides.length || !pauseBtn) return;
 
   var DUR = 7000;
   var i = 0;

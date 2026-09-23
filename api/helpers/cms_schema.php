@@ -89,6 +89,7 @@ function gcv_cms_ensure_core_tables(PDO $pdo): void
           state_code CHAR(2) NOT NULL DEFAULT 'GO',
           country VARCHAR(80) NOT NULL DEFAULT 'Brasil',
           country_code CHAR(2) NOT NULL DEFAULT 'BR',
+          region VARCHAR(160) NULL,
           place_id VARCHAR(255) NULL,
           formatted_address VARCHAR(400) NULL,
           lat DECIMAL(10,7) NULL,
@@ -257,6 +258,8 @@ function gcv_cms_ensure_core_tables(PDO $pdo): void
         // ignore
     }
 
+    gcv_cms_ensure_city_region($pdo);
+
     // Cidades base (idempotente por nome)
     $cities = [
         ['Alto Paraíso de Goiás', 'Alto Paraíso de Goiás, GO, Brasil'],
@@ -267,8 +270,8 @@ function gcv_cms_ensure_core_tables(PDO $pdo): void
     ];
     $check = $pdo->prepare('SELECT id FROM gcv_cities WHERE name = ? LIMIT 1');
     $ins = $pdo->prepare(
-        "INSERT INTO gcv_cities (name, state, state_code, country, country_code, formatted_address, is_base, status)
-         VALUES (?, 'Goiás', 'GO', 'Brasil', 'BR', ?, 1, 'active')"
+        "INSERT INTO gcv_cities (name, state, state_code, country, country_code, formatted_address, region, is_base, status)
+         VALUES (?, 'Goiás', 'GO', 'Brasil', 'BR', ?, 'Chapada dos Veadeiros', 1, 'active')"
     );
     foreach ($cities as [$name, $addr]) {
         try {
@@ -295,6 +298,36 @@ function gcv_cms_ensure_core_tables(PDO $pdo): void
         }
     } catch (Throwable $e) {
         // ignore
+    }
+}
+
+function gcv_cms_ensure_city_region(PDO $pdo): void
+{
+    $has = false;
+    try {
+        $rows = $pdo->query('SHOW COLUMNS FROM gcv_cities')->fetchAll();
+        foreach ($rows as $r) {
+            if (strtolower((string)($r['Field'] ?? '')) === 'region') {
+                $has = true;
+                break;
+            }
+        }
+    } catch (Throwable $e) {
+        return;
+    }
+    if ($has) {
+        return;
+    }
+    try {
+        $pdo->exec('ALTER TABLE gcv_cities ADD COLUMN region VARCHAR(160) NULL AFTER country_code');
+    } catch (Throwable $e) {
+        error_log('cms city region: ' . $e->getMessage());
+        return;
+    }
+    try {
+        $pdo->exec("UPDATE gcv_cities SET region = 'Chapada dos Veadeiros' WHERE region IS NULL OR TRIM(region) = ''");
+    } catch (Throwable $e) {
+        error_log('cms city region backfill: ' . $e->getMessage());
     }
 }
 

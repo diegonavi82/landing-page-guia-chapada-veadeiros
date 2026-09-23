@@ -117,7 +117,7 @@
   position: relative;
   z-index: 2;
   height: 100%;
-  padding: 64px 64px 128px;
+  padding: 64px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -396,7 +396,7 @@
   line-height: 1;
 }
 
-/* Celular: foto em cima (pessoas inteiras), texto embaixo, abas numa linha */
+/* Celular: foto em cima (pessoas inteiras), texto embaixo */
 @media (max-width: 780px) {
   .gcv-hero.gcv-hero--offers {
     height: auto;
@@ -405,7 +405,7 @@
 
   .gcv-hero--offers .gcv-slide {
     background: var(--tinta);
-    padding-bottom: 78px;
+    padding-bottom: 16px;
   }
 
   .gcv-hero--offers .gcv-slide:not(.is-active) {

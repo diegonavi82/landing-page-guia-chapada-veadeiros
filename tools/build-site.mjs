@@ -1893,19 +1893,9 @@ function heroOffersSection(locale, ap) {
     })
     .join("\n");
 
-  const tabsHtml = copy.slides
-    .map((slide, i) => {
-      const first = i === 0;
-      return `<button type="button" class="gcv-tab${first ? " is-active" : ""}" data-go="${i}" aria-current="${first ? "true" : "false"}"><span class="gcv-tab-label">${esc(slide.tab)}</span><span class="gcv-tab-sub">${esc(slide.tabSub)}</span><i class="gcv-bar"></i></button>`;
-    })
-    .join("\n    ");
-
   return `    <section class="gcv-hero gcv-hero--offers" aria-roledescription="${esc(copy.role)}" aria-label="${esc(copy.aria)}">
   <h1 class="gcv-h1">${esc(copy.h1)}</h1>
 ${slidesHtml}
-  <nav class="gcv-tabs" aria-label="${esc(copy.tabsAria)}">
-    ${tabsHtml}
-  </nav>
   <button type="button" class="gcv-pause" data-label-pause="${esc(copy.pause)}" data-label-play="${esc(copy.play)}" aria-label="${esc(copy.pause)}">❚❚</button>
 </section>`;
 }
@@ -3000,7 +2990,7 @@ for (const locale of LOCALES) {
     const homeExcursionsHead = homeIsLanding
       ? {
           extraCss: [
-            `assets/css/gcv-hero-slider.css?v=1.1.31`,
+            `assets/css/gcv-hero-slider.css?v=1.1.32`,
             `assets/css/excursoes.css${BUILD_ASSET_QUERY}`,
           ],
           extraHead: `${heroPreloadLinks(homeAp, locale)}
@@ -3009,7 +2999,7 @@ for (const locale of LOCALES) {
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" crossorigin="anonymous" />`,
           extraFooterScripts:
             homeExcursionsHideScript +
-            `  <script src="${esc(publicJsSrc("gcv-hero-slider.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("qrcode.min.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix-receipt.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix-polling.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-confirm.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-bookings.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-waitlist.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-cart-policies.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-cart.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("excursoes-carousel.js", outPk).replace(BUILD_ASSET_QUERY, "?v=1.1.32"))}" defer></script>\n`,
+            `  <script src="${esc(publicJsSrc("gcv-hero-slider.js", outPk).replace(BUILD_ASSET_QUERY, "?v=1.1.31"))}" defer></script>\n  <script src="${esc(publicJsSrc("qrcode.min.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix-receipt.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix-polling.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-confirm.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-bookings.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-waitlist.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-cart-policies.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-cart.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("excursoes-carousel.js", outPk).replace(BUILD_ASSET_QUERY, "?v=1.1.32"))}" defer></script>\n`,
         }
       : {};
     const homeConsultarScript = "";
