@@ -1,16 +1,16 @@
 ---
-description: Deploy em produção pausado — só publicar quando o usuário pedir
+description: Deploy automático DESATIVADO PERMANENTEMENTE — só publicar quando o usuário pedir
 alwaysApply: true
 ---
 
-# Deploy automático PAUSADO
+# Deploy automático DESATIVADO (permanente)
 
-Não enviar arquivos para a Hostinger e não rodar `npm run deploy:prod`, a menos que o usuário peça explicitamente para publicar, fazer deploy ou “subir para produção”.
+Decisão do dono do projeto: **nunca** haverá deploy automático.
 
-Enquanto esta pausa estiver ativa:
+- O workflow `.github/workflows/deploy-hostinger-ftp.yml` roda só manualmente (`workflow_dispatch`). **Nunca** religar o gatilho `push`, nem criar outro workflow ou hook que publique sozinho.
+- Não enviar arquivos para a Hostinger e não rodar `npm run deploy:prod`, a menos que o usuário peça explicitamente para publicar, fazer deploy ou “subir para produção” naquela tarefa. O pedido vale só para aquela vez.
+- Nunca apagar nem limpar arquivos que já estão na Hostinger.
+- Migrations SQL (`npm run db:migrate`) gravam no banco da Hostinger: só rodar se o usuário pedir.
+- Ao terminar uma tarefa, dizer o que mudou e que **não foi para o ar**.
 
-1. Alterar e testar só na máquina local.
-2. Ao terminar uma tarefa, dizer o que mudou e que **não foi para o ar**.
-3. Migrations SQL (`npm run db:migrate`) também ficam pausadas: elas gravam no banco da Hostinger. Só rodar se o usuário pedir.
-
-Para religar o deploy automático, o usuário precisa pedir para voltar o deploy automático. Aí esta regra volta a publicar nesta mesma tarefa, com `npm run deploy:prod -- <arquivos-alterados>`, document root `domains/guiachapadaveadeiros.com/public_html` e credenciais em `.env.deploy`.
+Quando o usuário pedir para publicar: `npm run deploy:prod -- <arquivos-alterados>`, document root `domains/guiachapadaveadeiros.com/public_html`, credenciais em `.env.deploy`.
