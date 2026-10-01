@@ -1389,20 +1389,141 @@
   }
 
   function passeioBuilderHtml(copy) {
-    return '<style>.gcv-passeios{margin:1rem auto;max-width:440px;padding:.7rem .85rem;border:1px solid #d7e3dc;border-radius:12px;background:#f7fbf8;position:relative}.gcv-passeios__now{display:flex;align-items:center;justify-content:center;gap:.5rem;margin:0 0 .55rem;padding:.7rem .8rem;font-size:1.35rem;font-weight:800;letter-spacing:.02em;line-height:1.1;text-align:center;color:#fff;background:#14532d;border-radius:10px}.gcv-passeios__now .ti{font-size:1.25rem;line-height:1}.gcv-passeios__budget{display:block;width:fit-content;max-width:100%;margin:.5rem 0 .2rem auto;padding:4px;background:#fff;box-shadow:inset 0 0 0 2px #1a1a1a;border-radius:6px;font-size:.95rem;line-height:1.35;text-align:right}.gcv-passeios__total-value{color:#1d4ed8;font-size:1.45rem;font-weight:800}.gcv-passeios__grid{display:grid;grid-template-columns:1fr 1fr;gap:.45rem}.gcv-passeios__field--wide{grid-column:1 / -1}.gcv-passeios__summary{display:none;margin:0}.gcv-passeios__guide{display:flex;align-items:flex-start;gap:.45rem;margin:.45rem 0 .15rem;padding:.55rem .7rem;border-radius:10px;background:#fef3c7;color:#92400e;font-size:.82rem;line-height:1.35}.gcv-passeios__guide[hidden]{display:none}.gcv-passeios__guide .ti{font-size:1.05rem;line-height:1.2;flex:none}.gcv-passeios.is-dock.is-mini .gcv-passeios__guide{display:none}.gcv-passeios__field{display:block;font-size:.78rem;font-weight:600}.gcv-passeios input,.gcv-passeios select{width:100%;margin-top:.15rem;padding:.35rem .5rem;border:1px solid #cbd5e1;border-radius:8px;background:#fff;box-sizing:border-box}.gcv-passeios__checks{display:grid;gap:.15rem;margin:.35rem 0}.gcv-passeios__check{font-weight:500;font-size:.88rem}.gcv-passeios__actions{display:flex;justify-content:flex-end;margin-top:.45rem}.gcv-passeios__add{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;width:auto;margin:0;padding:.55rem .75rem;border:1px solid #6ee7b7;border-radius:10px;background:#ecfdf5;color:#047857;font:inherit;font-size:.78rem;font-weight:800;cursor:pointer}.gcv-passeios__add:hover{background:#d1fae5}.gcv-passeios__add.is-added{border-color:#047857;background:#047857;color:#fff}.gcv-passeios__add.is-added:hover{background:#065f46}.gcv-passeios__add.is-blocked,.gcv-passeios__add:disabled{opacity:.45;cursor:not-allowed;pointer-events:none}.gcv-datepicker{position:relative;width:100%;margin-top:.25rem}.gcv-datepicker__native{position:absolute!important;opacity:0!important;pointer-events:none!important;width:1px!important;height:1px!important;margin:0!important;padding:0!important;border:0!important}.gcv-datepicker__btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;box-sizing:border-box;padding:.35rem .5rem;font:inherit;font-size:.9rem;font-weight:500;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#0f172a;cursor:pointer;text-align:left}.gcv-datepicker__icon{width:18px;height:18px;color:#14532d;flex-shrink:0}.gcv-datepicker__pop{position:fixed;z-index:80;width:min(19.5rem,calc(100vw - 1.5rem));background:#fff;border:1px solid #d7ebe3;border-radius:16px;box-shadow:0 18px 48px rgba(15,61,46,.18);padding:.85rem .9rem 1rem}.gcv-datepicker__pop[hidden]{display:none!important}.gcv-datepicker__head{display:flex;align-items:center;justify-content:space-between;margin-bottom:.55rem}.gcv-datepicker__month{font-weight:700;color:#14532d}.gcv-datepicker__nav{width:32px;height:32px;border:0;border-radius:8px;background:#e8f0ec;color:#14532d;font-size:1.2rem;cursor:pointer}.gcv-datepicker__week,.gcv-datepicker__grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}.gcv-datepicker__week{margin-bottom:4px;font-size:.68rem;font-weight:700;color:#94a3b8}.gcv-datepicker__day{height:34px;border:0;border-radius:9px;background:transparent;font:inherit;cursor:pointer}.gcv-datepicker__day:hover:not(:disabled){background:#e8f0ec}.gcv-datepicker__day.is-today{box-shadow:inset 0 0 0 1.5px #14532d;font-weight:700}.gcv-datepicker__day.is-selected{background:#14532d;color:#fff;font-weight:700}.gcv-datepicker__day:disabled{color:#cbd5e1;cursor:default}@media(max-width:640px){.gcv-passeios__grid{grid-template-columns:1fr}}@media(min-width:768px){.gcv-passeios{max-width:none;width:100%;margin-left:0;margin-right:0;border-radius:4px}.gcv-passeios__now{border-radius:4px}}.gcv-passeios-slot{height:0}.gcv-passeios.is-dock{position:fixed;z-index:45;margin:0;box-sizing:border-box;box-shadow:0 10px 28px rgba(15,61,46,.18)}.gcv-passeios.is-dock.is-mini{display:flex;align-items:center;gap:.45rem;padding:.3rem .5rem}.gcv-passeios.is-dock.is-mini{flex-wrap:wrap}.gcv-passeios.is-dock.is-mini .gcv-passeios__now{display:none}.gcv-passeios.is-dock.is-mini .gcv-passeios__summary{display:block;flex:1 1 16rem;min-width:0;font-size:.78rem;font-weight:700;line-height:1.35;color:#0f3d2e}.gcv-passeios.is-dock.is-mini .gcv-passeios__grid,.gcv-passeios.is-dock.is-mini [data-passeio-msg]{display:none}.gcv-passeios.is-dock.is-mini .gcv-passeios__budget{margin:0 0 0 auto;padding:2px 4px}.gcv-passeios.is-dock.is-mini .gcv-passeios__total-value{font-size:1rem}.gcv-passeios.is-dock.is-mini .gcv-passeios__actions{margin:0;flex:none}.gcv-passeios.is-dock.is-mini .gcv-passeios__add{padding:.35rem .55rem}</style>' +
+    var css =
+      ".gcv-passeios{--gp-green:#14532d;--gp-green-2:#166534;--gp-line:#dbe7e0;--gp-soft:#f3f8f5;--gp-ink:#0f2a1d;--gp-muted:#5b6b62;margin:1.25rem auto;max-width:460px;padding:0;border:1px solid var(--gp-line);border-radius:16px;background:#fff;box-shadow:0 6px 24px rgba(15,61,46,.08);position:relative;overflow:hidden;color:var(--gp-ink)}" +
+      ".gcv-passeios__now{display:flex;align-items:center;gap:.55rem;margin:0;padding:.8rem 1.1rem;font-size:1.05rem;font-weight:800;letter-spacing:.01em;line-height:1.2;color:#fff;background:linear-gradient(135deg,#14532d,#0f766e)}" +
+      ".gcv-passeios__now .ti{font-size:1.2rem;line-height:1}" +
+      ".gcv-passeios__body{padding:1rem 1.1rem .4rem}" +
+      ".gcv-passeios__grid{display:grid;grid-template-columns:1fr 1fr;gap:.85rem 1rem}" +
+      ".gcv-passeios__field{display:flex;flex-direction:column;gap:.3rem;min-width:0;font-size:.72rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--gp-muted)}" +
+      ".gcv-passeios__field--wide{grid-column:1 / -1}" +
+      ".gcv-passeios__hide{position:absolute!important;width:1px!important;height:1px!important;overflow:hidden!important;clip:rect(0 0 0 0)!important;white-space:nowrap!important;border:0!important;padding:0!important;margin:-1px!important}" +
+      ".gcv-passeios input,.gcv-passeios select{width:100%;margin:0;padding:.55rem .7rem;border:1px solid #cbd5e1;border-radius:10px;background:#fff;box-sizing:border-box;font:inherit;font-size:.95rem;text-transform:none;letter-spacing:0;color:var(--gp-ink)}" +
+      ".gcv-passeios__stepper{display:flex;align-items:stretch;height:2.6rem;border:1px solid #cbd5e1;border-radius:10px;background:#fff;overflow:hidden}" +
+      ".gcv-passeios__stepper button{flex:none;width:2.6rem;border:0;background:var(--gp-soft);color:var(--gp-green);font-size:1.15rem;font-weight:800;cursor:pointer}" +
+      ".gcv-passeios__stepper button:hover{background:#e3efe8}.gcv-passeios__stepper button:disabled{opacity:.35;cursor:default}" +
+      ".gcv-passeios .gcv-passeios__stepper input{flex:1;min-width:0;border:0;border-radius:0;padding:0;text-align:center;font-weight:800;font-size:1rem;-moz-appearance:textfield}" +
+      ".gcv-passeios__stepper input::-webkit-outer-spin-button,.gcv-passeios__stepper input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}" +
+      ".gcv-passeios__seg{display:flex;gap:4px;padding:4px;border-radius:12px;background:var(--gp-soft);border:1px solid var(--gp-line)}" +
+      ".gcv-passeios__seg button{flex:1 1 0;min-width:0;padding:.5rem .4rem;border:0;border-radius:9px;background:transparent;color:var(--gp-muted);font:inherit;font-size:.86rem;font-weight:700;letter-spacing:0;text-transform:none;line-height:1.2;cursor:pointer;transition:background .15s,color .15s,box-shadow .15s}" +
+      ".gcv-passeios__seg button:hover{color:var(--gp-green)}" +
+      ".gcv-passeios__seg button.is-on{background:#fff;color:var(--gp-green);box-shadow:0 1px 3px rgba(15,61,46,.18),inset 0 0 0 1.5px var(--gp-green)}" +
+      ".gcv-passeios__seg button:focus-visible,.gcv-passeios__stepper button:focus-visible,.gcv-passeios__add:focus-visible{outline:2px solid #0f766e;outline-offset:2px}" +
+      ".gcv-passeios__summary{display:none;margin:0}" +
+      ".gcv-passeios__guide{display:flex;align-items:flex-start;gap:.45rem;margin:.9rem 0 0;padding:.6rem .75rem;border-radius:10px;background:#fef3c7;color:#92400e;font-size:.82rem;line-height:1.4}" +
+      ".gcv-passeios__guide[hidden]{display:none}.gcv-passeios__guide .ti{font-size:1.05rem;line-height:1.2;flex:none}" +
+      ".gcv-passeios__foot{display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin-top:1rem;padding:.85rem 1.1rem;border-top:1px solid var(--gp-line);background:var(--gp-soft)}" +
+      ".gcv-passeios__budget{margin:0;display:flex;flex-direction:column;line-height:1.15;font-size:.72rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--gp-muted)}" +
+      ".gcv-passeios__total-value{color:var(--gp-green);font-size:1.5rem;font-weight:800;letter-spacing:0;text-transform:none}" +
+      ".gcv-passeios__actions{display:flex;flex:none}" +
+      ".gcv-passeios__add{display:inline-flex;align-items:center;justify-content:center;gap:.45rem;margin:0;padding:.75rem 1.1rem;border:0;border-radius:12px;background:var(--gp-green);color:#fff;font:inherit;font-size:.92rem;font-weight:800;cursor:pointer;box-shadow:0 4px 12px rgba(20,83,45,.25);transition:background .15s,transform .1s}" +
+      ".gcv-passeios__add:hover{background:var(--gp-green-2)}.gcv-passeios__add:active{transform:translateY(1px)}" +
+      ".gcv-passeios__add.is-added{background:#fff;color:var(--gp-green);box-shadow:inset 0 0 0 2px var(--gp-green)}" +
+      ".gcv-passeios__add.is-blocked,.gcv-passeios__add:disabled{opacity:.45;cursor:not-allowed;pointer-events:none}" +
+      ".gcv-passeios [data-passeio-msg]{margin:0;padding:0 1.1rem;font-size:.82rem;color:#b91c1c}.gcv-passeios [data-passeio-msg]:not(:empty){padding:.1rem 1.1rem .8rem}" +
+      ".gcv-datepicker{position:relative;width:100%;margin:0}" +
+      ".gcv-datepicker__native{position:absolute!important;opacity:0!important;pointer-events:none!important;width:1px!important;height:1px!important;margin:0!important;padding:0!important;border:0!important}" +
+      ".gcv-datepicker__btn{width:100%;height:2.6rem;display:flex;align-items:center;justify-content:space-between;gap:8px;box-sizing:border-box;padding:.5rem .7rem;font:inherit;font-size:.95rem;font-weight:600;letter-spacing:0;text-transform:none;border:1px solid #cbd5e1;border-radius:10px;background:#fff;color:#0f172a;cursor:pointer;text-align:left}" +
+      ".gcv-datepicker__icon{width:18px;height:18px;color:#14532d;flex-shrink:0}" +
+      ".gcv-datepicker__pop{position:fixed;z-index:80;width:min(19.5rem,calc(100vw - 1.5rem));background:#fff;border:1px solid #d7ebe3;border-radius:16px;box-shadow:0 18px 48px rgba(15,61,46,.18);padding:.85rem .9rem 1rem;text-transform:none;letter-spacing:0}" +
+      ".gcv-datepicker__pop[hidden]{display:none!important}.gcv-datepicker__head{display:flex;align-items:center;justify-content:space-between;margin-bottom:.55rem}.gcv-datepicker__month{font-weight:700;color:#14532d}" +
+      ".gcv-datepicker__nav{width:32px;height:32px;border:0;border-radius:8px;background:#e8f0ec;color:#14532d;font-size:1.2rem;cursor:pointer}" +
+      ".gcv-datepicker__week,.gcv-datepicker__grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}.gcv-datepicker__week{margin-bottom:4px;font-size:.68rem;font-weight:700;color:#94a3b8}" +
+      ".gcv-datepicker__day{height:34px;border:0;border-radius:9px;background:transparent;font:inherit;cursor:pointer}.gcv-datepicker__day:hover:not(:disabled){background:#e8f0ec}" +
+      ".gcv-datepicker__day.is-today{box-shadow:inset 0 0 0 1.5px #14532d;font-weight:700}.gcv-datepicker__day.is-selected{background:#14532d;color:#fff;font-weight:700}.gcv-datepicker__day:disabled{color:#cbd5e1;cursor:default}" +
+      "@media(max-width:520px){.gcv-passeios__grid{grid-template-columns:1fr 1fr}.gcv-passeios__seg button{font-size:.8rem;padding:.5rem .25rem;white-space:nowrap}.gcv-passeios__foot{flex-wrap:wrap}.gcv-passeios__actions,.gcv-passeios__add{width:100%}}" +
+      "@media(min-width:768px){.gcv-passeios{max-width:none;width:100%;margin-left:0;margin-right:0}.gcv-passeios__grid{grid-template-columns:1fr 1fr 1fr 1fr}.gcv-passeios__field--city{grid-column:span 2}.gcv-passeios__field--date,.gcv-passeios__field--people{grid-column:span 1}.gcv-passeios__field--mode,.gcv-passeios__field--transport{grid-column:span 2}}" +
+      ".gcv-passeios-slot{height:0}" +
+      ".gcv-passeios.is-dock{position:fixed;z-index:45;margin:0;box-sizing:border-box;box-shadow:0 10px 28px rgba(15,61,46,.18)}" +
+      ".gcv-passeios.is-dock.is-mini{display:flex;flex-wrap:wrap;align-items:center;gap:.6rem;padding:.4rem .6rem;border-radius:12px}" +
+      ".gcv-passeios.is-dock.is-mini .gcv-passeios__now,.gcv-passeios.is-dock.is-mini .gcv-passeios__body,.gcv-passeios.is-dock.is-mini [data-passeio-msg]{display:none}" +
+      ".gcv-passeios.is-dock.is-mini .gcv-passeios__summary{display:block;flex:1 1 16rem;min-width:0;font-size:.78rem;font-weight:700;line-height:1.35;color:#0f3d2e}" +
+      ".gcv-passeios.is-dock.is-mini .gcv-passeios__foot{margin:0;padding:0;border:0;background:none;flex-wrap:nowrap}" +
+      ".gcv-passeios.is-dock.is-mini .gcv-passeios__budget{flex-direction:row;align-items:baseline;gap:.3rem}" +
+      ".gcv-passeios.is-dock.is-mini .gcv-passeios__total-value{font-size:1.05rem}" +
+      ".gcv-passeios.is-dock.is-mini .gcv-passeios__actions,.gcv-passeios.is-dock.is-mini .gcv-passeios__add{width:auto}" +
+      ".gcv-passeios.is-dock.is-mini .gcv-passeios__add{padding:.45rem .7rem;font-size:.82rem}";
+    function seg(name, options) {
+      return '<div class="gcv-passeios__seg" role="radiogroup" data-passeio-seg="' + name + '">' +
+        options.map(function (o, i) {
+          return '<button type="button" role="radio" aria-checked="' + (i === 0 ? "true" : "false") + '" class="' + (i === 0 ? "is-on" : "") + '" data-value="' + passeioEsc(o[0]) + '">' + passeioEsc(o[1]) + "</button>";
+        }).join("") + "</div>";
+    }
+    var cities = ["Alto Paraíso de Goiás", "São Jorge", "Cavalcante"];
+    return "<style>" + css + "</style>" +
       '<p class="gcv-passeios__now"><i class="ti ti-map" aria-hidden="true"></i> ' + passeioEsc(copy.title) + "</p>" +
       '<p class="gcv-passeios__summary" data-passeio-summary></p>' +
-      '<div class="gcv-passeios__grid">' +
-      '<div class="gcv-passeios__field">' + copy.date + '<input type="text" data-passeio-date value="' + passeioAmanha() + '" /></div>' +
-      '<div class="gcv-passeios__field">' + copy.people + '<input type="number" min="1" max="15" value="4" data-passeio-people /></div>' +
-      '<div class="gcv-passeios__field">' + copy.city + '<select data-passeio-city><option>Alto Paraíso de Goiás</option><option>São Jorge</option><option>Cavalcante</option></select></div>' +
-      '<div class="gcv-passeios__field">' + copy.mode + '<select data-passeio-mode><option value="excursao">' + copy.group + '</option><option value="exclusivo">' + copy.private + '</option></select></div>' +
-      '<div class="gcv-passeios__field gcv-passeios__field--wide">' + copy.transport + '<select data-passeio-transport><option value="0">' + copy.withoutRide + '</option><option value="1">' + copy.withRide + '</option></select></div>' +
+      '<div class="gcv-passeios__body"><div class="gcv-passeios__grid">' +
+      '<label class="gcv-passeios__field gcv-passeios__field--date">' + copy.date + '<input type="text" data-passeio-date value="' + passeioAmanha() + '" /></label>' +
+      '<div class="gcv-passeios__field gcv-passeios__field--people">' + copy.people +
+        '<div class="gcv-passeios__stepper"><button type="button" data-passeio-step="-1" aria-label="−1">−</button>' +
+        '<input type="number" min="1" max="15" value="4" inputmode="numeric" aria-label="' + passeioEsc(copy.people) + '" data-passeio-people />' +
+        '<button type="button" data-passeio-step="1" aria-label="+1">+</button></div></div>' +
+      '<div class="gcv-passeios__field gcv-passeios__field--wide gcv-passeios__field--city">' + copy.city +
+        seg("city", cities.map(function (c) { return [c, passeioCidadeCurta(c)]; })) +
+        '<select class="gcv-passeios__hide" tabindex="-1" aria-hidden="true" data-passeio-city>' + cities.map(function (c) { return "<option>" + c + "</option>"; }).join("") + "</select></div>" +
+      '<div class="gcv-passeios__field gcv-passeios__field--wide gcv-passeios__field--mode">' + copy.mode +
+        seg("mode", [["excursao", copy.group], ["exclusivo", copy.private]]) +
+        '<select class="gcv-passeios__hide" tabindex="-1" aria-hidden="true" data-passeio-mode><option value="excursao">' + copy.group + '</option><option value="exclusivo">' + copy.private + "</option></select></div>" +
+      '<div class="gcv-passeios__field gcv-passeios__field--wide gcv-passeios__field--transport">' + copy.transport +
+        seg("transport", [["0", copy.withoutRide], ["1", copy.withRide]]) +
+        '<select class="gcv-passeios__hide" tabindex="-1" aria-hidden="true" data-passeio-transport><option value="0">' + copy.withoutRide + '</option><option value="1">' + copy.withRide + "</option></select></div>" +
       "</div>" +
       '<p class="gcv-passeios__guide" data-passeio-guide hidden><i class="ti ti-steering-wheel" aria-hidden="true"></i><span data-passeio-guide-text></span></p>' +
-      '<p class="gcv-passeios__budget" data-passeio-total></p>' +
-      '<div class="gcv-passeios__actions"><button type="button" class="gcv-passeios__add" data-passeio-add aria-pressed="false"><i class="ti ti-shopping-cart" aria-hidden="true"></i> ' + passeioEsc(copy.add) + "</button></div>" +
+      "</div>" +
+      '<div class="gcv-passeios__foot"><p class="gcv-passeios__budget" data-passeio-total></p>' +
+      '<div class="gcv-passeios__actions"><button type="button" class="gcv-passeios__add" data-passeio-add aria-pressed="false"><i class="ti ti-shopping-cart" aria-hidden="true"></i> ' + passeioEsc(copy.add) + "</button></div></div>" +
       '<p data-passeio-msg></p>';
+  }
+
+  function bindPasseioControls(box) {
+    Array.prototype.forEach.call(box.querySelectorAll("[data-passeio-seg]"), function (group) {
+      var select = box.querySelector("[data-passeio-" + group.getAttribute("data-passeio-seg") + "]");
+      if (!select) return;
+      function sync() {
+        Array.prototype.forEach.call(group.querySelectorAll("button"), function (b) {
+          var on = b.getAttribute("data-value") === select.value;
+          b.classList.toggle("is-on", on);
+          b.setAttribute("aria-checked", on ? "true" : "false");
+        });
+      }
+      group.addEventListener("click", function (e) {
+        var b = e.target.closest("button[data-value]");
+        if (!b || select.value === b.getAttribute("data-value")) return;
+        select.value = b.getAttribute("data-value");
+        sync();
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+      select.addEventListener("change", sync);
+      sync();
+    });
+    var people = box.querySelector("[data-passeio-people]");
+    if (!people) return;
+    var min = parseInt(people.min, 10) || 1;
+    var max = parseInt(people.max, 10) || 15;
+    var steps = box.querySelectorAll("[data-passeio-step]");
+    function syncSteps() {
+      var v = parseInt(people.value, 10) || min;
+      Array.prototype.forEach.call(steps, function (b) {
+        var d = parseInt(b.getAttribute("data-passeio-step"), 10);
+        b.disabled = d < 0 ? v <= min : v >= max;
+      });
+    }
+    Array.prototype.forEach.call(steps, function (b) {
+      b.addEventListener("click", function () {
+        var v = parseInt(people.value, 10) || min;
+        people.value = Math.min(max, Math.max(min, v + parseInt(b.getAttribute("data-passeio-step"), 10)));
+        people.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+    });
+    people.addEventListener("change", function () {
+      var v = parseInt(people.value, 10);
+      if (!v || v < min) people.value = min;
+      else if (v > max) people.value = max;
+      syncSteps();
+    });
+    people.addEventListener("input", syncSteps);
+    syncSteps();
   }
 
   function bindPasseioDate(box) {
@@ -1533,7 +1654,7 @@
         }
       }
       box.querySelector("[data-passeio-total]").innerHTML =
-        passeioEsc(copy.total) + ": " +
+        "<span>" + passeioEsc(copy.total) + "</span>" +
         '<strong class="gcv-passeios__total-value">' + passeioEsc(passeioReais(total)) + "</strong>";
       var item = buildItem();
       if (item && itemInCart(item.id) && window.GcvExcCart && typeof window.GcvExcCart.sync === "function") {
@@ -1569,6 +1690,7 @@
         setTimeout(paintAddButton, 0);
       }
     });
+    bindPasseioControls(box);
     bindPasseioDate(box);
     paint();
     bindPasseioDock(box);
