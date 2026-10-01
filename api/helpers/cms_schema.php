@@ -48,6 +48,12 @@ function gcv_cms_ensure_schema(): void
     }
     gcv_cms_ensure_excursion_columns($pdo);
     gcv_cms_ensure_client_profiles();
+    try {
+        require_once __DIR__ . '/related_tours.php';
+        gcv_related_tours_ensure($pdo);
+    } catch (Throwable $e) {
+        error_log('related tours: ' . $e->getMessage());
+    }
 
     try {
         require_once __DIR__ . '/guide_status.php';

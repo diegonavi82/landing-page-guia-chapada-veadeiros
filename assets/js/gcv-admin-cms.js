@@ -536,6 +536,9 @@
       return (
         '<article class="gcv-cms-row"><div><strong>' + esc(a.title_pt) + '</strong>' +
         '<div class="gcv-cms-muted">/' + esc(a.slug) + ' · ' + esc(a.status) +
+        (a.duration_minutes ? ' · ' + esc(formatTourMinutes(a.duration_minutes)) : '') +
+        (a.tarifa ? ' · Privativo 1-5 R$ ' + esc(centsToMoney(a.tarifa.exclusivo_pessoa_cents)) + ' · Excursão 1-5 R$ ' + esc(centsToMoney(a.tarifa.excursao_pessoa_cents)) : '') +
+        (a.page ? ' · com página' : '') +
         (a.entry_price_label ? ' · ' + esc(a.entry_price_label) : '') + '</div></div>' +
         '<div class="gcv-cms-row-side">' +
         cmsRowActions(
@@ -606,13 +609,242 @@
     });
   }
 
+  function formatTourMinutes(m) {
+    m = parseInt(m, 10) || 0;
+    if (!m) return 'sem duração';
+    var h = Math.floor(m / 60);
+    var min = m % 60;
+    if (!h) return min + ' min';
+    if (!min) return h + ' h';
+    return h + ' h ' + min + ' min';
+  }
+
+  function simuladorTarifaHtml() {
+    return '<div class="gcv-dash-field" id="att-sim">' +
+      '<label class="gcv-dash-label">Simular tarifa do roteiro</label>' +
+      '<p class="gcv-cms-muted">Vale para passeio do admin e turma aberta pelo cliente. Passeio publicado pelo guia continua com o líquido dele mais 10% e não entra aqui. Os números iniciais são só o exemplo da regra.</p>' +
+      '<div class="gcv-dash-field-row">' +
+      '<div class="gcv-dash-field"><label class="gcv-dash-label">Exclusivo por pessoa (R$)</label><input class="gcv-dash-input" id="sim-ex" value="125" /></div>' +
+      '<div class="gcv-dash-field"><label class="gcv-dash-label">Excursão por pessoa (R$)</label><input class="gcv-dash-input" id="sim-ec" value="80" /></div>' +
+      '<div class="gcv-dash-field"><label class="gcv-dash-label">Quórum</label><input class="gcv-dash-input" id="sim-q" value="4" /></div>' +
+      '<div class="gcv-dash-field"><label class="gcv-dash-label">Taxa mínima (R$)</label><input class="gcv-dash-input" id="sim-tm" value="40" /></div>' +
+      '</div>' +
+      '<div class="gcv-dash-field-row">' +
+      '<div class="gcv-dash-field"><label class="gcv-dash-label">Taxa por pessoa (R$)</label><input class="gcv-dash-input" id="sim-tp" value="20" /></div>' +
+      '<div class="gcv-dash-field"><label class="gcv-dash-label">Carro exclusivo (R$)</label><input class="gcv-dash-input" id="sim-car" value="1200" /></div>' +
+      '<div class="gcv-dash-field"><label class="gcv-dash-label">Extra transporte (R$)</label><input class="gcv-dash-input" id="sim-extra" value="50" /></div>' +
+      '<div class="gcv-dash-field"><label class="gcv-dash-label">Taxa de transporte (R$)</label><input class="gcv-dash-input" id="sim-tt" value="100" /></div>' +
+      '</div>' +
+      '<div class="gcv-dash-field-row">' +
+      '<div class="gcv-dash-field"><label class="gcv-dash-label">Pessoas</label><input class="gcv-dash-input" id="sim-n" value="4" /></div>' +
+      '<div class="gcv-dash-field"><label class="gcv-dash-label">Modalidade</label><select class="gcv-dash-select" id="sim-mod"><option value="exclusivo">Privativo</option><option value="excursao">Excursão</option></select></div>' +
+      '<div class="gcv-dash-field"><label class="gcv-dash-label">Transporte</label><select class="gcv-dash-select" id="sim-tr"><option value="0">Sem transporte</option><option value="1">Com transporte</option></select></div>' +
+      '<div class="gcv-dash-field"><label class="gcv-dash-label">Ponto de Saída</label><input class="gcv-dash-input" id="sim-city" value="Alto Paraíso" /></div>' +
+      '</div>' +
+      '<button type="button" class="gcv-dash-btn" id="sim-run">Calcular</button>' +
+      '<pre id="sim-out" class="gcv-cms-muted" style="white-space:pre-wrap;margin-top:0.5rem"></pre></div>';
+  }
+
+  function bindSimuladorTarifa() {
+    var btn = root('sim-run');
+    if (!btn || !window.GcvTarifaRegras) return;
+    btn.onclick = function () {
+      var regras = window.GcvTarifaRegras;
+      var reais = function (id) { return Math.round((parseFloat(String(root(id).value).replace(',', '.')) || 0) * 100); };
+      var tarifa = {
+        exclusivoPessoaCents: reais('sim-ex'),
+        excursaoPessoaCents: reais('sim-ec'),
+        quorum: parseInt(root('sim-q').value, 10) || 4,
+        taxaMinimaCents: reais('sim-tm'),
+        taxaPorPessoaCents: reais('sim-tp'),
+        transporteFixoCents: reais('sim-car'),
+        transporteExtraCents: reais('sim-extra'),
+        taxaTransporteCents: reais('sim-tt'),
+        passoPct: 4,
+        deslocamentoGuiaCents: 0,
+      };
+      var pessoas = parseInt(root('sim-n').value, 10) || 0;
+      var modalidade = root('sim-mod').value;
+      var transporte = root('sim-tr').value === '1';
+      var erros = regras.validarTarifa(tarifa, regras.configPadrao());
+      var cliente = regras.precoClienteCents(tarifa, modalidade, transporte, pessoas);
+      var guia = regras.repasseGuiaCents(tarifa, modalidade, pessoas, transporte);
+      var grupo = regras.contagemQuorum({ adultos: 2, criancas: 2 }, { idadeAtiva: true, descontoCriancaPct: 50 });
+      var falta = regras.faltaParaQuorum(tarifa.quorum, grupo.quorum);
+      var cancel = regras.cancelamentoPrivativo(72, 10, true);
+      var ponto = regras.pontoEncontroPadrao(root('sim-city').value);
+      var money = function (c) { return 'R$ ' + (c / 100).toFixed(2).replace('.', ','); };
+      root('sim-out').textContent =
+        (erros.length ? 'Não salva:\n- ' + erros.join('\n- ') : 'Tarifa pode ser salva.') +
+        '\nCliente: ' + money(cliente) +
+        '\nGuia: ' + money(guia) +
+        '\nVeículos: ' + regras.veiculosDe(pessoas, tarifa.quorum) +
+        '\nPonto da turma: ' + (ponto || 'sem padrão') +
+        '\nExemplo de quórum (2 adultos + 2 crianças a 50%): conta ' + grupo.quorum + ', falta ' + falta +
+        '\nPrivativo 72h depois, 10 dias, guia escolhido: ' + cancel.texto;
+    };
+  }
+
+  function relatedToursHtml(a) {
+    if (!a || !a.id) return '';
+    var tours = a.related_tours || [];
+    var others = (state.attractions || []).filter(function (x) {
+      return x.page && Number(x.id) !== Number(a.id) && String(x.title_pt || '').indexOf(' + ') < 0;
+    });
+    var opts = '<option value="">—</option>' + others.map(function (x) {
+      return '<option value="' + x.id + '">' + esc(x.title_pt) + '</option>';
+    }).join('');
+    var lines = tours.map(function (t) {
+      var names = (t.attractions || []).map(function (p) {
+        var label = esc(p.title_pt);
+        return p.page ? '<a href="/' + esc(p.page) + '" target="_blank" rel="noopener">' + label + '</a>' : label;
+      }).join(' + ');
+      var parts = (t.attractions || []).map(function (p) {
+        var price = p.tarifa ? ' · 1-5 R$ ' + centsToMoney(p.tarifa.exclusivo_pessoa_cents) + ' / R$ ' + centsToMoney(p.tarifa.excursao_pessoa_cents) + ' · 6+ R$ ' + centsToMoney(p.tarifa.exclusivo_6_cents) + ' / R$ ' + centsToMoney(p.tarifa.excursao_6_cents) : '';
+        return esc(p.title_pt) + ' ' + formatTourMinutes(p.duration_minutes) + price;
+      }).join(' + ');
+      var tarifa = t.tarifa || {};
+      return '<article class="gcv-rel-card">' +
+        '<div class="gcv-rel-card__top"><div><strong>' + names + '</strong>' +
+        '<p class="gcv-rel-card__time">' + esc(formatTourMinutes(t.duration_minutes)) + '</p>' +
+        '<p class="gcv-cms-muted">' + parts + '</p></div>' +
+        '<button type="button" class="gcv-dash-btn" data-rel-del="' + t.id + '">Remover</button></div>' +
+        '<div class="gcv-dash-field-row">' +
+        '<div class="gcv-dash-field"><label class="gcv-dash-label">Privativo (1-5) por pessoa (R$)</label><input class="gcv-dash-input" data-rel-ex="' + t.id + '" value="' + esc(centsToMoney(tarifa.exclusivo_pessoa_cents)) + '" /></div>' +
+        '<div class="gcv-dash-field"><label class="gcv-dash-label">Excursão (1-5) por pessoa (R$)</label><input class="gcv-dash-input" data-rel-ec="' + t.id + '" value="' + esc(centsToMoney(tarifa.excursao_pessoa_cents)) + '" /></div>' +
+        '</div>' +
+        '<div class="gcv-dash-field-row">' +
+        '<div class="gcv-dash-field"><label class="gcv-dash-label">Privativo (6+) por pessoa (R$)</label><input class="gcv-dash-input" data-rel-ex6="' + t.id + '" value="' + esc(centsToMoney(tarifa.exclusivo_6_cents)) + '" /></div>' +
+        '<div class="gcv-dash-field"><label class="gcv-dash-label">Excursão (6+) por pessoa (R$)</label><input class="gcv-dash-input" data-rel-ec6="' + t.id + '" value="' + esc(centsToMoney(tarifa.excursao_6_cents)) + '" /></div>' +
+        '</div>' +
+        '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary" data-rel-save="' + t.id + '">Salvar valor somado</button>' +
+        '</article>';
+    }).join('') || '<p class="gcv-cms-muted">Nenhum passeio relacionado.</p>';
+    return '<div class="gcv-dash-field"><label class="gcv-dash-label">Passeios relacionados</label>' +
+      '<p class="gcv-cms-muted">Uma linha junta este atrativo com mais 1 ou 2 que tenham página. A duração é a soma. O valor começa somando Privativo e Excursão de 1 a 5 e de 6 ou mais. Salvar grava essa tarifa nos dois lados.</p>' +
+      lines +
+      '<div class="gcv-dash-field-row" style="margin-top:0.5rem">' +
+      '<select class="gcv-dash-select" id="att-rel-b">' + opts + '</select>' +
+      '<select class="gcv-dash-select" id="att-rel-c">' + opts + '</select>' +
+      '<button type="button" class="gcv-dash-btn" id="att-rel-add">Adicionar linha</button></div></div>';
+  }
+
+  function bindRelatedTours(a) {
+    if (!a || !a.id) return;
+    var add = root('att-rel-add');
+    if (add) {
+      add.onclick = function () {
+        var ids = [a.id];
+        ['att-rel-b', 'att-rel-c'].forEach(function (id) {
+          var el = root(id);
+          var value = el ? parseInt(el.value, 10) : 0;
+          if (value && ids.indexOf(value) < 0) ids.push(value);
+        });
+        if (ids.length < 2) { alert('Escolha mais um atrativo.'); return; }
+        sendJson('POST', '/api/admin/related-tours.php', { attraction_ids: ids }, function (e, r) {
+          if (!r || !r.ok) { alert((r && r.error) || 'Erro'); return; }
+          get('/api/admin/attractions.php?id=' + a.id, function (e2, r2) {
+            if (r2 && r2.ok) openAttractionForm(r2.data);
+          });
+        });
+      };
+    }
+    var form = root('cms-attr-form');
+    if (!form) return;
+    form.querySelectorAll('[data-rel-save]').forEach(function (btn) {
+      btn.onclick = function () {
+        var id = btn.getAttribute('data-rel-save');
+        var ex = form.querySelector('[data-rel-ex="' + id + '"]');
+        var ec = form.querySelector('[data-rel-ec="' + id + '"]');
+        var ex6 = form.querySelector('[data-rel-ex6="' + id + '"]');
+        var ec6 = form.querySelector('[data-rel-ec6="' + id + '"]');
+        sendJson('PUT', '/api/admin/related-tours.php', {
+          id: parseInt(id, 10),
+          tarifa: {
+            exclusivo_pessoa_cents: moneyToCents(ex && ex.value),
+            excursao_pessoa_cents: moneyToCents(ec && ec.value),
+            exclusivo_6_cents: moneyToCents(ex6 && ex6.value),
+            excursao_6_cents: moneyToCents(ec6 && ec6.value),
+          },
+        }, function (e, r) {
+          if (!r || !r.ok) { alert((r && r.error) || 'Erro'); return; }
+          btn.textContent = 'Salvo';
+        });
+      };
+    });
+    form.querySelectorAll('[data-rel-del]').forEach(function (btn) {
+      btn.onclick = function () {
+        sendJson('DELETE', '/api/admin/related-tours.php', { id: parseInt(btn.getAttribute('data-rel-del'), 10) }, function (e, r) {
+          if (!r || !r.ok) { alert((r && r.error) || 'Erro'); return; }
+          get('/api/admin/attractions.php?id=' + a.id, function (e2, r2) {
+            if (r2 && r2.ok) openAttractionForm(r2.data);
+          });
+        });
+      };
+    });
+  }
+
+  function attractionScreenTitle(name) {
+    var head = document.getElementById('cms-attr-title');
+    var formTitle = root('att-form-title');
+    var text = name && String(name).trim() ? String(name).trim() : 'Atrativos';
+    if (head) head.textContent = text;
+    if (formTitle) formTitle.textContent = text;
+  }
+
+  var CITY_DEPARTURE_PRICES = [
+    ['alto-paraiso', 'Alto Paraíso de Goiás'],
+    ['sao-jorge', 'São Jorge'],
+    ['cavalcante', 'Cavalcante']
+  ];
+
+  function cityDeparturePricesHtml(a) {
+    var tarifa = (a && a.tarifa) || {};
+    var cidades = tarifa.cidades || {};
+    function moneyOr(saved, field, fallback) {
+      var value = saved[field] != null ? saved[field] : fallback;
+      return esc(value != null ? centsToMoney(value) : '');
+    }
+    var rows = CITY_DEPARTURE_PRICES.map(function (city) {
+      var saved = cidades[city[0]] || {};
+      return '<div class="gcv-dash-field-row">' +
+        '<div class="gcv-dash-field"><label class="gcv-dash-label">Privativo sem translado — ' + city[1] + ' (R$)</label><input class="gcv-dash-input" data-city-key="' + city[0] + '" data-city-field="exclusivo_pessoa_cents" value="' + moneyOr(saved, 'exclusivo_pessoa_cents', tarifa.exclusivo_pessoa_cents) + '" /></div>' +
+        '<div class="gcv-dash-field"><label class="gcv-dash-label">Privativo com translado — ' + city[1] + ' (R$)</label><input class="gcv-dash-input" data-city-key="' + city[0] + '" data-city-field="exclusivo_transporte_cents" value="' + moneyOr(saved, 'exclusivo_transporte_cents', saved.exclusivo_pessoa_cents != null ? saved.exclusivo_pessoa_cents : tarifa.exclusivo_pessoa_cents) + '" /></div>' +
+        '</div>' +
+        '<div class="gcv-dash-field-row">' +
+        '<div class="gcv-dash-field"><label class="gcv-dash-label">Excursão sem translado — ' + city[1] + ' (R$)</label><input class="gcv-dash-input" data-city-key="' + city[0] + '" data-city-field="excursao_pessoa_cents" value="' + moneyOr(saved, 'excursao_pessoa_cents', tarifa.excursao_pessoa_cents) + '" /></div>' +
+        '<div class="gcv-dash-field"><label class="gcv-dash-label">Excursão com translado — ' + city[1] + ' (R$)</label><input class="gcv-dash-input" data-city-key="' + city[0] + '" data-city-field="excursao_transporte_cents" value="' + moneyOr(saved, 'excursao_transporte_cents', saved.excursao_pessoa_cents != null ? saved.excursao_pessoa_cents : tarifa.excursao_pessoa_cents) + '" /></div>' +
+        '</div>';
+    }).join('');
+    return '<p class="gcv-cms-muted">Cada combinação de cidade, modalidade e translado tem o próprio preço. Pode repetir o mesmo valor ou colocar um diferente. O total do cliente muda conforme a escolha.</p>' + rows;
+  }
+
+  function cityDeparturePricesPayload(form) {
+    var cidades = {};
+    CITY_DEPARTURE_PRICES.forEach(function (city) {
+      cidades[city[0]] = {
+        exclusivo_pessoa_cents: 0,
+        excursao_pessoa_cents: 0,
+        exclusivo_transporte_cents: 0,
+        excursao_transporte_cents: 0
+      };
+    });
+    form.querySelectorAll('[data-city-key]').forEach(function (input) {
+      var key = input.getAttribute('data-city-key');
+      var field = input.getAttribute('data-city-field');
+      if (!cidades[key] || !field) return;
+      cidades[key][field] = moneyToCents(input.value);
+    });
+    return cidades;
+  }
+
   function openAttractionForm(a) {
     var form = root('cms-attr-form');
     if (!form) return;
     form.hidden = false;
     var gallery = (a && a.gallery) || [];
     form.innerHTML =
-      '<h3>' + (a ? 'Editar atrativo' : 'Novo atrativo') + '</h3>' +
+      '<h3 id="att-form-title">' + esc(a && a.title_pt ? a.title_pt : 'Novo atrativo') + '</h3>' +
       '<div class="gcv-dash-field-row">' +
       '<div class="gcv-dash-field"><label class="gcv-dash-label">Título PT *</label><input class="gcv-dash-input" id="att-title" value="' + esc(a && a.title_pt || '') + '" /></div>' +
       '<div class="gcv-dash-field"><label class="gcv-dash-label">Slug</label><input class="gcv-dash-input" id="att-slug" value="' + esc(a && a.slug || '') + '" /></div>' +
@@ -621,10 +853,19 @@
       '<div class="gcv-dash-field-row">' +
       '<div class="gcv-dash-field"><label class="gcv-dash-label">Distância (km)</label><input class="gcv-dash-input" id="att-dist" value="' + esc(a && a.distance_km || '') + '" /></div>' +
       '<div class="gcv-dash-field"><label class="gcv-dash-label">Trilha (km)</label><input class="gcv-dash-input" id="att-trail" value="' + esc(a && a.trail_distance_km || '') + '" /></div>' +
+      '<div class="gcv-dash-field"><label class="gcv-dash-label">Duração</label><input class="gcv-dash-input" id="att-duration" inputmode="numeric" value="' + esc(a && a.duration_minutes != null ? a.duration_minutes : '') + '" /><p class="gcv-rel-card__time" id="att-duration-big">' + esc(formatTourMinutes(a && a.duration_minutes)) + '</p></div>' +
       '<div class="gcv-dash-field"><label class="gcv-dash-label">Dificuldade</label><select class="gcv-dash-select" id="att-diff"><option value="">—</option><option value="easy">Fácil</option><option value="medium">Médio</option><option value="hard">Difícil</option></select></div>' +
       '</div>' +
       '<div class="gcv-dash-field-row">' +
-      '<div class="gcv-dash-field"><label class="gcv-dash-label">Preço entrada (R$)</label><input class="gcv-dash-input" id="att-price" value="' + esc(a && a.entry_price_cents != null ? centsToMoney(a.entry_price_cents) : '') + '" /></div>' +
+      '<div class="gcv-dash-field"><label class="gcv-dash-label">Privativo (1-5) por pessoa (R$)</label><input class="gcv-dash-input" id="att-ex" value="' + esc(a && a.tarifa ? centsToMoney(a.tarifa.exclusivo_pessoa_cents) : '') + '" /></div>' +
+      '<div class="gcv-dash-field"><label class="gcv-dash-label">Excursão (1-5) por pessoa (R$)</label><input class="gcv-dash-input" id="att-ec" value="' + esc(a && a.tarifa ? centsToMoney(a.tarifa.excursao_pessoa_cents) : '') + '" /></div>' +
+      '</div>' +
+      '<div class="gcv-dash-field-row">' +
+      '<div class="gcv-dash-field"><label class="gcv-dash-label">Privativo (6+) por pessoa (R$)</label><input class="gcv-dash-input" id="att-ex6" value="' + esc(a && a.tarifa ? centsToMoney(a.tarifa.exclusivo_6_cents) : '') + '" /></div>' +
+      '<div class="gcv-dash-field"><label class="gcv-dash-label">Excursão (6+) por pessoa (R$)</label><input class="gcv-dash-input" id="att-ec6" value="' + esc(a && a.tarifa ? centsToMoney(a.tarifa.excursao_6_cents) : '') + '" /></div>' +
+      '</div>' +
+      cityDeparturePricesHtml(a) +
+      '<div class="gcv-dash-field-row">' +
       '<div class="gcv-dash-field"><label class="gcv-dash-label">Label preço</label><input class="gcv-dash-input" id="att-price-label" value="' + esc(a && a.entry_price_label || '') + '" placeholder="Ex.: R$ 60" /></div>' +
       '<div class="gcv-dash-field"><label class="gcv-dash-label">Estacionamento</label><input class="gcv-dash-input" id="att-parking" value="' + esc(a && a.parking_info || '') + '" /></div>' +
       '</div>' +
@@ -634,6 +875,8 @@
       '<div class="gcv-dash-field"><label class="gcv-dash-label">Capa URL</label><input class="gcv-dash-input" id="att-cover" value="' + esc(a && a.cover_url || '') + '" /></div>' +
       '<div class="gcv-dash-field"><label class="gcv-dash-label">Upload capa / galeria</label><input type="file" id="att-files" accept="image/*" multiple /></div>' +
       '<div id="att-gallery" class="gcv-cms-gallery"></div>' +
+      relatedToursHtml(a) +
+      simuladorTarifaHtml() +
       '<div style="display:flex;gap:0.5rem;margin-top:0.75rem;">' +
       '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary" id="att-save">Salvar</button>' +
       '<button type="button" class="gcv-dash-btn" id="att-cancel">Cancelar</button></div>';
@@ -641,6 +884,22 @@
     if (a) {
       if (a.status) root('att-status').value = a.status;
       if (a.difficulty) root('att-diff').value = a.difficulty;
+    }
+    attractionScreenTitle(a && a.title_pt ? a.title_pt : 'Novo atrativo');
+    var titleInput = root('att-title');
+    if (titleInput) {
+      titleInput.addEventListener('input', function () {
+        attractionScreenTitle(titleInput.value);
+      });
+    }
+    bindRelatedTours(a);
+    bindSimuladorTarifa();
+    var durInput = root('att-duration');
+    if (durInput) {
+      durInput.oninput = function () {
+        var big = root('att-duration-big');
+        if (big) big.textContent = formatTourMinutes(durInput.value);
+      };
     }
     function paintGallery() {
       var g = root('att-gallery');
@@ -671,7 +930,10 @@
         });
       });
     };
-    root('att-cancel').onclick = function () { form.hidden = true; };
+    root('att-cancel').onclick = function () {
+      form.hidden = true;
+      attractionScreenTitle('Atrativos');
+    };
     root('att-save').onclick = function () {
       var payload = {
         id: a && a.id,
@@ -680,8 +942,15 @@
         status: root('att-status').value,
         distance_km: root('att-dist').value,
         trail_distance_km: root('att-trail').value,
+        duration_minutes: root('att-duration') ? root('att-duration').value.trim() : '',
         difficulty: root('att-diff').value,
-        entry_price_cents: moneyToCents(root('att-price').value) || null,
+        tarifa: {
+          exclusivo_pessoa_cents: moneyToCents(root('att-ex') && root('att-ex').value),
+          excursao_pessoa_cents: moneyToCents(root('att-ec') && root('att-ec').value),
+          exclusivo_6_cents: moneyToCents(root('att-ex6') && root('att-ex6').value),
+          excursao_6_cents: moneyToCents(root('att-ec6') && root('att-ec6').value),
+          cidades: cityDeparturePricesPayload(form),
+        },
         entry_price_label: root('att-price-label').value.trim(),
         parking_info: root('att-parking').value.trim(),
         recommended_period: root('att-period').value.trim(),
@@ -699,6 +968,7 @@
           return;
         }
         form.hidden = true;
+        attractionScreenTitle('Atrativos');
         renderAttractions();
       });
     };

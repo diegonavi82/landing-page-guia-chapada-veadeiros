@@ -16,40 +16,40 @@
   var UI = {
     pt: {
       agreePrefix: "Li e concordo com a",
-      policyCancel: "Política de Cancelamento",
-      policySecurity: "Política de Segurança",
+      policyCancel: "Política Guia Chapada Veadeiros",
+      policySecurity: "Política Guia Chapada Veadeiros",
       modalClose: "Fechar",
       agreeRequired:
-        "Para pagar com Pix, leia e aceite a Política de Cancelamento e a Política de Segurança.",
+        "Para pagar com Pix, leia e aceite a Política Guia Chapada Veadeiros.",
     },
     en: {
       agreePrefix: "I have read and agree to the",
-      policyCancel: "Cancellation Policy",
-      policySecurity: "Safety Policy",
+      policyCancel: "Guia Chapada Veadeiros Policy",
+      policySecurity: "Guia Chapada Veadeiros Policy",
       modalClose: "Close",
       agreeRequired:
-        "To pay with Pix, please read and accept both the Cancellation Policy and the Safety Policy.",
+        "To pay with Pix, please read and accept the Guia Chapada Veadeiros Policy.",
     },
     es: {
       agreePrefix: "He leído y acepto la",
-      policyCancel: "Política de Cancelación",
-      policySecurity: "Política de Seguridad",
+      policyCancel: "Política Guia Chapada Veadeiros",
+      policySecurity: "Política Guia Chapada Veadeiros",
       modalClose: "Cerrar",
       agreeRequired:
-        "Para pagar con Pix, lea y acepte la Política de Cancelación y la Política de Seguridad.",
+        "Para pagar con Pix, lea y acepte la Política Guia Chapada Veadeiros.",
     },
   };
 
   var TITLES = {
     cancel: {
-      pt: "Política de Cancelamento",
-      en: "Cancellation Policy",
-      es: "Política de Cancelación",
+      pt: "Política Guia Chapada Veadeiros",
+      en: "Guia Chapada Veadeiros Policy",
+      es: "Política Guia Chapada Veadeiros",
     },
     security: {
-      pt: "Política de Segurança",
-      en: "Safety Policy",
-      es: "Política de Seguridad",
+      pt: "Política Guia Chapada Veadeiros",
+      en: "Guia Chapada Veadeiros Policy",
+      es: "Política Guia Chapada Veadeiros",
     },
   };
 
@@ -79,35 +79,54 @@
         {
           heading: "3. Passeios Confirmados",
           paragraphs: [
-            'Considera-se "Confirmado" o passeio que atingir o quórum mínimo estabelecido ou que tenha sua realização garantida pela CONTRATADA.',
+            'Esta seção vale para o passeio Em grupo. Considera-se "Confirmado" o passeio que atingir o quórum mínimo estabelecido ou que tenha sua realização garantida pela CONTRATADA.',
             "A confirmação do passeio implica: reserva definitiva da vaga do participante; bloqueio da agenda do guia responsável; organização da logística necessária para execução da atividade.",
-            "Após a confirmação, o CONTRATANTE poderá solicitar o cancelamento de sua inscrição a qualquer momento.",
-            "Entretanto, não haverá restituição dos valores pagos, em razão da reserva da agenda do guia, da ocupação da vaga e dos custos operacionais assumidos para a realização do passeio.",
-            "Esta regra aplica-se, inclusive, aos casos de: desistência; alteração de planos; atraso; não comparecimento (no-show); perda de transporte; doença; motivos pessoais ou profissionais; qualquer outro impedimento não imputável à CONTRATADA.",
+            "Depois da confirmação, o passeio Em grupo não pode ser cancelado pelo CONTRATANTE e não há devolução. O botão de cancelamento não é oferecido.",
+            "Não há restituição por desistência, alteração de planos, atraso, não comparecimento, perda de transporte, doença, motivos pessoais ou profissionais, ou qualquer outro impedimento que não seja da CONTRATADA.",
+            "Quem não comparece continua cobrado pelo valor integral. A parte da plataforma continua sendo descontada e o guia recebe o pagamento normal daquela vaga. A ausência não entra na contagem de guiagem.",
           ],
         },
         {
           heading: "3.1 Substituição do Participante",
           paragraphs: [
-            "O CONTRATANTE poderá indicar outra pessoa para ocupar sua vaga em um passeio confirmado.",
-            "A substituição estará sujeita à aprovação da CONTRATADA, observadas as condições operacionais da atividade e o envio prévio das informações necessárias do novo participante.",
-            "Uma vez efetivada a substituição da vaga, o CONTRATANTE terá direito ao reembolso integral (100%) dos valores pagos ou à transferência integral da reserva ao participante substituto.",
-            "Não sendo apresentada pessoa substituta apta a ocupar a vaga antes do início do passeio, não haverá direito à restituição dos valores pagos.",
+            "No passeio Em grupo confirmado, o CONTRATANTE pode passar a vaga para outra pessoa que já tenha conta, informando o CPF dela e confirmando. Isso não é devolução e não vale para o Privativo.",
+            "A pessoa indicada assume a reserva pelo valor já pago. Sem um substituto com conta, a vaga permanece com o CONTRATANTE e não há restituição.",
+          ],
+        },
+        {
+          heading: "3.2 Privativo",
+          paragraphs: [
+            "O cancelamento com devolução descrito aqui vale só para o Privativo. O Em grupo confirmado não se cancela.",
+            "Até 48 horas depois da compra, e faltando mais de 7 dias para o passeio, a devolução é de 100%.",
+            "Depois de 48 horas, ainda sem guia escolhido e faltando mais de 7 dias, o CONTRATANTE recebe 80% e a plataforma retém 20%.",
+            "Com o guia já escolhido, depois de 48 horas e faltando mais de 7 dias, o CONTRATANTE recebe 40% do valor pago. O guia recebe metade da parte que era dele, o restante fica com a plataforma e a data do guia é liberada.",
+            "Faltando menos de 7 dias, o Privativo não pode ser cancelado. Na compra, o CONTRATANTE precisa aceitar o aviso de que aquela reserva não poderá ser cancelada.",
+            "Antes de confirmar o cancelamento, a tela mostra qual destas faixas se aplica e o valor em reais.",
+          ],
+        },
+        {
+          heading: "3.3 Troca de passeio",
+          paragraphs: [
+            "Enquanto o Em grupo estiver em formação e ainda não houver guia definido, o CONTRATANTE pode trocar uma vez, no mesmo dia, para uma saída já confirmada ou que fique confirmada com a entrada dele.",
+            "A troca não vale para o Privativo e não vale depois da confirmação.",
+          ],
+        },
           ],
         },
         {
           heading: "4. Cancelamento pela CONTRATADA",
           paragraphs: [
             "A CONTRATADA poderá cancelar qualquer passeio, inclusive após sua confirmação, quando sua realização se tornar inviável ou representar risco à segurança dos participantes.",
-            "Constituem exemplos dessa hipótese: condições climáticas severas; interdição do atrativo; determinação de autoridade competente; caso fortuito; força maior; situações que coloquem em risco a integridade física dos participantes, do guia ou da equipe.",
+            "Constituem exemplos dessa hipótese: condições climáticas severas; interdição do atrativo; determinação de autoridade competente; falta de veículo para realizar o Privativo; caso fortuito; força maior; situações que coloquem em risco a integridade física dos participantes, do guia ou da equipe.",
             "Nessas hipóteses, o CONTRATANTE poderá optar pelo reembolso integral (100%) dos valores pagos ou pela utilização do valor pago como crédito para reagendamento de outro passeio disponível, realizando-se o pagamento da diferença ou a restituição do saldo, conforme o valor do novo passeio escolhido.",
           ],
         },
         {
           heading: "4.1 Substituição do Guia",
           paragraphs: [
-            "A CONTRATADA poderá, por motivos operacionais, logísticos, técnicos, de saúde, segurança, caso fortuito, força maior ou qualquer outra necessidade operacional, substituir o guia originalmente designado por outro guia devidamente habilitado e apto à condução da atividade, sem necessidade de anuência prévia do CONTRATANTE.",
-            "A substituição do guia não caracteriza cancelamento do passeio, alteração essencial do objeto contratado, falha na prestação do serviço ou descumprimento contratual, não conferindo ao CONTRATANTE direito ao cancelamento da reserva, reembolso dos valores pagos, abatimento proporcional do preço ou qualquer espécie de indenização.",
+            "O CONTRATANTE não escolhe outro guia depois que um guia confirmou. Só o guia pode se retirar por força maior.",
+            "No Privativo, a CONTRATADA indica automaticamente outro guia habilitado. A troca de guia não cancela o passeio, não devolve valor e não reduz o preço.",
+            "No Em grupo, a vaga é oferecida ao próximo guia habilitado da fila da cidade. Ele tem 2 horas para responder. O relógio para entre 22h e 8h. Se recusar ou o prazo acabar, segue o próximo. A troca não cancela, não devolve e não reduz o preço.",
           ],
         },
         {

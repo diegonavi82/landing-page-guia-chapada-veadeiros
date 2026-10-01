@@ -1124,6 +1124,518 @@
     grid.innerHTML = picked.map(cardHtml).join("\n");
   }
 
+  function initPasseiosPublicos() {
+    if (!/\/atrativos\//.test(window.location.pathname)) return;
+    var file = window.location.pathname.split("/").pop() || "";
+    var slug = file.replace(/\.html$/, "");
+    if (!slug) return;
+    var lang = window.location.pathname.indexOf("/en/") >= 0 ? "en" : (window.location.pathname.indexOf("/es/") >= 0 ? "es" : "pt");
+    var copy = passeioCopy(lang);
+    fetch("/api/passeios.php?slug=" + encodeURIComponent(slug))
+      .then(function (res) { return res.json(); })
+      .then(function (payload) {
+        if (!payload || !payload.ok || !payload.data) return;
+        var data = payload.data;
+        var box = document.createElement("section");
+        box.className = "gcv-passeios";
+        box.innerHTML = passeioBuilderHtml(copy, data);
+        var title = document.querySelector(".gcv-detail-title");
+        var related = document.querySelector(".gcv-related");
+        if (title && title.parentNode) title.parentNode.insertBefore(box, title.nextSibling);
+        else if (related && related.parentNode) related.parentNode.insertBefore(box, related);
+        else (document.querySelector("main") || document.body).appendChild(box);
+        bindPasseioBuilder(box, copy, data);
+      })
+      .catch(function () {});
+  }
+
+  function passeioCopy(lang) {
+    var all = {
+      pt: {
+        title: "Meu roteiro",
+        hint: "",
+        date: "Data",
+        people: "Pessoas",
+        city: "Saindo de qual cidade?",
+        mode: "Modalidade",
+        group: "Excursão",
+        private: "Privativo",
+        transport: "Transporte",
+        withRide: "Com translado",
+        withoutRide: "Sem translado",
+        from: "De",
+        person: "pessoa",
+        peopleWord: "pessoas",
+        guideLead: "Reserve um lugar para o guia. Ele vai no carro de vocês.",
+        guideRest: "Com {people}, o grupo precisa de {cars}.",
+        car: "carro",
+        cars: "carros",
+        duration: "Duração",
+        total: "Total",
+        add: "Adicionar ao carrinho",
+        addedBtn: "Adicionado",
+        fail: "Não entrou no carrinho. Escolha uma data futura.",
+        sameDay: "Você já escolheu um passeio para este dia. Remova-o para escolher outro.",
+        max: "O roteiro tem no máximo 3 atrativos.",
+      },
+      en: {
+        title: "My itinerary",
+        hint: "",
+        date: "Date",
+        people: "People",
+        city: "Leaving from which city?",
+        mode: "Type",
+        group: "Group",
+        private: "Private",
+        transport: "Transport",
+        withRide: "With transfer",
+        withoutRide: "Without transfer",
+        from: "From",
+        person: "person",
+        peopleWord: "people",
+        guideLead: "Save a seat for the guide. They ride in your car.",
+        guideRest: "With {people}, the group needs {cars}.",
+        car: "car",
+        cars: "cars",
+        duration: "Duration",
+        total: "Total",
+        add: "Add to cart",
+        addedBtn: "Added",
+        fail: "It was not added. Pick a future date.",
+        sameDay: "You already chose a tour for this day. Remove it to pick another.",
+        max: "An itinerary has at most 3 places.",
+      },
+      es: {
+        title: "Mi itinerario",
+        hint: "",
+        date: "Fecha",
+        people: "Personas",
+        city: "¿Saliendo de qué ciudad?",
+        mode: "Modalidad",
+        group: "En grupo",
+        private: "Privado",
+        transport: "Transporte",
+        withRide: "Con traslado",
+        withoutRide: "Sin traslado",
+        from: "Desde",
+        person: "persona",
+        peopleWord: "personas",
+        guideLead: "Reserva un lugar para el guía. Va en el carro de ustedes.",
+        guideRest: "Con {people}, el grupo necesita {cars}.",
+        car: "coche",
+        cars: "coches",
+        duration: "Duración",
+        total: "Total",
+        add: "Agregar al carrito",
+        addedBtn: "Añadido",
+        fail: "No se agregó. Elige una fecha futura.",
+        sameDay: "Ya elegiste un paseo para este día. Quítalo para elegir otro.",
+        max: "El itinerario tiene como máximo 3 lugares.",
+      },
+    };
+    return all[lang] || all.pt;
+  }
+
+  function passeioHoras(minutos) {
+    minutos = parseInt(minutos, 10) || 0;
+    if (!minutos) return "";
+    var h = Math.floor(minutos / 60);
+    var m = minutos % 60;
+    if (!h) return m + " min";
+    if (!m) return h + " h";
+    return h + " h " + m + " min";
+  }
+
+  function passeioReais(cents) {
+    return "R$ " + String(Math.round((parseInt(cents, 10) || 0) / 100));
+  }
+
+  function passeioAmanha() {
+    var d = new Date();
+    d.setDate(d.getDate() + 1);
+    var m = String(d.getMonth() + 1).padStart(2, "0");
+    var day = String(d.getDate()).padStart(2, "0");
+    return d.getFullYear() + "-" + m + "-" + day;
+  }
+
+  function passeioEsc(str) {
+    return String(str || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  function passeioOpcoes(data) {
+    var seen = {};
+    var out = [];
+    (data.related_tours || []).forEach(function (tour) {
+      (tour.attractions || []).forEach(function (part) {
+        if (!part || part.slug === data.slug || seen[part.id]) return;
+        seen[part.id] = true;
+        out.push(part);
+      });
+    });
+    return out;
+  }
+
+  function passeioPonto(cidade) {
+    var key = String(cidade || "").toLowerCase();
+    if (key.indexOf("jorge") >= 0) return "Café com Brigadeiro";
+    if (key.indexOf("cavalcante") >= 0) return "Café com Delícias";
+    return "Padaria Santa Maria";
+  }
+
+  function passeioCidadeKey(cidade) {
+    var key = String(cidade || "").toLowerCase();
+    if (key.indexOf("jorge") >= 0) return "sao-jorge";
+    if (key.indexOf("cavalcante") >= 0) return "cavalcante";
+    return "alto-paraiso";
+  }
+
+  function passeioPrecoCidade(tarifa, cidade, campo, fallback) {
+    var key = passeioCidadeKey(cidade);
+    var row = tarifa && tarifa.cidades && tarifa.cidades[key];
+    if (row && row[campo] != null && row[campo] !== "") {
+      var n = parseInt(row[campo], 10);
+      if (isFinite(n)) return n;
+    }
+    if (tarifa && tarifa[campo] != null && tarifa[campo] !== "") {
+      var base = parseInt(tarifa[campo], 10);
+      if (isFinite(base)) return base;
+    }
+    if (fallback) return passeioPrecoCidade(tarifa, cidade, fallback);
+    return 0;
+  }
+
+  function passeioCidadeCurta(cidade) {
+    var key = passeioCidadeKey(cidade);
+    if (key === "sao-jorge") return "São Jorge";
+    if (key === "cavalcante") return "Cavalcante";
+    return "Alto Paraíso";
+  }
+
+  function passeioDataBr(iso) {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(iso || "")) return iso.split("-").reverse().join("/");
+    return iso || "";
+  }
+
+  function passeioSelecao(box, data) {
+    var cidadeEl = box.querySelector("[data-passeio-city]");
+    var cidade = cidadeEl ? cidadeEl.value : "";
+    var extras = [];
+    box.querySelectorAll("[data-passeio-extra]:checked").forEach(function (input) {
+      var part = passeioOpcoes(data).filter(function (p) { return String(p.id) === input.value; })[0];
+      if (part) extras.push(part);
+    });
+    var slugs = [data.slug].concat(extras.map(function (p) { return p.slug; })).sort();
+    var key = slugs.join("|");
+    var matched = null;
+    (data.related_tours || []).forEach(function (tour) {
+      var tourKey = (tour.attractions || []).map(function (p) { return p.slug; }).sort().join("|");
+      if (tourKey === key) matched = tour;
+    });
+    if (matched && matched.tarifa && extras.length) {
+      return {
+        ids: extras.map(function (p) { return p.id; }),
+        names: (matched.attractions || []).map(function (p) { return p.title_pt; }),
+        minutes: parseInt(matched.duration_minutes, 10) || 0,
+        exclusivo: passeioPrecoCidade(matched.tarifa, cidade, "exclusivo_pessoa_cents"),
+        excursao: passeioPrecoCidade(matched.tarifa, cidade, "excursao_pessoa_cents"),
+        exclusivoT: passeioPrecoCidade(matched.tarifa, cidade, "exclusivo_transporte_cents", "exclusivo_pessoa_cents"),
+        excursaoT: passeioPrecoCidade(matched.tarifa, cidade, "excursao_transporte_cents", "excursao_pessoa_cents"),
+      };
+    }
+    var exclusivo = passeioPrecoCidade(data.tarifa, cidade, "exclusivo_pessoa_cents");
+    var excursao = passeioPrecoCidade(data.tarifa, cidade, "excursao_pessoa_cents");
+    var exclusivoT = passeioPrecoCidade(data.tarifa, cidade, "exclusivo_transporte_cents", "exclusivo_pessoa_cents");
+    var excursaoT = passeioPrecoCidade(data.tarifa, cidade, "excursao_transporte_cents", "excursao_pessoa_cents");
+    var minutes = parseInt(data.duration_minutes, 10) || 0;
+    extras.forEach(function (part) {
+      minutes += parseInt(part.duration_minutes, 10) || 0;
+      if (part.tarifa) {
+        exclusivo += passeioPrecoCidade(part.tarifa, cidade, "exclusivo_pessoa_cents");
+        excursao += passeioPrecoCidade(part.tarifa, cidade, "excursao_pessoa_cents");
+        exclusivoT += passeioPrecoCidade(part.tarifa, cidade, "exclusivo_transporte_cents", "exclusivo_pessoa_cents");
+        excursaoT += passeioPrecoCidade(part.tarifa, cidade, "excursao_transporte_cents", "excursao_pessoa_cents");
+      }
+    });
+    return {
+      ids: extras.map(function (p) { return p.id; }),
+      names: [data.title].concat(extras.map(function (p) { return p.title_pt; })),
+      minutes: minutes,
+      exclusivo: exclusivo,
+      excursao: excursao,
+      exclusivoT: exclusivoT,
+      excursaoT: excursaoT,
+    };
+  }
+
+  function passeioMostraGuia(modalidade, pessoas, comTranslado) {
+    if (comTranslado) return false;
+    pessoas = Math.max(1, parseInt(pessoas, 10) || 1);
+    if (modalidade === "exclusivo") return true;
+    return pessoas === 5 || pessoas === 10;
+  }
+
+  function passeioCarros(pessoas) {
+    return Math.max(1, Math.ceil((parseInt(pessoas, 10) || 1) / 4));
+  }
+
+  function passeioTotalCents(sel, modalidade, pessoas, comTranslado) {
+    pessoas = Math.max(1, parseInt(pessoas, 10) || 1);
+    var quorum = 4;
+    var unit = modalidade === "exclusivo"
+      ? (comTranslado ? sel.exclusivoT : sel.exclusivo)
+      : (comTranslado ? sel.excursaoT : sel.excursao);
+    if (modalidade === "exclusivo" && pessoas <= quorum) return unit * quorum;
+    return unit * pessoas;
+  }
+
+  function passeioBuilderHtml(copy) {
+    return '<style>.gcv-passeios{margin:1rem auto;max-width:440px;padding:.7rem .85rem;border:1px solid #d7e3dc;border-radius:12px;background:#f7fbf8;position:relative}.gcv-passeios__now{display:flex;align-items:center;justify-content:center;gap:.5rem;margin:0 0 .55rem;padding:.7rem .8rem;font-size:1.35rem;font-weight:800;letter-spacing:.02em;line-height:1.1;text-align:center;color:#fff;background:#14532d;border-radius:10px}.gcv-passeios__now .ti{font-size:1.25rem;line-height:1}.gcv-passeios__budget{display:block;width:fit-content;max-width:100%;margin:.5rem 0 .2rem auto;padding:4px;background:#fff;box-shadow:inset 0 0 0 2px #1a1a1a;border-radius:6px;font-size:.95rem;line-height:1.35;text-align:right}.gcv-passeios__total-value{color:#1d4ed8;font-size:1.45rem;font-weight:800}.gcv-passeios__grid{display:grid;grid-template-columns:1fr 1fr;gap:.45rem}.gcv-passeios__field--wide{grid-column:1 / -1}.gcv-passeios__summary{display:none;margin:0}.gcv-passeios__guide{display:flex;align-items:flex-start;gap:.45rem;margin:.45rem 0 .15rem;padding:.55rem .7rem;border-radius:10px;background:#fef3c7;color:#92400e;font-size:.82rem;line-height:1.35}.gcv-passeios__guide[hidden]{display:none}.gcv-passeios__guide .ti{font-size:1.05rem;line-height:1.2;flex:none}.gcv-passeios.is-dock.is-mini .gcv-passeios__guide{display:none}.gcv-passeios__field{display:block;font-size:.78rem;font-weight:600}.gcv-passeios input,.gcv-passeios select{width:100%;margin-top:.15rem;padding:.35rem .5rem;border:1px solid #cbd5e1;border-radius:8px;background:#fff;box-sizing:border-box}.gcv-passeios__checks{display:grid;gap:.15rem;margin:.35rem 0}.gcv-passeios__check{font-weight:500;font-size:.88rem}.gcv-passeios__actions{display:flex;justify-content:flex-end;margin-top:.45rem}.gcv-passeios__add{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;width:auto;margin:0;padding:.55rem .75rem;border:1px solid #6ee7b7;border-radius:10px;background:#ecfdf5;color:#047857;font:inherit;font-size:.78rem;font-weight:800;cursor:pointer}.gcv-passeios__add:hover{background:#d1fae5}.gcv-passeios__add.is-added{border-color:#047857;background:#047857;color:#fff}.gcv-passeios__add.is-added:hover{background:#065f46}.gcv-passeios__add.is-blocked,.gcv-passeios__add:disabled{opacity:.45;cursor:not-allowed;pointer-events:none}.gcv-datepicker{position:relative;width:100%;margin-top:.25rem}.gcv-datepicker__native{position:absolute!important;opacity:0!important;pointer-events:none!important;width:1px!important;height:1px!important;margin:0!important;padding:0!important;border:0!important}.gcv-datepicker__btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;box-sizing:border-box;padding:.35rem .5rem;font:inherit;font-size:.9rem;font-weight:500;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#0f172a;cursor:pointer;text-align:left}.gcv-datepicker__icon{width:18px;height:18px;color:#14532d;flex-shrink:0}.gcv-datepicker__pop{position:fixed;z-index:80;width:min(19.5rem,calc(100vw - 1.5rem));background:#fff;border:1px solid #d7ebe3;border-radius:16px;box-shadow:0 18px 48px rgba(15,61,46,.18);padding:.85rem .9rem 1rem}.gcv-datepicker__pop[hidden]{display:none!important}.gcv-datepicker__head{display:flex;align-items:center;justify-content:space-between;margin-bottom:.55rem}.gcv-datepicker__month{font-weight:700;color:#14532d}.gcv-datepicker__nav{width:32px;height:32px;border:0;border-radius:8px;background:#e8f0ec;color:#14532d;font-size:1.2rem;cursor:pointer}.gcv-datepicker__week,.gcv-datepicker__grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}.gcv-datepicker__week{margin-bottom:4px;font-size:.68rem;font-weight:700;color:#94a3b8}.gcv-datepicker__day{height:34px;border:0;border-radius:9px;background:transparent;font:inherit;cursor:pointer}.gcv-datepicker__day:hover:not(:disabled){background:#e8f0ec}.gcv-datepicker__day.is-today{box-shadow:inset 0 0 0 1.5px #14532d;font-weight:700}.gcv-datepicker__day.is-selected{background:#14532d;color:#fff;font-weight:700}.gcv-datepicker__day:disabled{color:#cbd5e1;cursor:default}@media(max-width:640px){.gcv-passeios__grid{grid-template-columns:1fr}}@media(min-width:768px){.gcv-passeios{max-width:none;width:100%;margin-left:0;margin-right:0;border-radius:4px}.gcv-passeios__now{border-radius:4px}}.gcv-passeios-slot{height:0}.gcv-passeios.is-dock{position:fixed;z-index:45;margin:0;box-sizing:border-box;box-shadow:0 10px 28px rgba(15,61,46,.18)}.gcv-passeios.is-dock.is-mini{display:flex;align-items:center;gap:.45rem;padding:.3rem .5rem}.gcv-passeios.is-dock.is-mini{flex-wrap:wrap}.gcv-passeios.is-dock.is-mini .gcv-passeios__now{display:none}.gcv-passeios.is-dock.is-mini .gcv-passeios__summary{display:block;flex:1 1 16rem;min-width:0;font-size:.78rem;font-weight:700;line-height:1.35;color:#0f3d2e}.gcv-passeios.is-dock.is-mini .gcv-passeios__grid,.gcv-passeios.is-dock.is-mini [data-passeio-msg]{display:none}.gcv-passeios.is-dock.is-mini .gcv-passeios__budget{margin:0 0 0 auto;padding:2px 4px}.gcv-passeios.is-dock.is-mini .gcv-passeios__total-value{font-size:1rem}.gcv-passeios.is-dock.is-mini .gcv-passeios__actions{margin:0;flex:none}.gcv-passeios.is-dock.is-mini .gcv-passeios__add{padding:.35rem .55rem}</style>' +
+      '<p class="gcv-passeios__now"><i class="ti ti-map" aria-hidden="true"></i> ' + passeioEsc(copy.title) + "</p>" +
+      '<p class="gcv-passeios__summary" data-passeio-summary></p>' +
+      '<div class="gcv-passeios__grid">' +
+      '<div class="gcv-passeios__field">' + copy.date + '<input type="text" data-passeio-date value="' + passeioAmanha() + '" /></div>' +
+      '<div class="gcv-passeios__field">' + copy.people + '<input type="number" min="1" max="15" value="4" data-passeio-people /></div>' +
+      '<div class="gcv-passeios__field">' + copy.city + '<select data-passeio-city><option>Alto Paraíso de Goiás</option><option>São Jorge</option><option>Cavalcante</option></select></div>' +
+      '<div class="gcv-passeios__field">' + copy.mode + '<select data-passeio-mode><option value="excursao">' + copy.group + '</option><option value="exclusivo">' + copy.private + '</option></select></div>' +
+      '<div class="gcv-passeios__field gcv-passeios__field--wide">' + copy.transport + '<select data-passeio-transport><option value="0">' + copy.withoutRide + '</option><option value="1">' + copy.withRide + '</option></select></div>' +
+      "</div>" +
+      '<p class="gcv-passeios__guide" data-passeio-guide hidden><i class="ti ti-steering-wheel" aria-hidden="true"></i><span data-passeio-guide-text></span></p>' +
+      '<p class="gcv-passeios__budget" data-passeio-total></p>' +
+      '<div class="gcv-passeios__actions"><button type="button" class="gcv-passeios__add" data-passeio-add aria-pressed="false"><i class="ti ti-shopping-cart" aria-hidden="true"></i> ' + passeioEsc(copy.add) + "</button></div>" +
+      '<p data-passeio-msg></p>';
+  }
+
+  function bindPasseioDate(box) {
+    var input = box.querySelector("[data-passeio-date]");
+    if (!input) return;
+    var min = passeioAmanha();
+    input.setAttribute("min", min);
+    function go() {
+      if (window.gcvBindDatePicker) window.gcvBindDatePicker(input, { min: min });
+    }
+    if (window.gcvBindDatePicker) {
+      go();
+      return;
+    }
+    var script = document.createElement("script");
+    script.src = "/assets/js/gcv-datepicker.js?v=1.0.3";
+    script.onload = go;
+    document.head.appendChild(script);
+  }
+
+  function bindPasseioBuilder(box, copy, data) {
+    function itemInCart(id) {
+      var cart = window.GcvExcCart;
+      return !!(
+        id &&
+        cart &&
+        typeof cart.items === "function" &&
+        cart.items().some(function (it) {
+          return it && it.id === id;
+        })
+      );
+    }
+
+    function buildItem() {
+      var sel = passeioSelecao(box, data);
+      var dateEl = box.querySelector("[data-passeio-date]");
+      var date = dateEl ? dateEl.value : "";
+      var pessoas = Math.max(1, parseInt(box.querySelector("[data-passeio-people]").value, 10) || 1);
+      var modalidade = box.querySelector("[data-passeio-mode]").value;
+      var cidade = box.querySelector("[data-passeio-city]").value;
+      var comTranslado = box.querySelector("[data-passeio-transport]").value === "1";
+      var quando = new Date(date + "T08:00:00");
+      if (!date || quando.getTime() <= Date.now()) return null;
+      var total = passeioTotalCents(sel, modalidade, pessoas, comTranslado);
+      var exclusivoCheio = modalidade === "exclusivo" && pessoas <= 4;
+      var unit = modalidade === "exclusivo"
+        ? (comTranslado ? sel.exclusivoT : sel.exclusivo)
+        : (comTranslado ? sel.excursaoT : sel.excursao);
+      return {
+        id: "roteiro-" + data.slug + "-" + sel.ids.join("-") + "-" + date + "-" + modalidade + "-" + (comTranslado ? "t" : "s"),
+        destino: sel.names.join(" + "),
+        destinos: sel.names.slice(),
+        dateLabel: date.split("-").reverse().join("/"),
+        dateIso: date,
+        valorUnit: exclusivoCheio ? Math.round(total / 100) : Math.round(unit / 100),
+        qty: exclusivoCheio ? 1 : pessoas,
+        pixDesc: sel.names.join(" + ") + " · " + (modalidade === "exclusivo" ? copy.private : copy.group) + " · " + (comTranslado ? copy.withRide : copy.withoutRide),
+        maxQty: 15,
+        embarque: cidade,
+        meetingPoint: passeioPonto(cidade),
+        hora: "08:00",
+        departureMs: quando.getTime(),
+      };
+    }
+
+    function paintAddButton() {
+      var btn = box.querySelector("[data-passeio-add]");
+      if (!btn) return;
+      var item = buildItem();
+      var cart = window.GcvExcCart;
+      var mine = !!(item && itemInCart(item.id));
+      var taken = item && cart && typeof cart.occupiedDates === "function" ? cart.occupiedDates()[item.dateIso] : "";
+      var blocked = !!(taken && item && taken !== item.id && !mine);
+      btn.disabled = blocked;
+      btn.classList.toggle("is-blocked", blocked);
+      btn.classList.toggle("is-added", mine);
+      btn.setAttribute("aria-pressed", mine ? "true" : "false");
+      if (blocked) {
+        btn.setAttribute("title", copy.sameDay);
+        btn.setAttribute("aria-disabled", "true");
+      } else {
+        btn.removeAttribute("title");
+        btn.removeAttribute("aria-disabled");
+      }
+      btn.innerHTML = mine
+        ? '<i class="ti ti-check" aria-hidden="true"></i> ' + passeioEsc(copy.addedBtn)
+        : '<i class="ti ti-shopping-cart" aria-hidden="true"></i> ' + passeioEsc(copy.add);
+    }
+
+    function paintSummary() {
+      var el = box.querySelector("[data-passeio-summary]");
+      if (!el) return;
+      var date = box.querySelector("[data-passeio-date]").value;
+      var pessoas = Math.max(1, parseInt(box.querySelector("[data-passeio-people]").value, 10) || 1);
+      var modalidade = box.querySelector("[data-passeio-mode]").value;
+      var cidade = box.querySelector("[data-passeio-city]").value;
+      var comTranslado = box.querySelector("[data-passeio-transport]").value === "1";
+      var modo = modalidade === "exclusivo" ? copy.private : copy.group;
+      var gente = pessoas + " " + (pessoas === 1 ? copy.person : copy.peopleWord);
+      el.textContent = [
+        passeioDataBr(date),
+        data.title,
+        gente + " (" + modo + ")",
+        copy.from + " " + passeioCidadeCurta(cidade),
+        comTranslado ? copy.withRide : copy.withoutRide,
+      ].join(" * ");
+    }
+
+    function paint() {
+      var sel = passeioSelecao(box, data);
+      var modalidade = box.querySelector("[data-passeio-mode]").value;
+      var pessoas = box.querySelector("[data-passeio-people]").value;
+      var comTranslado = box.querySelector("[data-passeio-transport]").value === "1";
+      var total = passeioTotalCents(sel, modalidade, pessoas, comTranslado);
+      paintSummary();
+      var guide = box.querySelector("[data-passeio-guide]");
+      var guideText = box.querySelector("[data-passeio-guide-text]");
+      var nPessoas = Math.max(1, parseInt(pessoas, 10) || 1);
+      var mostraGuia = passeioMostraGuia(modalidade, nPessoas, comTranslado);
+      if (guide) guide.hidden = !mostraGuia;
+      if (guideText) {
+        if (!mostraGuia) guideText.textContent = "";
+        else {
+          var nCarros = passeioCarros(nPessoas);
+          var gente = nPessoas + " " + (nPessoas === 1 ? copy.person : copy.peopleWord);
+          var frota = nCarros + " " + (nCarros === 1 ? copy.car : copy.cars);
+          guideText.textContent = copy.guideLead + " " + copy.guideRest.replace("{people}", gente).replace("{cars}", frota);
+        }
+      }
+      box.querySelector("[data-passeio-total]").innerHTML =
+        passeioEsc(copy.total) + ": " +
+        '<strong class="gcv-passeios__total-value">' + passeioEsc(passeioReais(total)) + "</strong>";
+      var item = buildItem();
+      if (item && itemInCart(item.id) && window.GcvExcCart && typeof window.GcvExcCart.sync === "function") {
+        window.GcvExcCart.sync(item);
+      }
+      paintAddButton();
+    }
+
+    ["data-passeio-date", "data-passeio-people", "data-passeio-city", "data-passeio-mode", "data-passeio-transport"].forEach(function (attr) {
+      var el = box.querySelector("[" + attr + "]");
+      if (el) el.addEventListener("input", paint);
+      if (el) el.addEventListener("change", paint);
+    });
+    box.querySelector("[data-passeio-add]").addEventListener("click", function () {
+      var msg = box.querySelector("[data-passeio-msg]");
+      var item = buildItem();
+      if (!item) {
+        if (msg) msg.textContent = copy.fail;
+        return;
+      }
+      if (msg) msg.textContent = "";
+      var cart = window.GcvExcCart;
+      if (!cart) return;
+      if (itemInCart(item.id)) {
+        if (typeof cart.remove === "function") cart.remove(item.id);
+      } else if (typeof cart.add === "function") {
+        cart.add(item);
+      }
+      paintAddButton();
+    });
+    document.addEventListener("click", function (e) {
+      if (e.target && e.target.closest && e.target.closest("[data-gcv-cart-remove]")) {
+        setTimeout(paintAddButton, 0);
+      }
+    });
+    bindPasseioDate(box);
+    paint();
+    bindPasseioDock(box);
+  }
+
+  function bindPasseioDock(box) {
+    var slot = document.createElement("div");
+    slot.className = "gcv-passeios-slot";
+    if (box.parentNode) box.parentNode.insertBefore(slot, box);
+    var lastY = window.scrollY || 0;
+    var restHeight = 0;
+
+    function headerOffset() {
+      var header = document.querySelector(".site-header");
+      if (!header) return 0;
+      var rect = header.getBoundingClientRect();
+      return Math.max(0, Math.round(rect.bottom));
+    }
+
+    function place(compact) {
+      var top = headerOffset();
+      if (!box.classList.contains("is-mini")) restHeight = box.offsetHeight;
+      if (!restHeight) restHeight = box.offsetHeight;
+      slot.style.height = restHeight + "px";
+      box.classList.add("is-dock");
+      box.classList.toggle("is-mini", !!compact);
+      var rect = slot.getBoundingClientRect();
+      box.style.top = top + "px";
+      box.style.left = Math.round(rect.left) + "px";
+      box.style.width = Math.round(rect.width) + "px";
+      if (compact) {
+        document.querySelectorAll(".gcv-datepicker__pop").forEach(function (pop) {
+          pop.hidden = true;
+        });
+      }
+    }
+
+    function release() {
+      restHeight = 0;
+      slot.style.height = "0px";
+      box.classList.remove("is-dock", "is-mini");
+      box.style.top = "";
+      box.style.left = "";
+      box.style.width = "";
+    }
+
+    function onScroll() {
+      var y = window.scrollY || 0;
+      var down = y > lastY + 4;
+      var up = y < lastY - 4;
+      lastY = y;
+      var passed = slot.getBoundingClientRect().top <= headerOffset() + 1;
+      if (!passed) {
+        release();
+        return;
+      }
+      if (down) place(true);
+      else if (up) place(false);
+      else if (!box.classList.contains("is-dock")) place(true);
+    }
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", function () {
+      if (box.classList.contains("is-dock")) place(box.classList.contains("is-mini"));
+    });
+  }
+
   initHeroCarousel();
   initInstagramRandomGrid();
   initHomeReviews();
@@ -1135,4 +1647,5 @@
   } catch (err) {
     if (typeof console !== "undefined" && console.error) console.error("[gcv-search]", err);
   }
+  initPasseiosPublicos();
 })();

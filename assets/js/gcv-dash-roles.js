@@ -1858,36 +1858,72 @@
     return !!(e && (e.offer_transport || Number(e.max_people_transport) > 0 || Number(e.price_transport_cents) > 0));
   }
 
-  function occupancySeatsHtml(filled, total, kind) {
-    filled = Math.max(0, parseFiniteInt(filled, 0));
-    total = Math.max(0, parseFiniteInt(total, 0));
+  function agendaOutsideIcon() {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9.5" cy="8" r="3"/><path d="M4 19c.55-2.7 2.7-4.4 5.5-4.4 1.15 0 2.15.28 3 .82"/><path d="M15.2 14.2l1.7 1.7 3.3-3.4"/></svg>';
+  }
+
+  function agendaGroupConfirmed(e) {
+    var life = String(e && e.lifecycle || '');
+    return life === 'confirmada' || life === 'concluida';
+  }
+
+  function agendaSeatCarIcon() {
+    return '<svg viewBox="2 6 20 14.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l1.4-4.2A2 2 0 018.3 7h7.4a2 2 0 011.9 1.8L19 13"/><path d="M4 13h16v3.5a1 1 0 01-1 1H5a1 1 0 01-1-1V13z"/><circle cx="7.5" cy="18.2" r="1.2" fill="currentColor" stroke="none"/><circle cx="16.5" cy="18.2" r="1.2" fill="currentColor" stroke="none"/></svg>';
+  }
+
+  function agendaPersonMark(tone) {
+    return '<span class="gcv-agenda-seat gcv-agenda-seat--person is-' + tone + '">' + agendaSeatIcon() + '</span>';
+  }
+
+  function agendaTransportMark(confirmed) {
+    var tone = confirmed ? 'ok' : 'hot';
+    return '<span class="gcv-agenda-seat gcv-agenda-seat--stack is-' + tone + '">' +
+      '<span class="gcv-agenda-seat__car">' + agendaSeatCarIcon() + '</span>' +
+      '<span class="gcv-agenda-seat__person">' + agendaSeatIcon() + '</span>' +
+      '</span>';
+  }
+
+  function occupancyGroupMarksHtml(st, confirmed) {
+    var total = Math.max(1, parseFiniteInt(st.total, 1));
     if (total > 12) total = 12;
-    if (filled > total) filled = total;
-    if (total < 1) return '';
+    var outside = Math.max(0, parseFiniteInt(st.outside, 0));
+    var walk = Math.max(0, parseFiniteInt(st.walk, 0));
+    var van = Math.max(0, parseFiniteInt(st.transport, 0));
+    if (outside > total) outside = total;
+    if (outside + walk > total) walk = Math.max(0, total - outside);
+    if (outside + walk + van > total) van = Math.max(0, total - outside - walk);
+    var tone = confirmed ? 'ok' : 'hot';
     var html = '';
     var i;
-    for (i = 1; i <= total; i++) {
-      html += '<span class="gcv-agenda-seat' + (i <= filled ? ' is-filled' : '') + ' gcv-agenda-seat--' + kind + '">' +
-        agendaSeatIcon() + '</span>';
-    }
+    for (i = 0; i < outside; i++) html += agendaPersonMark(tone);
+    for (i = 0; i < walk; i++) html += agendaPersonMark(tone);
+    for (i = 0; i < van; i++) html += agendaTransportMark(confirmed);
+    var empty = total - outside - walk - van;
+    for (i = 0; i < empty; i++) html += agendaPersonMark('empty');
     return html;
   }
 
-  function occupancyGroupSeatsHtml(walk, van, total) {
-    total = Math.max(1, parseFiniteInt(total, 1));
-    walk = Math.max(0, parseFiniteInt(walk, 0));
-    van = Math.max(0, parseFiniteInt(van, 0));
-    if (total > 12) total = 12;
-    if (walk + van > total) van = Math.max(0, total - walk);
-    var html = '';
-    var i;
-    for (i = 1; i <= total; i++) {
-      var kind = 'empty';
-      if (i <= walk) kind = 'walk is-filled';
-      else if (i <= walk + van) kind = 'van is-filled';
-      html += '<span class="gcv-agenda-seat gcv-agenda-seat--' + kind + '">' + agendaSeatIcon() + '</span>';
+  function quorumLineHtml(opts) {
+    if (opts.cancelled) return '<em class="gcv-agenda-lot__quorum is-bad">Cancelado</em>';
+    if (opts.locked) return '<em class="gcv-agenda-lot__quorum">Sem vaga no grupo</em>';
+    if (opts.kind === 'out') return '';
+    var quorum = parseFiniteInt(opts.quorum, 0);
+    var count = Math.max(0, parseFiniteInt(opts.quorumCount != null ? opts.quorumCount : opts.filled, 0));
+    if (quorum <= 0) {
+      if (opts.kind === 'walk' && count >= 1 && !opts.guideSeatOk && !opts.transportFormed) {
+        return '<em class="gcv-agenda-lot__quorum">Aguardando vaga para o guia</em>';
+      }
+      return '';
     }
-    return html;
+    var need = Math.max(0, quorum - count);
+    if (need === 0 && opts.kind === 'walk' && !opts.guideSeatOk && !opts.transportFormed) {
+      return '<em class="gcv-agenda-lot__quorum">Quórum ' + quorum + ' (aguardando vaga do guia)</em>';
+    }
+    if (need > 0) {
+      var falta = need === 1 ? 'Falta 1' : ('Faltam ' + need);
+      return '<em class="gcv-agenda-lot__quorum">Quórum ' + quorum + ' (' + falta + ')</em>';
+    }
+    return '<em class="gcv-agenda-lot__quorum is-met">Quórum ' + quorum + '</em>';
   }
 
   function occupancyRowHtml(opts) {
@@ -1896,69 +1932,60 @@
     var quorum = parseFiniteInt(opts.quorum, 0);
     var cancelled = !!opts.cancelled;
     var locked = !!opts.locked;
-    var formed = !cancelled && !locked && (quorum <= 0 || quorumCount >= quorum);
+    var formed = !cancelled && !locked && opts.kind !== 'out' && (quorum <= 0 || quorumCount >= quorum);
     if (opts.kind === 'walk' && filled >= 1 && !opts.guideSeatOk && !opts.transportFormed) {
       formed = false;
     }
-    var state = cancelled ? 'Cancelado' : (locked ? 'Sem vaga no grupo' : (formed ? 'Confirmado' : 'Em formação'));
-    var quorumHtml = '';
-    if (!cancelled && !locked && !formed) {
-      var need = Math.max(0, quorum - quorumCount);
-      if (need > 0) {
-        quorumHtml = '<em class="gcv-agenda-lot__quorum">Faltam ' + need + ' para o quórum</em>';
-      } else if (opts.kind === 'walk' && !opts.guideSeatOk) {
-        quorumHtml = '<em class="gcv-agenda-lot__quorum">Aguardando vaga para o guia</em>';
-      }
-    }
-    var peopleWord = filled === 1 ? 'inscrito' : 'inscritos';
+    var note = quorumLineHtml(opts);
     return (
       '<div class="gcv-agenda-lot__row gcv-agenda-lot__row--' + opts.kind +
       (locked ? ' is-locked' : '') + (cancelled ? ' is-cancelled' : '') + (formed ? ' is-formed' : '') + '">' +
+      '<div class="gcv-agenda-lot__top">' +
       '<div class="gcv-agenda-lot__label">' +
       '<span class="gcv-agenda-lot__ico" aria-hidden="true">' + opts.icon + '</span>' +
-      '<span>' +
       '<strong>' + esc(opts.title) + '</strong>' +
-      '<em class="gcv-agenda-lot__state">' + state + '</em>' +
-      quorumHtml +
-      '</span></div>' +
-      '<div class="gcv-agenda-lot__seats" role="img" aria-label="' + filled + ' ' + peopleWord + ' ' + esc(opts.title).toLowerCase() + '">' +
-      (filled > 0 ? occupancySeatsHtml(filled, filled, opts.kind) : '') +
       '</div>' +
       '<div class="gcv-agenda-lot__count"><b>' + filled + '</b></div>' +
+      '</div>' +
+      (note ? '<div class="gcv-agenda-lot__note">' + note + '</div>' : '') +
       '</div>'
     );
   }
 
   function agendaOccupancyState(e) {
-    var occ = e.group_occupancy;
-    if (occ && occ.total != null) {
-      return {
-        total: parseFiniteInt(occ.total, DEFAULT_MAX_PEOPLE),
-        walk: parseFiniteInt(occ.walk, 0),
-        transport: parseFiniteInt(occ.transport, 0),
-        occupied: parseFiniteInt(occ.occupied, 0),
-        offer: offersAgendaTransport(e),
-        walkSlots: parseFiniteInt(occ.walk_slots, 0),
-        transportSlots: parseFiniteInt(occ.transport_slots, 0),
-        cancelled: !!occ.transport_cancelled || !!e.transport_cancelled
-      };
-    }
+    var occ = e.group_occupancy || null;
     var total = Math.max(1, parseFiniteInt(e.max_people, DEFAULT_MAX_PEOPLE));
-    var walk = Math.max(0, parseFiniteInt(e.booked_people, 0) + parseFiniteInt(e.preconfirmed_people, 0));
+    var outside = Math.max(0, parseFiniteInt(e.preconfirmed_people, 0));
+    var walk = Math.max(0, parseFiniteInt(e.booked_people, 0));
     var transport = Math.max(0, parseFiniteInt(e.booked_people_transport, 0));
     var cap = Math.max(0, parseFiniteInt(e.max_people_transport, 0));
+    var cancelled = !!e.transport_cancelled;
+    if (occ && occ.total != null) {
+      total = Math.max(1, parseFiniteInt(occ.total, total));
+      if (occ.walk_inscriptions != null) walk = Math.max(0, parseFiniteInt(occ.walk_inscriptions, walk));
+      if (occ.transport != null) transport = Math.max(0, parseFiniteInt(occ.transport, transport));
+      if (occ.walk != null && occ.walk_inscriptions != null) {
+        outside = Math.max(0, parseFiniteInt(occ.walk, 0) - parseFiniteInt(occ.walk_inscriptions, 0));
+      }
+      if (occ.transport_cap != null) cap = Math.max(0, parseFiniteInt(occ.transport_cap, cap));
+      if (occ.transport_cancelled != null) cancelled = !!occ.transport_cancelled;
+    }
+    if (outside > total) outside = total;
+    if (outside + walk > total) walk = Math.max(0, total - outside);
+    if (outside + walk + transport > total) transport = Math.max(0, total - outside - walk);
     var offer = offersAgendaTransport(e);
     if (offer && cap < 1) cap = 4;
-    if (walk > total) walk = total;
-    if (walk + transport > total) transport = Math.max(0, total - walk);
     var quorumT = parseFiniteInt(e.quorum_transport, 0);
-    var roomT = Math.max(0, total - walk);
-    var cancelled = !!(offer && quorumT > 0 && transport < quorumT && roomT < quorumT);
+    var roomT = Math.max(0, total - outside - walk);
+    if (!(occ && occ.transport_cancelled != null)) {
+      cancelled = !!(offer && quorumT > 0 && transport < quorumT && roomT < quorumT);
+    }
     return {
       total: total,
+      outside: outside,
       walk: walk,
       transport: transport,
-      occupied: walk + transport,
+      occupied: outside + walk + transport,
       offer: offer,
       walkSlots: Math.max(0, total - transport),
       transportSlots: offer ? (cancelled ? transport : Math.max(0, Math.min(cap, roomT))) : 0,
@@ -1966,32 +1993,39 @@
     };
   }
 
+  function renderAgendaGroupLine(e) {
+    var st = agendaOccupancyState(e);
+    var confirmed = agendaGroupConfirmed(e);
+    return (
+      '<div class="gcv-agenda-groupline">' +
+      '<strong>Grupo</strong>' +
+      '<span class="gcv-agenda-groupline__count">' + st.occupied + '/' + st.total + '</span>' +
+      '<div class="gcv-agenda-lot__seats gcv-agenda-lot__seats--group" role="img" aria-label="' +
+      st.occupied + ' de ' + st.total + ' vagas do grupo">' +
+      occupancyGroupMarksHtml(st, confirmed) +
+      '</div></div>'
+    );
+  }
+
   function renderAgendaOccupancy(e) {
     var st = agendaOccupancyState(e);
-    var html =
-      '<div class="gcv-agenda-lot__group">' +
-      '<div class="gcv-agenda-lot__group-head">' +
-      '<strong>Grupo</strong>' +
-      '<span>' + st.occupied + '/' + st.total + '</span>' +
-      '</div>' +
-      '<div class="gcv-agenda-lot__seats gcv-agenda-lot__seats--group" role="img" aria-label="' + st.occupied + ' de ' + st.total + ' vagas do grupo">' +
-      occupancyGroupSeatsHtml(st.walk, st.transport, st.total) +
-      '</div>' +
-      (st.offer
-        ? '<p class="gcv-agenda-lot__hint">É um único grupo. Quem vai de carro reduz as vagas a pé, e o contrário também.</p>'
-        : '') +
-      '</div>';
     var qT = parseFiniteInt(e.quorum_transport, 0);
     var vanFormed = !!(st.offer && !st.cancelled && (qT <= 0 || st.transport >= qT));
+    var html = occupancyRowHtml({
+      kind: 'out',
+      icon: agendaOutsideIcon(),
+      title: 'Fechados por fora',
+      filled: st.outside
+    });
     html += occupancyRowHtml({
       kind: 'walk',
       icon: agendaWalkIcon(),
       title: 'Sem transporte',
       filled: st.walk,
-      quorumCount: parseFiniteInt(e.booked_people, 0),
+      quorumCount: st.walk,
       total: st.walkSlots,
       quorum: e.quorum,
-      locked: st.offer && st.walkSlots < 1,
+      locked: st.offer && st.walkSlots < 1 && st.walk < 1,
       guideSeatOk: e.walk_guide_seat_ok === true || e.walkGuideSeatOk === true,
       transportFormed: vanFormed
     });
@@ -2001,13 +2035,14 @@
         icon: agendaCarIcon(),
         title: 'Com transporte',
         filled: st.transport,
+        quorumCount: st.transport,
         total: st.transportSlots,
         quorum: e.quorum_transport,
-        locked: !st.cancelled && st.transportSlots < 1,
+        locked: !st.cancelled && st.transportSlots < 1 && st.transport < 1,
         cancelled: st.cancelled
       });
     }
-    return '<div class="gcv-agenda-lot">' + html + '</div>';
+    return '<div class="gcv-agenda-lot' + (st.offer ? ' gcv-agenda-lot--trio' : '') + '">' + html + '</div>';
   }
 
   function renderAgendaCard(e) {
@@ -2029,7 +2064,7 @@
       '<div class="gcv-guide-upcoming__head">' +
       '<div class="gcv-guide-upcoming__main">' +
       '<div class="gcv-guide-upcoming__top">' +
-      '<div class="gcv-guide-upcoming__status">' + lifeBadge(e.lifecycle, e.lifecycle_label) + '</div>' +
+      '<div class="gcv-guide-upcoming__status">' + lifeBadge(e.lifecycle, e.lifecycle_label) + renderAgendaGroupLine(e) + '</div>' +
       (actions ? '<div class="gcv-guide-upcoming__actions">' + actions + '</div>' : '') +
       '</div>' +
       '<h3 class="gcv-agenda-card__title">' + esc(e.attraction_title || 'Passeio') + '</h3>' +

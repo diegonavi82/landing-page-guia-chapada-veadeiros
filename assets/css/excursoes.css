@@ -5540,8 +5540,8 @@ html.gcv-waitlist-modal-open {
   user-select: none;
   -webkit-user-select: none;
   cursor: not-allowed;
-  /* Bloqueia o card inteiro: pointer-events no pai NÃO impede filhos com auto */
-  pointer-events: none !important;
+  /* O card recebe o clique para avisar; os filhos não navegam nem adicionam. */
+  pointer-events: auto !important;
 }
 
 .gcv-excursoes-card--day-blocked *,

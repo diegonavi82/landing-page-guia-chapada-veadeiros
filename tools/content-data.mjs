@@ -58,33 +58,59 @@ export const HOTSPOTS = [
   { slug: "cachoeira-macacao-guia-chapada-veadeiros-sao-joao-alianca", image: "imagens/cachoeira-macaco-chapada-veadeiros-macacao-4.jpg", title: { pt: "Macacão", en: "Macacão", es: "Macacão" }, lead: { pt: "Complexo conhecido como Macaquinhos/Macaco — cenário amplo e miradores naturais.", en: "Known as the Macaco complex — wide scenery and natural viewpoints.", es: "Complejo Macaco — escenario amplio y miradores naturales." } },
 ];
 
-/** Caixas % do mapa oficial (espelho de shared/src/waterfallMap.ts). */
+/** Caixas % do mapa 2027 (1366×600). */
 export const MAP_BOX_BY_SLUG = {
-  "cachoeira-almecegas-poco-sao-bento-guia-chapada-veadeiros": { l: 53.51, t: 65.33, w: 9.22, h: 6.33 },
-  "vale-lua-guia-chapada-veadeiros-sao-jorge": { l: 35.43, t: 70.67, w: 5.42, h: 6 },
-  "cataratas-dos-couros-guia-chapada-veadeiros-alto-paraiso": { l: 37.48, t: 77.83, w: 7.69, h: 7.33 },
-  "cachoeira-cordovil-poco-esmeralda-guia-chapada-veadeiros": { l: 41.07, t: 66.83, w: 6, h: 5.17 },
-  "cachoeira-segredo-guia-chapada-veadeiros-sao-jorge": { l: 27.16, t: 88.5, w: 6.66, h: 4.33 },
-  "cachoeira-cristais-guia-chapada-veadeiros-alto-paraiso": { l: 66.4, t: 49.33, w: 5.27, h: 3 },
-  "cachoeira-poco-encantado-guia-chapada-veadeiros-teresina-de-goias": { l: 72.99, t: 37.83, w: 11.13, h: 4.17 },
-  "cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante": { l: 46.49, t: 4.5, w: 6.66, h: 6.17 },
-  "cachoeira-complexo-rio-prata-guia-chapada-veadeiros-cavalcante": { l: 29.65, t: 5.83, w: 8.57, h: 3.67 },
-  "cachoeira-ponte-de-pedra-guia-chapada-veadeiros-cavalcante": { l: 37.2, t: 34.8, w: 8.2, h: 5.5 },
-  "cachoeira-macaquinhos-guia-chapada-veadeiros-sao-joao-alianca": { l: 89.68, t: 67, w: 9.59, h: 4 },
-  "cachoeira-label-guia-chapada-veadeiros-sao-joao-alianca": { l: 82.36, t: 84.67, w: 4.98, h: 3.67 },
-  "cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso": { l: 66.33, t: 60.33, w: 7.1, h: 3.83 },
-  "cachoeira-anjos-arcanjos-guia-chapada-veadeiros-alto-paraiso": { l: 77.6, t: 48.33, w: 10.54, h: 4.33 },
-  "mirante-janela-cachoeira-abismo-guia-chapada-veadeiros-sao-jorge": { l: 19.03, t: 57.5, w: 10.61, h: 7.33 },
-  "parque-nacional-chapada-veadeiros-saltos-rio-preto-sao-jorge": { l: 25.55, t: 45, w: 7.47, h: 6.67 },
-  "parque-nacional-chapada-veadeiros-canions-carioquinhas-sao-jorge": { l: 34.85, t: 50.67, w: 7.61, h: 6.67 },
-  "cachoeira-macacao-guia-chapada-veadeiros-sao-joao-alianca": { l: 81.55, t: 64.83, w: 7.1, h: 4.17 },
+  "cachoeira-almecegas-poco-sao-bento-guia-chapada-veadeiros": { l: 53.07, t: 65.67, w: 8.13, h: 5.67 },
+  "vale-lua-guia-chapada-veadeiros-sao-jorge": { l: 26.5, t: 73.17, w: 5.49, h: 5.67 },
+  "cataratas-dos-couros-guia-chapada-veadeiros-alto-paraiso": { l: 33.82, t: 75.67, w: 13.1, h: 3.5 },
+  "cachoeira-cordovil-poco-esmeralda-guia-chapada-veadeiros": { l: 36.75, t: 70.33, w: 6.44, h: 3.67 },
+  "cachoeira-segredo-guia-chapada-veadeiros-sao-jorge": { l: 20.5, t: 87.17, w: 6.3, h: 4 },
+  "cachoeira-cristais-guia-chapada-veadeiros-alto-paraiso": { l: 66.47, t: 49, w: 5.49, h: 3.67 },
+  "cachoeira-poco-encantado-guia-chapada-veadeiros-teresina-de-goias": { l: 75.62, t: 35.5, w: 10.69, h: 4.17 },
+  "cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante": { l: 47.07, t: 2.67, w: 6.15, h: 5.33 },
+  "cachoeira-complexo-rio-prata-guia-chapada-veadeiros-cavalcante": { l: 23.5, t: 10.67, w: 10.32, h: 4 },
+  "cachoeira-ponte-de-pedra-guia-chapada-veadeiros-cavalcante": { l: 27.16, t: 24.83, w: 9.96, h: 3.67 },
+  "cachoeira-macaquinhos-guia-chapada-veadeiros-sao-joao-alianca": { l: 90.56, t: 63.83, w: 8.93, h: 3.83 },
+  "cachoeira-label-guia-chapada-veadeiros-sao-joao-alianca": { l: 80.09, t: 88.83, w: 4.83, h: 3.67 },
+  "cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso": { l: 65.59, t: 60.83, w: 7.1, h: 4 },
+  "cachoeira-anjos-arcanjos-guia-chapada-veadeiros-alto-paraiso": { l: 77.82, t: 48.33, w: 10.4, h: 3.67 },
+  "mirante-janela-cachoeira-abismo-guia-chapada-veadeiros-sao-jorge": { l: 11.64, t: 61, w: 7.03, h: 5.83 },
+  "parque-nacional-chapada-veadeiros-saltos-rio-preto-sao-jorge": { l: 20.42, t: 61.67, w: 10.32, h: 5.5 },
+  "parque-nacional-chapada-veadeiros-canions-carioquinhas-sao-jorge": { l: 26.87, t: 59.17, w: 6.66, h: 6 },
+  "cachoeira-macacao-guia-chapada-veadeiros-sao-joao-alianca": { l: 81.55, t: 64.5, w: 7.17, h: 3.5 },
+};
+
+/**
+ * Segundo apontamento no mesmo destino.
+ * Cataratas dos Couros e Parque Estadual Águas do Paraíso abrem a mesma página.
+ */
+export const MAP_EXTRA_BY_SLUG = {
+  "cataratas-dos-couros-guia-chapada-veadeiros-alto-paraiso": [
+    {
+      title: {
+        pt: "Parque Estadual Águas do Paraíso",
+        en: "Águas do Paraíso State Park",
+        es: "Parque Estatal Águas do Paraíso",
+      },
+      box: { l: 37.85, t: 80.67, w: 10.54, h: 5.5 },
+    },
+  ],
 };
 
 export function hotspotsForMap() {
-  return HOTSPOTS.filter((h) => MAP_BOX_BY_SLUG[h.slug]).map((h) => ({ ...h, box: MAP_BOX_BY_SLUG[h.slug] }));
+  const out = [];
+  for (const spot of HOTSPOTS) {
+    const box = MAP_BOX_BY_SLUG[spot.slug];
+    if (!box) continue;
+    out.push({ ...spot, box });
+    for (const extra of MAP_EXTRA_BY_SLUG[spot.slug] || []) {
+      out.push({ ...spot, title: extra.title, box: extra.box });
+    }
+  }
+  return out;
 }
 
-export const MAP_IMAGE = "imagens/cachoeiras-guia-chapada-veadeiros-2022.jpg";
+export const MAP_IMAGE = "imagens/mapa-cachoeiras-guia-chapada-veadeiros-2027.jpg";
 
 /** Slides do hero (copy i18n/common.json do cliente React). */
 export const HERO_SLIDES = {
@@ -599,7 +625,7 @@ export const STRINGS = {
       mapEmbeddedLead:
         "Toque ou clique nas áreas do mapa sobre os atrativos que estão catalogados para obter maiores informações.",
       mapInteractiveTitle: "Mapa interativo",
-      mapAlt: "Mapa ilustrado da Chapada dos Veadeiros com cachoeiras e núcleos urbanos.",
+      mapAlt: "Mapa Chapada Veadeiros ilustrado, com cachoeiras e núcleos urbanos.",
       reviewsH2: "Depoimentos de quem já passeou com a gente",
       atrativosChip: "Mapa oficial",
       atrativosH1: "Atrativos da Chapada",
@@ -752,7 +778,7 @@ export const STRINGS = {
       mapEmbeddedLead:
         "Tap or click areas on the map over the catalogued attractions for more information.",
       mapInteractiveTitle: "Interactive map",
-      mapAlt: "Illustrated map of Chapada dos Veadeiros with waterfalls and towns.",
+      mapAlt: "Illustrated Chapada Veadeiros map with waterfalls and towns.",
       reviewsH2: "What travellers say",
       atrativosChip: "Official map",
       atrativosH1: "Chapada attractions",
@@ -905,7 +931,7 @@ export const STRINGS = {
       mapEmbeddedLead:
         "Toca o haz clic en las zonas del mapa sobre los atractivos catalogados para obtener más información.",
       mapInteractiveTitle: "Mapa interactivo",
-      mapAlt: "Mapa ilustrado de Chapada dos Veadeiros con cascadas y núcleos urbanos.",
+      mapAlt: "Mapa ilustrado Chapada Veadeiros con cascadas y núcleos urbanos.",
       reviewsH2: "Opiniones de viajeros",
       atrativosChip: "Mapa oficial",
       atrativosH1: "Atractivos de la Chapada",

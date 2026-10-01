@@ -1386,7 +1386,13 @@
       checkin_open_before_minutes: 'finance',
       checkin_close_before_payout_minutes: 'finance',
       transfer_offer_hours: 'transfer',
-      transfer_cancel_hours: 'transfer'
+      transfer_cancel_hours: 'transfer',
+      diaria_minima_reais: 'regras',
+      pg_minimo_guia_reais: 'regras',
+      pausa_convite_inicio_hora: 'regras',
+      pausa_convite_fim_hora: 'regras',
+      tarifa_ia_ativa: 'regras',
+      tarifa_ia_passo_pct: 'regras'
     };
     var groupMeta = {
       notify: {
@@ -1397,6 +1403,10 @@
         title: 'Troca de passeio (quórum)',
         hint: 'Dois prazos, sem cruzar: a lista de troca abre antes (padrão 48 h) e o cancelamento automático só depois (padrão 12 h). Só inscrição em formação pode ir para um passeio já confirmado no mesmo dia e mesma cidade. Se não houver opção, vale só o cancelamento 100%.'
       },
+      regras: {
+        title: 'Tarifa do roteiro',
+        hint: 'Diária mínima e pagamento mínimo do guia travam o salvamento da tarifa. A tarifa progressiva só sobe preço de passeio do admin ou aberto pelo cliente, nunca o do guia. O relógio de aceite para entre 22h e 8h.'
+      },
       finance: {
         title: 'Financeiro e repasse',
         hint: 'A diária máxima é o valor que o guia pode pedir por pessoa. O PIX automático sai no horário abaixo, só para clientes cujo QR o guia leu. A leitura abre X minutos antes da saída e fecha X minutos antes desse PIX.'
@@ -1405,13 +1415,13 @@
     };
     get('/api/admin/settings.php', function (err, res) {
       if (!res || !res.ok) return;
-      var buckets = { notify: [], transfer: [], finance: [], other: [] };
+      var buckets = { notify: [], transfer: [], finance: [], regras: [], other: [] };
       (res.data.settings || []).forEach(function (s) {
         var g = groupOf[s.key_name] || 'other';
         buckets[g].push(s);
       });
       form.innerHTML = '';
-      ['notify', 'transfer', 'finance', 'other'].forEach(function (gid) {
+      ['notify', 'transfer', 'finance', 'regras', 'other'].forEach(function (gid) {
         var list = buckets[gid];
         if (!list.length) return;
         var box = el('div', 'gcv-dash-settings-group');
@@ -1420,7 +1430,7 @@
           + (meta.hint ? '<p class="gcv-dash-settings-group__hint">' + meta.hint + '</p>' : '');
         list.forEach(function (s) {
           var row = el('div', 'gcv-dash-settings-row');
-          var unit = /guide_net_.*_reais/.test(s.key_name)
+          var unit = /(_reais|guide_net_)/.test(s.key_name) && /reais/.test(s.key_name)
             ? 'R$'
             : (/minute/.test(s.key_name) ? 'min' : (s.type === 'percent' ? '%' : (/hours|hour/.test(s.key_name) ? 'h' : '')));
           row.innerHTML = '<div class="gcv-dash-settings-label"><strong>' + s.label + '</strong></div>'

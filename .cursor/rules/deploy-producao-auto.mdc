@@ -1,17 +1,16 @@
 ---
-description: Sempre publicar alterações no site da Hostinger automaticamente
+description: Deploy em produção pausado — só publicar quando o usuário pedir
 alwaysApply: true
 ---
 
-# Deploy automático em produção
+# Deploy automático PAUSADO
 
-Toda alteração que afete o site **www.guiachapadaveadeiros.com** deve ser enviada à Hostinger **nesta mesma tarefa**, sem pedir FTP ao usuário.
+Não enviar arquivos para a Hostinger e não rodar `npm run deploy:prod`, a menos que o usuário peça explicitamente para publicar, fazer deploy ou “subir para produção”.
 
-1. Depois de editar HTML/CSS/JS/PHP/imagens do site, rodar:
-   `npm run deploy:prod -- <arquivos-alterados>`
-2. Document root FTP: `domains/guiachapadaveadeiros.com/public_html`
-3. Credenciais: `.env.deploy`
-4. Confirmar no output que os arquivos subiram e, se for JS/CSS, que o `?v=` do HTML foi atualizado.
-5. Não deixar mudança só na máquina local.
+Enquanto esta pausa estiver ativa:
 
-SQL: ver regra de migrations — criar o `.sql` e executar com `npm run db:migrate -- <arquivo.sql>` (já cai na Hostinger).
+1. Alterar e testar só na máquina local.
+2. Ao terminar uma tarefa, dizer o que mudou e que **não foi para o ar**.
+3. Migrations SQL (`npm run db:migrate`) também ficam pausadas: elas gravam no banco da Hostinger. Só rodar se o usuário pedir.
+
+Para religar o deploy automático, o usuário precisa pedir para voltar o deploy automático. Aí esta regra volta a publicar nesta mesma tarefa, com `npm run deploy:prod -- <arquivos-alterados>`, document root `domains/guiachapadaveadeiros.com/public_html` e credenciais em `.env.deploy`.

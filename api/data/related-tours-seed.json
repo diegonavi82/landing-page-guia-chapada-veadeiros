@@ -1,0 +1,283 @@
+{
+  "durations": [
+    {
+      "slug": "cachoeira-almecegas-poco-sao-bento-guia-chapada-veadeiros",
+      "title": "Almécegas",
+      "minutes": 240,
+      "page": "atrativos/cachoeira-almecegas-poco-sao-bento-guia-chapada-veadeiros.html"
+    },
+    {
+      "slug": "cachoeira-anjos-arcanjos-guia-chapada-veadeiros-alto-paraiso",
+      "title": "Anjos e Arcanjos",
+      "minutes": 180,
+      "page": "atrativos/cachoeira-anjos-arcanjos-guia-chapada-veadeiros-alto-paraiso.html"
+    },
+    {
+      "slug": "caracol-guia-chapada-veadeiros",
+      "title": "Caracol",
+      "minutes": 180,
+      "page": "atrativos/caracol-guia-chapada-veadeiros.html"
+    },
+    {
+      "slug": "cataratas-dos-couros-guia-chapada-veadeiros-alto-paraiso",
+      "title": "Cataratas dos Couros",
+      "minutes": 300,
+      "page": "atrativos/cataratas-dos-couros-guia-chapada-veadeiros-alto-paraiso.html"
+    },
+    {
+      "slug": "cachoeira-complexo-rio-prata-guia-chapada-veadeiros-cavalcante",
+      "title": "Complexo Rio da Prata",
+      "minutes": 360,
+      "page": "atrativos/cachoeira-complexo-rio-prata-guia-chapada-veadeiros-cavalcante.html"
+    },
+    {
+      "slug": "cachoeira-cordovil-poco-esmeralda-guia-chapada-veadeiros",
+      "title": "Cordovil",
+      "minutes": 300,
+      "page": "atrativos/cachoeira-cordovil-poco-esmeralda-guia-chapada-veadeiros.html"
+    },
+    {
+      "slug": "cachoeira-cristais-guia-chapada-veadeiros-alto-paraiso",
+      "title": "Cristais",
+      "minutes": 150,
+      "page": "atrativos/cachoeira-cristais-guia-chapada-veadeiros-alto-paraiso.html"
+    },
+    {
+      "slug": "cachoeira-label-guia-chapada-veadeiros-sao-joao-alianca",
+      "title": "Label",
+      "minutes": 180,
+      "page": "atrativos/cachoeira-label-guia-chapada-veadeiros-sao-joao-alianca.html"
+    },
+    {
+      "slug": "cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso",
+      "title": "Loquinhas",
+      "minutes": 120,
+      "page": "atrativos/cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso.html"
+    },
+    {
+      "slug": "cachoeira-macacao-guia-chapada-veadeiros-sao-joao-alianca",
+      "title": "Macacão",
+      "minutes": 240,
+      "page": "atrativos/cachoeira-macacao-guia-chapada-veadeiros-sao-joao-alianca.html"
+    },
+    {
+      "slug": "cachoeira-macaquinhos-guia-chapada-veadeiros-sao-joao-alianca",
+      "title": "Macaquinhos",
+      "minutes": 300,
+      "page": "atrativos/cachoeira-macaquinhos-guia-chapada-veadeiros-sao-joao-alianca.html"
+    },
+    {
+      "slug": "mirante-janela-cachoeira-abismo-guia-chapada-veadeiros-sao-jorge",
+      "title": "Mirante da Janela",
+      "minutes": 240,
+      "page": "atrativos/mirante-janela-cachoeira-abismo-guia-chapada-veadeiros-sao-jorge.html"
+    },
+    {
+      "slug": "parque-nacional-chapada-veadeiros-canions-carioquinhas-sao-jorge",
+      "title": "Parque Nacional - Cariocas",
+      "minutes": 180,
+      "page": "atrativos/parque-nacional-chapada-veadeiros-canions-carioquinhas-sao-jorge.html"
+    },
+    {
+      "slug": "parque-nacional-chapada-veadeiros-saltos-rio-preto-sao-jorge",
+      "title": "Parque Nacional - Saltos do rio Preto",
+      "minutes": 360,
+      "page": "atrativos/parque-nacional-chapada-veadeiros-saltos-rio-preto-sao-jorge.html"
+    },
+    {
+      "slug": "cachoeira-poco-encantado-guia-chapada-veadeiros-teresina-de-goias",
+      "title": "Poço Encantado",
+      "minutes": 120,
+      "page": "atrativos/cachoeira-poco-encantado-guia-chapada-veadeiros-teresina-de-goias.html"
+    },
+    {
+      "slug": "cachoeira-ponte-de-pedra-guia-chapada-veadeiros-cavalcante",
+      "title": "Ponte de Pedra",
+      "minutes": 180,
+      "page": "atrativos/cachoeira-ponte-de-pedra-guia-chapada-veadeiros-cavalcante.html"
+    },
+    {
+      "slug": "cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante",
+      "title": "Santa Bárbara",
+      "minutes": 240,
+      "page": "atrativos/cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante.html"
+    },
+    {
+      "slug": "cachoeira-segredo-guia-chapada-veadeiros-sao-jorge",
+      "title": "Segredo",
+      "minutes": 240,
+      "page": "atrativos/cachoeira-segredo-guia-chapada-veadeiros-sao-jorge.html"
+    },
+    {
+      "slug": "vale-lua-guia-chapada-veadeiros-sao-jorge",
+      "title": "Vale da Lua",
+      "minutes": 150,
+      "page": "atrativos/vale-lua-guia-chapada-veadeiros-sao-jorge.html"
+    }
+  ],
+  "related": [
+    {
+      "source": "Anjos e Arcanjos + Caracol",
+      "minutes": 360,
+      "attractions": [
+        {
+          "title": "Anjos e Arcanjos",
+          "slug": "cachoeira-anjos-arcanjos-guia-chapada-veadeiros-alto-paraiso",
+          "page": "atrativos/cachoeira-anjos-arcanjos-guia-chapada-veadeiros-alto-paraiso.html"
+        },
+        {
+          "title": "Caracol",
+          "slug": "caracol-guia-chapada-veadeiros",
+          "page": "atrativos/caracol-guia-chapada-veadeiros.html"
+        }
+      ]
+    },
+    {
+      "source": "Almécegas + Vale da Lua",
+      "minutes": 390,
+      "attractions": [
+        {
+          "title": "Almécegas",
+          "slug": "cachoeira-almecegas-poco-sao-bento-guia-chapada-veadeiros",
+          "page": "atrativos/cachoeira-almecegas-poco-sao-bento-guia-chapada-veadeiros.html"
+        },
+        {
+          "title": "Vale da Lua",
+          "slug": "vale-lua-guia-chapada-veadeiros-sao-jorge",
+          "page": "atrativos/vale-lua-guia-chapada-veadeiros-sao-jorge.html"
+        }
+      ]
+    },
+    {
+      "source": "Segredo + Vale da Lua",
+      "minutes": 390,
+      "attractions": [
+        {
+          "title": "Segredo",
+          "slug": "cachoeira-segredo-guia-chapada-veadeiros-sao-jorge",
+          "page": "atrativos/cachoeira-segredo-guia-chapada-veadeiros-sao-jorge.html"
+        },
+        {
+          "title": "Vale da Lua",
+          "slug": "vale-lua-guia-chapada-veadeiros-sao-jorge",
+          "page": "atrativos/vale-lua-guia-chapada-veadeiros-sao-jorge.html"
+        }
+      ]
+    },
+    {
+      "source": "Loquinhas + Vale da Lua",
+      "minutes": 270,
+      "attractions": [
+        {
+          "title": "Loquinhas",
+          "slug": "cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso",
+          "page": "atrativos/cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso.html"
+        },
+        {
+          "title": "Vale da Lua",
+          "slug": "vale-lua-guia-chapada-veadeiros-sao-jorge",
+          "page": "atrativos/vale-lua-guia-chapada-veadeiros-sao-jorge.html"
+        }
+      ]
+    },
+    {
+      "source": "Almécegas + Loquinhas",
+      "minutes": 360,
+      "attractions": [
+        {
+          "title": "Almécegas",
+          "slug": "cachoeira-almecegas-poco-sao-bento-guia-chapada-veadeiros",
+          "page": "atrativos/cachoeira-almecegas-poco-sao-bento-guia-chapada-veadeiros.html"
+        },
+        {
+          "title": "Loquinhas",
+          "slug": "cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso",
+          "page": "atrativos/cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso.html"
+        }
+      ]
+    },
+    {
+      "source": "Cordovil + Loquinhas",
+      "minutes": 420,
+      "attractions": [
+        {
+          "title": "Cordovil",
+          "slug": "cachoeira-cordovil-poco-esmeralda-guia-chapada-veadeiros",
+          "page": "atrativos/cachoeira-cordovil-poco-esmeralda-guia-chapada-veadeiros.html"
+        },
+        {
+          "title": "Loquinhas",
+          "slug": "cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso",
+          "page": "atrativos/cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso.html"
+        }
+      ]
+    },
+    {
+      "source": "Almécegas + Vale da Lua + Ponte de Pedra",
+      "minutes": 570,
+      "attractions": [
+        {
+          "title": "Almécegas",
+          "slug": "cachoeira-almecegas-poco-sao-bento-guia-chapada-veadeiros",
+          "page": "atrativos/cachoeira-almecegas-poco-sao-bento-guia-chapada-veadeiros.html"
+        },
+        {
+          "title": "Vale da Lua",
+          "slug": "vale-lua-guia-chapada-veadeiros-sao-jorge",
+          "page": "atrativos/vale-lua-guia-chapada-veadeiros-sao-jorge.html"
+        },
+        {
+          "title": "Ponte de Pedra",
+          "slug": "cachoeira-ponte-de-pedra-guia-chapada-veadeiros-cavalcante",
+          "page": "atrativos/cachoeira-ponte-de-pedra-guia-chapada-veadeiros-cavalcante.html"
+        }
+      ]
+    },
+    {
+      "source": "Cordovil + Vale da Lua",
+      "minutes": 450,
+      "attractions": [
+        {
+          "title": "Cordovil",
+          "slug": "cachoeira-cordovil-poco-esmeralda-guia-chapada-veadeiros",
+          "page": "atrativos/cachoeira-cordovil-poco-esmeralda-guia-chapada-veadeiros.html"
+        },
+        {
+          "title": "Vale da Lua",
+          "slug": "vale-lua-guia-chapada-veadeiros-sao-jorge",
+          "page": "atrativos/vale-lua-guia-chapada-veadeiros-sao-jorge.html"
+        }
+      ]
+    }
+  ],
+  "skipped": [
+    {
+      "source": "Santa Bárbara + Capivara",
+      "reason": "sem página: Capivara"
+    },
+    {
+      "source": "Santa Bárbara + Candaru",
+      "reason": "sem página: Candaru"
+    },
+    {
+      "source": "Santa Bárbara + Capivara + Candaru",
+      "reason": "sem página: Capivara, Candaru"
+    },
+    {
+      "source": "Morada do Sol + Raizama",
+      "reason": "sem página: Morada do Sol, Raizama"
+    },
+    {
+      "source": "Morada do Sol + Lajeado",
+      "reason": "sem página: Morada do Sol, Lajeado"
+    },
+    {
+      "source": "Lajeado + Raizama",
+      "reason": "sem página: Lajeado, Raizama"
+    },
+    {
+      "source": "Vale da Lua + Raizama",
+      "reason": "sem página: Raizama"
+    }
+  ]
+}

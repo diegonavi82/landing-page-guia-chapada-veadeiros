@@ -5,6 +5,7 @@ require_once __DIR__ . '/../helpers/db.php';
 require_once __DIR__ . '/../helpers/auth.php';
 require_once __DIR__ . '/../helpers/cms_schema.php';
 require_once __DIR__ . '/../helpers/excursion_attractions.php';
+require_once __DIR__ . '/../helpers/related_tours.php';
 
 header('Content-Type: application/json; charset=utf-8');
 $admin = require_admin();
@@ -38,6 +39,17 @@ function gcv_save_attraction_gallery(int $attractionId, array $gallery): void
         ]);
         $i++;
     }
+}
+
+function gcv_attraction_save_duration(int $id, array $body): void
+{
+    if (!array_key_exists('duration_minutes', $body)) {
+        return;
+    }
+    $raw = $body['duration_minutes'];
+    $minutes = ($raw === '' || $raw === null) ? null : max(0, (int)$raw);
+    db()->prepare('UPDATE gcv_attractions SET duration_minutes = ? WHERE id = ?')->execute([$minutes, $id]);
+    gcv_related_refresh_durations(db(), $id);
 }
 
 function gcv_attraction_from_body(array $body, ?array $existing = null): array
@@ -99,13 +111,19 @@ if ($method === 'GET') {
                 exit;
             }
             $row['gallery'] = gcv_attraction_gallery($id);
+            $row['page'] = gcv_attraction_public_html_path((string)($row['slug'] ?? ''));
+            $row['related_tours'] = gcv_related_tours_for_attraction(db(), $id);
             echo json_encode(['ok' => true, 'data' => $row]);
             exit;
         }
         $rows = db()->query(
-            'SELECT id, slug, status, title_pt, cover_url, difficulty, entry_price_cents, entry_price_label, city_id, updated_at
+            'SELECT id, slug, status, title_pt, cover_url, difficulty, duration_minutes, entry_price_cents, entry_price_label, city_id, updated_at
              FROM gcv_attractions ORDER BY title_pt ASC'
         )->fetchAll();
+        foreach ($rows as &$row) {
+            $row['page'] = gcv_attraction_public_html_path((string)($row['slug'] ?? ''));
+        }
+        unset($row);
         $rows = gcv_sort_attractions_catalog($rows);
         echo json_encode(['ok' => true, 'data' => ['attractions' => $rows]]);
         exit;
@@ -150,6 +168,7 @@ if ($method === 'POST') {
             $row['published_at'], (int)$admin['id'], (int)$admin['id'],
         ]);
         $id = (int)db()->lastInsertId();
+        gcv_attraction_save_duration($id, $body);
         if (!empty($body['gallery']) && is_array($body['gallery'])) {
             gcv_save_attraction_gallery($id, $body['gallery']);
         }
@@ -213,10 +232,13 @@ if ($method === 'PUT') {
         if (array_key_exists('gallery', $body) && is_array($body['gallery'])) {
             gcv_save_attraction_gallery($id, $body['gallery']);
         }
+        gcv_attraction_save_duration($id, $body);
         $stmt = db()->prepare('SELECT * FROM gcv_attractions WHERE id = ?');
         $stmt->execute([$id]);
         $out = $stmt->fetch();
         $out['gallery'] = gcv_attraction_gallery($id);
+        $out['page'] = gcv_attraction_public_html_path((string)($out['slug'] ?? ''));
+        $out['related_tours'] = gcv_related_tours_for_attraction(db(), $id);
         echo json_encode(['ok' => true, 'data' => $out]);
         exit;
     } catch (Throwable $e) {

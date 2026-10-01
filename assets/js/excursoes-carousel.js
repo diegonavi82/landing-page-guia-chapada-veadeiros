@@ -5838,6 +5838,9 @@
       e.preventDefault();
       e.stopPropagation();
       if (typeof e.stopImmediatePropagation === "function") e.stopImmediatePropagation();
+      if (e.type === "click" && window.GcvExcCart && typeof window.GcvExcCart.warnSameDay === "function") {
+        window.GcvExcCart.warnSameDay();
+      }
       return true;
     }
 
@@ -6119,9 +6122,8 @@
 
   function applyDayBlockedInteractivity(card, dayBlocked) {
     if (!card) return;
-    // inert bloqueia foco, clique e seleção em todos os descendentes (quando suportado)
     try {
-      card.inert = !!dayBlocked;
+      card.inert = false;
     } catch (err) {
       /* */
     }

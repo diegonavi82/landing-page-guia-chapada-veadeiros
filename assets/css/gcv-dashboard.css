@@ -2078,8 +2078,27 @@ body.gcv-dash-page main.gcv-dash-main {
 #section-cms-guides.is-editing .gcv-exc-sheet-title-actions {
   display: none !important;
 }
-.gcv-cms-row {
+.gcv-rel-card {
+  border: 1px solid #d7e3dc;
+  border-radius: 12px;
+  padding: 1rem 1.1rem 1.1rem;
+  margin: 0.75rem 0;
+  background: #fff;
+}
+.gcv-rel-card__top {
   display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+}
+.gcv-rel-card__time {
+  margin: 0.2rem 0 0.35rem;
+  font-size: 1.7rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: #14532d;
+}
   justify-content: space-between;
   gap: 0.75rem;
   align-items: center;
@@ -2785,6 +2804,8 @@ body.gcv-dash-page main.gcv-dash-main {
 }
 .gcv-agenda-card {
   position: relative;
+  min-width: 0;
+  max-width: 100%;
   padding: 16px;
   border: 1px solid rgba(15, 61, 46, 0.08);
   border-left: 4px solid #94a3b8;
@@ -2811,9 +2832,12 @@ body.gcv-dash-page main.gcv-dash-main {
   align-items: flex-start;
   gap: 0.75rem;
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 .gcv-guide-upcoming__main {
   min-width: 0;
+  max-width: 100%;
   flex: 1;
 }
 .gcv-guide-upcoming__top {
@@ -2822,13 +2846,43 @@ body.gcv-dash-page main.gcv-dash-main {
   align-items: flex-start;
   gap: 0.5rem;
   margin: 0 0 0.55rem;
+  min-width: 0;
+  max-width: 100%;
 }
 .gcv-guide-upcoming__status {
-  display: block;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  flex: 1;
   min-width: 0;
 }
 .gcv-guide-upcoming__status .gcv-life {
   display: inline-block;
+  flex-shrink: 0;
+}
+.gcv-agenda-groupline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 6px 8px;
+  flex: 1 1 12rem;
+  min-width: 0;
+  max-width: 100%;
+}
+.gcv-agenda-groupline strong {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1;
+  padding-bottom: 2px;
+}
+.gcv-agenda-groupline__count {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #475569;
+  line-height: 1;
+  padding-bottom: 2px;
 }
 .gcv-agenda-card__title {
   margin: 0 0 0.45rem;
@@ -2860,50 +2914,31 @@ body.gcv-dash-page main.gcv-dash-main {
   color: #047857;
 }
 .gcv-agenda-lot {
-  display: grid;
-  gap: 8px;
-  margin-top: 12px;
-}
-.gcv-agenda-lot__group {
-  grid-column: 1 / -1;
-  padding: 10px 12px;
-  border-radius: 14px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-}
-.gcv-agenda-lot__group-head {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.5rem;
-  margin: 0 0 8px;
-}
-.gcv-agenda-lot__group-head strong {
-  font-size: 0.78rem;
-  font-weight: 800;
-  color: #0f172a;
-}
-.gcv-agenda-lot__group-head span {
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: #475569;
-}
-.gcv-agenda-lot__hint {
-  margin: 8px 0 0;
-  font-size: 0.7rem;
-  line-height: 1.35;
-  color: #64748b;
+  gap: 8px;
+  align-items: stretch;
+  margin-top: 14px;
 }
 .gcv-agenda-lot__row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas:
-    "label count"
-    "seats seats";
-  gap: 6px 10px;
-  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  min-height: 96px;
+  padding: 12px 12px 11px;
   border-radius: 14px;
   border: 1px solid transparent;
+  box-sizing: border-box;
+}
+.gcv-agenda-lot--trio .gcv-agenda-lot__row--out { flex: 30 1 0; }
+.gcv-agenda-lot--trio .gcv-agenda-lot__row--walk,
+.gcv-agenda-lot--trio .gcv-agenda-lot__row--van { flex: 35 1 0; }
+.gcv-agenda-lot:not(.gcv-agenda-lot--trio) .gcv-agenda-lot__row--out { flex: 30 1 0; }
+.gcv-agenda-lot:not(.gcv-agenda-lot--trio) .gcv-agenda-lot__row--walk { flex: 70 1 0; }
+.gcv-agenda-lot__row--out {
+  background: #fffbeb;
+  border-color: #fde68a;
 }
 .gcv-agenda-lot__row--walk {
   background: #f0fdf4;
@@ -2923,88 +2958,116 @@ body.gcv-dash-page main.gcv-dash-main {
 .gcv-agenda-lot__row.is-cancelled em {
   color: #b91c1c;
 }
+.gcv-agenda-lot__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
 .gcv-agenda-lot__label {
-  grid-area: label;
   display: flex;
   align-items: center;
   gap: 8px;
+  flex: 1 1 auto;
   min-width: 0;
 }
 .gcv-agenda-lot__ico {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   border-radius: 9px;
   background: #fff;
   flex-shrink: 0;
 }
 .gcv-agenda-lot__ico svg {
-  width: 16px;
-  height: 16px;
+  width: 17px;
+  height: 17px;
 }
+.gcv-agenda-lot__row--out .gcv-agenda-lot__ico { color: #b45309; }
 .gcv-agenda-lot__row--walk .gcv-agenda-lot__ico { color: #047857; }
 .gcv-agenda-lot__row--van .gcv-agenda-lot__ico { color: #0369a1; }
-.gcv-agenda-lot__label span {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  line-height: 1.15;
-}
 .gcv-agenda-lot__label strong {
-  font-size: 0.78rem;
+  font-size: 0.86rem;
   font-weight: 800;
   color: #0f172a;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
 }
-.gcv-agenda-lot__label em {
-  font-style: normal;
-  font-size: 0.68rem;
-  font-weight: 600;
-  color: #64748b;
-}
-.gcv-agenda-lot__row.is-formed .gcv-agenda-lot__state {
-  color: #047857;
-}
-.gcv-agenda-lot__row--van.is-formed .gcv-agenda-lot__state {
-  color: #0369a1;
+.gcv-agenda-lot__note {
+  min-height: 1.1em;
 }
 .gcv-agenda-lot__quorum {
+  font-style: normal;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.3;
   color: #c2410c;
 }
+.gcv-agenda-lot__quorum.is-met {
+  color: #047857;
+}
+.gcv-agenda-lot__quorum.is-bad {
+  color: #b91c1c;
+}
 .gcv-agenda-lot__seats {
-  grid-area: seats;
   display: flex;
   flex-wrap: wrap;
-  gap: 3px;
-  align-items: center;
+  gap: 4px 3px;
+  align-items: flex-end;
+  min-width: 0;
+  max-width: 100%;
 }
 .gcv-agenda-seat {
   display: inline-flex;
-  color: #d7e3dc;
+  color: #e2e8f0;
+  line-height: 0;
 }
 .gcv-agenda-seat svg {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   display: block;
 }
-.gcv-agenda-seat--van { color: #dbeafe; }
-.gcv-agenda-seat--empty { color: #e2e8f0; }
-.gcv-agenda-seat.is-filled.gcv-agenda-seat--walk { color: #0f3d2e; }
-.gcv-agenda-seat.is-filled.gcv-agenda-seat--van { color: #0369a1; }
-.gcv-agenda-lot__count {
-  min-width: 1.6rem;
-  text-align: right;
-  grid-area: count;
-  display: flex;
-  align-items: baseline;
+.gcv-agenda-seat--person.is-empty { color: #e2e8f0; }
+.gcv-agenda-seat--person.is-ok { color: #059669; }
+.gcv-agenda-seat--person.is-hot { color: #dc2626; }
+.gcv-agenda-seat--stack {
+  flex-direction: column;
+  align-items: center;
   justify-content: flex-end;
-  gap: 1px;
+  gap: 0;
+}
+.gcv-agenda-seat--stack .gcv-agenda-seat__car,
+.gcv-agenda-seat--stack .gcv-agenda-seat__person {
+  display: block;
+  line-height: 0;
+}
+.gcv-agenda-seat--stack .gcv-agenda-seat__car svg {
+  width: 20px;
+  height: 15px;
+}
+.gcv-agenda-seat--stack .gcv-agenda-seat__person svg {
+  width: 16px;
+  height: 16px;
+  margin-top: -2px;
+}
+.gcv-agenda-seat--stack.is-ok .gcv-agenda-seat__person { color: #059669; }
+.gcv-agenda-seat--stack.is-ok .gcv-agenda-seat__car { color: #0369a1; }
+.gcv-agenda-seat--stack.is-hot .gcv-agenda-seat__person,
+.gcv-agenda-seat--stack.is-hot .gcv-agenda-seat__car { color: #dc2626; }
+.gcv-agenda-lot__count {
+  min-width: 1.4rem;
+  text-align: right;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
   color: #0f172a;
   line-height: 1;
+  flex-shrink: 0;
 }
 .gcv-agenda-lot__count b {
-  font-size: 1.15rem;
+  font-size: 1.45rem;
   font-weight: 800;
   letter-spacing: -0.03em;
 }
@@ -3071,19 +3134,16 @@ body.gcv-dash-page main.gcv-dash-main {
   color: #991b1b;
   outline: none;
 }
-@media (min-width: 560px) {
-  .gcv-agenda-lot__row {
-    grid-template-columns: 9.6rem minmax(0, 1fr) auto;
-    grid-template-areas: "label seats count";
-    align-items: center;
-  }
-}
-@media (min-width: 760px) {
+@media (max-width: 720px) {
   .gcv-agenda-lot {
-    grid-template-columns: 1fr 1fr;
+    flex-direction: column;
   }
-  .gcv-agenda-lot:has(.gcv-agenda-lot__row:only-child) {
-    grid-template-columns: 1fr;
+  .gcv-agenda-lot__row--out,
+  .gcv-agenda-lot__row--walk,
+  .gcv-agenda-lot__row--van {
+    flex: 1 1 auto;
+    width: 100%;
+    max-width: 100%;
   }
 }
 .gcv-dash-client__k {

@@ -626,7 +626,12 @@ function gcv_marketplace_ensure_settings(PDO $pdo): void
         ['notify_arrive_minutes', '15', 'Chegada: minutos de antecedência (0 = não enviar)', 'integer'],
         ['notify_late_tolerance_minutes', '15', 'Excursão: tolerância de atraso em minutos (0 = sem frase de tolerância)', 'integer'],
         ['transfer_offer_hours', '48', 'Troca: horas antes da saída para oferecer a lista (só em formação → passeio confirmado do mesmo dia)', 'integer'],
-        ['transfer_cancel_hours', '12', 'Cancelamento automático: horas antes da saída se o quórum não fechou (sempre depois da troca)', 'integer'],
+        ['diaria_minima_reais', '320', 'Diária mínima do cliente no exclusivo e no fechamento da excursão (R$)', 'integer'],
+        ['pg_minimo_guia_reais', '280', 'Pagamento mínimo do guia sem transporte, no fechamento da diária ou do quórum (R$)', 'integer'],
+        ['pausa_convite_inicio_hora', '22', 'Convite ao guia: o relógio para a partir desta hora', 'integer'],
+        ['pausa_convite_fim_hora', '8', 'Convite ao guia: o relógio volta nesta hora', 'integer'],
+        ['tarifa_ia_ativa', '0', 'Tarifa inteligência artificial progressiva: 0 inativa, 1 ativa. Não vale para passeio publicado pelo guia', 'integer'],
+        ['tarifa_ia_passo_pct', '2', 'Passo da tarifa progressiva (%) sobre o último preço vendido', 'percent'],
     ];
     $check = $pdo->prepare('SELECT id FROM gcv_settings WHERE key_name = ? LIMIT 1');
     $ins = $pdo->prepare(

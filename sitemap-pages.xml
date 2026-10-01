@@ -5,7 +5,7 @@
   <url>
     <loc>https://www.guiachapadaveadeiros.com/</loc>
 
-    <lastmod>2026-09-22</lastmod>
+    <lastmod>2026-09-30</lastmod>
 
     <changefreq>daily</changefreq>
 
@@ -17,26 +17,6 @@
     <image:image>
       <image:loc>https://www.guiachapadaveadeiros.com/assets/img/hero/passeio-exclusivo-cachoeira-chapada-dos-veadeiros-desktop.webp</image:loc>
       <image:title>Grupo em passeio exclusivo com guia diante de uma cachoeira na Chapada dos Veadeiros</image:title>
-    </image:image>
-    <image:image>
-      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/hero/passeio-exclusivo-cachoeira-chapada-dos-veadeiros-mobile.webp</image:loc>
-      <image:title>Grupo em passeio exclusivo com guia diante de uma cachoeira na Chapada dos Veadeiros</image:title>
-    </image:image>
-    <image:image>
-      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/hero/passeio-compartilhado-cachoeira-chapada-dos-veadeiros-desktop.webp</image:loc>
-      <image:title>Viajantes em passeio compartilhado posando em frente a uma cachoeira na Chapada dos Veadeiros</image:title>
-    </image:image>
-    <image:image>
-      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/hero/passeio-compartilhado-cachoeira-chapada-dos-veadeiros-mobile.webp</image:loc>
-      <image:title>Viajantes em passeio compartilhado posando em frente a uma cachoeira na Chapada dos Veadeiros</image:title>
-    </image:image>
-    <image:image>
-      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/hero/reserva-online-passeios-chapada-dos-veadeiros-desktop.webp</image:loc>
-      <image:title>Turista relaxando nas pedras de um poço durante passeio guiado na Chapada dos Veadeiros</image:title>
-    </image:image>
-    <image:image>
-      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/hero/reserva-online-passeios-chapada-dos-veadeiros-mobile.webp</image:loc>
-      <image:title>Turista relaxando nas pedras de um poço durante passeio guiado na Chapada dos Veadeiros</image:title>
     </image:image>
     <image:image>
       <image:loc>https://www.guiachapadaveadeiros.com/assets/img/hero/passeio-exclusivo-guia-local-mirante-cachoeira-chapada-dos-veadeiros-02-desktop.webp</image:loc>
@@ -53,6 +33,10 @@
     <image:image>
       <image:loc>https://www.guiachapadaveadeiros.com/assets/img/hero/passeio-exclusivo-guia-local-familia-banho-de-argila-chapada-dos-veadeiros-05-desktop.webp</image:loc>
       <image:title>Família em passeio exclusivo com guia local após banho de argila à beira de um lago na Chapada dos Veadeiros</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/hero/passeio-compartilhado-cachoeira-chapada-dos-veadeiros-desktop.webp</image:loc>
+      <image:title>Viajantes em passeio compartilhado posando em frente a uma cachoeira na Chapada dos Veadeiros</image:title>
     </image:image>
     <image:image>
       <image:loc>https://www.guiachapadaveadeiros.com/assets/img/hero/passeio-compartilhado-guia-local-grupo-rio-chapada-dos-veadeiros-02-desktop.webp</image:loc>
@@ -82,11 +66,27 @@
       <image:loc>https://www.guiachapadaveadeiros.com/assets/img/hero/passeio-compartilhado-guia-local-trilha-dos-saltos-chapada-dos-veadeiros-08-mobile.webp</image:loc>
       <image:title>Grupo de viajantes na placa da trilha dos Saltos, Carrossel e Corredeiras em passeio com guia local na Chapada dos Veadeiros</image:title>
     </image:image>
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/hero/passeio-exclusivo-cachoeira-chapada-dos-veadeiros-mobile.webp</image:loc>
+      <image:title>Grupo em passeio exclusivo com guia diante de uma cachoeira na Chapada dos Veadeiros</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/hero/passeio-compartilhado-cachoeira-chapada-dos-veadeiros-mobile.webp</image:loc>
+      <image:title>Viajantes em passeio compartilhado posando em frente a uma cachoeira na Chapada dos Veadeiros</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/hero/reserva-online-passeios-chapada-dos-veadeiros-desktop.webp</image:loc>
+      <image:title>Turista relaxando nas pedras de um poço durante passeio guiado na Chapada dos Veadeiros</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/hero/reserva-online-passeios-chapada-dos-veadeiros-mobile.webp</image:loc>
+      <image:title>Turista relaxando nas pedras de um poço durante passeio guiado na Chapada dos Veadeiros</image:title>
+    </image:image>
   </url>
   <url>
     <loc>https://www.guiachapadaveadeiros.com/atrativos.html</loc>
 
-    <lastmod>2026-09-22</lastmod>
+    <lastmod>2026-09-30</lastmod>
 
     <changefreq>weekly</changefreq>
 
@@ -103,7 +103,7 @@
   <url>
     <loc>https://www.guiachapadaveadeiros.com/confirmacao.html</loc>
 
-    <lastmod>2026-09-22</lastmod>
+    <lastmod>2026-09-30</lastmod>
 
     <changefreq>weekly</changefreq>
 
@@ -120,7 +120,7 @@
   <url>
     <loc>https://www.guiachapadaveadeiros.com/consultar-reserva.html</loc>
 
-    <lastmod>2026-09-22</lastmod>
+    <lastmod>2026-09-30</lastmod>
 
     <changefreq>weekly</changefreq>
 
@@ -137,7 +137,7 @@
   <url>
     <loc>https://www.guiachapadaveadeiros.com/contato.html</loc>
 
-    <lastmod>2026-09-22</lastmod>
+    <lastmod>2026-09-30</lastmod>
 
     <changefreq>weekly</changefreq>
 
@@ -154,7 +154,7 @@
   <url>
     <loc>https://www.guiachapadaveadeiros.com/revista.html</loc>
 
-    <lastmod>2026-09-22</lastmod>
+    <lastmod>2026-09-30</lastmod>
 
     <changefreq>weekly</changefreq>
 

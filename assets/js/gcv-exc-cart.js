@@ -570,7 +570,7 @@
 
   function cartOccupiedDates(items) {
     var map = {};
-    (items || []).forEach(function (it) {
+    (items || loadItems()).forEach(function (it) {
       var iso = itemDateIso(it);
       if (iso && it && it.id) map[iso] = it.id;
     });
@@ -1323,10 +1323,15 @@
     });
   }
 
+  var _sameDayAlertAt = 0;
+
   function showSameDayToast() {
     var msg = s("cartSameDayBlocked");
     if (!msg) return;
-    showCartToast(msg, "warning");
+    var now = Date.now();
+    if (now - _sameDayAlertAt < 800) return;
+    _sameDayAlertAt = now;
+    global.alert(msg);
   }
 
   function showCartToast(msg, variant) {
@@ -1476,5 +1481,6 @@
     items: loadItems,
     occupiedDates: cartOccupiedDates,
     itemDateIso: itemDateIso,
+    warnSameDay: showSameDayToast,
   };
 })(typeof window !== "undefined" ? window : globalThis);
