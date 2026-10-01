@@ -1,7 +1,10 @@
 name: Deploy Hostinger (FTP)
 on:
-  push:
-    branches: [main]
+  # Deploy automático PAUSADO (ver .cursor/rules/deploy-producao-auto.mdc).
+  # Para publicar: GitHub > Actions > "Deploy Hostinger (FTP)" > Run workflow.
+  # Para religar o deploy a cada push, descomente as 2 linhas abaixo.
+  # push:
+  #   branches: [main]
   workflow_dispatch:
 
 concurrency:
