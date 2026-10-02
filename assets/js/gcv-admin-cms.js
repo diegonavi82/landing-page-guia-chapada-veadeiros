@@ -537,7 +537,7 @@
         '<article class="gcv-cms-row"><div><strong>' + esc(a.title_pt) + '</strong>' +
         '<div class="gcv-cms-muted">/' + esc(a.slug) + ' · ' + esc(a.status) +
         (a.duration_minutes ? ' · ' + esc(formatTourMinutes(a.duration_minutes)) : '') +
-        (a.tarifa ? ' · Privativo 1-5 R$ ' + esc(centsToMoney(a.tarifa.exclusivo_pessoa_cents)) + ' · Excursão 1-5 R$ ' + esc(centsToMoney(a.tarifa.excursao_pessoa_cents)) : '') +
+        (a.page && !a.tarifario_id ? ' · <span style="color:#b45309;font-weight:600">sem tarifário (fora da venda)</span>' : '') +
         (a.page ? ' · com página' : '') +
         (a.entry_price_label ? ' · ' + esc(a.entry_price_label) : '') + '</div></div>' +
         '<div class="gcv-cms-row-side">' +
@@ -798,6 +798,16 @@
     ['cavalcante', 'Cavalcante']
   ];
 
+  function tarifarioNoticeHtml(a) {
+    return '<div class="gcv-dash-field" style="margin:0.75rem 0;padding:0.75rem 0.9rem;border:1px solid #dcebe3;border-radius:10px;background:#f4f8f6">' +
+      '<label class="gcv-dash-label">Preço, duração por cidade e passeios do mesmo dia</label>' +
+      '<p class="gcv-cms-muted" style="margin:0.2rem 0 0.6rem">Ficam no menu <strong>Tarifário</strong>. ' +
+      (a && a.id ? (a.tarifario_id ? 'Este atrativo já tem tarifário.' : '<span style="color:#b45309;font-weight:600">Este atrativo ainda não tem tarifário e não aparece à venda.</span>') : 'Salve o atrativo e depois ligue um tarifário.') +
+      '</p>' +
+      (a && a.id ? '<button type="button" class="gcv-dash-btn gcv-dash-btn--secondary gcv-dash-btn--sm" id="att-go-tarifario">Abrir Tarifário</button>' : '') +
+      '</div>';
+  }
+
   function cityDeparturePricesHtml(a) {
     var tarifa = (a && a.tarifa) || {};
     var cidades = tarifa.cidades || {};
@@ -856,15 +866,7 @@
       '<div class="gcv-dash-field"><label class="gcv-dash-label">Duração</label><input class="gcv-dash-input" id="att-duration" inputmode="numeric" value="' + esc(a && a.duration_minutes != null ? a.duration_minutes : '') + '" /><p class="gcv-rel-card__time" id="att-duration-big">' + esc(formatTourMinutes(a && a.duration_minutes)) + '</p></div>' +
       '<div class="gcv-dash-field"><label class="gcv-dash-label">Dificuldade</label><select class="gcv-dash-select" id="att-diff"><option value="">—</option><option value="easy">Fácil</option><option value="medium">Médio</option><option value="hard">Difícil</option></select></div>' +
       '</div>' +
-      '<div class="gcv-dash-field-row">' +
-      '<div class="gcv-dash-field"><label class="gcv-dash-label">Privativo (1-5) por pessoa (R$)</label><input class="gcv-dash-input" id="att-ex" value="' + esc(a && a.tarifa ? centsToMoney(a.tarifa.exclusivo_pessoa_cents) : '') + '" /></div>' +
-      '<div class="gcv-dash-field"><label class="gcv-dash-label">Excursão (1-5) por pessoa (R$)</label><input class="gcv-dash-input" id="att-ec" value="' + esc(a && a.tarifa ? centsToMoney(a.tarifa.excursao_pessoa_cents) : '') + '" /></div>' +
-      '</div>' +
-      '<div class="gcv-dash-field-row">' +
-      '<div class="gcv-dash-field"><label class="gcv-dash-label">Privativo (6+) por pessoa (R$)</label><input class="gcv-dash-input" id="att-ex6" value="' + esc(a && a.tarifa ? centsToMoney(a.tarifa.exclusivo_6_cents) : '') + '" /></div>' +
-      '<div class="gcv-dash-field"><label class="gcv-dash-label">Excursão (6+) por pessoa (R$)</label><input class="gcv-dash-input" id="att-ec6" value="' + esc(a && a.tarifa ? centsToMoney(a.tarifa.excursao_6_cents) : '') + '" /></div>' +
-      '</div>' +
-      cityDeparturePricesHtml(a) +
+      tarifarioNoticeHtml(a) +
       '<div class="gcv-dash-field-row">' +
       '<div class="gcv-dash-field"><label class="gcv-dash-label">Label preço</label><input class="gcv-dash-input" id="att-price-label" value="' + esc(a && a.entry_price_label || '') + '" placeholder="Ex.: R$ 60" /></div>' +
       '<div class="gcv-dash-field"><label class="gcv-dash-label">Estacionamento</label><input class="gcv-dash-input" id="att-parking" value="' + esc(a && a.parking_info || '') + '" /></div>' +
@@ -875,7 +877,6 @@
       '<div class="gcv-dash-field"><label class="gcv-dash-label">Capa URL</label><input class="gcv-dash-input" id="att-cover" value="' + esc(a && a.cover_url || '') + '" /></div>' +
       '<div class="gcv-dash-field"><label class="gcv-dash-label">Upload capa / galeria</label><input type="file" id="att-files" accept="image/*" multiple /></div>' +
       '<div id="att-gallery" class="gcv-cms-gallery"></div>' +
-      relatedToursHtml(a) +
       simuladorTarifaHtml() +
       '<div style="display:flex;gap:0.5rem;margin-top:0.75rem;">' +
       '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary" id="att-save">Salvar</button>' +
@@ -892,8 +893,9 @@
         attractionScreenTitle(titleInput.value);
       });
     }
-    bindRelatedTours(a);
     bindSimuladorTarifa();
+    var goTf = root('att-go-tarifario');
+    if (goTf) goTf.onclick = function () { location.hash = 'tarifario'; };
     var durInput = root('att-duration');
     if (durInput) {
       durInput.oninput = function () {
@@ -944,13 +946,6 @@
         trail_distance_km: root('att-trail').value,
         duration_minutes: root('att-duration') ? root('att-duration').value.trim() : '',
         difficulty: root('att-diff').value,
-        tarifa: {
-          exclusivo_pessoa_cents: moneyToCents(root('att-ex') && root('att-ex').value),
-          excursao_pessoa_cents: moneyToCents(root('att-ec') && root('att-ec').value),
-          exclusivo_6_cents: moneyToCents(root('att-ex6') && root('att-ex6').value),
-          excursao_6_cents: moneyToCents(root('att-ec6') && root('att-ec6').value),
-          cidades: cityDeparturePricesPayload(form),
-        },
         entry_price_label: root('att-price-label').value.trim(),
         parking_info: root('att-parking').value.trim(),
         recommended_period: root('att-period').value.trim(),

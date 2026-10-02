@@ -61,7 +61,8 @@ Sem a chave, o cadastro manual de cidades ainda funciona; só o autocomplete fic
 ## Menu admin (CMS)
 
 - **Revista** — CRUD artigos (HTML + SEO + capa)
-- **Atrativos** — CRUD + botão **Importar do site** (18 atrativos atuais via `api/data/attractions-seed.json`)
+- **Atrativos** — CRUD + botão **Importar do site** (18 atrativos atuais via `api/data/attractions-seed.json`). Preço não fica mais aqui: fica no **Tarifário**.
+- **Tarifário** — preços do site. Aba *Atrativos e passeios do dia*: tarifário de cada atrativo, duração por cidade de saída e os passeios com mais de um atrativo (juntar, escolher tarifário, desfazer). Aba *Tarifários*: tabela de preços por cidade × modalidade × translado e onde cada tarifário é usado. Regras em `docs/REGRAS-NEGOCIO.md` → Tarifário.
 - **Guias cadastrados** — perfil completo (PIX, docs, cidade base)
 - **Cidades** — base + Places
 - **Excursões** — novas saídas: **1 a 4 atrativos no mesmo dia** (chips multi-seleção); **guia obrigatório** ao publicar; quórum mínimo 4

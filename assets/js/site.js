@@ -1134,7 +1134,7 @@
     fetch("/api/passeios.php?slug=" + encodeURIComponent(slug))
       .then(function (res) { return res.json(); })
       .then(function (payload) {
-        if (!payload || !payload.ok || !payload.data) return;
+        if (!payload || !payload.ok || !payload.data || !payload.data.tarifa) return;
         var data = payload.data;
         var box = document.createElement("section");
         box.className = "gcv-passeios";
@@ -1177,6 +1177,14 @@
         fail: "Não entrou no carrinho. Escolha uma data futura.",
         sameDay: "Você já escolheu um passeio para este dia. Remova-o para escolher outro.",
         max: "O roteiro tem no máximo 3 atrativos.",
+        sameDayTitle: "Adicione no mesmo dia",
+        sameDayHint: "Até {n} atrativos no mesmo dia, num só passeio.",
+        only: "Só {name}",
+        needMore: "Este atrativo só vai junto com mais um. Escolha o outro para fechar o passeio.",
+        perPerson: "por pessoa",
+        leaving: "saindo de",
+        noPrice: "Este passeio ainda não está à venda.",
+        dayTaken: "Você já tem um passeio no carrinho nesta data. Escolha outra data.",
       },
       en: {
         title: "My itinerary",
@@ -1204,6 +1212,14 @@
         fail: "It was not added. Pick a future date.",
         sameDay: "You already chose a tour for this day. Remove it to pick another.",
         max: "An itinerary has at most 3 places.",
+        sameDayTitle: "Add on the same day",
+        sameDayHint: "Up to {n} places on the same day, in one tour.",
+        only: "Only {name}",
+        needMore: "This place only goes together with one more. Pick the other one to complete the tour.",
+        perPerson: "per person",
+        leaving: "leaving from",
+        noPrice: "This tour is not on sale yet.",
+        dayTaken: "You already have a tour in your cart on this date. Pick another date.",
       },
       es: {
         title: "Mi itinerario",
@@ -1231,6 +1247,14 @@
         fail: "No se agregó. Elige una fecha futura.",
         sameDay: "Ya elegiste un paseo para este día. Quítalo para elegir otro.",
         max: "El itinerario tiene como máximo 3 lugares.",
+        sameDayTitle: "Agrega el mismo día",
+        sameDayHint: "Hasta {n} lugares el mismo día, en un solo paseo.",
+        only: "Solo {name}",
+        needMore: "Este lugar solo va junto con uno más. Elige el otro para cerrar el paseo.",
+        perPerson: "por persona",
+        leaving: "saliendo de",
+        noPrice: "Este paseo aún no está a la venta.",
+        dayTaken: "Ya tienes un paseo en el carrito en esta fecha. Elige otra fecha.",
       },
     };
     return all[lang] || all.pt;
@@ -1260,19 +1284,6 @@
 
   function passeioEsc(str) {
     return String(str || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-  }
-
-  function passeioOpcoes(data) {
-    var seen = {};
-    var out = [];
-    (data.related_tours || []).forEach(function (tour) {
-      (tour.attractions || []).forEach(function (part) {
-        if (!part || part.slug === data.slug || seen[part.id]) return;
-        seen[part.id] = true;
-        out.push(part);
-      });
-    });
-    return out;
   }
 
   function passeioPonto(cidade) {
@@ -1316,54 +1327,81 @@
     return iso || "";
   }
 
+  /** Passeios com mais de um atrativo que incluem este (cada um com tarifário próprio). */
+  function passeioCombos(data) {
+    return (data.related_tours || []).filter(function (tour) {
+      return tour && tour.tarifa && (tour.attractions || []).length >= 2;
+    }).map(function (tour) {
+      var others = (tour.attractions || []).filter(function (p) { return p.slug !== data.slug; });
+      return { tour: tour, ids: others.map(function (p) { return String(p.id); }).sort(), parts: others };
+    });
+  }
+
+  /** Atrativos que podem entrar no mesmo dia (sem repetir). */
+  function passeioOpcoes(data) {
+    var seen = {};
+    var out = [];
+    passeioCombos(data).forEach(function (c) {
+      c.parts.forEach(function (part) {
+        if (seen[part.id]) return;
+        seen[part.id] = true;
+        out.push(part);
+      });
+    });
+    return out.sort(function (a, b) { return String(a.title_pt).localeCompare(String(b.title_pt), "pt"); });
+  }
+
+  function passeioExtras(box) {
+    return (box._passeioExtras || []).slice();
+  }
+
+  /** Dá para somar este atrativo à escolha atual e ainda fechar um passeio cadastrado? */
+  function passeioPodeJuntar(data, extras, id) {
+    var want = extras.concat([String(id)]);
+    return passeioCombos(data).some(function (c) {
+      return want.every(function (x) { return c.ids.indexOf(x) >= 0; });
+    });
+  }
+
   function passeioSelecao(box, data) {
     var cidadeEl = box.querySelector("[data-passeio-city]");
     var cidade = cidadeEl ? cidadeEl.value : "";
-    var extras = [];
-    box.querySelectorAll("[data-passeio-extra]:checked").forEach(function (input) {
-      var part = passeioOpcoes(data).filter(function (p) { return String(p.id) === input.value; })[0];
-      if (part) extras.push(part);
-    });
-    var slugs = [data.slug].concat(extras.map(function (p) { return p.slug; })).sort();
-    var key = slugs.join("|");
-    var matched = null;
-    (data.related_tours || []).forEach(function (tour) {
-      var tourKey = (tour.attractions || []).map(function (p) { return p.slug; }).sort().join("|");
-      if (tourKey === key) matched = tour;
-    });
-    if (matched && matched.tarifa && extras.length) {
+    var key = passeioCidadeKey(cidade);
+    var extras = passeioExtras(box).sort();
+    var opcoes = passeioOpcoes(data);
+    var extraNames = extras.map(function (id) {
+      var part = opcoes.filter(function (p) { return String(p.id) === id; })[0];
+      return part ? part.title_pt : "";
+    }).filter(Boolean);
+    if (!extras.length) {
       return {
-        ids: extras.map(function (p) { return p.id; }),
-        names: (matched.attractions || []).map(function (p) { return p.title_pt; }),
-        minutes: parseInt(matched.duration_minutes, 10) || 0,
-        exclusivo: passeioPrecoCidade(matched.tarifa, cidade, "exclusivo_pessoa_cents"),
-        excursao: passeioPrecoCidade(matched.tarifa, cidade, "excursao_pessoa_cents"),
-        exclusivoT: passeioPrecoCidade(matched.tarifa, cidade, "exclusivo_transporte_cents", "exclusivo_pessoa_cents"),
-        excursaoT: passeioPrecoCidade(matched.tarifa, cidade, "excursao_transporte_cents", "excursao_pessoa_cents"),
+        ids: [],
+        names: [data.title],
+        minutes: (data.duracao_cidades && parseInt(data.duracao_cidades[key], 10)) || parseInt(data.duration_minutes, 10) || 0,
+        exclusivo: passeioPrecoCidade(data.tarifa, cidade, "exclusivo_pessoa_cents"),
+        excursao: passeioPrecoCidade(data.tarifa, cidade, "excursao_pessoa_cents"),
+        exclusivoT: passeioPrecoCidade(data.tarifa, cidade, "exclusivo_transporte_cents", "exclusivo_pessoa_cents"),
+        excursaoT: passeioPrecoCidade(data.tarifa, cidade, "excursao_transporte_cents", "excursao_pessoa_cents"),
+        quorum: parseInt(data.tarifa && data.tarifa.quorum, 10) || 4,
+        incompleto: false,
       };
     }
-    var exclusivo = passeioPrecoCidade(data.tarifa, cidade, "exclusivo_pessoa_cents");
-    var excursao = passeioPrecoCidade(data.tarifa, cidade, "excursao_pessoa_cents");
-    var exclusivoT = passeioPrecoCidade(data.tarifa, cidade, "exclusivo_transporte_cents", "exclusivo_pessoa_cents");
-    var excursaoT = passeioPrecoCidade(data.tarifa, cidade, "excursao_transporte_cents", "excursao_pessoa_cents");
-    var minutes = parseInt(data.duration_minutes, 10) || 0;
-    extras.forEach(function (part) {
-      minutes += parseInt(part.duration_minutes, 10) || 0;
-      if (part.tarifa) {
-        exclusivo += passeioPrecoCidade(part.tarifa, cidade, "exclusivo_pessoa_cents");
-        excursao += passeioPrecoCidade(part.tarifa, cidade, "excursao_pessoa_cents");
-        exclusivoT += passeioPrecoCidade(part.tarifa, cidade, "exclusivo_transporte_cents", "exclusivo_pessoa_cents");
-        excursaoT += passeioPrecoCidade(part.tarifa, cidade, "excursao_transporte_cents", "excursao_pessoa_cents");
-      }
-    });
+    var combo = passeioCombos(data).filter(function (c) { return c.ids.join("|") === extras.join("|"); })[0];
+    if (!combo) {
+      return { ids: extras, names: [data.title].concat(extraNames), minutes: 0, exclusivo: 0, excursao: 0, exclusivoT: 0, excursaoT: 0, incompleto: true };
+    }
+    var tour = combo.tour;
     return {
-      ids: extras.map(function (p) { return p.id; }),
-      names: [data.title].concat(extras.map(function (p) { return p.title_pt; })),
-      minutes: minutes,
-      exclusivo: exclusivo,
-      excursao: excursao,
-      exclusivoT: exclusivoT,
-      excursaoT: excursaoT,
+      ids: extras,
+      tourId: tour.id,
+      names: (tour.attractions || []).map(function (p) { return p.title_pt; }),
+      minutes: (tour.duracao_cidades && parseInt(tour.duracao_cidades[key], 10)) || parseInt(tour.duration_minutes, 10) || 0,
+      exclusivo: passeioPrecoCidade(tour.tarifa, cidade, "exclusivo_pessoa_cents"),
+      excursao: passeioPrecoCidade(tour.tarifa, cidade, "excursao_pessoa_cents"),
+      exclusivoT: passeioPrecoCidade(tour.tarifa, cidade, "exclusivo_transporte_cents", "exclusivo_pessoa_cents"),
+      excursaoT: passeioPrecoCidade(tour.tarifa, cidade, "excursao_transporte_cents", "excursao_pessoa_cents"),
+      quorum: parseInt(tour.tarifa && tour.tarifa.quorum, 10) || 4,
+      incompleto: false,
     };
   }
 
@@ -1380,7 +1418,7 @@
 
   function passeioTotalCents(sel, modalidade, pessoas, comTranslado) {
     pessoas = Math.max(1, parseInt(pessoas, 10) || 1);
-    var quorum = 4;
+    var quorum = parseInt(sel && sel.quorum, 10) || 4;
     var unit = modalidade === "exclusivo"
       ? (comTranslado ? sel.exclusivoT : sel.exclusivo)
       : (comTranslado ? sel.excursaoT : sel.excursao);
@@ -1388,7 +1426,7 @@
     return unit * pessoas;
   }
 
-  function passeioBuilderHtml(copy) {
+  function passeioBuilderHtml(copy, data) {
     var css =
       ".gcv-passeios{--gp-green:#14532d;--gp-green-2:#166534;--gp-line:#dbe7e0;--gp-soft:#f3f8f5;--gp-ink:#0f2a1d;--gp-muted:#5b6b62;margin:1.25rem auto;max-width:460px;padding:0;border:1px solid var(--gp-line);border-radius:16px;background:#fff;box-shadow:0 6px 24px rgba(15,61,46,.08);position:relative;overflow:hidden;color:var(--gp-ink)}" +
       ".gcv-passeios__now{display:flex;align-items:center;gap:.55rem;margin:0;padding:.8rem 1.1rem;font-size:1.05rem;font-weight:800;letter-spacing:.01em;line-height:1.2;color:#fff;background:linear-gradient(135deg,#14532d,#0f766e)}" +
@@ -1419,7 +1457,7 @@
       ".gcv-passeios__add{display:inline-flex;align-items:center;justify-content:center;gap:.45rem;margin:0;padding:.75rem 1.1rem;border:0;border-radius:12px;background:var(--gp-green);color:#fff;font:inherit;font-size:.92rem;font-weight:800;cursor:pointer;box-shadow:0 4px 12px rgba(20,83,45,.25);transition:background .15s,transform .1s}" +
       ".gcv-passeios__add:hover{background:var(--gp-green-2)}.gcv-passeios__add:active{transform:translateY(1px)}" +
       ".gcv-passeios__add.is-added{background:#fff;color:var(--gp-green);box-shadow:inset 0 0 0 2px var(--gp-green)}" +
-      ".gcv-passeios__add.is-blocked,.gcv-passeios__add:disabled{opacity:.45;cursor:not-allowed;pointer-events:none}" +
+      ".gcv-passeios__add.is-blocked,.gcv-passeios__add:disabled{opacity:.5;cursor:not-allowed}" +
       ".gcv-passeios [data-passeio-msg]{margin:0;padding:0 1.1rem;font-size:.82rem;color:#b91c1c}.gcv-passeios [data-passeio-msg]:not(:empty){padding:.1rem 1.1rem .8rem}" +
       ".gcv-datepicker{position:relative;width:100%;margin:0}" +
       ".gcv-datepicker__native{position:absolute!important;opacity:0!important;pointer-events:none!important;width:1px!important;height:1px!important;margin:0!important;padding:0!important;border:0!important}" +
@@ -1433,10 +1471,31 @@
       ".gcv-datepicker__day.is-today{box-shadow:inset 0 0 0 1.5px #14532d;font-weight:700}.gcv-datepicker__day.is-selected{background:#14532d;color:#fff;font-weight:700}.gcv-datepicker__day:disabled{color:#cbd5e1;cursor:default}" +
       "@media(max-width:520px){.gcv-passeios__grid{grid-template-columns:1fr 1fr}.gcv-passeios__seg button{font-size:.8rem;padding:.5rem .25rem;white-space:nowrap}.gcv-passeios__foot{flex-wrap:wrap}.gcv-passeios__actions,.gcv-passeios__add{width:100%}}" +
       "@media(min-width:768px){.gcv-passeios{max-width:none;width:100%;margin-left:0;margin-right:0}.gcv-passeios__grid{grid-template-columns:1fr 1fr 1fr 1fr}.gcv-passeios__field--city{grid-column:span 2}.gcv-passeios__field--date,.gcv-passeios__field--people{grid-column:span 1}.gcv-passeios__field--mode,.gcv-passeios__field--transport{grid-column:span 2}}" +
+      ".gcv-passeios__route{padding:1rem 1.1rem .2rem}" +
+      ".gcv-passeios__route-name{margin:0;font-size:1.3rem;font-weight:800;line-height:1.25;color:var(--gp-ink)}" +
+      ".gcv-passeios__route-name span{color:var(--gp-green)}" +
+      ".gcv-passeios__route-meta{display:flex;flex-wrap:wrap;gap:.35rem .9rem;margin:.35rem 0 0;font-size:.86rem;color:var(--gp-muted)}" +
+      ".gcv-passeios__route-meta b{color:var(--gp-ink)}" +
+      ".gcv-passeios__route-meta .ti{color:var(--gp-green);margin-right:.2rem}" +
+      ".gcv-passeios__extras{margin-top:1rem;padding:.85rem .9rem;border:1px dashed #b6d4c4;border-radius:12px;background:var(--gp-soft)}" +
+      ".gcv-passeios__extras[hidden]{display:none}" +
+      ".gcv-passeios__extras-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:.25rem .75rem;margin:0 0 .6rem}" +
+      ".gcv-passeios__extras-title{margin:0;font-size:.95rem;font-weight:800;color:var(--gp-ink)}" +
+      ".gcv-passeios__extras-hint{margin:0;font-size:.76rem;color:var(--gp-muted)}" +
+      ".gcv-passeios__extra-list{display:flex;flex-wrap:wrap;gap:.45rem}" +
+      ".gcv-passeios__extra{display:inline-flex;align-items:center;gap:.4rem;padding:.5rem .8rem;border:1.5px solid #cfe1d7;border-radius:999px;background:#fff;color:var(--gp-ink);font:inherit;font-size:.88rem;font-weight:700;cursor:pointer;transition:background .15s,border-color .15s,color .15s}" +
+      ".gcv-passeios__extra .ti{font-size:1rem;color:var(--gp-green)}" +
+      ".gcv-passeios__extra:hover:not(:disabled){border-color:var(--gp-green)}" +
+      ".gcv-passeios__extra[aria-pressed=true]{background:var(--gp-green);border-color:var(--gp-green);color:#fff}" +
+      ".gcv-passeios__extra[aria-pressed=true] .ti{color:#fff}" +
+      ".gcv-passeios__extra:disabled{opacity:.4;cursor:not-allowed}" +
+      ".gcv-passeios__note{margin:.6rem 0 0;font-size:.8rem;font-weight:600;color:#b45309}" +
+      ".gcv-passeios__note[hidden]{display:none}" +
+      ".gcv-passeios__unit{display:block;margin-top:.1rem;font-size:.72rem;font-weight:600;letter-spacing:0;text-transform:none;color:var(--gp-muted)}" +
       ".gcv-passeios-slot{height:0}" +
       ".gcv-passeios.is-dock{position:fixed;z-index:45;margin:0;box-sizing:border-box;box-shadow:0 10px 28px rgba(15,61,46,.18)}" +
       ".gcv-passeios.is-dock.is-mini{display:flex;flex-wrap:wrap;align-items:center;gap:.6rem;padding:.4rem .6rem;border-radius:12px}" +
-      ".gcv-passeios.is-dock.is-mini .gcv-passeios__now,.gcv-passeios.is-dock.is-mini .gcv-passeios__body,.gcv-passeios.is-dock.is-mini [data-passeio-msg]{display:none}" +
+      ".gcv-passeios.is-dock.is-mini .gcv-passeios__now,.gcv-passeios.is-dock.is-mini .gcv-passeios__route,.gcv-passeios.is-dock.is-mini .gcv-passeios__body,.gcv-passeios.is-dock.is-mini [data-passeio-msg]{display:none}" +
       ".gcv-passeios.is-dock.is-mini .gcv-passeios__summary{display:block;flex:1 1 16rem;min-width:0;font-size:.78rem;font-weight:700;line-height:1.35;color:#0f3d2e}" +
       ".gcv-passeios.is-dock.is-mini .gcv-passeios__foot{margin:0;padding:0;border:0;background:none;flex-wrap:nowrap}" +
       ".gcv-passeios.is-dock.is-mini .gcv-passeios__budget{flex-direction:row;align-items:baseline;gap:.3rem}" +
@@ -1453,6 +1512,8 @@
     return "<style>" + css + "</style>" +
       '<p class="gcv-passeios__now"><i class="ti ti-map" aria-hidden="true"></i> ' + passeioEsc(copy.title) + "</p>" +
       '<p class="gcv-passeios__summary" data-passeio-summary></p>' +
+      '<div class="gcv-passeios__route"><p class="gcv-passeios__route-name" data-passeio-route>' + passeioEsc(data.title) + "</p>" +
+      '<p class="gcv-passeios__route-meta" data-passeio-route-meta></p></div>' +
       '<div class="gcv-passeios__body"><div class="gcv-passeios__grid">' +
       '<label class="gcv-passeios__field gcv-passeios__field--date">' + copy.date + '<input type="text" data-passeio-date value="' + passeioAmanha() + '" /></label>' +
       '<div class="gcv-passeios__field gcv-passeios__field--people">' + copy.people +
@@ -1468,6 +1529,12 @@
       '<div class="gcv-passeios__field gcv-passeios__field--wide gcv-passeios__field--transport">' + copy.transport +
         seg("transport", [["0", copy.withoutRide], ["1", copy.withRide]]) +
         '<select class="gcv-passeios__hide" tabindex="-1" aria-hidden="true" data-passeio-transport><option value="0">' + copy.withoutRide + '</option><option value="1">' + copy.withRide + "</option></select></div>" +
+      "</div>" +
+      '<div class="gcv-passeios__extras" data-passeio-extras hidden>' +
+        '<div class="gcv-passeios__extras-head"><p class="gcv-passeios__extras-title">' + passeioEsc(copy.sameDayTitle) + "</p>" +
+        '<p class="gcv-passeios__extras-hint">' + passeioEsc(String(copy.sameDayHint).replace("{n}", String(parseInt(data.max_atrativos, 10) || 3))) + "</p></div>" +
+        '<div class="gcv-passeios__extra-list" data-passeio-extra-list></div>' +
+        '<p class="gcv-passeios__note" data-passeio-need hidden>' + passeioEsc(copy.needMore) + "</p>" +
       "</div>" +
       '<p class="gcv-passeios__guide" data-passeio-guide hidden><i class="ti ti-steering-wheel" aria-hidden="true"></i><span data-passeio-guide-text></span></p>' +
       "</div>" +
@@ -1566,6 +1633,7 @@
       var cidade = box.querySelector("[data-passeio-city]").value;
       var comTranslado = box.querySelector("[data-passeio-transport]").value === "1";
       var quando = new Date(date + "T08:00:00");
+      if (sel.incompleto) return null;
       if (!date || quando.getTime() <= Date.now()) return null;
       var total = passeioTotalCents(sel, modalidade, pessoas, comTranslado);
       var exclusivoCheio = modalidade === "exclusivo" && pessoas <= 4;
@@ -1597,8 +1665,13 @@
       var mine = !!(item && itemInCart(item.id));
       var taken = item && cart && typeof cart.occupiedDates === "function" ? cart.occupiedDates()[item.dateIso] : "";
       var blocked = !!(taken && item && taken !== item.id && !mine);
-      btn.disabled = blocked;
+      btn.disabled = false;
       btn.classList.toggle("is-blocked", blocked);
+      var msgEl = box.querySelector("[data-passeio-msg]");
+      if (msgEl) {
+        if (blocked) msgEl.textContent = copy.dayTaken;
+        else if (msgEl.textContent === copy.dayTaken) msgEl.textContent = "";
+      }
       btn.classList.toggle("is-added", mine);
       btn.setAttribute("aria-pressed", mine ? "true" : "false");
       if (blocked) {
@@ -1625,12 +1698,66 @@
       var gente = pessoas + " " + (pessoas === 1 ? copy.person : copy.peopleWord);
       el.textContent = [
         passeioDataBr(date),
-        data.title,
+        passeioSelecao(box, data).names.join(" + "),
         gente + " (" + modo + ")",
         copy.from + " " + passeioCidadeCurta(cidade),
         comTranslado ? copy.withRide : copy.withoutRide,
       ].join(" * ");
     }
+
+    var maxExtras = Math.max(0, (parseInt(data.max_atrativos, 10) || 3) - 1);
+
+    function paintExtras() {
+      var wrap = box.querySelector("[data-passeio-extras]");
+      var list = box.querySelector("[data-passeio-extra-list]");
+      var opcoes = passeioOpcoes(data);
+      if (!wrap || !list) return;
+      wrap.hidden = !opcoes.length || !maxExtras;
+      if (wrap.hidden) return;
+      var extras = passeioExtras(box);
+      list.innerHTML = opcoes.map(function (part) {
+        var id = String(part.id);
+        var on = extras.indexOf(id) >= 0;
+        var pode = on || (extras.length < maxExtras && passeioPodeJuntar(data, extras, id));
+        return '<button type="button" class="gcv-passeios__extra" data-passeio-extra-id="' + passeioEsc(id) + '" aria-pressed="' + (on ? "true" : "false") + '"' + (pode ? "" : " disabled") + ">" +
+          '<i class="ti ' + (on ? "ti-check" : "ti-plus") + '" aria-hidden="true"></i>' + passeioEsc(part.title_pt) + "</button>";
+      }).join("");
+      var need = box.querySelector("[data-passeio-need]");
+      if (need) need.hidden = !passeioSelecao(box, data).incompleto;
+    }
+
+    function paintRoute(sel, modalidade, comTranslado) {
+      var nameEl = box.querySelector("[data-passeio-route]");
+      var metaEl = box.querySelector("[data-passeio-route-meta]");
+      if (nameEl) {
+        nameEl.innerHTML = sel.names.map(function (n, i) {
+          return i ? '<span> + </span>' + passeioEsc(n) : passeioEsc(n);
+        }).join("");
+      }
+      if (!metaEl) return;
+      if (sel.incompleto) { metaEl.textContent = ""; return; }
+      var cidadeEl = box.querySelector("[data-passeio-city]");
+      var unit = modalidade === "exclusivo" ? (comTranslado ? sel.exclusivoT : sel.exclusivo) : (comTranslado ? sel.excursaoT : sel.excursao);
+      var parts = [];
+      if (sel.minutes) {
+        parts.push('<span><i class="ti ti-clock" aria-hidden="true"></i><b>' + passeioEsc(passeioHoras(sel.minutes)) + "</b> " +
+          passeioEsc(copy.leaving) + " " + passeioEsc(passeioCidadeCurta(cidadeEl ? cidadeEl.value : "")) + "</span>");
+      }
+      parts.push('<span><i class="ti ti-user" aria-hidden="true"></i><b>' + passeioEsc(passeioReais(unit)) + "</b> " + passeioEsc(copy.perPerson) + "</span>");
+      metaEl.innerHTML = parts.join("");
+    }
+
+    box.addEventListener("click", function (e) {
+      var chip = e.target.closest && e.target.closest("[data-passeio-extra-id]");
+      if (!chip || chip.disabled) return;
+      var id = chip.getAttribute("data-passeio-extra-id");
+      var extras = passeioExtras(box);
+      var at = extras.indexOf(id);
+      if (at >= 0) extras.splice(at, 1);
+      else extras.push(id);
+      box._passeioExtras = extras;
+      paint();
+    });
 
     function paint() {
       var sel = passeioSelecao(box, data);
@@ -1653,9 +1780,11 @@
           guideText.textContent = copy.guideLead + " " + copy.guideRest.replace("{people}", gente).replace("{cars}", frota);
         }
       }
+      paintExtras();
+      paintRoute(sel, modalidade, comTranslado);
       box.querySelector("[data-passeio-total]").innerHTML =
         "<span>" + passeioEsc(copy.total) + "</span>" +
-        '<strong class="gcv-passeios__total-value">' + passeioEsc(passeioReais(total)) + "</strong>";
+        '<strong class="gcv-passeios__total-value">' + (sel.incompleto ? "—" : passeioEsc(passeioReais(total))) + "</strong>";
       var item = buildItem();
       if (item && itemInCart(item.id) && window.GcvExcCart && typeof window.GcvExcCart.sync === "function") {
         window.GcvExcCart.sync(item);
@@ -1670,9 +1799,19 @@
     });
     box.querySelector("[data-passeio-add]").addEventListener("click", function () {
       var msg = box.querySelector("[data-passeio-msg]");
+      if (passeioSelecao(box, data).incompleto) {
+        if (msg) msg.textContent = copy.needMore;
+        return;
+      }
       var item = buildItem();
       if (!item) {
         if (msg) msg.textContent = copy.fail;
+        return;
+      }
+      var addBtn = box.querySelector("[data-passeio-add]");
+      if (addBtn && addBtn.classList.contains("is-blocked")) {
+        if (msg) msg.textContent = copy.dayTaken;
+        if (window.GcvExcCart && typeof window.GcvExcCart.warnSameDay === "function") window.GcvExcCart.warnSameDay();
         return;
       }
       if (msg) msg.textContent = "";

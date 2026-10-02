@@ -1,0 +1,794 @@
+{
+ "_leia": "Carga inicial do Tarifário. Só é usada quando a tabela gcv_tarifario está vazia. Combinações marcadas com sugestao=true têm preço sugerido (soma dos atrativos menos 10%) para o admin revisar.",
+ "tarifarios": [
+  {
+   "nome": "Loquinhas",
+   "quorum": 4,
+   "cidades": {
+    "alto-paraiso": {
+     "exclusivo_pessoa_cents": 9000,
+     "exclusivo_transporte_cents": 9000,
+     "excursao_pessoa_cents": 8000,
+     "excursao_transporte_cents": 8000
+    },
+    "sao-jorge": {
+     "exclusivo_pessoa_cents": 9000,
+     "exclusivo_transporte_cents": 9000,
+     "excursao_pessoa_cents": 8000,
+     "excursao_transporte_cents": 8000
+    },
+    "cavalcante": {
+     "exclusivo_pessoa_cents": 9000,
+     "exclusivo_transporte_cents": 9000,
+     "excursao_pessoa_cents": 8000,
+     "excursao_transporte_cents": 8000
+    }
+   },
+   "atrativos": [
+    "cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso"
+   ],
+   "combos": []
+  },
+  {
+   "nome": "Cristais",
+   "quorum": 4,
+   "cidades": {
+    "alto-paraiso": {
+     "exclusivo_pessoa_cents": 10000,
+     "exclusivo_transporte_cents": 10000,
+     "excursao_pessoa_cents": 8500,
+     "excursao_transporte_cents": 8500
+    },
+    "sao-jorge": {
+     "exclusivo_pessoa_cents": 10000,
+     "exclusivo_transporte_cents": 10000,
+     "excursao_pessoa_cents": 8500,
+     "excursao_transporte_cents": 8500
+    },
+    "cavalcante": {
+     "exclusivo_pessoa_cents": 10000,
+     "exclusivo_transporte_cents": 10000,
+     "excursao_pessoa_cents": 8500,
+     "excursao_transporte_cents": 8500
+    }
+   },
+   "atrativos": [
+    "cachoeira-cristais-guia-chapada-veadeiros-alto-paraiso"
+   ],
+   "combos": []
+  },
+  {
+   "nome": "Vale da Lua",
+   "quorum": 4,
+   "cidades": {
+    "alto-paraiso": {
+     "exclusivo_pessoa_cents": 11000,
+     "exclusivo_transporte_cents": 11000,
+     "excursao_pessoa_cents": 9000,
+     "excursao_transporte_cents": 9000
+    },
+    "sao-jorge": {
+     "exclusivo_pessoa_cents": 11000,
+     "exclusivo_transporte_cents": 11000,
+     "excursao_pessoa_cents": 9000,
+     "excursao_transporte_cents": 9000
+    },
+    "cavalcante": {
+     "exclusivo_pessoa_cents": 11000,
+     "exclusivo_transporte_cents": 11000,
+     "excursao_pessoa_cents": 9000,
+     "excursao_transporte_cents": 9000
+    }
+   },
+   "atrativos": [
+    "vale-lua-guia-chapada-veadeiros-sao-jorge"
+   ],
+   "combos": []
+  },
+  {
+   "nome": "Poço Encantado",
+   "quorum": 4,
+   "cidades": {
+    "alto-paraiso": {
+     "exclusivo_pessoa_cents": 9000,
+     "exclusivo_transporte_cents": 9000,
+     "excursao_pessoa_cents": 8000,
+     "excursao_transporte_cents": 8000
+    },
+    "sao-jorge": {
+     "exclusivo_pessoa_cents": 9000,
+     "exclusivo_transporte_cents": 9000,
+     "excursao_pessoa_cents": 8000,
+     "excursao_transporte_cents": 8000
+    },
+    "cavalcante": {
+     "exclusivo_pessoa_cents": 9000,
+     "exclusivo_transporte_cents": 9000,
+     "excursao_pessoa_cents": 8000,
+     "excursao_transporte_cents": 8000
+    }
+   },
+   "atrativos": [
+    "cachoeira-poco-encantado-guia-chapada-veadeiros-teresina-de-goias"
+   ],
+   "combos": []
+  },
+  {
+   "nome": "Anjos e Arcanjos",
+   "quorum": 4,
+   "cidades": {
+    "alto-paraiso": {
+     "exclusivo_pessoa_cents": 12500,
+     "exclusivo_transporte_cents": 12500,
+     "excursao_pessoa_cents": 10000,
+     "excursao_transporte_cents": 10000
+    },
+    "sao-jorge": {
+     "exclusivo_pessoa_cents": 12500,
+     "exclusivo_transporte_cents": 12500,
+     "excursao_pessoa_cents": 10000,
+     "excursao_transporte_cents": 10000
+    },
+    "cavalcante": {
+     "exclusivo_pessoa_cents": 12500,
+     "exclusivo_transporte_cents": 12500,
+     "excursao_pessoa_cents": 10000,
+     "excursao_transporte_cents": 10000
+    }
+   },
+   "atrativos": [
+    "cachoeira-anjos-arcanjos-guia-chapada-veadeiros-alto-paraiso"
+   ],
+   "combos": []
+  },
+  {
+   "nome": "Caracol",
+   "quorum": 4,
+   "cidades": {
+    "alto-paraiso": {
+     "exclusivo_pessoa_cents": 12500,
+     "exclusivo_transporte_cents": 12500,
+     "excursao_pessoa_cents": 10000,
+     "excursao_transporte_cents": 10000
+    },
+    "sao-jorge": {
+     "exclusivo_pessoa_cents": 12500,
+     "exclusivo_transporte_cents": 12500,
+     "excursao_pessoa_cents": 10000,
+     "excursao_transporte_cents": 10000
+    },
+    "cavalcante": {
+     "exclusivo_pessoa_cents": 12500,
+     "exclusivo_transporte_cents": 12500,
+     "excursao_pessoa_cents": 10000,
+     "excursao_transporte_cents": 10000
+    }
+   },
+   "atrativos": [
+    "caracol-guia-chapada-veadeiros"
+   ],
+   "combos": []
+  },
+  {
+   "nome": "Ponte de Pedra",
+   "quorum": 4,
+   "cidades": {
+    "alto-paraiso": {
+     "exclusivo_pessoa_cents": 12000,
+     "exclusivo_transporte_cents": 12000,
+     "excursao_pessoa_cents": 9500,
+     "excursao_transporte_cents": 9500
+    },
+    "sao-jorge": {
+     "exclusivo_pessoa_cents": 12000,
+     "exclusivo_transporte_cents": 12000,
+     "excursao_pessoa_cents": 9500,
+     "excursao_transporte_cents": 9500
+    },
+    "cavalcante": {
+     "exclusivo_pessoa_cents": 12000,
+     "exclusivo_transporte_cents": 12000,
+     "excursao_pessoa_cents": 9500,
+     "excursao_transporte_cents": 9500
+    }
+   },
+   "atrativos": [
+    "cachoeira-ponte-de-pedra-guia-chapada-veadeiros-cavalcante"
+   ],
+   "combos": []
+  },
+  {
+   "nome": "Label",
+   "quorum": 4,
+   "cidades": {
+    "alto-paraiso": {
+     "exclusivo_pessoa_cents": 11500,
+     "exclusivo_transporte_cents": 11500,
+     "excursao_pessoa_cents": 9000,
+     "excursao_transporte_cents": 9000
+    },
+    "sao-jorge": {
+     "exclusivo_pessoa_cents": 11500,
+     "exclusivo_transporte_cents": 11500,
+     "excursao_pessoa_cents": 9000,
+     "excursao_transporte_cents": 9000
+    },
+    "cavalcante": {
+     "exclusivo_pessoa_cents": 11500,
+     "exclusivo_transporte_cents": 11500,
+     "excursao_pessoa_cents": 9000,
+     "excursao_transporte_cents": 9000
+    }
+   },
+   "atrativos": [
+    "cachoeira-label-guia-chapada-veadeiros-sao-joao-alianca"
+   ],
+   "combos": []
+  },
+  {
+   "nome": "Parque Nacional - Cariocas",
+   "quorum": 4,
+   "cidades": {
+    "alto-paraiso": {
+     "exclusivo_pessoa_cents": 14000,
+     "exclusivo_transporte_cents": 14000,
+     "excursao_pessoa_cents": 11000,
+     "excursao_transporte_cents": 11000
+    },
+    "sao-jorge": {
+     "exclusivo_pessoa_cents": 14000,
+     "exclusivo_transporte_cents": 14000,
+     "excursao_pessoa_cents": 11000,
+     "excursao_transporte_cents": 11000
+    },
+    "cavalcante": {
+     "exclusivo_pessoa_cents": 14000,
+     "exclusivo_transporte_cents": 14000,
+     "excursao_pessoa_cents": 11000,
+     "excursao_transporte_cents": 11000
+    }
+   },
+   "atrativos": [
+    "parque-nacional-chapada-veadeiros-canions-carioquinhas-sao-jorge"
+   ],
+   "combos": []
+  },
+  {
+   "nome": "Almécegas",
+   "quorum": 4,
+   "cidades": {
+    "alto-paraiso": {
+     "exclusivo_pessoa_cents": 15000,
+     "exclusivo_transporte_cents": 15000,
+     "excursao_pessoa_cents": 12000,
+     "excursao_transporte_cents": 12000
+    },
+    "sao-jorge": {
+     "exclusivo_pessoa_cents": 15000,
+     "exclusivo_transporte_cents": 15000,
+     "excursao_pessoa_cents": 12000,
+     "excursao_transporte_cents": 12000
+    },
+    "cavalcante": {
+     "exclusivo_pessoa_cents": 15000,
+     "exclusivo_transporte_cents": 15000,
+     "excursao_pessoa_cents": 12000,
+     "excursao_transporte_cents": 12000
+    }
+   },
+   "atrativos": [
+    "cachoeira-almecegas-poco-sao-bento-guia-chapada-veadeiros"
+   ],
+   "combos": []
+  },
+  {
+   "nome": "Segredo",
+   "quorum": 4,
+   "cidades": {
+    "alto-paraiso": {
+     "exclusivo_pessoa_cents": 15000,
+     "exclusivo_transporte_cents": 15000,
+     "excursao_pessoa_cents": 12000,
+     "excursao_transporte_cents": 12000
+    },
+    "sao-jorge": {
+     "exclusivo_pessoa_cents": 15000,
+     "exclusivo_transporte_cents": 15000,
+     "excursao_pessoa_cents": 12000,
+     "excursao_transporte_cents": 12000
+    },
+    "cavalcante": {
+     "exclusivo_pessoa_cents": 15000,
+     "exclusivo_transporte_cents": 15000,
+     "excursao_pessoa_cents": 12000,
+     "excursao_transporte_cents": 12000
+    }
+   },
+   "atrativos": [
+    "cachoeira-segredo-guia-chapada-veadeiros-sao-jorge"
+   ],
+   "combos": []
+  },
+  {
+   "nome": "Santa Bárbara",
+   "quorum": 4,
+   "cidades": {
+    "alto-paraiso": {
+     "exclusivo_pessoa_cents": 16000,
+     "exclusivo_transporte_cents": 16000,
+     "excursao_pessoa_cents": 13000,
+     "excursao_transporte_cents": 13000
+    },
+    "sao-jorge": {
+     "exclusivo_pessoa_cents": 16000,
+     "exclusivo_transporte_cents": 16000,
+     "excursao_pessoa_cents": 13000,
+     "excursao_transporte_cents": 13000
+    },
+    "cavalcante": {
+     "exclusivo_pessoa_cents": 16000,
+     "exclusivo_transporte_cents": 16000,
+     "excursao_pessoa_cents": 13000,
+     "excursao_transporte_cents": 13000
+    }
+   },
+   "atrativos": [
+    "cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante"
+   ],
+   "combos": []
+  },
+  {
+   "nome": "Macacão",
+   "quorum": 4,
+   "cidades": {
+    "alto-paraiso": {
+     "exclusivo_pessoa_cents": 15500,
+     "exclusivo_transporte_cents": 15500,
+     "excursao_pessoa_cents": 12500,
+     "excursao_transporte_cents": 12500
+    },
+    "sao-jorge": {
+     "exclusivo_pessoa_cents": 15500,
+     "exclusivo_transporte_cents": 15500,
+     "excursao_pessoa_cents": 12500,
+     "excursao_transporte_cents": 12500
+    },
+    "cavalcante": {
+     "exclusivo_pessoa_cents": 15500,
+     "exclusivo_transporte_cents": 15500,
+     "excursao_pessoa_cents": 12500,
+     "excursao_transporte_cents": 12500
+    }
+   },
+   "atrativos": [
+    "cachoeira-macacao-guia-chapada-veadeiros-sao-joao-alianca"
+   ],
+   "combos": []
+  },
+  {
+   "nome": "Mirante da Janela",
+   "quorum": 4,
+   "cidades": {
+    "alto-paraiso": {
+     "exclusivo_pessoa_cents": 14500,
+     "exclusivo_transporte_cents": 14500,
+     "excursao_pessoa_cents": 11500,
+     "excursao_transporte_cents": 11500
+    },
+    "sao-jorge": {
+     "exclusivo_pessoa_cents": 14500,
+     "exclusivo_transporte_cents": 14500,
+     "excursao_pessoa_cents": 11500,
+     "excursao_transporte_cents": 11500
+    },
+    "cavalcante": {
+     "exclusivo_pessoa_cents": 14500,
+     "exclusivo_transporte_cents": 14500,
+     "excursao_pessoa_cents": 11500,
+     "excursao_transporte_cents": 11500
+    }
+   },
+   "atrativos": [
+    "mirante-janela-cachoeira-abismo-guia-chapada-veadeiros-sao-jorge"
+   ],
+   "combos": []
+  },
+  {
+   "nome": "Cordovil",
+   "quorum": 4,
+   "cidades": {
+    "alto-paraiso": {
+     "exclusivo_pessoa_cents": 18000,
+     "exclusivo_transporte_cents": 18000,
+     "excursao_pessoa_cents": 14500,
+     "excursao_transporte_cents": 14500
+    },
+    "sao-jorge": {
+     "exclusivo_pessoa_cents": 18000,
+     "exclusivo_transporte_cents": 18000,
+     "excursao_pessoa_cents": 14500,
+     "excursao_transporte_cents": 14500
+    },
+    "cavalcante": {
+     "exclusivo_pessoa_cents": 18000,
+     "exclusivo_transporte_cents": 18000,
+     "excursao_pessoa_cents": 14500,
+     "excursao_transporte_cents": 14500
+    }
+   },
+   "atrativos": [
+    "cachoeira-cordovil-poco-esmeralda-guia-chapada-veadeiros"
+   ],
+   "combos": []
+  },
+  {
+   "nome": "Cataratas dos Couros",
+   "quorum": 4,
+   "cidades": {
+    "alto-paraiso": {
+     "exclusivo_pessoa_cents": 19000,
+     "exclusivo_transporte_cents": 19000,
+     "excursao_pessoa_cents": 15000,
+     "excursao_transporte_cents": 15000
+    },
+    "sao-jorge": {
+     "exclusivo_pessoa_cents": 19000,
+     "exclusivo_transporte_cents": 19000,
+     "excursao_pessoa_cents": 15000,
+     "excursao_transporte_cents": 15000
+    },
+    "cavalcante": {
+     "exclusivo_pessoa_cents": 19000,
+     "exclusivo_transporte_cents": 19000,
+     "excursao_pessoa_cents": 15000,
+     "excursao_transporte_cents": 15000
+    }
+   },
+   "atrativos": [
+    "cataratas-dos-couros-guia-chapada-veadeiros-alto-paraiso"
+   ],
+   "combos": []
+  },
+  {
+   "nome": "Macaquinhos",
+   "quorum": 4,
+   "cidades": {
+    "alto-paraiso": {
+     "exclusivo_pessoa_cents": 17500,
+     "exclusivo_transporte_cents": 17500,
+     "excursao_pessoa_cents": 14000,
+     "excursao_transporte_cents": 14000
+    },
+    "sao-jorge": {
+     "exclusivo_pessoa_cents": 17500,
+     "exclusivo_transporte_cents": 17500,
+     "excursao_pessoa_cents": 14000,
+     "excursao_transporte_cents": 14000
+    },
+    "cavalcante": {
+     "exclusivo_pessoa_cents": 17500,
+     "exclusivo_transporte_cents": 17500,
+     "excursao_pessoa_cents": 14000,
+     "excursao_transporte_cents": 14000
+    }
+   },
+   "atrativos": [
+    "cachoeira-macaquinhos-guia-chapada-veadeiros-sao-joao-alianca"
+   ],
+   "combos": []
+  },
+  {
+   "nome": "Parque Nacional - Saltos do rio Preto",
+   "quorum": 4,
+   "cidades": {
+    "alto-paraiso": {
+     "exclusivo_pessoa_cents": 22000,
+     "exclusivo_transporte_cents": 22000,
+     "excursao_pessoa_cents": 18000,
+     "excursao_transporte_cents": 18000
+    },
+    "sao-jorge": {
+     "exclusivo_pessoa_cents": 22000,
+     "exclusivo_transporte_cents": 22000,
+     "excursao_pessoa_cents": 18000,
+     "excursao_transporte_cents": 18000
+    },
+    "cavalcante": {
+     "exclusivo_pessoa_cents": 22000,
+     "exclusivo_transporte_cents": 22000,
+     "excursao_pessoa_cents": 18000,
+     "excursao_transporte_cents": 18000
+    }
+   },
+   "atrativos": [
+    "parque-nacional-chapada-veadeiros-saltos-rio-preto-sao-jorge"
+   ],
+   "combos": []
+  },
+  {
+   "nome": "Complexo Rio da Prata",
+   "quorum": 4,
+   "cidades": {
+    "alto-paraiso": {
+     "exclusivo_pessoa_cents": 22000,
+     "exclusivo_transporte_cents": 22000,
+     "excursao_pessoa_cents": 18000,
+     "excursao_transporte_cents": 18000
+    },
+    "sao-jorge": {
+     "exclusivo_pessoa_cents": 22000,
+     "exclusivo_transporte_cents": 22000,
+     "excursao_pessoa_cents": 18000,
+     "excursao_transporte_cents": 18000
+    },
+    "cavalcante": {
+     "exclusivo_pessoa_cents": 22000,
+     "exclusivo_transporte_cents": 22000,
+     "excursao_pessoa_cents": 18000,
+     "excursao_transporte_cents": 18000
+    }
+   },
+   "atrativos": [
+    "cachoeira-complexo-rio-prata-guia-chapada-veadeiros-cavalcante"
+   ],
+   "combos": []
+  },
+  {
+   "nome": "Anjos e Arcanjos + Caracol",
+   "quorum": 4,
+   "cidades": {
+    "alto-paraiso": {
+     "exclusivo_pessoa_cents": 22500,
+     "exclusivo_transporte_cents": 22500,
+     "excursao_pessoa_cents": 18000,
+     "excursao_transporte_cents": 18000
+    },
+    "sao-jorge": {
+     "exclusivo_pessoa_cents": 22500,
+     "exclusivo_transporte_cents": 22500,
+     "excursao_pessoa_cents": 18000,
+     "excursao_transporte_cents": 18000
+    },
+    "cavalcante": {
+     "exclusivo_pessoa_cents": 22500,
+     "exclusivo_transporte_cents": 22500,
+     "excursao_pessoa_cents": 18000,
+     "excursao_transporte_cents": 18000
+    }
+   },
+   "atrativos": [],
+   "combos": [
+    [
+     "cachoeira-anjos-arcanjos-guia-chapada-veadeiros-alto-paraiso",
+     "caracol-guia-chapada-veadeiros"
+    ]
+   ],
+   "sugestao": true
+  },
+  {
+   "nome": "Almécegas + Vale da Lua",
+   "quorum": 4,
+   "cidades": {
+    "alto-paraiso": {
+     "exclusivo_pessoa_cents": 23500,
+     "exclusivo_transporte_cents": 23500,
+     "excursao_pessoa_cents": 19000,
+     "excursao_transporte_cents": 19000
+    },
+    "sao-jorge": {
+     "exclusivo_pessoa_cents": 23500,
+     "exclusivo_transporte_cents": 23500,
+     "excursao_pessoa_cents": 19000,
+     "excursao_transporte_cents": 19000
+    },
+    "cavalcante": {
+     "exclusivo_pessoa_cents": 23500,
+     "exclusivo_transporte_cents": 23500,
+     "excursao_pessoa_cents": 19000,
+     "excursao_transporte_cents": 19000
+    }
+   },
+   "atrativos": [],
+   "combos": [
+    [
+     "cachoeira-almecegas-poco-sao-bento-guia-chapada-veadeiros",
+     "vale-lua-guia-chapada-veadeiros-sao-jorge"
+    ]
+   ],
+   "sugestao": true
+  },
+  {
+   "nome": "Segredo + Vale da Lua",
+   "quorum": 4,
+   "cidades": {
+    "alto-paraiso": {
+     "exclusivo_pessoa_cents": 23500,
+     "exclusivo_transporte_cents": 23500,
+     "excursao_pessoa_cents": 19000,
+     "excursao_transporte_cents": 19000
+    },
+    "sao-jorge": {
+     "exclusivo_pessoa_cents": 23500,
+     "exclusivo_transporte_cents": 23500,
+     "excursao_pessoa_cents": 19000,
+     "excursao_transporte_cents": 19000
+    },
+    "cavalcante": {
+     "exclusivo_pessoa_cents": 23500,
+     "exclusivo_transporte_cents": 23500,
+     "excursao_pessoa_cents": 19000,
+     "excursao_transporte_cents": 19000
+    }
+   },
+   "atrativos": [],
+   "combos": [
+    [
+     "cachoeira-segredo-guia-chapada-veadeiros-sao-jorge",
+     "vale-lua-guia-chapada-veadeiros-sao-jorge"
+    ]
+   ],
+   "sugestao": true
+  },
+  {
+   "nome": "Loquinhas + Vale da Lua",
+   "quorum": 4,
+   "cidades": {
+    "alto-paraiso": {
+     "exclusivo_pessoa_cents": 18000,
+     "exclusivo_transporte_cents": 18000,
+     "excursao_pessoa_cents": 15500,
+     "excursao_transporte_cents": 15500
+    },
+    "sao-jorge": {
+     "exclusivo_pessoa_cents": 18000,
+     "exclusivo_transporte_cents": 18000,
+     "excursao_pessoa_cents": 15500,
+     "excursao_transporte_cents": 15500
+    },
+    "cavalcante": {
+     "exclusivo_pessoa_cents": 18000,
+     "exclusivo_transporte_cents": 18000,
+     "excursao_pessoa_cents": 15500,
+     "excursao_transporte_cents": 15500
+    }
+   },
+   "atrativos": [],
+   "combos": [
+    [
+     "cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso",
+     "vale-lua-guia-chapada-veadeiros-sao-jorge"
+    ]
+   ],
+   "sugestao": true
+  },
+  {
+   "nome": "Almécegas + Loquinhas",
+   "quorum": 4,
+   "cidades": {
+    "alto-paraiso": {
+     "exclusivo_pessoa_cents": 21500,
+     "exclusivo_transporte_cents": 21500,
+     "excursao_pessoa_cents": 18000,
+     "excursao_transporte_cents": 18000
+    },
+    "sao-jorge": {
+     "exclusivo_pessoa_cents": 21500,
+     "exclusivo_transporte_cents": 21500,
+     "excursao_pessoa_cents": 18000,
+     "excursao_transporte_cents": 18000
+    },
+    "cavalcante": {
+     "exclusivo_pessoa_cents": 21500,
+     "exclusivo_transporte_cents": 21500,
+     "excursao_pessoa_cents": 18000,
+     "excursao_transporte_cents": 18000
+    }
+   },
+   "atrativos": [],
+   "combos": [
+    [
+     "cachoeira-almecegas-poco-sao-bento-guia-chapada-veadeiros",
+     "cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso"
+    ]
+   ],
+   "sugestao": true
+  },
+  {
+   "nome": "Cordovil + Loquinhas",
+   "quorum": 4,
+   "cidades": {
+    "alto-paraiso": {
+     "exclusivo_pessoa_cents": 24500,
+     "exclusivo_transporte_cents": 24500,
+     "excursao_pessoa_cents": 20000,
+     "excursao_transporte_cents": 20000
+    },
+    "sao-jorge": {
+     "exclusivo_pessoa_cents": 24500,
+     "exclusivo_transporte_cents": 24500,
+     "excursao_pessoa_cents": 20000,
+     "excursao_transporte_cents": 20000
+    },
+    "cavalcante": {
+     "exclusivo_pessoa_cents": 24500,
+     "exclusivo_transporte_cents": 24500,
+     "excursao_pessoa_cents": 20000,
+     "excursao_transporte_cents": 20000
+    }
+   },
+   "atrativos": [],
+   "combos": [
+    [
+     "cachoeira-cordovil-poco-esmeralda-guia-chapada-veadeiros",
+     "cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso"
+    ]
+   ],
+   "sugestao": true
+  },
+  {
+   "nome": "Almécegas + Vale da Lua + Ponte de Pedra",
+   "quorum": 4,
+   "cidades": {
+    "alto-paraiso": {
+     "exclusivo_pessoa_cents": 34000,
+     "exclusivo_transporte_cents": 34000,
+     "excursao_pessoa_cents": 27500,
+     "excursao_transporte_cents": 27500
+    },
+    "sao-jorge": {
+     "exclusivo_pessoa_cents": 34000,
+     "exclusivo_transporte_cents": 34000,
+     "excursao_pessoa_cents": 27500,
+     "excursao_transporte_cents": 27500
+    },
+    "cavalcante": {
+     "exclusivo_pessoa_cents": 34000,
+     "exclusivo_transporte_cents": 34000,
+     "excursao_pessoa_cents": 27500,
+     "excursao_transporte_cents": 27500
+    }
+   },
+   "atrativos": [],
+   "combos": [
+    [
+     "cachoeira-almecegas-poco-sao-bento-guia-chapada-veadeiros",
+     "vale-lua-guia-chapada-veadeiros-sao-jorge",
+     "cachoeira-ponte-de-pedra-guia-chapada-veadeiros-cavalcante"
+    ]
+   ],
+   "sugestao": true
+  },
+  {
+   "nome": "Cordovil + Vale da Lua",
+   "quorum": 4,
+   "cidades": {
+    "alto-paraiso": {
+     "exclusivo_pessoa_cents": 26000,
+     "exclusivo_transporte_cents": 26000,
+     "excursao_pessoa_cents": 21000,
+     "excursao_transporte_cents": 21000
+    },
+    "sao-jorge": {
+     "exclusivo_pessoa_cents": 26000,
+     "exclusivo_transporte_cents": 26000,
+     "excursao_pessoa_cents": 21000,
+     "excursao_transporte_cents": 21000
+    },
+    "cavalcante": {
+     "exclusivo_pessoa_cents": 26000,
+     "exclusivo_transporte_cents": 26000,
+     "excursao_pessoa_cents": 21000,
+     "excursao_transporte_cents": 21000
+    }
+   },
+   "atrativos": [],
+   "combos": [
+    [
+     "cachoeira-cordovil-poco-esmeralda-guia-chapada-veadeiros",
+     "vale-lua-guia-chapada-veadeiros-sao-jorge"
+    ]
+   ],
+   "sugestao": true
+  }
+ ]
+}

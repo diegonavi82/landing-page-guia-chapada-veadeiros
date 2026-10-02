@@ -60,6 +60,9 @@ function gcv_related_tours_ensure(PDO $pdo): void
     );
 
     gcv_related_tours_seed($pdo);
+
+    require_once __DIR__ . '/tarifarios.php';
+    gcv_tarifarios_ensure($pdo);
 }
 
 function gcv_related_tours_seed(PDO $pdo): void
@@ -135,8 +138,13 @@ function gcv_related_tour_save(PDO $pdo, array $attractionIds): array
         }
     }
     $n = count($ids);
-    if ($n < 2 || $n > 3) {
-        throw new InvalidArgumentException('Um passeio relacionado tem 2 ou 3 atrativos.');
+    require_once __DIR__ . '/tarifarios.php';
+    $max = gcv_passeio_max_atrativos($pdo);
+    if ($max < 2) {
+        throw new InvalidArgumentException('Nas Configurações, o máximo de atrativos no mesmo dia é 1. Aumente para juntar atrativos.');
+    }
+    if ($n < 2 || $n > $max) {
+        throw new InvalidArgumentException('Um passeio com mais de um atrativo tem de 2 a ' . $max . ' atrativos.');
     }
 
     $marks = implode(',', array_fill(0, $n, '?'));
@@ -226,7 +234,7 @@ function gcv_related_tours_for_attraction(PDO $pdo, int $attractionId): array
 /** @return array<string,mixed> */
 function gcv_related_tour_one(PDO $pdo, int $passeioId): array
 {
-    $head = $pdo->prepare('SELECT id, duration_minutes, signature FROM gcv_passeio_relacionado WHERE id = ?');
+    $head = $pdo->prepare('SELECT * FROM gcv_passeio_relacionado WHERE id = ?');
     $head->execute([$passeioId]);
     $passeio = $head->fetch();
     if (!$passeio) {
@@ -257,10 +265,15 @@ function gcv_related_tour_one(PDO $pdo, int $passeioId): array
     $tarifa = $pdo->prepare('SELECT id FROM gcv_tarifa WHERE passeio_relacionado_id = ? LIMIT 1');
     $tarifa->execute([$passeioId]);
     $tarifaRow = $tarifa->fetch();
+    require_once __DIR__ . '/tarifarios.php';
+    $tarifarioId = isset($passeio['tarifario_id']) && $passeio['tarifario_id'] !== null ? (int)$passeio['tarifario_id'] : null;
     return [
         'id' => (int)$passeio['id'],
         'duration_minutes' => (int)$passeio['duration_minutes'],
         'tarifa_id' => $tarifaRow ? (int)$tarifaRow['id'] : null,
+        'tarifario_id' => $tarifarioId,
+        'duracao_cidades' => gcv_duracao_cidades($passeio['duracao_json'] ?? null, (int)$passeio['duration_minutes']),
+        'tarifa' => gcv_tarifario_public_by_id($pdo, $tarifarioId),
         'attractions' => $attractions,
     ];
 }

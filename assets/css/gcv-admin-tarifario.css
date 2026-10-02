@@ -1,0 +1,96 @@
+/* Menu TARIFÁRIO do admin */
+#cms-tarifario-root { --tf-green: #0f3d2e; --tf-green-2: #14532d; --tf-line: #e2e8f0; --tf-soft: #f4f8f6; --tf-muted: #64748b; --tf-warn: #b45309; position: relative; }
+.tf-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: .75rem; }
+.tf-tabs { display: inline-flex; gap: 4px; padding: 4px; border-radius: 12px; background: #eef3f0; border: 1px solid var(--tf-line); }
+.tf-tab { border: 0; background: transparent; padding: .5rem .9rem; border-radius: 9px; font: inherit; font-size: .9rem; font-weight: 600; color: var(--tf-muted); cursor: pointer; }
+.tf-tab.is-on { background: #fff; color: var(--tf-green); box-shadow: 0 1px 3px rgba(15,61,46,.15); }
+.tf-count { display: inline-block; min-width: 1.4em; padding: 0 .35em; margin-left: .25rem; border-radius: 99px; background: #dcebe3; color: var(--tf-green); font-size: .75rem; }
+.tf-search { max-width: 280px; }
+.tf-rules { display: flex; flex-wrap: wrap; gap: .4rem .9rem; margin: 0 0 1rem; padding: .65rem .85rem; border-radius: 10px; background: var(--tf-soft); border: 1px solid #dcebe3; font-size: .85rem; color: #334155; }
+.tf-rules a { color: var(--tf-green-2); }
+.tf-warn { color: var(--tf-warn); font-weight: 600; }
+.tf-small { font-size: .8rem; }
+
+/* atrativos */
+.tf-attr { border: 1px solid var(--tf-line); border-radius: 12px; background: #fff; margin-bottom: .6rem; overflow: hidden; }
+.tf-attr.is-off { border-left: 4px solid #f59e0b; }
+.tf-attr__head { width: 100%; display: flex; align-items: center; gap: .75rem; padding: .8rem 1rem; border: 0; background: transparent; font: inherit; text-align: left; cursor: pointer; }
+.tf-attr__head:hover { background: #fafcfb; }
+.tf-attr__name { font-weight: 700; color: #0f172a; min-width: 9rem; }
+.tf-attr__meta { flex: 1; display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .75rem; font-size: .82rem; color: var(--tf-muted); }
+.tf-attr__chev { color: var(--tf-muted); transition: transform .15s; }
+.tf-attr.is-open .tf-attr__chev { transform: rotate(180deg); }
+.tf-attr__body { display: grid; grid-template-columns: 1fr 1.35fr; gap: 1rem; padding: 0 1rem 1rem; border-top: 1px solid var(--tf-line); }
+.tf-block h4 { margin: .9rem 0 .6rem; font-size: .8rem; letter-spacing: .04em; text-transform: uppercase; color: var(--tf-muted); }
+.tf-pill { display: inline-block; padding: .15rem .55rem; border-radius: 99px; background: #dcfce7; color: #166534; font-weight: 700; font-size: .78rem; }
+.tf-pill--off { background: #fef3c7; color: #92400e; }
+.tf-grid2 { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .6rem; margin-bottom: .6rem; }
+.tf-grid2 > .tf-field { flex: 1 1 15rem; }
+.tf-field { display: flex; flex-direction: column; gap: .3rem; margin: 0 0 .6rem; font-size: .78rem; font-weight: 600; color: var(--tf-muted); }
+.tf-field--sm { flex: 0 1 12rem !important; }
+.tf-select { width: 100%; }
+.tf-edit-link { margin-bottom: .6rem; }
+.tf-dur { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .4rem; }
+.tf-dur__cell { display: flex; flex-direction: column; gap: .2rem; font-size: .72rem; font-weight: 600; color: var(--tf-muted); }
+.tf-dur__cell input { text-align: center; font-weight: 700; }
+.tf-combo { border: 1px solid #dcebe3; border-radius: 10px; padding: .7rem .8rem .2rem; margin-bottom: .55rem; background: var(--tf-soft); }
+.tf-combo.is-off { border-color: #fcd34d; background: #fffbeb; }
+.tf-combo__top { display: flex; justify-content: space-between; gap: .5rem; align-items: flex-start; }
+.tf-combo__name { margin: 0 0 .55rem; font-size: .95rem; color: #0f172a; }
+.tf-combo__name span { color: var(--tf-muted); }
+.tf-combo__name i { font-style: normal; color: var(--tf-muted); padding: 0 .15rem; }
+.tf-x { flex: none; width: 28px; height: 28px; border: 0; border-radius: 8px; background: #fff; color: #b91c1c; font-size: 1.1rem; line-height: 1; cursor: pointer; box-shadow: inset 0 0 0 1px #fecaca; }
+.tf-x:hover { background: #fef2f2; }
+.tf-add { display: flex; flex-wrap: wrap; align-items: center; gap: .45rem; margin-top: .4rem; padding: .6rem; border: 1px dashed #b6d4c4; border-radius: 10px; }
+.tf-add__label { font-size: .85rem; font-weight: 600; color: #334155; }
+.tf-add select { flex: 1 1 10rem; min-width: 0; }
+
+/* tarifários */
+.tf-toolbar { margin-bottom: .8rem; }
+.tf-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: .7rem; }
+.tf-card { border: 1px solid var(--tf-line); border-radius: 12px; padding: .85rem .95rem; background: #fff; display: flex; flex-direction: column; gap: .6rem; }
+.tf-card__top { display: flex; justify-content: space-between; gap: .5rem; align-items: flex-start; }
+.tf-card__top h4 { margin: 0; font-size: 1rem; color: #0f172a; }
+.tf-card__prices { display: flex; flex-wrap: wrap; gap: .25rem 1.1rem; align-items: baseline; }
+.tf-card__prices span { display: flex; flex-direction: column; }
+.tf-card__prices small { font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; color: var(--tf-muted); }
+.tf-card__prices b { font-size: 1.25rem; color: var(--tf-green-2); }
+.tf-card__prices .tf-card__note { flex-basis: 100%; font-size: .72rem; color: var(--tf-muted); }
+.tf-card__use { display: flex; flex-wrap: wrap; gap: .3rem; margin-bottom: .4rem; }
+.tf-chip { display: inline-flex; align-items: center; gap: .3rem; padding: .2rem .55rem; border-radius: 99px; background: #eef2f7; color: #334155; font-size: .78rem; font-weight: 600; }
+.tf-chip--combo { background: #e0f2fe; color: #075985; }
+.tf-chip button { border: 0; background: transparent; color: inherit; cursor: pointer; font-size: .95rem; line-height: 1; padding: 0; }
+
+/* editor */
+.tf-editor__top { display: flex; align-items: center; gap: .75rem; margin-bottom: .8rem; }
+.tf-editor__top h3 { margin: 0; }
+.tf-back { border: 0; background: #eef3f0; color: var(--tf-green); border-radius: 8px; padding: .4rem .7rem; font: inherit; font-weight: 600; cursor: pointer; }
+.tf-suffix { display: flex; align-items: center; gap: .4rem; }
+.tf-suffix input { width: 5rem; text-align: center; }
+.tf-suffix em { font-style: normal; color: var(--tf-muted); }
+.tf-table-wrap { overflow-x: auto; border: 1px solid var(--tf-line); border-radius: 12px; }
+.tf-table { width: 100%; border-collapse: collapse; min-width: 640px; }
+.tf-table th, .tf-table td { padding: .55rem .6rem; border-bottom: 1px solid var(--tf-line); text-align: left; }
+.tf-table tbody tr:last-child th, .tf-table tbody tr:last-child td { border-bottom: 0; }
+.tf-table thead th { background: var(--tf-soft); font-size: .82rem; color: #0f172a; }
+.tf-table thead th small { display: block; font-weight: 500; color: var(--tf-muted); font-size: .72rem; }
+.tf-table tbody th { font-size: .88rem; white-space: nowrap; }
+.tf-money { display: flex; align-items: center; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; overflow: hidden; }
+.tf-money:focus-within { border-color: var(--tf-green-2); box-shadow: 0 0 0 2px rgba(20,83,45,.15); }
+.tf-money em { font-style: normal; padding: 0 .45rem; color: var(--tf-muted); font-size: .8rem; background: var(--tf-soft); align-self: stretch; display: flex; align-items: center; }
+.tf-money input { border: 0; outline: 0; width: 100%; min-width: 4rem; padding: .45rem .5rem; font: inherit; font-weight: 700; }
+.tf-editor__tools { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; margin: .7rem 0 1rem; }
+.tf-use-add { max-width: 420px; }
+.tf-editor__actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
+.tf-del { margin-left: auto; }
+
+.tf-toast { position: fixed; left: 50%; bottom: 1.5rem; transform: translate(-50%, 20px); opacity: 0; pointer-events: none; z-index: 200; padding: .65rem 1rem; border-radius: 10px; background: #0f3d2e; color: #fff; font-weight: 600; font-size: .9rem; box-shadow: 0 10px 30px rgba(0,0,0,.2); transition: opacity .2s, transform .2s; }
+.tf-toast.is-on { opacity: 1; transform: translate(-50%, 0); }
+.tf-toast.is-bad { background: #b91c1c; }
+
+@media (max-width: 860px) {
+  .tf-attr__body { grid-template-columns: 1fr; gap: 0; }
+  .tf-search { max-width: none; flex: 1 1 100%; }
+  .tf-attr__head { flex-wrap: wrap; }
+  .tf-toast { bottom: calc(1rem + var(--gcv-dash-tabbar-h, 72px)); }
+}

@@ -451,7 +451,9 @@
 
   function purgeExpiredAndPersist(opts) {
     var items = readStoredItems();
-    var purged = sortCartItems(purgeExpiredItems(items));
+    var notExpired = sortCartItems(purgeExpiredItems(items));
+    var purged = dropSameDayDuplicates(notExpired);
+    var sameDayRemoved = notExpired.length - purged.length;
     if (purged.length === items.length) {
       if (!opts || !opts.skipRender) renderCartUi();
       return 0;
@@ -462,7 +464,8 @@
       /* */
     }
     renderCartUi();
-    if (!opts || opts.notify !== false) showExpiredCartToast();
+    if (sameDayRemoved > 0) showSameDayToast();
+    else if (!opts || opts.notify !== false) showExpiredCartToast();
     if (typeof _onChange === "function") {
       _onChange(purged);
     }
@@ -1131,7 +1134,7 @@
     var existing = items.find(function (it) {
       return it.id === item.id;
     });
-    if (!existing && hasSameDayConflict(items, item)) {
+    if (hasSameDayConflict(items, item)) {
       return false;
     }
     if (existing) {
@@ -1331,7 +1334,23 @@
     var now = Date.now();
     if (now - _sameDayAlertAt < 800) return;
     _sameDayAlertAt = now;
+    if (global.document && global.document.body) {
+      showExcToastPopup(msg, { variant: "warning", duration: 7000 });
+      return;
+    }
     global.alert(msg);
+  }
+
+  /** Nunca deixa 2 itens com a mesma data: mantém o primeiro (pela ordem de saída). */
+  function dropSameDayDuplicates(items) {
+    var seen = {};
+    return (items || []).filter(function (it) {
+      var iso = itemDateIso(it);
+      if (!iso) return true;
+      if (seen[iso]) return false;
+      seen[iso] = true;
+      return true;
+    });
   }
 
   function showCartToast(msg, variant) {

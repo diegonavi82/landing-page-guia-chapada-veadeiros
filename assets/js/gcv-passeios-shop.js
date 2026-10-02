@@ -13,8 +13,8 @@
       three: "3 atrativos",
       from: "A partir de",
       person: "por pessoa",
-      priv15: "Privativo 1–5",
-      exc15: "Excursão 1–5",
+      priv15: "Privativo",
+      exc15: "Excursão",
       priv6: "Privativo 6+",
       exc6: "Excursão 6+",
       open: "Montar roteiro",
@@ -31,8 +31,8 @@
       three: "3 places",
       from: "From",
       person: "per person",
-      priv15: "Private 1–5",
-      exc15: "Excursion 1–5",
+      priv15: "Private",
+      exc15: "Group",
       priv6: "Private 6+",
       exc6: "Excursion 6+",
       open: "Build itinerary",
@@ -49,8 +49,8 @@
       three: "3 atractivos",
       from: "Desde",
       person: "por persona",
-      priv15: "Privado 1–5",
-      exc15: "Excursión 1–5",
+      priv15: "Privado",
+      exc15: "Excursión",
       priv6: "Privado 6+",
       exc6: "Excursión 6+",
       open: "Armar itinerario",
@@ -67,8 +67,8 @@
     three: "3",
     from: "A partir de",
     person: "por pessoa",
-    priv15: "Privativo 1–5",
-    exc15: "Excursão 1–5",
+    priv15: "Privativo",
+    exc15: "Excursão",
     priv6: "Privativo 6+",
     exc6: "Excursão 6+",
     open: "Montar roteiro",
@@ -125,10 +125,8 @@
         "<h2>" + esc(tour.title) + "</h2>" +
         '<p class="gcv-shop-card__time">' + esc(horas(tour.duration_minutes)) + "</p>" +
         '<p class="gcv-shop-card__from">' + esc(copy.from) + " <strong>" + reais(tarifa.excursao_pessoa_cents) + "</strong> " + esc(copy.person) + "</p>" +
-        priceRow(copy.priv15, tarifa.exclusivo_pessoa_cents) +
         priceRow(copy.exc15, tarifa.excursao_pessoa_cents) +
-        priceRow(copy.priv6, tarifa.exclusivo_6_cents) +
-        priceRow(copy.exc6, tarifa.excursao_6_cents) +
+        priceRow(copy.priv15, tarifa.exclusivo_pessoa_cents) +
         '<a class="gcv-shop-card__cta" href="' + esc(tour.href) + '">' + esc(copy.open) + "</a>" +
         "</div></article>";
     }).join("");

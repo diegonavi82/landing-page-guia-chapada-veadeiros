@@ -92,6 +92,20 @@ Triangulação: **Admin ↔ Guia ↔ Cliente**.
 | Foto 3×4 | URL imagem | ≤ 8 MB |
 | Descrição | texto | **recomendado ≤ 600**; **máximo 800** |
 
+## Tarifário e passeios do dia
+
+- **Passeio** = o que o cliente faz num dia. É **1 item do carrinho** e tem de **1 até N atrativos** (N = Configurações → `passeio_max_atrativos`, padrão 3).
+- **Carrinho:** nunca 2 itens com a mesma data. Tentar adicionar mostra o aviso e não entra. Se o navegador já tiver 2 na mesma data, fica só o primeiro e o aviso aparece.
+- **Tarifário** = tabela de preço por pessoa, por cidade de saída (Alto Paraíso, São Jorge, Cavalcante) × modalidade (excursão, privativo) × transporte (sem, com translado). Também guarda o mínimo de pessoas cobrado no privativo (quórum, padrão 4).
+- Cada **atrativo** tem **1 tarifário**. Cada **passeio com 2+ atrativos** tem **1 tarifário próprio**: o preço de atrativos juntos **nunca é a soma**.
+- Um tarifário pode ser usado por **vários** atrativos e passeios.
+- **Sem tarifário, não vende:** o atrativo some do widget e o passeio do mesmo dia não aparece como opção.
+- **Duração** é do passeio (não do tarifário) e muda conforme a cidade de saída. Cidade sem valor usa a duração geral do atrativo/passeio.
+- Um passeio com 2+ atrativos aparece na página de **todos** os atrativos dele (ligar A com B atualiza A e B).
+- Excluir um tarifário solta quem usava: ficam fora da venda até ligar outro.
+- Carga inicial: `api/data/tarifarios-seed.json` (só roda com a tabela `gcv_tarifario` vazia e atrativos já importados). Os passeios com 2+ atrativos vieram com preço **sugerido** (soma dos atrativos − 10%) para revisar.
+- Tabelas: `gcv_tarifario`; colunas `tarifario_id` e `duracao_json` em `gcv_attractions` e `gcv_passeio_relacionado`. Criadas sozinhas pelo `gcv_cms_ensure_schema()` (sem migration manual).
+
 ## APIs principais
 
 | Endpoint | Papel |
@@ -110,6 +124,10 @@ Triangulação: **Admin ↔ Guia ↔ Cliente**.
 | `POST /api/bookings/cancel.php` | Cancelar (sem ressarc. se confirmada) |
 
 ---
+
+- `GET /api/passeios.php?slug=` — widget da página do atrativo (preço do Tarifário, duração por cidade, passeios do mesmo dia)
+- `GET /api/passeios.php` — catálogo da página Passeios
+- `/api/admin/tarifarios.php` — menu Tarifário (GET visão geral; POST/PUT tarifário; PUT `action` = `link`, `duracao`, `combo`; DELETE tarifário ou passeio)
 
 ## Máquina de status da saída
 

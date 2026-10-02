@@ -117,7 +117,7 @@ if ($method === 'GET') {
             exit;
         }
         $rows = db()->query(
-            'SELECT id, slug, status, title_pt, cover_url, difficulty, duration_minutes, entry_price_cents, entry_price_label, city_id, updated_at
+            'SELECT id, slug, status, title_pt, cover_url, difficulty, duration_minutes, tarifario_id, entry_price_cents, entry_price_label, city_id, updated_at
              FROM gcv_attractions ORDER BY title_pt ASC'
         )->fetchAll();
         foreach ($rows as &$row) {
