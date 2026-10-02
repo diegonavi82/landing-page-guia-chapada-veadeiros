@@ -80,32 +80,12 @@ export const MAP_BOX_BY_SLUG = {
   "cachoeira-macacao-guia-chapada-veadeiros-sao-joao-alianca": { l: 81.55, t: 64.5, w: 7.17, h: 3.5 },
 };
 
-/**
- * Segundo apontamento no mesmo destino.
- * Cataratas dos Couros e Parque Estadual Águas do Paraíso abrem a mesma página.
- */
-export const MAP_EXTRA_BY_SLUG = {
-  "cataratas-dos-couros-guia-chapada-veadeiros-alto-paraiso": [
-    {
-      title: {
-        pt: "Parque Estadual Águas do Paraíso",
-        en: "Águas do Paraíso State Park",
-        es: "Parque Estatal Águas do Paraíso",
-      },
-      box: { l: 37.85, t: 80.67, w: 10.54, h: 5.5 },
-    },
-  ],
-};
-
 export function hotspotsForMap() {
   const out = [];
   for (const spot of HOTSPOTS) {
     const box = MAP_BOX_BY_SLUG[spot.slug];
     if (!box) continue;
     out.push({ ...spot, box });
-    for (const extra of MAP_EXTRA_BY_SLUG[spot.slug] || []) {
-      out.push({ ...spot, title: extra.title, box: extra.box });
-    }
   }
   return out;
 }
