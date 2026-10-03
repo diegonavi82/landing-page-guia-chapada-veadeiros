@@ -87,6 +87,8 @@
 .tf-toast { position: fixed; left: 50%; bottom: 1.5rem; transform: translate(-50%, 20px); opacity: 0; pointer-events: none; z-index: 200; padding: .65rem 1rem; border-radius: 10px; background: #0f3d2e; color: #fff; font-weight: 600; font-size: .9rem; box-shadow: 0 10px 30px rgba(0,0,0,.2); transition: opacity .2s, transform .2s; }
 .tf-toast.is-on { opacity: 1; transform: translate(-50%, 0); }
 .tf-toast.is-bad { background: #b91c1c; }
+.tf-check { display: inline-flex; align-items: center; gap: .4rem; margin: 0 .85rem .45rem 0; font-size: .88rem; color: #0f172a; }
+.tf-cats { display: flex; flex-wrap: wrap; gap: .15rem .2rem; margin: .35rem 0 .8rem; }
 
 @media (max-width: 860px) {
   .tf-attr__body { grid-template-columns: 1fr; gap: 0; }

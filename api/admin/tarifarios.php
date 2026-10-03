@@ -55,6 +55,10 @@ try {
             }
             gcv_tarifario_reply($pdo);
         }
+        if ($action === 'oferta') {
+            gcv_passeio_oferta_save($pdo, $body);
+            gcv_tarifario_reply($pdo);
+        }
         if ($action === 'duracao') {
             $duracao = is_array($body['duracao'] ?? null) ? $body['duracao'] : [];
             if (!empty($body['attraction_id'])) {

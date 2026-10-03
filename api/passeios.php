@@ -26,7 +26,11 @@ try {
     $pdo = db();
     $slug = trim((string)($_GET['slug'] ?? ''));
     if ($slug === '') {
-        echo json_encode(['ok' => true, 'data' => ['tours' => gcv_tarifario_public_catalog($pdo)]], JSON_UNESCAPED_UNICODE);
+        echo json_encode(['ok' => true, 'data' => [
+            'tours' => gcv_tarifario_public_catalog($pdo),
+            'categories' => GCV_PASSEIO_CATEGORIAS,
+            'max_atrativos' => gcv_passeio_max_atrativos($pdo),
+        ]], JSON_UNESCAPED_UNICODE);
         exit;
     }
     if (!preg_match('/^[a-z0-9-]{1,190}$/', $slug)) {

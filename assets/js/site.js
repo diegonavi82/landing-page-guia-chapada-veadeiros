@@ -1124,9 +1124,23 @@
     grid.innerHTML = picked.map(cardHtml).join("\n");
   }
 
+  function initMenuPasseios() {
+    var nav = document.querySelector(".nav-main");
+    if (!nav || nav.querySelector('a[href*="passeios.html"]')) return;
+    var atr = null;
+    Array.prototype.forEach.call(nav.querySelectorAll("a"), function (a) {
+      if (/(^|\/)atrativos\.html$/.test(a.getAttribute("href") || "")) atr = a;
+    });
+    if (!atr) return;
+    var href = atr.getAttribute("href") || "atrativos.html";
+    var lang = href.indexOf("/en/") >= 0 || window.location.pathname.indexOf("/en/") >= 0 ? "en" : (href.indexOf("/es/") >= 0 || window.location.pathname.indexOf("/es/") >= 0 ? "es" : "pt");
+    var link = document.createElement("a");
+    link.href = href.replace(/atrativos\.html$/, "passeios.html");
+    link.textContent = lang === "en" ? "Tours" : lang === "es" ? "Paseos" : "Passeios";
+    atr.insertAdjacentElement("afterend", link);
+  }
+
   function initPasseiosPublicos() {
-    // Preço por atrativo ainda não está definido. Só a próxima saída pode ir para o carrinho.
-    return;
     if (!/\/atrativos\//.test(window.location.pathname)) return;
     var file = window.location.pathname.split("/").pop() || "";
     var slug = file.replace(/\.html$/, "");
@@ -1136,7 +1150,7 @@
     fetch("/api/passeios.php?slug=" + encodeURIComponent(slug))
       .then(function (res) { return res.json(); })
       .then(function (payload) {
-        if (!payload || !payload.ok || !payload.data || !payload.data.tarifa) return;
+        if (!payload || !payload.ok || !payload.data || !payload.data.tarifa || payload.data.tem_passeio === false) return;
         var data = payload.data;
         var box = document.createElement("section");
         box.className = "gcv-passeios";
@@ -1919,5 +1933,6 @@
   } catch (err) {
     if (typeof console !== "undefined" && console.error) console.error("[gcv-search]", err);
   }
+  initMenuPasseios();
   initPasseiosPublicos();
 })();

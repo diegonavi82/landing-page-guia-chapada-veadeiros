@@ -31,6 +31,15 @@ const GCV_TARIFARIO_CAMPOS = [
     'excursao_transporte_cents',
 ];
 
+/** Um passeio entra em pelo menos uma categoria e pode estar em todas. */
+const GCV_PASSEIO_CATEGORIAS = [
+    'classicos' => 'Clássicos',
+    'destaque' => 'Destaque',
+    'lado-b' => 'Lado B',
+    'familia' => 'Família',
+    'aventura' => 'Aventura',
+];
+
 function gcv_tarifario_column_exists(PDO $pdo, string $table, string $column): bool
 {
     try {
@@ -70,6 +79,15 @@ function gcv_tarifarios_ensure(PDO $pdo): void
     if (!gcv_tarifario_column_exists($pdo, 'gcv_passeio_relacionado', 'duracao_json')) {
         $pdo->exec('ALTER TABLE gcv_passeio_relacionado ADD COLUMN duracao_json TEXT NULL');
     }
+    if (!gcv_tarifario_column_exists($pdo, 'gcv_attractions', 'tem_passeio')) {
+        $pdo->exec('ALTER TABLE gcv_attractions ADD COLUMN tem_passeio TINYINT(1) NOT NULL DEFAULT 1');
+    }
+    if (!gcv_tarifario_column_exists($pdo, 'gcv_attractions', 'categorias')) {
+        $pdo->exec('ALTER TABLE gcv_attractions ADD COLUMN categorias VARCHAR(180) NULL');
+    }
+    if (!gcv_tarifario_column_exists($pdo, 'gcv_passeio_relacionado', 'categorias')) {
+        $pdo->exec('ALTER TABLE gcv_passeio_relacionado ADD COLUMN categorias VARCHAR(180) NULL');
+    }
     gcv_passeio_max_atrativos_ensure($pdo);
     gcv_tarifarios_seed($pdo);
 }
@@ -91,6 +109,47 @@ function gcv_passeio_max_atrativos_ensure(PDO $pdo): void
     } catch (Throwable $e) {
         error_log('passeio_max_atrativos: ' . $e->getMessage());
     }
+}
+
+/** @param mixed $raw */
+function gcv_passeio_categorias_parse($raw, int $count): array
+{
+    $allowed = array_keys(GCV_PASSEIO_CATEGORIAS);
+    $list = [];
+    if (is_string($raw) && $raw !== '') {
+        $decoded = json_decode($raw, true);
+        if (is_array($decoded)) {
+            $list = $decoded;
+        }
+    } elseif (is_array($raw)) {
+        $list = $raw;
+    }
+    $list = array_values(array_unique(array_intersect($allowed, array_map('strval', $list))));
+    if (!$list) {
+        $list = $count >= 2 ? ['destaque', 'classicos'] : ['classicos'];
+    }
+    return $list;
+}
+
+/** @param list<string> $cats */
+function gcv_passeio_oferta_save(PDO $pdo, array $body): void
+{
+    $cats = gcv_passeio_categorias_parse($body['categorias'] ?? [], 1);
+    $json = json_encode($cats, JSON_UNESCAPED_UNICODE);
+    if (!empty($body['attraction_id'])) {
+        $tem = array_key_exists('tem_passeio', $body) ? (!empty($body['tem_passeio']) ? 1 : 0) : null;
+        if ($tem === null) {
+            $pdo->prepare('UPDATE gcv_attractions SET categorias = ? WHERE id = ?')->execute([$json, (int)$body['attraction_id']]);
+        } else {
+            $pdo->prepare('UPDATE gcv_attractions SET tem_passeio = ?, categorias = ? WHERE id = ?')->execute([$tem, $json, (int)$body['attraction_id']]);
+        }
+        return;
+    }
+    if (!empty($body['passeio_id'])) {
+        $pdo->prepare('UPDATE gcv_passeio_relacionado SET categorias = ? WHERE id = ?')->execute([$json, (int)$body['passeio_id']]);
+        return;
+    }
+    throw new InvalidArgumentException('Informe o atrativo ou o passeio.');
 }
 
 function gcv_passeio_max_atrativos(PDO $pdo): int
@@ -319,7 +378,7 @@ function gcv_tarifario_admin_overview(PDO $pdo): array
     }
     $attractions = [];
     $rows = $pdo->query(
-        "SELECT id, title_pt, slug, status, duration_minutes, duracao_json, tarifario_id FROM gcv_attractions
+        "SELECT id, title_pt, slug, status, duration_minutes, duracao_json, tarifario_id, tem_passeio, categorias FROM gcv_attractions
          WHERE title_pt NOT LIKE '% + %' ORDER BY title_pt ASC"
     )->fetchAll();
     foreach ($rows as $row) {
@@ -332,6 +391,8 @@ function gcv_tarifario_admin_overview(PDO $pdo): array
             'status' => (string)$row['status'],
             'duration_minutes' => (int)($row['duration_minutes'] ?? 0),
             'page' => gcv_attraction_public_html_path($slug),
+            'tem_passeio' => !isset($row['tem_passeio']) || (int)$row['tem_passeio'] === 1,
+            'categorias' => gcv_passeio_categorias_parse($row['categorias'] ?? null, 1),
             'tarifario_id' => $tid,
             'duracao_cidades' => gcv_duracao_cidades($row['duracao_json'] ?? null, (int)($row['duration_minutes'] ?? 0)),
         ];
@@ -357,6 +418,7 @@ function gcv_tarifario_admin_overview(PDO $pdo): array
     }
     return [
         'max_atrativos' => gcv_passeio_max_atrativos($pdo),
+        'categorias' => GCV_PASSEIO_CATEGORIAS,
         'cidades' => GCV_TARIFARIO_CIDADES,
         'tarifarios' => array_values($tarifarios),
         'atrativos' => $attractions,
@@ -367,7 +429,7 @@ function gcv_tarifario_admin_overview(PDO $pdo): array
 /** Payload do widget na página do atrativo. null = atrativo não existe. */
 function gcv_tarifario_public_attraction(PDO $pdo, string $slug): ?array
 {
-    $stmt = $pdo->prepare("SELECT id, slug, title_pt, duration_minutes, duracao_json, tarifario_id FROM gcv_attractions WHERE slug = ? AND status = 'published' LIMIT 1");
+    $stmt = $pdo->prepare("SELECT id, slug, title_pt, duration_minutes, duracao_json, tarifario_id, tem_passeio, categorias FROM gcv_attractions WHERE slug = ? AND status = 'published' LIMIT 1");
     $stmt->execute([$slug]);
     $row = $stmt->fetch();
     if (!$row) {
@@ -386,6 +448,8 @@ function gcv_tarifario_public_attraction(PDO $pdo, string $slug): ?array
         'title' => (string)$row['title_pt'],
         'duration_minutes' => (int)($row['duration_minutes'] ?? 0),
         'duracao_cidades' => gcv_duracao_cidades($row['duracao_json'] ?? null, (int)($row['duration_minutes'] ?? 0)),
+        'tem_passeio' => !isset($row['tem_passeio']) || (int)$row['tem_passeio'] === 1,
+        'categorias' => gcv_passeio_categorias_parse($row['categorias'] ?? null, 1),
         'tarifa' => gcv_tarifario_public_by_id($pdo, $row['tarifario_id'] !== null ? (int)$row['tarifario_id'] : null),
         'max_atrativos' => $max,
         'related_tours' => $related,
@@ -409,8 +473,12 @@ function gcv_tarifario_public_catalog(PDO $pdo): array
         $cover->execute([$first['id']]);
         $out[] = [
             'id' => 'r-' . $tour['id'],
+            'kind' => 'combo',
+            'slug' => (string)$first['slug'],
+            'attraction_ids' => array_map(static fn($a) => (int)$a['id'], $tour['attractions']),
             'title' => implode(' + ', array_map(static fn($a) => $a['title_pt'], $tour['attractions'])),
             'count' => count($tour['attractions']),
+            'categories' => $tour['categorias'] ?? gcv_passeio_categorias_parse(null, count($tour['attractions'])),
             'duration_minutes' => $tour['duration_minutes'],
             'duracao_cidades' => $tour['duracao_cidades'],
             'tarifa' => $tour['tarifa'],
@@ -420,10 +488,13 @@ function gcv_tarifario_public_catalog(PDO $pdo): array
         ];
     }
     $rows = $pdo->query(
-        "SELECT id, slug, title_pt, duration_minutes, duracao_json, cover_url, tarifario_id FROM gcv_attractions
+        "SELECT id, slug, title_pt, duration_minutes, duracao_json, cover_url, tarifario_id, tem_passeio, categorias FROM gcv_attractions
          WHERE status = 'published' AND tarifario_id IS NOT NULL AND title_pt NOT LIKE '% + %' ORDER BY title_pt ASC"
     )->fetchAll();
     foreach ($rows as $row) {
+        if (isset($row['tem_passeio']) && (int)$row['tem_passeio'] !== 1) {
+            continue;
+        }
         $page = gcv_attraction_public_html_path((string)$row['slug']);
         $tarifa = gcv_tarifario_public_by_id($pdo, (int)$row['tarifario_id']);
         if ($page === '' || !$tarifa) {
@@ -431,8 +502,12 @@ function gcv_tarifario_public_catalog(PDO $pdo): array
         }
         $out[] = [
             'id' => 'a-' . $row['id'],
+            'kind' => 'atrativo',
+            'slug' => (string)$row['slug'],
+            'attraction_ids' => [(int)$row['id']],
             'title' => (string)$row['title_pt'],
             'count' => 1,
+            'categories' => gcv_passeio_categorias_parse($row['categorias'] ?? null, 1),
             'duration_minutes' => (int)($row['duration_minutes'] ?? 0),
             'duracao_cidades' => gcv_duracao_cidades($row['duracao_json'] ?? null, (int)($row['duration_minutes'] ?? 0)),
             'tarifa' => $tarifa,

@@ -273,6 +273,7 @@ function gcv_related_tour_one(PDO $pdo, int $passeioId): array
         'tarifa_id' => $tarifaRow ? (int)$tarifaRow['id'] : null,
         'tarifario_id' => $tarifarioId,
         'duracao_cidades' => gcv_duracao_cidades($passeio['duracao_json'] ?? null, (int)$passeio['duration_minutes']),
+        'categorias' => gcv_passeio_categorias_parse($passeio['categorias'] ?? null, count($attractions)),
         'tarifa' => gcv_tarifario_public_by_id($pdo, $tarifarioId),
         'attractions' => $attractions,
     ];
