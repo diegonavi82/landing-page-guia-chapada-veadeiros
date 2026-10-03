@@ -1125,6 +1125,8 @@
   }
 
   function initPasseiosPublicos() {
+    // Preço por atrativo ainda não está definido. Só a próxima saída pode ir para o carrinho.
+    return;
     if (!/\/atrativos\//.test(window.location.pathname)) return;
     var file = window.location.pathname.split("/").pop() || "";
     var slug = file.replace(/\.html$/, "");
