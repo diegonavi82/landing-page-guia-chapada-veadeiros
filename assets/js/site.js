@@ -1171,6 +1171,8 @@
         car: "carro",
         cars: "carros",
         duration: "Duração",
+        durationOf: "Duração de",
+        hourExact: "hs",
         total: "Total",
         add: "Adicionar ao carrinho",
         addedBtn: "Adicionado",
@@ -1206,6 +1208,8 @@
         car: "car",
         cars: "cars",
         duration: "Duration",
+        durationOf: "Duration of",
+        hourExact: "h",
         total: "Total",
         add: "Add to cart",
         addedBtn: "Added",
@@ -1241,6 +1245,8 @@
         car: "coche",
         cars: "coches",
         duration: "Duración",
+        durationOf: "Duración de",
+        hourExact: " h",
         total: "Total",
         add: "Agregar al carrito",
         addedBtn: "Añadido",
@@ -1260,13 +1266,16 @@
     return all[lang] || all.pt;
   }
 
-  function passeioHoras(minutos) {
+  function passeioHoras(minutos, copy) {
     minutos = parseInt(minutos, 10) || 0;
     if (!minutos) return "";
     var h = Math.floor(minutos / 60);
     var m = minutos % 60;
+    var exact = (copy && copy.hourExact) || "hs";
     if (!h) return m + " min";
-    if (!m) return h + " h";
+    if (!m) return h + exact;
+    if (exact === "hs") return h + "h" + (m < 10 ? "0" : "") + m;
+    if (exact === "h") return h + "h " + m + "min";
     return h + " h " + m + " min";
   }
 
@@ -1740,7 +1749,7 @@
       var unit = modalidade === "exclusivo" ? (comTranslado ? sel.exclusivoT : sel.exclusivo) : (comTranslado ? sel.excursaoT : sel.excursao);
       var parts = [];
       if (sel.minutes) {
-        parts.push('<span><i class="ti ti-clock" aria-hidden="true"></i><b>' + passeioEsc(passeioHoras(sel.minutes)) + "</b> " +
+        parts.push('<span><i class="ti ti-clock" aria-hidden="true"></i>' + passeioEsc(copy.durationOf) + " <b>" + passeioEsc(passeioHoras(sel.minutes, copy)) + "</b> " +
           passeioEsc(copy.leaving) + " " + passeioEsc(passeioCidadeCurta(cidadeEl ? cidadeEl.value : "")) + "</span>");
       }
       parts.push('<span><i class="ti ti-user" aria-hidden="true"></i><b>' + passeioEsc(passeioReais(unit)) + "</b> " + passeioEsc(copy.perPerson) + "</span>");
