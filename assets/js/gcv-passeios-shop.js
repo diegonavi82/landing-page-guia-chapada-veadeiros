@@ -13,7 +13,6 @@
     pt: {
       kicker: "Chapada dos Veadeiros",
       title: "Passeios de um dia",
-      lead: "Cada passeio é um produto: de uma a três atrações, no mesmo dia. Ao adicionar, ajuste data, pessoas, cidade e transporte.",
       day: "Data do passeio",
       dayHint: "Só um passeio por dia. A data, as pessoas, a cidade e o transporte ficam na janela que abre ao adicionar.",
       all: "Todos",
@@ -32,7 +31,6 @@
     en: {
       kicker: "Chapada dos Veadeiros",
       title: "One-day tours",
-      lead: "Each tour is a product: one to three places, the same day. When you add it, set the date, people, city and transfer.",
       day: "Tour date",
       dayHint: "One tour per day. Date, people, city and transfer are in the window that opens when you add.",
       all: "All",
@@ -51,7 +49,6 @@
     es: {
       kicker: "Chapada dos Veadeiros",
       title: "Paseos de un día",
-      lead: "Cada paseo es un producto: de uno a tres atractivos, el mismo día. Al agregar, ajusta fecha, personas, ciudad y transporte.",
       day: "Fecha del paseo",
       dayHint: "Un solo paseo por día. La fecha, las personas, la ciudad y el transporte quedan en la ventana que se abre al agregar.",
       all: "Todos",
@@ -99,7 +96,9 @@
     var cidades = (tour.tarifa && tour.tarifa.cidades) || {};
     var keys = Object.keys(cidades).filter(function (key) {
       var row = cidades[key] || {};
-      return (parseInt(row.excursao_pessoa_cents, 10) || 0) > 0;
+      return ["excursao_pessoa_cents", "excursao_transporte_cents", "exclusivo_pessoa_cents", "exclusivo_transporte_cents"].some(function (campo) {
+        return (parseInt(row[campo], 10) || 0) > 0;
+      });
     });
     if (!keys.length) keys = Object.keys(tour.duracao_cidades || {});
     var key = keys.length ? keys[Math.floor(Math.random() * keys.length)] : "alto-paraiso";
@@ -180,7 +179,7 @@
       }).join("");
     root.innerHTML =
       '<div class="gcv-shop__hero">' +
-      "<div><p class=\"gcv-shop__kicker\">" + esc(copy.kicker) + "</p><h1>" + esc(copy.title) + "</h1><p class=\"gcv-shop__lead\">" + esc(copy.lead) + "</p></div>" +
+      "<div><p class=\"gcv-shop__kicker\">" + esc(copy.kicker) + "</p><h1>" + esc(copy.title) + "</h1></div>" +
       "</div>" +
       '<div class="gcv-shop__filters">' + buttons + "</div>" +
       '<div class="gcv-shop__grid" data-shop-grid></div>';

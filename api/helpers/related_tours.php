@@ -267,14 +267,24 @@ function gcv_related_tour_one(PDO $pdo, int $passeioId): array
     $tarifaRow = $tarifa->fetch();
     require_once __DIR__ . '/tarifarios.php';
     $tarifarioId = isset($passeio['tarifario_id']) && $passeio['tarifario_id'] !== null ? (int)$passeio['tarifario_id'] : null;
+    $tarifaPublica = gcv_tarifario_public_by_id($pdo, $tarifarioId);
+    $mapa = gcv_cidades_saida_mapa($pdo);
+    $minutos = (int)$passeio['duration_minutes'];
     return [
         'id' => (int)$passeio['id'],
-        'duration_minutes' => (int)$passeio['duration_minutes'],
+        'duration_minutes' => $minutos,
         'tarifa_id' => $tarifaRow ? (int)$tarifaRow['id'] : null,
         'tarifario_id' => $tarifarioId,
-        'duracao_cidades' => gcv_duracao_cidades($passeio['duracao_json'] ?? null, (int)$passeio['duration_minutes']),
+        'duracao_cidades' => gcv_duracao_cidades($passeio['duracao_json'] ?? null, $minutos),
         'categorias' => gcv_passeio_categorias_parse($passeio['categorias'] ?? null, count($attractions)),
-        'tarifa' => gcv_tarifario_public_by_id($pdo, $tarifarioId),
+        'tarifa' => $tarifaPublica,
+        'saidas' => gcv_saidas_public(
+            gcv_saidas_chaves($passeio['saidas_json'] ?? null, $tarifaPublica, $mapa),
+            $tarifaPublica,
+            $passeio['duracao_json'] ?? null,
+            $minutos,
+            $mapa
+        ),
         'attractions' => $attractions,
     ];
 }

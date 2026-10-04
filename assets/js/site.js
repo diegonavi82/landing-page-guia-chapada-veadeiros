@@ -1197,7 +1197,7 @@
           var mine = matchingItems().length > 0;
           btn.classList.toggle("is-added", mine);
           btn.textContent = "";
-          if (mine) btn.appendChild(roteiroMark("check"));
+          btn.appendChild(roteiroMark(mine ? "check" : "plus"));
           btn.appendChild(document.createTextNode(mine ? copy.roteiroAdded : copy.shopAdd));
         }
         paintBtn();
@@ -1239,7 +1239,7 @@
         from: "De",
         person: "pessoa",
         peopleWord: "pessoas",
-        guideLead: "Reserve um lugar para o guia. Ele vai no carro de vocês.",
+        guideLead: "É necessário uma vaga para o guia no seu veículo.",
         guideRest: "Com {people}, o grupo precisa de {cars}.",
         car: "carro",
         cars: "carros",
@@ -1250,13 +1250,15 @@
         pixIn: "no PIX",
         pixOff: "{n}% OFF",
         cardOr: "ou {price} em até 4x de {inst} sem juros",
-        extras: "Contrate um guia local",
+        extras: "Guia Local",
+        pickLang: "Selecione o idioma",
         bilingual: "Guia bilíngue",
         bilingualHint: "Condutor credenciado que fala inglês ou espanhol",
         bilingualPrice: "+ R$ {price} / pessoa",
         bilingualShort: "guia bilíngue",
         langEn: "Inglês",
         langEs: "Espanhol",
+        langBr: "Português",
         chipDuration: "{t} de duração",
         chipLeave: "De {city}",
         chipPerson: "/ pessoa",
@@ -1269,7 +1271,7 @@
         fail: "Não entrou no carrinho. Escolha uma data futura.",
         sameDay: "Você já escolheu um passeio para este dia. Remova-o para escolher outro.",
         max: "O roteiro tem no máximo 3 atrativos.",
-        sameDayTitle: "Adicione no mesmo dia",
+        sameDayTitle: "Faça no mesmo dia",
         sameDayHint: "Até {n} atrativos no mesmo dia, num só passeio.",
         only: "Só {name}",
         needMore: "Este atrativo só vai junto com mais um. Escolha o outro para fechar o passeio.",
@@ -1293,7 +1295,7 @@
         from: "From",
         person: "person",
         peopleWord: "people",
-        guideLead: "Save a seat for the guide. They ride in your car.",
+        guideLead: "A seat for the guide is required in your vehicle.",
         guideRest: "With {people}, the group needs {cars}.",
         car: "car",
         cars: "cars",
@@ -1304,13 +1306,15 @@
         pixIn: "with PIX",
         pixOff: "{n}% OFF",
         cardOr: "or {price} in up to 4x of {inst} interest-free",
-        extras: "Hire a local guide",
+        extras: "Local guide",
+        pickLang: "Select the language",
         bilingual: "Bilingual guide",
         bilingualHint: "Licensed guide who speaks English or Spanish",
         bilingualPrice: "+ R$ {price} / person",
         bilingualShort: "bilingual guide",
         langEn: "English",
         langEs: "Spanish",
+        langBr: "Portuguese",
         chipDuration: "{t} duration",
         chipLeave: "From {city}",
         chipPerson: "/ person",
@@ -1323,7 +1327,7 @@
         fail: "It was not added. Pick a future date.",
         sameDay: "You already chose a tour for this day. Remove it to pick another.",
         max: "An itinerary has at most 3 places.",
-        sameDayTitle: "Add on the same day",
+        sameDayTitle: "Do it on the same day",
         sameDayHint: "Up to {n} places on the same day, in one tour.",
         only: "Only {name}",
         needMore: "This place only goes together with one more. Pick the other one to complete the tour.",
@@ -1347,7 +1351,7 @@
         from: "Desde",
         person: "persona",
         peopleWord: "personas",
-        guideLead: "Reserva un lugar para el guía. Va en el carro de ustedes.",
+        guideLead: "Se necesita un lugar para el guía en su vehículo.",
         guideRest: "Con {people}, el grupo necesita {cars}.",
         car: "coche",
         cars: "coches",
@@ -1358,13 +1362,15 @@
         pixIn: "con PIX",
         pixOff: "{n}% OFF",
         cardOr: "o {price} en hasta 4x de {inst} sin interés",
-        extras: "Contrata un guía local",
+        extras: "Guía local",
+        pickLang: "Selecciona el idioma",
         bilingual: "Guía bilingüe",
         bilingualHint: "Guía acreditado que habla inglés o español",
         bilingualPrice: "+ R$ {price} / persona",
         bilingualShort: "guía bilingüe",
         langEn: "Inglés",
         langEs: "Español",
+        langBr: "Portugués",
         chipDuration: "{t} de duración",
         chipLeave: "De {city}",
         chipPerson: "/ persona",
@@ -1377,7 +1383,7 @@
         fail: "No se agregó. Elige una fecha futura.",
         sameDay: "Ya elegiste un paseo para este día. Quítalo para elegir otro.",
         max: "El itinerario tiene como máximo 3 lugares.",
-        sameDayTitle: "Agrega el mismo día",
+        sameDayTitle: "Hazlo el mismo día",
         sameDayHint: "Hasta {n} lugares el mismo día, en un solo paseo.",
         only: "Solo {name}",
         needMore: "Este lugar solo va junto con uno más. Elige el otro para cerrar el paseo.",
@@ -1484,6 +1490,36 @@
     return 0;
   }
 
+  var PASSEIO_PRECO_CAMPOS = ["excursao_pessoa_cents", "excursao_transporte_cents", "exclusivo_pessoa_cents", "exclusivo_transporte_cents"];
+
+  function passeioCidadeVende(tarifa, cidade) {
+    var key = passeioCidadeKey(cidade);
+    var row = tarifa && tarifa.cidades && tarifa.cidades[key];
+    if (!row) return false;
+    return PASSEIO_PRECO_CAMPOS.some(function (campo) { return (parseInt(row[campo], 10) || 0) > 0; });
+  }
+
+  function passeioSaidasLista(source) {
+    var list = source && source.saidas;
+    if (list && list.length) return list;
+    var tarifa = source && (source.tarifa || source);
+    var cidades = (tarifa && tarifa.cidades) || {};
+    var labels = {
+      "alto-paraiso": ["Alto Paraíso de Goiás", "Alto Paraíso"],
+      "sao-jorge": ["São Jorge", "São Jorge"],
+      cavalcante: ["Cavalcante", "Cavalcante"],
+    };
+    return Object.keys(cidades).filter(function (key) {
+      return passeioCidadeVende(tarifa, labels[key] ? labels[key][0] : key);
+    }).map(function (key) {
+      var pair = labels[key] || [key, key];
+      var row = cidades[key] || {};
+      var item = { key: key, nome: pair[0], curta: pair[1] };
+      PASSEIO_PRECO_CAMPOS.forEach(function (campo) { item[campo] = parseInt(row[campo], 10) || 0; });
+      return item;
+    });
+  }
+
   function passeioCidadeCurta(cidade) {
     var key = passeioCidadeKey(cidade);
     if (key === "sao-jorge") return "São Jorge";
@@ -1575,10 +1611,7 @@
   }
 
   function passeioMostraGuia(modalidade, pessoas, comTranslado) {
-    if (comTranslado) return false;
-    pessoas = Math.max(1, parseInt(pessoas, 10) || 1);
-    if (modalidade === "exclusivo") return true;
-    return pessoas === 5 || pessoas === 10;
+    return !comTranslado;
   }
 
   function passeioCarros(pessoas) {
@@ -1632,10 +1665,12 @@
       ".gcv-passeios__seg button{flex:1 1 0;min-width:0;display:inline-flex;align-items:center;justify-content:center;gap:.4rem;padding:.55rem .4rem;border:0;border-radius:11px;background:transparent;color:#64748b;font:inherit;font-size:.9rem;font-weight:700;letter-spacing:0;text-transform:none;line-height:1.2;cursor:pointer;transition:background .15s,color .15s,box-shadow .15s}" +
       ".gcv-passeios__ride{width:1.7rem;height:1.15rem;flex:none;background:currentColor;-webkit-mask:url(/assets/img/jeep-icon.png) center / contain no-repeat;mask:url(/assets/img/jeep-icon.png) center / contain no-repeat}" +
       ".gcv-passeios__seg button:hover{color:var(--gp-green)}" +
-      ".gcv-passeios__seg button.is-on{background:#fff;color:var(--gp-green);box-shadow:inset 0 0 0 1.5px var(--gp-green)}" +
+      ".gcv-passeios__seg button.is-on{background:#16a34a;color:#fff;box-shadow:none}" +
+      ".gcv-passeios__seg button.is-on:hover{color:#fff}" +
+      ".gcv-passeios__seg button[hidden]{display:none!important}" +
       ".gcv-passeios__seg button:focus-visible,.gcv-passeios__stepper button:focus-visible,.gcv-passeios__add:focus-visible{outline:2px solid #0f766e;outline-offset:2px}" +
       ".gcv-passeios__summary{display:none;margin:0}" +
-      ".gcv-passeios__guide{display:flex;align-items:flex-start;gap:.45rem;margin:.9rem 0 0;padding:.6rem .75rem;border-radius:10px;background:#fef3c7;color:#92400e;font-size:.82rem;line-height:1.4}" +
+      ".gcv-passeios__guide{display:flex;align-items:flex-start;gap:.45rem;margin:.35rem 0 0;padding:.6rem .75rem;border-radius:10px;background:#fef3c7;color:#92400e;font-size:.82rem;font-weight:600;line-height:1.4;letter-spacing:0;text-transform:none}" +
       ".gcv-passeios__guide[hidden]{display:none}.gcv-passeios__guide .ti{font-size:1.05rem;line-height:1.2;flex:none}" +
       ".gcv-passeios__foot{display:flex;align-items:center;justify-content:space-between;gap:.85rem;margin-top:.35rem;padding:.85rem 1.15rem 1.05rem;border-top:1px solid #eef2f0;background:#fff}" +
       ".gcv-passeios__budget{margin:0;display:flex;flex-direction:column;align-items:flex-start;gap:.2rem;min-width:0;line-height:1.2;font-size:.8rem;font-weight:600;letter-spacing:0;text-transform:none;color:#64748b}" +
@@ -1673,7 +1708,7 @@
       ".gcv-passeios__extras{margin-top:1rem;padding:.85rem .9rem;border:1px dashed #b6d4c4;border-radius:12px;background:#f7fbf8}" +
       ".gcv-passeios__extras[hidden]{display:none}" +
       ".gcv-passeios__extras-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:.25rem .75rem;margin:0 0 .6rem}" +
-      ".gcv-passeios__extras-title{margin:0;font-size:.95rem;font-weight:800;color:var(--gp-ink)}" +
+      ".gcv-passeios__extras-title{margin:0 0 .6rem;font-size:.95rem;font-weight:800;color:var(--gp-ink)}" +
       ".gcv-passeios__extras-hint{margin:0;font-size:.76rem;color:var(--gp-muted)}" +
       ".gcv-passeios__extra-list{display:flex;flex-wrap:wrap;gap:.45rem}" +
       ".gcv-passeios__extra{display:inline-flex;align-items:center;gap:.4rem;padding:.5rem .8rem;border:1.5px solid #cfe1d7;border-radius:999px;background:#fff;color:#0f2a1d;font:inherit;font-size:.88rem;font-weight:700;cursor:pointer;transition:background .15s,border-color .15s,color .15s}" +
@@ -1683,21 +1718,13 @@
       ".gcv-bi{margin-top:1rem}" +
       ".gcv-bi__label{margin:0 0 .5rem;font-size:1.02rem;font-weight:800;letter-spacing:-.02em;text-transform:none;color:#0f2a1d}" +
       ".gcv-bi__card{border:1px solid #d7ebe3;background:#f4fbf7;border-radius:16px;padding:.75rem .9rem .8rem}" +
-      ".gcv-bi__top{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto;align-items:center;column-gap:.7rem}" +
-      ".gcv-bi__face{width:3.15rem;height:3.15rem;display:block}" +
-      ".gcv-bi__switch{flex:none;width:2.7rem;height:1.55rem;margin:0;padding:2px;border:0;border-radius:999px;background:#d7e3dc;cursor:pointer;transition:background .15s}" +
-      ".gcv-bi__switch::after{content:'';display:block;width:1.25rem;height:1.25rem;border-radius:999px;background:#fff;box-shadow:0 1px 3px rgba(15,42,29,.2);transition:transform .15s}" +
-      ".gcv-bi__switch[aria-pressed=true]{background:#14532d}" +
-      ".gcv-bi__switch[aria-pressed=true]::after{transform:translateX(1.15rem)}" +
-      ".gcv-bi__copy{min-width:0;flex:1}" +
-      ".gcv-bi__name{margin:0;font-size:.98rem;font-weight:800;color:#0f2a1d}" +
-      ".gcv-bi__hint{margin:.1rem 0 0;font-size:.78rem;font-weight:500;color:#64748b;line-height:1.35}" +
-      ".gcv-bi__price{margin:0;flex:none;font-size:.9rem;font-weight:800;color:#14532d;white-space:nowrap}" +
-      ".gcv-bi__langs{display:flex;flex-wrap:wrap;gap:.45rem;margin-top:.7rem}" +
+      ".gcv-bi__pick{margin:0 0 .65rem;font-size:.98rem;font-weight:800;color:#0f2a1d}" +
+      ".gcv-bi__langs{display:flex;flex-wrap:wrap;gap:.45rem}" +
       ".gcv-bi__langs[hidden]{display:none}" +
       ".gcv-bi__lang{display:inline-flex;align-items:center;gap:.35rem;padding:.38rem .75rem;border:1.5px solid #d5e5dc;border-radius:999px;background:#fff;color:#0f2a1d;font:inherit;font-size:.86rem;font-weight:700;cursor:pointer}" +
       ".gcv-bi__flag{width:1.2rem;height:.82rem;flex:none;border-radius:2px;box-shadow:0 0 0 1px rgba(15,42,29,.15);display:block}" +
       ".gcv-bi__lang.is-on{border-color:#14532d;box-shadow:inset 0 0 0 1px #14532d}" +
+      ".gcv-bi__lang[hidden]{display:none!important}" +
       ".gcv-passeios__extra[aria-pressed=true] .ti{color:#fff}" +
       ".gcv-passeios__extra:disabled{opacity:.4;cursor:not-allowed}" +
       ".gcv-passeios__note{margin:.6rem 0 0;font-size:.8rem;font-weight:600;color:#b45309}" +
@@ -1723,14 +1750,24 @@
       ".gcv-passeios.is-modal .gcv-passeios__now{padding-right:3rem}" +
       ".gcv-passeios.is-modal .gcv-passeios__body{overflow:auto;min-height:0}" +
       ".gcv-passeios.is-modal .gcv-passeios__foot{position:sticky;bottom:0}" +
-      "@media(max-width:640px){.gcv-passeio-modal{padding:.55rem}.gcv-passeios.is-modal{max-height:calc(100dvh - 1.1rem);border-radius:16px}.gcv-bi__top{grid-template-columns:auto auto minmax(0,1fr)}.gcv-bi__price{grid-column:3;width:auto;padding-left:0;justify-self:end}}";
+      "@media(max-width:640px){.gcv-passeio-modal{padding:.55rem}.gcv-passeios.is-modal{max-height:calc(100dvh - 1.1rem);border-radius:16px}}";
     function seg(name, options) {
       return '<div class="gcv-passeios__seg" role="radiogroup" data-passeio-seg="' + name + '">' +
         options.map(function (o, i) {
           return '<button type="button" role="radio" aria-checked="' + (i === 0 ? "true" : "false") + '" class="' + (i === 0 ? "is-on" : "") + '" data-value="' + passeioEsc(o[0]) + '">' + (o[2] || "") + passeioEsc(o[1]) + "</button>";
         }).join("") + "</div>";
     }
-    var cities = ["Alto Paraíso de Goiás", "São Jorge", "Cavalcante"];
+    var saidas = passeioSaidasLista(data);
+    if (!saidas.length) {
+      saidas = [
+        { nome: "Alto Paraíso de Goiás", curta: "Alto Paraíso" },
+        { nome: "São Jorge", curta: "São Jorge" },
+        { nome: "Cavalcante", curta: "Cavalcante" },
+      ];
+    }
+    var cities = saidas.map(function (c) { return c.nome; });
+    var langStart = copy.siteLang === "en" || copy.siteLang === "es" ? copy.siteLang : "pt";
+    var brFlag = '<svg class="gcv-bi__flag" viewBox="0 0 19 13" aria-hidden="true"><rect width="19" height="13" fill="#009c3b"/><polygon points="9.5,1.15 17.3,6.5 9.5,11.85 1.7,6.5" fill="#ffdf00"/><circle cx="9.5" cy="6.5" r="2.05" fill="#002776"/></svg>';
     return "<style>" + css + "</style>" +
       '<p class="gcv-passeios__now">' + passeioEsc(copy.title) + "</p>" +
       '<p class="gcv-passeios__summary" data-passeio-summary></p>' +
@@ -1743,40 +1780,32 @@
         '<input type="number" min="1" max="15" value="4" inputmode="numeric" aria-label="' + passeioEsc(copy.people) + '" data-passeio-people />' +
         '<button type="button" data-passeio-step="1" aria-label="+1">+</button></div></div>' +
       '<div class="gcv-passeios__field gcv-passeios__field--wide gcv-passeios__field--city">' + copy.city +
-        seg("city", cities.map(function (c) { return [c, passeioCidadeCurta(c)]; })) +
+        seg("city", saidas.map(function (c) { return [c.nome, c.curta || passeioCidadeCurta(c.nome)]; })) +
         '<select class="gcv-passeios__hide" tabindex="-1" aria-hidden="true" data-passeio-city>' + cities.map(function (c) { return "<option>" + c + "</option>"; }).join("") + "</select></div>" +
       '<div class="gcv-passeios__field gcv-passeios__field--wide gcv-passeios__field--mode">' + copy.mode +
         seg("mode", [["excursao", copy.group], ["exclusivo", copy.private]]) +
         '<select class="gcv-passeios__hide" tabindex="-1" aria-hidden="true" data-passeio-mode><option value="excursao">' + copy.group + '</option><option value="exclusivo">' + copy.private + "</option></select></div>" +
       '<div class="gcv-passeios__field gcv-passeios__field--wide gcv-passeios__field--transport">' + copy.transport +
         seg("transport", [["0", copy.withoutRide], ["1", copy.withRide, '<i class="gcv-passeios__ride" aria-hidden="true"></i>']]) +
-        '<select class="gcv-passeios__hide" tabindex="-1" aria-hidden="true" data-passeio-transport><option value="0">' + copy.withoutRide + '</option><option value="1">' + copy.withRide + "</option></select></div>" +
-      "</div>" +
-      '<div class="gcv-passeios__extras" data-passeio-extras hidden>' +
-        '<div class="gcv-passeios__extras-head"><p class="gcv-passeios__extras-title">' + passeioEsc(copy.sameDayTitle) + "</p>" +
-        '<p class="gcv-passeios__extras-hint">' + passeioEsc(String(copy.sameDayHint).replace("{n}", String(parseInt(data.max_atrativos, 10) || 3))) + "</p></div>" +
-        '<div class="gcv-passeios__extra-list" data-passeio-extra-list></div>' +
-        '<p class="gcv-passeios__note" data-passeio-need hidden>' + passeioEsc(copy.needMore) + "</p>" +
+        '<select class="gcv-passeios__hide" tabindex="-1" aria-hidden="true" data-passeio-transport><option value="0">' + copy.withoutRide + '</option><option value="1">' + copy.withRide + "</option></select>" +
+        '<p class="gcv-passeios__guide" data-passeio-guide hidden><i class="ti ti-steering-wheel" aria-hidden="true"></i><span data-passeio-guide-text></span></p></div>' +
       "</div>" +
       '<div class="gcv-bi">' +
         '<p class="gcv-bi__label">' + passeioEsc(copy.extras) + "</p>" +
         '<div class="gcv-bi__card">' +
-          '<div class="gcv-bi__top">' +
-            (Math.random() < 0.5
-              ? '<svg class="gcv-bi__face" data-guide="woman" viewBox="0 0 72 72" aria-hidden="true"><circle cx="36" cy="36" r="36" fill="#e8f6ee"/><path d="M18 64c1.6-11 8-16 18-16s16.4 5 18 16" fill="#14532d"/><path d="M20 40c1-14 7-24 16-24s15 10 16 24c-2 8-6 14-16 14s-14-6-16-14z" fill="#3b291c"/><circle cx="36" cy="31" r="11.5" fill="#f2c7a2"/><path d="M24 34c1-12 5.5-18 12-18s11 6 12 18c-2-5-6-8-12-8s-10 3-12 8z" fill="#3b291c"/><circle cx="31.4" cy="30" r="1.05" fill="#3b291c"/><circle cx="40.6" cy="30" r="1.05" fill="#3b291c"/><path d="M32.2 34.6c.7 1.1 1.6 1.6 3.8 1.6s3.1-.5 3.8-1.6" fill="none" stroke="#c4896a" stroke-width="1.15" stroke-linecap="round"/><path d="M50 42v15" stroke="#0f3d2e" stroke-width="1.7" stroke-linecap="round"/><path d="M50.7 42.2h12.4l-2.2 4.1 2.2 4.1H50.7z" fill="#009c3b"/><path d="M53.1 44.6h7.2l-1 1.9 1 1.9h-7.2z" fill="#ffdf00"/><circle cx="56.6" cy="46.5" r="1.05" fill="#002776"/></svg>'
-              : '<svg class="gcv-bi__face" data-guide="man" viewBox="0 0 72 72" aria-hidden="true"><circle cx="36" cy="36" r="36" fill="#e8f6ee"/><path d="M16 63c2-12 8.5-17 20-17s18 5 20 17" fill="#14532d"/><circle cx="36" cy="30" r="12.2" fill="#f2c7a2"/><path d="M24 28c.6-9 5.4-14.5 12-14.5S47.4 19 48 28c-1.4-4-5.4-6.4-12-6.4S25.4 24 24 28z" fill="#3b291c"/><circle cx="31.3" cy="29.2" r="1.1" fill="#3b291c"/><circle cx="40.7" cy="29.2" r="1.1" fill="#3b291c"/><path d="M31.8 34.2c.8 1.3 1.8 1.9 4.2 1.9s3.4-.6 4.2-1.9" fill="none" stroke="#c4896a" stroke-width="1.15" stroke-linecap="round"/><path d="M50 41v16" stroke="#0f3d2e" stroke-width="1.7" stroke-linecap="round"/><path d="M50.7 41.2h12.4l-2.2 4.1 2.2 4.1H50.7z" fill="#009c3b"/><path d="M53.1 43.6h7.2l-1 1.9 1 1.9h-7.2z" fill="#ffdf00"/><circle cx="56.6" cy="45.5" r="1.05" fill="#002776"/></svg>') +
-            '<button type="button" class="gcv-bi__switch" data-passeio-bi aria-pressed="' + (copy.siteLang === "en" || copy.siteLang === "es" ? "true" : "false") + '" aria-label="' + passeioEsc(copy.bilingual) + '"></button>' +
-            '<div class="gcv-bi__copy"><p class="gcv-bi__name">' + passeioEsc(copy.bilingual) + "</p>" +
-            '<p class="gcv-bi__hint">' + passeioEsc(copy.bilingualHint) + "</p></div>" +
-            '<p class="gcv-bi__price">' + passeioEsc(String(copy.bilingualPrice).replace("{price}", "40")) + "</p>" +
-          "</div>" +
-          '<div class="gcv-bi__langs" data-passeio-bi-langs' + (copy.siteLang === "en" || copy.siteLang === "es" ? "" : " hidden") + ">" +
-            '<button type="button" class="gcv-bi__lang' + (copy.siteLang === "es" ? "" : " is-on") + '" data-bi-lang="en"><svg class="gcv-bi__flag" viewBox="0 0 19 13" aria-hidden="true"><rect width="19" height="13" fill="#b22234"/><rect y="1" width="19" height="1" fill="#fff"/><rect y="3" width="19" height="1" fill="#fff"/><rect y="5" width="19" height="1" fill="#fff"/><rect y="7" width="19" height="1" fill="#fff"/><rect y="9" width="19" height="1" fill="#fff"/><rect y="11" width="19" height="1" fill="#fff"/><rect width="8" height="7" fill="#3c3b6e"/></svg> ' + passeioEsc(copy.langEn) + "</button>" +
-            '<button type="button" class="gcv-bi__lang' + (copy.siteLang === "es" ? " is-on" : "") + '" data-bi-lang="es"><svg class="gcv-bi__flag" viewBox="0 0 19 13" aria-hidden="true"><rect width="19" height="13" fill="#c60b1e"/><rect y="3.25" width="19" height="6.5" fill="#ffc400"/></svg> ' + passeioEsc(copy.langEs) + "</button>" +
+          '<p class="gcv-bi__pick">' + passeioEsc(copy.pickLang) + "</p>" +
+          '<div class="gcv-bi__langs" data-passeio-bi-langs>' +
+            '<button type="button" class="gcv-bi__lang' + (langStart === "pt" ? " is-on" : "") + '" data-bi-lang="pt">' + brFlag + " " + passeioEsc(copy.langBr) + "</button>" +
+            '<button type="button" class="gcv-bi__lang' + (langStart === "en" ? " is-on" : "") + '" data-bi-lang="en"><svg class="gcv-bi__flag" viewBox="0 0 19 13" aria-hidden="true"><rect width="19" height="13" fill="#b22234"/><rect y="1" width="19" height="1" fill="#fff"/><rect y="3" width="19" height="1" fill="#fff"/><rect y="5" width="19" height="1" fill="#fff"/><rect y="7" width="19" height="1" fill="#fff"/><rect y="9" width="19" height="1" fill="#fff"/><rect y="11" width="19" height="1" fill="#fff"/><rect width="8" height="7" fill="#3c3b6e"/></svg> ' + passeioEsc(copy.langEn) + "</button>" +
+            '<button type="button" class="gcv-bi__lang' + (langStart === "es" ? " is-on" : "") + '" data-bi-lang="es"><svg class="gcv-bi__flag" viewBox="0 0 19 13" aria-hidden="true"><rect width="19" height="13" fill="#c60b1e"/><rect y="3.25" width="19" height="6.5" fill="#ffc400"/></svg> ' + passeioEsc(copy.langEs) + "</button>" +
           "</div>" +
         "</div>" +
       "</div>" +
-      '<p class="gcv-passeios__guide" data-passeio-guide hidden><i class="ti ti-steering-wheel" aria-hidden="true"></i><span data-passeio-guide-text></span></p>' +
+      '<div class="gcv-passeios__extras" data-passeio-extras hidden>' +
+        '<p class="gcv-passeios__extras-title">' + passeioEsc(copy.sameDayTitle) + "</p>" +
+        '<div class="gcv-passeios__extra-list" data-passeio-extra-list></div>' +
+        '<p class="gcv-passeios__note" data-passeio-need hidden>' + passeioEsc(copy.needMore) + "</p>" +
+      "</div>" +
       "</div>" +
       '<div class="gcv-passeios__foot"><p class="gcv-passeios__budget" data-passeio-total></p>' +
       '<div class="gcv-passeios__actions"><button type="button" class="gcv-passeios__add" data-passeio-add aria-pressed="false"><span class="gcv-passeios__mark" aria-hidden="true">+</span> ' + passeioEsc(copy.roteiroBtn) + "</button></div></div>" +
@@ -1909,10 +1938,6 @@
     function paintAddButton() {
       var btn = box.querySelector("[data-passeio-add]");
       if (!btn) return;
-      if (box._passeioClosing) {
-        btn.disabled = true;
-        return;
-      }
       var item = buildItem();
       var cart = window.GcvExcCart;
       var mine = !!(item && itemInCart(item.id));
@@ -1989,11 +2014,9 @@
     }
 
     function passeioBiState() {
-      var btn = box.querySelector("[data-passeio-bi]");
-      var on = !!(btn && btn.getAttribute("aria-pressed") === "true");
       var langEl = box.querySelector("[data-bi-lang].is-on");
-      var lang = langEl ? langEl.getAttribute("data-bi-lang") : "en";
-      return { on: on, lang: lang === "es" ? "es" : "en" };
+      var lang = langEl ? langEl.getAttribute("data-bi-lang") : "pt";
+      return { on: lang === "en" || lang === "es", lang: lang === "es" ? "es" : "en" };
     }
 
     function paintRoute(sel, modalidade, comTranslado) {
@@ -2046,8 +2069,81 @@
       }
     }
 
+    function setSeg(name, value) {
+      var select = box.querySelector("[data-passeio-" + name + "]");
+      var group = box.querySelector('[data-passeio-seg="' + name + '"]');
+      if (!select || !group || !value) return;
+      select.value = value;
+      Array.prototype.forEach.call(group.querySelectorAll("button"), function (b) {
+        var on = b.getAttribute("data-value") === select.value;
+        b.classList.toggle("is-on", on);
+        b.setAttribute("aria-checked", on ? "true" : "false");
+      });
+    }
+
+    function tarifaAtiva() {
+      var extras = passeioExtras(box).slice().sort();
+      if (!extras.length) return data.tarifa;
+      var combo = passeioCombos(data).filter(function (c) { return c.ids.join("|") === extras.join("|"); })[0];
+      return combo && combo.tour ? combo.tour.tarifa : data.tarifa;
+    }
+
+    function syncTarifaOpcoes() {
+      var tarifa = tarifaAtiva();
+      var cityGroup = box.querySelector('[data-passeio-seg="city"]');
+      var citySel = box.querySelector("[data-passeio-city]");
+      if (cityGroup && citySel) {
+        var firstCity = "";
+        Array.prototype.forEach.call(cityGroup.querySelectorAll("button"), function (b) {
+          var ok = passeioCidadeVende(tarifa, b.getAttribute("data-value"));
+          b.hidden = !ok;
+          if (ok && !firstCity) firstCity = b.getAttribute("data-value");
+        });
+        var atual = cityGroup.querySelector('button[data-value="' + citySel.value + '"]');
+        if (!atual || atual.hidden) setSeg("city", firstCity);
+      }
+      var cidade = citySel ? citySel.value : "";
+      var row = (tarifa && tarifa.cidades && tarifa.cidades[passeioCidadeKey(cidade)]) || {};
+      function cents(field) { return parseInt(row[field], 10) || 0; }
+      var modes = [
+        ["excursao", cents("excursao_pessoa_cents") > 0 || cents("excursao_transporte_cents") > 0],
+        ["exclusivo", cents("exclusivo_pessoa_cents") > 0 || cents("exclusivo_transporte_cents") > 0],
+      ];
+      var modeGroup = box.querySelector('[data-passeio-seg="mode"]');
+      var modeSel = box.querySelector("[data-passeio-mode]");
+      var firstMode = "";
+      if (modeGroup && modeSel) {
+        modes.forEach(function (pair) {
+          var b = modeGroup.querySelector('button[data-value="' + pair[0] + '"]');
+          if (!b) return;
+          b.hidden = !pair[1];
+          if (pair[1] && !firstMode) firstMode = pair[0];
+        });
+        var modeBtn = modeGroup.querySelector('button[data-value="' + modeSel.value + '"]');
+        if (!modeBtn || modeBtn.hidden) setSeg("mode", firstMode);
+      }
+      var mode = modeSel ? modeSel.value : "excursao";
+      var rides = mode === "exclusivo"
+        ? [["0", cents("exclusivo_pessoa_cents") > 0], ["1", cents("exclusivo_transporte_cents") > 0]]
+        : [["0", cents("excursao_pessoa_cents") > 0], ["1", cents("excursao_transporte_cents") > 0]];
+      var rideGroup = box.querySelector('[data-passeio-seg="transport"]');
+      var rideSel = box.querySelector("[data-passeio-transport]");
+      var firstRide = "";
+      if (rideGroup && rideSel) {
+        rides.forEach(function (pair) {
+          var b = rideGroup.querySelector('button[data-value="' + pair[0] + '"]');
+          if (!b) return;
+          b.hidden = !pair[1];
+          if (pair[1] && !firstRide) firstRide = pair[0];
+        });
+        var rideBtn = rideGroup.querySelector('button[data-value="' + rideSel.value + '"]');
+        if (!rideBtn || rideBtn.hidden) setSeg("transport", firstRide);
+      }
+    }
+
     function paint() {
       syncDateFloor();
+      syncTarifaOpcoes();
       var sel = passeioSelecao(box, data);
       var modalidade = box.querySelector("[data-passeio-mode]").value;
       var pessoas = box.querySelector("[data-passeio-people]").value;
@@ -2060,15 +2156,7 @@
       var nPessoas = Math.max(1, parseInt(pessoas, 10) || 1);
       var mostraGuia = passeioMostraGuia(modalidade, nPessoas, comTranslado);
       if (guide) guide.hidden = !mostraGuia;
-      if (guideText) {
-        if (!mostraGuia) guideText.textContent = "";
-        else {
-          var nCarros = passeioCarros(nPessoas);
-          var gente = nPessoas + " " + (nPessoas === 1 ? copy.person : copy.peopleWord);
-          var frota = nCarros + " " + (nCarros === 1 ? copy.car : copy.cars);
-          guideText.textContent = copy.guideLead + " " + copy.guideRest.replace("{people}", gente).replace("{cars}", frota);
-        }
-      }
+      if (guideText) guideText.textContent = mostraGuia ? copy.guideLead : "";
       paintExtras();
       paintRoute(sel, modalidade, comTranslado);
       var unit = modalidade === "exclusivo" ? (comTranslado ? sel.exclusivoT : sel.exclusivo) : (comTranslado ? sel.excursaoT : sel.excursao);
@@ -2094,25 +2182,11 @@
       paintAddButton();
     }
 
-    var biBtn = box.querySelector("[data-passeio-bi]");
-    var biLangs = box.querySelector("[data-passeio-bi-langs]");
-    if (biBtn) {
-      biBtn.addEventListener("click", function () {
-        var on = biBtn.getAttribute("aria-pressed") !== "true";
-        biBtn.setAttribute("aria-pressed", on ? "true" : "false");
-        if (biLangs) biLangs.hidden = !on;
-        paint();
-      });
-    }
     Array.prototype.forEach.call(box.querySelectorAll("[data-bi-lang]"), function (btn) {
       btn.addEventListener("click", function () {
         Array.prototype.forEach.call(box.querySelectorAll("[data-bi-lang]"), function (other) {
           other.classList.toggle("is-on", other === btn);
         });
-        if (biBtn && biBtn.getAttribute("aria-pressed") !== "true") {
-          biBtn.setAttribute("aria-pressed", "true");
-          if (biLangs) biLangs.hidden = false;
-        }
         paint();
       });
     });
@@ -2151,12 +2225,8 @@
           if (typeof cart.warnSameDay === "function") cart.warnSameDay();
         } else if (box.classList.contains("is-modal")) {
           paintAddButton();
-          box._passeioClosing = true;
-          if (addBtn) addBtn.disabled = true;
-          window.setTimeout(function () {
-            closePasseioModal();
-            if (typeof box._passeioDone === "function") box._passeioDone();
-          }, 1000);
+          closePasseioModal();
+          if (typeof box._passeioDone === "function") box._passeioDone();
           return;
         }
       }
@@ -2242,17 +2312,10 @@
       setField("mode", /exclusivo/.test(String(existing.id || "")) ? "exclusivo" : "excursao");
       setField("transport", /-t(?:-bi-|$)/.test(String(existing.id || "")) ? "1" : "0");
       var biSaved = /-bi-(en|es)(?:$|-)/.exec(String(existing.id || ""));
-      var biBtn = box.querySelector("[data-passeio-bi]");
-      var biLangs = box.querySelector("[data-passeio-bi-langs]");
-      if (biBtn) {
-        biBtn.setAttribute("aria-pressed", biSaved ? "true" : "false");
-        if (biLangs) biLangs.hidden = !biSaved;
-        if (biSaved) {
-          Array.prototype.forEach.call(box.querySelectorAll("[data-bi-lang]"), function (btn) {
-            btn.classList.toggle("is-on", btn.getAttribute("data-bi-lang") === biSaved[1]);
-          });
-        }
-      }
+      var biWant = biSaved ? biSaved[1] : "pt";
+      Array.prototype.forEach.call(box.querySelectorAll("[data-bi-lang]"), function (btn) {
+        btn.classList.toggle("is-on", btn.getAttribute("data-bi-lang") === biWant);
+      });
       if (dateEl) dateEl.dispatchEvent(new Event("change", { bubbles: true }));
       if (peopleEl) peopleEl.dispatchEvent(new Event("change", { bubbles: true }));
     }

@@ -2095,7 +2095,7 @@
       items = [
         { id: 'section-cms-articles',      icon: '📰', label: 'Revista',           load: function () { if (window.GcvAdminCms) window.GcvAdminCms.open('articles'); } },
         { id: 'section-cms-attractions',   icon: '🏞️', label: 'Atrativos',         load: function () { if (window.GcvAdminCms) window.GcvAdminCms.open('attractions'); } },
-        { id: 'section-cms-tarifario',     icon: '🎟️', label: 'Passeios',          load: function () { if (window.GcvAdminTarifario) window.GcvAdminTarifario.open(); } },
+        { id: 'section-cms-tarifario',     icon: '🎟️', label: 'Tarifário',         load: function () { if (window.GcvAdminTarifario) window.GcvAdminTarifario.open(); } },
         { id: 'section-cms-guides',        icon: '🧭', label: 'Guias credenciados', load: function () { if (window.GcvAdminCms) window.GcvAdminCms.open('guides'); } },
         { id: 'section-admin-broadcast',   icon: '📣', label: 'Broadcast',         load: loadBroadcast      },
         { id: 'section-admin-messages',    icon: '💬', label: 'Mensagens',         load: loadMessages       },

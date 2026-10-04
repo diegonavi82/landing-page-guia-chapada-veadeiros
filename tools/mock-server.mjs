@@ -578,7 +578,7 @@ const MOCK_USERS = {
   client: { id: 4, name: "Maria Cliente", email: "cliente@gcv.com", role: "client", status: "active", avatar_url: null },
 };
 
-const user = MOCK_USERS[ROLE] || MOCK_USERS.guide;
+const user = { ...(MOCK_USERS[ROLE] || MOCK_USERS.guide) };
 
 function loadCatalogAttractions() {
   const files = [
@@ -661,6 +661,33 @@ function tarifarioPublic(t) {
   if (!t) return null;
   const base = t.cidades["alto-paraiso"];
   return { id: t.id, nome: t.nome, quorum: t.quorum, ...base, cidades: JSON.parse(JSON.stringify(t.cidades)) };
+}
+
+function cidadeCurta(nome) {
+  const n = String(nome || "");
+  const pos = n.toLowerCase().indexOf(" de ");
+  return pos > 2 ? n.slice(0, pos) : n;
+}
+
+function saidasPublic(tarifa, duracao, fallbackMinutes) {
+  if (!tarifa) return [];
+  const out = [];
+  for (const key of Object.keys(TARIFARIO_CIDADES)) {
+    const row = (tarifa.cidades && tarifa.cidades[key]) || {};
+    const item = {
+      key,
+      nome: TARIFARIO_CIDADES[key],
+      curta: cidadeCurta(TARIFARIO_CIDADES[key]),
+      minutes: (duracao && parseInt(duracao[key], 10)) || Math.max(0, parseInt(fallbackMinutes, 10) || 0),
+    };
+    let vende = false;
+    for (const campo of TARIFARIO_CAMPOS) {
+      item[campo] = Math.max(0, parseInt(row[campo], 10) || 0);
+      if (item[campo] > 0) vende = true;
+    }
+    if (vende) out.push(item);
+  }
+  return out;
 }
 
 function tarifarioById(id) {
@@ -806,6 +833,7 @@ function presentRelated(tour) {
     duracao_cidades: duracaoCidades(tour.duracao, tour.duration_minutes),
     tarifario_id: tour.tarifario_id,
     tarifa: tarifarioPublic(tarifarioById(tour.tarifario_id)),
+    saidas: saidasPublic(tarifarioPublic(tarifarioById(tour.tarifario_id)), duracaoCidades(tour.duracao, tour.duration_minutes), tour.duration_minutes),
     attractions: tour.attractions.map((part) => {
       const live = MOCK_ATTRACTIONS.find((a) => a.id === part.id);
       return { ...part, title_pt: live ? live.title_pt : part.title_pt, duration_minutes: live ? live.duration_minutes || 0 : part.duration_minutes };
@@ -854,6 +882,7 @@ function passeioCatalog() {
         duration_minutes: presented.duration_minutes,
         duracao_cidades: presented.duracao_cidades,
         tarifa: presented.tarifa,
+        saidas: presented.saidas || [],
         image: (live && live.cover_url) || "",
         href: first.page ? "/" + String(first.page).replace(/^\/+/, "") : "/passeios.html",
         attractions: presented.attractions.map((part) => part.title_pt),
@@ -870,6 +899,7 @@ function passeioCatalog() {
     duration_minutes: a.duration_minutes || 0,
     duracao_cidades: duracaoCidades(a.duracao, a.duration_minutes),
     tarifa: tarifarioPublic(tarifarioById(a.tarifario_id)),
+    saidas: saidasPublic(tarifarioPublic(tarifarioById(a.tarifario_id)), duracaoCidades(a.duracao, a.duration_minutes), a.duration_minutes),
     image: a.cover_url || "",
     href: "/" + String(a.page).replace(/^\/+/, ""),
     attractions: [a.title_pt],
@@ -889,6 +919,7 @@ function passeioPublicPayload(slug) {
     tem_passeio: attraction.tem_passeio !== false,
     categorias: passeioCategorias(attraction.categorias, 1),
     tarifa: attraction.tem_passeio === false ? null : tarifarioPublic(tarifarioById(attraction.tarifario_id)),
+    saidas: attraction.tem_passeio === false ? [] : saidasPublic(tarifarioPublic(tarifarioById(attraction.tarifario_id)), duracaoCidades(attraction.duracao, attraction.duration_minutes), attraction.duration_minutes),
     max_atrativos: max,
     related_tours: mockRelatedFor(attraction.id).filter((t) => t.tarifa && t.attractions.length <= max),
   };
@@ -1114,10 +1145,11 @@ const MOCK_CITIES = [
 
 /** Muda o usuário mockado em runtime (login / Google). */
 function setMockUser(next) {
+  const copy = { ...(next || {}) };
   Object.keys(user).forEach((k) => {
     delete user[k];
   });
-  Object.assign(user, next);
+  Object.assign(user, copy);
 }
 
 function readJsonBody(req) {
@@ -1586,7 +1618,10 @@ function serveFile(res, filePath) {
     const ext = path.extname(filePath).toLowerCase();
     res.writeHead(200, { "Content-Type": MIME[ext] || "application/octet-stream" });
     if (ext === ".html") {
-      let html = data.toString("utf8").replace(/site\.js\?v=[^"'&\s]+/g, "site.js?v=1.1.35");
+      let html = data.toString("utf8")
+        .replace(/site\.js\?v=[^"'&\s]+/g, "site.js?v=1.1.53")
+        .replace(/gcv-detail\.css\?v=[^"'&\s]+/g, "gcv-detail.css?v=1.1.37")
+        .replace(/gcv-passeios-shop\.js\?v=[^"'&\s]+/g, "gcv-passeios-shop.js?v=1.3.6");
       if (!html.includes('href="passeios.html"')) {
         html = html
           .replace(/(<a href="atrativos\.html"[^>]*>)Atrativos(<\/a>)/, '$1Atrativos$2\n      <a href="passeios.html">Passeios</a>')
