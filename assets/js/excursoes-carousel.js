@@ -1447,10 +1447,17 @@
     return map;
   }
 
+  function isPasseioTrip(trip) {
+    if (trip && trip.passeioKey) return true;
+    var id = String((trip && (trip.cartId || trip.id)) || "");
+    return id.indexOf("roteiro-") === 0;
+  }
+
   function validatePixTripQty(trips) {
     var avail = buildTripAvailMap(trips);
     for (var i = 0; i < (trips || []).length; i++) {
       var trip = trips[i];
+      if (isPasseioTrip(trip)) continue;
       var cartId = normalizeLookupCartId(trip && trip.cartId);
       var qty = Math.max(0, parseInt(String(trip && trip.qty), 10) || 0);
       if (!cartId || qty < 1) continue;
@@ -1461,8 +1468,10 @@
 
   function commitPixBookings(modal, locale) {
     if (!modal || !modal._gcvReceiptData || !window.GcvExcBookings) return false;
-    var trips = modal._gcvReceiptData.trips || [];
-    if (!trips.length) return false;
+    var trips = (modal._gcvReceiptData.trips || []).filter(function (trip) {
+      return !isPasseioTrip(trip);
+    });
+    if (!trips.length) return true;
     if (!validatePixTripQty(trips)) return false;
     var reservationId =
       modal._gcvPixReservationId || (modal._gcvReceiptData && modal._gcvReceiptData.reservationId);

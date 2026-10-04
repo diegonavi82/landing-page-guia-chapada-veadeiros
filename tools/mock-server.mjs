@@ -713,7 +713,7 @@ function duracaoClean(raw) {
 }
 
 const MOCK_SETTINGS = [
-  { key_name: "passeio_max_atrativos", value: "3", label: "Máximo de atrativos no mesmo dia (um passeio pode ter de 1 até este número)", type: "integer" },
+  { key_name: "passeio_max_atrativos", value: "3", label: "Número máximo de atrativos no mesmo passeio", type: "integer" },
   { key_name: "diaria_minima_reais", value: "320", label: "Diária mínima do cliente no exclusivo e no fechamento da excursão (R$)", type: "integer" },
   { key_name: "pg_minimo_guia_reais", value: "280", label: "Pagamento mínimo do guia sem transporte (R$)", type: "integer" },
   { key_name: "pausa_convite_inicio_hora", value: "22", label: "Convite ao guia: o relógio para a partir desta hora", type: "integer" },
@@ -1073,6 +1073,12 @@ function handleSettingsApi(urlPath, req, res) {
     .then((body) => {
       const row = MOCK_SETTINGS.find((s) => s.key_name === body.key_name);
       if (!row) return send({ ok: false, error: "Configuração não encontrada" });
+      if (body.key_name === "passeio_max_atrativos") {
+        const n = Math.round(Number(body.value));
+        if (!Number.isFinite(n) || n < 1 || n > 5) return send({ ok: false, error: "Informe de 1 a 5 atrativos no mesmo passeio" });
+        row.value = String(n);
+        return send({ ok: true, data: row });
+      }
       row.value = String(body.value);
       return send({ ok: true, data: row });
     })

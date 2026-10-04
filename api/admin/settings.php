@@ -40,6 +40,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
         }
     }
 
+    if ($keyName === 'passeio_max_atrativos') {
+        $n = (int)round((float)$value);
+        if ($n < 1 || $n > 5) {
+            json_response(false, null, 'Informe de 1 a 5 atrativos no mesmo passeio', 422);
+        }
+        $value = (string)$n;
+    }
+
     if (in_array($keyName, ['guide_net_min_reais', 'guide_net_max_reais', 'guide_net_max_dragao_reais', 'guide_net_max_transport_reais'], true)) {
         $n = (int)round((float)$value);
         if ($n < 1 || $n > 10000) {

@@ -9,6 +9,7 @@
   var SECTION_HASH = {
     'section-cms-articles': 'revista',
     'section-cms-attractions': 'atrativos',
+    'section-cms-passeios': 'passeios',
     'section-cms-tarifario': 'tarifario',
     'section-cms-guides': 'guias',
     'section-admin-broadcast': 'broadcast',
@@ -1548,9 +1549,14 @@
       pausa_convite_inicio_hora: 'regras',
       pausa_convite_fim_hora: 'regras',
       tarifa_ia_ativa: 'regras',
-      tarifa_ia_passo_pct: 'regras'
+      tarifa_ia_passo_pct: 'regras',
+      passeio_max_atrativos: 'passeios'
     };
     var groupMeta = {
+      passeios: {
+        title: 'Passeios do dia',
+        hint: 'Quantos atrativos cabem no mesmo passeio. 1 deixa só o passeio unitário. Cada relação acima disso é outro passeio, com tarifa própria. O padrão é 3.'
+      },
       notify: {
         title: 'Notificações de passeio',
         hint: 'WhatsApp, e-mail e o sino do painel usam estes prazos. 0 em “chegada” desliga o aviso de 15 minutos.'
@@ -1571,13 +1577,13 @@
     };
     get('/api/admin/settings.php', function (err, res) {
       if (!res || !res.ok) return;
-      var buckets = { notify: [], transfer: [], finance: [], regras: [], other: [] };
+      var buckets = { passeios: [], notify: [], transfer: [], finance: [], regras: [], other: [] };
       (res.data.settings || []).forEach(function (s) {
         var g = groupOf[s.key_name] || 'other';
         buckets[g].push(s);
       });
       form.innerHTML = '';
-      ['notify', 'transfer', 'finance', 'regras', 'other'].forEach(function (gid) {
+      ['passeios', 'notify', 'transfer', 'finance', 'regras', 'other'].forEach(function (gid) {
         var list = buckets[gid];
         if (!list.length) return;
         var box = el('div', 'gcv-dash-settings-group');
@@ -1586,12 +1592,15 @@
           + (meta.hint ? '<p class="gcv-dash-settings-group__hint">' + meta.hint + '</p>' : '');
         list.forEach(function (s) {
           var row = el('div', 'gcv-dash-settings-row');
-          var unit = /(_reais|guide_net_)/.test(s.key_name) && /reais/.test(s.key_name)
+          var isMaxDia = s.key_name === 'passeio_max_atrativos';
+          var unit = isMaxDia
+            ? 'atrativos'
+            : (/(_reais|guide_net_)/.test(s.key_name) && /reais/.test(s.key_name)
             ? 'R$'
-            : (/minute/.test(s.key_name) ? 'min' : (s.type === 'percent' ? '%' : (/hours|hour/.test(s.key_name) ? 'h' : '')));
+            : (/minute/.test(s.key_name) ? 'min' : (s.type === 'percent' ? '%' : (/hours|hour/.test(s.key_name) ? 'h' : ''))));
           row.innerHTML = '<div class="gcv-dash-settings-label"><strong>' + s.label + '</strong></div>'
             + '<div class="gcv-dash-settings-controls">'
-            + '<input class="gcv-dash-settings-input" type="number" min="0" step="1" value="' + s.value + '" data-key="' + s.key_name + '" />'
+            + '<input class="gcv-dash-settings-input" type="number" min="' + (isMaxDia ? '1' : '0') + '"' + (isMaxDia ? ' max="5"' : '') + ' step="1" value="' + s.value + '" data-key="' + s.key_name + '" />'
             + (unit ? '<span class="gcv-dash-settings-unit">' + unit + '</span>' : '')
             + '<button type="button" class="gcv-dash-btn gcv-dash-btn--sm gcv-dash-btn--primary" data-save-key="' + s.key_name + '">Salvar</button>'
             + '<span class="gcv-dash-settings-ok" hidden>Salvo</span>'
@@ -2095,6 +2104,7 @@
       items = [
         { id: 'section-cms-articles',      icon: '📰', label: 'Revista',           load: function () { if (window.GcvAdminCms) window.GcvAdminCms.open('articles'); } },
         { id: 'section-cms-attractions',   icon: '🏞️', label: 'Atrativos',         load: function () { if (window.GcvAdminCms) window.GcvAdminCms.open('attractions'); } },
+        { id: 'section-cms-passeios',      icon: '🥾', label: 'Passeios',          load: function () { if (window.GcvAdminTarifario) window.GcvAdminTarifario.openPasseios(); } },
         { id: 'section-cms-tarifario',     icon: '🎟️', label: 'Tarifário',         load: function () { if (window.GcvAdminTarifario) window.GcvAdminTarifario.open(); } },
         { id: 'section-cms-guides',        icon: '🧭', label: 'Guias credenciados', load: function () { if (window.GcvAdminCms) window.GcvAdminCms.open('guides'); } },
         { id: 'section-admin-broadcast',   icon: '📣', label: 'Broadcast',         load: loadBroadcast      },

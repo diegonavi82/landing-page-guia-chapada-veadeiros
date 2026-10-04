@@ -1,10 +1,10 @@
-/* gcv-admin-tarifario.js — menu TARIFÁRIO do admin
+/* gcv-admin-tarifario.js — menus PASSEIOS e TARIFÁRIO do admin
  *
  * Regras (as mesmas de api/helpers/tarifarios.php):
- * - Passeio = o que o cliente faz num dia (1 item do carrinho), com 1 até N atrativos (N em Configurações).
- * - Cada atrativo tem 1 tarifário. Cada passeio com 2+ atrativos tem 1 tarifário próprio (nunca soma).
- * - Um tarifário pode ser usado por vários atrativos e passeios.
- * - Duração muda conforme a cidade de saída.
+ * - Passeio unitário = um atrativo, com uma tarifa só.
+ * - Relação = outro passeio (o roteiro muda), com tarifa nova. Nunca soma.
+ * - Até N atrativos no mesmo dia. N fica em Configurações.
+ * - Um tarifário pode ser usado por vários passeios.
  * - Sem tarifário, não aparece à venda no site.
  */
 (function (global) {
@@ -19,10 +19,19 @@
   ];
   var CIDADE_CURTA = { 'alto-paraiso': 'Alto Paraíso', 'sao-jorge': 'São Jorge', 'cavalcante': 'Cavalcante' };
 
-  var st = { data: null, tab: 'atrativos', editing: null, q: '', open: {} };
+  var st = { data: null, mode: 'tarifarios', rootId: 'cms-tarifario-root', editing: null, q: '', open: {} };
 
   /* ---------- utilidades ---------- */
-  function $(id) { return document.getElementById(id); }
+  function $(id) {
+    if (st.rootId && id !== st.rootId) {
+      var box = document.getElementById(st.rootId);
+      if (box) {
+        var found = box.querySelector('#' + id);
+        if (found) return found;
+      }
+    }
+    return document.getElementById(id);
+  }
 
   function esc(s) {
     return String(s == null ? '' : s)
@@ -153,8 +162,8 @@
   function load(after) {
     request('GET', null, function (res) {
       if (!res.ok) {
-        var box = $('cms-tarifario-root');
-        if (box) box.innerHTML = '<p class="gcv-dash-alert">' + esc(res.error || 'Erro ao carregar o tarifário.') + '</p>';
+        var box = $(st.rootId);
+        if (box) box.innerHTML = '<p class="gcv-dash-alert">' + esc(res.error || 'Erro ao carregar.') + '</p>';
         return;
       }
       st.data = res.data;
@@ -173,28 +182,26 @@
 
   /* ---------- tela ---------- */
   function paint() {
-    var box = $('cms-tarifario-root');
+    var box = $(st.rootId);
     if (!box || !st.data) return;
+    var max = esc(st.data.max_atrativos);
     var semPreco = (st.data.atrativos || []).filter(function (a) { return a.page && !a.tarifario_id; }).length;
     var passeiosSem = (st.data.passeios || []).filter(function (p) { return !p.tarifario_id; }).length;
+    var aviso = (semPreco || passeiosSem)
+      ? '<span class="tf-warn">' + (semPreco ? semPreco + ' passeio(s) unitário(s)' : '') + (semPreco && passeiosSem ? ' e ' : '') + (passeiosSem ? passeiosSem + ' relação(ões)' : '') + ' sem tarifa: não aparecem à venda.</span>'
+      : '';
+    var rules = st.mode === 'passeios'
+      ? '<span>Cada linha é um <b>passeio unitário</b> e tem <b>uma tarifa só</b>.</span>' +
+        '<span>As relações ficam dentro dele. Cada relação é outro passeio, com tarifa nova, porque o roteiro muda. Cabe de 1 a <b>' + max + '</b> atrativos no mesmo dia. <a href="#configuracoes">Mudar o máximo em Configurações</a>.</span>' +
+        aviso
+      : '<span>Cada tarifário é uma tabela de preços. Um passeio usa uma tarifa só. A mesma tabela pode servir a mais de um passeio.</span>';
     box.innerHTML =
       '<div class="tf-head">' +
-        '<div class="tf-tabs" role="tablist">' +
-          '<button type="button" role="tab" class="tf-tab' + (st.tab === 'atrativos' ? ' is-on' : '') + '" data-tf-tab="atrativos">Atrativos e passeios do dia</button>' +
-          '<button type="button" role="tab" class="tf-tab' + (st.tab === 'tarifarios' ? ' is-on' : '') + '" data-tf-tab="tarifarios">Tarifários <span class="tf-count">' + (st.data.tarifarios || []).length + '</span></button>' +
-        '</div>' +
-        '<input class="gcv-dash-input tf-search" id="tf-search" type="search" placeholder="Buscar atrativo ou tarifário" value="' + esc(st.q) + '" />' +
+        '<input class="gcv-dash-input tf-search" id="tf-search" type="search" placeholder="' + (st.mode === 'passeios' ? 'Buscar passeio' : 'Buscar tarifário') + '" value="' + esc(st.q) + '" />' +
       '</div>' +
-      '<div class="tf-rules">' +
-        '<span><b>Atrativo</b> é o lugar. <b>Passeio</b> é o item do carrinho: um dia, de 1 a <b>' + esc(st.data.max_atrativos) + '</b> atrativos <a href="#configuracoes">(mudar em Configurações)</a>. Só um passeio por dia.</span>' +
-        '<span>Juntar atrativos cria um preço novo: nunca soma.</span>' +
-        (semPreco || passeiosSem ? '<span class="tf-warn">' + (semPreco ? semPreco + ' atrativo(s)' : '') + (semPreco && passeiosSem ? ' e ' : '') + (passeiosSem ? passeiosSem + ' passeio(s) do dia' : '') + ' sem tarifário: não aparecem à venda.</span>' : '') +
-      '</div>' +
+      '<div class="tf-rules">' + rules + '</div>' +
       '<div id="tf-body"></div>' +
       '<div class="tf-toast" id="tf-toast" role="status" aria-live="polite"></div>';
-    box.querySelectorAll('[data-tf-tab]').forEach(function (b) {
-      b.onclick = function () { st.tab = b.getAttribute('data-tf-tab'); st.editing = null; paint(); };
-    });
     var search = $('tf-search');
     search.oninput = function () { st.q = search.value; paintBody(); };
     paintBody();
@@ -202,8 +209,8 @@
 
   function paintBody() {
     if (st.editing) return paintEditor();
-    if (st.tab === 'tarifarios') return paintTarifarios();
-    return paintAtrativos();
+    if (st.mode === 'passeios') return paintAtrativos();
+    return paintTarifarios();
   }
 
   function matches(text) {
@@ -266,14 +273,15 @@
           '<span class="tf-attr__name">' + esc(a.title_pt) + '</span>' +
           '<span class="tf-attr__meta">' +
             (t ? '<span class="tf-pill">' + esc(t.nome) + '</span><span>' + esc(aPartirDe(t)) + '</span>' : '<span class="tf-pill tf-pill--off">Sem tarifário</span>') +
-            '<span>' + passeios.length + ' passeio(s) no mesmo dia</span>' +
+            '<span>' + passeios.length + ' relação(ões)</span>' +
           '</span>' +
           '<span class="tf-attr__chev" aria-hidden="true">▾</span>' +
         '</button>' +
         (aberto ?
           '<div class="tf-attr__body">' +
             '<div class="tf-block">' +
-              '<h4>Só ' + esc(a.title_pt) + '</h4>' +
+              '<h4>Passeio unitário · ' + esc(a.title_pt) + '</h4>' +
+              '<p class="gcv-cms-muted tf-small">Uma tarifa só para este passeio.</p>' +
               '<label class="tf-check"><input type="checkbox" data-tem-passeio="' + a.id + '"' + (a.tem_passeio === false ? '' : ' checked') + ' /> Esta atração tem passeio à venda</label>' +
               '<div class="tf-cats" data-cats="atrativo" data-cat-id="' + a.id + '">' + catChecks(a.categorias) + '</div>' +
               '<div class="tf-grid2">' +
@@ -283,7 +291,7 @@
               '<div class="tf-field"><span>Duração saindo de cada cidade</span>' + duracaoInputs('atrativo', a.id, a.duracao_cidades) + '</div>' +
             '</div>' +
             '<div class="tf-block">' +
-              '<h4>Pode ser feito no mesmo dia com</h4>' +
+              '<h4>Relações · tarifa nova em cada uma</h4>' +
               (passeios.length ? passeios.map(function (p) { return passeioCard(p, a.id); }).join('') : '<p class="gcv-cms-muted">Nenhum passeio junto ainda.</p>') +
               (max >= 2 ?
                 '<div class="tf-add">' +
@@ -291,8 +299,8 @@
                   addSelects +
                   '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary gcv-dash-btn--sm" data-combo-add="' + a.id + '">Juntar</button>' +
                 '</div>' +
-                '<p class="gcv-cms-muted tf-small">O passeio aparece na página de todos os atrativos dele. Depois escolha ou crie o tarifário próprio dele.</p>'
-                : '<p class="gcv-cms-muted">Nas Configurações o máximo é 1 atrativo por dia.</p>') +
+                '<p class="gcv-cms-muted tf-small">A relação aparece dentro de cada passeio unitário dela. Escolha ou crie a tarifa própria: o preço nunca soma.</p>'
+                : '<p class="gcv-cms-muted">Em Configurações o máximo é 1 atrativo por passeio. Não há relação.</p>') +
             '</div>' +
           '</div>' : '') +
       '</article>';
@@ -430,7 +438,7 @@
   function openEditor(t, opts) {
     st.editing = { t: t, opts: opts || {} };
     paintBody();
-    var box = $('cms-tarifario-root');
+    var box = $(st.rootId);
     if (box && box.scrollIntoView) box.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
@@ -570,13 +578,19 @@
     }
   }
 
-  function open() {
-    var box = $('cms-tarifario-root');
+  function openMode(mode, rootId) {
+    st.mode = mode;
+    st.rootId = rootId;
+    st.editing = null;
+    st.q = '';
+    var box = $(rootId);
     if (!box) return;
     if (!st.data) box.innerHTML = '<p class="gcv-cms-muted">Carregando…</p>';
-    st.editing = null;
     load();
   }
 
-  global.GcvAdminTarifario = { open: open };
+  global.GcvAdminTarifario = {
+    open: function () { openMode('tarifarios', 'cms-tarifario-root'); },
+    openPasseios: function () { openMode('passeios', 'cms-passeios-root'); }
+  };
 })(typeof window !== 'undefined' ? window : this);

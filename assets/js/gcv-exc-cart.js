@@ -23,6 +23,7 @@
       cartTitle: "Carrinho",
       cartEmpty: "Seu carrinho está vazio",
       cartCheckout: "Pagar com PIX",
+      cartPixFail: "Não foi possível abrir o Pix. Tente de novo.",
       cartBack: "Voltar",
       cartRemove: "Remover",
       cartFabLabel: "Carrinho",
@@ -41,6 +42,7 @@
       cartTitle: "Cart",
       cartEmpty: "Your cart is empty",
       cartCheckout: "Pay with PIX",
+      cartPixFail: "Could not open Pix. Try again.",
       cartBack: "Back",
       cartRemove: "Remove",
       cartFabLabel: "Cart",
@@ -59,6 +61,7 @@
       cartTitle: "Carrito",
       cartEmpty: "Tu carrito está vacío",
       cartCheckout: "Pagar con PIX",
+      cartPixFail: "No se pudo abrir el Pix. Inténtalo de nuevo.",
       cartBack: "Volver",
       cartRemove: "Quitar",
       cartFabLabel: "Carrito",
@@ -86,20 +89,75 @@
     return "pt";
   }
 
-  function homeHrefForLocale(loc) {
-    if (loc === "en") return "/en/";
-    if (loc === "es") return "/es/";
-    return "/";
+  function loadStylesheet(href) {
+    if (document.querySelector('link[href="' + href + '"]')) return;
+    var link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = href;
+    document.head.appendChild(link);
   }
 
-  function redirectToHomeForCheckout() {
-    try {
-      global.sessionStorage.setItem(OPEN_CART_FLAG, "1");
-    } catch (err) {
-      /* */
+  function loadScript(src, done) {
+    var existing = document.querySelector('script[src="' + src + '"]');
+    if (existing) {
+      if (existing.getAttribute("data-loaded") === "1" || existing.readyState === "complete") {
+        done();
+        return;
+      }
+      existing.addEventListener("load", function () { done(); });
+      existing.addEventListener("error", function () { done(new Error("script")); });
+      return;
     }
-    var loc = _locale === "en" || _locale === "es" ? _locale : "pt";
-    global.location.href = homeHrefForLocale(loc) + "#excursoes-junho";
+    var script = document.createElement("script");
+    script.src = src;
+    script.onload = function () {
+      script.setAttribute("data-loaded", "1");
+      done();
+    };
+    script.onerror = function () { done(new Error("script")); };
+    document.head.appendChild(script);
+  }
+
+  var _pixLoadWait = null;
+  function ensurePixCheckout(done) {
+    if (typeof _onPay === "function") {
+      done();
+      return;
+    }
+    if (_pixLoadWait) {
+      _pixLoadWait.push(done);
+      return;
+    }
+    _pixLoadWait = [done];
+    loadStylesheet("/assets/css/excursoes.css?v=1.1.31");
+    loadStylesheet("/assets/css/gcv-detail.css?v=1.1.36");
+    var scripts = [
+      "/assets/js/qrcode.min.js?v=1.1.31",
+      "/assets/js/gcv-pix.js?v=1.1.31",
+      "/assets/js/gcv-pix-receipt.js?v=1.1.31",
+      "/assets/js/gcv-pix-polling.js?v=1.1.31",
+      "/assets/js/gcv-confirm.js?v=1.1.31",
+      "/assets/js/gcv-exc-bookings.js?v=1.1.31",
+      "/assets/js/excursoes-carousel.js?v=1.1.36",
+    ];
+    var i = 0;
+    function next(err) {
+      if (err) {
+        var failed = _pixLoadWait.slice();
+        _pixLoadWait = null;
+        failed.forEach(function (fn) { fn(err); });
+        return;
+      }
+      if (i >= scripts.length) {
+        var wait = _pixLoadWait.slice();
+        _pixLoadWait = null;
+        wait.forEach(function (fn) { fn(); });
+        return;
+      }
+      var src = scripts[i++];
+      loadScript(src, next);
+    }
+    next();
   }
 
   function consumeOpenCartFlag() {
@@ -809,6 +867,7 @@
           hora: it.hora || "",
           qty: parseInt(String(it.qty), 10) || 1,
           cartId: it.id || "",
+          passeioKey: it.passeioKey || "",
           comTransporte: it.comTransporte === true,
           walkGuideSeatOk: it.walkGuideSeatOk === true,
           valorUnit: parseInt(String(it.valorUnit), 10) || 0,
@@ -1310,36 +1369,43 @@
         }
         var items = loadItems();
         if (!items.length) return;
+        function continueCheckout() {
+          purgeExpiredAndPersist({ notify: true, skipRender: true });
+          var fresh = loadItems();
+          if (!fresh.length) return;
+          var gap = maxGapDays(fresh);
+          var gapNote = document.querySelector("[data-gcv-cart-gap]");
+          if (gap >= 1) {
+            var gapSig = String(gap);
+            if (_gapAck !== gapSig) {
+              _gapAck = gapSig;
+              if (gapNote) {
+                gapNote.hidden = false;
+                gapNote.textContent = gapMessage(gap);
+              }
+              return;
+            }
+          } else if (gapNote) {
+            gapNote.hidden = true;
+            gapNote.textContent = "";
+          }
+          var total = cartTotal(fresh);
+          var detail = cartPayDetail(fresh);
+          var payFn = _onPay;
+          closeCartPanel();
+          payFn(total, detail, checkout);
+        }
         if (typeof _onPay !== "function") {
-          // Fora da home: Pix depende do carrossel — volta com carrinho aberto
-          redirectToHomeForCheckout();
+          ensurePixCheckout(function (err) {
+            if (err || typeof _onPay !== "function") {
+              showCartToast(s("cartPixFail"), "warning");
+              return;
+            }
+            continueCheckout();
+          });
           return;
         }
-        purgeExpiredAndPersist({ notify: true, skipRender: true });
-        items = loadItems();
-        if (!items.length) return;
-        var gap = maxGapDays(items);
-        var gapNote = document.querySelector("[data-gcv-cart-gap]");
-        if (gap >= 1) {
-          var gapSig = String(gap);
-          if (_gapAck !== gapSig) {
-            _gapAck = gapSig;
-            if (gapNote) {
-              gapNote.hidden = false;
-              gapNote.textContent = gapMessage(gap);
-            }
-            return;
-          }
-        } else if (gapNote) {
-          gapNote.hidden = true;
-          gapNote.textContent = "";
-        }
-        var total = cartTotal(items);
-        var detail = cartPayDetail(items);
-        var payFn = _onPay;
-        var triggerEl = checkout;
-        closeCartPanel();
-        payFn(total, detail, triggerEl);
+        continueCheckout();
         return;
       }
       var rem = e.target.closest("[data-gcv-cart-remove]");

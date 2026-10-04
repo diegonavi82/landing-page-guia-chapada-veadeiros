@@ -108,8 +108,13 @@ function gcv_passeio_max_atrativos_ensure(PDO $pdo): void
             $pdo->prepare('INSERT INTO gcv_settings (key_name, value, label, type) VALUES (?,?,?,?)')->execute([
                 'passeio_max_atrativos',
                 '3',
-                'Máximo de atrativos no mesmo dia (um passeio pode ter de 1 até este número)',
+                'Número máximo de atrativos no mesmo passeio',
                 'integer',
+            ]);
+        } else {
+            $pdo->prepare('UPDATE gcv_settings SET label = ? WHERE key_name = ?')->execute([
+                'Número máximo de atrativos no mesmo passeio',
+                'passeio_max_atrativos',
             ]);
         }
     } catch (Throwable $e) {
