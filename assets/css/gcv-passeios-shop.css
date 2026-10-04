@@ -112,7 +112,7 @@
 }
 .gcv-shop-card.is-in-cart {
   border: 2px solid #16a34a;
-  box-shadow: 0 0 0 3px rgba(187, 247, 208, .95), 0 4px 4px rgba(22, 163, 74, .35);
+  box-shadow: 0 0 0 3px rgba(187, 247, 208, .95), 0 4px 4px rgba(0, 0, 0, .72);
 }
 .gcv-shop-card__badge {
   position: absolute;

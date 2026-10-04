@@ -841,6 +841,12 @@
     };
   }
 
+  var CART_ICON =
+    '<svg class="gcv-exc-cart-float__icon" width="1.15em" height="1.15em" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+    '<circle cx="9" cy="20" r="1.15" fill="currentColor" stroke="none"></circle>' +
+    '<circle cx="18" cy="20" r="1.15" fill="currentColor" stroke="none"></circle>' +
+    '<path d="M3 4h2l2.2 11h11.3l1.6-8H7"></path></svg>';
+
   function createCartTriggerButton(id, variantClass) {
     var btn = document.createElement("button");
     btn.type = "button";
@@ -849,7 +855,7 @@
     btn.hidden = true;
     btn.setAttribute("aria-label", "");
     btn.innerHTML =
-      '<i class="ti ti-shopping-cart" aria-hidden="true"></i>' +
+      CART_ICON +
       '<span class="gcv-exc-cart-float__badge" id="' +
       id +
       '-badge" hidden>0</span>';
@@ -919,7 +925,7 @@
     root.className = "gcv-exc-cart-root";
     root.innerHTML =
       '<button type="button" class="gcv-exc-cart-fab" id="gcv-exc-cart-fab" aria-label="" hidden>' +
-      '<i class="ti ti-shopping-cart" aria-hidden="true"></i>' +
+      CART_ICON +
       '<span class="gcv-exc-cart-fab__label"></span>' +
       '<span class="gcv-exc-cart-fab__total" id="gcv-exc-cart-fab-total" hidden></span>' +
       '<span class="gcv-exc-cart-fab__badge" id="gcv-exc-cart-badge" hidden>0</span>' +

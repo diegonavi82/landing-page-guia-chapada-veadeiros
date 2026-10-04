@@ -27,7 +27,7 @@
       one: "1 atração",
       many: "atrações",
       open: "Ver atração",
-      leave: "Saída de {city}",
+      leave: "De {city}",
     },
     en: {
       kicker: "Chapada dos Veadeiros",
@@ -46,7 +46,7 @@
       one: "1 place",
       many: "places",
       open: "See place",
-      leave: "Departure from {city}",
+      leave: "From {city}",
     },
     es: {
       kicker: "Chapada dos Veadeiros",
@@ -65,7 +65,7 @@
       one: "1 atractivo",
       many: "atractivos",
       open: "Ver atractivo",
-      leave: "Salida de {city}",
+      leave: "De {city}",
     },
   }[lang] || {};
 
@@ -119,15 +119,18 @@
     }
     return "atrativo:" + (tour.slug || "") + ":";
   }
-  function inCart(tour) {
+  function cartMatches(tour) {
     var key = productKey(tour);
     var cart = window.GcvExcCart;
-    if (!key || !cart || typeof cart.items !== "function") return false;
-    return cart.items().some(function (it) {
+    if (!key || !cart || typeof cart.items !== "function") return [];
+    return cart.items().filter(function (it) {
       if (!it || !it.passeioKey) return false;
       if (tour.kind === "combo") return it.passeioKey === key;
       return String(it.passeioKey).indexOf("atrativo:" + (tour.slug || "") + ":") === 0;
     });
+  }
+  function inCart(tour) {
+    return cartMatches(tour).length > 0;
   }
 
   function paint() {
@@ -194,7 +197,16 @@
       var btn = e.target.closest && e.target.closest("[data-add]");
       if (!btn || btn.disabled) return;
       var tour = tours.filter(function (t) { return t.id === btn.getAttribute("data-add"); })[0];
-      if (!tour || !window.GcvPasseioDialog) return;
+      if (!tour) return;
+      if (inCart(tour)) {
+        var cart = window.GcvExcCart;
+        if (cart && typeof cart.remove === "function") {
+          cartMatches(tour).forEach(function (it) { cart.remove(it.id); });
+        }
+        paint();
+        return;
+      }
+      if (!window.GcvPasseioDialog) return;
       function openWith(data) {
         window.GcvPasseioDialog.open(data, paint);
       }
@@ -217,6 +229,9 @@
           if (payload && payload.ok && payload.data) openWith(payload.data);
         })
         .catch(function () {});
+    });
+    document.addEventListener("click", function (e) {
+      if (e.target && e.target.closest && e.target.closest("[data-gcv-cart-remove]")) setTimeout(paint, 0);
     });
   }
 

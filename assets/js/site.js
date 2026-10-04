@@ -1250,7 +1250,7 @@
         pixIn: "no PIX",
         pixOff: "{n}% OFF",
         cardOr: "ou {price} em até 4x de {inst} sem juros",
-        extras: "Extras",
+        extras: "Contrate um guia local",
         bilingual: "Guia bilíngue",
         bilingualHint: "Condutor credenciado que fala inglês ou espanhol",
         bilingualPrice: "+ R$ {price} / pessoa",
@@ -1258,7 +1258,7 @@
         langEn: "Inglês",
         langEs: "Espanhol",
         chipDuration: "{t} de duração",
-        chipLeave: "Saída de {city}",
+        chipLeave: "De {city}",
         chipPerson: "/ pessoa",
         add: "Adicionar ao carrinho",
         roteiroBtn: "Adicionar ao roteiro",
@@ -1304,7 +1304,7 @@
         pixIn: "with PIX",
         pixOff: "{n}% OFF",
         cardOr: "or {price} in up to 4x of {inst} interest-free",
-        extras: "Extras",
+        extras: "Hire a local guide",
         bilingual: "Bilingual guide",
         bilingualHint: "Licensed guide who speaks English or Spanish",
         bilingualPrice: "+ R$ {price} / person",
@@ -1312,7 +1312,7 @@
         langEn: "English",
         langEs: "Spanish",
         chipDuration: "{t} duration",
-        chipLeave: "Departure from {city}",
+        chipLeave: "From {city}",
         chipPerson: "/ person",
         add: "Add to cart",
         roteiroBtn: "Add to itinerary",
@@ -1358,7 +1358,7 @@
         pixIn: "con PIX",
         pixOff: "{n}% OFF",
         cardOr: "o {price} en hasta 4x de {inst} sin interés",
-        extras: "Extras",
+        extras: "Contrata un guía local",
         bilingual: "Guía bilingüe",
         bilingualHint: "Guía acreditado que habla inglés o español",
         bilingualPrice: "+ R$ {price} / persona",
@@ -1366,7 +1366,7 @@
         langEn: "Inglés",
         langEs: "Español",
         chipDuration: "{t} de duración",
-        chipLeave: "Salida de {city}",
+        chipLeave: "De {city}",
         chipPerson: "/ persona",
         add: "Agregar al carrito",
         roteiroBtn: "Añadir al itinerario",
@@ -1662,7 +1662,7 @@
       ".gcv-datepicker__week,.gcv-datepicker__grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}.gcv-datepicker__week{margin-bottom:4px;font-size:.68rem;font-weight:700;color:#94a3b8}" +
       ".gcv-datepicker__day{height:34px;border:0;border-radius:9px;background:transparent;font:inherit;cursor:pointer}.gcv-datepicker__day:hover:not(:disabled){background:#e8f0ec}" +
       ".gcv-datepicker__day.is-today{box-shadow:inset 0 0 0 1.5px #14532d;font-weight:700}.gcv-datepicker__day.is-selected{background:#14532d;color:#fff;font-weight:700}.gcv-datepicker__day:disabled{color:#cbd5e1;cursor:default}" +
-      "@media(max-width:640px){.gcv-passeios__grid{grid-template-columns:1fr 1fr;gap:.65rem .7rem}.gcv-passeios__seg{flex-wrap:wrap}.gcv-passeios__seg button{flex:1 1 6.2rem;font-size:.78rem;padding:.48rem .3rem}.gcv-passeios__foot{flex-direction:column;align-items:stretch}.gcv-passeios__actions,.gcv-passeios__add{width:100%}.gcv-passeios__route{padding:.75rem 1rem .1rem}.gcv-passeios__route-name{font-size:1.25rem}.gcv-passeios__total-value{font-size:1.65rem}.gcv-passeios__body{padding:.75rem 1rem .2rem}.gcv-bi__top{flex-wrap:wrap}.gcv-bi__price{width:100%;padding-left:3.4rem}}" +
+      "@media(max-width:640px){.gcv-passeios__grid{grid-template-columns:1fr 1fr;gap:.65rem .7rem}.gcv-passeios__seg{flex-wrap:wrap}.gcv-passeios__seg button{flex:1 1 6.2rem;font-size:.78rem;padding:.48rem .3rem}.gcv-passeios__foot{flex-direction:column;align-items:stretch}.gcv-passeios__actions,.gcv-passeios__add{width:100%}.gcv-passeios__route{padding:.75rem 1rem .1rem}.gcv-passeios__route-name{font-size:1.25rem}.gcv-passeios__total-value{font-size:1.65rem}.gcv-passeios__body{padding:.75rem 1rem .2rem}}" +
       "@media(min-width:768px){.gcv-passeios{max-width:none;width:100%;margin-left:0;margin-right:0}.gcv-passeios__grid{grid-template-columns:1fr 1fr 1fr 1fr}.gcv-passeios__field--city{grid-column:span 2}.gcv-passeios__field--date,.gcv-passeios__field--people{grid-column:span 1}.gcv-passeios__field--mode,.gcv-passeios__field--transport{grid-column:span 2}}" +
       ".gcv-passeios__route{padding:1rem 1.1rem .2rem}" +
       ".gcv-passeios__route-name{margin:0;font-size:1.55rem;font-weight:800;line-height:1.15;letter-spacing:-.03em;color:#0f2a1d}" +
@@ -1681,10 +1681,11 @@
       ".gcv-passeios__extra:hover:not(:disabled){border-color:#14532d}" +
       ".gcv-passeios__extra[aria-pressed=true]{background:#14532d;border-color:#14532d;color:#fff}" +
       ".gcv-bi{margin-top:1rem}" +
-      ".gcv-bi__label{margin:0 0 .4rem;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#64748b}" +
-      ".gcv-bi__card{border:1px solid #d7ebe3;background:#f4fbf7;border-radius:16px;padding:.8rem .9rem .85rem}" +
-      ".gcv-bi__top{display:flex;align-items:flex-start;gap:.7rem}" +
-      ".gcv-bi__switch{flex:none;width:2.7rem;height:1.55rem;margin-top:.1rem;padding:2px;border:0;border-radius:999px;background:#d7e3dc;cursor:pointer;transition:background .15s}" +
+      ".gcv-bi__label{margin:0 0 .5rem;font-size:1.02rem;font-weight:800;letter-spacing:-.02em;text-transform:none;color:#0f2a1d}" +
+      ".gcv-bi__card{border:1px solid #d7ebe3;background:#f4fbf7;border-radius:16px;padding:.75rem .9rem .8rem}" +
+      ".gcv-bi__top{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto;align-items:center;column-gap:.7rem}" +
+      ".gcv-bi__face{width:3.15rem;height:3.15rem;display:block}" +
+      ".gcv-bi__switch{flex:none;width:2.7rem;height:1.55rem;margin:0;padding:2px;border:0;border-radius:999px;background:#d7e3dc;cursor:pointer;transition:background .15s}" +
       ".gcv-bi__switch::after{content:'';display:block;width:1.25rem;height:1.25rem;border-radius:999px;background:#fff;box-shadow:0 1px 3px rgba(15,42,29,.2);transition:transform .15s}" +
       ".gcv-bi__switch[aria-pressed=true]{background:#14532d}" +
       ".gcv-bi__switch[aria-pressed=true]::after{transform:translateX(1.15rem)}" +
@@ -1722,7 +1723,7 @@
       ".gcv-passeios.is-modal .gcv-passeios__now{padding-right:3rem}" +
       ".gcv-passeios.is-modal .gcv-passeios__body{overflow:auto;min-height:0}" +
       ".gcv-passeios.is-modal .gcv-passeios__foot{position:sticky;bottom:0}" +
-      "@media(max-width:640px){.gcv-passeio-modal{padding:.55rem}.gcv-passeios.is-modal{max-height:calc(100dvh - 1.1rem);border-radius:16px}}";
+      "@media(max-width:640px){.gcv-passeio-modal{padding:.55rem}.gcv-passeios.is-modal{max-height:calc(100dvh - 1.1rem);border-radius:16px}.gcv-bi__top{grid-template-columns:auto auto minmax(0,1fr)}.gcv-bi__price{grid-column:3;width:auto;padding-left:0;justify-self:end}}";
     function seg(name, options) {
       return '<div class="gcv-passeios__seg" role="radiogroup" data-passeio-seg="' + name + '">' +
         options.map(function (o, i) {
@@ -1761,6 +1762,9 @@
         '<p class="gcv-bi__label">' + passeioEsc(copy.extras) + "</p>" +
         '<div class="gcv-bi__card">' +
           '<div class="gcv-bi__top">' +
+            (Math.random() < 0.5
+              ? '<svg class="gcv-bi__face" data-guide="woman" viewBox="0 0 72 72" aria-hidden="true"><circle cx="36" cy="36" r="36" fill="#e8f6ee"/><path d="M18 64c1.6-11 8-16 18-16s16.4 5 18 16" fill="#14532d"/><path d="M20 40c1-14 7-24 16-24s15 10 16 24c-2 8-6 14-16 14s-14-6-16-14z" fill="#3b291c"/><circle cx="36" cy="31" r="11.5" fill="#f2c7a2"/><path d="M24 34c1-12 5.5-18 12-18s11 6 12 18c-2-5-6-8-12-8s-10 3-12 8z" fill="#3b291c"/><circle cx="31.4" cy="30" r="1.05" fill="#3b291c"/><circle cx="40.6" cy="30" r="1.05" fill="#3b291c"/><path d="M32.2 34.6c.7 1.1 1.6 1.6 3.8 1.6s3.1-.5 3.8-1.6" fill="none" stroke="#c4896a" stroke-width="1.15" stroke-linecap="round"/><path d="M50 42v15" stroke="#0f3d2e" stroke-width="1.7" stroke-linecap="round"/><path d="M50.7 42.2h12.4l-2.2 4.1 2.2 4.1H50.7z" fill="#009c3b"/><path d="M53.1 44.6h7.2l-1 1.9 1 1.9h-7.2z" fill="#ffdf00"/><circle cx="56.6" cy="46.5" r="1.05" fill="#002776"/></svg>'
+              : '<svg class="gcv-bi__face" data-guide="man" viewBox="0 0 72 72" aria-hidden="true"><circle cx="36" cy="36" r="36" fill="#e8f6ee"/><path d="M16 63c2-12 8.5-17 20-17s18 5 20 17" fill="#14532d"/><circle cx="36" cy="30" r="12.2" fill="#f2c7a2"/><path d="M24 28c.6-9 5.4-14.5 12-14.5S47.4 19 48 28c-1.4-4-5.4-6.4-12-6.4S25.4 24 24 28z" fill="#3b291c"/><circle cx="31.3" cy="29.2" r="1.1" fill="#3b291c"/><circle cx="40.7" cy="29.2" r="1.1" fill="#3b291c"/><path d="M31.8 34.2c.8 1.3 1.8 1.9 4.2 1.9s3.4-.6 4.2-1.9" fill="none" stroke="#c4896a" stroke-width="1.15" stroke-linecap="round"/><path d="M50 41v16" stroke="#0f3d2e" stroke-width="1.7" stroke-linecap="round"/><path d="M50.7 41.2h12.4l-2.2 4.1 2.2 4.1H50.7z" fill="#009c3b"/><path d="M53.1 43.6h7.2l-1 1.9 1 1.9h-7.2z" fill="#ffdf00"/><circle cx="56.6" cy="45.5" r="1.05" fill="#002776"/></svg>') +
             '<button type="button" class="gcv-bi__switch" data-passeio-bi aria-pressed="' + (copy.siteLang === "en" || copy.siteLang === "es" ? "true" : "false") + '" aria-label="' + passeioEsc(copy.bilingual) + '"></button>' +
             '<div class="gcv-bi__copy"><p class="gcv-bi__name">' + passeioEsc(copy.bilingual) + "</p>" +
             '<p class="gcv-bi__hint">' + passeioEsc(copy.bilingualHint) + "</p></div>" +
