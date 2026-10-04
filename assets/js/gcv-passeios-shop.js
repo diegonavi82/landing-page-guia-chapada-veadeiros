@@ -13,9 +13,9 @@
     pt: {
       kicker: "Chapada dos Veadeiros",
       title: "Passeios de um dia",
-      lead: "Cada passeio é um produto: de uma a três atrações, no mesmo dia. Escolha a data e leve só um para o carrinho.",
+      lead: "Cada passeio é um produto: de uma a três atrações, no mesmo dia. Ao adicionar, ajuste data, pessoas, cidade e transporte.",
       day: "Data do passeio",
-      dayHint: "Só um passeio por dia. Excursão saindo de Alto Paraíso, sem translado. Na página da atração você ajusta pessoas, cidade e carro.",
+      dayHint: "Só um passeio por dia. A data, as pessoas, a cidade e o transporte ficam na janela que abre ao adicionar.",
       all: "Todos",
       from: "A partir de",
       person: "por pessoa",
@@ -31,9 +31,9 @@
     en: {
       kicker: "Chapada dos Veadeiros",
       title: "One-day tours",
-      lead: "Each tour is a product: one to three places, the same day. Pick a date and add only one to the cart.",
+      lead: "Each tour is a product: one to three places, the same day. When you add it, set the date, people, city and transfer.",
       day: "Tour date",
-      dayHint: "One tour per day. Shared tour leaving Alto Paraíso, without transfer. On the place page you can change people, city and car.",
+      dayHint: "One tour per day. Date, people, city and transfer are in the window that opens when you add.",
       all: "All",
       from: "From",
       person: "per person",
@@ -49,9 +49,9 @@
     es: {
       kicker: "Chapada dos Veadeiros",
       title: "Paseos de un día",
-      lead: "Cada paseo es un producto: de uno a tres atractivos, el mismo día. Elige la fecha y lleva solo uno al carrito.",
+      lead: "Cada paseo es un producto: de uno a tres atractivos, el mismo día. Al agregar, ajusta fecha, personas, ciudad y transporte.",
       day: "Fecha del paseo",
-      dayHint: "Un solo paseo por día. Excursión saliendo de Alto Paraíso, sin traslado. En la página del atractivo ajustas personas, ciudad y auto.",
+      dayHint: "Un solo paseo por día. La fecha, las personas, la ciudad y el transporte quedan en la ventana que se abre al agregar.",
       all: "Todos",
       from: "Desde",
       person: "por persona",
@@ -76,32 +76,25 @@
     var row = labels[key];
     return row ? row[lang] || row.pt : key;
   }
-  function tomorrow() {
-    var d = new Date();
-    d.setDate(d.getDate() + 1);
-    var m = String(d.getMonth() + 1).padStart(2, "0");
-    var day = String(d.getDate()).padStart(2, "0");
-    return d.getFullYear() + "-" + m + "-" + day;
-  }
-
   var filter = "all";
   var tours = [];
-  var date = tomorrow();
 
-  function itemId(tour) {
-    var ids = (tour.attraction_ids || []).slice();
-    if (tour.kind !== "combo") ids = [];
-    return "roteiro-" + (tour.slug || "passeio") + "-" + ids.join("-") + "-" + date + "-excursao-s";
+  function productKey(tour) {
+    if (!tour) return "";
+    if (tour.kind === "combo") {
+      return "combo:" + (tour.attraction_ids || []).slice().sort(function (a, b) { return a - b; }).join(",");
+    }
+    return "atrativo:" + (tour.slug || "") + ":";
   }
-  function inCart(id) {
+  function inCart(tour) {
+    var key = productKey(tour);
     var cart = window.GcvExcCart;
-    return !!(cart && typeof cart.items === "function" && cart.items().some(function (it) { return it && it.id === id; }));
-  }
-  function dayTaken(id) {
-    var cart = window.GcvExcCart;
-    if (!cart || typeof cart.occupiedDates !== "function") return false;
-    var owner = cart.occupiedDates()[date];
-    return !!(owner && owner !== id);
+    if (!key || !cart || typeof cart.items !== "function") return false;
+    return cart.items().some(function (it) {
+      if (!it || !it.passeioKey) return false;
+      if (tour.kind === "combo") return it.passeioKey === key;
+      return String(it.passeioKey).indexOf("atrativo:" + (tour.slug || "") + ":") === 0;
+    });
   }
 
   function paint() {
@@ -115,9 +108,7 @@
       return;
     }
     grid.innerHTML = list.map(function (tour) {
-      var id = itemId(tour);
-      var mine = inCart(id);
-      var blocked = dayTaken(id);
+      var mine = inCart(tour);
       var cents = tour.tarifa && tour.tarifa.excursao_pessoa_cents;
       var tags = (tour.categories || []).map(function (key) { return "<span>" + esc(catName(key)) + "</span>"; }).join("");
       var count = tour.count === 1 ? copy.one : tour.count + " " + copy.many;
@@ -133,8 +124,8 @@
         '<p class="gcv-shop-card__places">' + esc((tour.attractions || []).join(" · ")) + "</p>" +
         '<div class="gcv-shop-card__foot">' +
         '<p class="gcv-shop-card__price">' + esc(copy.from) + "<strong>" + reais(cents) + "</strong>" + esc(copy.person) + "</p>" +
-        '<button type="button" class="gcv-shop-card__add' + (mine ? " is-added" : "") + '" data-add="' + esc(tour.id) + '"' + (blocked && !mine ? " disabled" : "") + ">" +
-        esc(mine ? copy.added : blocked ? copy.taken : copy.add) + "</button>" +
+        '<button type="button" class="gcv-shop-card__add' + (mine ? " is-added" : "") + '" data-add="' + esc(tour.id) + '">' +
+        esc(mine ? copy.added : copy.add) + "</button>" +
         "</div></div></article>";
     }).join("");
   }
@@ -147,14 +138,9 @@
     root.innerHTML =
       '<div class="gcv-shop__hero">' +
       "<div><p class=\"gcv-shop__kicker\">" + esc(copy.kicker) + "</p><h1>" + esc(copy.title) + "</h1><p class=\"gcv-shop__lead\">" + esc(copy.lead) + "</p></div>" +
-      '<div class="gcv-shop__day"><label for="gcv-shop-date">' + esc(copy.day) + '</label><input id="gcv-shop-date" type="date" value="' + esc(date) + '" min="' + esc(tomorrow()) + '" /><p>' + esc(copy.dayHint) + "</p></div>" +
       "</div>" +
       '<div class="gcv-shop__filters">' + buttons + "</div>" +
       '<div class="gcv-shop__grid" data-shop-grid></div>';
-    root.querySelector("#gcv-shop-date").addEventListener("change", function (e) {
-      date = e.target.value || tomorrow();
-      paint();
-    });
     root.querySelectorAll("[data-shop-filter]").forEach(function (btn) {
       btn.addEventListener("click", function () {
         filter = btn.getAttribute("data-shop-filter") || "all";
@@ -168,33 +154,29 @@
       var btn = e.target.closest && e.target.closest("[data-add]");
       if (!btn || btn.disabled) return;
       var tour = tours.filter(function (t) { return t.id === btn.getAttribute("data-add"); })[0];
-      if (!tour || !window.GcvExcCart) return;
-      var id = itemId(tour);
-      if (inCart(id)) {
-        if (typeof window.GcvExcCart.remove === "function") window.GcvExcCart.remove(id);
-        paint();
+      if (!tour || !window.GcvPasseioDialog) return;
+      function openWith(data) {
+        window.GcvPasseioDialog.open(data, paint);
+      }
+      if (tour.kind === "combo") {
+        openWith({
+          slug: tour.slug,
+          title: tour.title,
+          duration_minutes: tour.duration_minutes,
+          duracao_cidades: tour.duracao_cidades,
+          tarifa: tour.tarifa,
+          max_atrativos: 1,
+          related_tours: [],
+          passeioKey: productKey(tour),
+        });
         return;
       }
-      if (dayTaken(id)) {
-        if (typeof window.GcvExcCart.warnSameDay === "function") window.GcvExcCart.warnSameDay();
-        return;
-      }
-      var quando = new Date(date + "T08:00:00");
-      window.GcvExcCart.add({
-        id: id,
-        destino: tour.title,
-        destinos: (tour.attractions || []).slice(),
-        dateLabel: date.split("-").reverse().join("/"),
-        dateIso: date,
-        valorUnit: Math.round(((tour.tarifa && tour.tarifa.excursao_pessoa_cents) || 0) / 100),
-        qty: 1,
-        pixDesc: tour.title + " · " + copy.one,
-        maxQty: 15,
-        embarque: "Alto Paraíso de Goiás",
-        hora: "08:00",
-        departureMs: quando.getTime(),
-      });
-      paint();
+      fetch("/api/passeios.php?slug=" + encodeURIComponent(tour.slug || ""))
+        .then(function (res) { return res.json(); })
+        .then(function (payload) {
+          if (payload && payload.ok && payload.data) openWith(payload.data);
+        })
+        .catch(function () {});
     });
   }
 

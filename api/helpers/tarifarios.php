@@ -88,6 +88,12 @@ function gcv_tarifarios_ensure(PDO $pdo): void
     if (!gcv_tarifario_column_exists($pdo, 'gcv_passeio_relacionado', 'categorias')) {
         $pdo->exec('ALTER TABLE gcv_passeio_relacionado ADD COLUMN categorias VARCHAR(180) NULL');
     }
+    if (!gcv_tarifario_column_exists($pdo, 'gcv_attractions', 'saidas_json')) {
+        $pdo->exec('ALTER TABLE gcv_attractions ADD COLUMN saidas_json TEXT NULL');
+    }
+    if (!gcv_tarifario_column_exists($pdo, 'gcv_passeio_relacionado', 'saidas_json')) {
+        $pdo->exec('ALTER TABLE gcv_passeio_relacionado ADD COLUMN saidas_json TEXT NULL');
+    }
     gcv_passeio_max_atrativos_ensure($pdo);
     gcv_tarifarios_seed($pdo);
 }
@@ -150,6 +156,136 @@ function gcv_passeio_oferta_save(PDO $pdo, array $body): void
         return;
     }
     throw new InvalidArgumentException('Informe o atrativo ou o passeio.');
+}
+
+/** Chave estável. As três cidades antigas do tarifário continuam com a mesma chave. */
+function gcv_cidade_chave(string $name): string
+{
+    $n = mb_strtolower(trim($name));
+    $n = strtr($n, [
+        'á' => 'a', 'à' => 'a', 'ã' => 'a', 'â' => 'a', 'ä' => 'a',
+        'é' => 'e', 'ê' => 'e', 'ë' => 'e',
+        'í' => 'i', 'ï' => 'i',
+        'ó' => 'o', 'ô' => 'o', 'õ' => 'o', 'ö' => 'o',
+        'ú' => 'u', 'ü' => 'u',
+        'ç' => 'c',
+    ]);
+    $known = [
+        'alto paraiso de goias' => 'alto-paraiso',
+        'alto paraiso' => 'alto-paraiso',
+        'sao jorge' => 'sao-jorge',
+        'cavalcante' => 'cavalcante',
+    ];
+    if (isset($known[$n])) {
+        return $known[$n];
+    }
+    $slug = preg_replace('/[^a-z0-9]+/', '-', $n) ?? '';
+    $slug = trim($slug, '-');
+    return $slug !== '' ? $slug : 'cidade';
+}
+
+function gcv_cidade_curta(string $nome): string
+{
+    $nome = trim($nome);
+    $pos = mb_stripos($nome, ' de ');
+    if ($pos !== false && $pos > 2) {
+        return mb_substr($nome, 0, $pos);
+    }
+    return $nome;
+}
+
+/** Cidades cadastradas que podem ser saída de passeio. A cidade do atrativo não entra sozinha. */
+function gcv_cidades_saida_mapa(PDO $pdo): array
+{
+    $map = GCV_TARIFARIO_CIDADES;
+    try {
+        $rows = $pdo->query("SELECT name FROM gcv_cities WHERE status = 'active' ORDER BY name ASC")->fetchAll();
+        foreach ($rows as $row) {
+            $name = trim((string)($row['name'] ?? ''));
+            if ($name === '') {
+                continue;
+            }
+            $map[gcv_cidade_chave($name)] = $name;
+        }
+    } catch (Throwable $e) {
+        // sem tabela de cidades, ficam as três saídas clássicas
+    }
+    return $map;
+}
+
+/**
+ * Chaves de saída gravadas no passeio.
+ * null = legado: toda cidade do tarifário que tem preço de excursão.
+ * [] = nenhuma saída: o passeio não entra no catálogo.
+ *
+ * @return list<string>
+ */
+function gcv_saidas_chaves($raw, ?array $tarifa, array $mapa): array
+{
+    $allowed = array_keys($mapa);
+    if (is_string($raw)) {
+        $decoded = $raw === '' ? [] : json_decode($raw, true);
+        $list = [];
+        if (is_array($decoded)) {
+            foreach ($decoded as $key) {
+                $key = (string)$key;
+                if (in_array($key, $allowed, true)) {
+                    $list[] = $key;
+                }
+            }
+        }
+        return array_values(array_unique($list));
+    }
+    $list = [];
+    $cidades = is_array($tarifa['cidades'] ?? null) ? $tarifa['cidades'] : [];
+    foreach ($allowed as $key) {
+        if ((int)($cidades[$key]['excursao_pessoa_cents'] ?? 0) > 0) {
+            $list[] = $key;
+        }
+    }
+    return $list;
+}
+
+/**
+ * Saídas que realmente vendem: marcadas e com preço de excursão.
+ *
+ * @param list<string> $chaves
+ * @return list<array{key:string,nome:string,curta:string,minutes:int,excursao_pessoa_cents:int}>
+ */
+function gcv_saidas_public(array $chaves, ?array $tarifa, $duracaoJson, int $fallbackMinutes, array $mapa): array
+{
+    $dur = gcv_duracao_cidades($duracaoJson, $fallbackMinutes, $mapa);
+    $out = [];
+    foreach ($chaves as $key) {
+        $cents = (int)($tarifa['cidades'][$key]['excursao_pessoa_cents'] ?? 0);
+        if ($cents <= 0) {
+            continue;
+        }
+        $nome = (string)($mapa[$key] ?? $key);
+        $out[] = [
+            'key' => $key,
+            'nome' => $nome,
+            'curta' => gcv_cidade_curta($nome),
+            'minutes' => (int)($dur[$key] ?? max(0, $fallbackMinutes)),
+            'excursao_pessoa_cents' => $cents,
+        ];
+    }
+    return $out;
+}
+
+/** @param list<string> $chaves */
+function gcv_saidas_save(PDO $pdo, string $kind, int $id, array $chaves): void
+{
+    $mapa = gcv_cidades_saida_mapa($pdo);
+    $clean = [];
+    foreach ($chaves as $key) {
+        $key = (string)$key;
+        if (isset($mapa[$key]) && !in_array($key, $clean, true)) {
+            $clean[] = $key;
+        }
+    }
+    $table = $kind === 'passeio' ? 'gcv_passeio_relacionado' : 'gcv_attractions';
+    $pdo->prepare("UPDATE $table SET saidas_json = ? WHERE id = ?")->execute([json_encode(array_values($clean), JSON_UNESCAPED_UNICODE), $id]);
 }
 
 function gcv_passeio_max_atrativos(PDO $pdo): int

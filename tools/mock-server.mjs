@@ -573,7 +573,7 @@ const ROLE = process.argv[2] || "guide";
 
 const MOCK_USERS = {
   admin: { id: 1, name: "Diego Navi", email: "diegocsp82@gmail.com", role: "admin", status: "active", avatar_url: null },
-  guide: { id: 2, name: "Diego Guia", email: "guia@gcv.com", role: "guide", status: "active", avatar_url: null },
+  guide: { id: 2, name: "Diego Guia", email: "guia@gcv.com", role: "guide", status: "active", avatar_url: null, email_verified: true },
   "guide-pending": { id: 3, name: "João Pendente", email: "pendente@gcv.com", role: "guide", status: "pending", avatar_url: null },
   client: { id: 4, name: "Maria Cliente", email: "cliente@gcv.com", role: "client", status: "active", avatar_url: null },
 };
@@ -768,6 +768,36 @@ function relatedSignature(ids) {
   }
 })();
 
+/** Marcas só do mock, para testar filtros e o widget. Não vai para o banco. */
+(function seedPasseioOfertas() {
+  const porSlug = {
+    "cachoeira-almecegas-poco-sao-bento-guia-chapada-veadeiros": ["classicos"],
+    "cataratas-dos-couros-guia-chapada-veadeiros-alto-paraiso": ["destaque", "classicos"],
+    "cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante": ["aventura"],
+    "vale-lua-guia-chapada-veadeiros-sao-jorge": ["familia", "classicos"],
+    "cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso": ["lado-b"],
+    "cachoeira-poco-encantado-guia-chapada-veadeiros-teresina-de-goias": ["classicos"],
+  };
+  for (const [slug, categorias] of Object.entries(porSlug)) {
+    const a = MOCK_ATTRACTIONS.find((x) => x.slug === slug);
+    if (a) a.categorias = categorias;
+  }
+  const semPasseio = MOCK_ATTRACTIONS.find((a) => a.slug === "cachoeira-poco-encantado-guia-chapada-veadeiros-teresina-de-goias");
+  if (semPasseio) semPasseio.tem_passeio = false;
+
+  const porCombo = [
+    [["cachoeira-anjos-arcanjos-guia-chapada-veadeiros-alto-paraiso", "caracol-guia-chapada-veadeiros"], ["classicos"]],
+    [["cachoeira-almecegas-poco-sao-bento-guia-chapada-veadeiros", "vale-lua-guia-chapada-veadeiros-sao-jorge"], ["familia", "destaque"]],
+    [["cachoeira-almecegas-poco-sao-bento-guia-chapada-veadeiros", "vale-lua-guia-chapada-veadeiros-sao-jorge", "cachoeira-ponte-de-pedra-guia-chapada-veadeiros-cavalcante"], ["aventura", "destaque"]],
+    [["cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso", "vale-lua-guia-chapada-veadeiros-sao-jorge"], ["lado-b", "familia"]],
+  ];
+  for (const [slugs, categorias] of porCombo) {
+    const ids = slugs.map((slug) => (MOCK_ATTRACTIONS.find((a) => a.slug === slug) || {}).id).filter(Boolean);
+    const tour = MOCK_RELATED.find((r) => relatedSignature(r.attractions.map((a) => a.id)) === relatedSignature(ids));
+    if (tour) tour.categorias = categorias;
+  }
+})();
+
 function presentRelated(tour) {
   refreshRelatedDuration(tour);
   return {
@@ -791,6 +821,20 @@ function relatedTitle(tour) {
   return tour.attractions.map((part) => part.title_pt).join(" + ");
 }
 
+const PASSEIO_CATEGORIAS = {
+  classicos: "Clássicos",
+  destaque: "Destaque",
+  "lado-b": "Lado B",
+  familia: "Família",
+  aventura: "Aventura",
+};
+
+function passeioCategorias(raw, count) {
+  const allowed = Object.keys(PASSEIO_CATEGORIAS);
+  const list = Array.isArray(raw) ? raw.filter((key) => allowed.includes(key)) : [];
+  return list.length ? list : count >= 2 ? ["destaque", "classicos"] : ["classicos"];
+}
+
 function passeioCatalog() {
   const max = maxAtrativos();
   const combos = MOCK_RELATED.map(presentRelated)
@@ -798,10 +842,15 @@ function passeioCatalog() {
     .map((presented) => {
       const first = presented.attractions[0] || {};
       const live = MOCK_ATTRACTIONS.find((a) => a.id === first.id);
+      const source = MOCK_RELATED.find((row) => row.id === presented.id);
       return {
         id: "r-" + presented.id,
+        kind: "combo",
+        slug: first.slug || "",
+        attraction_ids: presented.attractions.map((part) => part.id),
         title: relatedTitle(presented),
         count: presented.attractions.length,
+        categories: passeioCategorias(source && source.categorias, presented.attractions.length),
         duration_minutes: presented.duration_minutes,
         duracao_cidades: presented.duracao_cidades,
         tarifa: presented.tarifa,
@@ -810,10 +859,14 @@ function passeioCatalog() {
         attractions: presented.attractions.map((part) => part.title_pt),
       };
     });
-  const singles = MOCK_ATTRACTIONS.filter((a) => a.page && a.tarifario_id && !String(a.title_pt).includes(" + ")).map((a) => ({
+  const singles = MOCK_ATTRACTIONS.filter((a) => a.page && a.tarifario_id && a.tem_passeio !== false && !String(a.title_pt).includes(" + ")).map((a) => ({
     id: "a-" + a.id,
+    kind: "atrativo",
+    slug: a.slug,
+    attraction_ids: [a.id],
     title: a.title_pt,
     count: 1,
+    categories: passeioCategorias(a.categorias, 1),
     duration_minutes: a.duration_minutes || 0,
     duracao_cidades: duracaoCidades(a.duracao, a.duration_minutes),
     tarifa: tarifarioPublic(tarifarioById(a.tarifario_id)),
@@ -833,7 +886,9 @@ function passeioPublicPayload(slug) {
     title: attraction.title_pt,
     duration_minutes: attraction.duration_minutes || 0,
     duracao_cidades: duracaoCidades(attraction.duracao, attraction.duration_minutes),
-    tarifa: tarifarioPublic(tarifarioById(attraction.tarifario_id)),
+    tem_passeio: attraction.tem_passeio !== false,
+    categorias: passeioCategorias(attraction.categorias, 1),
+    tarifa: attraction.tem_passeio === false ? null : tarifarioPublic(tarifarioById(attraction.tarifario_id)),
     max_atrativos: max,
     related_tours: mockRelatedFor(attraction.id).filter((t) => t.tarifa && t.attractions.length <= max),
   };
@@ -857,10 +912,12 @@ function tarifarioOverview(extra) {
       status: a.status,
       duration_minutes: a.duration_minutes || 0,
       page: a.page || "",
+      tem_passeio: a.tem_passeio !== false,
+      categorias: passeioCategorias(a.categorias, 1),
       tarifario_id: a.tarifario_id,
       duracao_cidades: duracaoCidades(a.duracao, a.duration_minutes),
     }));
-  return { ok: true, data: { max_atrativos: maxAtrativos(), cidades: TARIFARIO_CIDADES, tarifarios, atrativos, passeios: MOCK_RELATED.map(presentRelated), ...(extra || {}) } };
+  return { ok: true, data: { max_atrativos: maxAtrativos(), categorias: PASSEIO_CATEGORIAS, cidades: TARIFARIO_CIDADES, tarifarios, atrativos, passeios: MOCK_RELATED.map(presentRelated), ...(extra || {}) } };
 }
 
 function mockRelatedSave(rawIds) {
@@ -919,6 +976,20 @@ function handleTarifarioApi(urlPath, req, res) {
           } else if (body.passeio_id) {
             const r = MOCK_RELATED.find((x) => x.id === parseInt(body.passeio_id, 10));
             if (r) r.tarifario_id = tid;
+          }
+          return send(tarifarioOverview());
+        }
+        if (req.method === "PUT" && body.action === "oferta") {
+          const cats = passeioCategorias(body.categorias, 1);
+          if (body.attraction_id) {
+            const a = MOCK_ATTRACTIONS.find((x) => x.id === parseInt(body.attraction_id, 10));
+            if (a) {
+              a.categorias = cats;
+              if (body.tem_passeio !== undefined) a.tem_passeio = !!body.tem_passeio;
+            }
+          } else if (body.passeio_id) {
+            const r = MOCK_RELATED.find((x) => x.id === parseInt(body.passeio_id, 10));
+            if (r) r.categorias = cats;
           }
           return send(tarifarioOverview());
         }
@@ -1738,7 +1809,7 @@ const server = http.createServer((req, res) => {
       const slug = new URL(req.url, "http://localhost:" + PORT).searchParams.get("slug") || "";
       if (!slug) {
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-        res.end(JSON.stringify({ ok: true, data: { tours: passeioCatalog() } }));
+        res.end(JSON.stringify({ ok: true, data: { tours: passeioCatalog(), categories: PASSEIO_CATEGORIAS, max_atrativos: maxAtrativos() } }));
         return;
       }
       const data = passeioPublicPayload(slug);
@@ -1833,6 +1904,53 @@ const server = http.createServer((req, res) => {
         return;
       }
     }
+    if (urlPath === "/api/admin/broadcast.php") {
+      const mediaLimits = {
+        image: 16 * 1024 * 1024,
+        video: 16 * 1024 * 1024,
+        audio: 16 * 1024 * 1024,
+        document: 100 * 1024 * 1024,
+      };
+      if (req.method === "GET") {
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({
+          ok: true,
+          data: {
+            sender: {
+              phone: "5562982506891",
+              phone_display: "+55 62 98250-6891",
+              label: "WhatsApp da agência (servidor HPS)",
+              ready: true,
+            },
+            guides: [
+              { user_id: 2, name: "Diego Navi Marques Carvalho", phone_display: "+55 21 99903-0027", can_send: true },
+              { user_id: 3, name: "Felipe Camargo", phone_display: "+55 61 99999-2236", can_send: true },
+              { user_id: 4, name: "Sem WhatsApp", phone_display: "", can_send: false },
+            ],
+            ready_count: 2,
+            media: Object.assign({}, mediaLimits, { whatsapp: mediaLimits, server_capped: false }),
+          },
+        }));
+        return;
+      }
+      if (req.method === "POST") {
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({
+          ok: true,
+          data: {
+            scope: "all",
+            sent: 1,
+            failed: 0,
+            skipped: 0,
+            total: 1,
+            attachment: "",
+            results: [{ name: "Diego Navi Marques Carvalho", phone_display: "+55 21 99903-0027", status: "sent" }],
+          },
+        }));
+        return;
+      }
+    }
+
     const handler = API_ROUTES[urlPath];
     if (handler) {
       const body = JSON.stringify(handler());

@@ -538,6 +538,71 @@ function gcv_whatsapp_send_broadcast(string $phone, string $text): bool
     return false;
 }
 
+/**
+ * Mídia 1 a 1 pelo WhatsApp do servidor HPS (Evolution sendMedia).
+ * $mediaB64 é o arquivo em base64, sem prefixo data:.
+ * $mediaType: image | video | audio | document.
+ */
+function gcv_whatsapp_send_broadcast_media(
+    string $phone,
+    string $caption,
+    string $mediaB64,
+    string $mime,
+    string $fileName,
+    string $mediaType
+): bool {
+    $phone = gcv_whatsapp_normalize_phone($phone);
+    $mediaB64 = trim($mediaB64);
+    $mediaType = strtolower(trim($mediaType));
+    if (
+        $phone === ''
+        || $mediaB64 === ''
+        || $mime === ''
+        || $fileName === ''
+        || !in_array($mediaType, ['image', 'video', 'audio', 'document'], true)
+        || !gcv_whatsapp_hps_configured()
+    ) {
+        return false;
+    }
+    if (mb_strlen($caption) > 1024) {
+        $caption = mb_substr($caption, 0, 1024);
+    }
+
+    $base = rtrim(gcv_env_str('EVOLUTION_API_URL', 'https://wa.guiachapadaveadeiros.com'), '/');
+    $key = gcv_env_str('EVOLUTION_API_KEY');
+    $instance = gcv_env_str('EVOLUTION_INSTANCE', 'gcv');
+    if ($key === '') {
+        return false;
+    }
+    $url = $base . '/message/sendMedia/' . rawurlencode($instance);
+    $timeout = max(45, min(180, (int)ceil(strlen($mediaB64) / 250000) + 25));
+    $payload = [
+        'number' => $phone,
+        'mediatype' => $mediaType,
+        'mimetype' => $mime,
+        'caption' => $caption,
+        'fileName' => $fileName,
+        'media' => $mediaB64,
+    ];
+
+    foreach (gcv_whatsapp_number_candidates($phone) as $candidate) {
+        $payload['number'] = $candidate;
+        try {
+            if (gcv_whatsapp_post_json($url, ['apikey: ' . $key], $payload, $timeout)) {
+                return true;
+            }
+            $http = gcv_whatsapp_last_http();
+            if ($http === 0 || $http >= 500) {
+                break;
+            }
+        } catch (Throwable $e) {
+            error_log('whatsapp broadcast media: ' . $e->getMessage());
+            break;
+        }
+    }
+    return false;
+}
+
 function gcv_whatsapp_send_evolution_image(string $phone, string $caption, string $pngBinary): bool
 {
     $base = rtrim(gcv_env_str('EVOLUTION_API_URL', 'https://wa.guiachapadaveadeiros.com'), '/');

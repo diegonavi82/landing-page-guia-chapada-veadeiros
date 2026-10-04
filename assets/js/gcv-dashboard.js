@@ -583,14 +583,88 @@
 
     function resultLabel(status) {
       if (status === 'sent') return 'Enviado no chat';
+      if (status === 'partial') return 'Anexo enviado; o texto falhou';
       if (status === 'no_phone') return 'Sem WhatsApp';
       if (status === 'self') return 'Número da agência — pulado';
       if (status === 'duplicate') return 'Número repetido — pulado';
       return 'Falhou';
     }
 
+    var WA_DEFAULTS = { image: 16 * 1024 * 1024, video: 16 * 1024 * 1024, audio: 16 * 1024 * 1024, document: 100 * 1024 * 1024 };
+    var EXT_KIND = {
+      jpg: 'image', jpeg: 'image', png: 'image', webp: 'image', gif: 'image',
+      mp4: 'video', '3gp': 'video',
+      mp3: 'audio', ogg: 'audio', m4a: 'audio', aac: 'audio',
+      pdf: 'document', doc: 'document', docx: 'document',
+      xls: 'document', xlsx: 'document', ppt: 'document', pptx: 'document',
+      txt: 'document', csv: 'document', zip: 'document'
+    };
+
+    function broadcastLimits(media) {
+      var out = {
+        image: WA_DEFAULTS.image,
+        video: WA_DEFAULTS.video,
+        audio: WA_DEFAULTS.audio,
+        document: WA_DEFAULTS.document
+      };
+      if (!media) return out;
+      ['image', 'video', 'audio', 'document'].forEach(function (k) {
+        var n = parseInt(media[k], 10);
+        if (n > 0) out[k] = n;
+      });
+      return out;
+    }
+
+    function mbLabel(bytes) {
+      var mb = bytes / (1024 * 1024);
+      if (mb >= 10) return String(Math.round(mb)) + ' MB';
+      var text = (Math.round(mb * 10) / 10).toFixed(1).replace('.', ',');
+      return text.replace(',0', '') + ' MB';
+    }
+
+    function mediaHint(media) {
+      var limits = broadcastLimits(media);
+      var wa = media && media.whatsapp;
+      var text = 'Opcional. Limite do WhatsApp: imagem até ' + mbLabel(wa && wa.image ? wa.image : limits.image) +
+        ', vídeo e áudio até ' + mbLabel(wa && wa.video ? wa.video : limits.video) +
+        ', documento até ' + mbLabel(wa && wa.document ? wa.document : limits.document) + '.';
+      if (media && media.server_capped) {
+        var cap = Math.max(limits.image, limits.video, limits.audio, limits.document);
+        text += ' Neste servidor cada anexo vai até ' + mbLabel(cap) + '.';
+      }
+      return text;
+    }
+
+    function fileExt(name) {
+      var m = String(name || '').toLowerCase().match(/\.([a-z0-9]+)$/);
+      return m ? m[1] : '';
+    }
+
+    function fmtSize(n) {
+      if (n >= 1048576) return (n / 1048576).toFixed(1).replace('.', ',') + ' MB';
+      return Math.max(1, Math.round(n / 1024)) + ' KB';
+    }
+
+    function classifyFile(file, limits) {
+      var ext = fileExt(file && file.name);
+      var kind = EXT_KIND[ext] || '';
+      if (!kind) {
+        return { ok: false, error: 'Tipo não aceito pelo WhatsApp. Use JPG, PNG, WEBP, GIF, MP4, áudio, PDF, Office, TXT, CSV ou ZIP.' };
+      }
+      var max = limits[kind] || 0;
+      if (!file || file.size <= 0) return { ok: false, error: 'O arquivo está vazio.' };
+      if (file.size > max) {
+        var label = kind === 'document' ? 'documento' : (kind === 'image' ? 'imagem' : kind);
+        var artigo = kind === 'image' ? 'Essa' : 'Esse';
+        return { ok: false, error: artigo + ' ' + label + ' passa de ' + mbLabel(max) + ', o limite deste envio.' };
+      }
+      return { ok: true, kind: kind, ext: ext };
+    }
+
     function render(data) {
       var guides = (data && data.guides) || [];
+      root._media = (data && data.media) || null;
+      root._limits = broadcastLimits(root._media);
       var sender = (data && data.sender) || {};
       var readyCount = (data && data.ready_count) || 0;
       var senderPhone = sender.phone_display || '+55 62 98250-6891';
@@ -635,8 +709,20 @@
             '<div class="gcv-broadcast__preview" id="bc-preview"></div>' +
             '<div class="gcv-dash-field">' +
               '<label class="gcv-dash-label" for="bc-message">Mensagem</label>' +
-              '<textarea class="gcv-dash-textarea" id="bc-message" rows="7" maxlength="4000" placeholder="Escreva a mensagem. Cada guia recebe no chat individual, como se você tivesse enviado um por um."></textarea>' +
-              '<div class="gcv-broadcast__count"><span id="bc-chars">0</span>/4000</div>' +
+              '<textarea class="gcv-dash-textarea" id="bc-message" rows="7" maxlength="4000" placeholder="Escreva a mensagem. Com anexo, ela vira a legenda. Cada guia recebe no chat individual, como se você tivesse enviado um por um."></textarea>' +
+              '<div class="gcv-broadcast__count"><span id="bc-chars">0</span>/4000<span id="bc-caption-note" hidden> · acima de 1024 caracteres, o texto vai na mensagem seguinte</span></div>' +
+            '</div>' +
+            '<div class="gcv-dash-field">' +
+              '<span class="gcv-dash-label">Anexo</span>' +
+              '<div class="gcv-broadcast__attach">' +
+                '<label class="gcv-dash-file-btn gcv-dash-file-btn--secondary">' +
+                  '<input type="file" id="bc-file" accept=".jpg,.jpeg,.png,.webp,.gif,.mp4,.3gp,.mp3,.ogg,.m4a,.aac,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip" hidden />' +
+                  'Anexar imagem ou arquivo' +
+                '</label>' +
+                '<button type="button" class="gcv-broadcast__attach-clear" id="bc-file-clear" hidden>Remover</button>' +
+                '<p class="gcv-broadcast__attach-hint" id="bc-file-hint">' + escapeHtml(mediaHint(root._media)) + '</p>' +
+                '<div class="gcv-broadcast__attach-preview" id="bc-file-preview" hidden></div>' +
+              '</div>' +
             '</div>' +
             '<div id="bc-form-error" class="gcv-dash-alert gcv-dash-alert--warning" hidden></div>' +
             '<div class="gcv-dash-form__footer">' +
@@ -731,11 +817,66 @@
       markScopes();
       var sel = document.getElementById('bc-guide');
       if (sel) sel.addEventListener('change', updatePreview);
+      var fileInput = document.getElementById('bc-file');
+      var fileClear = document.getElementById('bc-file-clear');
+      function chosenFile() {
+        return fileInput && fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
+      }
+      function syncCaptionNote() {
+        var note = document.getElementById('bc-caption-note');
+        if (!note || !msg) return;
+        note.hidden = !(chosenFile() && msg.value.length > 1024);
+      }
+      function clearFile() {
+        if (root._fileUrl) {
+          URL.revokeObjectURL(root._fileUrl);
+          root._fileUrl = '';
+        }
+        if (fileInput) fileInput.value = '';
+        var box = document.getElementById('bc-file-preview');
+        if (box) { box.hidden = true; box.innerHTML = ''; }
+        if (fileClear) fileClear.hidden = true;
+        syncCaptionNote();
+      }
+      function showFile(file) {
+        var box = document.getElementById('bc-file-preview');
+        if (!box) return;
+        if (root._fileUrl) URL.revokeObjectURL(root._fileUrl);
+        root._fileUrl = '';
+        var kind = classifyFile(file, root._limits || broadcastLimits(null));
+        var thumb = '';
+        if (kind.ok && kind.kind === 'image') {
+          root._fileUrl = URL.createObjectURL(file);
+          thumb = '<img src="' + root._fileUrl + '" alt="" />';
+        }
+        box.hidden = false;
+        box.innerHTML = thumb + '<span><strong>' + escapeHtml(file.name) + '</strong><small>' +
+          escapeHtml(fmtSize(file.size)) + '</small></span>';
+        if (fileClear) fileClear.hidden = false;
+        syncCaptionNote();
+      }
       if (msg && chars) {
         msg.addEventListener('input', function () {
           chars.textContent = String(msg.value.length);
+          syncCaptionNote();
         });
       }
+      if (fileInput) {
+        fileInput.addEventListener('change', function () {
+          var err = document.getElementById('bc-form-error');
+          var file = chosenFile();
+          if (!file) { clearFile(); return; }
+          var checked = classifyFile(file, root._limits || broadcastLimits(null));
+          if (!checked.ok) {
+            clearFile();
+            if (err) { err.hidden = false; err.textContent = checked.error; }
+            return;
+          }
+          if (err) { err.hidden = true; err.textContent = ''; }
+          showFile(file);
+        });
+      }
+      if (fileClear) fileClear.addEventListener('click', clearFile);
       if (!form) return;
       form.addEventListener('submit', function (e) {
         e.preventDefault();
@@ -744,10 +885,18 @@
         var btn = document.getElementById('bc-send');
         var list = recipients();
         var text = (msg && msg.value || '').trim();
+        var file = chosenFile();
         if (err) { err.hidden = true; err.textContent = ''; }
-        if (!text) {
-          if (err) { err.hidden = false; err.textContent = 'Escreva a mensagem.'; }
+        if (!text && !file) {
+          if (err) { err.hidden = false; err.textContent = 'Escreva a mensagem ou anexe um arquivo.'; }
           return;
+        }
+        if (file) {
+          var checked = classifyFile(file, root._limits || broadcastLimits(null));
+          if (!checked.ok) {
+            if (err) { err.hidden = false; err.textContent = checked.error; }
+            return;
+          }
         }
         if (!list.length) {
           if (err) { err.hidden = false; err.textContent = 'Nenhum destinatário com WhatsApp.'; }
@@ -757,7 +906,10 @@
         var who = selectedScope() === 'one'
           ? (list[0].name + ' (' + (list[0].phone_display || '') + ')')
           : (list.length + ' guias');
-        confirmFn('Enviar esta mensagem para ' + who + ' pelo WhatsApp +55 62 98250-6891? Cada chat será atualizado individualmente.').then(function (ok) {
+        var lead = file
+          ? ('Enviar ' + (text ? 'a mensagem e o anexo' : 'o anexo') + ' “' + file.name + '” para ' + who)
+          : ('Enviar esta mensagem para ' + who);
+        confirmFn(lead + ' pelo WhatsApp +55 62 98250-6891? Cada chat será atualizado individualmente.').then(function (ok) {
           if (!ok) return;
           if (btn) {
             btn.disabled = true;
@@ -770,8 +922,9 @@
           }
           var xhr = new XMLHttpRequest();
           xhr.open('POST', '/api/admin/broadcast.php');
-          xhr.setRequestHeader('Content-Type', 'application/json');
-          xhr.timeout = 180000;
+          var timeoutMs = 180000;
+          if (file) timeoutMs = Math.min(1200000, 180000 + Math.ceil(file.size / (256 * 1024)) * list.length * 1000);
+          xhr.timeout = timeoutMs;
           xhr.onload = function () {
             var res = {};
             try { res = JSON.parse(xhr.responseText); } catch (parseErr) { res = {}; }
@@ -797,6 +950,7 @@
                 '<div class="gcv-dash-alert gcv-dash-alert--' + (d.failed ? 'warning' : 'success') + '">' +
                 'Enviado: <strong>' + (d.sent || 0) + '</strong> · Falhou: <strong>' + (d.failed || 0) + '</strong>' +
                 (d.skipped ? ' · Pulados: <strong>' + d.skipped + '</strong>' : '') +
+                (d.attachment ? ' · Anexo: <strong>' + escapeHtml(d.attachment) + '</strong>' : '') +
                 '</div>' +
                 '<ul class="gcv-broadcast__log">' +
                 rows.map(function (r) {
@@ -820,11 +974,12 @@
               err.textContent = 'Falha de rede ao enviar o broadcast.';
             }
           };
-          xhr.send(JSON.stringify({
-            scope: selectedScope(),
-            guide_user_id: selectedScope() === 'one' ? (list[0] && list[0].user_id) || 0 : 0,
-            message: text
-          }));
+          var body = new FormData();
+          body.append('scope', selectedScope());
+          body.append('guide_user_id', String(selectedScope() === 'one' ? (list[0] && list[0].user_id) || 0 : 0));
+          body.append('message', text);
+          if (file) body.append('file', file, file.name);
+          xhr.send(body);
         });
       });
     }

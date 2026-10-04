@@ -1,16 +1,18 @@
 ---
-description: Deploy automático DESATIVADO PERMANENTEMENTE — só publicar quando o usuário pedir
+description: Deploy pausado até o dono liberar — trabalhar só em dev
 alwaysApply: true
 ---
 
-# Deploy automático DESATIVADO (permanente)
+# Deploy pausado (dev até ficar pronto)
 
-Decisão do dono do projeto: **nunca** haverá deploy automático.
+Decisão do dono, em 3 de outubro de 2026: **não publicar nada** enquanto o trabalho de passeios e atrativos estiver em desenvolvimento.
 
-- O workflow `.github/workflows/deploy-hostinger-ftp.yml` roda só manualmente (`workflow_dispatch`). **Nunca** religar o gatilho `push`, nem criar outro workflow ou hook que publique sozinho.
-- Não enviar arquivos para a Hostinger e não rodar `npm run deploy:prod`, a menos que o usuário peça explicitamente para publicar, fazer deploy ou “subir para produção” naquela tarefa. O pedido vale só para aquela vez.
+- Não enviar arquivos para a Hostinger.
+- Não rodar `npm run deploy:prod`.
+- Não rodar migrations no banco da Hostinger (`npm run db:migrate`).
+- Não religar o workflow de deploy. Ele continua só manual (`workflow_dispatch`).
 - Nunca apagar nem limpar arquivos que já estão na Hostinger.
-- Migrations SQL (`npm run db:migrate`) gravam no banco da Hostinger: só rodar se o usuário pedir.
-- Ao terminar uma tarefa, dizer o que mudou e que **não foi para o ar**.
+- Pedir “sobe”, “deploy” ou “publica” **não autoriza** envio enquanto esta pausa estiver valendo. Só volta a publicar quando o dono disser, com essas palavras, que o dev está pronto e que pode publicar de novo.
+- Ao terminar uma tarefa, dizer o que mudou no localhost e que **não foi para o ar**.
 
-Quando o usuário pedir para publicar: `npm run deploy:prod -- <arquivos-alterados>`, document root `domains/guiachapadaveadeiros.com/public_html`, credenciais em `.env.deploy`.
+Localhost mostra o widget de passeio e a página Passeios. Produção não.

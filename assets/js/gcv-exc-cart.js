@@ -14,6 +14,8 @@
   var _onChange = null;
   var _resolveDepartureMs = null;
   var _autoInited = false;
+  var _gapAck = "";
+  var _gapSig = "";
 
   /** Strings mínimas para páginas sem carrossel (pt/en/es). */
   var FALLBACK_STRINGS = {
@@ -27,6 +29,8 @@
       cartClose: "Fechar carrinho",
       cartSameDayBlocked: "Você já escolheu um passeio para este dia. Remova-o para escolher outro.",
       cartItemsExpired: "Alguns passeios saíram do carrinho porque o embarque já passou ou está muito próximo.",
+      cartGapOne: "Você tem 1 dia de intervalo entre o passeio anterior.",
+      cartGapMany: "Você tem {n} dias de intervalo entre o passeio anterior.",
       bookTotal: "Total",
       bookQtyMinus: "Menos uma pessoa",
       bookQtyPlus: "Mais uma pessoa",
@@ -43,6 +47,8 @@
       cartClose: "Close cart",
       cartSameDayBlocked: "You already chose a tour for this day. Remove it to pick another.",
       cartItemsExpired: "Some tours left your cart because departure has passed or is too soon.",
+      cartGapOne: "You have a 1-day gap since the previous tour.",
+      cartGapMany: "You have a {n}-day gap since the previous tour.",
       bookTotal: "Total",
       bookQtyMinus: "Remove one person",
       bookQtyPlus: "Add one person",
@@ -59,6 +65,8 @@
       cartClose: "Cerrar carrito",
       cartSameDayBlocked: "Ya elegiste un paseo para este día. Quítalo para elegir otro.",
       cartItemsExpired: "Algunos paseos salieron del carrito porque el embarque ya pasó o está muy cerca.",
+      cartGapOne: "Tienes 1 día de intervalo entre el paseo anterior.",
+      cartGapMany: "Tienes {n} días de intervalo entre el paseo anterior.",
       bookTotal: "Total",
       bookQtyMinus: "Quitar una persona",
       bookQtyPlus: "Añadir una persona",
@@ -432,6 +440,11 @@
 
   function saveItems(items) {
     var purged = sortCartItems(purgeExpiredItems(items || []));
+    var sig = purged.map(itemDateIso).filter(Boolean).sort().join(",");
+    if (sig !== _gapSig) {
+      _gapAck = "";
+      _gapSig = sig;
+    }
     try {
       global.localStorage.setItem(STORAGE_KEY, JSON.stringify(purged));
     } catch (err) {
@@ -560,6 +573,29 @@
     return (items || []).slice().sort(function (a, b) {
       return itemDepartureSortKey(a) - itemDepartureSortKey(b);
     });
+  }
+
+  function maxGapDays(items) {
+    var dates = [];
+    (items || []).forEach(function (it) {
+      var iso = itemDateIso(it);
+      if (iso && dates.indexOf(iso) < 0) dates.push(iso);
+    });
+    dates.sort();
+    var max = 0;
+    var i;
+    for (i = 1; i < dates.length; i++) {
+      var a = new Date(dates[i - 1] + "T12:00:00");
+      var b = new Date(dates[i] + "T12:00:00");
+      var gap = Math.round((b.getTime() - a.getTime()) / 86400000) - 1;
+      if (gap > max) max = gap;
+    }
+    return max;
+  }
+
+  function gapMessage(n) {
+    var key = n === 1 ? "cartGapOne" : "cartGapMany";
+    return String(s(key) || "").replace("{n}", String(n));
   }
 
   function hasSameDayConflict(items, item) {
@@ -907,6 +943,7 @@
       '<input type="checkbox" class="gcv-exc-cart-policy__input" data-gcv-cart-agree="security" />' +
       '<span class="gcv-exc-cart-policy__text" data-gcv-cart-policy-label="security"></span>' +
       "</label></div>" +
+      '<p data-gcv-cart-gap hidden style="margin:0 0 .75rem;padding:.7rem .8rem;border-radius:10px;background:#fef3c7;color:#92400e;font-size:.88rem;font-weight:700;line-height:1.4"></p>' +
       '<button type="button" class="gcv-exc-cart-panel__checkout" data-gcv-cart-checkout aria-disabled="true"></button>' +
       '<button type="button" class="gcv-exc-cart-panel__back" data-gcv-cart-close></button>' +
       "</div></div></div>";
@@ -1043,6 +1080,11 @@
     );
     document.documentElement.classList.toggle("gcv-exc-cart-has-items", count > 0);
     if (title) title.textContent = s("cartTitle");
+    var gapNote = root.querySelector("[data-gcv-cart-gap]");
+    if (gapNote && !_gapAck) {
+      gapNote.hidden = true;
+      gapNote.textContent = "";
+    }
 
     root.querySelectorAll("[data-gcv-cart-close]").forEach(function (btn) {
       btn.setAttribute("aria-label", s("pixModalClose") || s("cartClose") || "Fechar");
@@ -1131,6 +1173,11 @@
     var qty = Math.max(1, Math.min(max, parseInt(String(item.qty), 10) || 1));
     var dateIso = itemDateIso(item);
 
+    if (item.passeioKey) {
+      items = items.filter(function (it) {
+        return !(it && it.passeioKey === item.passeioKey);
+      });
+    }
     var existing = items.find(function (it) {
       return it.id === item.id;
     });
@@ -1155,6 +1202,8 @@
       if (item.meetingLng != null) existing.meetingLng = item.meetingLng;
       if (item.meetingMapsUrl) existing.meetingMapsUrl = item.meetingMapsUrl;
       if (item.departureMs) existing.departureMs = item.departureMs;
+      if (item.passeioKey) existing.passeioKey = item.passeioKey;
+      if (item.pessoas) existing.pessoas = item.pessoas;
       if (Array.isArray(item.destinos) && item.destinos.length) existing.destinos = item.destinos.slice();
     } else {
       items.push({
@@ -1177,6 +1226,8 @@
         departureMs: item.departureMs || null,
         guiaNome: item.guiaNome || "",
         guiaTelefone: item.guiaTelefone || "",
+        passeioKey: item.passeioKey || "",
+        pessoas: item.pessoas || qty,
       });
     }
     saveItems(items);
@@ -1261,6 +1312,22 @@
         purgeExpiredAndPersist({ notify: true, skipRender: true });
         items = loadItems();
         if (!items.length) return;
+        var gap = maxGapDays(items);
+        var gapNote = document.querySelector("[data-gcv-cart-gap]");
+        if (gap >= 1) {
+          var gapSig = String(gap);
+          if (_gapAck !== gapSig) {
+            _gapAck = gapSig;
+            if (gapNote) {
+              gapNote.hidden = false;
+              gapNote.textContent = gapMessage(gap);
+            }
+            return;
+          }
+        } else if (gapNote) {
+          gapNote.hidden = true;
+          gapNote.textContent = "";
+        }
         var total = cartTotal(items);
         var detail = cartPayDetail(items);
         var payFn = _onPay;

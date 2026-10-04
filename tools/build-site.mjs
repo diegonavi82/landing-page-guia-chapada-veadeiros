@@ -1421,6 +1421,7 @@ function headerHtml(ctx) {
       ${nav("home", "", S.nav.home)}
       ${nav("revista", "revista.html", S.nav.revista)}
       ${nav("atrativos", "atrativos.html", S.nav.atrativos)}
+      ${nav("passeios", "passeios.html", S.nav.passeios)}
       ${nav("reservas", "consultar-reserva.html", S.nav.reservas)}
       ${nav("contact", "contato.html", S.nav.contact)}
       <div class="nav-search-wrap" data-gcv-search data-locale="${esc(locale)}" data-page-out="${esc(cur)}" data-search-index="${esc(publicDataSrc("search-index.json", cur))}" data-no-results="${esc(S.searchNoResults)}">
