@@ -20,13 +20,14 @@
       from: "A partir de",
       person: "por pessoa",
       add: "Adicionar",
-      added: "No carrinho",
+      added: "Adicionado",
       taken: "Esse dia já tem passeio",
       empty: "Nenhum passeio nessa categoria.",
       fail: "Não foi possível carregar os passeios.",
       one: "1 atração",
       many: "atrações",
       open: "Ver atração",
+      leave: "Saída de {city}",
     },
     en: {
       kicker: "Chapada dos Veadeiros",
@@ -38,13 +39,14 @@
       from: "From",
       person: "per person",
       add: "Add",
-      added: "In cart",
+      added: "Added",
       taken: "That day already has a tour",
       empty: "No tours in this category.",
       fail: "Could not load the tours.",
       one: "1 place",
       many: "places",
       open: "See place",
+      leave: "Departure from {city}",
     },
     es: {
       kicker: "Chapada dos Veadeiros",
@@ -56,13 +58,14 @@
       from: "Desde",
       person: "por persona",
       add: "Agregar",
-      added: "En el carrito",
+      added: "Añadido",
       taken: "Ese día ya tiene un paseo",
       empty: "No hay paseos en esta categoría.",
       fail: "No se pudieron cargar los paseos.",
       one: "1 atractivo",
       many: "atractivos",
       open: "Ver atractivo",
+      leave: "Salida de {city}",
     },
   }[lang] || {};
 
@@ -76,6 +79,36 @@
     var row = labels[key];
     return row ? row[lang] || row.pt : key;
   }
+  var cityNames = {
+    "alto-paraiso": "Alto Paraíso",
+    "sao-jorge": "São Jorge",
+    cavalcante: "Cavalcante",
+  };
+  function horas(minutos) {
+    minutos = parseInt(minutos, 10) || 0;
+    if (!minutos) return "";
+    var h = Math.floor(minutos / 60);
+    var m = minutos % 60;
+    var mark = lang === "en" ? "h" : lang === "es" ? " h" : "hs";
+    if (!h) return m + " min";
+    if (!m) return h + mark;
+    return h + "h" + (m < 10 ? "0" : "") + m;
+  }
+  function showcase(tour) {
+    if (tour._show) return tour._show;
+    var cidades = (tour.tarifa && tour.tarifa.cidades) || {};
+    var keys = Object.keys(cidades).filter(function (key) {
+      var row = cidades[key] || {};
+      return (parseInt(row.excursao_pessoa_cents, 10) || 0) > 0;
+    });
+    if (!keys.length) keys = Object.keys(tour.duracao_cidades || {});
+    var key = keys.length ? keys[Math.floor(Math.random() * keys.length)] : "alto-paraiso";
+    var minutes = (tour.duracao_cidades && parseInt(tour.duracao_cidades[key], 10)) || parseInt(tour.duration_minutes, 10) || 0;
+    tour._show = { key: key, minutes: minutes, city: cityNames[key] || key };
+    return tour._show;
+  }
+  var clock = '<svg class="gcv-shop-card__ico" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 4.6V8.2l2.3 1.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
+  var check = '<svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.17 12.17 2.4 8.4l1.13-1.13 2.64 2.64 6.3-6.3 1.13 1.13z"/></svg>';
   var filter = "all";
   var tours = [];
 
@@ -109,22 +142,29 @@
     }
     grid.innerHTML = list.map(function (tour) {
       var mine = inCart(tour);
+      var show = showcase(tour);
+      var time = horas(show.minutes);
       var cents = tour.tarifa && tour.tarifa.excursao_pessoa_cents;
       var tags = (tour.categories || []).map(function (key) { return "<span>" + esc(catName(key)) + "</span>"; }).join("");
       var count = tour.count === 1 ? copy.one : tour.count + " " + copy.many;
       var photo = tour.image
         ? '<img src="' + esc(tour.image) + '" alt="" />'
         : "";
-      return '<article class="gcv-shop-card">' +
+      return '<article class="gcv-shop-card' + (mine ? " is-in-cart" : "") + '">' +
+        (mine ? '<span class="gcv-shop-card__badge">' + check + "</span>" : "") +
         '<a class="gcv-shop-card__media" href="' + esc(tour.href) + '">' + photo +
         '<p class="gcv-shop-card__count">' + esc(count) + "</p></a>" +
         '<div class="gcv-shop-card__body">' +
         '<p class="gcv-shop-card__tags">' + tags + "</p>" +
         "<h2><a href=\"" + esc(tour.href) + "\">" + esc(tour.title) + "</a></h2>" +
         '<p class="gcv-shop-card__places">' + esc((tour.attractions || []).join(" · ")) + "</p>" +
+        '<p class="gcv-shop-card__meta">' +
+        (time ? "<span>" + clock + esc(time) + "</span>" : "") +
+        "<span>" + esc(copy.leave.replace("{city}", show.city)) + "</span></p>" +
         '<div class="gcv-shop-card__foot">' +
         '<p class="gcv-shop-card__price">' + esc(copy.from) + "<strong>" + reais(cents) + "</strong>" + esc(copy.person) + "</p>" +
         '<button type="button" class="gcv-shop-card__add' + (mine ? " is-added" : "") + '" data-add="' + esc(tour.id) + '">' +
+        (mine ? '<svg class="gcv-shop-card__check" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.17 12.17 2.4 8.4l1.13-1.13 2.64 2.64 6.3-6.3 1.13 1.13z"/></svg> ' : "") +
         esc(mine ? copy.added : copy.add) + "</button>" +
         "</div></div></article>";
     }).join("");

@@ -1152,15 +1152,72 @@
       .then(function (payload) {
         if (!payload || !payload.ok || !payload.data || !payload.data.tarifa || payload.data.tem_passeio === false) return;
         var data = payload.data;
-        var box = document.createElement("section");
-        box.className = "gcv-passeios";
-        box.innerHTML = passeioBuilderHtml(copy, data);
-        var title = document.querySelector(".gcv-detail-title");
-        var related = document.querySelector(".gcv-related");
-        if (title && title.parentNode) title.parentNode.insertBefore(box, title.nextSibling);
-        else if (related && related.parentNode) related.parentNode.insertBefore(box, related);
-        else (document.querySelector("main") || document.body).appendChild(box);
-        bindPasseioBuilder(box, copy, data);
+        var cta = document.querySelector(".gcv-detail-cta");
+        if (!cta) {
+          var sidebar = document.querySelector(".gcv-detail-sidebar");
+          var photo = sidebar && sidebar.querySelector(".gcv-detail-main-image");
+          if (!sidebar) return;
+          cta = document.createElement("div");
+          cta.className = "gcv-detail-cta";
+          if (photo && photo.nextSibling) sidebar.insertBefore(cta, photo.nextSibling);
+          else sidebar.appendChild(cta);
+        }
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "gcv-detail-roteiro";
+        function cartItems() {
+          var cart = window.GcvExcCart;
+          return cart && typeof cart.items === "function" ? cart.items() : [];
+        }
+        function matchingItems() {
+          var items = cartItems();
+          if (data.passeioKey) return items.filter(function (it) { return it && it.passeioKey === data.passeioKey; });
+          var prefix = "atrativo:" + (data.slug || slug) + ":";
+          return items.filter(function (it) { return it && String(it.passeioKey || "").indexOf(prefix) === 0; });
+        }
+        function roteiroMark(kind) {
+          if (kind === "check") {
+            var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            svg.setAttribute("viewBox", "0 0 16 16");
+            svg.setAttribute("class", "gcv-detail-roteiro__mark");
+            svg.setAttribute("aria-hidden", "true");
+            var path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            path.setAttribute("fill", "currentColor");
+            path.setAttribute("d", "M6.17 12.17 2.4 8.4l1.13-1.13 2.64 2.64 6.3-6.3 1.13 1.13z");
+            svg.appendChild(path);
+            return svg;
+          }
+          var plus = document.createElement("span");
+          plus.className = "gcv-detail-roteiro__plus";
+          plus.setAttribute("aria-hidden", "true");
+          plus.textContent = "+";
+          return plus;
+        }
+        function paintBtn() {
+          var mine = matchingItems().length > 0;
+          btn.classList.toggle("is-added", mine);
+          btn.textContent = "";
+          if (mine) btn.appendChild(roteiroMark("check"));
+          btn.appendChild(document.createTextNode(mine ? copy.roteiroAdded : copy.shopAdd));
+        }
+        paintBtn();
+        btn.addEventListener("click", function () {
+          var mine = matchingItems();
+          var cart = window.GcvExcCart;
+          if (mine.length && cart && typeof cart.remove === "function") {
+            mine.forEach(function (it) { cart.remove(it.id); });
+            paintBtn();
+            return;
+          }
+          if (!window.GcvPasseioDialog) return;
+          window.GcvPasseioDialog.open(data, paintBtn);
+        });
+        cta.textContent = "";
+        cta.appendChild(btn);
+        cta.classList.add("is-ready");
+        document.addEventListener("click", function (e) {
+          if (e.target && e.target.closest && e.target.closest("[data-gcv-cart-remove]")) setTimeout(paintBtn, 0);
+        });
       })
       .catch(function () {});
   }
@@ -1204,6 +1261,9 @@
         chipLeave: "Saída de {city}",
         chipPerson: "/ pessoa",
         add: "Adicionar ao carrinho",
+        roteiroBtn: "Adicionar ao roteiro",
+        shopAdd: "Adicionar",
+        roteiroAdded: "Adicionado",
         close: "Fechar",
         addedBtn: "Adicionado",
         fail: "Não entrou no carrinho. Escolha uma data futura.",
@@ -1255,6 +1315,9 @@
         chipLeave: "Departure from {city}",
         chipPerson: "/ person",
         add: "Add to cart",
+        roteiroBtn: "Add to itinerary",
+        shopAdd: "Add",
+        roteiroAdded: "Added",
         close: "Close",
         addedBtn: "Added",
         fail: "It was not added. Pick a future date.",
@@ -1306,6 +1369,9 @@
         chipLeave: "Salida de {city}",
         chipPerson: "/ persona",
         add: "Agregar al carrito",
+        roteiroBtn: "Añadir al itinerario",
+        shopAdd: "Agregar",
+        roteiroAdded: "Añadido",
         close: "Cerrar",
         addedBtn: "Añadido",
         fail: "No se agregó. Elige una fecha futura.",
@@ -1321,7 +1387,9 @@
         dayTaken: "Ya tienes un paseo en el carrito en esta fecha. Elige otra fecha.",
       },
     };
-    return all[lang] || all.pt;
+    var copy = all[lang] || all.pt;
+    copy.siteLang = lang === "en" || lang === "es" ? lang : "pt";
+    return copy;
   }
 
   function passeioHoras(minutos, copy) {
@@ -1561,7 +1629,8 @@
       ".gcv-passeios .gcv-passeios__stepper input{flex:1;min-width:0;border:0;border-radius:0;padding:0;text-align:center;font-weight:800;font-size:1rem;-moz-appearance:textfield}" +
       ".gcv-passeios__stepper input::-webkit-outer-spin-button,.gcv-passeios__stepper input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}" +
       ".gcv-passeios__seg{display:flex;gap:4px;padding:4px;border-radius:14px;background:#f3f6f4;border:1px solid #e7eeea}" +
-      ".gcv-passeios__seg button{flex:1 1 0;min-width:0;padding:.55rem .4rem;border:0;border-radius:11px;background:transparent;color:#64748b;font:inherit;font-size:.9rem;font-weight:700;letter-spacing:0;text-transform:none;line-height:1.2;cursor:pointer;transition:background .15s,color .15s,box-shadow .15s}" +
+      ".gcv-passeios__seg button{flex:1 1 0;min-width:0;display:inline-flex;align-items:center;justify-content:center;gap:.4rem;padding:.55rem .4rem;border:0;border-radius:11px;background:transparent;color:#64748b;font:inherit;font-size:.9rem;font-weight:700;letter-spacing:0;text-transform:none;line-height:1.2;cursor:pointer;transition:background .15s,color .15s,box-shadow .15s}" +
+      ".gcv-passeios__ride{width:1.7rem;height:1.15rem;flex:none;background:currentColor;-webkit-mask:url(/assets/img/jeep-icon.png) center / contain no-repeat;mask:url(/assets/img/jeep-icon.png) center / contain no-repeat}" +
       ".gcv-passeios__seg button:hover{color:var(--gp-green)}" +
       ".gcv-passeios__seg button.is-on{background:#fff;color:var(--gp-green);box-shadow:inset 0 0 0 1.5px var(--gp-green)}" +
       ".gcv-passeios__seg button:focus-visible,.gcv-passeios__stepper button:focus-visible,.gcv-passeios__add:focus-visible{outline:2px solid #0f766e;outline-offset:2px}" +
@@ -1577,9 +1646,10 @@
       ".gcv-passeios__off{display:inline-flex;align-items:center;padding:.12rem .45rem;border-radius:999px;background:#dcfce7;color:#166534;font-size:.72rem;font-weight:800;letter-spacing:.02em;line-height:1.2}" +
       ".gcv-passeios__cardline{display:block;max-width:28rem;font-size:.8rem;font-weight:600;color:#64748b;line-height:1.35}" +
       ".gcv-passeios__actions{display:flex;flex:none}" +
-      ".gcv-passeios__add{display:inline-flex;align-items:center;justify-content:center;gap:.45rem;margin:0;padding:.8rem 1.15rem;border:0;border-radius:12px;background:#0f3d2e;color:#fff;font:inherit;font-size:.92rem;font-weight:800;cursor:pointer;box-shadow:none;transition:background .15s,transform .1s}" +
-      ".gcv-passeios__add:hover{background:#145c42}.gcv-passeios__add:active{transform:translateY(1px)}" +
-      ".gcv-passeios__add.is-added{background:#fff;color:#0f3d2e;box-shadow:inset 0 0 0 1.5px #0f3d2e}" +
+      ".gcv-passeios__add{display:inline-flex;align-items:center;justify-content:center;gap:.45rem;margin:0;padding:.8rem 1.15rem;border:0;border-radius:12px;background:#14532d;color:#fff;font:inherit;font-size:.92rem;font-weight:800;cursor:pointer;box-shadow:none;transition:background .15s,transform .1s}" +
+      ".gcv-passeios__add:hover{background:#0f3d2e}.gcv-passeios__add:active{transform:translateY(1px)}" +
+      ".gcv-passeios__add.is-added{background:#16a34a;color:#fff;box-shadow:none}" +
+      ".gcv-passeios__mark{width:1rem;height:1rem;flex:none;display:inline-flex;align-items:center;justify-content:center;font-size:1.15rem;font-weight:800;line-height:1}" +
       ".gcv-passeios__add.is-blocked,.gcv-passeios__add:disabled{opacity:.5;cursor:not-allowed}" +
       ".gcv-passeios [data-passeio-msg]{margin:0;padding:0 1.1rem;font-size:.82rem;color:#b91c1c}.gcv-passeios [data-passeio-msg]:not(:empty){padding:.1rem 1.1rem .8rem}" +
       ".gcv-datepicker{position:relative;width:100%;margin:0}" +
@@ -1592,7 +1662,7 @@
       ".gcv-datepicker__week,.gcv-datepicker__grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}.gcv-datepicker__week{margin-bottom:4px;font-size:.68rem;font-weight:700;color:#94a3b8}" +
       ".gcv-datepicker__day{height:34px;border:0;border-radius:9px;background:transparent;font:inherit;cursor:pointer}.gcv-datepicker__day:hover:not(:disabled){background:#e8f0ec}" +
       ".gcv-datepicker__day.is-today{box-shadow:inset 0 0 0 1.5px #14532d;font-weight:700}.gcv-datepicker__day.is-selected{background:#14532d;color:#fff;font-weight:700}.gcv-datepicker__day:disabled{color:#cbd5e1;cursor:default}" +
-      "@media(max-width:640px){.gcv-passeios__grid{grid-template-columns:1fr 1fr;gap:.65rem .7rem}.gcv-passeios__seg{flex-wrap:wrap}.gcv-passeios__seg button{flex:1 1 6.2rem;font-size:.78rem;padding:.48rem .3rem}.gcv-passeios__foot{flex-direction:column;align-items:stretch}.gcv-passeios__actions,.gcv-passeios__add{width:100%}.gcv-passeios__route{padding:.75rem 1rem .1rem}.gcv-passeios__route-name{font-size:1.12rem}.gcv-passeios__total-value{font-size:1.65rem}.gcv-passeios__body{padding:.75rem 1rem .2rem}}" +
+      "@media(max-width:640px){.gcv-passeios__grid{grid-template-columns:1fr 1fr;gap:.65rem .7rem}.gcv-passeios__seg{flex-wrap:wrap}.gcv-passeios__seg button{flex:1 1 6.2rem;font-size:.78rem;padding:.48rem .3rem}.gcv-passeios__foot{flex-direction:column;align-items:stretch}.gcv-passeios__actions,.gcv-passeios__add{width:100%}.gcv-passeios__route{padding:.75rem 1rem .1rem}.gcv-passeios__route-name{font-size:1.25rem}.gcv-passeios__total-value{font-size:1.65rem}.gcv-passeios__body{padding:.75rem 1rem .2rem}.gcv-bi__top{flex-wrap:wrap}.gcv-bi__price{width:100%;padding-left:3.4rem}}" +
       "@media(min-width:768px){.gcv-passeios{max-width:none;width:100%;margin-left:0;margin-right:0}.gcv-passeios__grid{grid-template-columns:1fr 1fr 1fr 1fr}.gcv-passeios__field--city{grid-column:span 2}.gcv-passeios__field--date,.gcv-passeios__field--people{grid-column:span 1}.gcv-passeios__field--mode,.gcv-passeios__field--transport{grid-column:span 2}}" +
       ".gcv-passeios__route{padding:1rem 1.1rem .2rem}" +
       ".gcv-passeios__route-name{margin:0;font-size:1.55rem;font-weight:800;line-height:1.15;letter-spacing:-.03em;color:#0f2a1d}" +
@@ -1625,6 +1695,7 @@
       ".gcv-bi__langs{display:flex;flex-wrap:wrap;gap:.45rem;margin-top:.7rem}" +
       ".gcv-bi__langs[hidden]{display:none}" +
       ".gcv-bi__lang{display:inline-flex;align-items:center;gap:.35rem;padding:.38rem .75rem;border:1.5px solid #d5e5dc;border-radius:999px;background:#fff;color:#0f2a1d;font:inherit;font-size:.86rem;font-weight:700;cursor:pointer}" +
+      ".gcv-bi__flag{width:1.2rem;height:.82rem;flex:none;border-radius:2px;box-shadow:0 0 0 1px rgba(15,42,29,.15);display:block}" +
       ".gcv-bi__lang.is-on{border-color:#14532d;box-shadow:inset 0 0 0 1px #14532d}" +
       ".gcv-passeios__extra[aria-pressed=true] .ti{color:#fff}" +
       ".gcv-passeios__extra:disabled{opacity:.4;cursor:not-allowed}" +
@@ -1655,15 +1726,15 @@
     function seg(name, options) {
       return '<div class="gcv-passeios__seg" role="radiogroup" data-passeio-seg="' + name + '">' +
         options.map(function (o, i) {
-          return '<button type="button" role="radio" aria-checked="' + (i === 0 ? "true" : "false") + '" class="' + (i === 0 ? "is-on" : "") + '" data-value="' + passeioEsc(o[0]) + '">' + passeioEsc(o[1]) + "</button>";
+          return '<button type="button" role="radio" aria-checked="' + (i === 0 ? "true" : "false") + '" class="' + (i === 0 ? "is-on" : "") + '" data-value="' + passeioEsc(o[0]) + '">' + (o[2] || "") + passeioEsc(o[1]) + "</button>";
         }).join("") + "</div>";
     }
     var cities = ["Alto Paraíso de Goiás", "São Jorge", "Cavalcante"];
     return "<style>" + css + "</style>" +
-      '<p class="gcv-passeios__now"><i class="ti ti-map" aria-hidden="true"></i> ' + passeioEsc(copy.title) + "</p>" +
+      '<p class="gcv-passeios__now">' + passeioEsc(copy.title) + "</p>" +
       '<p class="gcv-passeios__summary" data-passeio-summary></p>' +
       '<div class="gcv-passeios__route"><p class="gcv-passeios__route-name" data-passeio-route>' + passeioEsc(data.title) + "</p>" +
-      '<p class="gcv-passeios__route-meta" data-passeio-route-meta></p></div>' +
+      '<p class="gcv-passeios__chips" data-passeio-route-meta></p></div>' +
       '<div class="gcv-passeios__body"><div class="gcv-passeios__grid">' +
       '<label class="gcv-passeios__field gcv-passeios__field--date">' + copy.date + '<input type="text" data-passeio-date value="' + passeioAmanha() + '" /></label>' +
       '<div class="gcv-passeios__field gcv-passeios__field--people">' + copy.people +
@@ -1677,7 +1748,7 @@
         seg("mode", [["excursao", copy.group], ["exclusivo", copy.private]]) +
         '<select class="gcv-passeios__hide" tabindex="-1" aria-hidden="true" data-passeio-mode><option value="excursao">' + copy.group + '</option><option value="exclusivo">' + copy.private + "</option></select></div>" +
       '<div class="gcv-passeios__field gcv-passeios__field--wide gcv-passeios__field--transport">' + copy.transport +
-        seg("transport", [["0", copy.withoutRide], ["1", copy.withRide]]) +
+        seg("transport", [["0", copy.withoutRide], ["1", copy.withRide, '<i class="gcv-passeios__ride" aria-hidden="true"></i>']]) +
         '<select class="gcv-passeios__hide" tabindex="-1" aria-hidden="true" data-passeio-transport><option value="0">' + copy.withoutRide + '</option><option value="1">' + copy.withRide + "</option></select></div>" +
       "</div>" +
       '<div class="gcv-passeios__extras" data-passeio-extras hidden>' +
@@ -1686,10 +1757,25 @@
         '<div class="gcv-passeios__extra-list" data-passeio-extra-list></div>' +
         '<p class="gcv-passeios__note" data-passeio-need hidden>' + passeioEsc(copy.needMore) + "</p>" +
       "</div>" +
+      '<div class="gcv-bi">' +
+        '<p class="gcv-bi__label">' + passeioEsc(copy.extras) + "</p>" +
+        '<div class="gcv-bi__card">' +
+          '<div class="gcv-bi__top">' +
+            '<button type="button" class="gcv-bi__switch" data-passeio-bi aria-pressed="' + (copy.siteLang === "en" || copy.siteLang === "es" ? "true" : "false") + '" aria-label="' + passeioEsc(copy.bilingual) + '"></button>' +
+            '<div class="gcv-bi__copy"><p class="gcv-bi__name">' + passeioEsc(copy.bilingual) + "</p>" +
+            '<p class="gcv-bi__hint">' + passeioEsc(copy.bilingualHint) + "</p></div>" +
+            '<p class="gcv-bi__price">' + passeioEsc(String(copy.bilingualPrice).replace("{price}", "40")) + "</p>" +
+          "</div>" +
+          '<div class="gcv-bi__langs" data-passeio-bi-langs' + (copy.siteLang === "en" || copy.siteLang === "es" ? "" : " hidden") + ">" +
+            '<button type="button" class="gcv-bi__lang' + (copy.siteLang === "es" ? "" : " is-on") + '" data-bi-lang="en"><svg class="gcv-bi__flag" viewBox="0 0 19 13" aria-hidden="true"><rect width="19" height="13" fill="#b22234"/><rect y="1" width="19" height="1" fill="#fff"/><rect y="3" width="19" height="1" fill="#fff"/><rect y="5" width="19" height="1" fill="#fff"/><rect y="7" width="19" height="1" fill="#fff"/><rect y="9" width="19" height="1" fill="#fff"/><rect y="11" width="19" height="1" fill="#fff"/><rect width="8" height="7" fill="#3c3b6e"/></svg> ' + passeioEsc(copy.langEn) + "</button>" +
+            '<button type="button" class="gcv-bi__lang' + (copy.siteLang === "es" ? " is-on" : "") + '" data-bi-lang="es"><svg class="gcv-bi__flag" viewBox="0 0 19 13" aria-hidden="true"><rect width="19" height="13" fill="#c60b1e"/><rect y="3.25" width="19" height="6.5" fill="#ffc400"/></svg> ' + passeioEsc(copy.langEs) + "</button>" +
+          "</div>" +
+        "</div>" +
+      "</div>" +
       '<p class="gcv-passeios__guide" data-passeio-guide hidden><i class="ti ti-steering-wheel" aria-hidden="true"></i><span data-passeio-guide-text></span></p>' +
       "</div>" +
       '<div class="gcv-passeios__foot"><p class="gcv-passeios__budget" data-passeio-total></p>' +
-      '<div class="gcv-passeios__actions"><button type="button" class="gcv-passeios__add" data-passeio-add aria-pressed="false"><i class="ti ti-shopping-cart" aria-hidden="true"></i> ' + passeioEsc(copy.add) + "</button></div></div>" +
+      '<div class="gcv-passeios__actions"><button type="button" class="gcv-passeios__add" data-passeio-add aria-pressed="false"><span class="gcv-passeios__mark" aria-hidden="true">+</span> ' + passeioEsc(copy.roteiroBtn) + "</button></div></div>" +
       '<p data-passeio-msg></p>';
   }
 
@@ -1790,18 +1876,22 @@
       if (!date || quando.getTime() <= Date.now()) return null;
       var total = passeioTotalCents(sel, modalidade, pessoas, comTranslado);
       var exclusivoCheio = modalidade === "exclusivo" && pessoas <= 4;
-      var unit = modalidade === "exclusivo"
-        ? (comTranslado ? sel.exclusivoT : sel.exclusivo)
-        : (comTranslado ? sel.excursaoT : sel.excursao);
+      var bi = passeioBiState();
+      var billed = passeioPessoasCobradas(sel, modalidade, pessoas);
+      var biCents = bi.on ? PASSEIO_BILINGUE_CENTS * billed : 0;
+      var pay = passeioPagamento(total + biCents);
+      var qty = exclusivoCheio ? 1 : billed;
+      var pixReais = Math.round(pay.pix / 100);
+      var langName = bi.lang === "es" ? copy.langEs : copy.langEn;
       return {
-        id: "roteiro-" + data.slug + "-" + sel.ids.join("-") + "-" + date + "-" + modalidade + "-" + (comTranslado ? "t" : "s"),
+        id: "roteiro-" + data.slug + "-" + sel.ids.join("-") + "-" + date + "-" + modalidade + "-" + (comTranslado ? "t" : "s") + (bi.on ? "-bi-" + bi.lang : ""),
         destino: sel.names.join(" + "),
         destinos: sel.names.slice(),
         dateLabel: date.split("-").reverse().join("/"),
         dateIso: date,
-        valorUnit: exclusivoCheio ? Math.round(total / 100) : Math.round(unit / 100),
-        qty: exclusivoCheio ? 1 : pessoas,
-        pixDesc: sel.names.join(" + ") + " · " + (modalidade === "exclusivo" ? copy.private : copy.group) + " · " + (comTranslado ? copy.withRide : copy.withoutRide),
+        valorUnit: qty > 1 ? Math.round(pixReais / qty) : pixReais,
+        qty: qty,
+        pixDesc: sel.names.join(" + ") + " · " + (modalidade === "exclusivo" ? copy.private : copy.group) + " · " + (comTranslado ? copy.withRide : copy.withoutRide) + (bi.on ? " · " + copy.bilingual + " (" + langName + ")" : ""),
         maxQty: 15,
         embarque: cidade,
         meetingPoint: passeioPonto(cidade),
@@ -1815,6 +1905,10 @@
     function paintAddButton() {
       var btn = box.querySelector("[data-passeio-add]");
       if (!btn) return;
+      if (box._passeioClosing) {
+        btn.disabled = true;
+        return;
+      }
       var item = buildItem();
       var cart = window.GcvExcCart;
       var mine = !!(item && itemInCart(item.id));
@@ -1837,8 +1931,8 @@
         btn.removeAttribute("aria-disabled");
       }
       btn.innerHTML = mine
-        ? '<i class="ti ti-check" aria-hidden="true"></i> ' + passeioEsc(copy.addedBtn)
-        : '<i class="ti ti-shopping-cart" aria-hidden="true"></i> ' + passeioEsc(copy.add);
+        ? '<svg class="gcv-passeios__mark" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.17 12.17 2.4 8.4l1.13-1.13 2.64 2.64 6.3-6.3 1.13 1.13z"/></svg> ' + passeioEsc(copy.roteiroAdded)
+        : '<span class="gcv-passeios__mark" aria-hidden="true">+</span> ' + passeioEsc(copy.roteiroBtn);
     }
 
     function paintSummary() {
@@ -1881,6 +1975,23 @@
       if (need) need.hidden = !passeioSelecao(box, data).incompleto;
     }
 
+    function horasCurta(min) {
+      min = parseInt(min, 10) || 0;
+      var h = Math.floor(min / 60);
+      var m = min % 60;
+      if (!h) return m + " min";
+      if (!m) return h + "h";
+      return h + "h" + (m < 10 ? "0" : "") + m;
+    }
+
+    function passeioBiState() {
+      var btn = box.querySelector("[data-passeio-bi]");
+      var on = !!(btn && btn.getAttribute("aria-pressed") === "true");
+      var langEl = box.querySelector("[data-bi-lang].is-on");
+      var lang = langEl ? langEl.getAttribute("data-bi-lang") : "en";
+      return { on: on, lang: lang === "es" ? "es" : "en" };
+    }
+
     function paintRoute(sel, modalidade, comTranslado) {
       var nameEl = box.querySelector("[data-passeio-route]");
       var metaEl = box.querySelector("[data-passeio-route-meta]");
@@ -1893,13 +2004,13 @@
       if (sel.incompleto) { metaEl.textContent = ""; return; }
       var cidadeEl = box.querySelector("[data-passeio-city]");
       var unit = modalidade === "exclusivo" ? (comTranslado ? sel.exclusivoT : sel.exclusivo) : (comTranslado ? sel.excursaoT : sel.excursao);
-      var parts = [];
+      var chips = [];
       if (sel.minutes) {
-        parts.push('<span><i class="ti ti-clock" aria-hidden="true"></i>' + passeioEsc(copy.durationOf) + " <b>" + passeioEsc(passeioHoras(sel.minutes, copy)) + "</b> " +
-          passeioEsc(copy.leaving) + " " + passeioEsc(passeioCidadeCurta(cidadeEl ? cidadeEl.value : "")) + "</span>");
+        chips.push('<span class="gcv-passeios__chip"><i class="ti ti-clock" aria-hidden="true"></i>' + passeioEsc(String(copy.chipDuration).replace("{t}", horasCurta(sel.minutes))) + "</span>");
       }
-      parts.push('<span><i class="ti ti-user" aria-hidden="true"></i><b>' + passeioEsc(passeioReais(unit)) + "</b> " + passeioEsc(copy.perPerson) + "</span>");
-      metaEl.innerHTML = parts.join("");
+      chips.push('<span class="gcv-passeios__chip"><i class="ti ti-map-pin" aria-hidden="true"></i>' + passeioEsc(String(copy.chipLeave).replace("{city}", passeioCidadeCurta(cidadeEl ? cidadeEl.value : ""))) + "</span>");
+      chips.push('<span class="gcv-passeios__chip">' + passeioEsc(passeioReais(unit) + " " + copy.chipPerson) + "</span>");
+      metaEl.innerHTML = chips.join("");
     }
 
     box.addEventListener("click", function (e) {
@@ -1938,6 +2049,7 @@
       var pessoas = box.querySelector("[data-passeio-people]").value;
       var comTranslado = box.querySelector("[data-passeio-transport]").value === "1";
       var total = passeioTotalCents(sel, modalidade, pessoas, comTranslado);
+      var bi = passeioBiState();
       paintSummary();
       var guide = box.querySelector("[data-passeio-guide]");
       var guideText = box.querySelector("[data-passeio-guide-text]");
@@ -1955,14 +2067,22 @@
       }
       paintExtras();
       paintRoute(sel, modalidade, comTranslado);
-      var pay = passeioPagamento(total);
+      var unit = modalidade === "exclusivo" ? (comTranslado ? sel.exclusivoT : sel.exclusivo) : (comTranslado ? sel.excursaoT : sel.excursao);
+      var billed = passeioPessoasCobradas(sel, modalidade, nPessoas);
+      var biCents = bi.on ? PASSEIO_BILINGUE_CENTS * billed : 0;
+      var pay = passeioPagamento(total + biCents);
+      var word = billed === 1 ? copy.person : copy.peopleWord;
+      var breakTxt = billed + " " + word + " × " + passeioReais(unit);
+      if (bi.on) breakTxt += " + " + copy.bilingualShort + " (" + passeioReais(biCents) + ")";
+      var cardTxt = String(copy.cardOr).replace("{price}", passeioReais(pay.card)).replace("{inst}", passeioReais(pay.inst));
       var totalEl = box.querySelector("[data-passeio-total]");
       totalEl.innerHTML = sel.incompleto
         ? '<strong class="gcv-passeios__total-value">—</strong>'
-        : '<span class="gcv-passeios__pixline"><strong class="gcv-passeios__total-value">' + passeioEsc(passeioReais(pay.pix)) + "</strong>" +
+        : '<span class="gcv-passeios__break">' + passeioEsc(breakTxt) + "</span>" +
+          '<span class="gcv-passeios__pixline"><strong class="gcv-passeios__total-value">' + passeioEsc(passeioReais(pay.pix)) + "</strong>" +
           '<span class="gcv-passeios__pixin">' + passeioEsc(copy.pixIn) + "</span>" +
           '<span class="gcv-passeios__off">' + passeioEsc(String(copy.pixOff).replace("{n}", String(pay.off))) + "</span></span>" +
-          '<span class="gcv-passeios__cardline">' + passeioEsc(String(copy.cardOr).replace("{price}", passeioReais(pay.card))) + "</span>";
+          '<span class="gcv-passeios__cardline">' + passeioEsc(cardTxt) + "</span>";
       var item = buildItem();
       if (item && itemInCart(item.id) && window.GcvExcCart && typeof window.GcvExcCart.sync === "function") {
         window.GcvExcCart.sync(item);
@@ -1970,6 +2090,28 @@
       paintAddButton();
     }
 
+    var biBtn = box.querySelector("[data-passeio-bi]");
+    var biLangs = box.querySelector("[data-passeio-bi-langs]");
+    if (biBtn) {
+      biBtn.addEventListener("click", function () {
+        var on = biBtn.getAttribute("aria-pressed") !== "true";
+        biBtn.setAttribute("aria-pressed", on ? "true" : "false");
+        if (biLangs) biLangs.hidden = !on;
+        paint();
+      });
+    }
+    Array.prototype.forEach.call(box.querySelectorAll("[data-bi-lang]"), function (btn) {
+      btn.addEventListener("click", function () {
+        Array.prototype.forEach.call(box.querySelectorAll("[data-bi-lang]"), function (other) {
+          other.classList.toggle("is-on", other === btn);
+        });
+        if (biBtn && biBtn.getAttribute("aria-pressed") !== "true") {
+          biBtn.setAttribute("aria-pressed", "true");
+          if (biLangs) biLangs.hidden = false;
+        }
+        paint();
+      });
+    });
     ["data-passeio-date", "data-passeio-people", "data-passeio-city", "data-passeio-mode", "data-passeio-transport"].forEach(function (attr) {
       var el = box.querySelector("[" + attr + "]");
       if (el) el.addEventListener("input", paint);
@@ -2004,8 +2146,14 @@
           if (msg) msg.textContent = copy.dayTaken;
           if (typeof cart.warnSameDay === "function") cart.warnSameDay();
         } else if (box.classList.contains("is-modal")) {
-          closePasseioModal();
-          if (typeof box._passeioDone === "function") box._passeioDone();
+          paintAddButton();
+          box._passeioClosing = true;
+          if (addBtn) addBtn.disabled = true;
+          window.setTimeout(function () {
+            closePasseioModal();
+            if (typeof box._passeioDone === "function") box._passeioDone();
+          }, 1000);
+          return;
         }
       }
       paintAddButton();
@@ -2088,7 +2236,19 @@
       }
       setField("city", existing.embarque);
       setField("mode", /exclusivo/.test(String(existing.id || "")) ? "exclusivo" : "excursao");
-      setField("transport", /-t$/.test(String(existing.id || "")) ? "1" : "0");
+      setField("transport", /-t(?:-bi-|$)/.test(String(existing.id || "")) ? "1" : "0");
+      var biSaved = /-bi-(en|es)(?:$|-)/.exec(String(existing.id || ""));
+      var biBtn = box.querySelector("[data-passeio-bi]");
+      var biLangs = box.querySelector("[data-passeio-bi-langs]");
+      if (biBtn) {
+        biBtn.setAttribute("aria-pressed", biSaved ? "true" : "false");
+        if (biLangs) biLangs.hidden = !biSaved;
+        if (biSaved) {
+          Array.prototype.forEach.call(box.querySelectorAll("[data-bi-lang]"), function (btn) {
+            btn.classList.toggle("is-on", btn.getAttribute("data-bi-lang") === biSaved[1]);
+          });
+        }
+      }
       if (dateEl) dateEl.dispatchEvent(new Event("change", { bubbles: true }));
       if (peopleEl) peopleEl.dispatchEvent(new Event("change", { bubbles: true }));
     }
