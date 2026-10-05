@@ -4161,6 +4161,46 @@ html.gcv-pix-modal-open body {
   display: block;
 }
 
+.gcv-pix-modal__pay-choice {
+  display: none;
+  margin: 0.85rem 0 0.15rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #0f2a1d;
+}
+
+.gcv-pix-modal--await-email .gcv-pix-modal__pay-choice {
+  display: block;
+}
+
+.gcv-pix-modal__card-pay {
+  display: none;
+  width: 100%;
+  margin-top: 0.4rem;
+  padding: 0.55rem 0.75rem;
+  border: 1.5px solid #0f2a1d;
+  border-radius: 0.5rem;
+  background: #fff;
+  color: #0f2a1d;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.gcv-pix-modal--await-email .gcv-pix-modal__card-pay {
+  display: block;
+}
+
+.gcv-pix-modal__card-pay:hover {
+  background: #f3f7f4;
+}
+
+.gcv-pix-modal__card-pay:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .gcv-pix-modal__email-continue:hover {
   filter: brightness(1.05);
 }

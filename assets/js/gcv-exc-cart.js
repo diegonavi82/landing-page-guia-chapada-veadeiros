@@ -850,6 +850,25 @@
     });
   }
 
+  function guideLangFromItem(it) {
+    var code = String((it && it.guiaIdioma) || "").toLowerCase();
+    if (code === "pt" || code === "en" || code === "es") return code;
+    var id = String((it && it.id) || "");
+    var bi = id.match(/-bi-(en|es)$/);
+    if (bi) return bi[1];
+    if (id.indexOf("roteiro-") === 0) return "pt";
+    return "";
+  }
+
+  function modeFromItem(it) {
+    var mode = String((it && it.modalidade) || "");
+    if (mode === "excursao" || mode === "exclusivo") return mode;
+    var id = String((it && it.id) || "");
+    if (id.indexOf("-exclusivo-") >= 0) return "exclusivo";
+    if (id.indexOf("-excursao-") >= 0) return "excursao";
+    return "";
+  }
+
   function cartPayDetail(items) {
     return {
       pixDesc: pixDescShortFromCart(items),
@@ -866,11 +885,14 @@
           meetingMapsUrl: it.meetingMapsUrl || "",
           hora: it.hora || "",
           qty: parseInt(String(it.qty), 10) || 1,
+          pessoas: parseInt(String(it.pessoas), 10) || parseInt(String(it.qty), 10) || 1,
           cartId: it.id || "",
           passeioKey: it.passeioKey || "",
           comTransporte: it.comTransporte === true,
           walkGuideSeatOk: it.walkGuideSeatOk === true,
           valorUnit: parseInt(String(it.valorUnit), 10) || 0,
+          guiaIdioma: guideLangFromItem(it),
+          modalidade: modeFromItem(it),
           guiaNome: it.guiaNome || "",
           guiaTelefone: it.guiaTelefone || "",
           dateIso: it.dateIso || "",
@@ -1269,6 +1291,13 @@
       if (item.departureMs) existing.departureMs = item.departureMs;
       if (item.passeioKey) existing.passeioKey = item.passeioKey;
       if (item.pessoas) existing.pessoas = item.pessoas;
+      if (item.comTransporte != null) existing.comTransporte = item.comTransporte === true;
+      if (item.guiaIdioma) existing.guiaIdioma = item.guiaIdioma;
+      if (item.modalidade) existing.modalidade = item.modalidade;
+      if (item.carros) existing.carros = item.carros;
+      if (item.guias) existing.guias = item.guias;
+      if (item.quorum) existing.quorum = item.quorum;
+      if (item.vagaGuiaObrigatoria != null) existing.vagaGuiaObrigatoria = item.vagaGuiaObrigatoria === true;
       if (Array.isArray(item.destinos) && item.destinos.length) existing.destinos = item.destinos.slice();
     } else {
       items.push({
@@ -1293,6 +1322,13 @@
         guiaTelefone: item.guiaTelefone || "",
         passeioKey: item.passeioKey || "",
         pessoas: item.pessoas || qty,
+        comTransporte: item.comTransporte === true,
+        guiaIdioma: item.guiaIdioma || "",
+        modalidade: item.modalidade || "",
+        carros: parseInt(item.carros, 10) || 0,
+        guias: parseInt(item.guias, 10) || 0,
+        quorum: parseInt(item.quorum, 10) || 0,
+        vagaGuiaObrigatoria: item.vagaGuiaObrigatoria === true,
       });
     }
     saveItems(items);

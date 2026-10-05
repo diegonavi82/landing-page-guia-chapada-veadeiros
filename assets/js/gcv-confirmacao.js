@@ -360,6 +360,11 @@
         root.innerHTML = pendingCard(id, status);
         return;
       }
+      if (window.GcvExcCart && typeof window.GcvExcCart.remove === "function") {
+        trips.forEach(function (t) {
+          if (t && t.cartId) window.GcvExcCart.remove(t.cartId);
+        });
+      }
       if (window.GcvExcBookings && typeof window.GcvExcBookings.recordTripsForReservation === "function") {
         window.GcvExcBookings.recordTripsForReservation(
           id,

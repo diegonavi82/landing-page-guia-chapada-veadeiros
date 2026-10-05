@@ -18,6 +18,7 @@
       agreePrefix: "Li e concordo com a",
       policyCancel: "Política Guia Chapada Veadeiros",
       policySecurity: "Política Guia Chapada Veadeiros",
+      policyGuide: "Termos do Guia",
       modalClose: "Fechar",
       agreeRequired:
         "Para pagar com Pix, leia e aceite a Política Guia Chapada Veadeiros.",
@@ -26,6 +27,7 @@
       agreePrefix: "I have read and agree to the",
       policyCancel: "Guia Chapada Veadeiros Policy",
       policySecurity: "Guia Chapada Veadeiros Policy",
+      policyGuide: "Guide Terms",
       modalClose: "Close",
       agreeRequired:
         "To pay with Pix, please read and accept the Guia Chapada Veadeiros Policy.",
@@ -34,6 +36,7 @@
       agreePrefix: "He leído y acepto la",
       policyCancel: "Política Guia Chapada Veadeiros",
       policySecurity: "Política Guia Chapada Veadeiros",
+      policyGuide: "Términos del Guía",
       modalClose: "Cerrar",
       agreeRequired:
         "Para pagar con Pix, lea y acepte la Política Guia Chapada Veadeiros.",
@@ -51,6 +54,11 @@
       en: "Guia Chapada Veadeiros Policy",
       es: "Política Guia Chapada Veadeiros",
     },
+    guide: {
+      pt: "Termos do Guia",
+      en: "Guide Terms",
+      es: "Términos del Guía",
+    },
   };
 
   /** @type {Record<string, { cancel: PolicySection[], security: PolicySection[] }>} */
@@ -60,17 +68,19 @@
         {
           heading: "1. Aceite da Contratação",
           paragraphs: [
-            "Ao efetuar o pagamento, o CONTRATANTE declara ter lido, compreendido e aceitado integralmente esta Política de Cancelamento e os Termos de Prestação de Serviços da Guia Chapada Veadeiros.",
-            "O pagamento confirma a contratação da prestação de serviços de guiamento turístico pela Guia Chapada Veadeiros, bem como a reserva da vaga na programação, sujeitando ambas as partes às condições aqui estabelecidas.",
+            "Ao concluir a compra, o CONTRATANTE declara ter lido, compreendido e aceitado integralmente esta Política de Cancelamento e os Termos de Prestação de Serviços da Guia Chapada Veadeiros.",
+            "No cartão de crédito o cartão fica apenas salvo e é verificado nessa hora: a operadora confirma que o cartão existe e aceita cobrança futura. Não há sinal e não há cobrança do passeio nessa hora. Essa verificação não reserva o valor do passeio.",
+            "O CONTRATANTE autoriza a cobrança automática de 100% somente na confirmação. A confirmação exige guia associado e, se houver translado, veículo. Na Excursão, a cobrança ainda exige que o cartão de todos os inscritos necessários ao quórum seja aceito no mesmo teste. Enquanto um desses cartões não passar, ninguém é cobrado.",
             "A contratação refere-se à prestação do serviço pela Guia Chapada Veadeiros, não constituindo a contratação de um guia específico, salvo quando expressamente contratado como serviço privativo personalizado.",
           ],
         },
         {
           heading: '2. Passeios "Em Formação"',
           paragraphs: [
-            'São considerados "Em Formação" os passeios que ainda dependem da formação do quórum mínimo de participantes, definido individualmente para cada passeio e informado na página de reserva.',
-            'Enquanto o passeio permanecer com o status "Em Formação", tanto o CONTRATANTE quanto a CONTRATADA poderão cancelar a reserva a qualquer momento, sem aplicação de qualquer penalidade.',
-            "Caso o CONTRATANTE solicite o cancelamento durante essa fase, terá direito ao reembolso integral (100%) dos valores pagos.",
+            "A compra na modalidade Excursão abre uma saída em formação naquele dia, naquela cidade e naquele translado. Os inscritos iniciais são as pessoas dessa compra. Outras pessoas podem entrar nessa mesma saída enquanto ela estiver em formação. O quórum é 4, salvo quando o passeio tiver outro número configurado.",
+            'A saída permanece "Em Formação" enquanto faltar quórum, enquanto nenhum guia tiver aceito ou, no passeio com translado, enquanto não houver veículo. Cada carro leva até 4 clientes e 1 guia. Cinco clientes exigem 2 carros e 2 guias.',
+            "No cartão, nada é cobrado durante a formação. Enquanto nenhum guia foi chamado, o CONTRATANTE pode cancelar a qualquer momento, inclusive nas últimas 48 horas. Não há cobrança nem estorno, porque o passeio ainda não foi cobrado. A partir do momento em que o primeiro guia é chamado, o aviso passa a ser \"Aguardando confirmação do guia\" e o cancelamento deixa de ser oferecido. Esse aviso e o cancelamento fechado permanecem enquanto a fila segue para o próximo guia. Só terminam quando todos os guias necessários aceitaram, ou quando o passeio é cancelado automaticamente às 23h59 da véspera. Com translado, cada carro exige o próprio guia: 5 clientes exigem 2 guias. Enquanto faltar um, o aviso continua e ninguém cancela. A cobrança só sai quando os guias necessários aceitaram e os cartões dos inscritos passam no mesmo teste.",
+            "No Pix já pago, o cancelamento durante a formação devolve 100% do valor pago.",
             "A CONTRATADA poderá cancelar o passeio a qualquer momento por motivos operacionais ou por inviabilidade de sua realização.",
             "Caso o quórum mínimo não seja atingido até às 23h59 do dia anterior à data prevista para o passeio, este será cancelado automaticamente, não sendo a CONTRATADA obrigada a realizar a atividade.",
             "Nessa hipótese, o CONTRATANTE poderá optar pelo reembolso integral (100%) dos valores pagos ou pela utilização do valor pago como crédito para reagendamento de outro passeio disponível, realizando-se o pagamento da diferença ou a restituição do saldo, conforme o valor do novo passeio escolhido.",
@@ -79,9 +89,13 @@
         {
           heading: "3. Passeios Confirmados",
           paragraphs: [
-            'Esta seção vale para o passeio Em grupo. Considera-se "Confirmado" o passeio que atingir o quórum mínimo estabelecido ou que tenha sua realização garantida pela CONTRATADA.',
-            "A confirmação do passeio implica: reserva definitiva da vaga do participante; bloqueio da agenda do guia responsável; organização da logística necessária para execução da atividade.",
-            "Depois da confirmação, o passeio Em grupo não pode ser cancelado pelo CONTRATANTE e não há devolução. O botão de cancelamento não é oferecido.",
+            'A Excursão só fica "Confirmada" quando, ao mesmo tempo, o quórum de pessoas foi atingido, um guia aceitou, o veículo está garantido se houver translado, e o cartão de todos os inscritos necessários ao quórum foi aceito no mesmo teste.',
+            "Antes de cobrar qualquer participante, a CONTRATADA testa o valor no cartão de todos. A cobrança de 100% só ocorre se todos passarem nesse teste. Quem já tem cartão válido não é cobrado sozinho.",
+            'Se um cartão não passar, ninguém é cobrado. O passeio fica em espera. O aviso é: "Aguardando X pagamento(s) para confirmar a saída, o quórum já foi atingido", em que X é a quantidade de cartões que ainda não passaram. Quem teve o cartão recusado é avisado para trocá-lo.',
+            "Nessa espera o CONTRATANTE pode cancelar ou aguardar. Não há cobrança. Não há prazo fixo para a troca do cartão. A saída não confirma enquanto faltar o pagamento de alguém necessário ao quórum. A CONTRATADA não confirma o passeio retirando esse inscrito se, sem ele, o quórum deixar de ser atingido.",
+            'Se alguém cancelar nessa espera, a saída volta ao status "Em Formação" e os inscritos recebem o aviso: "Passeio voltando ao status de formação devido a um cancelamento de última hora". O guia que já tinha aceito deixa de estar associado, volta para a fila como prioridade 1 e é notificado da situação. Quando a saída estiver pronta para confirmar de novo, ele é o primeiro a ser chamado. Nada foi cobrado.',
+            "Quando o cartão for trocado e o teste de todos passar junto, a cobrança de 100% ocorre automaticamente em cada cartão salvo. A vaga fica definitiva e a agenda do guia fica bloqueada.",
+            "Depois da confirmação e da cobrança, a Excursão não pode ser cancelada pelo CONTRATANTE e não há devolução. O botão de cancelamento não é oferecido.",
             "Não há restituição por desistência, alteração de planos, atraso, não comparecimento, perda de transporte, doença, motivos pessoais ou profissionais, ou qualquer outro impedimento que não seja da CONTRATADA.",
             "Quem não comparece continua cobrado pelo valor integral. A parte da plataforma continua sendo descontada e o guia recebe o pagamento normal daquela vaga. A ausência não entra na contagem de guiagem.",
           ],
@@ -96,12 +110,11 @@
         {
           heading: "3.2 Privativo",
           paragraphs: [
-            "O cancelamento com devolução descrito aqui vale só para o Privativo. O Em grupo confirmado não se cancela.",
-            "Até 48 horas depois da compra, e faltando mais de 7 dias para o passeio, a devolução é de 100%.",
-            "Depois de 48 horas, ainda sem guia escolhido e faltando mais de 7 dias, o CONTRATANTE recebe 80% e a plataforma retém 20%.",
-            "Com o guia já escolhido, depois de 48 horas e faltando mais de 7 dias, o CONTRATANTE recebe 40% do valor pago. O guia recebe metade da parte que era dele, o restante fica com a plataforma e a data do guia é liberada.",
-            "Faltando menos de 7 dias, o Privativo não pode ser cancelado. Na compra, o CONTRATANTE precisa aceitar o aviso de que aquela reserva não poderá ser cancelada.",
-            "Antes de confirmar o cancelamento, a tela mostra qual destas faixas se aplica e o valor em reais.",
+            "No Privativo o cartão fica apenas salvo. Não há sinal. O passeio não está confirmado enquanto não houver um guia associado.",
+            "Com translado, a confirmação exige também o veículo: um carro e um guia a cada grupo de até 4 clientes. Sem translado, o veículo é o do CONTRATANTE e a confirmação ocorre quando o guia aceita.",
+            "Enquanto o guia não aceitou, o CONTRATANTE pode cancelar a qualquer momento, inclusive nas últimas 48 horas em que a convocação dos guias já está em curso. Não há cobrança nem estorno.",
+            "Quando o guia aceita e, no translado, o veículo está garantido, a CONTRATADA testa o cartão salvo. Se passar, o passeio é associado a esse guia e o cartão é cobrado em 100%, de forma automática. A partir desse momento não há cancelamento nem devolução.",
+            "Se o cartão for recusado nessa hora, o passeio não confirma e nada é cobrado. O CONTRATANTE é avisado para trocar o cartão. Não há prazo fixo. Quando o novo cartão passar no teste, a cobrança de 100% ocorre automaticamente.",
           ],
         },
         {
@@ -111,31 +124,56 @@
             "A troca não vale para o Privativo e não vale depois da confirmação.",
           ],
         },
-          ],
-        },
         {
           heading: "4. Cancelamento pela CONTRATADA",
           paragraphs: [
-            "A CONTRATADA poderá cancelar qualquer passeio, inclusive após sua confirmação, quando sua realização se tornar inviável ou representar risco à segurança dos participantes.",
-            "Constituem exemplos dessa hipótese: condições climáticas severas; interdição do atrativo; determinação de autoridade competente; falta de veículo para realizar o Privativo; caso fortuito; força maior; situações que coloquem em risco a integridade física dos participantes, do guia ou da equipe.",
-            "Nessas hipóteses, o CONTRATANTE poderá optar pelo reembolso integral (100%) dos valores pagos ou pela utilização do valor pago como crédito para reagendamento de outro passeio disponível, realizando-se o pagamento da diferença ou a restituição do saldo, conforme o valor do novo passeio escolhido.",
+            "O cancelamento manual do passeio é feito apenas por um administrador da plataforma. O cliente não cancela o passeio confirmado. O guia não cancela o passeio: se ele se retira, vale a troca pelo ranking.",
+            "A CONTRATADA pode cancelar o passeio, inclusive depois da confirmação, e devolver o dinheiro, por causa de saúde ou problema grave do guia, por força maior, ou quando a realização se tornar inviável ou representar risco à segurança dos participantes.",
+            "Entram nessa cláusula: condições climáticas severas; problema de saúde ou impedimento grave do guia; interdição do atrativo; determinação de autoridade competente; falta de veículo para realizar o Privativo; caso fortuito; força maior; situações que coloquem em risco a integridade física dos participantes, do guia ou da equipe.",
+            "Nessas hipóteses o CONTRATANTE recebe o estorno integral do que foi pago. Nenhum guia recebe por esse passeio. O guia do passeio é avisado do cancelamento.",
           ],
         },
         {
           heading: "4.1 Substituição do Guia",
           paragraphs: [
-            "O CONTRATANTE não escolhe outro guia depois que um guia confirmou. Só o guia pode se retirar por força maior.",
-            "No Privativo, a CONTRATADA indica automaticamente outro guia habilitado. A troca de guia não cancela o passeio, não devolve valor e não reduz o preço.",
-            "No Em grupo, a vaga é oferecida ao próximo guia habilitado da fila da cidade. Ele tem 2 horas para responder. O relógio para entre 22h e 8h. Se recusar ou o prazo acabar, segue o próximo. A troca não cancela, não devolve e não reduz o preço.",
+            "O CONTRATANTE não escolhe outro guia depois que um guia confirmou. O guia só se retira por problema de saúde, impedimento grave ou força maior.",
+            "Quando o guia se retira, ele vai para o último lugar da fila em que estava. O próximo do ranking assume, na mesma rotina de troca. O cliente só recebe a notificação na hora da troca, com foto, nome, nota e descrição do novo guia, sem o motivo. Se faltarem 2 horas para o passeio e ainda não houver substituto, o passeio é cancelado e o cliente recebe o estorno. O guia que saiu e os demais envolvidos são avisados. Nenhum guia recebe por esse passeio cancelado.",
+            "No Privativo, o cliente vê os guias do idioma da compra que aceitaram participar da lista, na ordem do ranking. Em cada guia aparecem foto, nome, nota e descrição. O lugar na fila não aparece para o cliente. Só o guia vê a própria posição e é avisado quando ela muda. Quando o guia escolhido pelo cliente aceita o passeio, a associação está feita e a cobrança de 100% ocorre. Depois disso o CONTRATANTE não escolhe outro guia. Se esse guia se retirar, vale a regra acima: último lugar na fila, o próximo assume, e o cliente só é avisado na hora da troca.",
+            "No Privativo, o guia escolhido tem 4 horas para aceitar ou recusar. O relógio para entre 22h e 8h. Se não responder nesse prazo, ou se recusar, perde 4 posições na fila em que foi chamado. Com translado, essa fila é Meu veículo. Sem translado, é Guiagem. Se não houver 4 pessoas atrás, vai para o último lugar. A CONTRATADA chama o próximo do mesmo ranking e o cliente é avisado.",
+            'Enquanto esse prazo corre, o CONTRATANTE vê a foto, o nome, a nota e a descrição do guia escolhido, e o aviso: "Aguardando aceite do guia". Pode cancelar. Não há cobrança. O guia escolhido é avisado do cancelamento e a posição dele na fila não muda.',
+            "No Em grupo com translado, a vaga é oferecida aos primeiros do ranking Meu veículo que tenham veículo cadastrado no perfil, um guia por carro, ao mesmo tempo. A proposta mostra, em destaque, \"Este passeio é com o seu veículo\", e os mesmos campos da guiagem: data, horário, passeio, pagamento em reais, número de pessoas e se é excursão ou não. O guia aceita ou recusa. O pagamento dessa proposta é o valor que aquele guia recebe. Se forem dois carros, cada proposta mostra o valor daquele guia, não a soma dos dois. O cliente vê o preço bruto do passeio, sem uma linha separada com a taxa do guia. O prazo é de 4 horas. O relógio para entre 22h e 8h. Se recusar ou o prazo acabar, perde 4 posições na fila em que foi chamado. Proposta com carro desce no ranking Meu veículo. Proposta de guiagem desce no ranking Guiagem. A outra fila não muda. Se não houver 4 pessoas atrás, vai para o último lugar dessa fila. A vaga passa para o próximo, e quem já aceitou permanece. Sem translado, a vaga segue o ranking Guiagem e não exige veículo. A proposta de guiagem mostra a data, o horário, o passeio, o pagamento que aquele guia recebe, o número de pessoas e se é excursão ou não. O guia aceita ou recusa. A troca não cancela, não devolve e não reduz o preço.",
+            "Enquanto nenhum dos guias necessários aceitou, os inscritos veem o aviso: \"Aguardando confirmação do guia\". Não podem cancelar. Nada é cobrado nessa espera. Quando um dos dois já aceitou, ou o administrador alocou só um, o cliente vê dois lugares: o cartão de quem já está no passeio, com foto, nome, nota e descrição, e o outro lugar com \"Aguardando\". O cancelamento continua fechado e nada é cobrado. Isso só termina quando todos os guias necessários aceitaram, ou quando o passeio é cancelado automaticamente às 23h59 da véspera. Com translado, cada carro exige o próprio guia. Cinco clientes exigem 2 guias.",
+            "Se até às 23h59 do dia anterior não tiverem aceitado todos os guias necessários, o passeio é cancelado automaticamente. No cartão, nada foi cobrado, então não há estorno. No Pix já pago, a devolução é de 100%. O CONTRATANTE é avisado. O guia que já tinha aceito é avisado e volta para a fila Meu veículo como prioridade 1.",
+            "Um administrador da plataforma pode alocar qualquer guia a um passeio a qualquer momento, mesmo que o CONTRATANTE ainda não tenha escolhido guia. Essa alocação vale como o sim daquele guia. Se ainda faltar outro guia necessário, ele permanece no passeio, ninguém cancela e nada é cobrado, até o segundo aceitar ou ser alocado. O CONTRATANTE vê dois lugares: o cartão de quem já está no passeio, com foto, nome, nota e descrição, e o outro lugar com \"Aguardando\". A cobrança de 100% só ocorre quando todos os guias necessários estão no passeio. Com translado, a cobrança continua exigindo o veículo. Na Excursão, o teste conjunto dos cartões continua valendo: se um cartão não passar, ninguém é cobrado e a saída fica na espera já descrita.",
+            "O CONTRATANTE vê a foto, o nome, a nota e a descrição do guia alocado e é avisado da troca, sem o motivo. O top 3 do ranking não muda: esses guias são avisados e as posições permanecem as mesmas. Se já havia um guia no passeio, ele recebe um aviso automático da troca, com ou sem motivo. O motivo fica só nesse aviso do guia. A troca não cancela, não devolve e não reduz o preço.",
+            "Se a saída ainda estiver em espera de pagamento e um inscrito cancelar, isso não é troca de guia: a saída volta a Em Formação e o guia que tinha aceito retorna à fila como prioridade 1, com aviso da situação.",
           ],
         },
         {
-          heading: "4.2 Vaga do guia em passeios sem translado",
+          heading: "4.2 Vaga do guia sem translado",
           paragraphs: [
-            "Nos passeios contratados apenas como diária de guia, sem a contratação do translado da plataforma, o guia utiliza o veículo do grupo (carro de passeio de 5 lugares, sendo 1 assento reservado ao guia).",
-            "Se o grupo lotar o veículo sem deixar vaga para o guia — em especial inscrições de 5 pessoas quando não houver outra inscrição na modalidade sem transporte com menos de 5 pessoas — a CONTRATADA poderá cancelar o passeio por inviabilidade operacional (falta de espaço para o guia no transporte).",
-            "Nessa hipótese, o CONTRATANTE terá direito ao reembolso integral (100%) dos valores pagos ou à utilização do valor pago como crédito para reagendamento de outro passeio disponível, nos termos desta Política.",
-            "O CONTRATANTE declara ciência dessa condição ao confirmar a inscrição de 5 pessoas sem translado.",
+            "Sem translado, o CONTRATANTE contrata apenas o guia. O deslocamento é no veículo do próprio grupo.",
+            "O carro de passeio tem 5 lugares. Um lugar é do guia. Cabem no máximo 4 clientes por carro.",
+            "Cinco clientes em um único carro de 5 lugares deixam o guia sem vaga. Essa formação é um erro. O CONTRATANTE garante, ao confirmar, que haverá lugar para o guia. Com 5 ou mais pessoas, o grupo leva os carros necessários para que cada carro tenha no máximo 4 clientes.",
+            "Se na saída não houver vaga para o guia, a CONTRATADA pode cancelar o passeio por inviabilidade operacional. O CONTRATANTE pode optar pelo reembolso integral (100%) dos valores pagos ou pelo crédito para outro passeio disponível.",
+          ],
+        },
+        {
+          heading: "4.3 Carros e guias com translado",
+          paragraphs: [
+            "Com translado, o CONTRATANTE contrata o passeio com o guia e o transporte a partir da cidade de hospedagem. O carro é do guia. Só entra nessa fila o guia que marcou veículo no perfil, com modelo e ano. Todo guia começa com a marcação Sem veículo.",
+            "Cada carro leva até 4 clientes e 1 guia. O guia vai nesse carro.",
+            "Cinco clientes exigem 2 carros e 2 guias. Oito clientes exigem 2 carros e 2 guias. Nove clientes exigem 3 carros e 3 guias. A conta é uma vaga de guia e um carro para cada grupo de até 4 clientes.",
+            "O preço do Privativo com translado acompanha o número de carros: cada carro corresponde a uma diária de guia, no mínimo do quórum daquele passeio.",
+          ],
+        },
+        {
+          heading: "4.4 Guia em outro idioma",
+          paragraphs: [
+            "Guia em português não tem acréscimo.",
+            "Se o CONTRATANTE escolher guia em outro idioma, o acréscimo daquele passeio pode ser um percentual ou um valor fixo. O número fica na cópia da tarifa do atrativo e da cidade, e não no catálogo geral.",
+            "O acréscimo incide uma vez sobre o total da compra, depois dos descontos de idade, e não por pessoa. Por exemplo: 2 adultos a R$ 90 e 2 crianças com 50% somam R$ 270. Um acréscimo de 100% leva esse total a R$ 540. Um acréscimo fixo de R$ 40 leva esse total a R$ 310.",
+            "O desconto do Pix não entra nessa conta.",
           ],
         },
         {
@@ -148,7 +186,8 @@
         {
           heading: "5.1 Cancelamento antes da saída",
           paragraphs: [
-            "O cancelamento do passeio por condições climáticas somente poderá ocorrer antes da saída da cidade de embarque, por decisão exclusiva da CONTRATADA, quando houver risco à segurança dos participantes ou inviabilidade técnica da atividade.",
+            "O cancelamento do passeio por mau tempo somente pode ocorrer antes da saída da cidade de embarque, por decisão do administrador, quando houver risco à segurança dos participantes ou inviabilidade técnica da atividade.",
+            "Nesse cancelamento o cliente recebe o estorno integral. Nenhum guia recebe. O guia do passeio é notificado do cancelamento por mau tempo.",
           ],
         },
         {
@@ -262,6 +301,86 @@
           heading: "12. Declaração de Ciência",
           paragraphs: [
             "Ao contratar o passeio, o CONTRATANTE declara que: compreende os riscos inerentes ao ecoturismo; assume responsabilidade por suas próprias ações e decisões; compromete-se a seguir integralmente as orientações do guia; autoriza o guia a adotar todas as medidas necessárias para preservar a segurança do grupo; reconhece que alterações de roteiro, horários, duração da atividade ou encerramento antecipado poderão ocorrer sempre que exigidos por questões de segurança.",
+            "No cartão de crédito, o CONTRATANTE autoriza a verificação do cartão ao salvá-lo e a cobrança automática de 100% do valor somente quando o passeio confirmar. Na Excursão, autoriza que essa cobrança ocorra junto com a dos demais inscritos, depois que todos os cartões necessários ao quórum forem aceitos no mesmo teste. Compromete-se a manter o cartão válido e a substituí-lo se for recusado. Enquanto um cartão necessário não passar, o passeio permanece em espera e ninguém é cobrado. Nessa espera o CONTRATANTE pode cancelar; se cancelar, a Excursão volta a Em Formação.",
+          ],
+        },
+      ],
+      guide: [
+        {
+          heading: "1. Aceite",
+          paragraphs: [
+            "Ao entrar na plataforma, o GUIA declara ter lido e aceito estes Termos. A plataforma é a Guia Chapada Veadeiros.",
+          ],
+        },
+        {
+          heading: "2. Lista do Privativo",
+          paragraphs: [
+            "Para aparecer entre os guias oferecidos no Privativo, o GUIA precisa responder que tem interesse em participar da lista. Sem esse aceite, não entra no ranking mostrado ao cliente.",
+            "Entram pela ordem do ranking, entre os guias do idioma escolhido na compra.",
+            "O cliente vê até 3 guias, com foto, nome, nota e descrição. A posição na fila não é mostrada ao cliente.",
+            "O GUIA vê a própria posição e é avisado quando ela muda. Se um guia que está entre os 3 publicar um passeio próprio naquele período, sai dessa lista, entra o próximo e os três são avisados das novas posições.",
+          ],
+        },
+        {
+          heading: "3. Resposta no Privativo",
+          paragraphs: [
+            'Quando o cliente escolhe o GUIA, ele tem 4 horas para aceitar ou recusar. O relógio para entre 22h e 8h. Nesse período o cliente vê o aviso "Aguardando aceite do guia" e pode cancelar. Não há cobrança. Se o cliente cancelar, o GUIA é avisado e a posição dele na fila não muda.',
+            "Sem resposta nesse prazo, ou em caso de recusa, o GUIA perde 4 posições na fila em que foi chamado. Com translado, essa fila é Meu veículo. Sem translado, é Guiagem. Se não houver 4 pessoas atrás, vai para o último lugar. A plataforma chama o próximo do mesmo ranking e avisa o cliente.",
+            "O passeio só fica associado ao GUIA, e o cliente só é cobrado, quando o GUIA aceita. Com translado, a confirmação também exige o veículo.",
+          ],
+        },
+        {
+          heading: "4. Resposta na Excursão",
+          paragraphs: [
+            "Na Excursão com translado, a vaga é oferecida aos primeiros do ranking Meu veículo que tenham veículo no perfil, um GUIA por carro, ao mesmo tempo. A proposta mostra, em destaque, \"Este passeio é com o seu veículo\", e os mesmos campos da guiagem: data, horário, passeio, pagamento em reais, número de pessoas e se é excursão ou não. O GUIA aceita ou recusa. O pagamento dessa proposta é o valor que aquele GUIA recebe. Se forem dois carros, cada proposta mostra o valor daquele GUIA, não a soma dos dois. O cliente vê o preço bruto do passeio, sem uma linha separada com a taxa do guia. O prazo é de 4 horas. O relógio para entre 22h e 8h. Se recusar ou o prazo acabar, perde 4 posições na fila em que foi chamado. Proposta com carro desce no ranking Meu veículo. Proposta de guiagem desce no ranking Guiagem. A outra fila não muda. Se não houver 4 pessoas atrás, vai para o último lugar dessa fila. A vaga passa para o próximo, e quem já aceitou permanece.",
+            "Sem translado, a vaga segue o ranking Guiagem. Não exige veículo. A proposta mostra: Guiagem, data, horário, passeio, o pagamento que aquele GUIA recebe, número de pessoas e se é excursão ou não. O GUIA aceita ou recusa.",
+            "Todo GUIA começa com a marcação Sem veículo. Sem modelo e ano cadastrados, não recebe proposta com carro. O GUIA vê dois rankings: Guiagem e Meu veículo.",
+            "Enquanto nenhum dos guias necessários aceitou, os inscritos veem o aviso \"Aguardando confirmação do guia\" e não podem cancelar. Nada é cobrado nessa espera. Quando um dos dois já aceitou, o cliente vê dois lugares: o cartão de quem já está no passeio, com foto, nome, nota e descrição, e o outro lugar com \"Aguardando\". O cancelamento continua fechado. Isso só termina quando todos os guias necessários aceitaram, ou quando o passeio é cancelado automaticamente às 23h59 da véspera.",
+            "Se até às 23h59 da véspera não tiverem aceitado todos os guias necessários, o passeio é cancelado automaticamente e o cliente é avisado. No cartão, nada foi cobrado. O GUIA que já tinha aceito é avisado e volta para a fila Meu veículo como prioridade 1.",
+            "Um administrador da plataforma pode alocar qualquer guia a um passeio a qualquer momento, mesmo que o cliente ainda não tenha escolhido guia. Essa alocação vale como o sim daquele GUIA. Se ainda faltar outro guia necessário, ele permanece no passeio e a cobrança não sai até o segundo aceitar ou ser alocado. O cliente vê o cartão de quem já está no passeio e o outro lugar com \"Aguardando\". Não pode cancelar.",
+            "O cliente vê a foto, o nome, a nota e a descrição do guia alocado e é avisado da troca. O top 3 do ranking não muda: esses guias são avisados e as posições permanecem as mesmas.",
+            "Se já havia um GUIA no passeio, ele recebe um aviso automático da troca. O aviso pode ir com ou sem motivo escrito. O motivo fica só com o GUIA que saiu. O cliente é avisado da troca, sem o motivo. A posição na fila não muda por causa dessa troca. A troca não cancela, não devolve e não reduz o preço.",
+          ],
+        },
+        {
+          heading: "5. Confirmação e cobrança do cliente",
+          paragraphs: [
+            "Não há sinal. O cartão do cliente fica apenas salvo até a confirmação.",
+            "A cobrança de 100% ocorre quando o passeio está associado ao GUIA e, se houver translado, quando o veículo está garantido. Cada carro leva até 4 clientes e 1 guia.",
+            "Na Excursão, a confirmação ainda exige quórum e que o cartão de todos os inscritos necessários ao quórum passe no mesmo teste. Enquanto um cartão não passar, ninguém é cobrado.",
+          ],
+        },
+        {
+          heading: "6. Espera de pagamento",
+          paragraphs: [
+            'Se o quórum de pessoas já foi atingido e ainda falta pagamento, a saída fica em espera. O aviso aos inscritos é: "Aguardando X pagamento(s) para confirmar a saída, o quórum já foi atingido".',
+            'Se um inscrito cancelar nessa espera, a saída volta a "Em Formação". Os inscritos recebem o aviso: "Passeio voltando ao status de formação devido a um cancelamento de última hora".',
+            "O GUIA que já tinha aceito deixa de estar associado, volta para a fila como prioridade 1 e é notificado da situação. Quando a saída estiver pronta para confirmar de novo, ele é o primeiro a ser chamado. Nada foi cobrado.",
+          ],
+        },
+        {
+          heading: "7. Veículo",
+          paragraphs: [
+            "Com translado, o carro é do GUIA e sai da cidade de hospedagem do cliente. Cada carro leva até 4 clientes e 1 guia. O guia não ocupa vaga de cliente. Cinco clientes exigem 2 carros e 2 guias. Só recebe essa proposta quem tem veículo, modelo e ano no perfil.",
+            "Sem translado, o veículo é do cliente. O carro de passeio tem 5 lugares. Um lugar é do GUIA. Cabem no máximo 4 clientes por carro.",
+            "Se na saída não houver vaga para o GUIA, a plataforma pode cancelar o passeio por inviabilidade operacional.",
+          ],
+        },
+        {
+          heading: "8. Depois da confirmação",
+          paragraphs: [
+            "Depois da cobrança, o cliente não cancela. O cancelamento manual do passeio é apenas do administrador.",
+            "O GUIA só se retira por problema de saúde, impedimento grave ou força maior. Ele vai para o último lugar da fila em que estava. O próximo do ranking assume, na mesma rotina de troca. O cliente só é notificado na hora da troca.",
+            "Se faltarem 2 horas para o passeio e ainda não houver substituto, o passeio é cancelado e o cliente recebe o estorno. O GUIA é avisado. Nenhum GUIA recebe por esse passeio.",
+            "No cancelamento por mau tempo, o cliente recebe o estorno, nenhum GUIA recebe, e o GUIA do passeio é notificado.",
+          ],
+        },
+        {
+          heading: "9. Idioma",
+          paragraphs: [
+            "Guia em português não gera acréscimo para o cliente.",
+            "Se o cliente escolhe outro idioma, o acréscimo daquele passeio — percentual ou valor fixo, na cópia da tarifa do atrativo e da cidade — incide uma vez sobre o total da compra, depois dos descontos de idade. Não incide por pessoa.",
+            "A lista do Privativo usa os guias desse idioma, na ordem do ranking.",
           ],
         },
       ],
@@ -323,6 +442,7 @@
     var ui = uiStrings(locale);
     if (type === "cancel") return ui.policyCancel;
     if (type === "security") return ui.policySecurity;
+    if (type === "guide") return ui.policyGuide;
     return "";
   }
 

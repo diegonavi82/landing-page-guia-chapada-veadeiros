@@ -103,6 +103,405 @@ function pixEffectiveStatus(rec) {
   return "PENDING";
 }
 
+function readEnvValue(key) {
+  const envPath = path.join(ROOT, "api", ".env");
+  if (!fs.existsSync(envPath)) return "";
+  const text = fs.readFileSync(envPath, "utf8");
+  for (const line of text.split(/\r?\n/)) {
+    const t = line.trim();
+    if (!t || t.startsWith("#") || !t.includes("=")) continue;
+    const i = t.indexOf("=");
+    if (t.slice(0, i).trim() !== key) continue;
+    let v = t.slice(i + 1).trim();
+    if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+      v = v.slice(1, -1);
+    }
+    return v;
+  }
+  return "";
+}
+
+function stripeForm(fields) {
+  const params = new URLSearchParams();
+  const add = (prefix, value) => {
+    if (Array.isArray(value)) {
+      value.forEach((item, i) => add(`${prefix}[${i}]`, item));
+    } else if (value && typeof value === "object") {
+      for (const [k, v] of Object.entries(value)) add(`${prefix}[${k}]`, v);
+    } else if (value != null) {
+      params.append(prefix, String(value));
+    }
+  };
+  for (const [k, v] of Object.entries(fields)) add(k, v);
+  return params
+    .toString()
+    .replace(/%7BCHECKOUT_SESSION_ID%7D/gi, "{CHECKOUT_SESSION_ID}");
+}
+
+async function stripeApi(method, stripePath, fields) {
+  const key = readEnvValue("STRIPE_SECRET_KEY");
+  if (!key.startsWith("sk_") && !key.startsWith("rk_")) {
+    return { ok: false, error: "stripe_not_configured" };
+  }
+  const init = {
+    method,
+    headers: { Authorization: "Bearer " + key },
+  };
+  if (fields) {
+    init.headers["Content-Type"] = "application/x-www-form-urlencoded";
+    init.body = stripeForm(fields);
+  }
+  const response = await fetch("https://api.stripe.com" + stripePath, init);
+  const data = await response.json().catch(() => null);
+  if (!response.ok || !data || data.error) {
+    const message = (data && data.error && data.error.message) || "stripe_error";
+    console.error("[stripe]", method, stripePath, response.status, message);
+    return { ok: false, error: message, http: response.status };
+  }
+  return { ok: true, data };
+}
+
+function requestOrigin(req) {
+  const host = req.headers.host || "localhost:" + PORT;
+  const proto = String(req.headers["x-forwarded-proto"] || "http").split(",")[0].trim();
+  return proto + "://" + host;
+}
+
+function safeReturnPath(input) {
+  const p = String(input || "/");
+  if (!p.startsWith("/") || p.startsWith("//") || p.includes("..") || p.includes("\\")) return "/";
+  return p.slice(0, 300);
+}
+
+function stripeLocale(locale) {
+  return locale === "en" || locale === "es" ? locale : "pt";
+}
+
+function stripeTripIso(trip) {
+  const iso = String((trip && (trip.dateIso || trip.dateISO)) || "").trim().slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
+  const label = String((trip && (trip.dateLabel || trip.dateShort)) || "");
+  const m = label.match(/\b(\d{1,2})\/(\d{1,2})\/(\d{4})\b/);
+  if (m) return m[3] + "-" + m[2].padStart(2, "0") + "-" + m[1].padStart(2, "0");
+  const id = String((trip && (trip.cartId || trip.id)) || "");
+  const fromId = id.match(/(20\d{2}-\d{2}-\d{2})/);
+  return fromId ? fromId[1] : "";
+}
+
+function stripeTripDate(trip) {
+  const label = String((trip && (trip.dateLabel || trip.dateShort)) || "");
+  const m = label.match(/\b(\d{1,2})\/(\d{1,2})\/(\d{4})\b/);
+  if (m) return m[1].padStart(2, "0") + "/" + m[2].padStart(2, "0") + "/" + m[3];
+  const iso = stripeTripIso(trip);
+  return iso ? iso.slice(8, 10) + "/" + iso.slice(5, 7) + "/" + iso.slice(0, 4) : "";
+}
+
+function stripeWeekday(iso, locale) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!m) return "";
+  const day = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]))).getUTCDay();
+  const names = {
+    pt: ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"],
+    en: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+    es: ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"],
+  };
+  return (names[stripeLocale(locale)] || names.pt)[day] || "";
+}
+
+function stripeTripPeople(trip) {
+  const pessoas = parseInt(String(trip && trip.pessoas), 10);
+  if (pessoas > 0) return pessoas;
+  const qty = parseInt(String(trip && trip.qty), 10);
+  return qty > 0 ? qty : 0;
+}
+
+function stripeTripTransport(trip) {
+  const v = trip && trip.comTransporte;
+  if (v === true || v === 1 || v === "1" || v === "true") return true;
+  if (v === false || v === 0 || v === "0" || v === "false") return false;
+  const id = String((trip && (trip.cartId || trip.id)) || "");
+  const m = id.match(/-(t|s)(?:-bi-(?:en|es))?$/);
+  if (m) return m[1] === "t";
+  return null;
+}
+
+function stripeTripLang(trip) {
+  const code = String((trip && (trip.guiaIdioma || trip.idiomaGuia)) || "").toLowerCase();
+  if (code === "pt" || code === "en" || code === "es") return code;
+  const id = String((trip && (trip.cartId || trip.id)) || "");
+  const bi = id.match(/-bi-(en|es)$/);
+  if (bi) return bi[1];
+  if (id.startsWith("roteiro-")) return "pt";
+  return "";
+}
+
+function stripeTripMode(trip) {
+  const mode = String((trip && trip.modalidade) || "").toLowerCase();
+  if (mode === "excursao" || mode === "exclusivo") return mode;
+  const id = String((trip && (trip.cartId || trip.id)) || "");
+  if (id.includes("-exclusivo-")) return "exclusivo";
+  if (id.includes("-excursao-")) return "excursao";
+  return "";
+}
+
+function stripeTripDescription(trip, locale) {
+  const loc = stripeLocale(locale);
+  const copy = {
+    pt: { person: "pessoa", people: "pessoas", with: "Com translado", without: "Sem translado", from: "Saindo de ", date: "Data: ", day: "Dia: ", lang: "Idioma do guia: ", group: "Excursão", private: "Privativo" },
+    en: { person: "person", people: "people", with: "With transfer", without: "Without transfer", from: "Leaving from ", date: "Date: ", day: "Day: ", lang: "Guide language: ", group: "Group", private: "Private" },
+    es: { person: "persona", people: "personas", with: "Con traslado", without: "Sin traslado", from: "Saliendo de ", date: "Fecha: ", day: "Día: ", lang: "Idioma del guía: ", group: "En grupo", private: "Privado" },
+  };
+  const langs = {
+    pt: { pt: "Português", en: "Inglês", es: "Espanhol" },
+    en: { pt: "Portuguese", en: "English", es: "Spanish" },
+    es: { pt: "Portugués", en: "Inglés", es: "Español" },
+  };
+  const c = copy[loc];
+  const bits = [];
+  const people = stripeTripPeople(trip);
+  if (people > 0) bits.push(people + " " + (people === 1 ? c.person : c.people));
+  const ride = stripeTripTransport(trip);
+  if (ride !== null) bits.push(ride ? c.with : c.without);
+  const city = String((trip && trip.embarque) || "").trim();
+  if (city) bits.push(c.from + city);
+  const date = stripeTripDate(trip);
+  if (date) bits.push(c.date + date);
+  const day = stripeWeekday(stripeTripIso(trip), loc);
+  if (day) bits.push(c.day + day);
+  const lang = stripeTripLang(trip);
+  if (lang && langs[loc][lang]) bits.push(c.lang + langs[loc][lang]);
+  const mode = stripeTripMode(trip);
+  if (mode === "exclusivo") bits.push(c.private);
+  else if (mode === "excursao") bits.push(c.group);
+  return bits.join(" · ").slice(0, 500);
+}
+
+function stripeItemName(trip, reservationId) {
+  const dest = String((trip && (trip.destino || trip.title)) || "").trim() || "Passeio Guia Chapada Veadeiros";
+  return (dest + " (" + reservationId + ")").slice(0, 250);
+}
+
+function stripeTripCents(trip) {
+  const unit = parseInt(String(trip && trip.valorUnit), 10) || 0;
+  const qty = parseInt(String(trip && trip.qty), 10) || 0;
+  return unit > 0 && qty > 0 ? unit * qty * 100 : 0;
+}
+
+function stripeLineItems(data, reservationId, cents, locale) {
+  const trips = (Array.isArray(data.trips) ? data.trips : []).filter((t) => t && typeof t === "object");
+  if (!trips.length) trips.push({});
+  let amounts = trips.map(stripeTripCents);
+  let sum = amounts.reduce((a, b) => a + b, 0);
+  let split = trips.length > 1 && sum > 0;
+  if (split && sum !== cents) {
+    let running = 0;
+    const last = amounts.length - 1;
+    for (let i = 0; i < last; i++) {
+      amounts[i] = Math.round((amounts[i] * cents) / sum);
+      running += amounts[i];
+    }
+    amounts[last] = cents - running;
+  }
+  if (split && amounts.some((n) => n < 1)) split = false;
+  const product = (trip, description) => {
+    const row = { name: stripeItemName(trip, reservationId) };
+    if (description) row.description = description;
+    return row;
+  };
+  if (!split) {
+    const parts = trips
+      .map((trip) => {
+        const desc = stripeTripDescription(trip, locale);
+        const title = String((trip && (trip.destino || trip.title)) || "").trim();
+        if (trips.length > 1 && title) return title + (desc ? " · " + desc : "");
+        return desc;
+      })
+      .filter(Boolean);
+    return [
+      {
+        quantity: 1,
+        price_data: {
+          currency: "brl",
+          unit_amount: cents,
+          product_data: product(trips[0], parts.join(" | ").slice(0, 500)),
+        },
+      },
+    ];
+  }
+  return trips.map((trip, i) => ({
+    quantity: 1,
+    price_data: {
+      currency: "brl",
+      unit_amount: amounts[i],
+      product_data: product(trip, stripeTripDescription(trip, locale)),
+    },
+  }));
+}
+
+function confirmPathForLocale(locale) {
+  if (locale === "en") return "/en/confirmacao.html";
+  if (locale === "es") return "/es/confirmacao.html";
+  return "/confirmacao.html";
+}
+
+async function handleStripeCheckout(body, req, res) {
+  const fail = (code, message) => {
+    res.writeHead(code, { "Content-Type": "application/json; charset=utf-8" });
+    res.end(JSON.stringify({ success: false, message }));
+  };
+  let data;
+  try {
+    data = JSON.parse(body || "{}");
+  } catch {
+    fail(400, "Invalid JSON");
+    return;
+  }
+  const id = String(data.reservation_id || "").toUpperCase();
+  if (!/^GCV-[A-Z0-9]{6}$/.test(id)) {
+    fail(422, "Invalid reservation_id");
+    return;
+  }
+  const cents = Math.round(Number(data.amount) * 100);
+  if (!Number.isFinite(cents) || cents < 50 || cents > 10000000) {
+    fail(422, "Invalid amount");
+    return;
+  }
+  const email = String(data.email || "").trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    fail(422, "Invalid email");
+    return;
+  }
+  const name = String(data.name || "").trim();
+  if (!name) {
+    fail(422, "Invalid name");
+    return;
+  }
+  const locale = data.locale === "en" || data.locale === "es" ? data.locale : "pt";
+  const returnPath = safeReturnPath(data.return_path || "/");
+  const existing = pixRead(id);
+  if (existing && existing.status === "PAID") {
+    fail(409, "Reservation already paid");
+    return;
+  }
+  if (existing && existing.stripe_session_id) {
+    const prev = await stripeApi("GET", "/v1/checkout/sessions/" + encodeURIComponent(existing.stripe_session_id));
+    if (prev.ok && prev.data.status === "open" && prev.data.url) {
+      res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify({ success: true, url: prev.data.url, reservation_id: id }));
+      return;
+    }
+  }
+
+  const rec = {
+    reservation_id: id,
+    status: "PENDING",
+    amount: cents / 100,
+    amount_cents: cents,
+    locale,
+    trips: data.trips || [],
+    email,
+    name: name.slice(0, 160),
+    customer_name: name.slice(0, 160),
+    payment_method: "card",
+    pix_mode: "stripe",
+    return_path: returnPath,
+    expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    created_at: new Date().toISOString(),
+  };
+  if (data.incl_excl && typeof data.incl_excl === "object") rec.incl_excl = data.incl_excl;
+  if (Array.isArray(data.packages) && data.packages.length) rec.packages = data.packages;
+  const phone = String(data.phone || "").trim();
+  if (phone.replace(/\D/g, "").length >= 10) rec.phone = phone;
+  pixWrite(id, rec);
+
+  const origin = requestOrigin(req);
+  const session = await stripeApi("POST", "/v1/checkout/sessions", {
+    mode: "payment",
+    payment_method_types: ["card"],
+    customer_email: email,
+    client_reference_id: id,
+    success_url: origin + "/api/stripe_return.php?session_id={CHECKOUT_SESSION_ID}",
+    cancel_url: origin + returnPath,
+    metadata: { reservation_id: id, locale },
+    line_items: stripeLineItems(data, id, cents, locale),
+  });
+  if (!session.ok || !session.data.url) {
+    fail(502, "Não foi possível abrir o pagamento com cartão.");
+    return;
+  }
+  rec.stripe_session_id = session.data.id || "";
+  pixWrite(id, rec);
+  console.log("[stripe] checkout", id);
+  res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+  res.end(JSON.stringify({ success: true, url: session.data.url, reservation_id: id }));
+}
+
+async function handleStripeReturn(req, res) {
+  const u = new URL(req.url, "http://localhost");
+  const sessionId = String(u.searchParams.get("session_id") || "");
+  const go = (target) => {
+    res.writeHead(302, { Location: target });
+    res.end();
+  };
+  if (!/^cs_[A-Za-z0-9_]+$/.test(sessionId)) {
+    go("/");
+    return;
+  }
+  const session = await stripeApi("GET", "/v1/checkout/sessions/" + encodeURIComponent(sessionId));
+  if (!session.ok) {
+    go("/");
+    return;
+  }
+  const data = session.data;
+  const meta = data.metadata || {};
+  const id = String(meta.reservation_id || data.client_reference_id || "").toUpperCase();
+  const locale = meta.locale === "en" || meta.locale === "es" ? meta.locale : "pt";
+  const rec = /^GCV-[A-Z0-9]{6}$/.test(id) ? pixRead(id) : null;
+  const cancel = rec && rec.return_path ? safeReturnPath(rec.return_path) : "/";
+  if (data.payment_status !== "paid" || !rec) {
+    go(cancel);
+    return;
+  }
+  const expected = Number(rec.amount_cents) || Math.round(Number(rec.amount) * 100);
+  if (expected < 50 || Number(data.amount_total) !== expected) {
+    console.error("[stripe] amount mismatch", id);
+    go(cancel);
+    return;
+  }
+  rec.status = "PAID";
+  rec.paid_at = rec.paid_at || new Date().toISOString();
+  rec.paid_source = "stripe";
+  rec.stripe_session_id = sessionId;
+  if (data.payment_intent) rec.stripe_payment_intent = String(data.payment_intent);
+  pixWrite(id, rec);
+  console.log("[stripe] paid", id);
+  go(confirmPathForLocale(locale) + "?id=" + encodeURIComponent(id));
+}
+
+function handleStripeApi(urlPath, req, res) {
+  if (urlPath === "/api/stripe_checkout.php" && req.method === "POST") {
+    let body = "";
+    req.on("data", (c) => (body += c));
+    req.on("end", () => {
+      handleStripeCheckout(body, req, res).catch((err) => {
+        console.error("[stripe] checkout", err && err.message);
+        res.writeHead(500, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ success: false, message: "Não foi possível abrir o pagamento com cartão." }));
+      });
+    });
+    return true;
+  }
+  if (urlPath === "/api/stripe_return.php" && (req.method === "GET" || req.method === "HEAD")) {
+    handleStripeReturn(req, res).catch((err) => {
+      console.error("[stripe] return", err && err.message);
+      res.writeHead(302, { Location: "/" });
+      res.end();
+    });
+    return true;
+  }
+  return false;
+}
+
 function handlePixApi(urlPath, req, res) {
   if (urlPath === "/api/register_pix_reservation.php" && req.method === "POST") {
     let body = "";
@@ -1625,7 +2024,12 @@ function serveFile(res, filePath) {
     res.writeHead(200, { "Content-Type": MIME[ext] || "application/octet-stream" });
     if (ext === ".html") {
       let html = data.toString("utf8")
-        .replace(/site\.js\?v=[^"'&\s]+/g, "site.js?v=1.1.53")
+        .replace(/site\.js\?v=[^"'&\s]+/g, "site.js?v=1.1.60")
+        .replace(/gcv-exc-cart-policies\.js\?v=[^"'&\s]+/g, "gcv-exc-cart-policies.js?v=1.1.60")
+        .replace(/gcv-exc-cart\.js\?v=[^"'&\s]+/g, "gcv-exc-cart.js?v=1.1.60")
+        .replace(/excursoes-carousel\.js\?v=[^"'&\s]+/g, "excursoes-carousel.js?v=1.1.61")
+        .replace(/excursoes\.css\?v=[^"'&\s]+/g, "excursoes.css?v=1.1.36")
+        .replace(/gcv-confirmacao\.js\?v=[^"'&\s]+/g, "gcv-confirmacao.js?v=1.1.36")
         .replace(/gcv-detail\.css\?v=[^"'&\s]+/g, "gcv-detail.css?v=1.1.37")
         .replace(/gcv-passeios-shop\.js\?v=[^"'&\s]+/g, "gcv-passeios-shop.js?v=1.3.6");
       if (!html.includes('href="passeios.html"')) {
@@ -1858,6 +2262,7 @@ const server = http.createServer((req, res) => {
       res.end(JSON.stringify(data ? { ok: true, data } : { ok: false, error: "Atrativo não encontrado" }));
       return;
     }
+    if (handleStripeApi(urlPath, req, res)) return;
     if (handlePixApi(urlPath, req, res)) return;
     if (handleWaitlistApi(urlPath, req, res)) return;
 

@@ -1240,9 +1240,12 @@
         person: "pessoa",
         peopleWord: "pessoas",
         guideLead: "É necessário uma vaga para o guia no seu veículo.",
+        guideSeatError: "Com {people} pessoas, um carro de 5 lugares deixa o guia sem vaga. Leve {cars} carros e reserve 1 lugar para o guia. Sem essa vaga, o passeio pode ser cancelado.",
+        rideCars: "Com {people} pessoas são {cars} carros e {guides} guias. Cada carro leva até 4 pessoas.",
         guideRest: "Com {people}, o grupo precisa de {cars}.",
         car: "carro",
         cars: "carros",
+        guides: "guias",
         duration: "Duração",
         durationOf: "Duração de",
         hourExact: "hs",
@@ -1296,9 +1299,12 @@
         person: "person",
         peopleWord: "people",
         guideLead: "A seat for the guide is required in your vehicle.",
+        guideSeatError: "With {people} people, a 5-seat car leaves no seat for the guide. Bring {cars} cars and keep 1 seat for the guide. Without that seat, the tour may be cancelled.",
+        rideCars: "With {people} people that is {cars} cars and {guides} guides. Each car takes up to 4 people.",
         guideRest: "With {people}, the group needs {cars}.",
         car: "car",
         cars: "cars",
+        guides: "guides",
         duration: "Duration",
         durationOf: "Duration of",
         hourExact: "h",
@@ -1352,9 +1358,12 @@
         person: "persona",
         peopleWord: "personas",
         guideLead: "Se necesita un lugar para el guía en su vehículo.",
+        guideSeatError: "Con {people} personas, un coche de 5 plazas deja al guía sin lugar. Lleve {cars} coches y reserve 1 lugar para el guía. Sin esa plaza, el paseo puede cancelarse.",
+        rideCars: "Con {people} personas son {cars} coches y {guides} guías. Cada coche lleva hasta 4 personas.",
         guideRest: "Con {people}, el grupo necesita {cars}.",
         car: "coche",
         cars: "coches",
+        guides: "guías",
         duration: "Duración",
         durationOf: "Duración de",
         hourExact: " h",
@@ -1628,9 +1637,10 @@
     return { pix: pix, card: card, inst: Math.round(card / 4), off: PASSEIO_OFF_PIX };
   }
 
-  function passeioPessoasCobradas(sel, modalidade, pessoas) {
+  function passeioPessoasCobradas(sel, modalidade, pessoas, comTranslado) {
     pessoas = Math.max(1, parseInt(pessoas, 10) || 1);
     var quorum = parseInt(sel && sel.quorum, 10) || 4;
+    if (modalidade === "exclusivo" && comTranslado) return quorum * passeioCarros(pessoas);
     if (modalidade === "exclusivo" && pessoas <= quorum) return quorum;
     return pessoas;
   }
@@ -1641,8 +1651,27 @@
     var unit = modalidade === "exclusivo"
       ? (comTranslado ? sel.exclusivoT : sel.exclusivo)
       : (comTranslado ? sel.excursaoT : sel.excursao);
+    if (modalidade === "exclusivo" && comTranslado) return unit * quorum * passeioCarros(pessoas);
     if (modalidade === "exclusivo" && pessoas <= quorum) return unit * quorum;
     return unit * pessoas;
+  }
+
+  function passeioAvisoVeiculo(copy, pessoas, comTranslado) {
+    pessoas = Math.max(1, parseInt(pessoas, 10) || 1);
+    var cars = passeioCarros(pessoas);
+    if (comTranslado) {
+      if (cars <= 1) return "";
+      return String(copy.rideCars || "")
+        .replace("{people}", String(pessoas))
+        .replace("{cars}", String(cars))
+        .replace("{guides}", String(cars));
+    }
+    if (pessoas >= 5) {
+      return String(copy.guideSeatError || copy.guideLead || "")
+        .replace("{people}", String(pessoas))
+        .replace("{cars}", String(cars));
+    }
+    return copy.guideLead || "";
   }
 
   function passeioBuilderHtml(copy, data) {
@@ -1908,14 +1937,19 @@
       if (sel.incompleto) return null;
       if (!date || quando.getTime() <= Date.now()) return null;
       var total = passeioTotalCents(sel, modalidade, pessoas, comTranslado);
-      var exclusivoCheio = modalidade === "exclusivo" && pessoas <= 4;
+      var cars = passeioCarros(pessoas);
+      var exclusivoPacote = modalidade === "exclusivo" && (pessoas <= 4 || comTranslado);
       var bi = passeioBiState();
-      var billed = passeioPessoasCobradas(sel, modalidade, pessoas);
+      var billed = passeioPessoasCobradas(sel, modalidade, pessoas, comTranslado);
       var biCents = bi.on ? PASSEIO_BILINGUE_CENTS * billed : 0;
       var pay = passeioPagamento(total + biCents);
-      var qty = exclusivoCheio ? 1 : billed;
+      var qty = exclusivoPacote ? 1 : billed;
       var pixReais = Math.round(pay.pix / 100);
       var langName = bi.lang === "es" ? copy.langEs : copy.langEn;
+      var langBtn = box.querySelector("[data-bi-lang].is-on");
+      var guiaIdioma = langBtn ? String(langBtn.getAttribute("data-bi-lang") || "pt") : "pt";
+      if (guiaIdioma !== "en" && guiaIdioma !== "es") guiaIdioma = "pt";
+      var carrosTxt = comTranslado && cars > 1 ? " · " + cars + " " + (cars === 1 ? copy.car : copy.cars) + " · " + cars + " " + (copy.guides || "guias") : "";
       return {
         id: "roteiro-" + data.slug + "-" + sel.ids.join("-") + "-" + date + "-" + modalidade + "-" + (comTranslado ? "t" : "s") + (bi.on ? "-bi-" + bi.lang : ""),
         destino: sel.names.join(" + "),
@@ -1924,7 +1958,7 @@
         dateIso: date,
         valorUnit: qty > 1 ? Math.round(pixReais / qty) : pixReais,
         qty: qty,
-        pixDesc: sel.names.join(" + ") + " · " + (modalidade === "exclusivo" ? copy.private : copy.group) + " · " + (comTranslado ? copy.withRide : copy.withoutRide) + (bi.on ? " · " + copy.bilingual + " (" + langName + ")" : ""),
+        pixDesc: sel.names.join(" + ") + " · " + (modalidade === "exclusivo" ? copy.private : copy.group) + " · " + (comTranslado ? copy.withRide : copy.withoutRide) + carrosTxt + (bi.on ? " · " + copy.bilingual + " (" + langName + ")" : ""),
         maxQty: 15,
         embarque: cidade,
         meetingPoint: passeioPonto(cidade),
@@ -1932,6 +1966,13 @@
         departureMs: quando.getTime(),
         passeioKey: passeioChave(data, sel),
         pessoas: pessoas,
+        comTransporte: comTranslado,
+        guiaIdioma: guiaIdioma,
+        modalidade: modalidade,
+        carros: cars,
+        guias: comTranslado ? cars : 1,
+        quorum: sel.quorum || 4,
+        vagaGuiaObrigatoria: !comTranslado,
       };
     }
 
@@ -2154,17 +2195,20 @@
       var guide = box.querySelector("[data-passeio-guide]");
       var guideText = box.querySelector("[data-passeio-guide-text]");
       var nPessoas = Math.max(1, parseInt(pessoas, 10) || 1);
-      var mostraGuia = passeioMostraGuia(modalidade, nPessoas, comTranslado);
-      if (guide) guide.hidden = !mostraGuia;
-      if (guideText) guideText.textContent = mostraGuia ? copy.guideLead : "";
+      var avisoVeiculo = passeioAvisoVeiculo(copy, nPessoas, comTranslado);
+      if (guide) guide.hidden = !avisoVeiculo;
+      if (guideText) guideText.textContent = avisoVeiculo;
       paintExtras();
       paintRoute(sel, modalidade, comTranslado);
       var unit = modalidade === "exclusivo" ? (comTranslado ? sel.exclusivoT : sel.exclusivo) : (comTranslado ? sel.excursaoT : sel.excursao);
-      var billed = passeioPessoasCobradas(sel, modalidade, nPessoas);
+      var billed = passeioPessoasCobradas(sel, modalidade, nPessoas, comTranslado);
       var biCents = bi.on ? PASSEIO_BILINGUE_CENTS * billed : 0;
       var pay = passeioPagamento(total + biCents);
       var word = billed === 1 ? copy.person : copy.peopleWord;
-      var breakTxt = billed + " " + word + " × " + passeioReais(unit);
+      var carsNow = passeioCarros(nPessoas);
+      var breakTxt = modalidade === "exclusivo" && comTranslado && carsNow > 1
+        ? carsNow + " " + copy.cars + " × " + passeioReais(unit * (parseInt(sel.quorum, 10) || 4))
+        : billed + " " + word + " × " + passeioReais(unit);
       if (bi.on) breakTxt += " + " + copy.bilingualShort + " (" + passeioReais(biCents) + ")";
       var cardTxt = String(copy.cardOr).replace("{price}", passeioReais(pay.card)).replace("{inst}", passeioReais(pay.inst));
       var totalEl = box.querySelector("[data-passeio-total]");

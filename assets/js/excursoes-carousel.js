@@ -279,7 +279,7 @@
       guidePhoneLabel: "Telefone do guia",
       guiaPending: "A definir",
       pixBtnAria: "Pagar {{valor}} com Pix",
-      pixModalTitle: "Pagamento via Pix",
+      pixModalTitle: "Pagamento",
       pixModalScan: "Escaneie o QR Code no app do banco",
       pixModalCopy: "Copiar código Pix",
       pixModalCopied: "Código copiado!",
@@ -289,7 +289,11 @@
       pixModalCancelPolicy:
         "Cancelamento: O pagamento reserva a disponibilidade do guia. Em caso de cancelamento pelo cliente, não haverá reembolso.",
       pixModalRefLabel: "Código de reserva",
-      pixModalEmailContinue: "Continuar para o Pix",
+      pixModalEmailContinue: "Pagar com PIX",
+      payChoice: "Como você quer pagar?",
+      stripePayCard: "Pagar com cartão",
+      stripePayCardBusy: "Abrindo pagamento seguro…",
+      stripePayCardFail: "Não foi possível abrir o pagamento com cartão. Tente de novo.",
       pixModalEmailClear: "Excluir dados",
       pixModalEmailClearHint: "Exclui e-mail e telefone, cancela este Pix e permite informar outros dados.",
       pixPostpayLocked: "Disponível após confirmação do pagamento",
@@ -330,8 +334,8 @@
       guideSeatBlocked:
         "O guia vai no seu carro. Com 1 carro de 5 lugares cabem no máximo 4 pessoas. Escolha 2 ou mais carros se o grupo for maior.",
       guideSeatConfirm:
-        "Neste passeio o guia vai no carro do grupo.\n\nCom 5 pessoas o veículo fica lotado e não sobra assento para o guia. Se não houver outra inscrição com vaga (menos de 5 pessoas, sem transporte), o passeio poderá ser cancelado por falta de espaço para o guia, com reembolso conforme a Política de Cancelamento.\n\nDeseja continuar mesmo assim?",
-      guideSeatConfirmOk: "Continuar",
+        "Sem translado, o guia vai no carro do grupo e precisa de 1 lugar.\n\nCinco pessoas em um carro de 5 lugares deixam o guia sem vaga. Isso é um erro. Você garante que haverá lugar para o guia. Sem essa vaga, o passeio pode ser cancelado, com reembolso conforme a Política.\n\nConfirma que haverá vaga para o guia?",
+      guideSeatConfirmOk: "Garanto a vaga",
       guideSeatConfirmCancel: "Voltar",
       guideSeatWaiting: "Aguardando outro grupo para vaga do guia",
       cartTitle: "Carrinho",
@@ -451,7 +455,7 @@
       guidePhoneLabel: "Guide phone",
       guiaPending: "To be announced",
       pixBtnAria: "Pay {{valor}} with Pix",
-      pixModalTitle: "Pix payment",
+      pixModalTitle: "Payment",
       pixModalScan: "Scan the QR code in your banking app",
       pixModalCopy: "Copy Pix code",
       pixModalCopied: "Code copied!",
@@ -461,7 +465,11 @@
       pixModalCancelPolicy:
         "Cancellation: Payment reserves the guide's availability. If the client cancels, no refund will be issued.",
       pixModalRefLabel: "Reservation code",
-      pixModalEmailContinue: "Continue to Pix",
+      pixModalEmailContinue: "Pay with PIX",
+      payChoice: "How do you want to pay?",
+      stripePayCard: "Pay with card",
+      stripePayCardBusy: "Opening secure checkout…",
+      stripePayCardFail: "Could not open card checkout. Please try again.",
       pixModalEmailClear: "Remove details",
       pixModalEmailClearHint: "Removes email and phone, cancels this Pix, and lets you enter new details.",
       pixPostpayLocked: "Available after payment is confirmed",
@@ -502,8 +510,8 @@
       guideSeatBlocked:
         "The guide rides in your car. A 5-seat car fits at most 4 people plus the guide. Choose 2 or more cars if your group is larger.",
       guideSeatConfirm:
-        "On this tour the guide rides in the group's car.\n\nWith 5 people the vehicle is full and there is no seat left for the guide. If nobody else is booked with a spare seat (fewer than 5 people, without transfer), the tour may be cancelled because there is no room for the guide, with a refund under the Cancellation Policy.\n\nDo you still want to continue?",
-      guideSeatConfirmOk: "Continue",
+        "Without a transfer, the guide rides in the group's car and needs 1 seat.\n\nFive people in a 5-seat car leave no seat for the guide. That is not allowed. You guarantee a seat for the guide. Without that seat, the tour may be cancelled, with a refund under the Policy.\n\nDo you confirm there will be a seat for the guide?",
+      guideSeatConfirmOk: "I guarantee the seat",
       guideSeatConfirmCancel: "Go back",
       guideSeatWaiting: "Waiting for another group so the guide has a seat",
       cartTitle: "Cart",
@@ -623,7 +631,7 @@
       guidePhoneLabel: "Teléfono del guía",
       guiaPending: "Por definir",
       pixBtnAria: "Pagar {{valor}} con Pix",
-      pixModalTitle: "Pago con Pix",
+      pixModalTitle: "Pago",
       pixModalScan: "Escanea el código QR en la app del banco",
       pixModalCopy: "Copiar código Pix",
       pixModalCopied: "¡Código copiado!",
@@ -633,7 +641,11 @@
       pixModalCancelPolicy:
         "Cancelación: El pago reserva la disponibilidad del guía. En caso de cancelación por parte del cliente, no habrá reembolso.",
       pixModalRefLabel: "Código de reserva",
-      pixModalEmailContinue: "Continuar al Pix",
+      pixModalEmailContinue: "Pagar con PIX",
+      payChoice: "¿Cómo quieres pagar?",
+      stripePayCard: "Pagar con tarjeta",
+      stripePayCardBusy: "Abriendo el pago seguro…",
+      stripePayCardFail: "No se pudo abrir el pago con tarjeta. Inténtalo de nuevo.",
       pixModalEmailClear: "Eliminar datos",
       pixModalEmailClearHint: "Elimina correo y teléfono, cancela este Pix y permite informar otros datos.",
       pixPostpayLocked: "Disponible tras confirmar el pago",
@@ -674,8 +686,8 @@
       guideSeatBlocked:
         "El guía va en tu coche. Un coche de 5 plazas admite como máximo 4 personas más el guía. Elige 2 o más coches si el grupo es mayor.",
       guideSeatConfirm:
-        "En este paseo el guía va en el coche del grupo.\n\nCon 5 personas el vehículo queda lleno y no queda asiento para el guía. Si no hay otra inscripción con plaza libre (menos de 5 personas, sin traslado), el paseo podrá cancelarse por falta de espacio para el guía, con reembolso según la Política de Cancelación.\n\n¿Quieres continuar igualmente?",
-      guideSeatConfirmOk: "Continuar",
+        "Sin traslado, el guía va en el coche del grupo y necesita 1 lugar.\n\nCinco personas en un coche de 5 plazas dejan al guía sin lugar. Eso no se admite. Usted garantiza un lugar para el guía. Sin esa plaza, el paseo puede cancelarse, con reembolso según la Política.\n\n¿Confirma que habrá lugar para el guía?",
+      guideSeatConfirmOk: "Garantizo la plaza",
       guideSeatConfirmCancel: "Volver",
       guideSeatWaiting: "Esperando otro grupo para la plaza del guía",
       cartTitle: "Carrito",
@@ -2633,6 +2645,7 @@
       dateLabel: data.dateLabel,
       valorUnit: data.unit,
       qty: data.qty,
+      pessoas: data.qty,
       pixDesc: data.desc,
       maxQty: data.maxQty,
       dateIso: block.getAttribute("data-cart-date-iso") || "",
@@ -3120,6 +3133,7 @@
       meetingMapsUrl: e && e.meetingMapsUrl ? String(e.meetingMapsUrl) : "",
       hora: horaExcursao(e),
       qty: Math.max(1, parseInt(String(qty), 10) || 1),
+      pessoas: Math.max(1, parseInt(String(qty), 10) || 1),
       cartId: excursaoCartId(e),
       valorUnit: excursaoValor(e),
       comTransporte: e && e.comTransporte === true,
@@ -3145,9 +3159,12 @@
       meetingMapsUrl: trip.meetingMapsUrl || "",
       hora: trip.hora || "",
       qty: Math.max(1, parseInt(String(trip.qty), 10) || 1),
+      pessoas: parseInt(String(trip.pessoas), 10) || Math.max(1, parseInt(String(trip.qty), 10) || 1),
       cartId: trip.cartId || "",
       valorUnit: parseInt(String(trip.valorUnit), 10) || 0,
       comTransporte: trip.comTransporte === true,
+      guiaIdioma: trip.guiaIdioma || trip.idiomaGuia || "",
+      modalidade: trip.modalidade || "",
       weekday: trip.weekday || "",
       dateIso: trip.dateIso || trip.dateISO || "",
       dayNum: trip.dayNum != null ? String(trip.dayNum) : "",
@@ -3210,8 +3227,12 @@
           embarque: pack.embarque || "",
           hora: pack.hora || "",
           qty: pack.qty || 1,
+          pessoas: pack.pessoas || pack.qty || 1,
           cartId: pack.cartId || "",
           valorUnit: parseInt(String(pack.valorUnit), 10) || 0,
+          comTransporte: pack.comTransporte === true,
+          guiaIdioma: pack.guiaIdioma || "",
+          modalidade: pack.modalidade || "",
           guiaNome: pack.guiaNome || "",
           dateIso: pack.dateIso || pack.dateISO || "",
           dayNum: pack.dayNum != null ? String(pack.dayNum) : "",
@@ -4212,6 +4233,10 @@
     if (ddiTrigger) ddiTrigger.disabled = true;
     var continueBtn = modal.querySelector("[data-gcv-pix-email-continue]");
     if (continueBtn) continueBtn.hidden = true;
+    var cardPayBtn = modal.querySelector("[data-gcv-stripe-card]");
+    if (cardPayBtn) cardPayBtn.hidden = true;
+    var payChoice = modal.querySelector(".gcv-pix-modal__pay-choice");
+    if (payChoice) payChoice.hidden = true;
     modal.querySelectorAll("[data-gcv-pix-email-clear], [data-gcv-pix-phone-clear]").forEach(function (btn) {
       btn.hidden = false;
       btn.disabled = false;
@@ -4245,6 +4270,10 @@
     closePixDdiDropdown(modal);
     var continueBtn = modal.querySelector("[data-gcv-pix-email-continue]");
     if (continueBtn) continueBtn.hidden = false;
+    var cardPayBtn = modal.querySelector("[data-gcv-stripe-card]");
+    if (cardPayBtn) cardPayBtn.hidden = false;
+    var payChoice = modal.querySelector(".gcv-pix-modal__pay-choice");
+    if (payChoice) payChoice.hidden = false;
     modal.querySelectorAll("[data-gcv-pix-email-clear], [data-gcv-pix-phone-clear]").forEach(function (btn) {
       btn.hidden = true;
       btn.disabled = true;
@@ -4508,7 +4537,9 @@
         buildPixPhoneWrapHtml(loc) +
         '<p class="gcv-pix-modal__email-hint" id="gcv-pix-modal-phone-hint"></p>' +
         '<p class="gcv-pix-modal__field-error" id="gcv-pix-modal-phone-error" role="alert" hidden></p>' +
+        '<p class="gcv-pix-modal__pay-choice"></p>' +
         '<button type="button" class="gcv-pix-modal__email-continue" data-gcv-pix-email-continue></button>' +
+        '<button type="button" class="gcv-pix-modal__card-pay" data-gcv-stripe-card></button>' +
         '<p class="gcv-pix-modal__email-status" id="gcv-pix-modal-email-status" hidden></p>';
       if (payZone && payZone.parentNode) {
         payZone.parentNode.insertBefore(block, payZone);
@@ -4650,7 +4681,28 @@
       }
     }
     syncPixPhoneDdiUi(modal, loc);
-    if (continueBtn) continueBtn.textContent = locStrings.pixModalEmailContinue || "Continuar para o Pix";
+    if (!block.querySelector("[data-gcv-stripe-card]")) {
+      var choiceEl = document.createElement("p");
+      choiceEl.className = "gcv-pix-modal__pay-choice";
+      var cardEl = document.createElement("button");
+      cardEl.type = "button";
+      cardEl.className = "gcv-pix-modal__card-pay";
+      cardEl.setAttribute("data-gcv-stripe-card", "");
+      if (continueBtn && continueBtn.parentNode) {
+        continueBtn.parentNode.insertBefore(choiceEl, continueBtn);
+        continueBtn.insertAdjacentElement("afterend", cardEl);
+      } else {
+        block.appendChild(choiceEl);
+        block.appendChild(cardEl);
+      }
+    }
+    var payChoiceEl = block.querySelector(".gcv-pix-modal__pay-choice");
+    var cardPayBtn = block.querySelector("[data-gcv-stripe-card]");
+    if (payChoiceEl) payChoiceEl.textContent = locStrings.payChoice || "Como você quer pagar?";
+    if (continueBtn) continueBtn.textContent = locStrings.pixModalEmailContinue || "Pagar com PIX";
+    if (cardPayBtn && !modal._gcvStripeBusy) {
+      cardPayBtn.textContent = locStrings.stripePayCard || "Pagar com cartão";
+    }
     var phoneClearBtn = block.querySelector("[data-gcv-pix-phone-clear]");
     [clearBtn, phoneClearBtn].forEach(function (btn) {
       if (!btn) return;
@@ -4668,9 +4720,11 @@
   function syncPixContinueButton(modal) {
     if (!modal) return;
     var continueBtn = modal.querySelector("[data-gcv-pix-email-continue]");
-    if (!continueBtn) return;
-    if (modal._gcvPixCheckoutActive || modal._gcvPixConfirmed) {
-      continueBtn.disabled = true;
+    var cardBtn = modal.querySelector("[data-gcv-stripe-card]");
+    if (!continueBtn && !cardBtn) return;
+    if (modal._gcvPixCheckoutActive || modal._gcvPixConfirmed || modal._gcvStripeBusy) {
+      if (continueBtn) continueBtn.disabled = true;
+      if (cardBtn) cardBtn.disabled = true;
       return;
     }
     var name = getModalReceiptName(modal);
@@ -4692,7 +4746,9 @@
       window.GcvPixReceipt &&
       typeof window.GcvPixReceipt.isValidPhone === "function" &&
       window.GcvPixReceipt.isValidPhone(phone, phoneIso);
-    continueBtn.disabled = !(nameOk && emailOk && phoneOk);
+    var ready = !!(nameOk && emailOk && phoneOk);
+    if (continueBtn) continueBtn.disabled = !ready;
+    if (cardBtn) cardBtn.disabled = !ready;
   }
 
   function pixPostpayIsPaid(modal) {
@@ -4731,6 +4787,88 @@
         waBtn.tabIndex = 0;
       }
     }
+  }
+
+  function startStripeCardCheckout(modal) {
+    if (!modal || modal._gcvStripeBusy || modal._gcvPixCheckoutActive || modal._gcvPixConfirmed) return;
+    var loc = modal._gcvPixLocale || "pt";
+    var locStrings = STRINGS[loc] || STRINGS.pt;
+    var statusEl = modal.querySelector("#gcv-pix-modal-email-status");
+    var nameOk = validatePixNameField(modal, { show: true });
+    var emailOk = validatePixEmailField(modal, { show: true });
+    var phoneOk = validatePixPhoneField(modal, { show: true });
+    if (!nameOk || !emailOk || !phoneOk) {
+      syncPixContinueButton(modal);
+      return;
+    }
+    var pending = modal._gcvPixPendingCheckout;
+    if (!pending) return;
+
+    var name = getModalReceiptName(modal);
+    var email = getModalEmailInputValue(modal);
+    var phoneIso = getModalPhoneIso(modal);
+    var phoneRaw = getModalPhoneInputValue(modal);
+    var phoneStored =
+      window.GcvPixReceipt && typeof window.GcvPixReceipt.formatPhoneIntl === "function"
+        ? window.GcvPixReceipt.formatPhoneIntl(phoneRaw, phoneIso)
+        : phoneRaw;
+    var reservationCode =
+      window.GcvPixReceipt && typeof window.GcvPixReceipt.generateCode === "function"
+        ? window.GcvPixReceipt.generateCode()
+        : "GCV-" + Date.now().toString(36).slice(-6).toUpperCase();
+    var receiptData = pending.receiptData || modal._gcvReceiptData || {};
+    modal._gcvStripeBusy = true;
+    syncPixContinueButton(modal);
+    var cardBtn = modal.querySelector("[data-gcv-stripe-card]");
+    if (cardBtn) cardBtn.textContent = locStrings.stripePayCardBusy || "Abrindo pagamento seguro…";
+    if (statusEl) {
+      statusEl.hidden = true;
+      statusEl.textContent = "";
+      statusEl.classList.remove("gcv-pix-modal__email-status--ok", "gcv-pix-modal__email-status--err");
+    }
+
+    var payload = {
+      reservation_id: reservationCode,
+      amount: Number(pending.valor),
+      locale: loc,
+      trips: receiptData.trips || [],
+      incl_excl: receiptData.inclExcl || undefined,
+      packages: receiptData.packages || undefined,
+      name: name,
+      email: email,
+      phone: phoneStored,
+      description: (reservationCode + " " + (pending.pixDesc || "")).trim(),
+      return_path: (window.location.pathname || "/") + (window.location.search || ""),
+    };
+
+    fetch("/api/stripe_checkout.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(payload),
+    })
+      .then(function (r) {
+        return r.json().then(function (data) {
+          return { ok: r.ok, data: data };
+        });
+      })
+      .then(function (res) {
+        var url = res && res.data && res.data.url;
+        if (!res.ok || !url) {
+          throw new Error((res && res.data && res.data.message) || "stripe");
+        }
+        window.location.href = url;
+      })
+      .catch(function () {
+        modal._gcvStripeBusy = false;
+        syncPixContinueButton(modal);
+        if (cardBtn) cardBtn.textContent = locStrings.stripePayCard || "Pagar com cartão";
+        if (statusEl) {
+          statusEl.hidden = false;
+          statusEl.textContent = locStrings.stripePayCardFail || "Não foi possível abrir o pagamento com cartão.";
+          statusEl.classList.add("gcv-pix-modal__email-status--err");
+          statusEl.classList.remove("gcv-pix-modal__email-status--ok");
+        }
+      });
   }
 
   function activatePixCheckout(modal, s) {
@@ -5193,7 +5331,9 @@
       '<div class="gcv-pix-modal__phone-wrap" id="gcv-pix-modal-phone-wrap-slot"></div>' +
       '<p class="gcv-pix-modal__email-hint" id="gcv-pix-modal-phone-hint"></p>' +
       '<p class="gcv-pix-modal__field-error" id="gcv-pix-modal-phone-error" role="alert" hidden></p>' +
+      '<p class="gcv-pix-modal__pay-choice"></p>' +
       '<button type="button" class="gcv-pix-modal__email-continue" data-gcv-pix-email-continue></button>' +
+      '<button type="button" class="gcv-pix-modal__card-pay" data-gcv-stripe-card></button>' +
       '<p class="gcv-pix-modal__email-status" id="gcv-pix-modal-email-status" hidden></p></div>' +
       '<div class="gcv-pix-modal__pay-zone">' +
       '<p class="gcv-pix-modal__amount"></p>' +
@@ -5535,6 +5675,13 @@
         if (continueBtn.disabled) return;
         var locContinue = modal._gcvPixLocale || "pt";
         activatePixCheckout(modal, STRINGS[locContinue] || STRINGS.pt);
+        return;
+      }
+      var cardPayBtn = e.target.closest("[data-gcv-stripe-card]");
+      if (cardPayBtn) {
+        e.preventDefault();
+        if (cardPayBtn.disabled) return;
+        startStripeCardCheckout(modal);
         return;
       }
       var clearEmailBtn = e.target.closest("[data-gcv-pix-email-clear]");
