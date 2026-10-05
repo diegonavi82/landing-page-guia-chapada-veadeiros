@@ -19,7 +19,29 @@
   ];
   var CIDADE_CURTA = { 'alto-paraiso': 'Alto Paraíso', 'sao-jorge': 'São Jorge', 'cavalcante': 'Cavalcante' };
 
-  var st = { data: null, mode: 'tarifarios', rootId: 'cms-tarifario-root', editing: null, q: '', open: {} };
+  var st = {
+    data: null,
+    mode: 'tarifarios',
+    rootId: 'cms-tarifario-root',
+    editing: null,
+    q: '',
+    open: {},
+    passeioId: 0,
+    sortKey: 'passeio',
+    sortDir: 1,
+    filters: { passeio: '', venda: '', tarifario: '', excursao: '', translado: '', privativo: '', duracao: '', categorias: '' }
+  };
+
+  var PASSEIO_COLS = [
+    ['passeio', 'Passeio', ''],
+    ['venda', 'À venda', ''],
+    ['tarifario', 'Tarifário', ''],
+    ['excursao', 'Excursão', 'Alto Paraíso · sem translado'],
+    ['translado', 'Com translado', 'Excursão · Alto Paraíso'],
+    ['privativo', 'Privativo', 'Alto Paraíso · sem translado'],
+    ['duracao', 'Duração', 'Saindo de Alto Paraíso'],
+    ['categorias', 'Categorias', '']
+  ];
 
   /* ---------- utilidades ---------- */
   function $(id) {
@@ -190,27 +212,129 @@
     var aviso = (semPreco || passeiosSem)
       ? '<span class="tf-warn">' + (semPreco ? semPreco + ' passeio(s) unitário(s)' : '') + (semPreco && passeiosSem ? ' e ' : '') + (passeiosSem ? passeiosSem + ' relação(ões)' : '') + ' sem tarifa: não aparecem à venda.</span>'
       : '';
+    var focus = st.mode === 'passeios' && (st.passeioId || st.editing);
+    if (focus) {
+      box.innerHTML = '<div id="tf-body"></div><div class="tf-toast" id="tf-toast" role="status" aria-live="polite"></div>';
+      paintBody();
+      return;
+    }
     var rules = st.mode === 'passeios'
-      ? '<span>Cada linha é um <b>passeio unitário</b> e tem <b>uma tarifa só</b>.</span>' +
-        '<span>As relações ficam dentro dele. Cada relação é outro passeio, com tarifa nova, porque o roteiro muda. Cabe de 1 a <b>' + max + '</b> atrativos no mesmo dia. <a href="#configuracoes">Mudar o máximo em Configurações</a>.</span>' +
+      ? '<span>Cada linha é um <b>passeio unitário</b>: uma atração e uma tarifa.</span>' +
+        '<span>Relações ficam só na página do passeio. Cabe de 1 a <b>' + max + '</b> atrações no mesmo dia. <a href="#configuracoes">Mudar o máximo em Configurações</a>.</span>' +
         aviso
       : '<span>Cada tarifário é uma tabela de preços. Um passeio usa uma tarifa só. A mesma tabela pode servir a mais de um passeio.</span>';
     box.innerHTML =
-      '<div class="tf-head">' +
-        '<input class="gcv-dash-input tf-search" id="tf-search" type="search" placeholder="' + (st.mode === 'passeios' ? 'Buscar passeio' : 'Buscar tarifário') + '" value="' + esc(st.q) + '" />' +
-      '</div>' +
+      (st.mode === 'passeios' ? '' :
+        '<div class="tf-head">' +
+          '<input class="gcv-dash-input tf-search" id="tf-search" type="search" placeholder="Buscar tarifário" value="' + esc(st.q) + '" />' +
+        '</div>') +
       '<div class="tf-rules">' + rules + '</div>' +
       '<div id="tf-body"></div>' +
       '<div class="tf-toast" id="tf-toast" role="status" aria-live="polite"></div>';
     var search = $('tf-search');
-    search.oninput = function () { st.q = search.value; paintBody(); };
+    if (search) search.oninput = function () { st.q = search.value; paintBody(); };
     paintBody();
   }
 
   function paintBody() {
     if (st.editing) return paintEditor();
-    if (st.mode === 'passeios') return paintAtrativos();
+    if (st.mode === 'passeios') {
+      if (st.passeioId) return paintPasseioPage();
+      return paintPasseiosTable();
+    }
     return paintTarifarios();
+  }
+
+  function passeioIdFromHash() {
+    var m = String(location.hash || '').match(/^#passeio\/(\d+)$/);
+    return m ? parseInt(m[1], 10) : 0;
+  }
+
+  function goPasseio(id) {
+    st.passeioId = id;
+    st.editing = null;
+    var next = '#passeio/' + id;
+    if ((location.hash || '') !== next) {
+      history.pushState(null, '', location.pathname + location.search + next);
+    }
+    paint();
+    var box = $(st.rootId);
+    if (box && box.scrollIntoView) box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function leavePasseio() {
+    st.passeioId = 0;
+    st.editing = null;
+    if (String(location.hash || '').indexOf('#passeio/') === 0) {
+      history.pushState(null, '', location.pathname + location.search + '#passeios');
+    }
+    paint();
+  }
+
+  function norm(s) {
+    return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+
+  function apCents(t, field) {
+    var row = t && t.cidades && t.cidades['alto-paraiso'];
+    return row ? (parseInt(row[field], 10) || 0) : 0;
+  }
+
+  function moneyCell(cents) {
+    if (!cents) return '<span class="ps-missing">—</span>';
+    return '<b class="ps-money">' + esc(reais(cents)) + '</b>';
+  }
+
+  function passeioRow(a) {
+    var t = tarifarioById(a.tarifario_id);
+    var cats = st.data.categorias || {};
+    var dur = a.duracao_cidades && a.duracao_cidades['alto-paraiso'];
+    return {
+      id: a.id,
+      passeio: a.title_pt || '',
+      venda: a.tem_passeio === false ? 'nao' : 'sim',
+      vendaLabel: a.tem_passeio === false ? 'Fora' : 'À venda',
+      tarifario: t ? t.nome : '',
+      excursao: apCents(t, 'excursao_pessoa_cents'),
+      translado: apCents(t, 'excursao_transporte_cents'),
+      privativo: apCents(t, 'exclusivo_pessoa_cents'),
+      duracao: parseInt(dur, 10) || 0,
+      categorias: (a.categorias || []).map(function (k) { return cats[k] || k; }).join(', ')
+    };
+  }
+
+  function unitaryRows() {
+    return (st.data.atrativos || []).filter(function (a) {
+      return a.page && String(a.title_pt || '').indexOf(' + ') < 0;
+    }).map(passeioRow);
+  }
+
+  function hasText(field, value) {
+    var q = norm(st.filters[field] || '');
+    if (!q) return true;
+    return norm(value).indexOf(q) >= 0;
+  }
+
+  function rowVisible(r) {
+    if (st.filters.venda === 'sim' && r.venda !== 'sim') return false;
+    if (st.filters.venda === 'nao' && r.venda !== 'nao') return false;
+    if (!hasText('passeio', r.passeio)) return false;
+    if (!hasText('tarifario', r.tarifario || 'sem tarifario')) return false;
+    if (!hasText('excursao', r.excursao ? reais(r.excursao) + ' ' + Math.round(r.excursao / 100) : '')) return false;
+    if (!hasText('translado', r.translado ? reais(r.translado) + ' ' + Math.round(r.translado / 100) : '')) return false;
+    if (!hasText('privativo', r.privativo ? reais(r.privativo) + ' ' + Math.round(r.privativo / 100) : '')) return false;
+    if (!hasText('duracao', r.duracao ? horas(r.duracao) : '')) return false;
+    if (!hasText('categorias', r.categorias)) return false;
+    return true;
+  }
+
+  function compareRows(a, b) {
+    var k = st.sortKey;
+    var dir = st.sortDir;
+    var va = a[k];
+    var vb = b[k];
+    if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * dir;
+    return String(va || '').localeCompare(String(vb || ''), 'pt', { sensitivity: 'base', numeric: true }) * dir;
   }
 
   function matches(text) {
@@ -245,66 +369,138 @@
     request('PUT', payload, function (res) { apply(res, 'Passeio atualizado'); });
   }
 
-  /* ---------- aba: atrativos e passeios do dia ---------- */
-  function paintAtrativos() {
+  /* ---------- lista: um passeio unitário por linha ---------- */
+  function paintPasseiosTable() {
     var body = $('tf-body');
-    var max = parseInt(st.data.max_atrativos, 10) || 3;
-    var rows = (st.data.atrativos || []).filter(function (a) {
-      if (!a.page) return false;
-      if (matches(a.title_pt)) return true;
-      return passeiosDo(a.id).some(function (p) { return matches(passeioNome(p)); });
+    body.innerHTML =
+      '<div class="ps-board">' +
+        '<div class="ps-board__top">' +
+          '<p class="ps-lead">Uma linha, um passeio, uma atração. Clique no nome ou em Editar para abrir a página dele.</p>' +
+          '<p class="ps-count" id="ps-count"></p>' +
+        '</div>' +
+        '<div class="ps-scroll"><table class="ps-table">' +
+          '<thead><tr>' + PASSEIO_COLS.map(function (c) {
+            var on = st.sortKey === c[0];
+            var arrow = on ? (st.sortDir > 0 ? '↑' : '↓') : '↕';
+            var sortName = on ? (st.sortDir > 0 ? 'ascending' : 'descending') : 'none';
+            return '<th scope="col" aria-sort="' + sortName + '"><button type="button" class="ps-sort' + (on ? ' is-on' : '') + '" data-sort="' + c[0] + '">' +
+              '<span>' + esc(c[1]) + (c[2] ? '<small>' + esc(c[2]) + '</small>' : '') + '</span>' +
+              '<i aria-hidden="true">' + arrow + '</i></button></th>';
+          }).join('') + '<th scope="col" class="ps-act-h"><span>Abrir</span></th></tr>' +
+          '<tr class="ps-filters">' + PASSEIO_COLS.map(function (c) {
+            if (c[0] === 'venda') {
+              return '<th><select class="gcv-dash-select ps-filter" data-filter="venda" aria-label="Filtrar à venda">' +
+                '<option value=""' + (st.filters.venda === '' ? ' selected' : '') + '>Todos</option>' +
+                '<option value="sim"' + (st.filters.venda === 'sim' ? ' selected' : '') + '>À venda</option>' +
+                '<option value="nao"' + (st.filters.venda === 'nao' ? ' selected' : '') + '>Fora</option>' +
+                '</select></th>';
+            }
+            return '<th><input class="gcv-dash-input ps-filter" data-filter="' + c[0] + '" value="' + esc(st.filters[c[0]] || '') + '" aria-label="Filtrar ' + esc(c[1]) + '" placeholder="Filtrar" /></th>';
+          }).join('') + '<th></th></tr></thead>' +
+          '<tbody id="ps-rows"></tbody></table></div></div>';
+
+    body.querySelectorAll('[data-sort]').forEach(function (btn) {
+      btn.onclick = function () {
+        var key = btn.getAttribute('data-sort');
+        if (st.sortKey === key) st.sortDir = -st.sortDir;
+        else { st.sortKey = key; st.sortDir = 1; }
+        paintPasseiosTable();
+      };
     });
+    body.querySelectorAll('[data-filter]').forEach(function (input) {
+      input.addEventListener(input.tagName === 'SELECT' ? 'change' : 'input', function () {
+        st.filters[input.getAttribute('data-filter')] = input.value;
+        fillPasseioRows();
+      });
+    });
+    fillPasseioRows();
+  }
+
+  function fillPasseioRows() {
+    var tbody = $('ps-rows');
+    var count = $('ps-count');
+    if (!tbody) return;
+    var all = unitaryRows();
+    var rows = all.filter(rowVisible).sort(compareRows);
+    if (count) {
+      count.textContent = rows.length === all.length
+        ? (all.length + (all.length === 1 ? ' passeio' : ' passeios'))
+        : (rows.length + ' de ' + all.length);
+    }
     if (!rows.length) {
-      body.innerHTML = '<p class="gcv-cms-muted">Nenhum atrativo encontrado.</p>';
+      tbody.innerHTML = '<tr><td class="ps-empty" colspan="9">Nenhum passeio com esses filtros.</td></tr>';
       return;
     }
-    body.innerHTML = rows.map(function (a) {
-      var t = tarifarioById(a.tarifario_id);
-      var passeios = passeiosDo(a.id);
-      var aberto = !!st.open[a.id];
-      var outros = (st.data.atrativos || []).filter(function (x) { return x.page && x.id !== a.id; });
-      var opts = '<option value="">—</option>' + outros.map(function (x) { return '<option value="' + x.id + '">' + esc(x.title_pt) + '</option>'; }).join('');
-      var addSelects = '';
-      for (var i = 1; i < max && i <= 4; i++) {
-        addSelects += '<select class="gcv-dash-select" data-combo-pick="' + a.id + '" aria-label="Atrativo ' + (i + 1) + '">' + opts + '</select>';
-      }
-      return '<article class="tf-attr' + (aberto ? ' is-open' : '') + (t ? '' : ' is-off') + '" data-attr="' + a.id + '">' +
-        '<button type="button" class="tf-attr__head" data-toggle-attr="' + a.id + '" aria-expanded="' + (aberto ? 'true' : 'false') + '">' +
-          '<span class="tf-attr__name">' + esc(a.title_pt) + '</span>' +
-          '<span class="tf-attr__meta">' +
-            (t ? '<span class="tf-pill">' + esc(t.nome) + '</span><span>' + esc(aPartirDe(t)) + '</span>' : '<span class="tf-pill tf-pill--off">Sem tarifário</span>') +
-            '<span>' + passeios.length + ' relação(ões)</span>' +
-          '</span>' +
-          '<span class="tf-attr__chev" aria-hidden="true">▾</span>' +
-        '</button>' +
-        (aberto ?
-          '<div class="tf-attr__body">' +
-            '<div class="tf-block">' +
-              '<h4>Passeio unitário · ' + esc(a.title_pt) + '</h4>' +
-              '<p class="gcv-cms-muted tf-small">Uma tarifa só para este passeio.</p>' +
-              '<label class="tf-check"><input type="checkbox" data-tem-passeio="' + a.id + '"' + (a.tem_passeio === false ? '' : ' checked') + ' /> Esta atração tem passeio à venda</label>' +
-              '<div class="tf-cats" data-cats="atrativo" data-cat-id="' + a.id + '">' + catChecks(a.categorias) + '</div>' +
-              '<div class="tf-grid2">' +
-                '<label class="tf-field"><span>Tarifário</span>' + tarifarioSelect('data-link-attr="' + a.id + '"', a.tarifario_id) + '</label>' +
-                (t ? '<button type="button" class="gcv-dash-btn gcv-dash-btn--secondary gcv-dash-btn--sm tf-edit-link" data-edit-tf="' + t.id + '">Editar preços de “' + esc(t.nome) + '”</button>' : '') +
-              '</div>' +
-              '<div class="tf-field"><span>Duração saindo de cada cidade</span>' + duracaoInputs('atrativo', a.id, a.duracao_cidades) + '</div>' +
-            '</div>' +
-            '<div class="tf-block">' +
-              '<h4>Relações · tarifa nova em cada uma</h4>' +
-              (passeios.length ? passeios.map(function (p) { return passeioCard(p, a.id); }).join('') : '<p class="gcv-cms-muted">Nenhum passeio junto ainda.</p>') +
-              (max >= 2 ?
-                '<div class="tf-add">' +
-                  '<span class="tf-add__label">Juntar ' + esc(a.title_pt) + ' com</span>' +
-                  addSelects +
-                  '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary gcv-dash-btn--sm" data-combo-add="' + a.id + '">Juntar</button>' +
-                '</div>' +
-                '<p class="gcv-cms-muted tf-small">A relação aparece dentro de cada passeio unitário dela. Escolha ou crie a tarifa própria: o preço nunca soma.</p>'
-                : '<p class="gcv-cms-muted">Em Configurações o máximo é 1 atrativo por passeio. Não há relação.</p>') +
-            '</div>' +
-          '</div>' : '') +
-      '</article>';
+    tbody.innerHTML = rows.map(function (r) {
+      return '<tr>' +
+        '<td><button type="button" class="ps-name" data-open-passeio="' + r.id + '">' + esc(r.passeio) + '</button></td>' +
+        '<td><span class="ps-badge' + (r.venda === 'sim' ? ' is-on' : ' is-off') + '">' + esc(r.vendaLabel) + '</span></td>' +
+        '<td>' + (r.tarifario ? '<span class="ps-tf">' + esc(r.tarifario) + '</span>' : '<span class="ps-missing">Sem tarifário</span>') + '</td>' +
+        '<td class="ps-num">' + moneyCell(r.excursao) + '</td>' +
+        '<td class="ps-num">' + moneyCell(r.translado) + '</td>' +
+        '<td class="ps-num">' + moneyCell(r.privativo) + '</td>' +
+        '<td>' + (r.duracao ? esc(horas(r.duracao)) : '<span class="ps-missing">—</span>') + '</td>' +
+        '<td class="ps-cats">' + (r.categorias ? esc(r.categorias) : '<span class="ps-missing">—</span>') + '</td>' +
+        '<td class="ps-act"><button type="button" class="gcv-dash-btn gcv-dash-btn--primary gcv-dash-btn--sm" data-open-passeio="' + r.id + '">Editar</button></td>' +
+      '</tr>';
     }).join('');
+    tbody.querySelectorAll('[data-open-passeio]').forEach(function (b) {
+      b.onclick = function () { goPasseio(parseInt(b.getAttribute('data-open-passeio'), 10)); };
+    });
+  }
+
+  /* ---------- página de um passeio unitário ---------- */
+  function paintPasseioPage() {
+    var body = $('tf-body');
+    var a = attrById(st.passeioId);
+    if (!a || !a.page || String(a.title_pt || '').indexOf(' + ') >= 0) {
+      body.innerHTML = '<div class="ps-page"><button type="button" class="tf-back" id="ps-back">← Passeios</button><p class="gcv-cms-muted">Esse passeio não está na lista de unitários.</p></div>';
+      $('ps-back').onclick = leavePasseio;
+      return;
+    }
+    var t = tarifarioById(a.tarifario_id);
+    var max = parseInt(st.data.max_atrativos, 10) || 3;
+    var passeios = passeiosDo(a.id);
+    var outros = (st.data.atrativos || []).filter(function (x) {
+      return x.page && x.id !== a.id && String(x.title_pt || '').indexOf(' + ') < 0;
+    });
+    var opts = '<option value="">— escolher atração —</option>' + outros.map(function (x) {
+      return '<option value="' + x.id + '">' + esc(x.title_pt) + '</option>';
+    }).join('');
+    var addSelects = '';
+    for (var i = 1; i < max && i <= 4; i++) {
+      addSelects += '<label class="tf-field"><span>Atração ' + (i + 1) + '</span><select class="gcv-dash-select" data-combo-pick="' + a.id + '" aria-label="Atração ' + (i + 1) + '">' + opts + '</select></label>';
+    }
+    body.innerHTML =
+      '<div class="ps-page">' +
+        '<button type="button" class="tf-back" id="ps-back">← Passeios</button>' +
+        '<header class="ps-hero">' +
+          '<p class="ps-kicker">Passeio unitário · 1 atração</p>' +
+          '<h3>' + esc(a.title_pt) + '</h3>' +
+          '<p class="ps-sub">' + (t ? 'Tarifa: ' + esc(t.nome) + ' · ' + esc(aPartirDe(t)) + '.' : 'Sem tarifário: este passeio fica fora da venda.') + '</p>' +
+        '</header>' +
+        '<section class="ps-card">' +
+          '<h4>Este passeio</h4>' +
+          '<label class="tf-check"><input type="checkbox" data-tem-passeio="' + a.id + '"' + (a.tem_passeio === false ? '' : ' checked') + ' /> À venda no site</label>' +
+          '<div class="tf-field"><span>Categorias</span><div class="tf-cats" data-cats="atrativo" data-cat-id="' + a.id + '">' + catChecks(a.categorias) + '</div></div>' +
+          '<div class="tf-grid2">' +
+            '<label class="tf-field"><span>Tarifário</span>' + tarifarioSelect('data-link-attr="' + a.id + '"', a.tarifario_id) + '</label>' +
+            (t ? '<button type="button" class="gcv-dash-btn gcv-dash-btn--secondary gcv-dash-btn--sm tf-edit-link" data-edit-tf="' + t.id + '">Editar preços de “' + esc(t.nome) + '”</button>' : '') +
+          '</div>' +
+          '<div class="tf-field"><span>Duração saindo de cada cidade</span>' + duracaoInputs('atrativo', a.id, a.duracao_cidades) + '</div>' +
+        '</section>' +
+        '<section class="ps-card">' +
+          '<h4>Relações</h4>' +
+          '<p class="gcv-cms-muted">Cada relação é outro passeio, com tarifa nova, porque o roteiro muda. O preço nunca soma. Elas ficam só nesta página.</p>' +
+          (passeios.length ? passeios.map(function (p) { return passeioCard(p, a.id); }).join('') : '<p class="gcv-cms-muted">Nenhuma relação ainda.</p>') +
+          (max >= 2
+            ? '<div class="tf-add ps-join">' + addSelects +
+                '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary" data-combo-add="' + a.id + '">Criar relação</button></div>' +
+                '<p class="gcv-cms-muted tf-small">Até ' + max + ' atrações no mesmo dia. <a href="#configuracoes">Mudar o máximo em Configurações</a>.</p>'
+            : '<p class="gcv-cms-muted">Em Configurações o máximo é 1 atração por passeio. Não há relação.</p>') +
+        '</section>' +
+      '</div>';
+    $('ps-back').onclick = leavePasseio;
     bindAtrativos(body);
   }
 
@@ -326,13 +522,6 @@
   }
 
   function bindAtrativos(body) {
-    body.querySelectorAll('[data-toggle-attr]').forEach(function (b) {
-      b.onclick = function () {
-        var id = b.getAttribute('data-toggle-attr');
-        st.open[id] = !st.open[id];
-        paintBody();
-      };
-    });
     body.querySelectorAll('[data-edit-tf]').forEach(function (b) {
       b.onclick = function () { openEditor(tarifarioById(b.getAttribute('data-edit-tf'))); };
     });
@@ -368,7 +557,8 @@
     });
     body.querySelectorAll('[data-tem-passeio]').forEach(function (input) {
       input.onchange = function () {
-        var wrap = input.closest('.tf-attr__body').querySelector('[data-cats="atrativo"]');
+        var scope = input.closest('.ps-page') || input.closest('.tf-attr__body');
+        var wrap = scope && scope.querySelector('[data-cats="atrativo"]');
         if (wrap) saveOferta(wrap, { tem_passeio: input.checked ? 1 : 0 });
       };
     });
@@ -387,10 +577,7 @@
         });
         if (ids.length < 2) { toast('Escolha com qual atrativo juntar.', true); return; }
         request('PUT', { action: 'combo', attraction_ids: ids }, function (res) {
-          if (apply(res, 'Passeio criado. Agora escolha o tarifário dele.')) {
-            ids.forEach(function (id) { st.open[id] = true; });
-            paintBody();
-          }
+          apply(res, 'Relação criada. Agora escolha o tarifário dela.');
         });
       };
     });
@@ -583,6 +770,7 @@
     st.rootId = rootId;
     st.editing = null;
     st.q = '';
+    st.passeioId = mode === 'passeios' ? passeioIdFromHash() : 0;
     var box = $(rootId);
     if (!box) return;
     if (!st.data) box.innerHTML = '<p class="gcv-cms-muted">Carregando…</p>';

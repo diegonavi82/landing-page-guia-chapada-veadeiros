@@ -36,6 +36,63 @@ export const SEASON_ROWS = [
   { monthKey: "dec", ico: "🌧️", badge: "rain", stars: 4, text: { pt: "Estação úmida firme. Rios muito cheios para mirantes.", en: "Firm wet season. Very full rivers for lookouts.", es: "Temporada húmeda firme. Ríos muy llenos en miradores." } },
 ];
 
+const CARACOL_STORY = {
+  pt: {
+    info: [
+      "Região: Complexo Caldeira, Alto Paraíso de Goiás",
+      "Acesso: estrada de terra, trilha na mata e travessia de rio",
+      "Atrativos:",
+      "- Cachoeira do Caracol",
+      "- Cachoeira Valquíria",
+      "- Rio da Caldeira",
+      "- Mirante da trilha",
+    ],
+    html: `<p>O Caracol fica no Complexo Caldeira, em Alto Paraíso de Goiás. A chegada é por estrada de terra, com o paredão da Chapada ao fundo. A trilha entra na mata, cruza um trecho raso do rio e abre um mirante sobre o vale antes das quedas.</p>
+<h3><strong>Cachoeira do Caracol</strong></h3>
+<p>A queda principal desce dentro de uma gruta de quartzito e forma um poço para banho. A água cai em cortina na rocha escura, e o poço mistura o verde do rio com a sombra da gruta.</p>
+<h3><strong>Cachoeira Valquíria</strong></h3>
+<p>No mesmo complexo, a Valquíria cai em degraus sobre a rocha até um poço escuro, cercada de mata. É o outro banho do roteiro.</p>
+<h3><strong>Trilha, rio e mirante</strong></h3>
+<p>O caminho passa por pedras na mata e por uma travessia rasa de água clara. Do mirante se vê o vale, o rio e a serra. O rio da Caldeira segue dourado e transparente entre as árvores.</p>`,
+  },
+  en: {
+    info: [
+      "Area: Complexo Caldeira, Alto Paraíso de Goiás",
+      "Access: dirt road, forest trail and a river crossing",
+      "Highlights:",
+      "- Caracol waterfall",
+      "- Valquíria waterfall",
+      "- Caldeira river",
+      "- Trail lookout",
+    ],
+    html: `<p>Caracol is in Complexo Caldeira, in Alto Paraíso de Goiás. The approach is a dirt road, with the Chapada escarpment in the distance. The trail enters the forest, crosses a shallow stretch of river and opens onto a lookout over the valley before the falls.</p>
+<h3><strong>Caracol waterfall</strong></h3>
+<p>The main fall drops inside a quartzite grotto and forms a swimming pool. The water curtains down the dark rock, and the pool mixes the green of the river with the shade of the cave.</p>
+<h3><strong>Valquíria waterfall</strong></h3>
+<p>In the same complex, Valquíria steps down the rock into a dark pool, surrounded by forest. It is the other swim on the route.</p>
+<h3><strong>Trail, river and lookout</strong></h3>
+<p>The path crosses rocks in the forest and a shallow stretch of clear water. From the lookout you see the valley, the river and the ridge. The Caldeira river runs golden and clear between the trees.</p>`,
+  },
+  es: {
+    info: [
+      "Región: Complejo Caldeira, Alto Paraíso de Goiás",
+      "Acceso: camino de tierra, sendero en el bosque y cruce de río",
+      "Atractivos:",
+      "- Cascada Caracol",
+      "- Cascada Valquíria",
+      "- Río Caldeira",
+      "- Mirador del sendero",
+    ],
+    html: `<p>Caracol está en el Complejo Caldeira, en Alto Paraíso de Goiás. La llegada es por un camino de tierra, con el paredón de la Chapada al fondo. El sendero entra en el bosque, cruza un tramo poco profundo del río y abre un mirador sobre el valle antes de las cascadas.</p>
+<h3><strong>Cascada Caracol</strong></h3>
+<p>La caída principal baja dentro de una gruta de cuarcita y forma una poza para baño. El agua cae en cortina sobre la roca oscura, y la poza mezcla el verde del río con la sombra de la gruta.</p>
+<h3><strong>Cascada Valquíria</strong></h3>
+<p>En el mismo complejo, Valquíria baja en escalones sobre la roca hasta una poza oscura, rodeada de bosque. Es el otro baño del recorrido.</p>
+<h3><strong>Sendero, río y mirador</strong></h3>
+<p>El camino pasa por piedras en el bosque y por un cruce poco profundo de agua clara. Desde el mirador se ve el valle, el río y la sierra. El río Caldeira sigue dorado y transparente entre los árboles.</p>`,
+  },
+};
+
 export const HOTSPOTS = [
   { slug: "cachoeira-almecegas-poco-sao-bento-guia-chapada-veadeiros", image: "imagens/cachoeira-almecegas-guia-chapada-veadeiros-alto-paraiso-10.jpg", title: { pt: "Almécegas", en: "Almécegas", es: "Almécegas" }, lead: { pt: "Um dos circuitos mais clássicos de Alto Paraíso — poços claros e trilha memorável com guia local.", en: "A classic Alto Paraíso circuit — clear pools and a memorable trail with a local guide.", es: "Un circuito clásico de Alto Paraíso — pozas cristalinas y sendero memorable con guía local." } },
   { slug: "vale-lua-guia-chapada-veadeiros-sao-jorge", image: "imagens/vale-lua-guia-chapada-veadeiros-sao-jorge-1.jpg", title: { pt: "Vale da Lua", en: "Moon Valley", es: "Valle de la Luna" }, lead: { pt: "Formações de quartzito esculpidas pelo tempo — cenário único em São Jorge.", en: "Quartzite sculpted by time — a one-of-a-kind setting in São Jorge.", es: "Cuarzo tallado por el tiempo — un paisaje único en São Jorge." } },
@@ -51,7 +108,7 @@ export const HOTSPOTS = [
   { slug: "cachoeira-label-guia-chapada-veadeiros-sao-joao-alianca", image: "imagens/cachoeira-label-guia-chapada-veadeiros.jpg", title: { pt: "Label", en: "Label", es: "Label" }, lead: { pt: "Queda imponente na região de São João d'Aliança — natureza selvagem e pouca infraestrutura.", en: "A powerful fall near São João d'Aliança — wild nature, minimal infrastructure.", es: "Salto imponente en São João d'Aliança — naturaleza salvaje y poca infraestructura." } },
   { slug: "cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso", image: "imagens/cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso.jpg", title: { pt: "Loquinhas", en: "Loquinhas", es: "Loquinhas" }, lead: { pt: "Poços em degrau e visual cinematográfico — sensível ao volume de chuvas.", en: "Stepped pools and cinematic views — sensitive to rainfall.", es: "Pozas escalonadas y vistas de postal — sensible a las lluvias." } },
   { slug: "cachoeira-anjos-arcanjos-guia-chapada-veadeiros-alto-paraiso", image: "imagens/cachoeira-arcanjos-anjos-guia-chapada-veadeiros-alto-paraiso.jpg", title: { pt: "Anjos e Arcanjos", en: "Anjos e Arcanjos", es: "Ángeles y Arcángeles" }, lead: { pt: "Circuito variado com saltos e poços para diferentes perfis em Alto Paraíso.", en: "Varied falls and pools for different skill levels in Alto Paraíso.", es: "Circuito variado con saltos y pozas para distintos niveles." } },
-  { slug: "caracol-guia-chapada-veadeiros", image: "imagens/cachoeira-caracol-complexo-caldeira-guia-chapada-veadeiros-alto-paraiso.jpg", title: { pt: "Caracol", en: "Caracol", es: "Caracol" }, lead: { pt: "Cachoeira Caracol no Complexo Caldeira, em Alto Paraíso de Goiás — poço para banho e queda em gruta de quartzito.", en: "Caracol waterfall at Complexo Caldeira, in Alto Paraíso de Goiás — a swimming pool and a fall inside a quartzite cave.", es: "Cascada Caracol en el Complejo Caldeira, en Alto Paraíso de Goiás — poza para baño y salto en una gruta de cuarcita." } },
+  { slug: "caracol-guia-chapada-veadeiros", image: "imagens/cachoeira-do-caracol-complexo-caldeira-alto-paraiso.jpg", story: CARACOL_STORY, title: { pt: "Caracol", en: "Caracol", es: "Caracol" }, lead: { pt: "Cachoeira Caracol no Complexo Caldeira, em Alto Paraíso de Goiás — poço para banho e queda em gruta de quartzito.", en: "Caracol waterfall at Complexo Caldeira, in Alto Paraíso de Goiás — a swimming pool and a fall inside a quartzite cave.", es: "Cascada Caracol en el Complejo Caldeira, en Alto Paraíso de Goiás — poza para baño y salto en una gruta de cuarcita." } },
   { slug: "mirante-janela-cachoeira-abismo-guia-chapada-veadeiros-sao-jorge", image: "imagens/mirante-janela-guia-chapada-veadeiros-sao-jorge-parque-nacional-1.jpg", title: { pt: "Mirante da Janela", en: "Mirante da Janela", es: "Mirador de la Ventana" }, lead: { pt: "Dentro do Parque Nacional — um dos mirantes mais famosos do Brasil.", en: "Inside the National Park — one of Brazil's most famous lookouts.", es: "Dentro del Parque Nacional — uno de los miradores más famosos de Brasil." } },
   { slug: "parque-nacional-chapada-veadeiros-saltos-rio-preto-sao-jorge", image: "imagens/parque-nacional-guia-chapada-veadeiros-saltos-rio-preto-garimpao.jpg", title: { pt: "Saltos do Rio Preto", en: "Saltos do Rio Preto", es: "Saltos del Río Preto" }, lead: { pt: "Trilha longa até o grande salto — planejamento e respeito às regras do ICMBio.", en: "Long trail to the big falls — plan ahead and follow ICMBio rules.", es: "Sendero largo hasta el gran salto — planificación y normas del ICMBio." } },
   { slug: "parque-nacional-chapada-veadeiros-canions-carioquinhas-sao-jorge", image: "imagens/parque-nacional-guia-chapada-veadeiros-carrossel-saltos-rio-preto.jpg", title: { pt: "Cânions e Cariocas", en: "Cânions e Cariocas", es: "Cañones y Cariocas" }, lead: { pt: "Geologia impressionante e trechos de rio com segurança reforçada em grupo.", en: "Stunning geology — river sections safest with a guided group.", es: "Geología impactante — tramos de río más seguros en grupo con guía." } },
@@ -65,8 +122,8 @@ export const MAP_BOX_BY_SLUG = {
   "cataratas-dos-couros-guia-chapada-veadeiros-alto-paraiso": { l: 33.82, t: 75.67, w: 13.1, h: 3.5 },
   "cachoeira-cordovil-poco-esmeralda-guia-chapada-veadeiros": { l: 36.75, t: 70.33, w: 6.44, h: 3.67 },
   "cachoeira-segredo-guia-chapada-veadeiros-sao-jorge": { l: 20.5, t: 87.17, w: 6.3, h: 4 },
-  "cachoeira-cristais-guia-chapada-veadeiros-alto-paraiso": { l: 66.47, t: 49, w: 5.49, h: 3.67 },
-  "cachoeira-poco-encantado-guia-chapada-veadeiros-teresina-de-goias": { l: 75.62, t: 35.5, w: 10.69, h: 4.17 },
+  "cachoeira-cristais-guia-chapada-veadeiros-alto-paraiso": { l: 65.81, t: 49, w: 6.3, h: 4.2 },
+  "cachoeira-poco-encantado-guia-chapada-veadeiros-teresina-de-goias": { l: 75.77, t: 32.83, w: 10.76, h: 4 },
   "cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante": { l: 47.07, t: 2.67, w: 6.15, h: 5.33 },
   "cachoeira-complexo-rio-prata-guia-chapada-veadeiros-cavalcante": { l: 23.5, t: 10.67, w: 10.32, h: 4 },
   "cachoeira-ponte-de-pedra-guia-chapada-veadeiros-cavalcante": { l: 27.16, t: 24.83, w: 9.96, h: 3.67 },
@@ -78,6 +135,7 @@ export const MAP_BOX_BY_SLUG = {
   "parque-nacional-chapada-veadeiros-saltos-rio-preto-sao-jorge": { l: 20.42, t: 61.67, w: 10.32, h: 5.5 },
   "parque-nacional-chapada-veadeiros-canions-carioquinhas-sao-jorge": { l: 26.87, t: 59.17, w: 6.66, h: 6 },
   "cachoeira-macacao-guia-chapada-veadeiros-sao-joao-alianca": { l: 81.55, t: 64.5, w: 7.17, h: 3.5 },
+  "caracol-guia-chapada-veadeiros": { l: 80.4, t: 52, w: 6.6, h: 4.2 },
 };
 
 export function hotspotsForMap() {

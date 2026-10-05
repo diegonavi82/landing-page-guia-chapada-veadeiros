@@ -290,7 +290,7 @@ const DETAIL_IMAGE_BY_SLUG = {
   "cachoeira-macaquinhos-guia-chapada-veadeiros-sao-joao-alianca":
     "/imagens/cachoeira-macaquinhos-guia-chapada-veadeiros-6.jpg",
   "caracol-guia-chapada-veadeiros":
-    "/imagens/cachoeira-caracol-complexo-caldeira-guia-chapada-veadeiros-alto-paraiso.jpg",
+    "/imagens/cachoeira-do-caracol-complexo-caldeira-alto-paraiso.jpg",
 };
 
 function esc(s) {
@@ -2420,10 +2420,12 @@ function atrativoDetailMain(locale, localeSlug, ap, pathKey) {
   const cur = outRelPath(locale, pathKey);
   const contatoHref = relBetweenSync(cur, outRelPath(locale, "contato.html"));
   const title = attractionDisplayTitle(base, p);
-  const metaDesc =
-    (cms?.seoDescription && String(cms.seoDescription).trim()) ||
-    (cms?.excerpt && String(cms.excerpt).trim()) ||
-    p.lead[locale];
+  const isBlank = p.blank === true;
+  const metaDesc = isBlank
+    ? title
+    : (cms?.seoDescription && String(cms.seoDescription).trim()) ||
+      (cms?.excerpt && String(cms.excerpt).trim()) ||
+      p.lead[locale];
 
   const rawContent = stripScripts(cms?.content ?? "");
   const firstImage = extractFirstImage(rawContent);
@@ -2445,7 +2447,9 @@ function atrativoDetailMain(locale, localeSlug, ap, pathKey) {
 
   let mainColumnHtml = "";
 
-  if (rawContent.trim()) {
+  if (isBlank) {
+    mainColumnHtml = "";
+  } else if (rawContent.trim()) {
     const detailBody = prepareDetailContent(rawContent, firstImage?.tag);
     const detailParts = splitDetailContent(detailBody);
     let mainHtml = rewriteHtmlMediaUrls(detailParts.mainContent);
@@ -2489,6 +2493,18 @@ function atrativoDetailMain(locale, localeSlug, ap, pathKey) {
   </div>
 </section>`;
     }
+  } else if (p.story?.[locale]) {
+    const story = p.story[locale];
+    const infoHtml = (story.info || []).map(sidebarInfoLineHtml).join("\n");
+    const waGuideUrl = esc(attractionGuideWaUrl(title));
+    mainColumnHtml = `<section class="gcv-detail-layout">
+  <aside class="gcv-detail-sidebar">
+    ${detailImgHref ? `<img src="${esc(detailImgHref)}" alt="${esc(detailImgAlt)}" class="gcv-detail-main-image" loading="eager" />` : ""}
+    <div class="gcv-detail-cta"><a href="${waGuideUrl}" class="button" target="_blank" rel="noopener noreferrer">Contrate um guia local!</a></div>
+    ${infoHtml ? `<div class="gcv-detail-info">${infoHtml}</div>` : ""}
+  </aside>
+  <div class="gcv-detail-content">${story.html}</div>
+</section>`;
   } else {
     const excerptText = (cms?.excerpt && String(cms.excerpt).trim()) || p.lead[locale];
     const fallbackBody = `<p>${esc(p.lead[locale])}</p>`;
@@ -2510,7 +2526,7 @@ function atrativoDetailMain(locale, localeSlug, ap, pathKey) {
     }
   }
 
-  const gal = attractionPhotoGalleryHtml(locale, ap, base, title);
+  const gal = isBlank ? "" : attractionPhotoGalleryHtml(locale, ap, base, title);
   const heroImgRel = detailImgRel || p.image;
   const pageUrl = `${SITE_ORIGIN}${localePathToUrl(locale, `atrativos/${localeSlug}.html`)}`;
   const pageId = `attraction:${base}`;
@@ -2532,7 +2548,7 @@ function atrativoDetailMain(locale, localeSlug, ap, pathKey) {
   });
 
   const pillarLink = renderPillarContextLink(locale, pathKey, pageId);
-  const relatedHtml = renderRelatedBlock(pageId, locale, pathKey);
+  const relatedHtml = isBlank ? "" : renderRelatedBlock(pageId, locale, pathKey);
 
   return `<article class="gcv-detail-page">
   <div class="gcv-detail-inner">

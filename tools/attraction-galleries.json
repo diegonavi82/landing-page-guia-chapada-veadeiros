@@ -779,9 +779,39 @@
   ],
   "caracol-guia-chapada-veadeiros": [
     {
-      "src": "/imagens/cachoeira-caracol-complexo-caldeira-guia-chapada-veadeiros-alto-paraiso.jpg",
-      "alt": "Cachoeira Caracol no Complexo Caldeira, Alto Paraíso de Goiás — poço para banho e queda em gruta. Guia Chapada Veadeiros (GCV)",
-      "title": "Cachoeira Caracol — Complexo Caldeira"
+      "src": "/imagens/cachoeira-do-caracol-complexo-caldeira-alto-paraiso.jpg",
+      "alt": "Cachoeira do Caracol no Complexo Caldeira, Alto Paraíso de Goiás — queda em gruta e poço para banho",
+      "title": "Cachoeira do Caracol"
+    },
+    {
+      "src": "/imagens/cachoeira-valquiria-complexo-caldeira.jpg",
+      "alt": "Cachoeira Valquíria no Complexo Caldeira, Chapada dos Veadeiros",
+      "title": "Cachoeira Valquíria"
+    },
+    {
+      "src": "/imagens/mirante-trilha-complexo-caldeira.jpg",
+      "alt": "Mirante da trilha do Complexo Caldeira, com o vale e o rio ao fundo",
+      "title": "Mirante da trilha"
+    },
+    {
+      "src": "/imagens/rio-caldeira-chapada-dos-veadeiros.jpg",
+      "alt": "Rio da Caldeira, de água dourada, na Chapada dos Veadeiros",
+      "title": "Rio da Caldeira"
+    },
+    {
+      "src": "/imagens/trilha-complexo-caldeira-mata.jpg",
+      "alt": "Trilha na mata do Complexo Caldeira, Alto Paraíso de Goiás",
+      "title": "Trilha na mata"
+    },
+    {
+      "src": "/imagens/trilha-travessia-rio-caldeira.jpg",
+      "alt": "Travessia do rio na trilha do Complexo Caldeira",
+      "title": "Travessia do rio"
+    },
+    {
+      "src": "/imagens/estrada-complexo-caldeira-chapada-dos-veadeiros.jpg",
+      "alt": "Estrada de terra a caminho do Complexo Caldeira, Chapada dos Veadeiros",
+      "title": "Estrada do Complexo Caldeira"
     }
   ]
 }

@@ -44,6 +44,7 @@
       return 'section-cms-excursions';
     }
     if (hash === 'pagar-guias') return 'section-admin-payouts';
+    if (hash.indexOf('passeio/') === 0 && dashLoadMap['section-cms-passeios']) return 'section-cms-passeios';
     if (dashLoadMap[hash]) return hash;
     var found = '';
     Object.keys(SECTION_HASH).forEach(function (id) {
@@ -54,6 +55,8 @@
 
   function syncSectionHash(id) {
     if (!id || dashHashLock) return;
+    var cur = String(location.hash || '').replace(/^#/, '').split('?')[0].split('&')[0];
+    if (id === 'section-cms-passeios' && cur.indexOf('passeio/') === 0) return;
     var slug = hashForSection(id);
     if (!slug) return;
     var next = '#' + slug;
@@ -2166,7 +2169,15 @@
       var link = e.target.closest('[data-section]');
       if (!link) return;
       e.preventDefault();
-      requestSection(link.getAttribute('data-section'));
+      var sectionId = link.getAttribute('data-section');
+      if (sectionId === 'section-cms-passeios' && String(location.hash || '').indexOf('#passeio/') === 0) {
+        try {
+          history.replaceState(null, '', location.pathname + location.search + '#passeios');
+        } catch (err) {
+          location.hash = 'passeios';
+        }
+      }
+      requestSection(sectionId);
     }
 
     navList.addEventListener('click', onNavClick);
