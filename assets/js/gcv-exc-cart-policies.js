@@ -137,6 +137,7 @@
           heading: "4.1 Substituição do Guia",
           paragraphs: [
             "O CONTRATANTE não escolhe outro guia depois que um guia confirmou. O guia só se retira por problema de saúde, impedimento grave ou força maior.",
+            "Quando o guia aceita, a agenda daquele dia bloqueia na hora. Ele não recebe outra proposta nesse dia enquanto o passeio espera outro guia ou o cartão. Se o passeio for cancelado, a agenda abre de novo.",
             "Quando o guia se retira, ele vai para o último lugar da fila em que estava. O próximo do ranking assume, na mesma rotina de troca. O cliente só recebe a notificação na hora da troca, com foto, nome, nota e descrição do novo guia, sem o motivo. Se faltarem 2 horas para o passeio e ainda não houver substituto, o passeio é cancelado e o cliente recebe o estorno. O guia que saiu e os demais envolvidos são avisados. Nenhum guia recebe por esse passeio cancelado.",
             "No Privativo, o cliente vê os guias do idioma da compra que aceitaram participar da lista, na ordem do ranking. Em cada guia aparecem foto, nome, nota e descrição. O lugar na fila não aparece para o cliente. Só o guia vê a própria posição e é avisado quando ela muda. Quando o guia escolhido pelo cliente aceita o passeio, a associação está feita e a cobrança de 100% ocorre. Depois disso o CONTRATANTE não escolhe outro guia. Se esse guia se retirar, vale a regra acima: último lugar na fila, o próximo assume, e o cliente só é avisado na hora da troca.",
             "No Privativo, o guia escolhido tem 4 horas para aceitar ou recusar. O relógio para entre 22h e 8h. Se não responder nesse prazo, ou se recusar, perde 4 posições na fila em que foi chamado. Com translado, essa fila é Meu veículo. Sem translado, é Guiagem. Se não houver 4 pessoas atrás, vai para o último lugar. A CONTRATADA chama o próximo do mesmo ranking e o cliente é avisado.",
@@ -370,6 +371,7 @@
           heading: "8. Depois da confirmação",
           paragraphs: [
             "Depois da cobrança, o cliente não cancela. O cancelamento manual do passeio é apenas do administrador.",
+            "Quando o GUIA aceita, a agenda daquele dia bloqueia na hora. Ele não recebe outra proposta nesse dia enquanto o passeio espera outro guia ou o cartão. Se o passeio for cancelado, a agenda abre de novo.",
             "O GUIA só se retira por problema de saúde, impedimento grave ou força maior. Ele vai para o último lugar da fila em que estava. O próximo do ranking assume, na mesma rotina de troca. O cliente só é notificado na hora da troca.",
             "Se faltarem 2 horas para o passeio e ainda não houver substituto, o passeio é cancelado e o cliente recebe o estorno. O GUIA é avisado. Nenhum GUIA recebe por esse passeio.",
             "No cancelamento por mau tempo, o cliente recebe o estorno, nenhum GUIA recebe, e o GUIA do passeio é notificado.",

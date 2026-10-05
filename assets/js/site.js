@@ -1257,7 +1257,7 @@
         pickLang: "Selecione o idioma",
         bilingual: "Guia bilíngue",
         bilingualHint: "Condutor credenciado que fala inglês ou espanhol",
-        bilingualPrice: "+ R$ {price} / pessoa",
+        bilingualPrice: "+ R$ {price} no total",
         bilingualShort: "guia bilíngue",
         langEn: "Inglês",
         langEs: "Espanhol",
@@ -1316,7 +1316,7 @@
         pickLang: "Select the language",
         bilingual: "Bilingual guide",
         bilingualHint: "Licensed guide who speaks English or Spanish",
-        bilingualPrice: "+ R$ {price} / person",
+        bilingualPrice: "+ R$ {price} on the total",
         bilingualShort: "bilingual guide",
         langEn: "English",
         langEs: "Spanish",
@@ -1375,7 +1375,7 @@
         pickLang: "Selecciona el idioma",
         bilingual: "Guía bilingüe",
         bilingualHint: "Guía acreditado que habla inglés o español",
-        bilingualPrice: "+ R$ {price} / persona",
+        bilingualPrice: "+ R$ {price} en el total",
         bilingualShort: "guía bilingüe",
         langEn: "Inglés",
         langEs: "Español",
@@ -1630,7 +1630,26 @@
   var PASSEIO_OFF_PIX = 10;
   var PASSEIO_BILINGUE_CENTS = 4000;
 
-  /** O tarifário é o valor cheio. O PIX tira 10%. O guia bilíngue soma R$ 40 por pessoa. */
+  /**
+   * O total já está com o desconto de idade, quando houver.
+   * Português soma zero. Outro idioma entra uma vez: percentual sobre o total, ou valor fixo.
+   * Sem campo na cópia da cidade, o fixo padrão é R$ 40, uma vez só.
+   */
+  function passeioBilingueCents(tarifa, cidade, totalCents, ligado) {
+    if (!ligado) return 0;
+    var key = passeioCidadeKey(cidade);
+    var row = (tarifa && tarifa.cidades && tarifa.cidades[key]) || {};
+    var tipo = row.bilingue_tipo === "percentual" ? "percentual" : "fixo";
+    var total = Math.max(0, parseInt(totalCents, 10) || 0);
+    if (tipo === "percentual") {
+      var pct = Math.max(0, parseInt(row.bilingue_valor, 10) || 0);
+      return Math.round(total * pct / 100);
+    }
+    if (row.bilingue_valor == null || row.bilingue_valor === "") return PASSEIO_BILINGUE_CENTS;
+    return Math.max(0, parseInt(row.bilingue_valor, 10) || 0);
+  }
+
+  /** O tarifário é o valor cheio, já com o idioma. O PIX tira 10% depois. */
   function passeioPagamento(grossCents) {
     var card = Math.max(0, parseInt(grossCents, 10) || 0);
     var pix = Math.round(card * (100 - PASSEIO_OFF_PIX) / 100);
@@ -1941,7 +1960,7 @@
       var exclusivoPacote = modalidade === "exclusivo" && (pessoas <= 4 || comTranslado);
       var bi = passeioBiState();
       var billed = passeioPessoasCobradas(sel, modalidade, pessoas, comTranslado);
-      var biCents = bi.on ? PASSEIO_BILINGUE_CENTS * billed : 0;
+      var biCents = passeioBilingueCents(tarifaAtiva(), cidade, total, bi.on);
       var pay = passeioPagamento(total + biCents);
       var qty = exclusivoPacote ? 1 : billed;
       var pixReais = Math.round(pay.pix / 100);
@@ -2202,7 +2221,8 @@
       paintRoute(sel, modalidade, comTranslado);
       var unit = modalidade === "exclusivo" ? (comTranslado ? sel.exclusivoT : sel.exclusivo) : (comTranslado ? sel.excursaoT : sel.excursao);
       var billed = passeioPessoasCobradas(sel, modalidade, nPessoas, comTranslado);
-      var biCents = bi.on ? PASSEIO_BILINGUE_CENTS * billed : 0;
+      var cidadeNome = box.querySelector("[data-passeio-city]").value;
+      var biCents = passeioBilingueCents(tarifaAtiva(), cidadeNome, total, bi.on);
       var pay = passeioPagamento(total + biCents);
       var word = billed === 1 ? copy.person : copy.peopleWord;
       var carsNow = passeioCarros(nPessoas);

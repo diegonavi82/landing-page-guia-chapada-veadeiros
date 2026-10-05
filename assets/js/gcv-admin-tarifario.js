@@ -668,6 +668,22 @@
             }).join('') + '</tr>';
           }).join('') +
         '</tbody></table></div>' +
+        '<div class="tf-table-wrap"><table class="tf-table">' +
+          '<thead><tr><th scope="col">Guia em outro idioma</th><th scope="col">Tipo</th><th scope="col">Valor</th></tr></thead><tbody>' +
+          Object.keys(CIDADE_CURTA).map(function (k) {
+            var row = cidades[k] || {};
+            var tipo = row.bilingue_tipo === 'percentual' ? 'percentual' : 'fixo';
+            var valor = row.bilingue_valor == null ? (tipo === 'percentual' ? '' : moneyInput(4000)) : (tipo === 'percentual' ? String(row.bilingue_valor) : moneyInput(row.bilingue_valor));
+            return '<tr><th scope="row">' + esc(st.data.cidades && st.data.cidades[k] || CIDADE_CURTA[k]) + '</th>' +
+              '<td><select class="gcv-dash-select" data-bi-tipo="' + k + '">' +
+                '<option value="fixo"' + (tipo === 'fixo' ? ' selected' : '') + '>Valor fixo</option>' +
+                '<option value="percentual"' + (tipo === 'percentual' ? ' selected' : '') + '>Percentual</option>' +
+              '</select></td>' +
+              '<td><label class="tf-money"><em data-bi-unit="' + k + '">' + (tipo === 'percentual' ? '%' : 'R$') + '</em>' +
+                '<input inputmode="decimal" data-bi-valor="' + k + '" value="' + esc(valor) + '" aria-label="Idioma ' + esc(CIDADE_CURTA[k]) + '" /></label></td></tr>';
+          }).join('') +
+        '</tbody></table></div>' +
+        '<p class="gcv-cms-muted tf-small">Entra uma vez no total da compra, depois do desconto de idade. Português soma zero. Vazio no fixo = R$ 40.</p>' +
         '<div class="tf-editor__tools"><button type="button" class="gcv-dash-btn gcv-dash-btn--secondary gcv-dash-btn--sm" id="tf-copy">Copiar Alto Paraíso para as outras cidades</button>' +
         '<span class="gcv-cms-muted tf-small">Valores por pessoa. Campo vazio = R$ 0 (não vende nessa opção).</span></div>' +
         (t ?
@@ -688,6 +704,13 @@
     function back() { st.editing = null; paintBody(); }
     $('tf-back').onclick = back;
     $('tf-cancel').onclick = back;
+    body.querySelectorAll('[data-bi-tipo]').forEach(function (sel) {
+      sel.onchange = function () {
+        var k = sel.getAttribute('data-bi-tipo');
+        var unit = body.querySelector('[data-bi-unit="' + k + '"]');
+        if (unit) unit.textContent = sel.value === 'percentual' ? '%' : 'R$';
+      };
+    });
     $('tf-copy').onclick = function () {
       CAMPOS.forEach(function (c) {
         var src = body.querySelector('[data-price="alto-paraiso:' + c[0] + '"]');
@@ -695,6 +718,16 @@
           var dst = body.querySelector('[data-price="' + k + ':' + c[0] + '"]');
           if (src && dst) dst.value = src.value;
         });
+      });
+      var tipoSrc = body.querySelector('[data-bi-tipo="alto-paraiso"]');
+      var valorSrc = body.querySelector('[data-bi-valor="alto-paraiso"]');
+      ['sao-jorge', 'cavalcante'].forEach(function (k) {
+        var tipo = body.querySelector('[data-bi-tipo="' + k + '"]');
+        var valor = body.querySelector('[data-bi-valor="' + k + '"]');
+        var unit = body.querySelector('[data-bi-unit="' + k + '"]');
+        if (tipo && tipoSrc) tipo.value = tipoSrc.value;
+        if (valor && valorSrc) valor.value = valorSrc.value;
+        if (unit && tipo) unit.textContent = tipo.value === 'percentual' ? '%' : 'R$';
       });
     };
     $('tf-save').onclick = function () {
@@ -704,6 +737,18 @@
         var parts = input.getAttribute('data-price').split(':');
         payload.cidades[parts[0]] = payload.cidades[parts[0]] || {};
         payload.cidades[parts[0]][parts[1]] = toCents(input.value);
+      });
+      body.querySelectorAll('[data-bi-tipo]').forEach(function (sel) {
+        var k = sel.getAttribute('data-bi-tipo');
+        var input = body.querySelector('[data-bi-valor="' + k + '"]');
+        payload.cidades[k] = payload.cidades[k] || {};
+        payload.cidades[k].bilingue_tipo = sel.value === 'percentual' ? 'percentual' : 'fixo';
+        var raw = input ? String(input.value || '').trim() : '';
+        if (payload.cidades[k].bilingue_tipo === 'percentual') {
+          payload.cidades[k].bilingue_valor = raw === '' ? 0 : Math.max(0, parseInt(raw, 10) || 0);
+        } else {
+          payload.cidades[k].bilingue_valor = raw === '' ? 4000 : toCents(raw);
+        }
       });
       if (t) payload.id = t.id;
       var btn = $('tf-save');

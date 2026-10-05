@@ -2024,7 +2024,7 @@ function serveFile(res, filePath) {
     res.writeHead(200, { "Content-Type": MIME[ext] || "application/octet-stream" });
     if (ext === ".html") {
       let html = data.toString("utf8")
-        .replace(/site\.js\?v=[^"'&\s]+/g, "site.js?v=1.1.60")
+        .replace(/site\.js\?v=[^"'&\s]+/g, "site.js?v=1.1.61")
         .replace(/gcv-exc-cart-policies\.js\?v=[^"'&\s]+/g, "gcv-exc-cart-policies.js?v=1.1.60")
         .replace(/gcv-exc-cart\.js\?v=[^"'&\s]+/g, "gcv-exc-cart.js?v=1.1.60")
         .replace(/excursoes-carousel\.js\?v=[^"'&\s]+/g, "excursoes-carousel.js?v=1.1.61")

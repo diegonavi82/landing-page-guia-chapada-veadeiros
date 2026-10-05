@@ -16,6 +16,11 @@ declare(strict_types=1);
  *   exclusivo_transporte_cents   privativo com translado
  *   excursao_pessoa_cents        excursão sem translado
  *   excursao_transporte_cents    excursão com translado
+ *
+ * Guia em outro idioma, na mesma cópia da cidade:
+ *   bilingue_tipo   "fixo" ou "percentual"
+ *   bilingue_valor  centavos, se fixo; percentual inteiro, se percentual
+ * Português soma zero. O acréscimo entra uma vez no total, depois da idade.
  */
 
 const GCV_TARIFARIO_CIDADES = [
@@ -393,6 +398,13 @@ function gcv_tarifario_normalize(array $raw): array
         foreach (GCV_TARIFARIO_CAMPOS as $campo) {
             $out[$campo] = max(0, (int)($row[$campo] ?? 0));
         }
+        $tipo = (($row['bilingue_tipo'] ?? '') === 'percentual') ? 'percentual' : 'fixo';
+        $valor = array_key_exists('bilingue_valor', $row) ? (int)$row['bilingue_valor'] : ($tipo === 'fixo' ? 4000 : 0);
+        if ($valor < 0) {
+            $valor = 0;
+        }
+        $out['bilingue_tipo'] = $tipo;
+        $out['bilingue_valor'] = $valor;
         $cidades[$key] = $out;
     }
     return ['quorum' => $quorum, 'cidades' => $cidades];
