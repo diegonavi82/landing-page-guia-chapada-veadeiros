@@ -11,6 +11,7 @@ import { fileURLToPath } from "node:url";
 import { sendDevMail, buildRecoverEmailHtml, recoverEmailSubject } from "./mock-mail.mjs";
 import { excursaoRowsForLocale } from "./excursoes-carousel-data.mjs";
 import { buildPixReceiptEmailHtml, receiptEmailSubject } from "./pix-receipt-html.mjs";
+import { createPaymentsMock } from "./mock-payments.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, "..");
@@ -98,6 +99,8 @@ function pixWrite(id, data) {
 function pixEffectiveStatus(rec) {
   if (!rec) return "PENDING";
   if (rec.status === "PAID") return "PAID";
+  if (rec.status === "AUTHORIZED" || rec.status === "CARD_SAVED") return rec.status;
+  if (rec.status === "RELEASED") return "CANCELLED";
   const exp = Date.parse(rec.expires_at || "");
   if (Number.isFinite(exp) && Date.now() > exp) return "EXPIRED";
   return "PENDING";
@@ -708,6 +711,8 @@ function handlePixApi(urlPath, req, res) {
         locale: rec.locale,
         incl_excl: rec.incl_excl || undefined,
         packages: rec.packages || undefined,
+        payment_method: rec.payment_method === "card" ? "card" : undefined,
+        charged_label: rec.payment_method === "card" ? rec.charged_label || "" : undefined,
       }),
     );
     return true;
@@ -2027,8 +2032,8 @@ function serveFile(res, filePath) {
         .replace(/site\.js\?v=[^"'&\s]+/g, "site.js?v=1.1.61")
         .replace(/gcv-exc-cart-policies\.js\?v=[^"'&\s]+/g, "gcv-exc-cart-policies.js?v=1.1.60")
         .replace(/gcv-exc-cart\.js\?v=[^"'&\s]+/g, "gcv-exc-cart.js?v=1.1.60")
-        .replace(/excursoes-carousel\.js\?v=[^"'&\s]+/g, "excursoes-carousel.js?v=1.1.61")
-        .replace(/excursoes\.css\?v=[^"'&\s]+/g, "excursoes.css?v=1.1.36")
+        .replace(/excursoes-carousel\.js\?v=[^"'&\s]+/g, "excursoes-carousel.js?v=1.1.62")
+        .replace(/excursoes\.css\?v=[^"'&\s]+/g, "excursoes.css?v=1.1.37")
         .replace(/gcv-confirmacao\.js\?v=[^"'&\s]+/g, "gcv-confirmacao.js?v=1.1.36")
         .replace(/gcv-detail\.css\?v=[^"'&\s]+/g, "gcv-detail.css?v=1.1.37")
         .replace(/gcv-passeios-shop\.js\?v=[^"'&\s]+/g, "gcv-passeios-shop.js?v=1.3.6");
@@ -2044,6 +2049,18 @@ function serveFile(res, filePath) {
     res.end(data);
   });
 }
+
+const handlePaymentsApi = createPaymentsMock({
+  ROOT,
+  pixRead,
+  pixWrite,
+  readEnvValue,
+  stripeApi,
+  stripeLineItems,
+  requestOrigin,
+  safeReturnPath,
+  confirmPathForLocale,
+});
 
 const server = http.createServer((req, res) => {
   // Remove query string
@@ -2262,6 +2279,7 @@ const server = http.createServer((req, res) => {
       res.end(JSON.stringify(data ? { ok: true, data } : { ok: false, error: "Atrativo não encontrado" }));
       return;
     }
+    if (handlePaymentsApi(urlPath, req, res)) return;
     if (handleStripeApi(urlPath, req, res)) return;
     if (handlePixApi(urlPath, req, res)) return;
     if (handleWaitlistApi(urlPath, req, res)) return;

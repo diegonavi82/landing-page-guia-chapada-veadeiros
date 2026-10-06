@@ -153,9 +153,10 @@ function gcv_sale_capture_from_pix_reservation(array $reservation, string $sourc
     $previousStatus = is_array($sale) ? strtoupper((string)($sale['sale_status'] ?? '')) : '';
 
     $paidAt = null;
-    $status = strtoupper((string)($reservation['status'] ?? 'PENDING')) === 'PAID'
+    $resStatus = strtoupper((string)($reservation['status'] ?? 'PENDING'));
+    $status = $resStatus === 'PAID'
         ? GcvSaleStatus::PAID
-        : GcvSaleStatus::PENDING;
+        : (in_array($resStatus, ['AUTHORIZED', 'CARD_SAVED'], true) ? GcvSaleStatus::AUTHORIZED : GcvSaleStatus::PENDING);
     if ($status === GcvSaleStatus::PAID) {
         $paidAtRaw = (string)($reservation['paid_at'] ?? 'now');
         try {
@@ -324,8 +325,32 @@ function gcv_sale_capture_from_pix_reservation(array $reservation, string $sourc
         'sold_price_cents' => $soldCents,
     ], 'WEBHOOK');
 
+    // Cartão pré-autorizado: a vaga já conta no quórum e o guia é avisado para confirmar.
+    $becameReserved = $status === GcvSaleStatus::AUTHORIZED
+        && !in_array($previousStatus, [GcvSaleStatus::AUTHORIZED, GcvSaleStatus::PAID], true);
+    if ($becameReserved) {
+        $excIdR = $excursion ? (int)($excursion['id'] ?? 0) : (int)($sale['excursion_id'] ?? 0);
+        $justConfirmedR = $excIdR > 0 ? gcv_sale_refresh_booked_people($excIdR) : false;
+        if (!$justConfirmedR) {
+            gcv_sale_notify_guide_new_booking($sale, $excursion, $spots);
+        }
+    }
+
     $becamePaid = $status === GcvSaleStatus::PAID && $previousStatus !== GcvSaleStatus::PAID;
-    if ($becamePaid) {
+    // Captura de cartão já pré-autorizado: guia já foi avisado e o cliente recebe o e-mail da captura.
+    $fromAuthorized = $previousStatus === GcvSaleStatus::AUTHORIZED;
+    if ($becamePaid && $fromAuthorized) {
+        $excIdP = $excursion ? (int)($excursion['id'] ?? 0) : (int)($sale['excursion_id'] ?? 0);
+        if ($excIdP > 0) {
+            gcv_sale_refresh_booked_people($excIdP);
+        }
+        try {
+            gcv_notify_admin_purchase($reservation);
+        } catch (Throwable $e) {
+            error_log('notify admin purchase (captured): ' . $e->getMessage());
+        }
+    }
+    if ($becamePaid && !$fromAuthorized) {
         $excId = $excursion ? (int)($excursion['id'] ?? 0) : 0;
         if ($excId <= 0) {
             $excId = (int)($sale['excursion_id'] ?? 0);
@@ -394,7 +419,7 @@ function gcv_sale_refresh_booked_people(int $excursionId): bool
                FROM gcv_sales s
                WHERE s.excursion_id = e.id
                  AND s.deleted_at IS NULL
-                 AND s.sale_status = \'PAID\'
+                 AND s.sale_status IN (\'PAID\', \'AUTHORIZED\')
              ))
              WHERE e.id = ?'
         )->execute([$excursionId]);

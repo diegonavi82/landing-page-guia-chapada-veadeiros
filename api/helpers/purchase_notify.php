@@ -178,7 +178,7 @@ function gcv_purchase_email_subject(array $rec): string
     $namePart = $names ? implode(' / ', $names) : 'Passeio';
     $people = gcv_purchase_total_people($rec);
     $amount = (float)($rec['amount'] ?? 0);
-    $brl = 'R$' . number_format($amount, 2, ',', '.');
+    $brl = !empty($rec['charged_label']) ? (string)$rec['charged_label'] : 'R$' . number_format($amount, 2, ',', '.');
 
     return 'RESERVA (' . $people . ' PAX) - ' . $datePart . ': ' . $namePart . ' ' . $brl;
 }
@@ -190,7 +190,7 @@ function gcv_purchase_notify_message(array $rec): string
     $amount = (float)($rec['amount'] ?? 0);
     $buyer = trim((string)($rec['email'] ?? $rec['buyer_email'] ?? ''));
     $buyerPhone = trim((string)($rec['phone'] ?? $rec['telefone'] ?? $rec['buyer_phone'] ?? ''));
-    $brl = 'R$ ' . number_format($amount, 2, ',', '.');
+    $brl = !empty($rec['charged_label']) ? (string)$rec['charged_label'] : 'R$ ' . number_format($amount, 2, ',', '.');
     $people = gcv_purchase_total_people($rec);
     $msg = "🛒 Nova reserva confirmada\n\n";
     $msg .= "Código: {$code}\n";
@@ -230,7 +230,7 @@ function gcv_purchase_email_body_html(array $rec): string
 {
     $code = strtoupper(trim((string)($rec['reservation_id'] ?? '')));
     $amount = (float)($rec['amount'] ?? 0);
-    $brl = 'R$ ' . number_format($amount, 2, ',', '.');
+    $brl = !empty($rec['charged_label']) ? (string)$rec['charged_label'] : 'R$ ' . number_format($amount, 2, ',', '.');
     $buyer = trim((string)($rec['email'] ?? $rec['buyer_email'] ?? ''));
     $buyerPhone = trim((string)($rec['phone'] ?? $rec['telefone'] ?? $rec['buyer_phone'] ?? ''));
     $locale = trim((string)($rec['locale'] ?? 'pt'));

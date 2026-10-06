@@ -28,6 +28,13 @@
       fetchError: "Erro ao carregar confirmação.",
       loading: "Carregando confirmação…",
       voucherHint: "Abra seu comprovante com QR para apresentar ao guia no dia do passeio.",
+      heldTitle: "Vaga reservada!",
+      heldSubtitle: "Nada foi cobrado ainda. O valor fica reservado no seu cartão e só é cobrado quando o passeio for confirmado (grupo mínimo e guia).",
+      heldStatus: "Reservada — aguardando confirmação",
+      savedSubtitle: "Seu cartão foi salvo com segurança. Alguns dias antes do passeio reservamos o valor e só cobramos quando o passeio for confirmado.",
+      savedStatus: "Cartão salvo — aguardando a data",
+      heldAmount: "Valor (cobrado só na confirmação)",
+      heldNote: "Você receberá um e-mail quando o passeio confirmar (e for cobrado) ou, se não confirmar, avisando que nada foi cobrado.",
     },
     en: {
       missing: "No reservation specified.",
@@ -52,6 +59,13 @@
       fetchError: "Error loading confirmation.",
       loading: "Loading confirmation…",
       voucherHint: "Open your voucher with QR code to show your guide on tour day.",
+      heldTitle: "Spot reserved!",
+      heldSubtitle: "You have not been charged yet. The amount is held on your card and only charged once the tour is confirmed (minimum group and guide).",
+      heldStatus: "Reserved — awaiting confirmation",
+      savedSubtitle: "Your card was saved securely. A few days before the tour we place the hold, and you are only charged once the tour is confirmed.",
+      savedStatus: "Card saved — awaiting the date",
+      heldAmount: "Amount (charged only on confirmation)",
+      heldNote: "You will get an email when the tour is confirmed (and charged) or, if it is not, letting you know nothing was charged.",
     },
     es: {
       missing: "Reserva no indicada.",
@@ -76,6 +90,13 @@
       fetchError: "Error al cargar la confirmación.",
       loading: "Cargando confirmación…",
       voucherHint: "Abra su comprobante con QR para presentarlo al guía el día del paseo.",
+      heldTitle: "¡Cupo reservado!",
+      heldSubtitle: "Todavía no se cobró nada. El monto queda reservado en tu tarjeta y solo se cobra cuando el paseo se confirme (grupo mínimo y guía).",
+      heldStatus: "Reservado — esperando confirmación",
+      savedSubtitle: "Tu tarjeta se guardó de forma segura. Unos días antes del paseo reservamos el monto y solo cobramos cuando el paseo se confirme.",
+      savedStatus: "Tarjeta guardada — esperando la fecha",
+      heldAmount: "Monto (se cobra solo al confirmar)",
+      heldNote: "Recibirás un correo cuando el paseo se confirme (y se cobre) o, si no se confirma, avisando que no se cobró nada.",
     },
   };
 
@@ -260,6 +281,24 @@
     );
   }
 
+  function heldCard(id, status, data) {
+    var saved = status === "CARD_SAVED";
+    var html =
+      '<article class="gcv-confirmacao-card gcv-confirmacao-card--success">' +
+      '<header class="gcv-confirmacao-card__head">' +
+      '<span class="gcv-confirmacao-card__icon" aria-hidden="true">✓</span>' +
+      '<h1 class="gcv-confirmacao-card__title">' + escapeHtml(s("heldTitle")) + "</h1>" +
+      '<p class="gcv-confirmacao-card__subtitle">' + escapeHtml(s(saved ? "savedSubtitle" : "heldSubtitle")) + "</p></header>" +
+      '<div class="gcv-confirmacao-meta">' +
+      metaItem(s("code"), '<span class="gcv-confirmacao-meta__value--code">' + escapeHtml(id) + "</span>") +
+      metaItem(s("status"), '<span class="gcv-confirmacao-meta__badge gcv-confirmacao-meta__badge--pending">' + escapeHtml(s(saved ? "savedStatus" : "heldStatus")) + "</span>");
+    if (data && data.charged_label) {
+      html += metaItem(s("heldAmount"), '<span class="gcv-confirmacao-meta__value--amount">' + escapeHtml(data.charged_label) + "</span>", "gcv-confirmacao-meta__item--wide");
+    }
+    html += "</div>" + '<p class="gcv-confirmacao-note">' + escapeHtml(s("heldNote")) + "</p>" + actionsHtml(id) + "</article>";
+    return html;
+  }
+
   function successCard(id, data, voucherData, trips) {
     var loc = detectLocale();
     var amount = voucherData && voucherData.amount != null ? voucherData.amount : data.amount;
@@ -293,7 +332,7 @@
     if (amount != null) {
       html += metaItem(
         s("amount"),
-        '<span class="gcv-confirmacao-meta__value--amount">' + escapeHtml(formatAmount(amount)) + "</span>",
+        '<span class="gcv-confirmacao-meta__value--amount">' + escapeHtml(data && data.charged_label ? data.charged_label : formatAmount(amount)) + "</span>",
         "gcv-confirmacao-meta__item--wide",
       );
     }
@@ -356,6 +395,16 @@
       }
       var status = String(data.status || "").toUpperCase();
       var trips = Array.isArray(data.trips) ? data.trips : [];
+      if (status === "AUTHORIZED" || status === "CARD_SAVED") {
+        // Cartão pré-autorizado: vaga garantida, cobrança só na confirmação do passeio.
+        if (window.GcvExcCart && typeof window.GcvExcCart.remove === "function") {
+          trips.forEach(function (t) {
+            if (t && t.cartId) window.GcvExcCart.remove(t.cartId);
+          });
+        }
+        root.innerHTML = heldCard(id, status, data);
+        return;
+      }
       if (status !== "PAID") {
         root.innerHTML = pendingCard(id, status);
         return;

@@ -294,6 +294,18 @@
       stripePayCard: "Pagar com cartão",
       stripePayCardBusy: "Abrindo pagamento seguro…",
       stripePayCardFail: "Não foi possível abrir o pagamento com cartão. Tente de novo.",
+      mpPayCard: "Cartão de crédito · até {n}x sem juros",
+      mpPayCardPrice: "{n}x de {inst} · total {total}",
+      mpPayCardBusy: "Abrindo pagamento seguro…",
+      intlPayCard: "Cartão internacional",
+      intlPayCardPrice: "{total} (em dólar)",
+      intlPayCardHint: "Para cartões emitidos fora do Brasil",
+      pixPayPrice: "{total} · menor preço",
+      cardHoldNote: "No cartão, nada é cobrado agora: o valor fica reservado e só é cobrado quando o passeio confirmar (grupo mínimo + guia). Se não confirmar, a reserva é liberada.",
+      mpFormTitle: "Dados do cartão",
+      mpFormBack: "← Voltar às formas de pagamento",
+      mpDevSimulate: "Simular cartão aprovado (só desenvolvimento)",
+      mpFormUnavailable: "Pagamento com cartão indisponível no momento. Use o Pix ou tente mais tarde.",
       pixModalEmailClear: "Excluir dados",
       pixModalEmailClearHint: "Exclui e-mail e telefone, cancela este Pix e permite informar outros dados.",
       pixPostpayLocked: "Disponível após confirmação do pagamento",
@@ -470,6 +482,18 @@
       stripePayCard: "Pay with card",
       stripePayCardBusy: "Opening secure checkout…",
       stripePayCardFail: "Could not open card checkout. Please try again.",
+      mpPayCard: "Brazilian credit card · up to {n} interest-free installments",
+      mpPayCardPrice: "{n}x {inst} · total {total}",
+      mpPayCardBusy: "Opening secure checkout…",
+      intlPayCard: "International card",
+      intlPayCardPrice: "{total} (charged in US dollars)",
+      intlPayCardHint: "For cards issued outside Brazil",
+      pixPayPrice: "{total} · lowest price",
+      cardHoldNote: "Nothing is charged now: the amount is held on your card and only charged once the tour is confirmed (minimum group + guide). If it is not confirmed, the hold is released.",
+      mpFormTitle: "Card details",
+      mpFormBack: "← Back to payment options",
+      mpDevSimulate: "Simulate approved card (development only)",
+      mpFormUnavailable: "Card payment is unavailable right now. Please use Pix or try again later.",
       pixModalEmailClear: "Remove details",
       pixModalEmailClearHint: "Removes email and phone, cancels this Pix, and lets you enter new details.",
       pixPostpayLocked: "Available after payment is confirmed",
@@ -646,6 +670,18 @@
       stripePayCard: "Pagar con tarjeta",
       stripePayCardBusy: "Abriendo el pago seguro…",
       stripePayCardFail: "No se pudo abrir el pago con tarjeta. Inténtalo de nuevo.",
+      mpPayCard: "Tarjeta brasileña · hasta {n} cuotas sin interés",
+      mpPayCardPrice: "{n}x {inst} · total {total}",
+      mpPayCardBusy: "Abriendo el pago seguro…",
+      intlPayCard: "Tarjeta internacional",
+      intlPayCardPrice: "{total} (cobrado en dólares)",
+      intlPayCardHint: "Para tarjetas emitidas fuera de Brasil",
+      pixPayPrice: "{total} · menor precio",
+      cardHoldNote: "Con tarjeta no se cobra nada ahora: el monto queda reservado y solo se cobra cuando el paseo se confirme (grupo mínimo + guía). Si no se confirma, la reserva se libera.",
+      mpFormTitle: "Datos de la tarjeta",
+      mpFormBack: "← Volver a las formas de pago",
+      mpDevSimulate: "Simular tarjeta aprobada (solo desarrollo)",
+      mpFormUnavailable: "El pago con tarjeta no está disponible ahora. Usa Pix o inténtalo más tarde.",
       pixModalEmailClear: "Eliminar datos",
       pixModalEmailClearHint: "Elimina correo y teléfono, cancela este Pix y permite informar otros datos.",
       pixPostpayLocked: "Disponible tras confirmar el pago",
@@ -4235,6 +4271,10 @@
     if (continueBtn) continueBtn.hidden = true;
     var cardPayBtn = modal.querySelector("[data-gcv-stripe-card]");
     if (cardPayBtn) cardPayBtn.hidden = true;
+    var mpPayBtn = modal.querySelector("[data-gcv-mp-card]");
+    if (mpPayBtn) mpPayBtn.hidden = true;
+    var cardNoteEl = modal.querySelector(".gcv-pix-modal__card-note");
+    if (cardNoteEl) cardNoteEl.hidden = true;
     var payChoice = modal.querySelector(".gcv-pix-modal__pay-choice");
     if (payChoice) payChoice.hidden = true;
     modal.querySelectorAll("[data-gcv-pix-email-clear], [data-gcv-pix-phone-clear]").forEach(function (btn) {
@@ -4272,6 +4312,10 @@
     if (continueBtn) continueBtn.hidden = false;
     var cardPayBtn = modal.querySelector("[data-gcv-stripe-card]");
     if (cardPayBtn) cardPayBtn.hidden = false;
+    var mpPayBtn = modal.querySelector("[data-gcv-mp-card]");
+    if (mpPayBtn) mpPayBtn.hidden = false;
+    var cardNoteEl = modal.querySelector(".gcv-pix-modal__card-note");
+    if (cardNoteEl) cardNoteEl.hidden = false;
     var payChoice = modal.querySelector(".gcv-pix-modal__pay-choice");
     if (payChoice) payChoice.hidden = false;
     modal.querySelectorAll("[data-gcv-pix-email-clear], [data-gcv-pix-phone-clear]").forEach(function (btn) {
@@ -4539,7 +4583,8 @@
         '<p class="gcv-pix-modal__field-error" id="gcv-pix-modal-phone-error" role="alert" hidden></p>' +
         '<p class="gcv-pix-modal__pay-choice"></p>' +
         '<button type="button" class="gcv-pix-modal__email-continue" data-gcv-pix-email-continue></button>' +
-        '<button type="button" class="gcv-pix-modal__card-pay" data-gcv-stripe-card></button>' +
+        '<button type="button" class="gcv-pix-modal__card-pay gcv-pix-modal__card-pay--br" data-gcv-mp-card></button>' +
+        '<button type="button" class="gcv-pix-modal__card-pay gcv-pix-modal__card-pay--intl" data-gcv-stripe-card></button>' +
         '<p class="gcv-pix-modal__email-status" id="gcv-pix-modal-email-status" hidden></p>';
       if (payZone && payZone.parentNode) {
         payZone.parentNode.insertBefore(block, payZone);
@@ -4696,13 +4741,20 @@
         block.appendChild(cardEl);
       }
     }
-    var payChoiceEl = block.querySelector(".gcv-pix-modal__pay-choice");
-    var cardPayBtn = block.querySelector("[data-gcv-stripe-card]");
-    if (payChoiceEl) payChoiceEl.textContent = locStrings.payChoice || "Como você quer pagar?";
-    if (continueBtn) continueBtn.textContent = locStrings.pixModalEmailContinue || "Pagar com PIX";
-    if (cardPayBtn && !modal._gcvStripeBusy) {
-      cardPayBtn.textContent = locStrings.stripePayCard || "Pagar com cartão";
+    if (!block.querySelector("[data-gcv-mp-card]")) {
+      var mpEl = document.createElement("button");
+      mpEl.type = "button";
+      mpEl.className = "gcv-pix-modal__card-pay gcv-pix-modal__card-pay--br";
+      mpEl.setAttribute("data-gcv-mp-card", "");
+      var stripeEl = block.querySelector("[data-gcv-stripe-card]");
+      if (stripeEl && stripeEl.parentNode) stripeEl.parentNode.insertBefore(mpEl, stripeEl);
+      else block.appendChild(mpEl);
     }
+    var payChoiceEl = block.querySelector(".gcv-pix-modal__pay-choice");
+    if (payChoiceEl) payChoiceEl.textContent = locStrings.payChoice || "Como você quer pagar?";
+    orderPayButtons(block, loc);
+    renderPayButtonLabels(modal, loc);
+    loadPayQuotes(modal, loc);
     var phoneClearBtn = block.querySelector("[data-gcv-pix-phone-clear]");
     [clearBtn, phoneClearBtn].forEach(function (btn) {
       if (!btn) return;
@@ -4717,14 +4769,123 @@
     syncPixContinueButton(modal);
   }
 
+  /* ---------- Formas de pagamento: Pix, cartão nacional (Mercado Pago), internacional (Stripe) ---------- */
+
+  var PAY_DEFAULTS = { cardBrPct: 15, maxInstallments: 4 };
+
+  function payMoneyBrl(cents) {
+    var v = (Number(cents) || 0) / 100;
+    return "R$ " + v.toFixed(2).replace(".", ",").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  }
+
+  function payMoneyUsd(cents) {
+    return "US$ " + ((Number(cents) || 0) / 100).toFixed(2);
+  }
+
+  function payFill(tpl, map) {
+    return String(tpl || "").replace(/\{(\w+)\}/g, function (_, k) {
+      return map[k] != null ? map[k] : "";
+    });
+  }
+
+  /** Ordem dos botões: português → Pix, nacional, internacional; inglês/espanhol → internacional primeiro. */
+  function orderPayButtons(block, loc) {
+    if (!block) return;
+    var pix = block.querySelector("[data-gcv-pix-email-continue]");
+    var br = block.querySelector("[data-gcv-mp-card]");
+    var intl = block.querySelector("[data-gcv-stripe-card]");
+    if (!pix || !br || !intl || !pix.parentNode) return;
+    var parent = pix.parentNode;
+    var status = block.querySelector("#gcv-pix-modal-email-status");
+    var before = status && status.parentNode === parent ? status : null;
+    var order = loc === "pt" ? [pix, br, intl] : [intl, pix, br];
+    order.forEach(function (btn) {
+      parent.insertBefore(btn, before);
+    });
+    var note = block.querySelector(".gcv-pix-modal__card-note:not(.gcv-pix-modal__card-note--inline)");
+    if (!note) {
+      note = document.createElement("p");
+      note.className = "gcv-pix-modal__card-note";
+    }
+    parent.insertBefore(note, before);
+    note.textContent = (STRINGS[loc] || STRINGS.pt).cardHoldNote || "";
+    intl.classList.toggle("gcv-pix-modal__card-pay--primary", loc !== "pt");
+    pix.classList.toggle("gcv-pix-modal__email-continue--secondary", loc !== "pt");
+  }
+
+  function payBaseCents(modal) {
+    var pending = modal && modal._gcvPixPendingCheckout;
+    var v = pending && pending.valor != null ? Number(pending.valor) : NaN;
+    return isFinite(v) && v > 0 ? Math.round(v * 100) : 0;
+  }
+
+  function renderPayButtonLabels(modal, loc) {
+    if (!modal) return;
+    var L = STRINGS[loc] || STRINGS.pt;
+    var base = payBaseCents(modal);
+    var q = modal._gcvPayQuotes && modal._gcvPayQuotes.base === base ? modal._gcvPayQuotes.quotes : null;
+
+    var pix = modal.querySelector("[data-gcv-pix-email-continue]");
+    if (pix && !modal._gcvPixCheckoutActive) {
+      pix.innerHTML =
+        '<span class="gcv-pix-modal__pay-title">' + escapeHtml(L.pixModalEmailContinue || "Pagar com PIX") + "</span>" +
+        (base ? '<span class="gcv-pix-modal__pay-price">' + escapeHtml(payFill(L.pixPayPrice, { total: payMoneyBrl(base) })) + "</span>" : "");
+    }
+
+    var br = modal.querySelector("[data-gcv-mp-card]");
+    if (br && !modal._gcvStripeBusy) {
+      var qb = q && q.card_br && q.card_br.ok ? q.card_br : null;
+      var n = qb ? qb.max_installments : PAY_DEFAULTS.maxInstallments;
+      var total = qb ? qb.total_brl_cents : (base ? Math.ceil(base * (100 + PAY_DEFAULTS.cardBrPct) / 100) : 0);
+      br.innerHTML =
+        '<span class="gcv-pix-modal__pay-title">' + escapeHtml(payFill(L.mpPayCard, { n: n })) + "</span>" +
+        (total ? '<span class="gcv-pix-modal__pay-price">' + escapeHtml(payFill(L.mpPayCardPrice, {
+          n: n, inst: payMoneyBrl(Math.floor(total / n)), total: payMoneyBrl(total),
+        })) + "</span>" : "");
+    }
+
+    var intl = modal.querySelector("[data-gcv-stripe-card]");
+    if (intl && !modal._gcvStripeBusy) {
+      var qi = q && q.card_intl && q.card_intl.ok ? q.card_intl : null;
+      var price = qi ? (String(qi.currency).toLowerCase() === "usd" ? payMoneyUsd(qi.charge_minor) : payMoneyBrl(qi.charge_minor)) : "";
+      intl.title = L.intlPayCardHint || "";
+      intl.innerHTML =
+        '<span class="gcv-pix-modal__pay-title">' + escapeHtml(L.intlPayCard || "International card") + "</span>" +
+        '<span class="gcv-pix-modal__pay-price">' + escapeHtml(price ? payFill(L.intlPayCardPrice, { total: price }) : (L.intlPayCardHint || "")) + "</span>";
+    }
+  }
+
+  /** Busca no servidor o preço de cada forma de pagamento (o valor cobrado é sempre recalculado lá). */
+  function loadPayQuotes(modal, loc) {
+    var base = payBaseCents(modal);
+    if (!modal || !base) return;
+    if (modal._gcvPayQuotes && modal._gcvPayQuotes.base === base) return;
+    if (modal._gcvPayQuotesLoading === base) return;
+    modal._gcvPayQuotesLoading = base;
+    fetch("/api/payment_quote.php?amount=" + encodeURIComponent((base / 100).toFixed(2)), {
+      headers: { Accept: "application/json" },
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        if (res && res.success && res.quotes) {
+          modal._gcvPayQuotes = { base: base, quotes: res.quotes, mpPublicKey: res.mp_public_key || "" };
+          renderPayButtonLabels(modal, modal._gcvPixLocale || loc || "pt");
+        }
+      })
+      .catch(function () { /* mantém os rótulos sem valor exato */ })
+      .then(function () { modal._gcvPayQuotesLoading = 0; });
+  }
+
   function syncPixContinueButton(modal) {
     if (!modal) return;
     var continueBtn = modal.querySelector("[data-gcv-pix-email-continue]");
     var cardBtn = modal.querySelector("[data-gcv-stripe-card]");
+    var mpBtn = modal.querySelector("[data-gcv-mp-card]");
     if (!continueBtn && !cardBtn) return;
     if (modal._gcvPixCheckoutActive || modal._gcvPixConfirmed || modal._gcvStripeBusy) {
       if (continueBtn) continueBtn.disabled = true;
       if (cardBtn) cardBtn.disabled = true;
+      if (mpBtn) mpBtn.disabled = true;
       return;
     }
     var name = getModalReceiptName(modal);
@@ -4749,6 +4910,7 @@
     var ready = !!(nameOk && emailOk && phoneOk);
     if (continueBtn) continueBtn.disabled = !ready;
     if (cardBtn) cardBtn.disabled = !ready;
+    if (mpBtn) mpBtn.disabled = !ready;
   }
 
   function pixPostpayIsPaid(modal) {
@@ -4790,6 +4952,12 @@
   }
 
   function startStripeCardCheckout(modal) {
+    startCardCheckout(modal, "stripe");
+  }
+
+  /** Cartão: gateway "mp" (nacional, até 4x) ou "stripe" (internacional, em dólar). */
+  function startCardCheckout(modal, gateway) {
+    var isMp = gateway === "mp";
     if (!modal || modal._gcvStripeBusy || modal._gcvPixCheckoutActive || modal._gcvPixConfirmed) return;
     var loc = modal._gcvPixLocale || "pt";
     var locStrings = STRINGS[loc] || STRINGS.pt;
@@ -4819,8 +4987,8 @@
     var receiptData = pending.receiptData || modal._gcvReceiptData || {};
     modal._gcvStripeBusy = true;
     syncPixContinueButton(modal);
-    var cardBtn = modal.querySelector("[data-gcv-stripe-card]");
-    if (cardBtn) cardBtn.textContent = locStrings.stripePayCardBusy || "Abrindo pagamento seguro…";
+    var cardBtn = modal.querySelector(isMp ? "[data-gcv-mp-card]" : "[data-gcv-stripe-card]");
+    if (cardBtn) cardBtn.textContent = (isMp ? locStrings.mpPayCardBusy : locStrings.stripePayCardBusy) || "Abrindo pagamento seguro…";
     if (statusEl) {
       statusEl.hidden = true;
       statusEl.textContent = "";
@@ -4841,6 +5009,12 @@
       return_path: (window.location.pathname || "/") + (window.location.search || ""),
     };
 
+    if (isMp) {
+      // Cartão nacional: formulário do Mercado Pago embutido (reserva no cartão, sem redirecionar).
+      openMpCardForm(modal, payload, loc);
+      return;
+    }
+
     fetch("/api/stripe_checkout.php", {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
@@ -4854,21 +5028,167 @@
       .then(function (res) {
         var url = res && res.data && res.data.url;
         if (!res.ok || !url) {
-          throw new Error((res && res.data && res.data.message) || "stripe");
+          var e = new Error((res && res.data && res.data.message) || "card");
+          // preço mudou → mostra a mensagem do servidor (pede para atualizar a página)
+          if (res && res.data && (res.data.error === "price_changed" || res.data.error === "amount_mismatch" || res.data.error === "fx_unavailable")) {
+            e.gcvServerMessage = res.data.message;
+          }
+          throw e;
         }
         window.location.href = url;
       })
-      .catch(function () {
+      .catch(function (err) {
         modal._gcvStripeBusy = false;
         syncPixContinueButton(modal);
-        if (cardBtn) cardBtn.textContent = locStrings.stripePayCard || "Pagar com cartão";
+        renderPayButtonLabels(modal, loc);
+        var serverMsg = err && err.gcvServerMessage;
         if (statusEl) {
           statusEl.hidden = false;
-          statusEl.textContent = locStrings.stripePayCardFail || "Não foi possível abrir o pagamento com cartão.";
+          statusEl.textContent = serverMsg || locStrings.stripePayCardFail || "Não foi possível abrir o pagamento com cartão.";
           statusEl.classList.add("gcv-pix-modal__email-status--err");
           statusEl.classList.remove("gcv-pix-modal__email-status--ok");
         }
       });
+  }
+
+  /* ---------- Mercado Pago: Card Payment Brick embutido no modal ---------- */
+
+  var MP_SDK_URL = "https://sdk.mercadopago.com/js/v2";
+
+  function loadMpSdk(cb) {
+    if (window.MercadoPago) return cb(null);
+    var existing = document.querySelector('script[data-gcv-mp-sdk]');
+    if (existing) {
+      existing.addEventListener("load", function () { cb(null); });
+      existing.addEventListener("error", function () { cb(new Error("sdk")); });
+      return;
+    }
+    var sc = document.createElement("script");
+    sc.src = MP_SDK_URL;
+    sc.async = true;
+    sc.setAttribute("data-gcv-mp-sdk", "");
+    sc.onload = function () { cb(null); };
+    sc.onerror = function () { cb(new Error("sdk")); };
+    document.head.appendChild(sc);
+  }
+
+  function setPayChoiceHidden(modal, hidden) {
+    ["[data-gcv-pix-email-continue]", "[data-gcv-mp-card]", "[data-gcv-stripe-card]", ".gcv-pix-modal__pay-choice", ".gcv-pix-modal__card-note"].forEach(function (sel) {
+      var el = modal.querySelector(sel);
+      if (el) el.hidden = hidden;
+    });
+  }
+
+  function closeMpCardForm(modal) {
+    if (modal._gcvMpBrick && typeof modal._gcvMpBrick.unmount === "function") {
+      try { modal._gcvMpBrick.unmount(); } catch (e) { /* noop */ }
+    }
+    modal._gcvMpBrick = null;
+    var wrap = modal.querySelector("#gcv-mp-card-wrap");
+    if (wrap && wrap.parentNode) wrap.parentNode.removeChild(wrap);
+    modal._gcvStripeBusy = false;
+    setPayChoiceHidden(modal, false);
+    syncPixContinueButton(modal);
+    renderPayButtonLabels(modal, modal._gcvPixLocale || "pt");
+  }
+
+  function mpSubmitCard(modal, payload, card, loc) {
+    var L = STRINGS[loc] || STRINGS.pt;
+    var body = {};
+    Object.keys(payload).forEach(function (k) { body[k] = payload[k]; });
+    body.card = card;
+    return fetch("/api/mp_card.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(body),
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+      .then(function (res) {
+        if (res.ok && res.data && res.data.success && res.data.redirect) {
+          window.location.href = res.data.redirect;
+          return;
+        }
+        var msg = (res.data && res.data.message) || L.stripePayCardFail;
+        var err = modal.querySelector("#gcv-mp-card-error");
+        if (err) { err.hidden = false; err.textContent = msg; }
+        throw new Error(msg);
+      });
+  }
+
+  function openMpCardForm(modal, payload, loc) {
+    var L = STRINGS[loc] || STRINGS.pt;
+    var base = payBaseCents(modal);
+    var q = modal._gcvPayQuotes && modal._gcvPayQuotes.base === base ? modal._gcvPayQuotes : null;
+    var quote = q && q.quotes && q.quotes.card_br;
+    var publicKey = q && q.mpPublicKey;
+    var status = modal.querySelector("#gcv-pix-modal-email-status");
+    setPayChoiceHidden(modal, true);
+
+    var wrap = document.createElement("div");
+    wrap.id = "gcv-mp-card-wrap";
+    wrap.className = "gcv-pix-modal__mp-wrap";
+    wrap.innerHTML =
+      '<button type="button" class="gcv-pix-modal__mp-back" data-gcv-mp-back>' + escapeHtml(L.mpFormBack) + "</button>" +
+      '<p class="gcv-pix-modal__pay-choice gcv-pix-modal__mp-title">' + escapeHtml(L.mpFormTitle) + "</p>" +
+      '<p class="gcv-pix-modal__card-note gcv-pix-modal__card-note--inline">' + escapeHtml(L.cardHoldNote) + "</p>" +
+      '<div id="gcv-mp-brick"></div>' +
+      '<p class="gcv-pix-modal__email-status gcv-pix-modal__email-status--err" id="gcv-mp-card-error" hidden></p>';
+    if (status && status.parentNode) status.parentNode.insertBefore(wrap, status);
+    else modal.querySelector(".gcv-pix-modal__panel").appendChild(wrap);
+    wrap.querySelector("[data-gcv-mp-back]").addEventListener("click", function () { closeMpCardForm(modal); });
+
+    if (!quote || !quote.ok) {
+      wrap.querySelector("#gcv-mp-brick").innerHTML = '<p class="gcv-pix-modal__email-status gcv-pix-modal__email-status--err">' + escapeHtml(L.mpFormUnavailable) + "</p>";
+      return;
+    }
+
+    // Desenvolvimento sem chave do Mercado Pago: simula um cartão aprovado.
+    if (!publicKey) {
+      var isLocal = /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname);
+      var holder = wrap.querySelector("#gcv-mp-brick");
+      if (!isLocal) {
+        holder.innerHTML = '<p class="gcv-pix-modal__email-status gcv-pix-modal__email-status--err">' + escapeHtml(L.mpFormUnavailable) + "</p>";
+        return;
+      }
+      holder.innerHTML = '<button type="button" class="gcv-pix-modal__email-continue" style="display:block" data-gcv-mp-dev>' + escapeHtml(L.mpDevSimulate) + "</button>";
+      holder.querySelector("[data-gcv-mp-dev]").addEventListener("click", function () {
+        this.disabled = true;
+        mpSubmitCard(modal, payload, { token: "dev-test-token", payment_method_id: "master", installments: quote.max_installments, payer: { identification: { type: "CPF", number: "12345678909" } } }, loc)
+          .catch(function () { /* mensagem já exibida */ })
+          .then(function () { var b = holder.querySelector("[data-gcv-mp-dev]"); if (b) b.disabled = false; });
+      });
+      return;
+    }
+
+    loadMpSdk(function (err) {
+      if (err || !window.MercadoPago) {
+        wrap.querySelector("#gcv-mp-brick").innerHTML = '<p class="gcv-pix-modal__email-status gcv-pix-modal__email-status--err">' + escapeHtml(L.mpFormUnavailable) + "</p>";
+        return;
+      }
+      var mpLocale = loc === "en" ? "en-US" : loc === "es" ? "es-AR" : "pt-BR";
+      var mp = new window.MercadoPago(publicKey, { locale: mpLocale });
+      mp.bricks()
+        .create("cardPayment", "gcv-mp-brick", {
+          initialization: { amount: quote.total_brl_cents / 100, payer: { email: payload.email } },
+          customization: {
+            paymentMethods: { maxInstallments: quote.max_installments, minInstallments: 1 },
+            visual: { style: { theme: "default" } },
+          },
+          callbacks: {
+            onReady: function () { /* pronto */ },
+            onSubmit: function (formData) {
+              return mpSubmitCard(modal, payload, formData, loc);
+            },
+            onError: function (e) {
+              if (window.console) console.warn("[mp brick]", e);
+            },
+          },
+        })
+        .then(function (controller) { modal._gcvMpBrick = controller; })
+        .catch(function () {
+          wrap.querySelector("#gcv-mp-brick").innerHTML = '<p class="gcv-pix-modal__email-status gcv-pix-modal__email-status--err">' + escapeHtml(L.mpFormUnavailable) + "</p>";
+        });
+    });
   }
 
   function activatePixCheckout(modal, s) {
@@ -5333,7 +5653,8 @@
       '<p class="gcv-pix-modal__field-error" id="gcv-pix-modal-phone-error" role="alert" hidden></p>' +
       '<p class="gcv-pix-modal__pay-choice"></p>' +
       '<button type="button" class="gcv-pix-modal__email-continue" data-gcv-pix-email-continue></button>' +
-      '<button type="button" class="gcv-pix-modal__card-pay" data-gcv-stripe-card></button>' +
+      '<button type="button" class="gcv-pix-modal__card-pay gcv-pix-modal__card-pay--br" data-gcv-mp-card></button>' +
+      '<button type="button" class="gcv-pix-modal__card-pay gcv-pix-modal__card-pay--intl" data-gcv-stripe-card></button>' +
       '<p class="gcv-pix-modal__email-status" id="gcv-pix-modal-email-status" hidden></p></div>' +
       '<div class="gcv-pix-modal__pay-zone">' +
       '<p class="gcv-pix-modal__amount"></p>' +
@@ -5677,11 +5998,18 @@
         activatePixCheckout(modal, STRINGS[locContinue] || STRINGS.pt);
         return;
       }
+      var mpCardBtn = e.target.closest("[data-gcv-mp-card]");
+      if (mpCardBtn) {
+        e.preventDefault();
+        if (mpCardBtn.disabled) return;
+        startCardCheckout(modal, "mp");
+        return;
+      }
       var cardPayBtn = e.target.closest("[data-gcv-stripe-card]");
       if (cardPayBtn) {
         e.preventDefault();
         if (cardPayBtn.disabled) return;
-        startStripeCardCheckout(modal);
+        startCardCheckout(modal, "stripe");
         return;
       }
       var clearEmailBtn = e.target.closest("[data-gcv-pix-email-clear]");

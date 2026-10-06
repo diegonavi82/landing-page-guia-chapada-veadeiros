@@ -113,7 +113,7 @@ function gcv_marketplace_ensure_tables(PDO $pdo): void
           commission_rule_id INT UNSIGNED NULL,
           business_mode ENUM('ADMINISTRATIVE','GUIDE_MARKETPLACE') NOT NULL,
           created_by_origin ENUM('ADMIN','GUIDE','CURSOR','IMPORT','API','AI') NOT NULL DEFAULT 'ADMIN',
-          sale_status ENUM('PENDING','PAID','CANCELLED','REFUNDED','DISPUTED') NOT NULL DEFAULT 'PENDING',
+          sale_status ENUM('PENDING','AUTHORIZED','PAID','CANCELLED','REFUNDED','DISPUTED') NOT NULL DEFAULT 'PENDING',
           payout_status ENUM('PAYOUT_PENDING','PAYOUT_PAID','PAYOUT_REVIEW','PAYOUT_BLOCKED') NOT NULL DEFAULT 'PAYOUT_PENDING',
           excursion_starts_at DATETIME NULL,
           scheduled_payout_at DATETIME NULL,
@@ -323,7 +323,7 @@ function gcv_marketplace_retract_unapproved_guide_excursions(PDO $pdo): void
                 SELECT 1 FROM gcv_sales s
                 WHERE s.excursion_id = e.id
                   AND s.deleted_at IS NULL
-                  AND s.sale_status = 'PAID'
+                  AND s.sale_status IN ('PAID','AUTHORIZED')
             )";
         }
         $pdo->exec($sql);

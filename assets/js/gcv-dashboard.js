@@ -25,6 +25,7 @@
     'section-guide-create-tour': 'publicar',
     'section-guide-tours': 'agenda',
     'section-guide-financial': 'financeiro',
+    'section-guide-confirm': 'confirmar-reservas',
     'section-client-tours': 'passeios',
     'section-client-bookings': 'reservas',
     'section-client-publish': 'propor',
@@ -1652,7 +1653,9 @@
       '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary" id="fin-payouts-btn">REGISTRAR REPASSE PIX</button>' +
       '</div>' +
       '<div id="fin-breakdowns"></div>' +
-      '<div id="fin-payout-panel" hidden style="margin-top:1rem;padding:1rem;border:1px solid #e2e8f0;border-radius:8px;"></div>';
+      '<div id="fin-payout-panel" hidden style="margin-top:1rem;padding:1rem;border:1px solid #e2e8f0;border-radius:8px;"></div>' +
+      '<div id="fin-confirm"></div>' +
+      '<div id="fin-ledger"></div>';
 
     function qs() {
       var p = new URLSearchParams();
@@ -1795,6 +1798,8 @@
     };
 
     refresh();
+    if (window.GcvBookingConfirm) window.GcvBookingConfirm.mount(document.getElementById('fin-confirm'), 'all');
+    if (window.GcvPaymentLedger) window.GcvPaymentLedger.mount(document.getElementById('fin-ledger'), fromDefault, toDefault);
   }
 
   function refreshApprovalBadge() {
@@ -2124,6 +2129,7 @@
       items = [
         { id: 'section-guide-create-tour',  icon: '➕', label: 'Publicar passeio',  tab: 'Publicar',   tabIcon: 'publish', load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuidePublish(); } },
         { id: 'section-guide-tours',        icon: '📅', label: 'Agenda',            tab: 'Agenda',      tabIcon: 'agenda',  load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideAgenda(); } },
+        { id: 'section-guide-confirm',      icon: '✅', label: 'Confirmar reservas', tab: 'Confirmar',  tabIcon: 'agenda',  load: function () { if (window.GcvBookingConfirm) window.GcvBookingConfirm.mount(document.getElementById('guide-confirm-root'), 'mine'); } },
         { id: 'section-guide-financial',    icon: '💲', label: 'Financeiro',       tab: 'Financeiro', tabIcon: 'money',   load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideEarnings(); } },
       ];
       footerItems = [profileItem];

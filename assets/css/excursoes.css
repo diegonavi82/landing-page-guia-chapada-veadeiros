@@ -4201,6 +4201,37 @@ html.gcv-pix-modal-open body {
   cursor: not-allowed;
 }
 
+/* Formas de pagamento: título + preço em duas linhas */
+.gcv-pix-modal__pay-title {
+  display: block;
+}
+
+.gcv-pix-modal__pay-price {
+  display: block;
+  margin-top: 0.12rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+/* Inglês/espanhol: cartão internacional em destaque */
+.gcv-pix-modal__card-pay--primary {
+  background: #064e3b;
+  border-color: #064e3b;
+  color: #fff;
+}
+
+.gcv-pix-modal__card-pay--primary:hover {
+  background: #064e3b;
+  filter: brightness(1.05);
+}
+
+.gcv-pix-modal__email-continue--secondary {
+  background: #fff;
+  color: #064e3b;
+  border: 1.5px solid #064e3b;
+}
+
 .gcv-pix-modal__email-continue:hover {
   filter: brightness(1.05);
 }
@@ -5621,4 +5652,55 @@ html.gcv-waitlist-modal-open {
 .gcv-excursoes-card--day-blocked .gcv-excursoes-card__cart-add,
 .gcv-excursoes-card__cart-add--day-blocked {
   opacity: 0.7;
+}
+
+/* Aviso de pré-autorização (cartão) */
+.gcv-pix-modal__card-note {
+  display: none;
+  margin: 0.45rem 0 0;
+  font-size: 0.7rem;
+  line-height: 1.35;
+  color: #3f5a4b;
+}
+
+.gcv-pix-modal--await-email .gcv-pix-modal__card-note {
+  display: block;
+}
+
+.gcv-pix-modal__card-note[hidden] {
+  display: none !important;
+}
+
+/* Formulário de cartão do Mercado Pago dentro do modal */
+.gcv-pix-modal__mp-wrap {
+  margin-top: 0.6rem;
+}
+
+.gcv-pix-modal__mp-wrap .gcv-pix-modal__pay-choice {
+  display: block;
+}
+
+.gcv-pix-modal__mp-back {
+  padding: 0;
+  border: none;
+  background: none;
+  color: #064e3b;
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.gcv-pix-modal__mp-back:hover {
+  text-decoration: underline;
+}
+
+#gcv-mp-brick {
+  margin-top: 0.5rem;
+}
+
+.gcv-pix-modal__email-continue[hidden],
+.gcv-pix-modal__card-pay[hidden],
+.gcv-pix-modal__pay-choice[hidden] {
+  display: none !important;
 }

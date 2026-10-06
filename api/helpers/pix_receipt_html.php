@@ -138,8 +138,16 @@ function gcv_build_pix_receipt_email_html(array $rec, string $locale): string
         ],
     ];
     $L = $labels[$loc];
+    // Pago com cartão (Mercado Pago / Stripe): troca "via Pix" pelo meio certo.
+    if (strtolower((string)($rec['payment_method'] ?? '')) === 'card') {
+        $viaCard = ['pt' => ['via Pix', 'via cartão'], 'en' => ['via Pix', 'by card'], 'es' => ['vía Pix', 'con tarjeta']][$loc] ?? ['via Pix', 'via cartão'];
+        $L['introPaid'] = str_replace($viaCard[0], $viaCard[1], $L['introPaid']);
+        $L['finReceived'] = str_replace($viaCard[0], $viaCard[1], $L['finReceived']);
+    }
     $code = gcv_pix_safe_id((string)($rec['reservation_id'] ?? ''));
     $amount = (float)($rec['amount'] ?? 0);
+    // Cartão: mostra o que o cliente pagou de fato (com acréscimo / em dólar).
+    $amountLabel = !empty($rec['charged_label']) ? (string)$rec['charged_label'] : gcv_pix_receipt_format_brl($amount);
     $st = gcv_pix_effective_status($rec);
     $trips = is_array($rec['trips'] ?? null) ? $rec['trips'] : [];
     $incl = [];
@@ -158,7 +166,7 @@ function gcv_build_pix_receipt_email_html(array $rec, string $locale): string
     $introTpl = $st === 'PAID' ? $L['introPaid'] : $L['introPending'];
     $intro = str_replace(
         ['{{amount}}', '{{code}}'],
-        [gcv_pix_receipt_format_brl($amount), $code],
+        [$amountLabel, $code],
         $introTpl
     );
     $emitted = (new DateTimeImmutable('now'))->format($loc === 'en' ? 'm/d/Y' : 'd/m/Y');
@@ -228,7 +236,7 @@ function gcv_build_pix_receipt_email_html(array $rec, string $locale): string
         $exclHtml .= '<li style="margin:0 0 4px;">' . htmlspecialchars((string)$item, ENT_QUOTES, 'UTF-8') . '</li>';
     }
 
-    $received = $st === 'PAID' ? gcv_pix_receipt_format_brl($amount) : gcv_pix_receipt_format_brl(0);
+    $received = $st === 'PAID' ? $amountLabel : gcv_pix_receipt_format_brl(0);
     $receivedLabel = $st === 'PAID' ? $L['finReceived'] : $L['finTotal'];
     $buyerName = trim((string)($rec['name'] ?? $rec['nome'] ?? $rec['customer_name'] ?? $rec['buyer_name'] ?? ''));
     $buyerEmail = trim((string)($rec['email'] ?? $rec['buyer_email'] ?? ''));
@@ -280,7 +288,7 @@ function gcv_build_pix_receipt_email_html(array $rec, string $locale): string
         . '</tr></thead><tbody>' . $tripRows . '</tbody></table>'
         . '<div style="margin:0 0 16px;padding:14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;">'
         . '<p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#064e3b;">' . htmlspecialchars($L['financial'], ENT_QUOTES, 'UTF-8') . '</p>'
-        . '<p style="margin:0 0 4px;font-size:13px;"><span>' . htmlspecialchars($L['finTotal'], ENT_QUOTES, 'UTF-8') . ':</span> <strong>' . htmlspecialchars(gcv_pix_receipt_format_brl($amount), ENT_QUOTES, 'UTF-8') . '</strong></p>'
+        . '<p style="margin:0 0 4px;font-size:13px;"><span>' . htmlspecialchars($L['finTotal'], ENT_QUOTES, 'UTF-8') . ':</span> <strong>' . htmlspecialchars($amountLabel, ENT_QUOTES, 'UTF-8') . '</strong></p>'
         . '<p style="margin:0;font-size:13px;"><span>' . htmlspecialchars($receivedLabel, ENT_QUOTES, 'UTF-8') . ':</span> <strong>' . htmlspecialchars($received, ENT_QUOTES, 'UTF-8') . '</strong></p></div>'
         . '<div style="margin:0 0 16px;padding:14px;background:#f8fafc;border-radius:12px;">'
         . '<p style="margin:0 0 4px;font-size:11px;font-weight:700;color:#065f46;">' . htmlspecialchars($L['included'], ENT_QUOTES, 'UTF-8') . '</p>'

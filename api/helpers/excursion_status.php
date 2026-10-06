@@ -396,7 +396,7 @@ function gcv_walk_sale_has_spare_client_seat(array $e): bool
             $st = db()->prepare(
                 "SELECT 1 FROM gcv_sales
                  WHERE excursion_id = ?
-                   AND sale_status = 'PAID'
+                   AND sale_status IN ('PAID','AUTHORIZED')
                    AND COALESCE(include_transport, 0) = 0
                    AND spots > 0 AND spots < 5
                  LIMIT 1"

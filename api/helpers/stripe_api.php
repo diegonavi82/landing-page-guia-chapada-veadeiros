@@ -301,8 +301,9 @@ function gcv_stripe_trip_cents(array $trip): int
  *
  * @return list<array<string, mixed>>
  */
-function gcv_stripe_line_items(array $data, string $reservationId, int $cents, string $locale): array
+function gcv_stripe_line_items(array $data, string $reservationId, int $cents, string $locale, string $currency = 'brl'): array
 {
+    $currency = strtolower($currency) === 'usd' ? 'usd' : 'brl';
     $trips = [];
     foreach (is_array($data['trips'] ?? null) ? $data['trips'] : [] as $trip) {
         if (is_array($trip)) {
@@ -352,7 +353,7 @@ function gcv_stripe_line_items(array $data, string $reservationId, int $cents, s
         return [[
             'quantity' => 1,
             'price_data' => [
-                'currency' => 'brl',
+                'currency' => $currency,
                 'unit_amount' => $cents,
                 'product_data' => $product($trips[0], gcv_stripe_clip(implode(' | ', $parts), 500)),
             ],
@@ -364,7 +365,7 @@ function gcv_stripe_line_items(array $data, string $reservationId, int $cents, s
         $items[] = [
             'quantity' => 1,
             'price_data' => [
-                'currency' => 'brl',
+                'currency' => $currency,
                 'unit_amount' => $amounts[$i],
                 'product_data' => $product($trip, gcv_stripe_trip_description($trip, $locale)),
             ],

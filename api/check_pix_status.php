@@ -85,4 +85,9 @@ if (!empty($res['incl_excl']) && is_array($res['incl_excl'])) {
 if (!empty($res['packages']) && is_array($res['packages'])) {
     $payload['packages'] = $res['packages'];
 }
+// Cartão: o que o cliente paga (com acréscimo / em dólar) e a forma de pagamento.
+if (($res['payment_method'] ?? '') === 'card') {
+    $payload['payment_method'] = 'card';
+    $payload['charged_label'] = (string) ($res['charged_label'] ?? '');
+}
 echo json_encode($payload);
