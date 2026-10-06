@@ -206,13 +206,50 @@ export function createPaymentsMock(deps) {
     const rec = buildRecord(v, data, q, "mercadopago");
     rec.installments = inst;
     rec.charged_label = chargedLabel("brl", q.charge_minor, inst);
+    let state;
+    let authId = "mp_dev_" + v.id.slice(-6);
     if (card.token !== "dev-test-token") {
-      // Com chave real use o backend PHP; o mock só simula.
-      json(res, 501, { success: false, message: "No localhost (npm run dev) só o cartão simulado funciona." });
-      return;
+      // Sandbox real do Mercado Pago (MP_ACCESS_TOKEN de TESTE no api/.env).
+      if (!readEnvValue("MP_ACCESS_TOKEN")) { json(res, 501, { success: false, message: "Configure MP_ACCESS_TOKEN no api/.env." }); return; }
+      if (inWindow(rec, 4)) {
+        const ident = card.payer && card.payer.identification;
+        const pay = await mpApi("POST", "/v1/payments", {
+          transaction_amount: q.charge_minor / 100,
+          token: card.token,
+          description: "Guia Chapada Veadeiros " + v.id,
+          installments: inst,
+          payment_method_id: card.payment_method_id,
+          issuer_id: card.issuer_id || undefined,
+          payer: { email: v.email, identification: ident && ident.number ? { type: ident.type || "CPF", number: String(ident.number).replace(/\D/g, "") } : undefined },
+          capture: false,
+          binary_mode: true,
+          external_reference: v.id,
+          statement_descriptor: "GUIACHAPADA",
+        });
+        const p = pay.data || {};
+        console.log("[mp] sandbox payment", p.id, p.status, p.status_detail);
+        if (!pay.ok || p.status !== "authorized") {
+          json(res, 402, { success: false, message: "Cartão recusado (" + (p.status_detail || pay.error || "erro") + "). Confira os dados ou use outro cartão de teste.", error: "declined" });
+          return;
+        }
+        state = "AUTHORIZED";
+        authId = String(p.id);
+      } else {
+        const search = await mpApi("GET", "/v1/customers/search?email=" + encodeURIComponent(v.email));
+        let customerId = search.ok && search.data.results && search.data.results[0] && search.data.results[0].id;
+        if (!customerId) {
+          const c = await mpApi("POST", "/v1/customers", { email: v.email });
+          customerId = c.ok && c.data.id;
+        }
+        const saved = customerId ? await mpApi("POST", "/v1/customers/" + customerId + "/cards", { token: card.token }) : { ok: false };
+        if (!saved.ok) { json(res, 402, { success: false, message: "Não foi possível salvar o cartão de teste." }); return; }
+        rec.card_saved = { gateway: "mercadopago", customer_id: customerId, card_id: saved.data.id, last4: saved.data.last_four_digits, payment_method_id: card.payment_method_id, issuer_id: card.issuer_id, installments: inst };
+        state = "CARD_SAVED";
+      }
+    } else {
+      state = inWindow(rec, 4) ? "AUTHORIZED" : "CARD_SAVED";
     }
-    const state = inWindow(rec, 4) ? "AUTHORIZED" : "CARD_SAVED";
-    markReserved(rec, state, "mercadopago", "mp_dev_" + v.id.slice(-6));
+    markReserved(rec, state, "mercadopago", authId);
     ledgerUpsert({ reservation_id: v.id, gateway: "mercadopago", method: "card_br", status: state, installments: inst, currency: "BRL", charge_minor: q.charge_minor, base_cents: q.base_cents, surcharge_cents: q.surcharge_cents, gross_cents: q.total_brl_cents });
     console.log("[mp] card", v.id, state, inst + "x");
     json(res, 200, { success: true, state, redirect: confirmPathForLocale(v.locale) + "?id=" + encodeURIComponent(v.id), reservation_id: v.id });
@@ -321,12 +358,31 @@ export function createPaymentsMock(deps) {
       json(res, 200, {
         success: true, reservation_id: id, status: rec.status, gateway: rec.gateway, locale: rec.locale, charged_label: rec.charged_label,
         trips: (rec.trips || []).map((t) => ({ title: t.destino, starts_at: (t.dateIso || "") + " " + (t.hora || ""), people: t.qty })),
-        mp: rec.gateway === "mercadopago" ? { public_key: "", last4: "4242", amount: rec.charged_minor / 100 } : null,
+        mp: rec.gateway === "mercadopago" ? {
+          public_key: readEnvValue("MP_PUBLIC_KEY") || "",
+          customer_id: (rec.card_saved && rec.card_saved.customer_id) || "",
+          card_id: (rec.card_saved && rec.card_saved.card_id) || "",
+          last4: (rec.card_saved && rec.card_saved.last4) || "4242",
+          amount: rec.charged_minor / 100,
+        } : null,
       });
       return;
     }
     if (rec.status !== "CARD_SAVED") { json(res, 200, { success: true, status: rec.status, redirect: confirmPathForLocale(rec.locale) + "?id=" + id }); return; }
-    markReserved(rec, "AUTHORIZED", rec.gateway, "dev_auth_" + id.slice(-6));
+    let caId = "dev_auth_" + id.slice(-6);
+    if (rec.gateway === "mercadopago" && body.token && body.token !== "dev-test-token") {
+      const cs = rec.card_saved || {};
+      const pay = await mpApi("POST", "/v1/payments", {
+        transaction_amount: rec.charged_minor / 100, token: body.token, installments: cs.installments || 1,
+        payment_method_id: cs.payment_method_id, issuer_id: cs.issuer_id || undefined,
+        payer: { type: "customer", id: cs.customer_id, email: rec.email },
+        capture: false, binary_mode: true, external_reference: id, description: "Guia Chapada Veadeiros " + id,
+      });
+      const p = pay.data || {};
+      if (!pay.ok || p.status !== "authorized") { json(res, 402, { success: false, message: "Cartão recusado (" + (p.status_detail || pay.error) + ")." }); return; }
+      caId = String(p.id);
+    }
+    markReserved(rec, "AUTHORIZED", rec.gateway, caId);
     ledgerUpsert({ reservation_id: id, gateway: rec.gateway, status: "AUTHORIZED" });
     json(res, 200, { success: true, status: "AUTHORIZED", redirect: confirmPathForLocale(rec.locale) + "?id=" + id });
   }
@@ -343,6 +399,12 @@ export function createPaymentsMock(deps) {
       const rec = pixRead(t.reservation_id);
       // No mock o quórum é considerado atingido: confirmar = cobrar (se já reservado no cartão).
       if (rec && rec.status === "AUTHORIZED") {
+        const authId = String((rec.card_auth && rec.card_auth.id) || "");
+        if (rec.gateway === "mercadopago" && /^\d+$/.test(authId)) {
+          const cap = await mpApi("PUT", "/v1/payments/" + authId, { capture: true });
+          console.log("[mp] sandbox capture", authId, cap.ok && cap.data.status);
+          if (!cap.ok) { json(res, 502, { ok: false, error: "Falha ao cobrar no Mercado Pago (sandbox)." }); return; }
+        }
         markPaid(rec, rec.gateway);
         t.status = "PAID";
         t.paid_at = nowSp();
@@ -445,7 +507,7 @@ export function createPaymentsMock(deps) {
       const base = Math.round(Number(String(u.searchParams.get("amount") || "0").replace(",", ".")) * 100);
       if (!Number.isFinite(base) || base < 100) { json(res, 422, { success: false, message: "Invalid amount" }); return true; }
       Promise.all(["pix", "card_br", "card_intl"].map((m) => quote(base, m))).then(([pix, card_br, card_intl]) => {
-        json(res, 200, { success: true, base_cents: base, quotes: { pix, card_br, card_intl } });
+        json(res, 200, { success: true, base_cents: base, quotes: { pix, card_br, card_intl }, mp_public_key: readEnvValue("MP_PUBLIC_KEY") || "" });
       });
       return true;
     }

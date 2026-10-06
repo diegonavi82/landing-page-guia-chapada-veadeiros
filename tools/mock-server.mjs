@@ -1951,7 +1951,7 @@ const API_ROUTES = {
     };
     const localize = (row, month, weekday) => ({ ...row, monthName: month, weekday });
     const pt = [courosWalk, sbWalk, sbVan, valeVanOnly, pratinhaWalk];
-    return {
+    return devShiftCarousel({
       ok: true,
       data: {
         pt,
@@ -1988,7 +1988,7 @@ const API_ROUTES = {
           ),
         ),
       },
-    };
+    });
   },
 
   "/api/tours/list.php": () => ({
@@ -2048,6 +2048,44 @@ function serveFile(res, filePath) {
     }
     res.end(data);
   });
+}
+
+/**
+ * Dev: as saídas de exemplo têm datas fixas (set/2026). Se já passaram, empurra todas para
+ * frente (a primeira fica daqui a 2 dias) para dar para testar reserva e pagamento no localhost.
+ */
+function devShiftCarousel(payload) {
+  const rows = payload && payload.data && payload.data.pt;
+  if (!Array.isArray(rows) || !rows.length) return payload;
+  const first = rows.map((r) => r.dateISO).sort()[0];
+  const today = new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 10);
+  const target = new Date(Date.parse(today + "T12:00:00Z") + 2 * 86400000);
+  const offsetDays = Math.round((target - Date.parse(first + "T12:00:00Z")) / 86400000);
+  if (offsetDays <= 0) return payload;
+  const names = {
+    pt: { m: "long", w: "long", loc: "pt-BR" },
+    en: { m: "long", w: "long", loc: "en-US" },
+    es: { m: "long", w: "long", loc: "es-ES" },
+  };
+  const out = {};
+  for (const lang of Object.keys(payload.data)) {
+    out[lang] = payload.data[lang].map((row) => {
+      const oldIso = row.dateISO;
+      const d = new Date(Date.parse(oldIso + "T12:00:00Z") + offsetDays * 86400000);
+      const iso = d.toISOString().slice(0, 10);
+      const n = names[lang] || names.pt;
+      const weekday = d.toLocaleDateString(n.loc, { weekday: "long", timeZone: "UTC" });
+      return {
+        ...row,
+        dateISO: iso,
+        dayNum: String(d.getUTCDate()),
+        monthName: d.toLocaleDateString(n.loc, { month: "long", timeZone: "UTC" }),
+        weekday: weekday.charAt(0).toUpperCase() + weekday.slice(1),
+        cartSlug: row.cartSlug ? String(row.cartSlug).replace(oldIso, iso) : row.cartSlug,
+      };
+    });
+  }
+  return { ...payload, data: out };
 }
 
 const handlePaymentsApi = createPaymentsMock({
