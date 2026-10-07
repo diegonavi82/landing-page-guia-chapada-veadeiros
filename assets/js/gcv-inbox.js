@@ -63,6 +63,27 @@
     }
   }
 
+  function setAgendaBadge(n) {
+    n = parseInt(n, 10) || 0;
+    document.querySelectorAll('[data-section="section-guide-tours"]').forEach(function (link) {
+      var old = link.querySelector('.gcv-dash-nav-badge, .gcv-dash-tab-badge');
+      if (old) old.remove();
+      if (n < 1) return;
+      var tab = !!link.closest('.gcv-dash-bottom-nav');
+      var badge = document.createElement('span');
+      badge.className = tab ? 'gcv-dash-tab-badge' : 'gcv-dash-nav-badge';
+      badge.textContent = n > 99 ? '99+' : String(n);
+      badge.setAttribute('aria-label', n + (n === 1 ? ' nova reserva' : ' novas reservas'));
+      link.appendChild(badge);
+    });
+  }
+
+  function applyCounts(data) {
+    data = data || {};
+    setBadge(parseInt(data.unread, 10) || 0);
+    if (data.agenda_unread != null) setAgendaBadge(data.agenda_unread);
+  }
+
   function renderList(items) {
     var root = document.getElementById('gcv-inbox-list');
     if (!root) return;
@@ -93,9 +114,8 @@
       });
     }
     post('/api/inbox/read.php', { all: true }, function (err, res) {
-      var n = 0;
-      if (res && res.ok && res.data) n = parseInt(res.data.unread, 10) || 0;
-      setBadge(n);
+      if (res && res.ok && res.data) applyCounts(res.data);
+      else setAgendaBadge(0);
       if (typeof cb === 'function') cb();
     });
   }
@@ -111,7 +131,7 @@
         return;
       }
       var data = res.data || {};
-      setBadge(parseInt(data.unread, 10) || 0);
+      applyCounts(data);
       renderList(data.items || []);
     });
   }
@@ -119,7 +139,7 @@
   function refreshBadge() {
     get('/api/inbox/list.php?limit=1', function (err, res) {
       if (err || !res || !res.ok) return;
-      setBadge(parseInt((res.data || {}).unread, 10) || 0);
+      applyCounts(res.data || {});
     });
   }
 
@@ -153,7 +173,7 @@
         if (!id || !item.classList.contains('gcv-inbox-item--unread')) return;
         post('/api/inbox/read.php', { id: id }, function (err, res) {
           item.classList.remove('gcv-inbox-item--unread');
-          if (res && res.ok && res.data) setBadge(parseInt(res.data.unread, 10) || 0);
+          if (res && res.ok && res.data) applyCounts(res.data);
         });
       });
     }
@@ -166,10 +186,18 @@
     pollTimer = setInterval(refreshBadge, 45000);
   }
 
+  function ackAgenda() {
+    post('/api/inbox/read.php', { kind: 'new_booking' }, function (err, res) {
+      if (res && res.ok && res.data) applyCounts(res.data);
+      else refreshBadge();
+    });
+  }
+
   window.GcvInbox = {
     start: start,
     open: openPage,
     refresh: refreshBadge,
-    load: loadList
+    load: loadList,
+    ackAgenda: ackAgenda
   };
 })();

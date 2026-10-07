@@ -20,6 +20,7 @@ if (!is_array($body)) {
 }
 $id = isset($body['id']) ? (int)$body['id'] : 0;
 $all = !empty($body['all']);
+$kind = substr(trim((string)($body['kind'] ?? '')), 0, 40);
 $idsRaw = $body['ids'] ?? null;
 $ids = [];
 if (is_array($idsRaw)) {
@@ -37,6 +38,8 @@ if ($all) {
     $n = gcv_inbox_mark_read_ids($uid, $ids);
 } elseif ($id > 0) {
     $n = gcv_inbox_mark_read($uid, $id);
+} elseif ($kind !== '') {
+    $n = gcv_inbox_mark_read_kind($uid, $kind);
 } else {
     json_response(false, null, 'Informe o aviso', 422);
 }
@@ -44,4 +47,5 @@ if ($all) {
 json_response(true, [
     'marked' => $n,
     'unread' => gcv_inbox_unread_count($uid),
+    'agenda_unread' => gcv_inbox_unread_count($uid, 'new_booking'),
 ]);

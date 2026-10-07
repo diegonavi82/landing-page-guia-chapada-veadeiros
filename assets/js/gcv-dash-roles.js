@@ -625,26 +625,148 @@
     return m[3] + '/' + m[2] + '/' + m[1];
   }
 
-  function renderGuideClients(clients) {
+  var GUIDE_WEEKDAYS = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+
+  function guideWeekday(iso) {
+    var m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) return '';
+    var d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    if (isNaN(d.getTime())) return '';
+    return GUIDE_WEEKDAYS[d.getDay()] || '';
+  }
+
+  function addCalendarDays(iso, days) {
+    var m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) return '';
+    var d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    d.setDate(d.getDate() + days);
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  }
+
+  function addBusinessDays(iso, days) {
+    var m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) return '';
+    var d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    var left = Math.max(0, days);
+    while (left > 0) {
+      d.setDate(d.getDate() + 1);
+      var wd = d.getDay();
+      if (wd !== 0 && wd !== 6) left--;
+    }
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  }
+
+  /**
+   * Data em que o Pix do guia sai.
+   * Pix: no dia do passeio (16h20, depois do QR) — o valor já está no Sicoob.
+   * Cartão Mercado Pago: libera 1 dia depois da saída; o repasse espera essa data.
+   * Cartão Stripe: libera 2 dias úteis depois da cobrança (estimada na saída) e o repasse diário cai no Sicoob.
+   * O guia recebe na data mais tarde entre o dia do passeio e a liberação da plataforma.
+   */
+  function guideReceiptDate(kind, iso) {
+    var tour = String(iso || '').slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(tour)) return '';
+    var release = tour;
+    if (kind === 'stripe') release = addBusinessDays(tour, 2);
+    else if (kind === 'card' || kind === 'mercadopago') release = addCalendarDays(tour, 1);
+    return release > tour ? release : tour;
+  }
+
+  function guideReceiptHint(kind) {
+    if (kind === 'pix') return 'Pix: repasse no dia do passeio, às 16h20, depois da leitura do QR.';
+    if (kind === 'stripe') return 'Cartão internacional (Stripe): cobra na confirmação, libera em 2 dias úteis e o repasse diário cai no Sicoob.';
+    return 'Cartão (Mercado Pago): cobra na confirmação e libera o saldo 1 dia depois da saída.';
+  }
+
+  function clientPayKind(c) {
+    var kind = String((c && (c.payment_gateway || c.payment_kind)) || '').toLowerCase();
+    if (kind === 'stripe' || kind === 'card_intl') return 'stripe';
+    if (kind === 'card' || kind === 'mercadopago' || kind === 'card_br') return 'card';
+    if (kind === 'pix') return 'pix';
+    return '';
+  }
+
+  function clientPayLabel(kind) {
+    if (kind === 'pix') return 'Pix';
+    if (kind === 'stripe') return 'Cartão internacional';
+    if (kind === 'card') return 'Cartão nacional';
+    return '';
+  }
+
+  function clientReserveCents(c, tour) {
+    var people = parseInt(c && (c.people != null ? c.people : c.spots), 10) || 1;
+    if (c && c.total_cents != null && c.total_cents !== '' && Number(c.total_cents) > 0) {
+      return Number(c.total_cents);
+    }
+    var unit = tour && tour.price_cents != null ? Number(tour.price_cents) || 0 : 0;
+    return unit * people;
+  }
+
+  function clientPayForecast(c, tour) {
+    var kind = clientPayKind(c);
+    var label = clientPayLabel(kind);
+    if (!label || !tour) return '';
+    var iso = guideReceiptDate(kind, tour.date_iso);
+    if (!iso) return '';
+    var cents = clientReserveCents(c, tour);
+    return label + ' — Pagamento previsto para ' + formatGuideDate(iso) + ' — ' + money(cents);
+  }
+
+  function isSiteDirectPurchase(e) {
+    if (!e || e.guide_launched) return false;
+    if (e.awaiting_guide) return true;
+    return (e.clients || []).some(function (c) {
+      return !!(c && (c.reservation_id || c.trip_id));
+    });
+  }
+
+  function guidePhoneWa(phone, whatsapp) {
+    var digits = digitsOnly(phone);
+    if (!digits) {
+      var match = String(whatsapp || '').match(/wa\.me\/(\d+)/i);
+      digits = match ? match[1] : '';
+    }
+    if (!digits) return null;
+    if (digits.length >= 10 && digits.length <= 11) digits = '55' + digits;
+    return { text: '+' + digits, href: 'https://wa.me/' + digits };
+  }
+
+  function renderGuideClients(clients, tour) {
     var list = clients || [];
     if (!list.length) {
       return '';
     }
+    var waitingTour = !!(tour && tour.awaiting_guide);
+    list = list.slice().sort(function (a, b) {
+      return String(a.name || '').localeCompare(String(b.name || ''), 'pt');
+    });
     var totalSpots = 0;
     list.forEach(function (c) {
       totalSpots += parseInt(c.people != null ? c.people : c.spots, 10) || 1;
     });
+    var heading = 'Reservas do site · ' + list.length + (list.length === 1 ? ' reserva' : ' reservas') +
+      ' · ' + totalSpots + (totalSpots === 1 ? ' pessoa' : ' pessoas');
     return (
       '<div class="gcv-dash-clients-wrap">' +
-      '<h4 class="gcv-dash-clients-title">Clientes · ' + list.length + (list.length === 1 ? ' reserva' : ' reservas') +
-      ' · ' + totalSpots + (totalSpots === 1 ? ' pessoa' : ' pessoas') + '</h4>' +
+      '<h4 class="gcv-dash-clients-title">' + heading + '</h4>' +
       '<ul class="gcv-dash-clients">' +
       list.map(function (c) {
         var people = parseInt(c.people != null ? c.people : c.spots, 10) || 1;
-        var paid = String(c.status || '').toUpperCase() === 'PAID';
-        var wa = c.whatsapp || '';
+        var st = String(c.status || '').toUpperCase();
+        var paid = st === 'PAID';
+        var phoneWa = guidePhoneWa(c.phone, c.whatsapp);
         var name = (c.name && String(c.name).trim()) ? String(c.name).trim() : 'Cliente';
         var withT = !!c.with_transport;
+        var kind = String(c.payment_kind || '').toLowerCase();
+        var cardHold = kind === 'card' || st === 'AUTHORIZED' || st === 'CARD_SAVED';
+        var payText = 'Aguardando pagamento';
+        var payCls = 'gcv-dash-client__pending';
+        if (paid) {
+          payText = 'Pago';
+          payCls = 'gcv-dash-client__paid';
+        } else if (cardHold) {
+          payText = 'Cartão reservado';
+        }
         return (
           '<li class="gcv-dash-client">' +
           '<div class="gcv-dash-client__line"><span class="gcv-dash-client__k">Nome</span> <strong>' + esc(name) + '</strong>' +
@@ -652,21 +774,21 @@
           (withT ? 'Com transporte' : 'Sem transporte') + '</span></div>' +
           '<div class="gcv-dash-client__line"><span class="gcv-dash-client__k">Pessoas</span> ' + people + (people === 1 ? ' pessoa' : ' pessoas') + '</div>' +
           (c.email ? '<div class="gcv-dash-client__line"><span class="gcv-dash-client__k">E-mail</span> <a href="mailto:' + esc(c.email) + '">' + esc(c.email) + '</a></div>' : '') +
-          (c.phone
-            ? '<div class="gcv-dash-client__line"><span class="gcv-dash-client__k">Telefone</span> ' + esc(c.phone) +
-              (wa ? ' · <a href="' + esc(wa) + '" target="_blank" rel="noopener">WhatsApp</a>' : '') +
-              '</div>'
+          (phoneWa
+            ? '<div class="gcv-dash-client__line"><span class="gcv-dash-client__k">Telefone</span> <a href="' +
+              esc(phoneWa.href) + '" target="_blank" rel="noopener">' + esc(phoneWa.text) + '</a></div>'
             : '') +
+          (function () {
+            var forecast = clientPayForecast(c, tour);
+            return forecast
+              ? '<p class="gcv-dash-client__forecast" title="' + esc(guideReceiptHint(clientPayKind(c))) + '">' + esc(forecast) + '</p>'
+              : '';
+          })() +
           '<div class="gcv-dash-client__meta">' +
           (c.reservation_id ? '<code>' + esc(c.reservation_id) + '</code> · ' : '') +
-          '<span class="' + (paid ? 'gcv-dash-client__paid' : 'gcv-dash-client__pending') + '">' +
-          (paid ? 'Pago' : 'Aguardando pagamento') + '</span>' +
-          (attBadge(c)) +
+          '<span class="' + payCls + '">' + payText + '</span>' +
+          (waitingTour ? '' : attBadge(c)) +
           '</div>' +
-          (paid && c.reservation_id && String(c.attendance_status || '') !== 'checked_in'
-            ? '<button type="button" class="gcv-dash-btn gcv-dash-btn--sm gcv-dash-btn--primary" data-checkin-code="' +
-              esc(c.reservation_id) + '">Confirmar presença</button>'
-            : '') +
           '</li>'
         );
       }).join('') +
@@ -1875,15 +1997,14 @@
     return '<span class="gcv-agenda-seat gcv-agenda-seat--person is-' + tone + '">' + agendaSeatIcon() + '</span>';
   }
 
-  function agendaTransportMark(confirmed) {
-    var tone = confirmed ? 'ok' : 'hot';
+  function agendaTransportMark(tone) {
     return '<span class="gcv-agenda-seat gcv-agenda-seat--stack is-' + tone + '">' +
       '<span class="gcv-agenda-seat__car">' + agendaSeatCarIcon() + '</span>' +
       '<span class="gcv-agenda-seat__person">' + agendaSeatIcon() + '</span>' +
       '</span>';
   }
 
-  function occupancyGroupMarksHtml(st, confirmed) {
+  function occupancyGroupMarksHtml(st) {
     var total = Math.max(1, parseFiniteInt(st.total, 1));
     if (total > 12) total = 12;
     var outside = Math.max(0, parseFiniteInt(st.outside, 0));
@@ -1892,12 +2013,11 @@
     if (outside > total) outside = total;
     if (outside + walk > total) walk = Math.max(0, total - outside);
     if (outside + walk + van > total) van = Math.max(0, total - outside - walk);
-    var tone = confirmed ? 'ok' : 'hot';
     var html = '';
     var i;
-    for (i = 0; i < outside; i++) html += agendaPersonMark(tone);
-    for (i = 0; i < walk; i++) html += agendaPersonMark(tone);
-    for (i = 0; i < van; i++) html += agendaTransportMark(confirmed);
+    for (i = 0; i < outside; i++) html += agendaPersonMark('out');
+    for (i = 0; i < walk; i++) html += agendaPersonMark('walk');
+    for (i = 0; i < van; i++) html += agendaTransportMark('van');
     var empty = total - outside - walk - van;
     for (i = 0; i < empty; i++) html += agendaPersonMark('empty');
     return html;
@@ -1937,6 +2057,8 @@
       formed = false;
     }
     var note = quorumLineHtml(opts);
+    var max = Math.max(0, parseFiniteInt(opts.total, 0));
+    var countHtml = '<b>' + filled + '</b>' + (max > 0 ? '<span>/' + max + '</span>' : '');
     return (
       '<div class="gcv-agenda-lot__row gcv-agenda-lot__row--' + opts.kind +
       (locked ? ' is-locked' : '') + (cancelled ? ' is-cancelled' : '') + (formed ? ' is-formed' : '') + '">' +
@@ -1945,7 +2067,7 @@
       '<span class="gcv-agenda-lot__ico" aria-hidden="true">' + opts.icon + '</span>' +
       '<strong>' + esc(opts.title) + '</strong>' +
       '</div>' +
-      '<div class="gcv-agenda-lot__count"><b>' + filled + '</b></div>' +
+      '<div class="gcv-agenda-lot__count">' + countHtml + '</div>' +
       '</div>' +
       (note ? '<div class="gcv-agenda-lot__note">' + note + '</div>' : '') +
       '</div>'
@@ -1995,14 +2117,16 @@
 
   function renderAgendaGroupLine(e) {
     var st = agendaOccupancyState(e);
-    var confirmed = agendaGroupConfirmed(e);
+    var label = st.occupied + ' de ' + st.total + ' vagas';
     return (
-      '<div class="gcv-agenda-groupline">' +
-      '<strong>Grupo</strong>' +
-      '<span class="gcv-agenda-groupline__count">' + st.occupied + '/' + st.total + '</span>' +
-      '<div class="gcv-agenda-lot__seats gcv-agenda-lot__seats--group" role="img" aria-label="' +
-      st.occupied + ' de ' + st.total + ' vagas do grupo">' +
-      occupancyGroupMarksHtml(st, confirmed) +
+      '<div class="gcv-agenda-group">' +
+      '<div class="gcv-agenda-group__top">' +
+      lifeBadge(e.lifecycle, e.lifecycle_label) +
+      '<span class="gcv-agenda-card__sep" aria-hidden="true">|</span>' +
+      '<span class="gcv-agenda-group__label">Grupo ' + st.occupied + '/' + st.total + '</span>' +
+      '</div>' +
+      '<div class="gcv-agenda-lot__seats gcv-agenda-lot__seats--group" role="img" aria-label="' + label + '">' +
+      occupancyGroupMarksHtml(st) +
       '</div></div>'
     );
   }
@@ -2011,12 +2135,15 @@
     var st = agendaOccupancyState(e);
     var qT = parseFiniteInt(e.quorum_transport, 0);
     var vanFormed = !!(st.offer && !st.cancelled && (qT <= 0 || st.transport >= qT));
-    var html = occupancyRowHtml({
-      kind: 'out',
-      icon: agendaOutsideIcon(),
-      title: 'Fechados por fora',
-      filled: st.outside
-    });
+    var html = '';
+    if (!isSiteDirectPurchase(e)) {
+      html += occupancyRowHtml({
+        kind: 'out',
+        icon: agendaOutsideIcon(),
+        title: 'Fechados por fora',
+        filled: st.outside
+      });
+    }
     html += occupancyRowHtml({
       kind: 'walk',
       icon: agendaWalkIcon(),
@@ -2057,27 +2184,34 @@
     var pendingNote = pending
       ? '<p class="gcv-dash-alert gcv-dash-alert--warning" style="margin:0.7rem 0 0;">Aguardando aprovação do administrador. Ainda não aparece no site.</p>'
       : '';
-    var life = String(e.lifecycle || 'na');
+    var waiting = !!e.awaiting_guide;
+    var life = waiting ? 'em_espera' : String(e.lifecycle || 'na');
+    var lifeLabel = waiting ? 'Em espera' : e.lifecycle_label;
     var time = String(e.departure_time || '').slice(0, 5);
+    var weekday = guideWeekday(e.date_iso);
+    var when = esc(formatGuideDate(e.date_iso)) + (weekday ? ' (' + esc(weekday) + ')' : '') + (time ? ' · ' + esc(time) : '');
+    var receive = e.guide_receive_cents != null ? e.guide_receive_cents : e.price_cents;
     return (
       '<article class="gcv-agenda-card gcv-guide-upcoming gcv-agenda-card--' + esc(life) + '">' +
-      '<div class="gcv-guide-upcoming__head">' +
-      '<div class="gcv-guide-upcoming__main">' +
-      '<div class="gcv-guide-upcoming__top">' +
-      '<div class="gcv-guide-upcoming__status">' + lifeBadge(e.lifecycle, e.lifecycle_label) + renderAgendaGroupLine(e) + '</div>' +
+      '<div class="gcv-agenda-card__when">' +
+      '<div class="gcv-agenda-card__when-main">' +
+      '<p class="gcv-agenda-card__date">' + when + '</p>' +
+      '<p class="gcv-agenda-card__place">' +
+      (e.departure_city_name ? '<span>' + esc(e.departure_city_name) + '</span><span class="gcv-agenda-card__sep" aria-hidden="true">|</span>' : '') +
+      '<span class="gcv-agenda-card__price" title="Valor do passeio">' + money(receive) + '</span>' +
+      '</p>' +
+      '</div>' +
       (actions ? '<div class="gcv-guide-upcoming__actions">' + actions + '</div>' : '') +
       '</div>' +
-      '<h3 class="gcv-agenda-card__title">' + esc(e.attraction_title || 'Passeio') + '</h3>' +
-      '<div class="gcv-agenda-card__meta">' +
-      '<span class="gcv-agenda-chip">' + esc(formatGuideDate(e.date_iso)) + (time ? ' · ' + esc(time) : '') + '</span>' +
-      (e.departure_city_name ? '<span class="gcv-agenda-chip">' + esc(e.departure_city_name) + '</span>' : '') +
-      '<span class="gcv-agenda-chip gcv-agenda-chip--price">' + money(e.price_cents) + '</span>' +
-      '</div>' +
+      '<div class="gcv-agenda-card__body">' +
+      '<h3 class="gcv-agenda-card__title">' +
+      (waiting ? '<span class="gcv-agenda-novo">NOVO</span>' : '') +
+      esc(e.attraction_title || 'Passeio') + '</h3>' +
+      '<div class="gcv-guide-upcoming__status">' + renderAgendaGroupLine(Object.assign({}, e, { lifecycle: life, lifecycle_label: lifeLabel })) + '</div>' +
       renderAgendaOccupancy(e) +
-      '</div></div>' +
       pendingNote +
-      renderGuideClients(e.clients) +
-      '</article>'
+      (waiting ? '' : renderGuideClients(e.clients, e)) +
+      '</div></article>'
     );
   }
 
@@ -2120,6 +2254,53 @@
         });
       };
     });
+    list.querySelectorAll('[data-guide-yes]').forEach(function (btn) {
+      btn.onclick = function () {
+        var id = parseInt(btn.getAttribute('data-guide-yes'), 10);
+        btn.disabled = true;
+        btn.textContent = 'Confirmando…';
+        sendJson('POST', '/api/guides/booking-confirmations.php', {
+          excursion_id: id,
+          action: 'confirm'
+        }, function (e, r) {
+          if (!r || !r.ok) {
+            btn.disabled = false;
+            btn.textContent = 'Confirmar';
+            alert((r && r.error) || 'Não foi possível confirmar.');
+            return;
+          }
+          loadGuideAgenda();
+        });
+      };
+    });
+    list.querySelectorAll('[data-guide-no]').forEach(function (btn) {
+      btn.onclick = function () {
+        var id = parseInt(btn.getAttribute('data-guide-no'), 10);
+        var sendNo = function () {
+          btn.disabled = true;
+          sendJson('POST', '/api/guides/booking-confirmations.php', {
+            excursion_id: id,
+            action: 'decline'
+          }, function (e, r) {
+            if (!r || !r.ok) {
+              btn.disabled = false;
+              alert((r && r.error) || 'Não foi possível recusar.');
+              return;
+            }
+            loadGuideAgenda();
+          });
+        };
+        if (typeof global.gcvConfirm === 'function') {
+          global.gcvConfirm('Não guiar este passeio? As reservas do site nesta saída serão liberadas.', {
+            okText: 'Não guiar',
+            cancelText: 'Voltar',
+            danger: true
+          }).then(function (ok) { if (ok) sendNo(); });
+          return;
+        }
+        if (confirm('Não guiar este passeio?')) sendNo();
+      };
+    });
     list.querySelectorAll('[data-edit-exc]').forEach(function (btn) {
       btn.onclick = function () {
         var id = parseInt(btn.getAttribute('data-edit-exc'), 10);
@@ -2154,6 +2335,32 @@
     }
   }
 
+  function renderGuideAsk(tours) {
+    if (!tours.length) return '';
+    var many = tours.length > 1;
+    var question = many ? 'Você quer guiar esses Passeios?' : 'Você quer guiar esse Passeio?';
+    var items = tours.map(function (e) {
+      var time = String(e.departure_time || '').slice(0, 5);
+      var when = formatGuideDate(e.date_iso) + (time ? ' · ' + time : '');
+      return (
+        '<li class="gcv-agenda-ask__item">' +
+        '<span class="gcv-agenda-novo">NOVO</span>' +
+        '<span class="gcv-agenda-ask__name">' + esc(e.attraction_title || 'Passeio') + '</span>' +
+        '<span class="gcv-agenda-ask__when">' + esc(when) + '</span>' +
+        '<span class="gcv-agenda-ask__actions">' +
+        '<button type="button" class="gcv-dash-btn gcv-dash-btn--sm gcv-dash-btn--primary" data-guide-yes="' + esc(e.id) + '">Confirmar</button>' +
+        '<button type="button" class="gcv-dash-btn gcv-dash-btn--sm gcv-dash-btn--secondary" data-guide-no="' + esc(e.id) + '">Não</button>' +
+        '</span></li>'
+      );
+    }).join('');
+    return (
+      '<section class="gcv-agenda-ask">' +
+      '<p class="gcv-agenda-ask__q">' + question + '</p>' +
+      '<ul class="gcv-agenda-ask__list">' + items + '</ul>' +
+      '</section>'
+    );
+  }
+
   function paintGuideAgenda() {
     var list = document.getElementById('guide-tours-list');
     if (!list) return;
@@ -2176,10 +2383,13 @@
         'Próximas saídas',
         archivedLinkHtml('gcv-agenda-archived-toggle', 'Arquivados', true)
       );
+      var pending = upcoming.filter(function (row) { return !!row.awaiting_guide; });
+      var rest = upcoming.filter(function (row) { return !row.awaiting_guide; });
+      html += renderGuideAsk(pending);
       if (!upcoming.length) {
         html += '<div class="gcv-dash-alert gcv-dash-alert--info">Nenhuma saída próxima.</div>';
       } else {
-        html += upcoming.map(renderAgendaCard).join('');
+        html += pending.concat(rest).map(renderAgendaCard).join('');
       }
     }
     list.innerHTML = html;

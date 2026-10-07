@@ -1590,6 +1590,196 @@ function pickUserByLogin(email, context) {
   return MOCK_USERS.client;
 }
 
+/** waiting = compra do site, saída ainda não lançada. accepted | declined depois do guia decidir. */
+let mockGuideDecision = "waiting";
+
+/** Reservas do site na agenda do guia (localhost). */
+const mockSiteBookings = [
+  {
+    trip_id: 501,
+    name: "Ana Souza",
+    email: "ana.souza@email.com",
+    phone: "62988887777",
+    whatsapp: "https://wa.me/5562988887777",
+    spots: 1,
+    people: 1,
+    status: "PAID",
+    reservation_id: "GCV-PIX101",
+    with_transport: false,
+    attendance_status: "pending",
+    payment_kind: "pix",
+    total_cents: 23000,
+    needs_confirm: false,
+    guide_confirmed: true,
+  },
+  {
+    trip_id: 502,
+    name: "Carlos Lima",
+    email: "carlos.lima@email.com",
+    phone: "61977776666",
+    whatsapp: "https://wa.me/5561977776666",
+    spots: 1,
+    people: 1,
+    status: "AUTHORIZED",
+    reservation_id: "GCV-CARD22",
+    with_transport: false,
+    attendance_status: "pending",
+    payment_kind: "card",
+    total_cents: 23000,
+    needs_confirm: true,
+    guide_confirmed: false,
+  },
+];
+
+/** Segundo passeio novo do site, independente da decisão de Loquinhas. */
+let mockValeDecision = "waiting";
+
+function mockAcceptedTour() {
+  return {
+    id: 88,
+    date_iso: "2026-07-15",
+    departure_time: "08:00:00",
+    attraction_title: "Trilha da Carioca",
+    departure_city_name: "Alto Paraíso",
+    price_cents: 18000,
+    booked_people: 1,
+    quorum: 4,
+    max_people: 8,
+    status: "published",
+    created_by_origin: "GUIDE",
+    guide_launched: true,
+    awaiting_guide: false,
+    lifecycle: "em_formacao",
+    lifecycle_label: "Em formação",
+    can_cancel: true,
+    clients: [
+      {
+        name: "Marina Costa",
+        email: "marina.costa@email.com",
+        phone: "62911112222",
+        whatsapp: "https://wa.me/5562911112222",
+        spots: 1,
+        people: 1,
+        status: "PAID",
+        reservation_id: "GCV-PIX88",
+        with_transport: false,
+        attendance_status: "pending",
+        payment_kind: "pix",
+        total_cents: 18000,
+        guide_confirmed: true,
+      },
+    ],
+    clients_count: 1,
+    pending_requests: 0,
+  };
+}
+
+function mockValeTour() {
+  if (mockValeDecision === "declined") return null;
+  const waiting = mockValeDecision === "waiting";
+  return {
+    id: 202,
+    date_iso: "2026-08-03",
+    departure_time: "14:00:00",
+    attraction_title: "Vale da Lua",
+    departure_city_name: "São Jorge",
+    price_cents: 22000,
+    booked_people: 1,
+    quorum: 4,
+    max_people: 8,
+    status: "published",
+    created_by_origin: "ADMIN",
+    guide_launched: false,
+    awaiting_guide: waiting,
+    lifecycle: waiting ? "em_espera" : "em_formacao",
+    lifecycle_label: waiting ? "Em espera" : "Em formação",
+    can_cancel: true,
+    clients: [
+      {
+        name: "Paulo Nunes",
+        email: "paulo.nunes@email.com",
+        phone: "61933334444",
+        whatsapp: "https://wa.me/5561933334444",
+        spots: 1,
+        people: 1,
+        status: "AUTHORIZED",
+        reservation_id: "GCV-CARD202",
+        with_transport: false,
+        attendance_status: "pending",
+        payment_kind: "stripe",
+        total_cents: 22000,
+        guide_confirmed: !waiting,
+      },
+    ],
+    clients_count: 1,
+    pending_requests: waiting ? 1 : 0,
+  };
+}
+
+const mockInboxItems = [
+  {
+    id: 1,
+    title: "Nova inscrição",
+    body: "Nova inscrição\n\nDestino: Loquinhas + Cristais\nPessoas nesta inscrição: 1 pessoa\n\nA reserva está na sua Agenda do painel.",
+    kind: "new_booking",
+    excursion_id: 101,
+    sale_id: 1,
+    unread: true,
+    created_at: "2026-10-07 06:40:00",
+  },
+  {
+    id: 2,
+    title: "Nova inscrição",
+    body: "Nova inscrição\n\nDestino: Loquinhas + Cristais\nPessoas nesta inscrição: 1 pessoa\nPagamento: cartão reservado\n\nA reserva está na sua Agenda do painel. Confirme para cobrar.",
+    kind: "new_booking",
+    excursion_id: 101,
+    sale_id: 2,
+    unread: true,
+    created_at: "2026-10-07 06:48:00",
+  },
+];
+
+function mockInboxPayload() {
+  const unread = mockInboxItems.filter((item) => item.unread).length;
+  const agendaUnread = mockInboxItems.filter((item) => item.unread && item.kind === "new_booking").length;
+  return {
+    unread,
+    agenda_unread: agendaUnread,
+    items: mockInboxItems.map((item) => ({ ...item })),
+  };
+}
+
+function mockAgendaExcursion() {
+  if (mockGuideDecision === "declined") return null;
+  const waiting = mockGuideDecision === "waiting";
+  const clients = mockSiteBookings.map((row) => ({
+    ...row,
+    needs_confirm: false,
+    guide_confirmed: !waiting,
+  }));
+  return {
+    id: 101,
+    date_iso: "2026-07-23",
+    departure_time: "09:00:00",
+    attraction_title: "Loquinhas + Cristais",
+    departure_city_name: "Alto Paraíso",
+    price_cents: 23000,
+    booked_people: 2,
+    quorum: 4,
+    max_people: 10,
+    status: "published",
+    created_by_origin: "ADMIN",
+    guide_launched: false,
+    awaiting_guide: waiting,
+    lifecycle: waiting ? "em_espera" : "em_formacao",
+    lifecycle_label: waiting ? "Em espera" : "Em formação",
+    can_cancel: true,
+    clients,
+    clients_count: clients.length,
+    pending_requests: waiting ? 1 : 0,
+  };
+}
+
 /** Respostas mock da API */
 const API_ROUTES = {
   "/api/auth/me.php": () => ({
@@ -1672,49 +1862,26 @@ const API_ROUTES = {
     };
   },
 
-  "/api/guides/excursions.php": () => ({
-    ok: true,
-    data: {
-      profile_complete: true,
-      min_quorum: 4,
-      attractions: MOCK_ATTRACTIONS,
-      cities: MOCK_CITIES,
-      upcoming: [
-        {
-          id: 101,
-          date_iso: "2026-07-23",
-          departure_time: "09:00:00",
-          attraction_title: "Loquinhas + Cristais",
-          departure_city_name: "Alto Paraíso",
-          price_cents: 23000,
-          booked_people: 2,
-          quorum: 4,
-          max_people: 10,
-          status: "published",
-          lifecycle: "em_formacao",
-          lifecycle_label: "Em formação",
-          can_cancel: true,
-        },
-      ],
-      excursions: [
-        {
-          id: 101,
-          date_iso: "2026-07-23",
-          departure_time: "09:00:00",
-          attraction_title: "Loquinhas + Cristais",
-          departure_city_name: "Alto Paraíso",
-          price_cents: 23000,
-          booked_people: 2,
-          quorum: 4,
-          max_people: 10,
-          status: "published",
-          lifecycle: "em_formacao",
-          lifecycle_label: "Em formação",
-          can_cancel: true,
-        },
-      ],
-    },
-  }),
+  "/api/guides/excursions.php": () => {
+    const tour = mockAgendaExcursion();
+    const vale = mockValeTour();
+    const upcoming = [tour, vale, mockAcceptedTour()].filter(Boolean).map((row) => {
+      const copy = { ...row, clients: (row.clients || []).map((client) => ({ ...client })) };
+      if (copy.awaiting_guide) copy.clients = [];
+      return copy;
+    });
+    return {
+      ok: true,
+      data: {
+        profile_complete: true,
+        min_quorum: 4,
+        attractions: MOCK_ATTRACTIONS,
+        cities: MOCK_CITIES,
+        upcoming,
+        excursions: upcoming.map((row) => Object.assign({}, row, { clients: row.clients.map((client) => ({ ...client })) })),
+      },
+    };
+  },
 
   "/api/bookings/my.php": () => ({
     ok: true,
@@ -2098,6 +2265,18 @@ const handlePaymentsApi = createPaymentsMock({
   requestOrigin,
   safeReturnPath,
   confirmPathForLocale,
+  onGuideExcursion(body) {
+    const excursionId = parseInt(body.excursion_id || "0", 10);
+    if (excursionId !== 101 || mockGuideDecision !== "waiting") {
+      return { ok: false, error: "Este passeio não está aguardando a sua confirmação" };
+    }
+    mockGuideDecision = body.action === "decline" ? "declined" : "accepted";
+    mockSiteBookings.forEach((item) => {
+      item.needs_confirm = false;
+      item.guide_confirmed = mockGuideDecision === "accepted";
+    });
+    return { ok: true, data: { result: mockGuideDecision } };
+  },
 });
 
 const server = http.createServer((req, res) => {
@@ -2449,6 +2628,100 @@ const server = http.createServer((req, res) => {
             results: [{ name: "Diego Navi Marques Carvalho", phone_display: "+55 21 99903-0027", status: "sent" }],
           },
         }));
+        return;
+      }
+    }
+
+    if (urlPath === "/api/inbox/list.php" && req.method === "GET") {
+      res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify({ ok: true, data: mockInboxPayload() }));
+      return;
+    }
+    if (urlPath === "/api/inbox/read.php" && req.method === "POST") {
+      readJsonBody(req)
+        .then((body) => {
+          const kind = String(body.kind || "");
+          const id = parseInt(body.id || "0", 10);
+          mockInboxItems.forEach((item) => {
+            if (body.all) item.unread = false;
+            else if (kind && item.kind === kind) item.unread = false;
+            else if (id && item.id === id) item.unread = false;
+          });
+          res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: true, data: { marked: 1, ...mockInboxPayload() } }));
+        })
+        .catch(() => {
+          res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: false, error: "JSON inválido" }));
+        });
+      return;
+    }
+    if (urlPath === "/api/guides/booking-confirmations.php") {
+      if (req.method === "GET") {
+        const rows = mockSiteBookings
+          .filter((row) => row.needs_confirm || row.payment_kind === "card")
+          .map((row) => ({
+            id: row.trip_id,
+            reservation_id: row.reservation_id,
+            title: "Loquinhas + Cristais",
+            starts_at: "2026-07-23 09:00:00",
+            people: row.people,
+            payment_kind: row.payment_kind,
+            tourist_name: row.guide_confirmed ? row.name : "",
+            tourist_phone: row.guide_confirmed ? row.phone : "",
+            guide_confirmed_at: row.needs_confirm ? null : "2026-10-07 07:00:00",
+            lifecycle: "em_formacao",
+          }));
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: true, data: { rows } }));
+        return;
+      }
+      if (req.method === "POST") {
+        readJsonBody(req)
+          .then((body) => {
+            const excursionId = parseInt(body.excursion_id || "0", 10);
+            if (excursionId > 0) {
+              if (excursionId === 202) {
+                if (mockValeDecision !== "waiting") {
+                  res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+                  res.end(JSON.stringify({ ok: false, error: "Este passeio não está aguardando a sua confirmação" }));
+                  return;
+                }
+                mockValeDecision = body.action === "decline" ? "declined" : "accepted";
+                res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+                res.end(JSON.stringify({ ok: true, data: { result: mockValeDecision } }));
+                return;
+              }
+              if (excursionId !== 101 || mockGuideDecision !== "waiting") {
+                res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+                res.end(JSON.stringify({ ok: false, error: "Este passeio não está aguardando a sua confirmação" }));
+                return;
+              }
+              mockGuideDecision = body.action === "decline" ? "declined" : "accepted";
+              mockSiteBookings.forEach((item) => {
+                item.needs_confirm = false;
+                item.guide_confirmed = mockGuideDecision === "accepted";
+              });
+              res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+              res.end(JSON.stringify({ ok: true, data: { result: mockGuideDecision } }));
+              return;
+            }
+            const tripId = parseInt(body.trip_id || "0", 10);
+            const row = mockSiteBookings.find((item) => item.trip_id === tripId);
+            if (!row) {
+              res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+              res.end(JSON.stringify({ ok: false, error: "Reserva não encontrada" }));
+              return;
+            }
+            row.needs_confirm = false;
+            row.guide_confirmed = true;
+            res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+            res.end(JSON.stringify({ ok: true, data: { result: "pix" } }));
+          })
+          .catch(() => {
+            res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+            res.end(JSON.stringify({ ok: false, error: "JSON inválido" }));
+          });
         return;
       }
     }

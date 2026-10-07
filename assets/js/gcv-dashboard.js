@@ -25,7 +25,6 @@
     'section-guide-create-tour': 'publicar',
     'section-guide-tours': 'agenda',
     'section-guide-financial': 'financeiro',
-    'section-guide-confirm': 'confirmar-reservas',
     'section-client-tours': 'passeios',
     'section-client-bookings': 'reservas',
     'section-client-publish': 'propor',
@@ -45,6 +44,7 @@
       return 'section-cms-excursions';
     }
     if (hash === 'pagar-guias') return 'section-admin-payouts';
+    if (hash === 'confirmar-reservas') return 'section-guide-tours';
     if (hash.indexOf('passeio/') === 0 && dashLoadMap['section-cms-passeios']) return 'section-cms-passeios';
     if (dashLoadMap[hash]) return hash;
     var found = '';
@@ -2129,7 +2129,6 @@
       items = [
         { id: 'section-guide-create-tour',  icon: '➕', label: 'Publicar passeio',  tab: 'Publicar',   tabIcon: 'publish', load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuidePublish(); } },
         { id: 'section-guide-tours',        icon: '📅', label: 'Agenda',            tab: 'Agenda',      tabIcon: 'agenda',  load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideAgenda(); } },
-        { id: 'section-guide-confirm',      icon: '✅', label: 'Confirmar reservas', tab: 'Confirmar',  tabIcon: 'agenda',  load: function () { if (window.GcvBookingConfirm) window.GcvBookingConfirm.mount(document.getElementById('guide-confirm-root'), 'mine'); } },
         { id: 'section-guide-financial',    icon: '💲', label: 'Financeiro',       tab: 'Financeiro', tabIcon: 'money',   load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideEarnings(); } },
       ];
       footerItems = [profileItem];
@@ -2182,6 +2181,9 @@
         } catch (err) {
           location.hash = 'passeios';
         }
+      }
+      if (sectionId === 'section-guide-tours' && window.GcvInbox && typeof window.GcvInbox.ackAgenda === 'function') {
+        window.GcvInbox.ackAgenda();
       }
       requestSection(sectionId);
     }

@@ -394,6 +394,12 @@ export function createPaymentsMock(deps) {
     if (req.method === "POST") {
       let body = {};
       try { body = JSON.parse((await readBody(req)) || "{}"); } catch { /* noop */ }
+      if (Number(body.excursion_id) > 0 && typeof deps.onGuideExcursion === "function") {
+        const out = deps.onGuideExcursion(body) || { ok: false, error: "Não foi possível confirmar." };
+        if (!out.ok) { json(res, 400, { ok: false, error: out.error || "Não foi possível confirmar." }); return; }
+        json(res, 200, { ok: true, data: out.data || { result: "accepted" } });
+        return;
+      }
       const t = db.transactions.find((x) => x.id === Number(body.trip_id));
       if (!t) { json(res, 404, { ok: false, error: "Reserva não encontrada" }); return; }
       const rec = pixRead(t.reservation_id);

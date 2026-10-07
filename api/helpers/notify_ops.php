@@ -1139,7 +1139,7 @@ function gcv_ops_notify_guide_new_booking(array $sale, ?array $exc, int $spots):
             . 'Pessoas nesta inscrição: ' . $pax . "\n"
             . gcv_ops_group_update_text($excId, $exc) . "\n\n"
             . gcv_ops_client_contact_block($sale)
-            . "\nOs dados também estão na Agenda.";
+            . "\nA reserva está na sua Agenda do painel.";
     } else {
         $faltam = gcv_ops_people_needed_to_start($exc);
         $textGuide = "Nova inscrição\n\n"
@@ -1150,11 +1150,17 @@ function gcv_ops_notify_guide_new_booking(array $sale, ?array $exc, int $spots):
             . 'Pessoas nesta inscrição: ' . $pax . "\n"
             . gcv_ops_group_update_text($excId, $exc) . "\n"
             . gcv_ops_faltam_text($faltam) . "\n\n"
+            . "A reserva está na sua Agenda do painel.\n"
             . 'Nome, telefone e e-mail dos clientes são liberados quando o passeio for confirmado.';
     }
 
     if ($guideId > 0) {
-        if (!gcv_ops_wa_guide($guideId, $textGuide)) {
+        $meta = [
+            'kind' => 'new_booking',
+            'excursion_id' => $excId,
+            'sale_id' => (int)($sale['id'] ?? 0),
+        ];
+        if (!gcv_ops_wa_guide($guideId, $textGuide, $meta)) {
             error_log('gcv_ops_notify_guide_new_booking: WhatsApp não enviado ao guia (excursão ' . $excId . ', guia ' . $guideId . ')');
         }
         $email = trim((string)($guide['email'] ?? ''));

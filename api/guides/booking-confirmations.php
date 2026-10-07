@@ -51,6 +51,9 @@ if ($method === 'GET') {
             $cache[$eid] = $e ? gcv_resolve_excursion_lifecycle($e) : null;
         }
         $r['lifecycle'] = $eid > 0 ? $cache[$eid] : null;
+        if (!$all && empty($r['guide_confirmed_at'])) {
+            unset($r['tourist_name'], $r['tourist_phone']);
+        }
     }
     unset($r);
     json_response(true, ['rows' => $rows, 'is_admin' => $isAdmin]);
@@ -58,6 +61,17 @@ if ($method === 'GET') {
 
 if ($method === 'POST') {
     $body = json_decode(file_get_contents('php://input') ?: '', true) ?: [];
+    $excursionId = (int) ($body['excursion_id'] ?? 0);
+    if ($excursionId > 0) {
+        $action = (string) ($body['action'] ?? 'confirm');
+        $out = $action === 'decline'
+            ? gcv_auth_guide_decline_excursion($excursionId, $user, $isAdmin)
+            : gcv_auth_guide_confirm_excursion($excursionId, $user, $isAdmin);
+        if (empty($out['ok'])) {
+            json_response(false, null, (string) ($out['error'] ?? 'Erro'), 400);
+        }
+        json_response(true, $out);
+    }
     $tripId = (int) ($body['trip_id'] ?? 0);
     if ($tripId <= 0) {
         json_response(false, null, 'trip_id obrigatório', 422);

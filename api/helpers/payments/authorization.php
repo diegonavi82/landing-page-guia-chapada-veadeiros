@@ -318,6 +318,7 @@ function gcv_auth_evaluate(string $reservationId): array
         $decision = (string) $r['decision'];
         if (in_array($decision, ['UNDECIDED', 'CONFIRMED'], true)) {
             $life = null;
+            $exc = null;
             if (!empty($r['excursion_id'])) {
                 $st = db()->prepare('SELECT * FROM gcv_excursions WHERE id = ? LIMIT 1');
                 $st->execute([(int) $r['excursion_id']]);
@@ -328,6 +329,15 @@ function gcv_auth_evaluate(string $reservationId): array
                 }
             }
             $guideOk = !empty($r['guide_confirmed_at']);
+            if (!$guideOk && $exc && gcv_excursion_is_guide_submitted($exc)
+                && in_array((string)($exc['status'] ?? ''), ['published', 'soldout'], true)) {
+                // Saída que o guia já lançou: ele já aceitou guiar. Não pede de novo, por cliente.
+                $guideOk = true;
+                db()->prepare(
+                    'UPDATE gcv_booking_trips SET guide_confirmed_at = NOW(), guide_confirmed_by = ? WHERE id = ? AND guide_confirmed_at IS NULL'
+                )->execute([(int)($exc['guide_user_id'] ?? 0), (int)$r['id']]);
+                $r['guide_confirmed_at'] = $nowStr;
+            }
             $quorumOk = $life === null || in_array($life, ['confirmada', 'concluida'], true);
             if ($life === 'cancelada') {
                 $decision = 'CANCELLED';
@@ -718,7 +728,7 @@ function gcv_auth_guide_alerts(): int
             . htmlspecialchars((string) ($t['title'] ?? ''), ENT_QUOTES, 'UTF-8') . ', saída ' . htmlspecialchars((string) $t['starts_at'], ENT_QUOTES, 'UTF-8')
             . ') foi paga com cartão e o guia ' . htmlspecialchars((string) ($t['guide_name'] ?? ''), ENT_QUOTES, 'UTF-8')
             . ' ainda não confirmou.</p><p>Sem confirmação até ' . gcv_auth_decision_hours()
-            . 'h antes da saída, o cartão é liberado e nada é cobrado. Você pode confirmar pelo painel (Financeiro → Reservas para confirmar).</p>'
+            . 'h antes da saída, o cartão é liberado e nada é cobrado. O guia confirma na Agenda. Você pode confirmar pelo painel (Financeiro → Reservas para confirmar).</p>'
         );
         db()->prepare('UPDATE gcv_booking_trips SET guide_alerted_at = NOW() WHERE id = ?')->execute([(int) $t['id']]);
         $n++;
@@ -753,6 +763,99 @@ function gcv_auth_guide_confirm(int $tripId, array $user, bool $isAdmin = false)
     // Pode já dar para cobrar.
     $result = $t['payment_kind'] === 'card' ? gcv_auth_process_reservation((string) $t['reservation_id']) : 'pix';
     return ['ok' => true, 'result' => $result];
+}
+
+/**
+ * Passeios em aberto de uma saída que o guia ainda não aceitou guiar.
+ *
+ * @param array<string,mixed> $user
+ * @return list<array<string,mixed>>
+ */
+function gcv_auth_open_guide_trips(int $excursionId, array $user, bool $isAdmin): array
+{
+    gcv_auth_ensure_schema();
+    $sql = "SELECT * FROM gcv_booking_trips
+            WHERE excursion_id = ?
+              AND decision IN ('UNDECIDED','CONFIRMED')
+              AND guide_confirmed_at IS NULL";
+    $params = [$excursionId];
+    if (!$isAdmin) {
+        $sql .= ' AND guide_user_id = ?';
+        $params[] = (int)($user['id'] ?? 0);
+    }
+    $st = db()->prepare($sql);
+    $st->execute($params);
+    return $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+}
+
+/**
+ * O guia aceita guiar a saída inteira (compra do site que ainda não era excursão lançada).
+ *
+ * @param array<string,mixed> $user
+ */
+function gcv_auth_guide_confirm_excursion(int $excursionId, array $user, bool $isAdmin = false): array
+{
+    $trips = gcv_auth_open_guide_trips($excursionId, $user, $isAdmin);
+    if (!$trips) {
+        return ['ok' => false, 'error' => 'Este passeio não está aguardando a sua confirmação'];
+    }
+    $results = [];
+    foreach ($trips as $t) {
+        $one = gcv_auth_guide_confirm((int)$t['id'], $user, $isAdmin);
+        if (empty($one['ok'])) {
+            return $one;
+        }
+        $results[] = $one['result'] ?? '';
+    }
+    return ['ok' => true, 'result' => implode(',', $results), 'trips' => count($trips)];
+}
+
+/**
+ * O guia recusa guiar a saída. Libera o cartão e tira o passeio da agenda.
+ *
+ * @param array<string,mixed> $user
+ */
+function gcv_auth_guide_decline_excursion(int $excursionId, array $user, bool $isAdmin = false): array
+{
+    gcv_auth_ensure_schema();
+    $st = db()->prepare('SELECT * FROM gcv_excursions WHERE id = ? LIMIT 1');
+    $st->execute([$excursionId]);
+    $exc = $st->fetch(PDO::FETCH_ASSOC);
+    if (!$exc) {
+        return ['ok' => false, 'error' => 'Passeio não encontrado'];
+    }
+    if (!$isAdmin && (int)($exc['guide_user_id'] ?? 0) !== (int)($user['id'] ?? -1)) {
+        return ['ok' => false, 'error' => 'Este passeio não é seu'];
+    }
+    require_once __DIR__ . '/../excursion_status.php';
+    if (gcv_excursion_is_guide_submitted($exc) && in_array((string)($exc['status'] ?? ''), ['published', 'soldout'], true)) {
+        return ['ok' => false, 'error' => 'Este passeio já foi lançado por você'];
+    }
+    $trips = gcv_auth_open_guide_trips($excursionId, $user, $isAdmin);
+    if (!$trips) {
+        return ['ok' => false, 'error' => 'Este passeio não está aguardando a sua confirmação'];
+    }
+    $ids = array_map(static fn ($t) => (int)$t['id'], $trips);
+    $place = implode(',', array_fill(0, count($ids), '?'));
+    db()->prepare(
+        "UPDATE gcv_booking_trips SET decision = 'CANCELLED', decided_at = NOW() WHERE id IN ($place)"
+    )->execute($ids);
+    $seen = [];
+    foreach ($trips as $t) {
+        $rid = (string)($t['reservation_id'] ?? '');
+        if ($rid === '' || isset($seen[$rid]) || ($t['payment_kind'] ?? '') !== 'card') {
+            continue;
+        }
+        $seen[$rid] = true;
+        gcv_auth_process_reservation($rid);
+    }
+    if (!$isAdmin) {
+        db()->prepare("UPDATE gcv_excursions SET status = 'cancelled' WHERE id = ? AND guide_user_id = ?")
+            ->execute([$excursionId, (int)($user['id'] ?? 0)]);
+    } else {
+        db()->prepare("UPDATE gcv_excursions SET status = 'cancelled' WHERE id = ?")->execute([$excursionId]);
+    }
+    return ['ok' => true, 'result' => 'declined', 'trips' => count($trips)];
 }
 
 /**

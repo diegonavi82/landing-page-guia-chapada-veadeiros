@@ -219,7 +219,7 @@ function gcv_guide_attach_clients(array $rows, int $guideUserId): array
                  FROM gcv_sales
                  WHERE guide_user_id = ?
                    AND deleted_at IS NULL
-                   AND sale_status IN ('PAID','PENDING')
+                   AND sale_status IN ('PAID','PENDING','AUTHORIZED')
                  ORDER BY sold_at ASC"
             );
             $stmt->execute([$guideUserId]);
@@ -282,7 +282,7 @@ function gcv_guide_attach_clients(array $rows, int $guideUserId): array
                 continue;
             }
             $st = gcv_pix_effective_status($res);
-            if (!in_array($st, ['PAID', 'PENDING'], true)) {
+            if (!in_array($st, ['PAID', 'PENDING', 'AUTHORIZED', 'CARD_SAVED'], true)) {
                 continue;
             }
             $rid = (string)($res['reservation_id'] ?? '');
@@ -384,6 +384,109 @@ function gcv_guide_attach_clients(array $rows, int $guideUserId): array
             $spots += (int)($c['spots'] ?? 1);
         }
         $r['clients_spots'] = $spots;
+    }
+    unset($r);
+    return gcv_guide_attach_booking_requests($rows, $guideUserId);
+}
+
+/**
+ * Liga cada reserva do site (gcv_booking_trips) ao passeio da agenda.
+ * Cartão sem confirmação do guia fica como solicitação para confirmar ali.
+ *
+ * @param list<array<string,mixed>> $rows
+ * @return list<array<string,mixed>>
+ */
+function gcv_guide_attach_booking_requests(array $rows, int $guideUserId): array
+{
+    if (!$rows || $guideUserId <= 0) {
+        return $rows;
+    }
+    try {
+        if (!function_exists('gcv_auth_ensure_schema')) {
+            require_once __DIR__ . '/../helpers/payments/authorization.php';
+        }
+        gcv_auth_ensure_schema();
+        $st = db()->prepare(
+            "SELECT id, reservation_id, excursion_id, title, people, payment_kind, guide_confirmed_at, decision
+             FROM gcv_booking_trips
+             WHERE guide_user_id = ?
+               AND decision IN ('UNDECIDED','CONFIRMED')
+               AND (starts_at IS NULL OR starts_at > NOW())"
+        );
+        $st->execute([$guideUserId]);
+        $trips = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) {
+        error_log('guide_attach_booking_requests: ' . $e->getMessage());
+        return $rows;
+    }
+
+    $byId = [];
+    foreach ($rows as $i => $r) {
+        $byId[(int)($r['id'] ?? 0)] = $i;
+    }
+    foreach ($trips as $t) {
+        $eid = (int)($t['excursion_id'] ?? 0);
+        if ($eid <= 0 || !isset($byId[$eid])) {
+            continue;
+        }
+        $idx = $byId[$eid];
+        $rid = strtoupper(trim((string)($t['reservation_id'] ?? '')));
+        $needs = empty($t['guide_confirmed_at']);
+        $kind = strtolower(trim((string)($t['payment_kind'] ?? '')));
+        $found = false;
+        if (!isset($rows[$idx]['clients']) || !is_array($rows[$idx]['clients'])) {
+            $rows[$idx]['clients'] = [];
+        }
+        foreach ($rows[$idx]['clients'] as &$c) {
+            $cr = strtoupper(trim((string)($c['reservation_id'] ?? '')));
+            if ($rid !== '' && $cr === $rid) {
+                $c['trip_id'] = (int)$t['id'];
+                $c['needs_confirm'] = $needs;
+                $c['payment_kind'] = $kind;
+                $c['guide_confirmed'] = !$needs;
+                $found = true;
+                break;
+            }
+        }
+        unset($c);
+        if ($found) {
+            continue;
+        }
+        $people = max(1, (int)($t['people'] ?? 1));
+        $rows[$idx]['clients'][] = [
+            'name' => 'Cliente',
+            'email' => '',
+            'phone' => '',
+            'whatsapp' => '',
+            'spots' => $people,
+            'people' => $people,
+            'status' => $kind === 'card' ? 'AUTHORIZED' : 'PAID',
+            'reservation_id' => (string)($t['reservation_id'] ?? ''),
+            'trip_id' => (int)$t['id'],
+            'needs_confirm' => $needs,
+            'payment_kind' => $kind,
+            'guide_confirmed' => !$needs,
+            'attendance_status' => 'pending',
+            'with_transport' => false,
+        ];
+    }
+
+    foreach ($rows as &$r) {
+        $pendingTrips = [];
+        foreach ($r['clients'] ?? [] as $c) {
+            if (!empty($c['needs_confirm']) && !empty($c['trip_id'])) {
+                $pendingTrips[] = (int)$c['trip_id'];
+            }
+        }
+        $launched = gcv_excursion_is_guide_submitted($r)
+            && in_array((string)($r['status'] ?? ''), ['published', 'soldout'], true);
+        $r['guide_launched'] = $launched;
+        $r['awaiting_guide'] = !$launched && $pendingTrips !== [];
+        $r['pending_requests'] = $r['awaiting_guide'] ? 1 : 0;
+        $r['clients_count'] = count($r['clients'] ?? []);
+        if (!empty($r['awaiting_guide'])) {
+            $r['clients'] = [];
+        }
     }
     unset($r);
     return $rows;

@@ -91,15 +91,21 @@ function gcv_inbox_push(int $userId, string $body, array $meta = []): void
     }
 }
 
-function gcv_inbox_unread_count(int $userId): int
+function gcv_inbox_unread_count(int $userId, ?string $kind = null): int
 {
     if ($userId <= 0) {
         return 0;
     }
     gcv_inbox_ensure_schema();
+    $kind = $kind !== null ? substr(trim($kind), 0, 40) : '';
     try {
-        $st = db()->prepare('SELECT COUNT(*) FROM gcv_inbox WHERE user_id = ? AND read_at IS NULL');
-        $st->execute([$userId]);
+        if ($kind !== '') {
+            $st = db()->prepare('SELECT COUNT(*) FROM gcv_inbox WHERE user_id = ? AND read_at IS NULL AND `kind` = ?');
+            $st->execute([$userId, $kind]);
+        } else {
+            $st = db()->prepare('SELECT COUNT(*) FROM gcv_inbox WHERE user_id = ? AND read_at IS NULL');
+            $st->execute([$userId]);
+        }
         return (int)$st->fetchColumn();
     } catch (Throwable $e) {
         return 0;
@@ -158,6 +164,27 @@ function gcv_inbox_mark_read(int $userId, ?int $id = null): int
             );
             $st->execute([$userId]);
         }
+        return $st->rowCount();
+    } catch (Throwable $e) {
+        return 0;
+    }
+}
+
+function gcv_inbox_mark_read_kind(int $userId, string $kind): int
+{
+    if ($userId <= 0) {
+        return 0;
+    }
+    $kind = substr(trim($kind), 0, 40);
+    if ($kind === '') {
+        return 0;
+    }
+    gcv_inbox_ensure_schema();
+    try {
+        $st = db()->prepare(
+            'UPDATE gcv_inbox SET read_at = NOW() WHERE user_id = ? AND read_at IS NULL AND `kind` = ?'
+        );
+        $st->execute([$userId, $kind]);
         return $st->rowCount();
     } catch (Throwable $e) {
         return 0;
