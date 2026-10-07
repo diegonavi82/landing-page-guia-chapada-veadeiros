@@ -1203,20 +1203,10 @@
 
 .gcv-pix-modal__email-continue {
   display: none;
-  width: 100%;
-  margin-top: 0.65rem;
-  padding: 0.72rem 1rem;
-  border: none;
-  border-radius: 0.6rem;
-  background: #064e3b;
-  color: #fff;
-  font: inherit;
-  font-weight: 800;
-  cursor: pointer;
 }
 
 .gcv-pix-modal--await-email .gcv-pix-modal__email-continue {
-  display: block;
+  display: flex;
 }
 
 /* Comprovante de reserva — modal pop-up mobile-first */

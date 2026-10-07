@@ -22,7 +22,7 @@
     pt: {
       cartTitle: "Carrinho",
       cartEmpty: "Seu carrinho está vazio",
-      cartCheckout: "Pagar com PIX",
+      cartCheckout: "Pagamento",
       cartPixFail: "Não foi possível abrir o Pix. Tente de novo.",
       cartBack: "Voltar",
       cartRemove: "Remover",
@@ -41,7 +41,7 @@
     en: {
       cartTitle: "Cart",
       cartEmpty: "Your cart is empty",
-      cartCheckout: "Pay with PIX",
+      cartCheckout: "Payment",
       cartPixFail: "Could not open Pix. Try again.",
       cartBack: "Back",
       cartRemove: "Remove",
@@ -60,7 +60,7 @@
     es: {
       cartTitle: "Carrito",
       cartEmpty: "Tu carrito está vacío",
-      cartCheckout: "Pagar con PIX",
+      cartCheckout: "Pago",
       cartPixFail: "No se pudo abrir el Pix. Inténtalo de nuevo.",
       cartBack: "Volver",
       cartRemove: "Quitar",
@@ -129,8 +129,8 @@
       return;
     }
     _pixLoadWait = [done];
-    loadStylesheet("/assets/css/excursoes.css?v=1.1.31");
-    loadStylesheet("/assets/css/gcv-detail.css?v=1.1.36");
+    loadStylesheet("/assets/css/excursoes.css?v=1.1.43");
+    loadStylesheet("/assets/css/gcv-detail.css?v=1.1.40");
     var scripts = [
       "/assets/js/qrcode.min.js?v=1.1.31",
       "/assets/js/gcv-pix.js?v=1.1.31",
@@ -138,7 +138,7 @@
       "/assets/js/gcv-pix-polling.js?v=1.1.31",
       "/assets/js/gcv-confirm.js?v=1.1.31",
       "/assets/js/gcv-exc-bookings.js?v=1.1.31",
-      "/assets/js/excursoes-carousel.js?v=1.1.36",
+      "/assets/js/excursoes-carousel.js?v=1.1.42",
     ];
     var i = 0;
     function next(err) {
@@ -820,7 +820,7 @@
       formatBrl(unit) +
       " = " +
       formatBrl(unit * qty) +
-      " " +
+      " BRL " +
       suffix
     );
   }
@@ -830,7 +830,7 @@
     var unit = parseInt(String(it.valorUnit), 10) || 0;
     var seatsWord = qty === 1 ? s("cartSeatOne") || "Pessoa" : s("cartSeatsMany") || "Pessoas";
     var suffix = s("cartLineTotal") || "(total)";
-    var totalPart = formatBrl(unit * qty) + " " + suffix;
+    var totalPart = formatBrl(unit * qty) + " BRL " + suffix;
     return (
       escapeHtml(String(qty) + " " + seatsWord + " × " + formatBrl(unit) + " = ") +
       '<strong class="gcv-exc-cart-item__total">' +
@@ -1243,7 +1243,7 @@
       var cancelLabel = foot.querySelector('[data-gcv-cart-policy-label="cancel"]');
       var securityLabel = foot.querySelector('[data-gcv-cart-policy-label="security"]');
       if (totalLabel) totalLabel.textContent = s("bookTotal");
-      if (totalVal) totalVal.textContent = formatBrl(cartTotal(items));
+      if (totalVal) totalVal.textContent = formatBrl(cartTotal(items)) + " BRL";
       if (checkoutBtn) checkoutBtn.textContent = s("cartCheckout");
       if (backBtn) backBtn.textContent = s("cartBack");
       if (cancelLabel) cancelLabel.innerHTML = renderPolicyCheckboxLabel("cancel");

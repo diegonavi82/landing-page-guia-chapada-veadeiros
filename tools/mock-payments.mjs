@@ -23,7 +23,7 @@ export function createPaymentsMock(deps) {
   };
   const cfg = () => ({
     cardBrPct: envNum("PAY_CARD_BR_PCT", 15),
-    cardIntlPct: envNum("PAY_CARD_INTL_PCT", 20),
+    cardIntlPct: envNum("PAY_CARD_INTL_PCT", 25),
     fxSpreadPct: envNum("PAY_FX_SPREAD_PCT", 4),
     maxInst: Math.max(1, Math.min(12, envNum("PAY_MP_MAX_INSTALLMENTS", 4))),
   });

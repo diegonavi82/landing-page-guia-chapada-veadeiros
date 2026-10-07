@@ -1251,8 +1251,8 @@
         hourExact: "hs",
         total: "Total",
         pixIn: "no PIX",
-        pixOff: "{n}% OFF",
-        cardOr: "ou {price} em até 4x de {inst} sem juros",
+        cardBr: "Cartão brasileiro {price} em até {n}x de {inst}",
+        cardIntl: "Cartão internacional {price}",
         extras: "Guia Local",
         pickLang: "Selecione o idioma",
         bilingual: "Guia bilíngue",
@@ -1310,8 +1310,8 @@
         hourExact: "h",
         total: "Total",
         pixIn: "with PIX",
-        pixOff: "{n}% OFF",
-        cardOr: "or {price} in up to 4x of {inst} interest-free",
+        cardBr: "Brazilian card {price} in up to {n}x of {inst}",
+        cardIntl: "International card {price}",
         extras: "Local guide",
         pickLang: "Select the language",
         bilingual: "Bilingual guide",
@@ -1369,8 +1369,8 @@
         hourExact: " h",
         total: "Total",
         pixIn: "con PIX",
-        pixOff: "{n}% OFF",
-        cardOr: "o {price} en hasta 4x de {inst} sin interés",
+        cardBr: "Tarjeta brasileña {price} en hasta {n}x de {inst}",
+        cardIntl: "Tarjeta internacional {price}",
         extras: "Guía local",
         pickLang: "Selecciona el idioma",
         bilingual: "Guía bilingüe",
@@ -1421,7 +1421,12 @@
   }
 
   function passeioReais(cents) {
-    return "R$ " + String(Math.round((parseInt(cents, 10) || 0) / 100));
+    var n = parseInt(cents, 10) || 0;
+    var sign = n < 0 ? "-" : "";
+    n = Math.abs(n);
+    var reais = Math.floor(n / 100);
+    var cent = n % 100;
+    return sign + "R$ " + reais + (cent ? "," + (cent < 10 ? "0" : "") + cent : "");
   }
 
   function passeioIsoDeData(d) {
@@ -1627,7 +1632,9 @@
     return Math.max(1, Math.ceil((parseInt(pessoas, 10) || 1) / 4));
   }
 
-  var PASSEIO_OFF_PIX = 10;
+  var PASSEIO_CARD_BR_PCT = 15;
+  var PASSEIO_CARD_INTL_PCT = 25;
+  var PASSEIO_CARD_INST = 4;
   var PASSEIO_BILINGUE_CENTS = 4000;
 
   /**
@@ -1649,11 +1656,34 @@
     return Math.max(0, parseInt(row.bilingue_valor, 10) || 0);
   }
 
-  /** O tarifário é o valor cheio, já com o idioma. O PIX tira 10% depois. */
+  /** Mesma conta de api/helpers/payments/pricing.php: sobe o percentual e arredonda o centavo para cima. */
+  function passeioAcrescimo(baseCents, pct) {
+    var base = Math.max(0, parseInt(baseCents, 10) || 0);
+    if (!(pct > 0)) return base;
+    var factor = Math.round((100 + pct) * 100);
+    return Math.floor((base * factor + 9999) / 10000);
+  }
+
+  /**
+   * O tarifário (já com o idioma) é o PIX.
+   * Cartão brasileiro: +15%, em até 4x. Internacional: +25%; o dólar com spread vem da cotação do servidor.
+   */
   function passeioPagamento(grossCents) {
-    var card = Math.max(0, parseInt(grossCents, 10) || 0);
-    var pix = Math.round(card * (100 - PASSEIO_OFF_PIX) / 100);
-    return { pix: pix, card: card, inst: Math.round(card / 4), off: PASSEIO_OFF_PIX };
+    var pix = Math.max(0, parseInt(grossCents, 10) || 0);
+    var card = passeioAcrescimo(pix, PASSEIO_CARD_BR_PCT);
+    var n = PASSEIO_CARD_INST;
+    return {
+      pix: pix,
+      card: card,
+      n: n,
+      inst: n > 0 ? Math.ceil(card / n) : card,
+      intl: passeioAcrescimo(pix, PASSEIO_CARD_INTL_PCT),
+      usd: 0,
+    };
+  }
+
+  function passeioUsd(cents) {
+    return "US$ " + ((parseInt(cents, 10) || 0) / 100).toFixed(2);
   }
 
   function passeioPessoasCobradas(sel, modalidade, pessoas, comTranslado) {
@@ -2201,6 +2231,44 @@
       }
     }
 
+    function passeioComCotacao(pay, base) {
+      var q = box._payQuote;
+      if (!q || q.base !== base || !q.quotes) return pay;
+      var br = q.quotes.card_br;
+      var intl = q.quotes.card_intl;
+      if (br && br.ok) {
+        pay.card = br.total_brl_cents;
+        pay.n = br.max_installments || pay.n;
+        pay.inst = br.installment_cents || Math.ceil(pay.card / pay.n);
+      }
+      if (intl && intl.ok) {
+        if (intl.total_brl_cents) pay.intl = intl.total_brl_cents;
+        if (String(intl.currency || "").toLowerCase() === "usd" && intl.charge_minor) pay.usd = intl.charge_minor;
+      }
+      return pay;
+    }
+
+    function pedirCotacao(base) {
+      if (base < 100) return;
+      if (box._payQuote && box._payQuote.base === base) return;
+      if (box._payQuoteLoading === base) return;
+      box._payQuoteLoading = base;
+      fetch("/api/payment_quote.php?amount=" + encodeURIComponent((base / 100).toFixed(2)), {
+        headers: { Accept: "application/json" },
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (res) {
+          if (res && res.success && res.quotes) {
+            box._payQuote = { base: base, quotes: res.quotes };
+            paint();
+          }
+        })
+        .catch(function () {})
+        .then(function () {
+          if (box._payQuoteLoading === base) box._payQuoteLoading = 0;
+        });
+    }
+
     function paint() {
       syncDateFloor();
       syncTarifaOpcoes();
@@ -2223,22 +2291,30 @@
       var billed = passeioPessoasCobradas(sel, modalidade, nPessoas, comTranslado);
       var cidadeNome = box.querySelector("[data-passeio-city]").value;
       var biCents = passeioBilingueCents(tarifaAtiva(), cidadeNome, total, bi.on);
-      var pay = passeioPagamento(total + biCents);
+      var base = total + biCents;
+      var pay = passeioComCotacao(passeioPagamento(base), base);
+      if (!sel.incompleto) pedirCotacao(base);
       var word = billed === 1 ? copy.person : copy.peopleWord;
       var carsNow = passeioCarros(nPessoas);
       var breakTxt = modalidade === "exclusivo" && comTranslado && carsNow > 1
         ? carsNow + " " + copy.cars + " × " + passeioReais(unit * (parseInt(sel.quorum, 10) || 4))
         : billed + " " + word + " × " + passeioReais(unit);
       if (bi.on) breakTxt += " + " + copy.bilingualShort + " (" + passeioReais(biCents) + ")";
-      var cardTxt = String(copy.cardOr).replace("{price}", passeioReais(pay.card)).replace("{inst}", passeioReais(pay.inst));
+      var fill = function (tpl, map) {
+        return String(tpl || "").replace(/\{(\w+)\}/g, function (_, k) {
+          return map[k] != null ? map[k] : "";
+        });
+      };
+      var brTxt = fill(copy.cardBr, { price: passeioReais(pay.card), n: String(pay.n), inst: passeioReais(pay.inst) });
+      var intlTxt = fill(copy.cardIntl, { price: pay.usd ? passeioUsd(pay.usd) : passeioReais(pay.intl) });
       var totalEl = box.querySelector("[data-passeio-total]");
       totalEl.innerHTML = sel.incompleto
         ? '<strong class="gcv-passeios__total-value">—</strong>'
         : '<span class="gcv-passeios__break">' + passeioEsc(breakTxt) + "</span>" +
           '<span class="gcv-passeios__pixline"><strong class="gcv-passeios__total-value">' + passeioEsc(passeioReais(pay.pix)) + "</strong>" +
-          '<span class="gcv-passeios__pixin">' + passeioEsc(copy.pixIn) + "</span>" +
-          '<span class="gcv-passeios__off">' + passeioEsc(String(copy.pixOff).replace("{n}", String(pay.off))) + "</span></span>" +
-          '<span class="gcv-passeios__cardline">' + passeioEsc(cardTxt) + "</span>";
+          '<span class="gcv-passeios__pixin">' + passeioEsc(copy.pixIn) + "</span></span>" +
+          '<span class="gcv-passeios__cardline">' + passeioEsc(brTxt) + "</span>" +
+          '<span class="gcv-passeios__cardline">' + passeioEsc(intlTxt) + "</span>";
       var item = buildItem();
       if (item && itemInCart(item.id) && window.GcvExcCart && typeof window.GcvExcCart.sync === "function") {
         window.GcvExcCart.sync(item);

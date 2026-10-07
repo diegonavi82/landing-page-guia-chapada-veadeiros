@@ -2954,6 +2954,17 @@ html.gcv-pix-modal-open body {
   z-index: 10060;
   display: none;
   overflow: hidden;
+  color: #14241c;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.gcv-pix-modal button,
+.gcv-pix-modal input,
+.gcv-pix-modal select,
+.gcv-pix-modal textarea {
+  font-family: inherit;
 }
 
 .gcv-pix-modal.is-open {
@@ -3047,8 +3058,8 @@ html.gcv-pix-modal-open body {
 .gcv-pix-modal__title {
   margin: 0 2rem 0.25rem 0;
   font-size: 1rem;
-  font-weight: 900;
-  color: #064e3b;
+  font-weight: 700;
+  color: #14241c;
   flex-shrink: 0;
   text-align: left;
 }
@@ -3081,8 +3092,8 @@ html.gcv-pix-modal-open body {
 .gcv-pix-modal__trip-title {
   margin: 0 0 0.18rem;
   font-size: 0.95rem;
-  font-weight: 800;
-  color: #064e3b;
+  font-weight: 700;
+  color: #14241c;
   line-height: 1.3;
 }
 
@@ -3264,11 +3275,26 @@ html.gcv-pix-modal-open body {
 }
 
 .gcv-pix-modal__amount {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
   margin: 0 0 0.25rem;
   font-size: 1.35rem;
-  font-weight: 900;
-  color: #064e3b;
+  font-weight: 700;
+  color: #14241c;
   line-height: 1.1;
+}
+
+.gcv-pix-modal__amount-ccy {
+  padding: 0.12rem 0.38rem;
+  border-radius: 5px;
+  background: #ecfdf5;
+  color: #047857;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
 }
 
 .gcv-pix-modal__timer {
@@ -4142,108 +4168,230 @@ html.gcv-pix-modal-open body {
   user-select: none;
 }
 
-.gcv-pix-modal__email-continue {
+.gcv-pix-modal__email-continue,
+.gcv-pix-modal__card-pay {
   display: none;
-  width: 100%;
-  margin-top: 0.45rem;
-  padding: 0.55rem 0.75rem;
-  border: none;
-  border-radius: 0.5rem;
-  background: #064e3b;
-  color: #fff;
-  font: inherit;
-  font-size: 0.78rem;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.gcv-pix-modal--await-email .gcv-pix-modal__email-continue {
-  display: block;
 }
 
 .gcv-pix-modal__pay-choice {
   display: none;
   margin: 0.85rem 0 0.15rem;
-  font-size: 0.78rem;
-  font-weight: 800;
-  color: #0f2a1d;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #14241c;
 }
 
 .gcv-pix-modal--await-email .gcv-pix-modal__pay-choice {
   display: block;
 }
 
-.gcv-pix-modal__card-pay {
+.gcv-pay-back {
   display: none;
   width: 100%;
-  margin-top: 0.4rem;
+  margin: 0.35rem 0 0.15rem;
   padding: 0.55rem 0.75rem;
-  border: 1.5px solid #0f2a1d;
-  border-radius: 0.5rem;
-  background: #fff;
-  color: #0f2a1d;
-  font: inherit;
-  font-size: 0.78rem;
-  font-weight: 800;
+  border: 1px solid #e4ddd2;
+  border-radius: 12px;
+  background: #fffdf9;
+  color: #14532d;
+  font-family: inherit;
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.3;
+  text-align: center;
   cursor: pointer;
 }
 
-.gcv-pix-modal--await-email .gcv-pix-modal__card-pay {
-  display: block;
+button.gcv-pay-back:not([hidden]) {
+  display: block !important;
+  position: relative;
+  z-index: 2;
 }
 
-.gcv-pix-modal__card-pay:hover {
-  background: #f3f7f4;
+.gcv-pay-back:hover {
+  background: #f7f3ec;
 }
 
-.gcv-pix-modal__card-pay:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Formas de pagamento: título + preço em duas linhas */
-.gcv-pix-modal__pay-title {
-  display: block;
-}
-
-.gcv-pix-modal__pay-price {
-  display: block;
-  margin-top: 0.12rem;
-  font-size: 0.72rem;
+.gcv-pay-status {
+  margin: 0.4rem 0 0;
+  color: #5c6b63;
+  font-size: 0.78rem;
   font-weight: 600;
-  opacity: 0.85;
+  line-height: 1.35;
 }
 
-/* Inglês/espanhol: cartão internacional em destaque */
-.gcv-pix-modal__card-pay--primary {
-  background: #064e3b;
-  border-color: #064e3b;
-  color: #fff;
+.gcv-pay-status[hidden],
+.gcv-pay-back[hidden] {
+  display: none !important;
 }
 
-.gcv-pix-modal__card-pay--primary:hover {
-  background: #064e3b;
-  filter: brightness(1.05);
-}
-
-.gcv-pix-modal__email-continue--secondary {
+.gcv-pix-modal--await-email .gcv-pay-opt {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+  margin: 0.42rem 0 0;
+  padding: 0.62rem 0.7rem 0.62rem 0.62rem;
+  border: 1px solid #e3ebe6;
+  border-radius: 14px;
   background: #fff;
-  color: #064e3b;
-  border: 1.5px solid #064e3b;
+  color: #0f2a1d;
+  box-shadow: 0 1px 2px rgba(15, 42, 29, 0.05);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
-.gcv-pix-modal__email-continue:hover {
-  filter: brightness(1.05);
+.gcv-pix-modal--await-email .gcv-pay-opt:hover:not(:disabled) {
+  border-color: #0f3d2e;
+  box-shadow: 0 8px 18px rgba(15, 42, 29, 0.08);
+  transform: translateY(-1px);
 }
 
-.gcv-pix-modal__email-continue:disabled {
+.gcv-pix-modal--await-email .gcv-pay-opt:focus-visible {
+  outline: 2px solid #0f3d2e;
+  outline-offset: 2px;
+}
+
+.gcv-pix-modal--await-email .gcv-pay-opt:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  filter: none;
+  transform: none;
+  box-shadow: none;
 }
 
-.gcv-pix-modal__email-continue:disabled:hover {
-  filter: none;
+.gcv-pix-modal--await-email .gcv-pay-opt--intl {
+  border-color: #bfdbfe;
+  background: linear-gradient(180deg, #f5f9ff 0%, #fff 62%);
+}
+
+.gcv-pix-modal--await-email .gcv-pay-opt--intl:hover:not(:disabled) {
+  border-color: #2563eb;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.12);
+}
+
+.gcv-pix-modal--await-email .gcv-pay-opt--intl:focus-visible {
+  outline-color: #2563eb;
+}
+
+.gcv-pay-opt__mark {
+  display: grid;
+  place-items: center;
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.gcv-pay-opt__mark--pix {
+  background: #00bdaf;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+
+.gcv-pay-opt__mark--br {
+  background: #009c3b;
+}
+
+.gcv-pay-opt__mark--intl {
+  flex-basis: 46px;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: #1d4ed8;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.16);
+}
+
+.gcv-pay-opt__body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.gcv-pay-opt__name {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.25;
+}
+
+.gcv-pay-opt__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.08rem 0.36rem;
+  border-radius: 999px;
+  background: #009c3b;
+  color: #fff;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
+.gcv-pay-opt__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.28rem;
+  margin-top: 0.16rem;
+  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.gcv-pay-opt__inst {
+  display: block;
+  margin-top: 0.16rem;
+  color: #64748b;
+  font-size: 0.64rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.gcv-pay-opt__sum {
+  flex: 0 0 auto;
+  text-align: right;
+}
+
+.gcv-pay-opt__total {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.28rem;
+}
+
+.gcv-pay-opt__amount {
+  font-size: 0.9rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.gcv-pay-opt__ccy {
+  padding: 0.08rem 0.3rem;
+  border-radius: 4px;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  line-height: 1.2;
+}
+
+.gcv-pay-opt__ccy--brl {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.gcv-pay-opt__ccy--usd {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.gcv-pay-opt--intl .gcv-pay-opt__amount {
+  color: #1e3a8a;
 }
 
 /* Carrinho de excursões */
@@ -5681,18 +5829,24 @@ html.gcv-waitlist-modal-open {
 }
 
 .gcv-pix-modal__mp-back {
-  padding: 0;
-  border: none;
-  background: none;
-  color: #064e3b;
-  font: inherit;
-  font-size: 0.74rem;
+  display: block;
+  width: 100%;
+  margin: 0 0 0.55rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid #e4ddd2;
+  border-radius: 12px;
+  background: #fffdf9;
+  color: #14532d;
+  font-family: inherit;
+  font-size: 0.84rem;
   font-weight: 700;
+  text-align: center;
   cursor: pointer;
 }
 
 .gcv-pix-modal__mp-back:hover {
-  text-decoration: underline;
+  background: #f7f3ec;
+  text-decoration: none;
 }
 
 #gcv-mp-brick {

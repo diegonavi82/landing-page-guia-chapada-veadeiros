@@ -8,7 +8,7 @@
 |---|---|---|---|---|
 | Pix | Sicoob | valor do tarifário | — | na hora |
 | Cartão nacional | Mercado Pago (formulário embutido) | +15% (`PAY_CARD_BR_PCT`) | até 4x sem juros | só quando o passeio confirma |
-| Cartão internacional | Stripe (USD) | +20% (`PAY_CARD_INTL_PCT`) convertido pela PTAX do dia + 4% (`PAY_FX_SPREAD_PCT`) | 1x | só quando o passeio confirma |
+| Cartão internacional | Stripe (USD) | +25% (`PAY_CARD_INTL_PCT`) convertido pela PTAX do dia + 4% (`PAY_FX_SPREAD_PCT`) | 1x | só quando o passeio confirma |
 
 - O preço de cada forma é calculado **no servidor** (`api/helpers/payments/pricing.php`). O navegador só exibe (`GET /api/payment_quote.php`).
 - O valor base enviado pelo navegador é conferido contra `gcv_excursions` (`base_amount.php`). Divergência: recusa (`PAY_STRICT_PRICE_CHECK=1`) ou marca a venda para revisão (padrão).

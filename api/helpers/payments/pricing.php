@@ -7,8 +7,8 @@ declare(strict_types=1);
  *
  *   pix      → valor do tarifário (base)
  *   card_br  → base + PAY_CARD_BR_PCT (padrão 15%), Mercado Pago, até PAY_MP_MAX_INSTALLMENTS (4x) sem juros
- *   card_intl→ base + PAY_CARD_INTL_PCT (padrão 20%), Stripe em USD:
- *              USD = (base × 1,20) ÷ PTAX venda × (1 + PAY_FX_SPREAD_PCT) (padrão 4%)
+ *   card_intl→ base + PAY_CARD_INTL_PCT (padrão 25%), Stripe em USD:
+ *              USD = (base × 1,25) ÷ PTAX venda × (1 + PAY_FX_SPREAD_PCT) (padrão 4%)
  *
  * Valores em centavos (int). Sempre arredonda para cima no centavo.
  */
@@ -33,7 +33,7 @@ function gcv_pay_config(): array
     $cur = strtolower(trim((string) ($_ENV['PAY_INTL_CURRENCY'] ?? getenv('PAY_INTL_CURRENCY') ?: 'usd')));
     return [
         'card_br_pct' => max(0.0, gcv_pay_env_float('PAY_CARD_BR_PCT', 15.0)),
-        'card_intl_pct' => max(0.0, gcv_pay_env_float('PAY_CARD_INTL_PCT', 20.0)),
+        'card_intl_pct' => max(0.0, gcv_pay_env_float('PAY_CARD_INTL_PCT', 25.0)),
         'fx_spread_pct' => max(0.0, gcv_pay_env_float('PAY_FX_SPREAD_PCT', 4.0)),
         'mp_max_installments' => max(1, min(12, $maxInst)),
         'intl_currency' => in_array($cur, ['usd', 'brl'], true) ? $cur : 'usd',

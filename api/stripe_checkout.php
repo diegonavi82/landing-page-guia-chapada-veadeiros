@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 /**
  * POST /api/stripe_checkout.php — cartão internacional (Stripe).
- * Preço: base conferida no servidor + PAY_CARD_INTL_PCT (20%), cobrado em USD
+ * Preço: base conferida no servidor + PAY_CARD_INTL_PCT (25%), cobrado em USD
  * pela PTAX do dia + PAY_FX_SPREAD_PCT (4%). Ver helpers/payments/pricing.php.
  */
 
