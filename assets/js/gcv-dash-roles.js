@@ -673,7 +673,7 @@
   }
 
   function guideReceiptHint(kind) {
-    if (kind === 'pix') return 'Pix: repasse no dia do passeio, às 16h20, depois da leitura do QR.';
+    if (kind === 'pix') return 'Pix: repasse no dia do passeio, às 16h20, com ou sem a leitura do QR.';
     if (kind === 'stripe') return 'Cartão internacional (Stripe): cobra na confirmação, libera em 2 dias úteis e o repasse diário cai no Sicoob.';
     return 'Cartão (Mercado Pago): cobra na confirmação e libera o saldo 1 dia depois da saída.';
   }
@@ -1490,7 +1490,7 @@
 
         '<div class="gcv-dash-profile-finance">' +
           '<h2 class="gcv-dash-section-title gcv-dash-section-title--sub">Dados financeiros</h2>' +
-          '<p class="gcv-dash-hint">Chave PIX do repasse automático. O depósito sai só para os clientes cujo QR você leu no dia do passeio.' +
+          '<p class="gcv-dash-hint">Chave PIX do repasse automático. O depósito do dia sai mesmo sem a leitura do QR.' +
           (String(p.user_status || '') === 'active'
             ? ' <a href="#financeiro" id="gp-goto-earnings">Ver painel de recebimentos</a>.'
             : '') +
@@ -1806,32 +1806,146 @@
   function postCheckin(code, fromScan) {
     code = extractReservationCode(code);
     if (!code) {
-      paintCheckinResult(false, 'Código da reserva inválido.');
-      if (!fromScan && !checkinModalOpen()) alert('Código da reserva inválido.');
+      if (!fromScan) {
+        paintCheckinResult(false, 'Código da reserva inválido.');
+        if (!checkinModalOpen()) alert('Código da reserva inválido.');
+      }
       return;
     }
-    if (fromScan && code === lastScanCode && (Date.now() - lastScanAt) < 8000) {
+    if (checkinBusy) return;
+    if (code === lastScanCode && (Date.now() - lastScanAt) < 8000) {
       return;
     }
     lastScanCode = code;
     lastScanAt = Date.now();
-    if (checkinBusy) return;
     checkinBusy = true;
+    hideCheckinVideo();
+    showCheckinFlash('Lendo ' + code + '…', false);
     sendJson('POST', '/api/guides/check-in.php', { reservation_id: code }, function (e, r) {
       checkinBusy = false;
       var d = (r && r.data) || {};
       if (r && r.ok) {
-        var msg = (d.already ? 'Presença já confirmada' : 'Presença confirmada')
-          + (d.tourist_name ? '\n' + d.tourist_name : '')
-          + (d.reservation_id ? '\n' + d.reservation_id : '');
+        var headline = d.message || (d.already
+          ? 'Check-in já estava confirmado. Bom passeio!'
+          : 'Passeio confirmado. Bom passeio!');
+        var extra = [];
+        if (d.tourist_name) extra.push(String(d.tourist_name));
+        if (d.reservation_id) extra.push(String(d.reservation_id));
+        if (d.spots) extra.push(Number(d.spots) === 1 ? '1 pessoa' : (d.spots + ' pessoas'));
+        if (d.guide_whatsapp) extra.push('Confirmação enviada no seu WhatsApp.');
+        var msg = headline + (extra.length ? '\n\n' + extra.join('\n') : '');
         paintCheckinResult(true, msg);
-        if (!fromScan && !checkinModalOpen()) alert(msg);
+        showCheckinFlash(headline + (d.guide_whatsapp ? '\n\nConfirmação enviada no seu WhatsApp.' : ''), false);
         loadGuideAgenda();
+        setTimeout(hideCheckinFlash, 1600);
         return;
       }
+      lastScanCode = '';
       var err = (r && r.error) || 'Não foi possível confirmar a presença.';
       paintCheckinResult(false, err);
-      if (!fromScan && !checkinModalOpen()) alert(err);
+      showCheckinFlash(err, true);
+    });
+  }
+
+  function hideCheckinVideo() {
+    var reader = document.getElementById('gcv-checkin-reader');
+    if (!reader) return;
+    var video = reader.querySelector('video');
+    if (video) video.style.visibility = 'hidden';
+    pauseCheckinScanner();
+  }
+
+  function showCheckinVideo() {
+    var reader = document.getElementById('gcv-checkin-reader');
+    if (!reader) return;
+    var video = reader.querySelector('video');
+    if (video) video.style.visibility = '';
+  }
+
+  function showCheckinFlash(text, withOk) {
+    var flash = document.getElementById('gcv-checkin-flash');
+    var msg = document.getElementById('gcv-checkin-flash-msg');
+    var ok = document.getElementById('gcv-checkin-flash-ok');
+    if (!flash || !msg) return;
+    msg.textContent = text || '';
+    if (ok) ok.hidden = !withOk;
+    flash.hidden = false;
+  }
+
+  function hideCheckinFlash() {
+    var flash = document.getElementById('gcv-checkin-flash');
+    if (flash) flash.hidden = true;
+    showCheckinVideo();
+    resumeCheckinScanner();
+  }
+
+  function pauseCheckinScanner() {
+    if (checkinScanner && typeof checkinScanner.pause === 'function') {
+      try { checkinScanner.pause(true); } catch (err) {}
+    }
+  }
+
+  function resumeCheckinScanner() {
+    if (!checkinModalOpen()) return;
+    if (checkinScanner && typeof checkinScanner.resume === 'function') {
+      try { checkinScanner.resume(); } catch (err) {}
+    }
+  }
+
+  function checkinScanBox(viewfinderWidth, viewfinderHeight) {
+    var edge = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.72);
+    edge = Math.max(180, edge);
+    return { width: edge, height: edge };
+  }
+
+  function startCheckinCamera() {
+    var reader = document.getElementById('gcv-checkin-reader');
+    if (!reader) return;
+    if (!window.Html5Qrcode) {
+      reader.innerHTML = '<p class="gcv-dash-hint">A câmera não carregou. Digite o código abaixo.</p>';
+      return;
+    }
+    if (checkinScanner) {
+      try { checkinScanner.stop(); } catch (err) {}
+      checkinScanner = null;
+    }
+    reader.innerHTML = '';
+    checkinScanner = new window.Html5Qrcode('gcv-checkin-reader', { verbose: false });
+    var config = { fps: 12, qrbox: checkinScanBox, aspectRatio: 1 };
+    var onRead = function (decoded) { postCheckin(decoded, true); };
+    var showCameraError = function () {
+      if (reader) reader.innerHTML = '<p class="gcv-dash-hint">Não foi possível abrir a câmera de trás. Permita a câmera do celular ou digite o código abaixo.</p>';
+      checkinScanner = null;
+    };
+    checkinScanner.start(
+      { facingMode: 'environment' },
+      config,
+      onRead,
+      function () {}
+    ).catch(function () {
+      var failed = checkinScanner;
+      checkinScanner = null;
+      var retry = function () {
+        if (typeof window.Html5Qrcode.getCameras !== 'function') {
+          showCameraError();
+          return;
+        }
+        window.Html5Qrcode.getCameras().then(function (cameras) {
+          if (!cameras || !cameras.length) throw new Error('no-camera');
+          var id = cameras[cameras.length - 1].id;
+          cameras.forEach(function (cam) {
+            var label = String(cam.label || '').toLowerCase();
+            if (/back|rear|traseir|environment|traseira/.test(label)) id = cam.id;
+          });
+          checkinScanner = new window.Html5Qrcode('gcv-checkin-reader', { verbose: false });
+          return checkinScanner.start(id, config, onRead, function () {});
+        }).catch(showCameraError);
+      };
+      if (failed && typeof failed.clear === 'function') {
+        failed.clear().then(retry).catch(retry);
+      } else {
+        retry();
+      }
     });
   }
 
@@ -1862,10 +1976,11 @@
   }
 
   function onCheckinEsc(ev) {
-    if (ev.key === 'Escape') {
-      ev.preventDefault();
-      closeCheckinScanner();
-    }
+    if (ev.key !== 'Escape') return;
+    var notice = document.querySelector('.gcv-confirm:not([hidden])');
+    if (notice) return;
+    ev.preventDefault();
+    closeCheckinScanner();
   }
 
   function openCheckinScanner() {
@@ -1877,19 +1992,25 @@
     }
     modal.hidden = false;
     clearCheckinResult();
-    var reader = document.getElementById('gcv-checkin-reader');
+    hideCheckinFlash();
     var manual = document.getElementById('gcv-checkin-manual');
     if (manual) {
       manual.value = '';
+      manual.oninput = function () {
+        var code = extractReservationCode(manual.value);
+        if (code) postCheckin(code, true);
+      };
       manual.onkeydown = function (ev) {
         if (ev.key === 'Enter') {
           ev.preventDefault();
-          postCheckin(manual.value);
+          postCheckin(manual.value, true);
         }
       };
     }
     var sendBtn = document.getElementById('gcv-checkin-manual-btn');
-    if (sendBtn) sendBtn.onclick = function () { postCheckin(manual ? manual.value : ''); };
+    if (sendBtn) sendBtn.onclick = function () { postCheckin(manual ? manual.value : '', true); };
+    var flashOk = document.getElementById('gcv-checkin-flash-ok');
+    if (flashOk) flashOk.onclick = function () { hideCheckinFlash(); };
     var closeBtn = document.getElementById('gcv-checkin-close');
     if (closeBtn) closeBtn.onclick = function (ev) {
       ev.preventDefault();
@@ -1900,21 +2021,7 @@
       if (ev.target === modal) closeCheckinScanner();
     };
     document.addEventListener('keydown', onCheckinEsc, true);
-
-    if (window.Html5Qrcode && reader) {
-      if (checkinScanner) {
-        try { checkinScanner.stop(); } catch (err) {}
-      }
-      checkinScanner = new window.Html5Qrcode('gcv-checkin-reader');
-      checkinScanner.start(
-        { facingMode: 'environment' },
-        { fps: 8, qrbox: { width: 240, height: 240 } },
-        function (decoded) { postCheckin(decoded, true); },
-        function () {}
-      ).catch(function () {
-        if (reader) reader.innerHTML = '<p class="gcv-dash-hint">Não foi possível abrir a câmera. Digite o código abaixo.</p>';
-      });
-    }
+    startCheckinCamera();
   }
 
   function consumeCheckinHash() {
@@ -3982,7 +4089,7 @@
       root.innerHTML =
         '<div class="gcv-dash-alert ' + (pixReady && pixVerified && autoPix ? 'gcv-dash-alert--success' : 'gcv-dash-alert--info') + '">' +
         (autoPix
-          ? 'O PIX é <strong>enviado automaticamente</strong> para a chave cadastrada em Meu perfil, <strong>após as ' + afterLabel + ' do dia do passeio</strong>, somente dos clientes cujo QR você leu. Sem a leitura, essas pessoas não entram na guiagem e o depósito não é feito.'
+          ? 'O PIX é <strong>enviado automaticamente</strong> para a chave cadastrada em Meu perfil, <strong>após as ' + afterLabel + ' do dia do passeio</strong>, mesmo sem a leitura do QR. A leitura conta na guiagem.'
           : 'O envio automático de PIX ainda não está ativo no banco. O admin pode pagar manualmente; a chave continua em Meu perfil.') +
         (pixReady ? '' : ' Cadastre CPF/CNPJ e PIX em <a href="#perfil" id="ge-goto-profile">Meu perfil</a>.') +
         (pixReady && !pixVerified ? ' A chave ainda <strong>aguarda verificação do admin</strong> antes do primeiro envio automático.' : '') +
@@ -4098,9 +4205,18 @@
       tbody.innerHTML = sales.map(function (b) {
         var when = (typeof formatGuideDate === 'function' ? formatGuideDate(b.date_iso) : (b.date_iso || '')) +
           (b.departure_time ? ' · ' + b.departure_time : '');
-        var refundBtn = b.can_refund_full
-          ? '<button type="button" class="gcv-dash-btn gcv-dash-btn--danger gcv-dash-btn--sm" data-refund="' + b.id + '">Cancelar 100%</button>'
-          : '—';
+        var tripsRefund = b.refund_trips || [];
+        var refundBtn = '—';
+        if (tripsRefund.length) {
+          refundBtn = tripsRefund.map(function (t) {
+            var label = [t.date_label, t.title].filter(Boolean).join(' · ') || 'Passeio';
+            if (t.refunded) return '<div class="gcv-cms-muted">' + esc(label) + ' — estornado</div>';
+            if (t.confirmed || !t.can_cancel) return '<div class="gcv-cms-muted">' + esc(label) + ' — confirmado</div>';
+            return '<button type="button" class="gcv-dash-btn gcv-dash-btn--danger gcv-dash-btn--sm" data-refund="' + b.id + '" data-trip="' + t.trip_index + '">Cancelar este dia</button>';
+          }).join('');
+        } else if (b.can_refund_full) {
+          refundBtn = '<button type="button" class="gcv-dash-btn gcv-dash-btn--danger gcv-dash-btn--sm" data-refund="' + b.id + '">Cancelar em formação</button>';
+        }
         var offers = (b.can_transfer && (b.transfer_offers || []).length)
           ? '<div class="gcv-transfer-offers"><p>Passeios confirmados no mesmo dia, mesma cidade — você pode trocar enquanto o seu ainda está em formação:</p>' +
             b.transfer_offers.map(function (o) {
@@ -4125,12 +4241,20 @@
 
       tbody.querySelectorAll('[data-refund]').forEach(function (btn) {
         btn.onclick = function () {
-          if (!confirm('Cancelar com ressarcimento de 100% pelo PIX original?')) return;
-          sendJson('POST', '/api/client/transfer.php', {
+          var tripAttr = btn.getAttribute('data-trip');
+          var body = {
             action: 'refund',
             sale_id: parseInt(btn.getAttribute('data-refund'), 10),
-          }, function (e, r) {
-            alert((r && r.ok) ? 'Cancelada. O valor volta pelo PIX original.' : ((r && r.error) || 'Erro'));
+          };
+          if (tripAttr !== null && tripAttr !== '') body.trip_indexes = [parseInt(tripAttr, 10)];
+          if (!confirm(tripAttr !== null && tripAttr !== ''
+            ? 'Cancelar só este passeio? O estorno do Pix é só deste valor. Passeio já confirmado nesta reserva não é cancelado.'
+            : 'Cancelar os passeios que ainda não confirmaram? O estorno do Pix é só desses dias.')) return;
+          sendJson('POST', '/api/client/transfer.php', body, function (e, r) {
+            var d = (r && r.data) || {};
+            alert((r && r.ok)
+              ? (d.partial ? 'Estorno parcial feito. Os passeios confirmados continuam valendo.' : 'Pix devolvido para a conta de origem.')
+              : ((r && r.error) || 'Erro'));
             if (r && r.ok) {
               loadClientBookingsEnhanced();
               loadClientUpcoming();

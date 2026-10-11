@@ -846,3 +846,60 @@ function gcv_pix_recover_unconfirmed_paid(int $max = 40, int $maxAgeDays = 14): 
     }
     return $out;
 }
+
+/**
+ * Devolução Pix (parcial ou integral) da cobrança recebida.
+ * PUT /pix/{e2eid}/devolucao/{id} — o id é da nossa reserva e pode repetir sem devolver duas vezes.
+ *
+ * @return array{ok:bool,status:string,id:string,http?:int,error?:string,detail?:string,data?:array<string,mixed>|null}
+ */
+function gcv_sicoob_pix_devolucao(string $e2e, string $id, int $cents, string $descricao = ''): array
+{
+    $e2e = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $e2e) ?? '');
+    $id = substr(preg_replace('/[^A-Za-z0-9]/', '', $id) ?? '', 0, 35);
+    if (strlen($e2e) < 26 || $id === '' || $cents <= 0) {
+        return ['ok' => false, 'status' => '', 'id' => $id, 'error' => 'invalid_refund'];
+    }
+
+    $fake = (string)($_ENV['PAY_FAKE_GATEWAYS'] ?? getenv('PAY_FAKE_GATEWAYS') ?: '') === '1';
+    if ($fake) {
+        return ['ok' => true, 'status' => 'DEVOLVIDO', 'id' => $id, 'http' => 200, 'error' => null];
+    }
+    if (!gcv_sicoob_is_configured()) {
+        return ['ok' => false, 'status' => '', 'id' => $id, 'error' => 'sicoob_not_configured'];
+    }
+
+    $body = ['valor' => number_format($cents / 100, 2, '.', '')];
+    $desc = trim($descricao);
+    if ($desc !== '') {
+        $body['descricao'] = function_exists('mb_substr') ? mb_substr($desc, 0, 140) : substr($desc, 0, 140);
+    }
+    $path = '/pix/' . rawurlencode($e2e) . '/devolucao/' . rawurlencode($id);
+    $res = gcv_sicoob_api_request('PUT', $path, [], $body);
+    $status = strtoupper((string)($res['data']['status'] ?? ''));
+    if ($res['ok'] && $status === '') {
+        $status = 'EM_PROCESSAMENTO';
+    }
+    if (!$res['ok'] || !in_array($status, ['DEVOLVIDO', 'EM_PROCESSAMENTO'], true)) {
+        $got = gcv_sicoob_api_request('GET', $path);
+        $again = strtoupper((string)($got['data']['status'] ?? ''));
+        if (in_array($again, ['DEVOLVIDO', 'EM_PROCESSAMENTO'], true)) {
+            return ['ok' => true, 'status' => $again, 'id' => $id, 'http' => $got['http'], 'data' => $got['data']];
+        }
+        if ($status === '') {
+            $status = $again;
+        }
+        return [
+            'ok' => false,
+            'status' => $status,
+            'id' => $id,
+            'http' => $res['http'] ?: $got['http'],
+            'error' => 'bank_failed',
+            'detail' => function_exists('mb_substr') ? mb_substr($res['raw'], 0, 300) : substr($res['raw'], 0, 300),
+        ];
+    }
+    if ($status === '' && $res['ok']) {
+        $status = 'EM_PROCESSAMENTO';
+    }
+    return ['ok' => true, 'status' => $status, 'id' => $id, 'http' => $res['http'], 'data' => $res['data']];
+}

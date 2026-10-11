@@ -28,6 +28,20 @@
 .tf-grid2 > .tf-field { flex: 1 1 15rem; }
 .tf-field { display: flex; flex-direction: column; gap: .3rem; margin: 0 0 .6rem; font-size: .78rem; font-weight: 600; color: var(--tf-muted); }
 .tf-field--sm { flex: 0 1 12rem !important; }
+.tf-oficial { margin: 0 0 1.1rem; }
+.tf-oficial h3, .tf-legado { margin: .2rem 0 .35rem; color: var(--tf-green); font-size: 1.05rem; }
+.tf-oficial--bi .tf-bi { align-items: center; max-width: 36rem; }
+.tf-oficial__list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: .45rem; }
+.tf-oficial__item { display: flex; flex-direction: column; gap: .35rem; align-items: flex-start; padding: .55rem .7rem; border: 1px solid var(--tf-line); border-radius: 10px; background: #fff; }
+.tf-oficial__item b { color: #0f172a; font-size: .92rem; }
+.tf-oficial__item span { color: var(--tf-muted); font-size: .75rem; }
+.tf-oficial__new { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .5rem; margin-top: .55rem; }
+.tf-oficial__new .tf-field { margin: 0; flex: 0 1 9rem; }
+.tf-oficial__item button:disabled { opacity: .45; cursor: not-allowed; }
+.tf-field--bi { flex: 1 1 22rem !important; }
+.tf-bi { display: flex; align-items: stretch; gap: .4rem; }
+.tf-bi select { flex: 0 1 9.5rem; min-width: 0; }
+.tf-bi .tf-money { flex: 1 1 7rem; }
 .tf-select { width: 100%; }
 .tf-edit-link { margin-bottom: .6rem; }
 .tf-dur { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .4rem; }

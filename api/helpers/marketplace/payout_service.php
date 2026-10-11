@@ -262,7 +262,8 @@ function gcv_payout_auto_eligibility(int $saleId): array
     if (($sale['payout_status'] ?? '') === GcvPayoutStatus::PAID) {
         $reasons[] = 'payout_already_done';
     }
-    if (($sale['payout_status'] ?? '') === GcvPayoutStatus::BLOCKED) {
+    if (($sale['payout_status'] ?? '') === GcvPayoutStatus::BLOCKED
+        && ($sale['sale_status'] ?? '') !== GcvSaleStatus::PAID) {
         $reasons[] = 'payout_blocked';
     }
 
@@ -370,26 +371,9 @@ function gcv_payout_auto_execute(int $saleId): array
         return ['ok' => false, 'executed' => false, 'sale_id' => $saleId, 'error' => 'sale_not_found'];
     }
 
-    $att = strtolower(trim((string)($sale['attendance_status'] ?? 'pending')));
-    if ($att !== 'checked_in') {
-        try {
-            require_once dirname(__DIR__) . '/notify_ops.php';
-            gcv_ops_apply_noshow($sale);
-        } catch (Throwable $e) {
-            error_log('payout noshow mark: ' . $e->getMessage());
-        }
-        return [
-            'ok' => false,
-            'executed' => false,
-            'sale_id' => $saleId,
-            'reasons' => ['qr_not_scanned'],
-            'message' => 'Sem leitura do QR o repasse automático não é feito',
-        ];
-    }
-
-    $guideUserId = (int)($sale['checked_in_by'] ?? 0);
+    $guideUserId = (int)($sale['guide_user_id'] ?? 0);
     if ($guideUserId <= 0) {
-        $guideUserId = (int)($sale['guide_user_id'] ?? 0);
+        $guideUserId = (int)($sale['checked_in_by'] ?? 0);
     }
     $fin = gcv_payout_load_guide_financial($guideUserId);
     if (!$fin) {
@@ -635,7 +619,7 @@ function gcv_payout_process_due(?int $guideUserId = null, int $limit = 15): arra
         "SELECT id FROM gcv_sales
          WHERE deleted_at IS NULL
            AND sale_status = 'PAID'
-           AND payout_status = 'PAYOUT_PENDING'";
+           AND payout_status IN ('PAYOUT_PENDING', 'PAYOUT_BLOCKED')";
     $params = [];
     if ($guideUserId !== null && $guideUserId > 0) {
         $sql .= ' AND guide_user_id = ?';

@@ -30,7 +30,17 @@ try {
         if ($saleId <= 0) {
             json_response(false, null, 'Reserva inválida', 422);
         }
-        $out = gcv_transfer_refund_sale($saleId, $user);
+        $indexes = null;
+        if (isset($data['trip_indexes']) && is_array($data['trip_indexes'])) {
+            $indexes = [];
+            foreach ($data['trip_indexes'] as $n) {
+                if (is_int($n) || (is_string($n) && preg_match('/^\d+$/', (string)$n))) {
+                    $indexes[] = (int)$n;
+                }
+            }
+            $indexes = array_values(array_unique($indexes));
+        }
+        $out = gcv_transfer_refund_sale($saleId, $user, $indexes);
         json_response(true, $out);
     }
     json_response(false, null, 'Ação inválida', 422);

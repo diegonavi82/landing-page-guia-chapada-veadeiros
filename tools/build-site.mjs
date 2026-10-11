@@ -1525,7 +1525,7 @@ function homeExcursionsSection(locale) {
   const copy = {
     pt: {
       badge: "Excursões",
-      title: "Excursões",
+      title: "Próximas saídas",
       prev: "Excursão anterior",
       next: "Próxima excursão",
       dots: "Navegação do carrossel de excursões",
@@ -1555,7 +1555,7 @@ function homeExcursionsSection(locale) {
   const shellHiddenAttrs = hasStaticRows
     ? ""
     : ' hidden aria-hidden="true" style="display:none"';
-  return `    <div id="excursoes"></div>
+  return `${homePasseiosDestaqueSection(locale)}    <div id="excursoes"></div>
     <section id="excursoes-junho" class="gcv-excursoes" data-locale="${esc(locale)}" aria-labelledby="gcv-excursoes-heading"${shellHiddenAttrs}>
       <script type="application/json" id="gcv-excursoes-payload">${safeJsonLd(excursaoPayloadForSite())}</script>
       <script type="application/json" id="gcv-guia-profiles">${safeJsonLd(guiaProfilesForSite())}</script>
@@ -1579,6 +1579,56 @@ function homeExcursionsSection(locale) {
       </div>
     </section>
 
+`;
+}
+
+function homePasseiosDestaqueSection(locale) {
+  const copy = {
+    pt: {
+      chip: "Passeios",
+      title: "Em destaque",
+      seeAll: "Ver todos os passeios",
+      from: "A partir de",
+      person: "por pessoa",
+      one: "1 atração",
+      many: "atrações",
+      destaque: "Destaque",
+      classicos: "Clássicos",
+    },
+    en: {
+      chip: "Tours",
+      title: "Featured",
+      seeAll: "See all tours",
+      from: "From",
+      person: "per person",
+      one: "1 place",
+      many: "places",
+      destaque: "Featured",
+      classicos: "Classics",
+    },
+    es: {
+      chip: "Paseos",
+      title: "Destacados",
+      seeAll: "Ver todos los paseos",
+      from: "Desde",
+      person: "por persona",
+      one: "1 atractivo",
+      many: "atractivos",
+      destaque: "Destacado",
+      classicos: "Clásicos",
+    },
+  }[locale];
+  if (!copy) return "";
+  return `    <section id="gcv-home-passeios" class="gcv-home-card gcv-home-passeios" hidden aria-labelledby="gcv-home-passeios-title" data-from="${esc(copy.from)}" data-person="${esc(copy.person)}" data-one="${esc(copy.one)}" data-many="${esc(copy.many)}" data-destaque="${esc(copy.destaque)}" data-classicos="${esc(copy.classicos)}">
+      <div class="gcv-home-card__head">
+        <div>
+          <span class="gcv-chip-orange">${esc(copy.chip)}</span>
+          <h2 id="gcv-home-passeios-title" class="gcv-home-featured-title">${esc(copy.title)}</h2>
+        </div>
+        <a class="gcv-link-cerrado" href="passeios.html">${esc(copy.seeAll)}</a>
+      </div>
+      <div class="gcv-home-passeios__grid" data-home-passeios-grid></div>
+    </section>
 `;
 }
 
@@ -3008,7 +3058,8 @@ for (const locale of LOCALES) {
       ? {
           extraCss: [
             `assets/css/gcv-hero-slider.css?v=1.1.32`,
-            `assets/css/excursoes.css${BUILD_ASSET_QUERY}`,
+            `assets/css/excursoes.css?v=1.1.34`,
+            `assets/css/gcv-home-passeios.css${BUILD_ASSET_QUERY}`,
           ],
           extraHead: `${heroPreloadLinks(homeAp, locale)}
     <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&display=swap" rel="stylesheet" />
@@ -3016,7 +3067,7 @@ for (const locale of LOCALES) {
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" crossorigin="anonymous" />`,
           extraFooterScripts:
             homeExcursionsHideScript +
-            `  <script src="${esc(publicJsSrc("gcv-hero-slider.js", outPk).replace(BUILD_ASSET_QUERY, "?v=1.1.31"))}" defer></script>\n  <script src="${esc(publicJsSrc("qrcode.min.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix-receipt.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix-polling.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-confirm.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-bookings.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-waitlist.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-cart-policies.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-cart.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("excursoes-carousel.js", outPk).replace(BUILD_ASSET_QUERY, "?v=1.1.35"))}" defer></script>\n`,
+            `  <script src="${esc(publicJsSrc("gcv-hero-slider.js", outPk).replace(BUILD_ASSET_QUERY, "?v=1.1.31"))}" defer></script>\n  <script src="${esc(publicJsSrc("qrcode.min.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix-receipt.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix-polling.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-confirm.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-bookings.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-waitlist.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-cart-policies.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-cart.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("excursoes-carousel.js", outPk).replace(BUILD_ASSET_QUERY, "?v=1.1.63"))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-home-passeios.js", outPk).replace(BUILD_ASSET_QUERY, "?v=1.1.37"))}" defer></script>\n`,
         }
       : {};
     const homeConsultarScript = "";

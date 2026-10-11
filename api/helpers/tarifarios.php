@@ -17,10 +17,9 @@ declare(strict_types=1);
  *   excursao_pessoa_cents        excursão sem translado
  *   excursao_transporte_cents    excursão com translado
  *
- * Guia em outro idioma, na mesma cópia da cidade:
- *   bilingue_tipo   "fixo" ou "percentual"
- *   bilingue_valor  centavos, se fixo; percentual inteiro, se percentual
- * Português soma zero. O acréscimo entra uma vez no total, depois da idade.
+ * Guia em outro idioma: um acréscimo só, no total da compra.
+ * bilingue_tipo fixo = bilingue_valor em centavos. percentual = bilingue_valor inteiro (0–100).
+ * Português soma zero. Vazio no fixo = R$ 40. Vazio no percentual = 0.
  */
 
 const GCV_TARIFARIO_CIDADES = [
@@ -34,6 +33,36 @@ const GCV_TARIFARIO_CAMPOS = [
     'exclusivo_transporte_cents',
     'excursao_pessoa_cents',
     'excursao_transporte_cents',
+];
+
+/**
+ * Tarifas oficiais de produção, em reais por pessoa.
+ * guia = sem translado. translado = com translado.
+ * O mesmo par vale saindo de qualquer cidade.
+ * Cada passeio usa uma de cada. Guia em outro idioma é um valor só, para todas.
+ */
+const GCV_TARIFAS_OFICIAIS = [
+    'guia' => [
+        ['codigo' => 'g70', 'excursao' => 70, 'privativo' => 90],
+        ['codigo' => 'g80', 'excursao' => 80, 'privativo' => 100],
+        ['codigo' => 'g88', 'excursao' => 88, 'privativo' => 108],
+        ['codigo' => 'g100', 'excursao' => 100, 'privativo' => 120],
+        ['codigo' => 'g120', 'excursao' => 120, 'privativo' => 150],
+        ['codigo' => 'g150', 'excursao' => 150, 'privativo' => 200],
+        ['codigo' => 'g200', 'excursao' => 200, 'privativo' => 250],
+    ],
+    'translado' => [
+        ['codigo' => 't120', 'excursao' => 120, 'privativo' => 150],
+        ['codigo' => 't150', 'excursao' => 150, 'privativo' => 200],
+        ['codigo' => 't200', 'excursao' => 200, 'privativo' => 250],
+        ['codigo' => 't250', 'excursao' => 250, 'privativo' => 300],
+        ['codigo' => 't280', 'excursao' => 280, 'privativo' => 360],
+        ['codigo' => 't300', 'excursao' => 300, 'privativo' => 400],
+        ['codigo' => 't350', 'excursao' => 350, 'privativo' => 440],
+        ['codigo' => 't400', 'excursao' => 400, 'privativo' => 520],
+        ['codigo' => 't480', 'excursao' => 480, 'privativo' => 600],
+        ['codigo' => 't560', 'excursao' => 560, 'privativo' => 640],
+    ],
 ];
 
 /** Um passeio entra em pelo menos uma categoria e pode estar em todas. */
@@ -99,7 +128,14 @@ function gcv_tarifarios_ensure(PDO $pdo): void
     if (!gcv_tarifario_column_exists($pdo, 'gcv_passeio_relacionado', 'saidas_json')) {
         $pdo->exec('ALTER TABLE gcv_passeio_relacionado ADD COLUMN saidas_json TEXT NULL');
     }
+    if (!gcv_tarifario_column_exists($pdo, 'gcv_attractions', 'tarifa_guia')) {
+        $pdo->exec('ALTER TABLE gcv_attractions ADD COLUMN tarifa_guia VARCHAR(24) NULL, ADD COLUMN tarifa_translado VARCHAR(24) NULL');
+    }
+    if (!gcv_tarifario_column_exists($pdo, 'gcv_passeio_relacionado', 'tarifa_guia')) {
+        $pdo->exec('ALTER TABLE gcv_passeio_relacionado ADD COLUMN tarifa_guia VARCHAR(24) NULL, ADD COLUMN tarifa_translado VARCHAR(24) NULL');
+    }
     gcv_passeio_max_atrativos_ensure($pdo);
+    gcv_bilingue_universal_ensure($pdo);
     gcv_tarifarios_seed($pdo);
 }
 
@@ -325,6 +361,366 @@ function gcv_passeio_max_atrativos(PDO $pdo): int
     return max(1, min(5, $max));
 }
 
+/** @return list<array{codigo:string,tipo:string,excursao:int,privativo:int,excursao_cents:int,privativo_cents:int,nome:string}> */
+function gcv_tarifas_oficiais_catalogo(): array
+{
+    $out = [];
+    foreach (GCV_TARIFAS_OFICIAIS as $tipo => $rows) {
+        foreach ($rows as $row) {
+            $out[] = gcv_tarifa_oficial_linha((string)$tipo, (string)$row['codigo'], (int)$row['excursao'], (int)$row['privativo']);
+        }
+    }
+    return $out;
+}
+
+/** @return array{codigo:string,tipo:string,excursao:int,privativo:int,excursao_cents:int,privativo_cents:int,nome:string} */
+function gcv_tarifa_oficial_linha(string $tipo, string $codigo, int $excursao, int $privativo): array
+{
+    $tipo = $tipo === 'translado' ? 'translado' : 'guia';
+    $excursao = max(0, $excursao);
+    $privativo = max(0, $privativo);
+    return [
+        'codigo' => $codigo,
+        'tipo' => $tipo,
+        'excursao' => $excursao,
+        'privativo' => $privativo,
+        'excursao_cents' => $excursao * 100,
+        'privativo_cents' => $privativo * 100,
+        'nome' => ($tipo === 'guia' ? 'Tarifa Guia' : 'Tarifa Translado') . ' · excursão ' . $excursao . ' / privativo ' . $privativo,
+    ];
+}
+
+/** @return list<array{codigo:string,tipo:string,excursao:int,privativo:int,excursao_cents:int,privativo_cents:int,nome:string}> */
+function gcv_tarifas_oficiais(): array
+{
+    $cache = &gcv_tarifas_oficiais_cache();
+    if (is_array($cache)) {
+        return $cache;
+    }
+    try {
+        if (function_exists('db')) {
+            $cache = gcv_tarifas_oficiais_ler(db());
+            return $cache;
+        }
+    } catch (Throwable $e) {
+        error_log('tarifas oficiais: ' . $e->getMessage());
+    }
+    $cache = gcv_tarifas_oficiais_catalogo();
+    return $cache;
+}
+
+/** @return list<array{codigo:string,tipo:string,excursao:int,privativo:int,excursao_cents:int,privativo_cents:int,nome:string}>|null */
+function &gcv_tarifas_oficiais_cache(): ?array
+{
+    static $rows = null;
+    return $rows;
+}
+
+/** @return list<array{codigo:string,tipo:string,excursao:int,privativo:int,excursao_cents:int,privativo_cents:int,nome:string}> */
+function gcv_tarifas_oficiais_ler(PDO $pdo): array
+{
+    try {
+        $stmt = $pdo->prepare('SELECT value FROM gcv_settings WHERE key_name = ? LIMIT 1');
+        $stmt->execute(['tarifas_oficiais']);
+        $raw = json_decode((string)$stmt->fetchColumn(), true);
+    } catch (Throwable $e) {
+        return gcv_tarifas_oficiais_catalogo();
+    }
+    if (!is_array($raw) || !$raw) {
+        return gcv_tarifas_oficiais_catalogo();
+    }
+    $out = [];
+    foreach ($raw as $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+        $tipo = (string)($row['tipo'] ?? '');
+        $codigo = trim((string)($row['codigo'] ?? ''));
+        $exc = (int)($row['excursao'] ?? 0);
+        $pri = (int)($row['privativo'] ?? 0);
+        if (($tipo !== 'guia' && $tipo !== 'translado') || $codigo === '' || $exc < 1 || $pri < 1) {
+            continue;
+        }
+        $out[] = gcv_tarifa_oficial_linha($tipo, $codigo, $exc, $pri);
+    }
+    return $out ?: gcv_tarifas_oficiais_catalogo();
+}
+
+/** @param list<array<string,mixed>> $rows */
+function gcv_tarifas_oficiais_gravar(PDO $pdo, array $rows): void
+{
+    $payload = [];
+    foreach ($rows as $row) {
+        $payload[] = [
+            'codigo' => (string)$row['codigo'],
+            'tipo' => (string)$row['tipo'],
+            'excursao' => (int)$row['excursao'],
+            'privativo' => (int)$row['privativo'],
+        ];
+    }
+    $json = json_encode($payload, JSON_UNESCAPED_UNICODE);
+    $check = $pdo->prepare('SELECT id FROM gcv_settings WHERE key_name = ? LIMIT 1');
+    $check->execute(['tarifas_oficiais']);
+    if ($check->fetch()) {
+        $pdo->prepare('UPDATE gcv_settings SET value = ? WHERE key_name = ?')->execute([$json, 'tarifas_oficiais']);
+    } else {
+        $pdo->prepare('INSERT INTO gcv_settings (key_name, value, label, type) VALUES (?,?,?,?)')->execute([
+            'tarifas_oficiais',
+            $json,
+            'Tarifas oficiais de guia e de translado',
+            'json',
+        ]);
+    }
+    $cache = &gcv_tarifas_oficiais_cache();
+    $cache = null;
+}
+
+function gcv_tarifa_oficial_uso(PDO $pdo, string $codigo): int
+{
+    $n = 0;
+    foreach (['gcv_attractions', 'gcv_passeio_relacionado'] as $table) {
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM {$table} WHERE tarifa_guia = ? OR tarifa_translado = ?");
+        $stmt->execute([$codigo, $codigo]);
+        $n += (int)$stmt->fetchColumn();
+    }
+    return $n;
+}
+
+function gcv_tarifa_oficial_criar(PDO $pdo, string $tipo, int $excursao, int $privativo): string
+{
+    if ($tipo !== 'guia' && $tipo !== 'translado') {
+        throw new InvalidArgumentException('Escolha Tarifa Guia ou Tarifa Translado.');
+    }
+    if ($excursao < 1 || $excursao > 100000 || $privativo < 1 || $privativo > 100000) {
+        throw new InvalidArgumentException('Informe a excursão e o privativo em reais.');
+    }
+    $rows = gcv_tarifas_oficiais_ler($pdo);
+    foreach ($rows as $row) {
+        if ($row['tipo'] === $tipo && $row['excursao'] === $excursao && $row['privativo'] === $privativo) {
+            throw new InvalidArgumentException('Essa tarifa já existe.');
+        }
+    }
+    $prefix = $tipo === 'guia' ? 'g' : 't';
+    $codigo = $prefix . $excursao;
+    $n = 2;
+    $codes = array_column($rows, 'codigo');
+    while (in_array($codigo, $codes, true)) {
+        $codigo = $prefix . $excursao . '-' . $n;
+        $n++;
+    }
+    $rows[] = gcv_tarifa_oficial_linha($tipo, $codigo, $excursao, $privativo);
+    gcv_tarifas_oficiais_gravar($pdo, $rows);
+    return $codigo;
+}
+
+/** @return array{codigo:string,tipo:string,excursao:int,privativo:int,excursao_cents:int,privativo_cents:int,nome:string}|null */
+function gcv_tarifa_oficial_acima(array $rows, array $atual): ?array
+{
+    $acima = null;
+    foreach ($rows as $row) {
+        if ($row['codigo'] === $atual['codigo'] || $row['tipo'] !== $atual['tipo']) {
+            continue;
+        }
+        if ((int)$row['excursao'] <= (int)$atual['excursao']) {
+            continue;
+        }
+        if ($acima === null
+            || (int)$row['excursao'] < (int)$acima['excursao']
+            || ((int)$row['excursao'] === (int)$acima['excursao'] && (int)$row['privativo'] < (int)$acima['privativo'])
+        ) {
+            $acima = $row;
+        }
+    }
+    return $acima;
+}
+
+/** @return array{moved:int,para:string,para_nome:string} */
+function gcv_tarifa_oficial_excluir(PDO $pdo, string $codigo): array
+{
+    $codigo = trim($codigo);
+    $rows = gcv_tarifas_oficiais_ler($pdo);
+    $atual = null;
+    foreach ($rows as $row) {
+        if ($row['codigo'] === $codigo) {
+            $atual = $row;
+            break;
+        }
+    }
+    if (!$atual) {
+        throw new InvalidArgumentException('Tarifa não encontrada.');
+    }
+    $col = $atual['tipo'] === 'translado' ? 'tarifa_translado' : 'tarifa_guia';
+    $uso = gcv_tarifa_oficial_uso($pdo, $codigo);
+    $acima = gcv_tarifa_oficial_acima($rows, $atual);
+    if ($uso > 0 && !$acima) {
+        throw new InvalidArgumentException('Esta é a maior excursão desta lista. Os passeios que a usam não têm tarifa acima para receber.');
+    }
+    if ($uso > 0 && $acima) {
+        foreach (['gcv_attractions', 'gcv_passeio_relacionado'] as $table) {
+            $pdo->prepare("UPDATE {$table} SET {$col} = ? WHERE {$col} = ?")->execute([$acima['codigo'], $codigo]);
+        }
+    }
+    $rows = array_values(array_filter($rows, static fn($row) => $row['codigo'] !== $codigo));
+    gcv_tarifas_oficiais_gravar($pdo, $rows);
+    return [
+        'moved' => $uso,
+        'para' => $acima['codigo'] ?? '',
+        'para_nome' => $acima ? ('Excursão R$ ' . $acima['excursao'] . ' · Privativo R$ ' . $acima['privativo']) : '',
+    ];
+}
+
+/** @return array{codigo:string,tipo:string,excursao:int,privativo:int,excursao_cents:int,privativo_cents:int,nome:string}|null */
+function gcv_tarifa_oficial_item(string $codigo, ?string $tipo = null): ?array
+{
+    foreach (gcv_tarifas_oficiais() as $row) {
+        if ($row['codigo'] !== $codigo) {
+            continue;
+        }
+        if ($tipo !== null && $row['tipo'] !== $tipo) {
+            return null;
+        }
+        return $row;
+    }
+    return null;
+}
+
+function gcv_bilingue_universal_ensure(PDO $pdo): void
+{
+    try {
+        $check = $pdo->prepare('SELECT id FROM gcv_settings WHERE key_name = ? LIMIT 1');
+        $check->execute(['passeio_bilingue']);
+        if (!$check->fetch()) {
+            $pdo->prepare('INSERT INTO gcv_settings (key_name, value, label, type) VALUES (?,?,?,?)')->execute([
+                'passeio_bilingue',
+                json_encode(['tipo' => 'fixo', 'valor' => 4000], JSON_UNESCAPED_UNICODE),
+                'Guia em outro idioma, vale para todas as tarifas',
+                'json',
+            ]);
+        }
+    } catch (Throwable $e) {
+        error_log('passeio_bilingue: ' . $e->getMessage());
+    }
+}
+
+/** @return array{tipo:string,valor:int,cents:int} */
+function gcv_bilingue_universal_get(PDO $pdo): array
+{
+    $fallback = ['tipo' => 'fixo', 'valor' => 4000, 'cents' => 4000];
+    try {
+        $stmt = $pdo->prepare('SELECT value FROM gcv_settings WHERE key_name = ? LIMIT 1');
+        $stmt->execute(['passeio_bilingue']);
+        $raw = json_decode((string)$stmt->fetchColumn(), true);
+    } catch (Throwable $e) {
+        return $fallback;
+    }
+    return gcv_bilingue_universal_norm(is_array($raw) ? $raw : []);
+}
+
+/** @param array<string,mixed> $raw @return array{tipo:string,valor:int,cents:int} */
+function gcv_bilingue_universal_norm(array $raw): array
+{
+    if (($raw['tipo'] ?? '') === 'percentual') {
+        $pct = max(0, min(100, (int)($raw['valor'] ?? 0)));
+        return ['tipo' => 'percentual', 'valor' => $pct, 'cents' => 0];
+    }
+    $cents = array_key_exists('valor', $raw) && $raw['valor'] !== '' && $raw['valor'] !== null
+        ? max(0, (int)$raw['valor'])
+        : 4000;
+    return ['tipo' => 'fixo', 'valor' => $cents, 'cents' => $cents];
+}
+
+function gcv_bilingue_universal_save(PDO $pdo, array $body): void
+{
+    gcv_bilingue_universal_ensure($pdo);
+    $norm = gcv_bilingue_universal_norm([
+        'tipo' => (string)($body['bilingue_tipo'] ?? 'fixo'),
+        'valor' => $body['bilingue_valor'] ?? 4000,
+    ]);
+    $json = json_encode(['tipo' => $norm['tipo'], 'valor' => $norm['valor']], JSON_UNESCAPED_UNICODE);
+    $pdo->prepare('UPDATE gcv_settings SET value = ? WHERE key_name = ?')->execute([$json, 'passeio_bilingue']);
+}
+
+/**
+ * As duas oficiais juntas viram a tabela que o site já sabe ler.
+ * Falta uma das duas: devolve null e o passeio segue na tabela antiga.
+ *
+ * @return array<string,mixed>|null
+ */
+function gcv_tarifa_oficial_montar(?string $guiaCodigo, ?string $transladoCodigo): ?array
+{
+    $guia = gcv_tarifa_oficial_item((string)$guiaCodigo, 'guia');
+    $trans = gcv_tarifa_oficial_item((string)$transladoCodigo, 'translado');
+    if (!$guia || !$trans) {
+        return null;
+    }
+    $cidades = [];
+    foreach (array_keys(GCV_TARIFARIO_CIDADES) as $key) {
+        $cidades[$key] = [
+            'excursao_pessoa_cents' => $guia['excursao_cents'],
+            'exclusivo_pessoa_cents' => $guia['privativo_cents'],
+            'excursao_transporte_cents' => $trans['excursao_cents'],
+            'exclusivo_transporte_cents' => $trans['privativo_cents'],
+        ];
+    }
+    $base = $cidades['alto-paraiso'];
+    return [
+        'id' => 0,
+        'nome' => $guia['nome'] . ' + ' . $trans['nome'],
+        'oficial' => true,
+        'tarifa_guia' => $guia['codigo'],
+        'tarifa_translado' => $trans['codigo'],
+        'quorum' => 4,
+        'exclusivo_pessoa_cents' => $base['exclusivo_pessoa_cents'],
+        'excursao_pessoa_cents' => $base['excursao_pessoa_cents'],
+        'exclusivo_transporte_cents' => $base['exclusivo_transporte_cents'],
+        'excursao_transporte_cents' => $base['excursao_transporte_cents'],
+        'cidades' => $cidades,
+    ];
+}
+
+/** @param array<string,mixed>|null $tarifa */
+function gcv_tarifa_aplicar_bilingue(?array $tarifa, array $bi): ?array
+{
+    if (!$tarifa) {
+        return null;
+    }
+    $tarifa['bilingue_tipo'] = $bi['tipo'];
+    $tarifa['bilingue_valor'] = $bi['valor'];
+    $tarifa['bilingue_cents'] = $bi['cents'];
+    return $tarifa;
+}
+
+/** @return array<string,mixed>|null */
+function gcv_tarifa_resolver(PDO $pdo, ?string $guia, ?string $translado, ?int $tarifarioId): ?array
+{
+    $oficial = gcv_tarifa_oficial_montar($guia, $translado);
+    $tarifa = $oficial ?: gcv_tarifario_public_by_id($pdo, $tarifarioId);
+    return gcv_tarifa_aplicar_bilingue($tarifa, gcv_bilingue_universal_get($pdo));
+}
+
+function gcv_tarifa_oficial_vincular(PDO $pdo, array $body): void
+{
+    $guia = trim((string)($body['tarifa_guia'] ?? ''));
+    $trans = trim((string)($body['tarifa_translado'] ?? ''));
+    if ($guia !== '' && !gcv_tarifa_oficial_item($guia, 'guia')) {
+        throw new InvalidArgumentException('Tarifa Guia não está na lista oficial.');
+    }
+    if ($trans !== '' && !gcv_tarifa_oficial_item($trans, 'translado')) {
+        throw new InvalidArgumentException('Tarifa Translado não está na lista oficial.');
+    }
+    $guia = $guia !== '' ? $guia : null;
+    $trans = $trans !== '' ? $trans : null;
+    if (!empty($body['attraction_id'])) {
+        $pdo->prepare('UPDATE gcv_attractions SET tarifa_guia = ?, tarifa_translado = ? WHERE id = ?')->execute([$guia, $trans, (int)$body['attraction_id']]);
+        return;
+    }
+    if (!empty($body['passeio_id'])) {
+        $pdo->prepare('UPDATE gcv_passeio_relacionado SET tarifa_guia = ?, tarifa_translado = ? WHERE id = ?')->execute([$guia, $trans, (int)$body['passeio_id']]);
+        return;
+    }
+    throw new InvalidArgumentException('Informe o atrativo ou o passeio.');
+}
+
 /** Carga inicial: só roda com a tabela vazia. */
 function gcv_tarifarios_seed(PDO $pdo): void
 {
@@ -383,7 +779,56 @@ function gcv_tarifarios_seed(PDO $pdo): void
     }
 }
 
-/** @return array{quorum:int,cidades:array<string,array<string,int>>} */
+/**
+ * Acréscimo único do guia em outro idioma.
+ * fixo: valor em centavos. percentual: inteiro de 0 a 100.
+ * Dado antigo só com bilingue_cents continua fixo.
+ * Dado antigo por cidade: usa Alto Paraíso, senão a primeira cidade.
+ *
+ * @return array{tipo:string,valor:int,cents:int}
+ */
+function gcv_tarifario_bilingue(array $raw): array
+{
+    $tipoRaw = (string)($raw['bilingue_tipo'] ?? '');
+    if ($tipoRaw === 'percentual' || $tipoRaw === 'fixo' || array_key_exists('bilingue_valor', $raw)) {
+        if ($tipoRaw === 'percentual') {
+            $pct = max(0, min(100, (int)($raw['bilingue_valor'] ?? 0)));
+            return ['tipo' => 'percentual', 'valor' => $pct, 'cents' => 0];
+        }
+        if (array_key_exists('bilingue_valor', $raw) && $raw['bilingue_valor'] !== '' && $raw['bilingue_valor'] !== null) {
+            $cents = max(0, (int)$raw['bilingue_valor']);
+        } elseif (array_key_exists('bilingue_cents', $raw) && $raw['bilingue_cents'] !== '' && $raw['bilingue_cents'] !== null) {
+            $cents = max(0, (int)$raw['bilingue_cents']);
+        } else {
+            $cents = 4000;
+        }
+        return ['tipo' => 'fixo', 'valor' => $cents, 'cents' => $cents];
+    }
+    if (array_key_exists('bilingue_cents', $raw) && $raw['bilingue_cents'] !== '' && $raw['bilingue_cents'] !== null) {
+        $cents = max(0, (int)$raw['bilingue_cents']);
+        return ['tipo' => 'fixo', 'valor' => $cents, 'cents' => $cents];
+    }
+    $src = is_array($raw['cidades'] ?? null) ? $raw['cidades'] : [];
+    $seen = [];
+    foreach (array_merge(['alto-paraiso'], array_keys($src)) as $key) {
+        if (isset($seen[$key])) {
+            continue;
+        }
+        $seen[$key] = true;
+        $row = is_array($src[$key] ?? null) ? $src[$key] : [];
+        if (($row['bilingue_tipo'] ?? '') === 'percentual') {
+            $pct = max(0, min(100, (int)($row['bilingue_valor'] ?? 0)));
+            return ['tipo' => 'percentual', 'valor' => $pct, 'cents' => 0];
+        }
+        if (array_key_exists('bilingue_valor', $row) && $row['bilingue_valor'] !== '' && $row['bilingue_valor'] !== null) {
+            $cents = max(0, (int)$row['bilingue_valor']);
+            return ['tipo' => 'fixo', 'valor' => $cents, 'cents' => $cents];
+        }
+    }
+    return ['tipo' => 'fixo', 'valor' => 4000, 'cents' => 4000];
+}
+
+/** @return array{quorum:int,bilingue_tipo:string,bilingue_valor:int,bilingue_cents:int,cidades:array<string,array<string,int>>} */
 function gcv_tarifario_normalize(array $raw): array
 {
     $quorum = (int)($raw['quorum'] ?? 4);
@@ -398,16 +843,16 @@ function gcv_tarifario_normalize(array $raw): array
         foreach (GCV_TARIFARIO_CAMPOS as $campo) {
             $out[$campo] = max(0, (int)($row[$campo] ?? 0));
         }
-        $tipo = (($row['bilingue_tipo'] ?? '') === 'percentual') ? 'percentual' : 'fixo';
-        $valor = array_key_exists('bilingue_valor', $row) ? (int)$row['bilingue_valor'] : ($tipo === 'fixo' ? 4000 : 0);
-        if ($valor < 0) {
-            $valor = 0;
-        }
-        $out['bilingue_tipo'] = $tipo;
-        $out['bilingue_valor'] = $valor;
         $cidades[$key] = $out;
     }
-    return ['quorum' => $quorum, 'cidades' => $cidades];
+    $bi = gcv_tarifario_bilingue($raw);
+    return [
+        'quorum' => $quorum,
+        'bilingue_tipo' => $bi['tipo'],
+        'bilingue_valor' => $bi['valor'],
+        'bilingue_cents' => $bi['cents'],
+        'cidades' => $cidades,
+    ];
 }
 
 /** Formato que o site usa (mesmo de antes: base de Alto Paraíso + cidades). */
@@ -424,6 +869,9 @@ function gcv_tarifario_public(array $row): array
         'excursao_pessoa_cents' => $base['excursao_pessoa_cents'],
         'exclusivo_transporte_cents' => $base['exclusivo_transporte_cents'],
         'excursao_transporte_cents' => $base['excursao_transporte_cents'],
+        'bilingue_tipo' => $norm['bilingue_tipo'],
+        'bilingue_valor' => $norm['bilingue_valor'],
+        'bilingue_cents' => $norm['bilingue_cents'],
         'cidades' => $norm['cidades'],
     ];
 }
@@ -438,7 +886,12 @@ function gcv_tarifario_save(PDO $pdo, ?int $id, array $body): int
         $nome = mb_substr($nome, 0, 160);
     }
     $norm = gcv_tarifario_normalize($body);
-    $json = json_encode(['cidades' => $norm['cidades']], JSON_UNESCAPED_UNICODE);
+    $json = json_encode([
+        'cidades' => $norm['cidades'],
+        'bilingue_tipo' => $norm['bilingue_tipo'],
+        'bilingue_valor' => $norm['bilingue_valor'],
+        'bilingue_cents' => $norm['bilingue_cents'],
+    ], JSON_UNESCAPED_UNICODE);
     if ($id) {
         $stmt = $pdo->prepare('UPDATE gcv_tarifario SET nome = ?, quorum = ?, precos_json = ? WHERE id = ?');
         $stmt->execute([$nome, $norm['quorum'], $json, $id]);
@@ -542,7 +995,7 @@ function gcv_tarifario_admin_overview(PDO $pdo): array
     }
     $attractions = [];
     $rows = $pdo->query(
-        "SELECT id, title_pt, slug, status, duration_minutes, duracao_json, tarifario_id, tem_passeio, categorias FROM gcv_attractions
+        "SELECT id, title_pt, slug, status, duration_minutes, duracao_json, tarifario_id, tarifa_guia, tarifa_translado, tem_passeio, categorias FROM gcv_attractions
          WHERE title_pt NOT LIKE '% + %' ORDER BY title_pt ASC"
     )->fetchAll();
     foreach ($rows as $row) {
@@ -558,6 +1011,8 @@ function gcv_tarifario_admin_overview(PDO $pdo): array
             'tem_passeio' => !isset($row['tem_passeio']) || (int)$row['tem_passeio'] === 1,
             'categorias' => gcv_passeio_categorias_parse($row['categorias'] ?? null, 1),
             'tarifario_id' => $tid,
+            'tarifa_guia' => (string)($row['tarifa_guia'] ?? ''),
+            'tarifa_translado' => (string)($row['tarifa_translado'] ?? ''),
             'duracao_cidades' => gcv_duracao_cidades($row['duracao_json'] ?? null, (int)($row['duration_minutes'] ?? 0)),
         ];
         $attractions[] = $item;
@@ -584,6 +1039,8 @@ function gcv_tarifario_admin_overview(PDO $pdo): array
         'max_atrativos' => gcv_passeio_max_atrativos($pdo),
         'categorias' => GCV_PASSEIO_CATEGORIAS,
         'cidades' => GCV_TARIFARIO_CIDADES,
+        'tarifas_oficiais' => gcv_tarifas_oficiais(),
+        'bilingue' => gcv_bilingue_universal_get($pdo),
         'tarifarios' => array_values($tarifarios),
         'atrativos' => $attractions,
         'passeios' => $passeios,
@@ -593,7 +1050,7 @@ function gcv_tarifario_admin_overview(PDO $pdo): array
 /** Payload do widget na página do atrativo. null = atrativo não existe. */
 function gcv_tarifario_public_attraction(PDO $pdo, string $slug): ?array
 {
-    $stmt = $pdo->prepare("SELECT id, slug, title_pt, duration_minutes, duracao_json, tarifario_id, tem_passeio, categorias, saidas_json FROM gcv_attractions WHERE slug = ? AND status = 'published' LIMIT 1");
+    $stmt = $pdo->prepare("SELECT id, slug, title_pt, duration_minutes, duracao_json, tarifario_id, tarifa_guia, tarifa_translado, tem_passeio, categorias, saidas_json FROM gcv_attractions WHERE slug = ? AND status = 'published' LIMIT 1");
     $stmt->execute([$slug]);
     $row = $stmt->fetch();
     if (!$row) {
@@ -608,7 +1065,12 @@ function gcv_tarifario_public_attraction(PDO $pdo, string $slug): ?array
         $related[] = $tour;
     }
     $mapa = gcv_cidades_saida_mapa($pdo);
-    $tarifa = gcv_tarifario_public_by_id($pdo, $row['tarifario_id'] !== null ? (int)$row['tarifario_id'] : null);
+    $tarifa = gcv_tarifa_resolver(
+        $pdo,
+        (string)($row['tarifa_guia'] ?? ''),
+        (string)($row['tarifa_translado'] ?? ''),
+        $row['tarifario_id'] !== null ? (int)$row['tarifario_id'] : null
+    );
     $minutos = (int)($row['duration_minutes'] ?? 0);
     return [
         'slug' => (string)$row['slug'],
@@ -660,11 +1122,22 @@ function gcv_tarifario_public_catalog(PDO $pdo): array
             'image' => (string)($cover->fetchColumn() ?: ''),
             'href' => $first['page'] !== '' ? '/' . ltrim($first['page'], '/') : '/passeios.html',
             'attractions' => array_map(static fn($a) => $a['title_pt'], $tour['attractions']),
+            'parts' => array_map(static function ($a) {
+                $page = (string)($a['page'] ?? '');
+                return [
+                    'id' => (int)$a['id'],
+                    'title' => (string)$a['title_pt'],
+                    'image' => (string)($a['cover_url'] ?? ''),
+                    'href' => $page !== '' ? '/' . ltrim($page, '/') : '',
+                ];
+            }, $tour['attractions']),
         ];
     }
     $rows = $pdo->query(
-        "SELECT id, slug, title_pt, duration_minutes, duracao_json, cover_url, tarifario_id, tem_passeio, categorias, saidas_json FROM gcv_attractions
-         WHERE status = 'published' AND tarifario_id IS NOT NULL AND title_pt NOT LIKE '% + %' ORDER BY title_pt ASC"
+        "SELECT id, slug, title_pt, duration_minutes, duracao_json, cover_url, tarifario_id, tarifa_guia, tarifa_translado, tem_passeio, categorias, saidas_json FROM gcv_attractions
+         WHERE status = 'published' AND title_pt NOT LIKE '% + %'
+           AND (tarifario_id IS NOT NULL OR (tarifa_guia <> '' AND tarifa_translado <> ''))
+         ORDER BY title_pt ASC"
     )->fetchAll();
     $mapa = gcv_cidades_saida_mapa($pdo);
     foreach ($rows as $row) {
@@ -672,7 +1145,12 @@ function gcv_tarifario_public_catalog(PDO $pdo): array
             continue;
         }
         $page = gcv_attraction_public_html_path((string)$row['slug']);
-        $tarifa = gcv_tarifario_public_by_id($pdo, (int)$row['tarifario_id']);
+        $tarifa = gcv_tarifa_resolver(
+            $pdo,
+            (string)($row['tarifa_guia'] ?? ''),
+            (string)($row['tarifa_translado'] ?? ''),
+            $row['tarifario_id'] !== null ? (int)$row['tarifario_id'] : null
+        );
         if ($page === '' || !$tarifa) {
             continue;
         }
@@ -698,6 +1176,12 @@ function gcv_tarifario_public_catalog(PDO $pdo): array
             'image' => (string)($row['cover_url'] ?? ''),
             'href' => '/' . ltrim($page, '/'),
             'attractions' => [(string)$row['title_pt']],
+            'parts' => [[
+                'id' => (int)$row['id'],
+                'title' => (string)$row['title_pt'],
+                'image' => (string)($row['cover_url'] ?? ''),
+                'href' => '/' . ltrim($page, '/'),
+            ]],
         ];
     }
     return $out;

@@ -1403,6 +1403,10 @@
         var recusado = g.status === 'suspended' && !guideWasApproved(g);
         var draftReturn = g.status === 'pending' && !!g.needs_resubmit;
         var name = g.full_name || g.name || g.nickname || 'Guia';
+        var bucket = guideFilterKey(g);
+        var deleteBtn = (bucket === 'draft' || bucket === 'awaiting' || bucket === 'approved')
+          ? '<button type="button" class="gcv-dash-btn gcv-dash-btn--danger gcv-dash-btn--sm" data-del-guide="' + g.user_id + '" data-del-label="' + esc(name) + '">Excluir</button>'
+          : '';
         var email = String(g.email || '').trim();
         var city = String(g.base_city_name || '').trim() || '—';
         var pix = String(g.pix_key || '').trim();
@@ -1414,12 +1418,15 @@
             '<button type="button" class="gcv-dash-btn gcv-dash-btn--success gcv-dash-btn--sm" data-approve-guide="' + g.user_id + '">Aprovar</button>' +
             '<button type="button" class="gcv-dash-btn gcv-dash-btn--danger gcv-dash-btn--sm" data-reject-guide="' + g.user_id + '">Recusar</button>' +
             '<button type="button" class="gcv-dash-btn gcv-dash-btn--block gcv-dash-btn--sm" data-block-guide="' + g.user_id + '">Bloquear</button>' +
+            deleteBtn +
             '</div>';
         } else if (recusado) {
           decide = '<div class="gcv-guide-sheet__decide">' +
             '<button type="button" class="gcv-dash-btn gcv-dash-btn--success gcv-dash-btn--sm" data-approve-guide="' + g.user_id + '">Aprovar</button>' +
             '<button type="button" class="gcv-dash-btn gcv-dash-btn--block gcv-dash-btn--sm" data-block-guide="' + g.user_id + '">Bloquear</button>' +
             '</div>';
+        } else if (deleteBtn) {
+          decide = '<div class="gcv-guide-sheet__decide">' + deleteBtn + '</div>';
         }
         var phoneHtml = phone
           ? (wa
@@ -1441,7 +1448,10 @@
           '</td>' +
           '<td class="gcv-guide-sheet__phone-cell">' + phoneHtml + '</td>' +
           '<td class="gcv-guide-sheet__actions">' +
-          cmsRowActions('data-edit-guide="' + g.user_id + '"') +
+          cmsRowActions(
+            'data-edit-guide="' + g.user_id + '"',
+            'data-del-guide="' + g.user_id + '" data-del-label="' + esc(name) + '"'
+          ) +
           '</td></tr>'
         );
       }).join('') +
@@ -1475,6 +1485,32 @@
     list.querySelectorAll('[data-block-guide]').forEach(function (btn) {
       btn.onclick = function () {
         setGuideStatus(parseInt(btn.getAttribute('data-block-guide'), 10), 'blocked', { fromPending: true });
+      };
+    });
+    bindGuideDelete(list);
+  }
+
+  function bindGuideDelete(list) {
+    if (!list) return;
+    list.querySelectorAll('[data-del-guide]').forEach(function (btn) {
+      btn.onclick = function () {
+        var id = parseInt(btn.getAttribute('data-del-guide'), 10);
+        var label = btn.getAttribute('data-del-label') || ('#' + id);
+        gcvConfirm(
+          'Excluir o guia\n' + label + '?\n\nO perfil sai do admin e do site. Esta ação não pode ser desfeita.',
+          { danger: true, okText: 'Excluir' }
+        ).then(function (ok) {
+          if (!ok) return;
+          btn.disabled = true;
+          sendJson('DELETE', '/api/admin/cms-guides.php', { id: id }, function (e, r) {
+            btn.disabled = false;
+            if (!r || !r.ok) {
+              alert((r && r.error) || 'Erro ao excluir');
+              return;
+            }
+            renderGuides();
+          });
+        });
       };
     });
   }
@@ -1522,6 +1558,7 @@
       '</div>' +
       '<div class="gcv-cms-row__decide" style="margin-top:0.55rem;">' + actions + '</div>' +
       '<p class="gcv-cms-muted" style="margin:0.65rem 0 0;">Rascunho tira o guia do site para correção; depois precisa ser aprovado de novo. Recusar mantém o perfil e trava novo pedido de aprovação por 45 dias. O admin pode aprovar a qualquer momento. Bloquear elimina o perfil e impede novo cadastro deste e-mail.</p>' +
+      '<div style="margin-top:0.75rem;"><button type="button" class="gcv-dash-btn gcv-dash-btn--danger gcv-dash-btn--sm" data-del-guide="' + uid + '" data-del-label="' + esc(g.full_name || g.name || g.nickname || 'Guia') + '">Excluir guia</button></div>' +
       '</div>'
     );
   }
@@ -1593,6 +1630,7 @@
         run(st, fromPending);
       };
     });
+    bindGuideDelete(form);
   }
 
   function isAllowedGuideCity(name) {

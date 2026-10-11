@@ -403,7 +403,18 @@ foreach ($rows as $r) {
     }
 }
 foreach ($out as $lang => $cards) {
-    $out[$lang] = gcv_carousel_sort_cards($cards);
+    $cards = gcv_carousel_sort_cards($cards);
+    $out[$lang] = array_values(array_filter($cards, static function ($card): bool {
+        if (!is_array($card)) {
+            return false;
+        }
+        $iso = substr((string) ($card['dateISO'] ?? ''), 0, 10);
+        $hora = trim((string) ($card['hora'] ?? ''));
+        if ($iso === '' || $hora === '') {
+            return true;
+        }
+        return gcv_excursion_within_booking_window($iso, $hora);
+    }));
 }
 
 json_response(true, $out);

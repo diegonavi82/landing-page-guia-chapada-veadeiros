@@ -440,47 +440,26 @@ function gcv_transfer_auto_refund_sale(array $sale, ?array $exc = null): bool
             return false;
         }
     }
+    $email = strtolower(trim((string)($sale['tourist_email'] ?? '')));
+    $code = (string)($sale['reservation_id'] ?? '');
+    if ($code === '') {
+        return false;
+    }
     try {
-        require_once __DIR__ . '/sale_service.php';
-        $email = strtolower(trim((string)($sale['tourist_email'] ?? '')));
-        $code = (string)($sale['reservation_id'] ?? '');
-        if ($code !== '' && $email !== '') {
-            gcv_sale_cancel_reservation($code, $email, false);
-        } else {
-            db()->prepare(
-                "UPDATE gcv_sales SET sale_status = 'REFUNDED', payout_status = 'PAYOUT_BLOCKED' WHERE id = ? AND sale_status = 'PAID'"
-            )->execute([$saleId]);
-            $excId = (int)($sale['excursion_id'] ?? ($exc['id'] ?? 0));
-            if ($excId > 0) {
-                gcv_sale_refresh_booked_people($excId);
-            }
-            require_once dirname(__DIR__) . '/notify_ops.php';
-            gcv_ops_notify_guide_cancelled($sale, $exc, 'em_formacao', false);
-        }
+        require_once dirname(__DIR__) . '/payments/pix_refund.php';
+        $out = gcv_pix_refund_reservation($code, $email, null, true, true, true);
     } catch (Throwable $e) {
         error_log('transfer auto refund: ' . $e->getMessage());
         return false;
     }
-    db()->prepare(
-        "UPDATE gcv_transfer_offers SET status = 'expired', refund_cents = original_cents, updated_at = NOW()
-         WHERE sale_id = ? AND status IN ('offered','awaiting_payment')"
-    )->execute([$saleId]);
-    try {
-        require_once dirname(__DIR__) . '/notify_ops.php';
-        $title = trim((string)($sale['excursion_title'] ?? 'Passeio'));
-        $code = strtoupper(trim((string)($sale['reservation_id'] ?? '')));
-        $text = "💰 Reserva cancelada automaticamente (quórum não fechou).\n\n"
-            . 'Passeio: ' . $title . "\n"
-            . 'Código: ' . $code . "\n"
-            . 'Ressarcimento: 100% do valor pago, de volta pelo PIX original.';
-        gcv_ops_wa_client($sale, $text, ['kind' => 'transfer_auto_refund']);
-        $email = trim((string)($sale['tourist_email'] ?? ''));
-        if ($email !== '') {
-            gcv_ops_mail_plain($email, 'Ressarcimento 100% — Guia Chapada Veadeiros', $text);
-        }
-    } catch (Throwable $e) {
-        error_log('transfer auto refund notify: ' . $e->getMessage());
+    if (empty($out['refunded_trips'])) {
+        return false;
     }
+    $refundedCents = (int)($out['refunded_cents'] ?? 0);
+    db()->prepare(
+        "UPDATE gcv_transfer_offers SET status = 'expired', refund_cents = ?, updated_at = NOW()
+         WHERE sale_id = ? AND status IN ('offered','awaiting_payment')"
+    )->execute([$refundedCents, $saleId]);
     return true;
 }
 
@@ -557,7 +536,26 @@ function gcv_transfer_list_client_sales(array $user): array
         $s['transfer_offers'] = $offers;
         $inOffer = gcv_transfer_in_offer_window($hoursLeft);
         $s['can_transfer'] = $life === 'em_formacao' && strtoupper((string)$s['sale_status']) === 'PAID' && $offers !== [] && $inOffer;
-        $s['can_refund_full'] = $life === 'em_formacao' && strtoupper((string)$s['sale_status']) === 'PAID';
+        $s['refund_trips'] = [];
+        if (strtoupper((string)$s['sale_status']) === 'PAID') {
+            try {
+                require_once dirname(__DIR__) . '/pix_reservation_store.php';
+                require_once dirname(__DIR__) . '/payments/pix_refund.php';
+                $pix = gcv_pix_read_reservation((string)($s['reservation_id'] ?? ''));
+                if ($pix && gcv_pix_effective_status($pix) === 'PAID') {
+                    $s['refund_trips'] = gcv_pix_refund_annotate_trips($pix);
+                }
+            } catch (Throwable $e) {
+                error_log('transfer refund trips: ' . $e->getMessage());
+            }
+        }
+        $anyOpen = false;
+        foreach ($s['refund_trips'] as $trip) {
+            if (!empty($trip['can_cancel'])) {
+                $anyOpen = true;
+            }
+        }
+        $s['can_refund_full'] = $anyOpen || ($life === 'em_formacao' && strtoupper((string)$s['sale_status']) === 'PAID' && $s['refund_trips'] === []);
         $rows[] = gcv_transfer_public_sale($s);
     }
     return $rows;
@@ -599,6 +597,17 @@ function gcv_transfer_public_sale(array $s): array
         'lifecycle_label' => (string)($s['lifecycle_label'] ?? ''),
         'can_transfer' => !empty($s['can_transfer']),
         'can_refund_full' => !empty($s['can_refund_full']),
+        'refund_trips' => array_map(static function ($t) {
+            return [
+                'trip_index' => (int)($t['trip_index'] ?? 0),
+                'title' => (string)($t['title'] ?? $t['destino'] ?? ''),
+                'date_label' => (string)($t['date_label'] ?? $t['dateLabel'] ?? ''),
+                'cents' => (int)($t['cents'] ?? 0),
+                'can_cancel' => !empty($t['can_cancel']),
+                'confirmed' => !empty($t['confirmed']),
+                'refunded' => !empty($t['refunded']),
+            ];
+        }, is_array($s['refund_trips'] ?? null) ? $s['refund_trips'] : []),
         'transfer_offers' => $offers,
     ];
 }
@@ -939,7 +948,7 @@ function gcv_transfer_notify_completed(array $sale, ?array $from, array $to, int
     }
 }
 
-function gcv_transfer_refund_sale(int $saleId, array $user): array
+function gcv_transfer_refund_sale(int $saleId, array $user, ?array $tripIndexes = null): array
 {
     $st = db()->prepare('SELECT * FROM gcv_sales WHERE id = ? LIMIT 1');
     $st->execute([$saleId]);
@@ -947,28 +956,30 @@ function gcv_transfer_refund_sale(int $saleId, array $user): array
     if (!$sale || !gcv_transfer_client_owns_sale($user, $sale)) {
         throw new RuntimeException('Reserva não encontrada.');
     }
-    $excId = (int)($sale['excursion_id'] ?? 0);
-    $exc = $excId > 0 ? gcv_transfer_load_excursion($excId) : null;
-    $life = $exc ? gcv_resolve_excursion_lifecycle($exc) : 'em_formacao';
-    if ($life !== 'em_formacao') {
-        throw new RuntimeException('Ressarcimento integral só vale enquanto o passeio está em formação.');
-    }
-    require_once __DIR__ . '/sale_service.php';
     $email = strtolower(trim((string)($sale['tourist_email'] ?? $user['email'] ?? '')));
     $code = (string)($sale['reservation_id'] ?? '');
-    gcv_sale_cancel_reservation($code, $email, false);
-    db()->prepare(
-        "UPDATE gcv_transfer_offers SET status = 'declined', refund_cents = original_cents WHERE sale_id = ? AND status IN ('offered','awaiting_payment')"
-    )->execute([$saleId]);
-    try {
-        require_once dirname(__DIR__) . '/notify_ops.php';
-        $text = "💰 Cancelamento com ressarcimento 100%.\n\nCódigo: " . strtoupper($code) . "\nO valor volta pelo PIX original.";
-        gcv_ops_wa_client($sale, $text, ['kind' => 'transfer_refund']);
-        if ($email !== '') {
-            gcv_ops_mail_plain($email, 'Ressarcimento 100% — Guia Chapada Veadeiros', $text);
+    require_once dirname(__DIR__) . '/payments/pix_refund.php';
+    $out = gcv_pix_refund_reservation($code, $email, $tripIndexes, true, false, false);
+    if (!empty($out['refunded_trips'])) {
+        $hitSale = !empty($out['full']);
+        $saleExc = (int)($sale['excursion_id'] ?? 0);
+        foreach ($out['refunded_details'] ?? [] as $d) {
+            if ($saleExc > 0 && (int)($d['excursion_id'] ?? 0) === $saleExc) {
+                $hitSale = true;
+            }
         }
-    } catch (Throwable $e) {
-        error_log('transfer refund notify: ' . $e->getMessage());
+        if ($hitSale) {
+            db()->prepare(
+                "UPDATE gcv_transfer_offers SET status = 'declined', refund_cents = ? WHERE sale_id = ? AND status IN ('offered','awaiting_payment')"
+            )->execute([(int)($out['refunded_cents'] ?? 0), $saleId]);
+        }
     }
-    return ['ok' => true, 'status' => 'refunded'];
+    return [
+        'ok' => true,
+        'status' => !empty($out['full']) ? 'refunded' : 'partial',
+        'partial' => !empty($out['partial']),
+        'message' => (string)($out['message'] ?? ''),
+        'refunded_cents' => (int)($out['refunded_cents'] ?? 0),
+        'refunded_trips' => $out['refunded_trips'] ?? [],
+    ];
 }

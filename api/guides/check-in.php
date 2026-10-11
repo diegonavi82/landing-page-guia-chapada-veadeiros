@@ -51,19 +51,15 @@ if (($sale['sale_status'] ?? '') !== GcvSaleStatus::PAID) {
 
 $att = strtolower(trim((string)($sale['attendance_status'] ?? 'pending')));
 if ($att === 'checked_in' && !empty($sale['checked_in_at'])) {
+    gcv_checkin_confirm_passeio($sale, $guideId);
     json_response(true, [
         'already' => true,
         'reservation_id' => $code,
         'checked_in_at' => $sale['checked_in_at'],
         'tourist_name' => $sale['tourist_name'] ?? '',
         'spots' => (int)($sale['spots'] ?? 1),
-        'message' => 'Presença já confirmada',
+        'message' => 'Passeio já estava confirmado. Bom passeio!',
     ]);
-}
-
-$win = gcv_ops_checkin_window($sale);
-if (!$win['ok']) {
-    json_response(false, null, $win['error'], 409);
 }
 
 $payoutDone = ($sale['payout_status'] ?? '') === GcvPayoutStatus::PAID;
@@ -86,7 +82,8 @@ db()->prepare(
 $sale['attendance_status'] = 'checked_in';
 $sale['checked_in_at'] = gmdate('c');
 $exc = gcv_ops_load_excursion((int)($sale['excursion_id'] ?? 0)) ?: [];
-gcv_ops_notify_checkin($sale, $exc, $guideId);
+gcv_checkin_confirm_passeio($sale, $guideId);
+$guideWa = gcv_ops_notify_checkin($sale, $exc, $guideId);
 
 json_response(true, [
     'reservation_id' => $code,
@@ -94,5 +91,52 @@ json_response(true, [
     'spots' => (int)($sale['spots'] ?? 1),
     'sold_price_cents' => (int)($sale['sold_price_cents'] ?? 0),
     'attendance_status' => 'checked_in',
-    'message' => 'Presença confirmada',
+    'guide_whatsapp' => $guideWa,
+    'message' => 'Passeio confirmado. Bom passeio!',
 ]);
+
+/**
+ * A leitura do QR confirma o passeio na hora: o guia aceita a saída
+ * e as reservas dele nessa excursão deixam de esperar o botão Confirmar.
+ *
+ * @param array<string,mixed> $sale
+ */
+function gcv_checkin_confirm_passeio(array $sale, int $guideId): void
+{
+    if ($guideId <= 0) {
+        return;
+    }
+    try {
+        require_once __DIR__ . '/../helpers/payments/authorization.php';
+        $user = ['id' => $guideId];
+        $seen = [];
+        $excId = (int)($sale['excursion_id'] ?? 0);
+        if ($excId > 0) {
+            $seen[$excId] = true;
+            gcv_auth_guide_confirm_excursion($excId, $user, false);
+        }
+        $code = strtoupper(trim((string)($sale['reservation_id'] ?? '')));
+        if ($code === '') {
+            return;
+        }
+        $st = db()->prepare(
+            "SELECT DISTINCT excursion_id FROM gcv_booking_trips
+             WHERE UPPER(reservation_id) = ?
+               AND guide_user_id = ?
+               AND guide_confirmed_at IS NULL
+               AND decision IN ('UNDECIDED','CONFIRMED')
+               AND excursion_id IS NOT NULL"
+        );
+        $st->execute([$code, $guideId]);
+        foreach ($st->fetchAll(PDO::FETCH_COLUMN) ?: [] as $id) {
+            $id = (int)$id;
+            if ($id <= 0 || isset($seen[$id])) {
+                continue;
+            }
+            $seen[$id] = true;
+            gcv_auth_guide_confirm_excursion($id, $user, false);
+        }
+    } catch (Throwable $e) {
+        error_log('checkin confirm passeio: ' . $e->getMessage());
+    }
+}

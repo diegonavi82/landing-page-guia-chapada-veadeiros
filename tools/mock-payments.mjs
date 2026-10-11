@@ -1,6 +1,7 @@
 /**
  * Mock local (npm run dev) do checkout híbrido — espelha a API PHP:
  *   GET  /api/payment_quote.php        preço por forma de pagamento
+ *   GET  /api/mp_saved_cards.php       cartões nacionais já salvos neste e-mail
  *   POST /api/mp_card.php              cartão nacional (formulário MP; simulado com dev-test-token)
  *   POST /api/stripe_checkout.php      cartão internacional (Stripe, USD)
  *   GET  /api/stripe_return.php        volta da Stripe
@@ -191,6 +192,38 @@ export function createPaymentsMock(deps) {
     rec.expires_at = Number.isFinite(start) ? new Date(start).toISOString() : new Date(Date.now() + 30 * 86400000).toISOString();
     if (state === "AUTHORIZED") rec.card_auth = { gateway, id: authId, amount_minor: rec.charged_minor, authorized_at: new Date().toISOString() };
     pixWrite(rec.reservation_id, rec);
+  }
+
+  async function handleMpSavedCards(req, res) {
+    const u = new URL(req.url, "http://localhost");
+    const email = String(u.searchParams.get("email") || "").trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 180) {
+      json(res, 422, { success: false, message: "Invalid email" });
+      return;
+    }
+    const empty = { success: true, customer_id: "", card_ids: [], methods: {} };
+    if (!readEnvValue("MP_ACCESS_TOKEN")) { json(res, 200, empty); return; }
+    const search = await mpApi("GET", "/v1/customers/search?email=" + encodeURIComponent(email));
+    const customerId = search.ok && search.data && search.data.results && search.data.results[0] && search.data.results[0].id;
+    if (!customerId) { json(res, 200, empty); return; }
+    const listed = await mpApi("GET", "/v1/customers/" + encodeURIComponent(customerId) + "/cards");
+    const rows = Array.isArray(listed.data) ? listed.data : [];
+    const now = new Date();
+    const cardIds = [];
+    const methods = {};
+    rows.forEach((card) => {
+      if (!card || card.id == null || card.id === "") return;
+      const y = Number(card.expiration_year) || 0;
+      const m = Number(card.expiration_month) || 0;
+      if (y && (y < now.getFullYear() || (y === now.getFullYear() && m && m < now.getMonth() + 1))) return;
+      const id = String(card.id);
+      cardIds.push(id);
+      const pm = (card.payment_method && card.payment_method.id) || card.payment_method_id || "";
+      if (pm) methods[id] = String(pm);
+    });
+    json(res, 200, cardIds.length
+      ? { success: true, customer_id: String(customerId), card_ids: cardIds, methods }
+      : empty);
   }
 
   async function handleMpCard(req, res) {
@@ -517,6 +550,7 @@ export function createPaymentsMock(deps) {
       });
       return true;
     }
+    if (urlPath === "/api/mp_saved_cards.php" && req.method === "GET") { run(handleMpSavedCards); return true; }
     if (urlPath === "/api/mp_card.php" && req.method === "POST") { run(handleMpCard); return true; }
     if (urlPath === "/api/stripe_checkout.php" && req.method === "POST") { run(handleStripeCheckout); return true; }
     if (urlPath === "/api/stripe_return.php" && req.method === "GET") { run(handleStripeReturn); return true; }

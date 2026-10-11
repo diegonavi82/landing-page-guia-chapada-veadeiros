@@ -14,6 +14,7 @@ declare(strict_types=1);
  */
 
 require_once __DIR__ . '/../db.php';
+require_once __DIR__ . '/../cupons.php';
 
 /**
  * @param array<string,mixed> $data  corpo do checkout (amount, trips)
@@ -62,11 +63,32 @@ function gcv_pay_resolve_base_amount(array $data): array
         }
     }
 
-    if ($sum > 0 && $sum !== $amountCents) {
+    $gross = $sum > 0 ? $sum : 0;
+    $cupom = gcv_cupom_sobre_carrinho($data, $gross);
+    if (!empty($cupom['invalido'])) {
+        return ['ok' => false, 'error' => 'coupon_invalid'];
+    }
+    $expected = $gross > 0 ? (int) $cupom['esperado_cents'] : $amountCents;
+
+    if ($gross > 0 && $amountCents !== $expected) {
         if ($strict) {
             return ['ok' => false, 'error' => 'amount_mismatch'];
         }
         $mismatch = true;
+    }
+
+    if ($mismatch && !empty($cupom['aplicado'])) {
+        error_log('gcv_pay_resolve_base_amount: cupom ' . ($cupom['codigo'] ?? '') . ' (enviado ' . $amountCents . ', com desconto ' . $expected . ')');
+        return [
+            'ok' => true,
+            'base_cents' => $expected,
+            'server_base_cents' => $expected,
+            'verified' => false,
+            'unverified_items' => $unverified,
+            'price_review' => true,
+            'cupom' => $cupom['codigo'] ?? '',
+            'desconto_cents' => (int) ($cupom['desconto_cents'] ?? 0),
+        ];
     }
 
     if ($mismatch) {
@@ -84,10 +106,12 @@ function gcv_pay_resolve_base_amount(array $data): array
 
     return [
         'ok' => true,
-        'base_cents' => $sum > 0 ? $sum : $amountCents,
+        'base_cents' => $expected,
         'verified' => $unverified === 0,
         'unverified_items' => $unverified,
         'price_review' => false,
+        'cupom' => (string) ($cupom['codigo'] ?? ''),
+        'desconto_cents' => (int) ($cupom['desconto_cents'] ?? 0),
     ];
 }
 

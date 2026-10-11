@@ -10,7 +10,7 @@
   --sand: #efe6d6;
   max-width: 1180px;
   margin: 0 auto;
-  padding: 0 1.25rem 4.5rem;
+  padding: 0 1.25rem 1rem;
   color: var(--ink);
 }
 .gcv-shop__hero {
@@ -146,6 +146,17 @@
   display: block;
   transition: transform .45s ease;
 }
+.gcv-shop-card__mosaic {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  gap: 3px;
+  background: var(--sand);
+}
+.gcv-shop-card__mosaic--2 { grid-template-columns: 1fr 1fr; }
+.gcv-shop-card__mosaic--3 { grid-template-columns: 1fr 1fr 1fr; }
+.gcv-shop-card__mosaic img { min-width: 0; }
+.gcv-shop-card__count { z-index: 1; }
 .gcv-shop-card:hover img { transform: scale(1.04); }
 .gcv-shop-card__count {
   position: absolute;
@@ -271,4 +282,68 @@
 @media (max-width: 720px) {
   .gcv-shop__hero { grid-template-columns: 1fr; }
   .gcv-shop__grid { grid-template-columns: 1fr; }
+}
+.gcv-pick {
+  position: fixed;
+  inset: 0;
+  z-index: 10040;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  background: rgba(20, 36, 28, .55);
+}
+.gcv-pick[hidden] { display: none; }
+.gcv-pick__sheet {
+  position: relative;
+  width: min(720px, 100%);
+  background: #fffdf9;
+  border-radius: 18px;
+  padding: 1.35rem 1.2rem 1.2rem;
+  box-shadow: 0 24px 60px rgba(20, 36, 28, .28);
+}
+.gcv-pick__sheet h2 {
+  margin: 0 2.5rem .9rem 0;
+  font-size: 1.25rem;
+  letter-spacing: -.03em;
+}
+.gcv-pick__close {
+  position: absolute;
+  top: .75rem;
+  right: .75rem;
+  border: 0;
+  background: transparent;
+  color: var(--green);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.gcv-pick__grid { display: grid; gap: .75rem; }
+.gcv-pick__grid--2 { grid-template-columns: 1fr 1fr; }
+.gcv-pick__grid--3 { grid-template-columns: 1fr 1fr 1fr; }
+.gcv-pick__item {
+  display: grid;
+  gap: .45rem;
+  color: inherit;
+  text-decoration: none;
+}
+.gcv-pick__photo {
+  display: block;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--sand);
+}
+.gcv-pick__item img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  display: block;
+  transition: transform .45s ease;
+}
+.gcv-pick__item:hover img,
+.gcv-pick__item:focus-visible img {
+  transform: scale(1.08);
+}
+.gcv-pick__item span { font-weight: 700; line-height: 1.25; }
+@media (max-width: 640px) {
+  .gcv-pick__grid--3 { grid-template-columns: 1fr; }
 }

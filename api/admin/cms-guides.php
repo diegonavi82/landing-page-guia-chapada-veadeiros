@@ -231,6 +231,232 @@ function gcv_cms_guide_set_status(array $admin, array $body): void
     echo json_encode(['ok' => true, 'data' => gcv_cms_guide_fetch($userId)]);
 }
 
+function gcv_cms_table_exists(PDO $pdo, string $table): bool
+{
+    $st = $pdo->prepare(
+        'SELECT 1 FROM information_schema.tables
+         WHERE table_schema = DATABASE() AND table_name = ? LIMIT 1'
+    );
+    $st->execute([$table]);
+    return (bool)$st->fetchColumn();
+}
+
+/** @return array<string,array{name:string,null:bool}> */
+function gcv_cms_table_columns(PDO $pdo, string $table): array
+{
+    try {
+        $rows = $pdo->query('SHOW COLUMNS FROM `' . str_replace('`', '', $table) . '`')->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) {
+        return [];
+    }
+    $out = [];
+    foreach ($rows as $row) {
+        $out[strtolower((string)$row['Field'])] = [
+            'name' => (string)$row['Field'],
+            'null' => strtoupper((string)($row['Null'] ?? 'YES')) === 'YES',
+        ];
+    }
+    return $out;
+}
+
+function gcv_cms_guide_delete(array $admin, int $userId): void
+{
+    if ($userId <= 0) {
+        http_response_code(400);
+        echo json_encode(['ok' => false, 'error' => 'user_id obrigatório']);
+        exit;
+    }
+    if ($userId === (int)($admin['id'] ?? 0)) {
+        http_response_code(409);
+        echo json_encode(['ok' => false, 'error' => 'Você não pode excluir a própria conta.']);
+        exit;
+    }
+
+    $pdo = db();
+    $stmt = $pdo->prepare('SELECT id, name, email, role FROM gcv_users WHERE id = ? LIMIT 1');
+    $stmt->execute([$userId]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$user) {
+        http_response_code(404);
+        echo json_encode(['ok' => false, 'error' => 'Guia não encontrado']);
+        exit;
+    }
+    if ((string)($user['role'] ?? '') === 'admin') {
+        http_response_code(409);
+        echo json_encode(['ok' => false, 'error' => 'Esta conta é de administrador e não pode ser excluída por aqui.']);
+        exit;
+    }
+    if (gcv_cms_table_exists($pdo, 'gcv_user_roles')) {
+        $role = $pdo->prepare('SELECT 1 FROM gcv_user_roles WHERE user_id = ? AND role = \'admin\' LIMIT 1');
+        $role->execute([$userId]);
+        if ($role->fetchColumn()) {
+            http_response_code(409);
+            echo json_encode(['ok' => false, 'error' => 'Esta conta é de administrador e não pode ser excluída por aqui.']);
+            exit;
+        }
+    }
+
+    // Rascunho, aguardando aprovação e aprovado saem do mesmo jeito. O status não trava a exclusão.
+    $guide = $pdo->prepare('SELECT id FROM gcv_guides WHERE user_id = ? LIMIT 1');
+    $guide->execute([$userId]);
+    $isGuide = (string)($user['role'] ?? '') === 'guide' || (bool)$guide->fetchColumn();
+    if (!$isGuide && gcv_cms_table_exists($pdo, 'gcv_user_roles')) {
+        $has = $pdo->prepare('SELECT 1 FROM gcv_user_roles WHERE user_id = ? AND role = \'guide\' LIMIT 1');
+        $has->execute([$userId]);
+        $isGuide = (bool)$has->fetchColumn();
+    }
+    if (!$isGuide) {
+        http_response_code(404);
+        echo json_encode(['ok' => false, 'error' => 'Guia não encontrado']);
+        exit;
+    }
+
+    $pdo->beginTransaction();
+    try {
+        $run = static function (string $sql, array $params = []) use ($pdo): void {
+            $pdo->prepare($sql)->execute($params);
+        };
+        $dropRows = static function (string $table, string $column) use ($pdo, $run, $userId): void {
+            if (!gcv_cms_table_exists($pdo, $table)) {
+                return;
+            }
+            $cols = gcv_cms_table_columns($pdo, $table);
+            if (!isset($cols[$column])) {
+                return;
+            }
+            $name = $cols[$column]['name'];
+            $run("DELETE FROM `{$table}` WHERE `{$name}` = ?", [$userId]);
+        };
+        $clearColumn = static function (string $table, string $column) use ($pdo, $run, $userId): void {
+            if (!gcv_cms_table_exists($pdo, $table)) {
+                return;
+            }
+            $cols = gcv_cms_table_columns($pdo, $table);
+            if (!isset($cols[$column]) || !$cols[$column]['null']) {
+                return;
+            }
+            $name = $cols[$column]['name'];
+            $run("UPDATE `{$table}` SET `{$name}` = NULL WHERE `{$name}` = ?", [$userId]);
+        };
+
+        $dropRows('gcv_sessions', 'user_id');
+        $dropRows('gcv_password_resets', 'user_id');
+        $dropRows('gcv_inbox', 'user_id');
+        $dropRows('gcv_client_profiles', 'user_id');
+        $dropRows('gcv_guide_financial', 'guide_user_id');
+        $dropRows('gcv_guide_reviews', 'guide_user_id');
+        $clearColumn('gcv_guide_financial', 'verified_by');
+
+        if (gcv_cms_table_exists($pdo, 'gcv_guide_payouts')) {
+            $payoutCols = gcv_cms_table_columns($pdo, 'gcv_guide_payouts');
+            if (isset($payoutCols['guide_user_id']) && gcv_cms_table_exists($pdo, 'gcv_guide_payout_audit')) {
+                $ids = $pdo->prepare('SELECT id FROM gcv_guide_payouts WHERE guide_user_id = ?');
+                $ids->execute([$userId]);
+                $payoutIds = array_map('intval', $ids->fetchAll(PDO::FETCH_COLUMN) ?: []);
+                if ($payoutIds) {
+                    $marks = implode(',', array_fill(0, count($payoutIds), '?'));
+                    $run("DELETE FROM gcv_guide_payout_audit WHERE payout_id IN ({$marks})", $payoutIds);
+                }
+            }
+            $dropRows('gcv_guide_payouts', 'guide_user_id');
+            $clearColumn('gcv_guide_payouts', 'confirmed_by');
+        }
+        $dropRows('gcv_sale_payouts', 'guide_user_id');
+        $clearColumn('gcv_sales', 'guide_user_id');
+        $clearColumn('gcv_sales', 'tourist_user_id');
+
+        if (gcv_cms_table_exists($pdo, 'gcv_tours') && isset(gcv_cms_table_columns($pdo, 'gcv_tours')['guide_id'])) {
+            $tours = $pdo->prepare('SELECT id FROM gcv_tours WHERE guide_id = ?');
+            $tours->execute([$userId]);
+            $tourIds = array_map('intval', $tours->fetchAll(PDO::FETCH_COLUMN) ?: []);
+            if ($tourIds && gcv_cms_table_exists($pdo, 'gcv_bookings')) {
+                $marks = implode(',', array_fill(0, count($tourIds), '?'));
+                $run("DELETE FROM gcv_bookings WHERE tour_id IN ({$marks})", $tourIds);
+            }
+            $run('DELETE FROM gcv_tours WHERE guide_id = ?', [$userId]);
+        }
+        $dropRows('gcv_bookings', 'client_id');
+
+        if (gcv_cms_table_exists($pdo, 'gcv_excursions')) {
+            $exc = gcv_cms_table_columns($pdo, 'gcv_excursions');
+            if (isset($exc['guide_user_id'], $exc['status'])) {
+                $run(
+                    "UPDATE gcv_excursions SET status = 'cancelled', guide_user_id = NULL WHERE guide_user_id = ?",
+                    [$userId]
+                );
+            } else {
+                $clearColumn('gcv_excursions', 'guide_user_id');
+            }
+            foreach (['created_by', 'updated_by', 'approved_by'] as $col) {
+                $clearColumn('gcv_excursions', $col);
+            }
+        }
+
+        foreach ([
+            'gcv_guides' => ['approved_by', 'pix_verified_by'],
+            'gcv_audit_log' => ['user_id'],
+            'gcv_commission_rules' => ['created_by', 'updated_by'],
+            'gcv_media' => ['uploaded_by'],
+            'gcv_articles' => ['created_by', 'updated_by'],
+            'gcv_attractions' => ['created_by', 'updated_by'],
+            'gcv_settings' => ['updated_by'],
+        ] as $table => $columns) {
+            foreach ($columns as $column) {
+                $clearColumn($table, $column);
+            }
+        }
+
+        $fks = $pdo->query(
+            "SELECT TABLE_NAME, COLUMN_NAME
+             FROM information_schema.KEY_COLUMN_USAGE
+             WHERE REFERENCED_TABLE_SCHEMA = DATABASE()
+               AND REFERENCED_TABLE_NAME = 'gcv_users'
+               AND TABLE_NAME <> 'gcv_users'"
+        )->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        foreach ($fks as $fk) {
+            $table = (string)$fk['TABLE_NAME'];
+            $column = strtolower((string)$fk['COLUMN_NAME']);
+            if (!gcv_cms_table_exists($pdo, $table)) {
+                continue;
+            }
+            $cols = gcv_cms_table_columns($pdo, $table);
+            if (!isset($cols[$column])) {
+                continue;
+            }
+            if ($cols[$column]['null']) {
+                $clearColumn($table, $column);
+            } else {
+                $dropRows($table, $column);
+            }
+        }
+
+        $dropRows('gcv_user_roles', 'user_id');
+        $run('DELETE FROM gcv_guides WHERE user_id = ?', [$userId]);
+        $gone = $pdo->prepare('DELETE FROM gcv_users WHERE id = ? AND role <> \'admin\'');
+        $gone->execute([$userId]);
+        if ($gone->rowCount() < 1) {
+            throw new RuntimeException('Não foi possível excluir o guia.');
+        }
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log('cms-guides DELETE: ' . $e->getMessage());
+        http_response_code(500);
+        echo json_encode(['ok' => false, 'error' => 'Não foi possível excluir o guia.']);
+        exit;
+    }
+
+    echo json_encode([
+        'ok' => true,
+        'data' => [
+            'deleted' => $userId,
+            'name' => (string)($user['name'] ?? ''),
+        ],
+    ], JSON_UNESCAPED_UNICODE);
+}
+
 if ($method === 'GET') {
     try {
         $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -494,6 +720,12 @@ if ($method === 'PUT') {
     }
 
     echo json_encode(['ok' => true, 'data' => gcv_cms_guide_fetch($userId)]);
+    exit;
+}
+
+if ($method === 'DELETE') {
+    $userId = (int)($body['user_id'] ?? $body['id'] ?? 0);
+    gcv_cms_guide_delete($admin, $userId);
     exit;
 }
 

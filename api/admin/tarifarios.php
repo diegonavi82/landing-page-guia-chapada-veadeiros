@@ -55,6 +55,22 @@ try {
             }
             gcv_tarifario_reply($pdo);
         }
+        if ($action === 'bilingue') {
+            gcv_bilingue_universal_save($pdo, $body);
+            gcv_tarifario_reply($pdo);
+        }
+        if ($action === 'oficiais') {
+            gcv_tarifa_oficial_vincular($pdo, $body);
+            gcv_tarifario_reply($pdo);
+        }
+        if ($action === 'tarifa_criar') {
+            gcv_tarifa_oficial_criar($pdo, (string)($body['tipo'] ?? ''), (int)($body['excursao'] ?? 0), (int)($body['privativo'] ?? 0));
+            gcv_tarifario_reply($pdo);
+        }
+        if ($action === 'tarifa_excluir') {
+            $moved = gcv_tarifa_oficial_excluir($pdo, (string)($body['codigo'] ?? ''));
+            gcv_tarifario_reply($pdo, $moved);
+        }
         if ($action === 'oferta') {
             gcv_passeio_oferta_save($pdo, $body);
             gcv_tarifario_reply($pdo);

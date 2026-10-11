@@ -3548,6 +3548,7 @@ body.gcv-dash-page main.gcv-dash-main {
 }
 .gcv-checkin-modal[hidden] { display: none !important; }
 .gcv-checkin-sheet {
+  position: relative;
   width: 100%;
   max-width: 420px;
   background: #fff;
@@ -3587,12 +3588,47 @@ body.gcv-dash-page main.gcv-dash-main {
   outline: none;
 }
 .gcv-checkin-reader {
+  position: relative;
   width: 100%;
-  min-height: 220px;
+  min-height: min(52vh, 360px);
   background: #0f172a;
   border-radius: 12px;
   overflow: hidden;
   margin: 0.5rem 0 0.75rem;
+}
+.gcv-checkin-reader video {
+  width: 100% !important;
+  height: min(52vh, 360px) !important;
+  object-fit: cover;
+}
+.gcv-checkin-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1.25rem;
+  text-align: center;
+  background: rgba(6, 78, 59, 0.96);
+  color: #fff;
+  border-radius: 16px;
+}
+.gcv-checkin-flash[hidden] { display: none !important; }
+.gcv-checkin-flash p {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.35;
+  white-space: pre-line;
+}
+.gcv-checkin-flash .gcv-dash-btn {
+  min-width: 9rem;
+  background: #fff;
+  color: #064e3b;
+  border-color: #fff;
 }
 .gcv-checkin-manual {
   display: flex;

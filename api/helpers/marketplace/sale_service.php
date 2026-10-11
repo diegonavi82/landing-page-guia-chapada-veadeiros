@@ -345,6 +345,14 @@ function gcv_sale_capture_from_pix_reservation(array $reservation, string $sourc
             gcv_sale_refresh_booked_people($excIdP);
         }
         try {
+            require_once dirname(__DIR__) . '/notify_ops.php';
+            if (is_array($excursion) && gcv_ops_cancel_locked($excursion)) {
+                gcv_ops_notify_client_guide_intro($sale, $excursion);
+            }
+        } catch (Throwable $e) {
+            error_log('notify client guide intro (captured): ' . $e->getMessage());
+        }
+        try {
             gcv_notify_admin_purchase($reservation);
         } catch (Throwable $e) {
             error_log('notify admin purchase (captured): ' . $e->getMessage());
@@ -447,62 +455,10 @@ function gcv_sale_refresh_booked_people(int $excursionId): bool
  *
  * @return array<string,mixed>
  */
-function gcv_sale_cancel_reservation(string $reservationId, string $email, bool $notifyClient = true): array
+function gcv_sale_cancel_reservation(string $reservationId, string $email, bool $notifyClient = true, ?array $tripIndexes = null): array
 {
-    gcv_marketplace_ensure_schema();
-    $reservationId = strtoupper(trim($reservationId));
-    $email = strtolower(trim($email));
-    $pdo = db();
-    $stmt = $pdo->prepare('SELECT * FROM gcv_sales WHERE reservation_id = ? AND deleted_at IS NULL LIMIT 1');
-    $stmt->execute([$reservationId]);
-    $sale = $stmt->fetch(PDO::FETCH_ASSOC);
-    if (!$sale) {
-        throw new RuntimeException('Reserva não encontrada');
-    }
-    $storedEmail = strtolower(trim((string)($sale['tourist_email'] ?? '')));
-    if ($storedEmail !== '' && $storedEmail !== $email) {
-        throw new RuntimeException('E-mail não confere');
-    }
-    if (($sale['sale_status'] ?? '') === GcvSaleStatus::CANCELLED) {
-        return ['ok' => true, 'already' => true, 'sale' => $sale];
-    }
-    if (($sale['sale_status'] ?? '') !== GcvSaleStatus::PAID) {
-        throw new RuntimeException('Só é possível cancelar reserva paga');
-    }
-    $excId = (int)($sale['excursion_id'] ?? 0);
-    $exc = $excId > 0 ? (function () use ($excId) {
-        $s = db()->prepare('SELECT * FROM gcv_excursions WHERE id = ? LIMIT 1');
-        $s->execute([$excId]);
-        return $s->fetch(PDO::FETCH_ASSOC) ?: null;
-    })() : null;
-    $life = $exc ? gcv_resolve_excursion_lifecycle($exc) : 'em_formacao';
-    $pdo->prepare(
-        "UPDATE gcv_sales SET sale_status = 'CANCELLED', payout_status = 'PAYOUT_BLOCKED' WHERE id = ?"
-    )->execute([(int)$sale['id']]);
-    $sale['sale_status'] = GcvSaleStatus::CANCELLED;
-
-    require_once dirname(__DIR__) . '/pix_reservation_store.php';
-    $res = gcv_pix_read_reservation($reservationId);
-    if ($res) {
-        $res['status'] = 'CANCELLED';
-        $res['cancelled_at'] = gmdate('c');
-        gcv_pix_write_reservation($res);
-        try {
-            require_once dirname(__DIR__) . '/pix_seats_store.php';
-            gcv_pix_seats_release_reservation($res);
-        } catch (Throwable $e) {
-            error_log('cancel seats: ' . $e->getMessage());
-        }
-    }
-    if ($excId > 0) {
-        gcv_sale_refresh_booked_people($excId);
-        $s = db()->prepare('SELECT * FROM gcv_excursions WHERE id = ? LIMIT 1');
-        $s->execute([$excId]);
-        $exc = $s->fetch(PDO::FETCH_ASSOC) ?: $exc;
-    }
-    require_once dirname(__DIR__) . '/notify_ops.php';
-    gcv_ops_notify_guide_cancelled($sale, $exc, $life, $notifyClient);
-    return ['ok' => true, 'lifecycle' => $life, 'sale' => $sale];
+    require_once dirname(__DIR__) . '/payments/pix_refund.php';
+    return gcv_pix_refund_reservation($reservationId, $email, $tripIndexes, $notifyClient, false, false);
 }
 
 /**

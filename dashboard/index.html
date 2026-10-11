@@ -10,11 +10,11 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="/assets/css/site.css?v=1.0.39" />
-  <link rel="stylesheet" href="/assets/css/gcv-dashboard.css?v=1.1.69" />
+  <link rel="stylesheet" href="/assets/css/gcv-dashboard.css?v=1.1.71" />
 <link rel="stylesheet" href="/assets/css/gcv-confirm.css?v=1.0.6" />
 <link rel="stylesheet" href="/assets/css/gcv-tours.css?v=1.0.1" />
 <link rel="stylesheet" href="/assets/css/gcv-payment.css?v=1.0.1" />
-<link rel="stylesheet" href="/assets/css/gcv-admin-tarifario.css?v=1.1.1" />
+<link rel="stylesheet" href="/assets/css/gcv-admin-tarifario.css?v=1.1.4" />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lipis/flag-icons@7.2.3/css/flag-icons.min.css" />
 </head>
 <body class="gcv-dash-page">
@@ -86,6 +86,11 @@
         <section class="gcv-dash-section" id="section-cms-tarifario">
           <h2 class="gcv-dash-section-title">Tarifário</h2>
           <div id="cms-tarifario-root"></div>
+        </section>
+
+        <section class="gcv-dash-section" id="section-cms-cupons">
+          <h2 class="gcv-dash-section-title">Cupons</h2>
+          <div id="cms-cupons-root"></div>
         </section>
 
         <section class="gcv-dash-section" id="section-cms-guides">
@@ -404,12 +409,16 @@
         <h3 id="gcv-checkin-title">Ler QR da reserva</h3>
         <button type="button" class="gcv-checkin-x" id="gcv-checkin-close" aria-label="Fechar">×</button>
       </div>
-      <p class="gcv-dash-hint" style="margin:0 0 0.5rem;">Aponte a câmera para o QR CODE da reserva do cliente.</p>
+      <p class="gcv-dash-hint" style="margin:0 0 0.5rem;">Aponte a câmera de trás do celular para o QR. A confirmação aparece na hora, sem apertar OK.</p>
       <div id="gcv-checkin-reader" class="gcv-checkin-reader"></div>
+      <div id="gcv-checkin-flash" class="gcv-checkin-flash" hidden>
+        <p id="gcv-checkin-flash-msg"></p>
+        <button type="button" class="gcv-dash-btn gcv-dash-btn--primary" id="gcv-checkin-flash-ok">Entendi</button>
+      </div>
       <p id="gcv-checkin-result" class="gcv-checkin-result" hidden role="status"></p>
       <div class="gcv-checkin-manual">
-        <input id="gcv-checkin-manual" type="text" maxlength="12" placeholder="GCV-XXXXXX" autocomplete="off" />
-        <button type="button" class="gcv-dash-btn gcv-dash-btn--primary" id="gcv-checkin-manual-btn">OK</button>
+        <input id="gcv-checkin-manual" type="text" maxlength="12" placeholder="GCV-XXXXXX" autocomplete="off" inputmode="text" autocapitalize="characters" />
+        <button type="button" class="gcv-dash-btn gcv-dash-btn--primary" id="gcv-checkin-manual-btn">Enviar</button>
       </div>
     </div>
   </div>
@@ -420,14 +429,15 @@
   <script src="/assets/js/gcv-meeting-point.js?v=1.0.3" defer></script>
   <script src="/assets/js/gcv-datepicker.js?v=1.0.2" defer></script>
   <script src="/assets/js/gcv-tarifa-regras.js?v=1.0.0" defer></script>
-  <script src="/assets/js/gcv-admin-cms.js?v=1.0.107" defer></script>
-  <script src="/assets/js/gcv-admin-tarifario.js?v=1.1.3" defer></script>
+  <script src="/assets/js/gcv-admin-cms.js?v=1.0.109" defer></script>
+  <script src="/assets/js/gcv-admin-tarifario.js?v=1.1.8" defer></script>
+  <script src="/assets/js/gcv-admin-cupons.js?v=1.0.0" defer></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
-  <script src="/assets/js/gcv-dash-roles.js?v=1.1.59" defer></script>
+  <script src="/assets/js/gcv-dash-roles.js?v=1.1.63" defer></script>
   <script src="/assets/js/gcv-inbox.js?v=1.0.6" defer></script>
   <script src="/assets/js/gcv-payment-ledger.js?v=1.0.0" defer></script>
   <script src="/assets/js/gcv-booking-confirm.js?v=1.0.0" defer></script>
-  <script src="/assets/js/gcv-dashboard.js?v=1.1.12" defer></script>
+  <script src="/assets/js/gcv-dashboard.js?v=1.1.13" defer></script>
   <script src="/assets/js/gcv-payment.js?v=1.0.40" defer></script>
   <script src="/assets/js/site.js?v=1.0.40" defer></script>
 </body>

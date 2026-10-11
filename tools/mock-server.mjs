@@ -100,10 +100,47 @@ function pixEffectiveStatus(rec) {
   if (!rec) return "PENDING";
   if (rec.status === "PAID") return "PAID";
   if (rec.status === "AUTHORIZED" || rec.status === "CARD_SAVED") return rec.status;
-  if (rec.status === "RELEASED") return "CANCELLED";
+  if (rec.status === "CANCELLED" || rec.status === "CANCELED" || rec.status === "REFUNDED" || rec.status === "RELEASED") {
+    return "CANCELLED";
+  }
   const exp = Date.parse(rec.expires_at || "");
   if (Number.isFinite(exp) && Date.now() > exp) return "EXPIRED";
   return "PENDING";
+}
+
+function annotateMockTrips(rec) {
+  const trips = Array.isArray(rec.trips) ? rec.trips : [];
+  const refunds = Array.isArray(rec.pix_refunds) ? rec.pix_refunds : [];
+  const refundedIdx = new Set(
+    refunds
+      .filter((r) => r && (r.status === "DEVOLVIDO" || r.status === "EM_PROCESSAMENTO"))
+      .map((r) => Number(r.trip_index)),
+  );
+  const totalCents = Math.round((Number(rec.amount) || 0) * 100);
+  const raw = trips.map((t) => Math.max(0, (parseInt(t.valorUnit, 10) || 0) * Math.max(1, parseInt(t.qty, 10) || 1)));
+  const sum = raw.reduce((a, b) => a + b, 0);
+  let running = 0;
+  return trips.map((t, i) => {
+    const life = String(t.lifecycle || "");
+    const decision = String(t.decision || "").toUpperCase();
+    const refunded = refundedIdx.has(i) || decision === "CANCELLED" || t.refunded === true;
+    const confirmed = !refunded && (t.confirmed === true || life === "confirmada" || life === "concluida" || decision === "CONFIRMED" || decision === "CAPTURED");
+    let cents;
+    if (i === trips.length - 1) cents = Math.max(0, totalCents - running);
+    else {
+      cents = sum > 0 ? Math.round((totalCents * raw[i]) / sum) : Math.floor(totalCents / Math.max(1, trips.length));
+      running += cents;
+    }
+    return {
+      ...t,
+      trip_index: i,
+      cents,
+      can_cancel: !refunded && !confirmed,
+      confirmed,
+      refunded,
+      lifecycle: refunded ? "cancelada" : confirmed ? life || "confirmada" : life || "em_formacao",
+    };
+  });
 }
 
 function readEnvValue(key) {
@@ -514,6 +551,12 @@ function handlePixApi(urlPath, req, res) {
         const data = JSON.parse(body || "{}");
         const id = String(data.reservation_id || "").toUpperCase();
         const expiresIn = Math.max(60, parseInt(String(data.expires_in), 10) || 480);
+        const cupom = cupomSobreCarrinho(data);
+        if (cupom.invalido) {
+          res.writeHead(422, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ success: false, message: cupom.message || "Cupom inválido" }));
+          return;
+        }
         const prev = pixRead(id);
         if (prev && prev.status === "PAID") {
           console.log("[mock] Pix reserva reaberta (substitui PAID):", id);
@@ -521,7 +564,8 @@ function handlePixApi(urlPath, req, res) {
         const rec = {
           reservation_id: id,
           status: "PENDING",
-          amount: Number(data.amount) || 0,
+          amount: cupom.aplicado ? cupom.esperadoReais : Number(data.amount) || 0,
+          cupom: cupom.codigo || "",
           locale: data.locale || "pt",
           trips: data.trips || [],
           expires_at: new Date(Date.now() + expiresIn * 1000).toISOString(),
@@ -584,7 +628,8 @@ function handlePixApi(urlPath, req, res) {
           rec.status = "EXPIRED";
           pixWrite(id, rec);
         }
-        const trips = enrichTripsGuia(rec.trips || [], rec.locale || "pt");
+        const trips = annotateMockTrips({ ...rec, trips: enrichTripsGuia(rec.trips || [], rec.locale || "pt") });
+        const canCancel = status === "PAID" && trips.some((t) => t.can_cancel);
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
         res.end(
           JSON.stringify({
@@ -594,6 +639,7 @@ function handlePixApi(urlPath, req, res) {
             amount: rec.amount,
             locale: rec.locale,
             trips,
+            can_cancel: canCancel,
             paid_at: rec.paid_at || null,
             created_at: rec.created_at || null,
             expires_at: rec.expires_at || null,
@@ -601,6 +647,104 @@ function handlePixApi(urlPath, req, res) {
             packages: rec.packages || undefined,
           }),
         );
+      } catch {
+        res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: false, message: "Invalid JSON" }));
+      }
+    });
+    return true;
+  }
+
+  if (urlPath === "/api/excursao-reserva/cancel.php" && req.method === "POST") {
+    let body = "";
+    req.on("data", (c) => (body += c));
+    req.on("end", () => {
+      try {
+        const data = JSON.parse(body || "{}");
+        const id = String(data.reservation_id || data.code || "").toUpperCase();
+        const email = String(data.email || "").trim().toLowerCase();
+        const rec = pixRead(id);
+        if (!rec) {
+          res.writeHead(404, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: false, message: "Reserva não encontrada", error_code: "not_found" }));
+          return;
+        }
+        const stored = String(rec.email || "").trim().toLowerCase();
+        if (stored && stored !== email) {
+          res.writeHead(403, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: false, message: "E-mail não confere", error_code: "email" }));
+          return;
+        }
+        if (pixEffectiveStatus(rec) !== "PAID") {
+          res.writeHead(409, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: false, message: "Só é possível estornar Pix de reserva paga.", error_code: "nothing" }));
+          return;
+        }
+        const trips = annotateMockTrips(rec);
+        let wanted = null;
+        if (Array.isArray(data.trip_indexes)) {
+          wanted = new Set(data.trip_indexes.map((n) => Number(n)));
+          for (const idx of wanted) {
+            const trip = trips[idx];
+            if (!trip) {
+              res.writeHead(409, { "Content-Type": "application/json; charset=utf-8" });
+              res.end(JSON.stringify({ ok: false, message: "Passeio não encontrado nesta reserva.", error_code: "nothing" }));
+              return;
+            }
+            if (trip.confirmed) {
+              res.writeHead(409, { "Content-Type": "application/json; charset=utf-8" });
+              res.end(JSON.stringify({ ok: false, message: "Passeio confirmado não pode ser cancelado nem estornado.", error_code: "trip_confirmed" }));
+              return;
+            }
+          }
+        }
+        const targets = trips.filter((t, i) => t.can_cancel && (wanted === null || wanted.has(i)));
+        if (!targets.length) {
+          res.writeHead(409, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: false, message: "Não há passeio em formação para estornar nesta reserva.", error_code: "nothing" }));
+          return;
+        }
+        rec.pix_refunds = Array.isArray(rec.pix_refunds) ? rec.pix_refunds : [];
+        rec.trips = Array.isArray(rec.trips) ? rec.trips : [];
+        let refunded = 0;
+        const refundedTrips = [];
+        for (const t of targets) {
+          refunded += t.cents || 0;
+          refundedTrips.push(t.trip_index);
+          rec.pix_refunds.push({
+            trip_index: t.trip_index,
+            id: id.replace("-", "") + "T" + t.trip_index,
+            cents: t.cents || 0,
+            status: "DEVOLVIDO",
+            at: new Date().toISOString(),
+          });
+          if (rec.trips[t.trip_index]) {
+            rec.trips[t.trip_index].refunded = true;
+            rec.trips[t.trip_index].lifecycle = "cancelada";
+            rec.trips[t.trip_index].confirmed = false;
+          }
+        }
+        const after = annotateMockTrips(rec);
+        const still = after.some((t) => !t.refunded);
+        if (!still) {
+          rec.status = "CANCELLED";
+          rec.cancelled_at = new Date().toISOString();
+        }
+        pixWrite(id, rec);
+        const partial = still;
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({
+          ok: true,
+          reservation_id: id,
+          status: partial ? "PAID" : "REFUNDED",
+          partial,
+          full: !partial,
+          refunded_cents: refunded,
+          refunded_trips: refundedTrips,
+          message: partial
+            ? "Estorno parcial feito. Os passeios confirmados desta reserva continuam valendo."
+            : "Reserva cancelada. O Pix foi devolvido para a conta de origem.",
+        }));
       } catch {
         res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
         res.end(JSON.stringify({ ok: false, message: "Invalid JSON" }));
@@ -1044,6 +1188,191 @@ const durationBySlug = new Map((RELATED_SEED.durations || []).map((d) => [d.slug
 const PASSEIO_CIDADE_KEYS = ["alto-paraiso", "sao-jorge", "cavalcante"];
 const TARIFARIO_CAMPOS = ["exclusivo_pessoa_cents", "exclusivo_transporte_cents", "excursao_pessoa_cents", "excursao_transporte_cents"];
 const TARIFARIO_CIDADES = { "alto-paraiso": "Alto Paraíso de Goiás", "sao-jorge": "São Jorge", cavalcante: "Cavalcante" };
+const TARIFAS_OFICIAIS = {
+  guia: [
+    ["g70", 70, 90], ["g80", 80, 100], ["g88", 88, 108], ["g100", 100, 120],
+    ["g120", 120, 150], ["g150", 150, 200], ["g200", 200, 250],
+  ],
+  translado: [
+    ["t120", 120, 150], ["t150", 150, 200], ["t200", 200, 250], ["t250", 250, 300],
+    ["t280", 280, 360], ["t300", 300, 400], ["t350", 350, 440], ["t400", 400, 520],
+    ["t480", 480, 600], ["t560", 560, 640],
+  ],
+};
+
+function tarifasOficiais() {
+  if (!tarifasOficiais.live) {
+    tarifasOficiais.live = [];
+    for (const tipo of ["guia", "translado"]) {
+      for (const row of TARIFAS_OFICIAIS[tipo]) {
+        tarifasOficiais.live.push({
+          codigo: row[0],
+          tipo,
+          excursao: row[1],
+          privativo: row[2],
+          excursao_cents: row[1] * 100,
+          privativo_cents: row[2] * 100,
+          nome: (tipo === "guia" ? "Tarifa Guia" : "Tarifa Translado") + " · excursão " + row[1] + " / privativo " + row[2],
+        });
+      }
+    }
+  }
+  return tarifasOficiais.live;
+}
+
+function tarifaOficialUso(codigo) {
+  const nAttr = MOCK_ATTRACTIONS.filter((a) => a.tarifa_guia === codigo || a.tarifa_translado === codigo).length;
+  const nPass = MOCK_RELATED.filter((r) => r.tarifa_guia === codigo || r.tarifa_translado === codigo).length;
+  return nAttr + nPass;
+}
+
+function tarifaOficialCriar(tipo, excursao, privativo) {
+  if (tipo !== "guia" && tipo !== "translado") throw new Error("Escolha Tarifa Guia ou Tarifa Translado.");
+  excursao = parseInt(excursao, 10) || 0;
+  privativo = parseInt(privativo, 10) || 0;
+  if (excursao < 1 || privativo < 1 || excursao > 100000 || privativo > 100000) throw new Error("Informe a excursão e o privativo em reais.");
+  const rows = tarifasOficiais();
+  if (rows.some((row) => row.tipo === tipo && row.excursao === excursao && row.privativo === privativo)) {
+    throw new Error("Essa tarifa já existe.");
+  }
+  const prefix = tipo === "guia" ? "g" : "t";
+  let codigo = prefix + excursao;
+  let n = 2;
+  while (rows.some((row) => row.codigo === codigo)) {
+    codigo = prefix + excursao + "-" + n;
+    n += 1;
+  }
+  rows.push({
+    codigo,
+    tipo,
+    excursao,
+    privativo,
+    excursao_cents: excursao * 100,
+    privativo_cents: privativo * 100,
+    nome: (tipo === "guia" ? "Tarifa Guia" : "Tarifa Translado") + " · excursão " + excursao + " / privativo " + privativo,
+  });
+  return codigo;
+}
+
+function tarifaOficialAcima(atual) {
+  let acima = null;
+  for (const row of tarifasOficiais()) {
+    if (row.codigo === atual.codigo || row.tipo !== atual.tipo) continue;
+    if (row.excursao <= atual.excursao) continue;
+    if (!acima || row.excursao < acima.excursao || (row.excursao === acima.excursao && row.privativo < acima.privativo)) acima = row;
+  }
+  return acima;
+}
+
+function tarifaOficialExcluir(codigo) {
+  codigo = String(codigo || "").trim();
+  const atual = tarifasOficiais().find((row) => row.codigo === codigo);
+  if (!atual) throw new Error("Tarifa não encontrada.");
+  const campo = atual.tipo === "translado" ? "tarifa_translado" : "tarifa_guia";
+  const uso = tarifaOficialUso(codigo);
+  const acima = tarifaOficialAcima(atual);
+  if (uso > 0 && !acima) throw new Error("Esta é a maior excursão desta lista. Os passeios que a usam não têm tarifa acima para receber.");
+  if (uso > 0 && acima) {
+    for (const row of MOCK_ATTRACTIONS) if (row[campo] === codigo) row[campo] = acima.codigo;
+    for (const row of MOCK_RELATED) if (row[campo] === codigo) row[campo] = acima.codigo;
+  }
+  tarifasOficiais.live = tarifasOficiais().filter((row) => row.codigo !== codigo);
+  return {
+    moved: uso,
+    para: acima ? acima.codigo : "",
+    para_nome: acima ? ("Excursão R$ " + acima.excursao + " · Privativo R$ " + acima.privativo) : "",
+  };
+}
+
+function tarifaOficialItem(codigo, tipo) {
+  return tarifasOficiais().find((row) => row.codigo === codigo && (!tipo || row.tipo === tipo)) || null;
+}
+
+function bilingueUniversal() {
+  const row = MOCK_SETTINGS.find((s) => s.key_name === "passeio_bilingue");
+  let raw = {};
+  try { raw = JSON.parse(row && row.value ? row.value : ""); } catch { raw = {}; }
+  if (raw.tipo === "percentual") {
+    const pct = Math.max(0, Math.min(100, parseInt(raw.valor, 10) || 0));
+    return { tipo: "percentual", valor: pct, cents: 0 };
+  }
+  const cents = raw.valor != null && raw.valor !== "" ? Math.max(0, parseInt(raw.valor, 10) || 0) : 4000;
+  return { tipo: "fixo", valor: cents, cents };
+}
+
+function tarifaOficialMontar(guiaCodigo, transladoCodigo) {
+  const guia = tarifaOficialItem(String(guiaCodigo || ""), "guia");
+  const trans = tarifaOficialItem(String(transladoCodigo || ""), "translado");
+  if (!guia || !trans) return null;
+  const cidades = {};
+  for (const key of PASSEIO_CIDADE_KEYS) {
+    cidades[key] = {
+      excursao_pessoa_cents: guia.excursao_cents,
+      exclusivo_pessoa_cents: guia.privativo_cents,
+      excursao_transporte_cents: trans.excursao_cents,
+      exclusivo_transporte_cents: trans.privativo_cents,
+    };
+  }
+  const base = cidades["alto-paraiso"];
+  return {
+    id: 0,
+    nome: guia.nome + " + " + trans.nome,
+    oficial: true,
+    tarifa_guia: guia.codigo,
+    tarifa_translado: trans.codigo,
+    quorum: 4,
+    ...base,
+    cidades,
+  };
+}
+
+function aplicarBilingueUniversal(tarifa) {
+  if (!tarifa) return null;
+  const bi = bilingueUniversal();
+  return { ...tarifa, bilingue_tipo: bi.tipo, bilingue_valor: bi.valor, bilingue_cents: bi.cents };
+}
+
+function tarifaDoPasseio(entity) {
+  const oficial = tarifaOficialMontar(entity && entity.tarifa_guia, entity && entity.tarifa_translado);
+  const base = oficial || tarifarioPublic(tarifarioById(entity && entity.tarifario_id));
+  return aplicarBilingueUniversal(base);
+}
+
+function bilingueOf(raw) {
+  raw = raw || {};
+  const tipoRaw = String(raw.bilingue_tipo || "");
+  if (tipoRaw === "percentual" || tipoRaw === "fixo" || Object.prototype.hasOwnProperty.call(raw, "bilingue_valor")) {
+    if (tipoRaw === "percentual") {
+      const pct = Math.max(0, Math.min(100, parseInt(raw.bilingue_valor, 10) || 0));
+      return { tipo: "percentual", valor: pct, cents: 0 };
+    }
+    let cents;
+    if (raw.bilingue_valor != null && raw.bilingue_valor !== "") cents = Math.max(0, parseInt(raw.bilingue_valor, 10) || 0);
+    else if (raw.bilingue_cents != null && raw.bilingue_cents !== "") cents = Math.max(0, parseInt(raw.bilingue_cents, 10) || 0);
+    else cents = 4000;
+    return { tipo: "fixo", valor: cents, cents };
+  }
+  if (raw.bilingue_cents != null && raw.bilingue_cents !== "") {
+    const cents = Math.max(0, parseInt(raw.bilingue_cents, 10) || 0);
+    return { tipo: "fixo", valor: cents, cents };
+  }
+  const cidades = raw.cidades || {};
+  const seen = new Set();
+  for (const key of ["alto-paraiso", ...Object.keys(cidades)]) {
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const row = cidades[key] || {};
+    if (row.bilingue_tipo === "percentual") {
+      const pct = Math.max(0, Math.min(100, parseInt(row.bilingue_valor, 10) || 0));
+      return { tipo: "percentual", valor: pct, cents: 0 };
+    }
+    if (row.bilingue_valor != null && row.bilingue_valor !== "") {
+      const cents = Math.max(0, parseInt(row.bilingue_valor, 10) || 0);
+      return { tipo: "fixo", valor: cents, cents };
+    }
+  }
+  return { tipo: "fixo", valor: 4000, cents: 4000 };
+}
 
 function tarifarioNormalize(raw) {
   raw = raw || {};
@@ -1055,7 +1384,8 @@ function tarifarioNormalize(raw) {
     cidades[key] = {};
     for (const campo of TARIFARIO_CAMPOS) cidades[key][campo] = Math.max(0, parseInt(row[campo], 10) || 0);
   }
-  return { quorum, cidades };
+  const bi = bilingueOf(raw);
+  return { quorum, bilingue_tipo: bi.tipo, bilingue_valor: bi.valor, bilingue_cents: bi.cents, cidades };
 }
 
 let mockTarifarioSeq = 1;
@@ -1064,7 +1394,16 @@ const MOCK_TARIFARIOS = [];
 function tarifarioPublic(t) {
   if (!t) return null;
   const base = t.cidades["alto-paraiso"];
-  return { id: t.id, nome: t.nome, quorum: t.quorum, ...base, cidades: JSON.parse(JSON.stringify(t.cidades)) };
+  return {
+    id: t.id,
+    nome: t.nome,
+    quorum: t.quorum,
+    bilingue_tipo: t.bilingue_tipo === "percentual" ? "percentual" : "fixo",
+    bilingue_valor: t.bilingue_valor == null ? (t.bilingue_tipo === "percentual" ? 0 : (t.bilingue_cents == null ? 4000 : Math.max(0, parseInt(t.bilingue_cents, 10) || 0))) : Math.max(0, parseInt(t.bilingue_valor, 10) || 0),
+    bilingue_cents: t.bilingue_tipo === "percentual" ? 0 : (t.bilingue_cents == null ? 4000 : Math.max(0, parseInt(t.bilingue_cents, 10) || 0)),
+    ...base,
+    cidades: JSON.parse(JSON.stringify(t.cidades)),
+  };
 }
 
 function cidadeCurta(nome) {
@@ -1118,6 +1457,7 @@ function duracaoClean(raw) {
 
 const MOCK_SETTINGS = [
   { key_name: "passeio_max_atrativos", value: "3", label: "Número máximo de atrativos no mesmo passeio", type: "integer" },
+  { key_name: "passeio_bilingue", value: "{\"tipo\":\"fixo\",\"valor\":4000}", label: "Guia em outro idioma, vale para todas as tarifas", type: "json" },
   { key_name: "diaria_minima_reais", value: "320", label: "Diária mínima do cliente no exclusivo e no fechamento da excursão (R$)", type: "integer" },
   { key_name: "pg_minimo_guia_reais", value: "280", label: "Pagamento mínimo do guia sem transporte (R$)", type: "integer" },
   { key_name: "pausa_convite_inicio_hora", value: "22", label: "Convite ao guia: o relógio para a partir desta hora", type: "integer" },
@@ -1145,6 +1485,8 @@ for (const attraction of MOCK_ATTRACTIONS) {
   attraction.distance_km = "";
   attraction.trail_distance_km = "";
   attraction.tarifario_id = null;
+  attraction.tarifa_guia = "";
+  attraction.tarifa_translado = "";
   attraction.duracao = {};
 }
 
@@ -1236,8 +1578,10 @@ function presentRelated(tour) {
     duration_minutes: tour.duration_minutes,
     duracao_cidades: duracaoCidades(tour.duracao, tour.duration_minutes),
     tarifario_id: tour.tarifario_id,
-    tarifa: tarifarioPublic(tarifarioById(tour.tarifario_id)),
-    saidas: saidasPublic(tarifarioPublic(tarifarioById(tour.tarifario_id)), duracaoCidades(tour.duracao, tour.duration_minutes), tour.duration_minutes),
+    tarifa_guia: tour.tarifa_guia || "",
+    tarifa_translado: tour.tarifa_translado || "",
+    tarifa: tarifaDoPasseio(tour),
+    saidas: saidasPublic(tarifaDoPasseio(tour), duracaoCidades(tour.duracao, tour.duration_minutes), tour.duration_minutes),
     attractions: tour.attractions.map((part) => {
       const live = MOCK_ATTRACTIONS.find((a) => a.id === part.id);
       return { ...part, title_pt: live ? live.title_pt : part.title_pt, duration_minutes: live ? live.duration_minutes || 0 : part.duration_minutes };
@@ -1290,9 +1634,19 @@ function passeioCatalog() {
         image: (live && live.cover_url) || "",
         href: first.page ? "/" + String(first.page).replace(/^\/+/, "") : "/passeios.html",
         attractions: presented.attractions.map((part) => part.title_pt),
+        parts: presented.attractions.map((part) => {
+          const item = MOCK_ATTRACTIONS.find((a) => a.id === part.id) || part;
+          const page = item.page || part.page || "";
+          return {
+            id: item.id || part.id,
+            title: item.title_pt || part.title_pt || "",
+            image: item.cover_url || "",
+            href: page ? "/" + String(page).replace(/^\/+/, "") : "",
+          };
+        }),
       };
     });
-  const singles = MOCK_ATTRACTIONS.filter((a) => a.page && a.tarifario_id && a.tem_passeio !== false && !String(a.title_pt).includes(" + ")).map((a) => ({
+  const singles = MOCK_ATTRACTIONS.filter((a) => a.page && a.tem_passeio !== false && !String(a.title_pt).includes(" + ") && tarifaDoPasseio(a)).map((a) => ({
     id: "a-" + a.id,
     kind: "atrativo",
     slug: a.slug,
@@ -1302,11 +1656,17 @@ function passeioCatalog() {
     categories: passeioCategorias(a.categorias, 1),
     duration_minutes: a.duration_minutes || 0,
     duracao_cidades: duracaoCidades(a.duracao, a.duration_minutes),
-    tarifa: tarifarioPublic(tarifarioById(a.tarifario_id)),
-    saidas: saidasPublic(tarifarioPublic(tarifarioById(a.tarifario_id)), duracaoCidades(a.duracao, a.duration_minutes), a.duration_minutes),
+    tarifa: tarifaDoPasseio(a),
+    saidas: saidasPublic(tarifaDoPasseio(a), duracaoCidades(a.duracao, a.duration_minutes), a.duration_minutes),
     image: a.cover_url || "",
     href: "/" + String(a.page).replace(/^\/+/, ""),
     attractions: [a.title_pt],
+    parts: [{
+      id: a.id,
+      title: a.title_pt,
+      image: a.cover_url || "",
+      href: "/" + String(a.page).replace(/^\/+/, ""),
+    }],
   }));
   return combos.concat(singles);
 }
@@ -1322,8 +1682,8 @@ function passeioPublicPayload(slug) {
     duracao_cidades: duracaoCidades(attraction.duracao, attraction.duration_minutes),
     tem_passeio: attraction.tem_passeio !== false,
     categorias: passeioCategorias(attraction.categorias, 1),
-    tarifa: attraction.tem_passeio === false ? null : tarifarioPublic(tarifarioById(attraction.tarifario_id)),
-    saidas: attraction.tem_passeio === false ? [] : saidasPublic(tarifarioPublic(tarifarioById(attraction.tarifario_id)), duracaoCidades(attraction.duracao, attraction.duration_minutes), attraction.duration_minutes),
+    tarifa: attraction.tem_passeio === false ? null : tarifaDoPasseio(attraction),
+    saidas: attraction.tem_passeio === false ? [] : saidasPublic(tarifaDoPasseio(attraction), duracaoCidades(attraction.duracao, attraction.duration_minutes), attraction.duration_minutes),
     max_atrativos: max,
     related_tours: mockRelatedFor(attraction.id).filter((t) => t.tarifa && t.attractions.length <= max),
   };
@@ -1350,9 +1710,11 @@ function tarifarioOverview(extra) {
       tem_passeio: a.tem_passeio !== false,
       categorias: passeioCategorias(a.categorias, 1),
       tarifario_id: a.tarifario_id,
+      tarifa_guia: a.tarifa_guia || "",
+      tarifa_translado: a.tarifa_translado || "",
       duracao_cidades: duracaoCidades(a.duracao, a.duration_minutes),
     }));
-  return { ok: true, data: { max_atrativos: maxAtrativos(), categorias: PASSEIO_CATEGORIAS, cidades: TARIFARIO_CIDADES, tarifarios, atrativos, passeios: MOCK_RELATED.map(presentRelated), ...(extra || {}) } };
+  return { ok: true, data: { max_atrativos: maxAtrativos(), categorias: PASSEIO_CATEGORIAS, cidades: TARIFARIO_CIDADES, tarifas_oficiais: tarifasOficiais(), bilingue: bilingueUniversal(), tarifarios, atrativos, passeios: MOCK_RELATED.map(presentRelated), ...(extra || {}) } };
 }
 
 function mockRelatedSave(rawIds) {
@@ -1369,6 +1731,8 @@ function mockRelatedSave(rawIds) {
     tour = {
       id: mockRelatedSeq++,
       tarifario_id: null,
+      tarifa_guia: "",
+      tarifa_translado: "",
       duracao: {},
       duration_minutes: 0,
       attractions: picked.map((a) => ({ id: a.id, title_pt: a.title_pt, slug: a.slug, duration_minutes: a.duration_minutes || 0, page: a.page })),
@@ -1377,6 +1741,208 @@ function mockRelatedSave(rawIds) {
     MOCK_RELATED.push(tour);
   }
   return tour;
+}
+
+const CUPOM_SEED = [
+  { id: "c1", codigo: "BEMVINDO", ativo: true, tipo: "total", modo: "percentual", valor: 10, minimo_pessoas: 0, alcance: "total" },
+  { id: "c2", codigo: "PESSOA20", ativo: true, tipo: "pessoa", modo: "fixo", valor: 2000, minimo_pessoas: 0, alcance: "pessoa" },
+  { id: "c3", codigo: "GRUPO5", ativo: true, tipo: "grupo", modo: "percentual", valor: 15, minimo_pessoas: 4, alcance: "total" },
+];
+let cuponsLive = null;
+
+function cuponsLista() {
+  if (!cuponsLive) cuponsLive = CUPOM_SEED.map((c) => ({ ...c }));
+  return cuponsLive;
+}
+
+function cupomNorm(row) {
+  const tipo = ["total", "pessoa", "grupo"].includes(row.tipo) ? row.tipo : "total";
+  const modo = row.modo === "percentual" ? "percentual" : "fixo";
+  let alcance = row.alcance === "pessoa" ? "pessoa" : "total";
+  const codigo = String(row.codigo || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  let valor = parseInt(String(row.valor), 10) || 0;
+  valor = modo === "percentual" ? Math.max(1, Math.min(100, valor)) : Math.max(1, valor);
+  let min = Math.max(0, parseInt(String(row.minimo_pessoas), 10) || 0);
+  if (tipo === "grupo") min = Math.max(1, min);
+  else {
+    min = 0;
+    alcance = tipo === "pessoa" ? "pessoa" : "total";
+  }
+  return {
+    id: String(row.id || ""),
+    codigo,
+    ativo: row.ativo !== false && row.ativo !== 0,
+    tipo,
+    modo,
+    valor,
+    minimo_pessoas: min,
+    alcance,
+  };
+}
+
+function cupomMsg(error, locale, min) {
+  const loc = locale === "en" || locale === "es" ? locale : "pt";
+  const msgs = {
+    pt: {
+      empty_code: "Informe o código do cupom.",
+      not_found: "Cupom não encontrado.",
+      inactive: "Este cupom está desativado.",
+      min_people: "Este cupom vale quando o carrinho tem mais de " + min + " pessoas.",
+      zero: "Este cupom não gera desconto neste carrinho.",
+    },
+    en: {
+      empty_code: "Enter the coupon code.",
+      not_found: "Coupon not found.",
+      inactive: "This coupon is turned off.",
+      min_people: "This coupon applies when the cart has more than " + min + " people.",
+      zero: "This coupon does not discount this cart.",
+    },
+    es: {
+      empty_code: "Escribe el código del cupón.",
+      not_found: "Cupón no encontrado.",
+      inactive: "Este cupón está desactivado.",
+      min_people: "Este cupón vale cuando el carrito tiene más de " + min + " personas.",
+      zero: "Este cupón no genera descuento en este carrito.",
+    },
+  };
+  return (msgs[loc] && msgs[loc][error]) || msgs.pt.not_found;
+}
+
+function cupomDesconto(cupom, pessoas, totalCents) {
+  if (!cupom.ativo) return { ok: false, error: "inactive" };
+  pessoas = Math.max(0, pessoas);
+  totalCents = Math.max(0, totalCents);
+  let tipo = cupom.tipo;
+  if (tipo === "grupo") {
+    if (pessoas <= cupom.minimo_pessoas) {
+      return { ok: false, error: "min_people", minimo_pessoas: cupom.minimo_pessoas };
+    }
+    tipo = cupom.alcance === "pessoa" ? "pessoa" : "total";
+  }
+  if (totalCents < 100) return { ok: false, error: "zero" };
+  let off = 0;
+  if (tipo === "pessoa" && cupom.modo === "fixo") off = cupom.valor * Math.max(1, pessoas);
+  else if (cupom.modo === "percentual") off = Math.round((totalCents * Math.min(100, cupom.valor)) / 100);
+  else off = cupom.valor;
+  off = Math.max(0, Math.min(totalCents, off));
+  if (off < 1) return { ok: false, error: "zero" };
+  return { ok: true, desconto_cents: off };
+}
+
+function cupomTeto(totalCents, off) {
+  if (totalCents - off < 100) off = totalCents - 100;
+  return Math.max(0, off);
+}
+
+function cupomAplicar(codigo, pessoas, totalCents, locale) {
+  codigo = String(codigo || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (!codigo) return { ok: false, error: "empty_code", message: cupomMsg("empty_code", locale, 0) };
+  const found = cuponsLista().find((c) => c.codigo === codigo);
+  if (!found) return { ok: false, error: "not_found", message: cupomMsg("not_found", locale, 0) };
+  const calc = cupomDesconto(found, pessoas, totalCents);
+  if (!calc.ok) {
+    const min = calc.minimo_pessoas || found.minimo_pessoas;
+    return { ok: false, error: calc.error, minimo_pessoas: min, message: cupomMsg(calc.error, locale, min) };
+  }
+  const off = cupomTeto(totalCents, calc.desconto_cents);
+  if (off < 1) return { ok: false, error: "zero", message: cupomMsg("zero", locale, 0) };
+  return { ok: true, desconto_cents: off, cupom: found };
+}
+
+function cupomSobreCarrinho(data) {
+  const codigo = String((data && data.cupom) || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const trips = Array.isArray(data && data.trips) ? data.trips : [];
+  let gross = 0;
+  let pessoas = 0;
+  trips.forEach((trip) => {
+    if (!trip || typeof trip !== "object") return;
+    const qty = Math.max(1, parseInt(String(trip.qty), 10) || 1);
+    const unit = Math.round((Number(trip.valorUnit) || 0) * 100);
+    gross += unit * qty;
+    pessoas += Math.max(1, parseInt(String(trip.pessoas != null ? trip.pessoas : qty), 10) || qty);
+  });
+  if (!codigo || gross < 1) return { aplicado: false, invalido: false, esperadoReais: 0, codigo: "" };
+  const locale = data.locale === "en" || data.locale === "es" ? data.locale : "pt";
+  const calc = cupomAplicar(codigo, pessoas || 1, gross, locale);
+  if (!calc.ok) return { aplicado: false, invalido: true, message: calc.message, codigo };
+  return {
+    aplicado: true,
+    invalido: false,
+    codigo,
+    esperadoReais: Math.round(Math.max(100, gross - calc.desconto_cents)) / 100,
+  };
+}
+
+function handleCupomApi(urlPath, req, res) {
+  const send = (payload, status = 200) => {
+    res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
+    res.end(JSON.stringify(payload));
+  };
+  if (urlPath === "/api/cupom.php" && req.method === "POST") {
+    readJsonBody(req)
+      .then((data) => {
+        const locale = data.locale === "en" || data.locale === "es" ? data.locale : "pt";
+        const calc = cupomAplicar(data.codigo, parseInt(data.pessoas, 10) || 0, parseInt(data.total_cents, 10) || 0, locale);
+        if (!calc.ok) {
+          send({ ok: false, error: calc.error, message: calc.message, minimo_pessoas: calc.minimo_pessoas || 0 });
+          return;
+        }
+        send({
+          ok: true,
+          codigo: calc.cupom.codigo,
+          tipo: calc.cupom.tipo,
+          modo: calc.cupom.modo,
+          valor: calc.cupom.valor,
+          minimo_pessoas: calc.cupom.minimo_pessoas,
+          alcance: calc.cupom.alcance,
+          desconto_cents: calc.desconto_cents,
+          total_cents: parseInt(data.total_cents, 10) || 0,
+          pessoas: parseInt(data.pessoas, 10) || 0,
+        });
+      })
+      .catch(() => send({ ok: false, message: "Invalid JSON" }, 400));
+    return true;
+  }
+  if (urlPath !== "/api/admin/cupons.php") return false;
+  if (req.method === "GET") return send({ ok: true, cupons: cuponsLista() }), true;
+  readJsonBody(req)
+    .then((body) => {
+      try {
+        const lista = cuponsLista();
+        if (req.method === "DELETE") {
+          const id = String(body.id || "");
+          const next = lista.filter((c) => c.id !== id);
+          if (next.length === lista.length) throw new Error("Cupom não encontrado.");
+          cuponsLive = next;
+          send({ ok: true, cupons: cuponsLista() });
+          return;
+        }
+        if (req.method !== "POST" && req.method !== "PUT") {
+          send({ ok: false, error: "Método não permitido" }, 405);
+          return;
+        }
+        const norm = cupomNorm(body || {});
+        if (!norm.codigo) throw new Error("Informe o código do cupom.");
+        if (lista.some((c) => c.codigo === norm.codigo && c.id !== String(body.id || ""))) {
+          throw new Error("Já existe um cupom com este código.");
+        }
+        if (req.method === "POST") {
+          norm.id = "c" + Math.random().toString(16).slice(2, 10);
+          lista.push(norm);
+        } else {
+          const id = String(body.id || "");
+          const i = lista.findIndex((c) => c.id === id);
+          if (i < 0) throw new Error("Cupom não encontrado.");
+          norm.id = id;
+          lista[i] = norm;
+        }
+        send({ ok: true, cupons: cuponsLista() });
+      } catch (err) {
+        send({ ok: false, error: err.message || "Erro" }, 400);
+      }
+    })
+    .catch(() => send({ ok: false, error: "JSON inválido" }, 400));
+  return true;
 }
 
 function handleTarifarioApi(urlPath, req, res) {
@@ -1413,6 +1979,36 @@ function handleTarifarioApi(urlPath, req, res) {
             if (r) r.tarifario_id = tid;
           }
           return send(tarifarioOverview());
+        }
+        if (req.method === "PUT" && body.action === "bilingue") {
+          const tipo = body.bilingue_tipo === "percentual" ? "percentual" : "fixo";
+          const valor = tipo === "percentual"
+            ? Math.max(0, Math.min(100, parseInt(body.bilingue_valor, 10) || 0))
+            : Math.max(0, parseInt(body.bilingue_valor, 10) || 0);
+          const row = MOCK_SETTINGS.find((s) => s.key_name === "passeio_bilingue");
+          if (row) row.value = JSON.stringify({ tipo, valor });
+          return send(tarifarioOverview());
+        }
+        if (req.method === "PUT" && body.action === "oficiais") {
+          const guia = String(body.tarifa_guia || "").trim();
+          const trans = String(body.tarifa_translado || "").trim();
+          if (guia && !tarifaOficialItem(guia, "guia")) return send({ ok: false, error: "Tarifa Guia não está na lista oficial." }, 400);
+          if (trans && !tarifaOficialItem(trans, "translado")) return send({ ok: false, error: "Tarifa Translado não está na lista oficial." }, 400);
+          const alvo = body.attraction_id
+            ? MOCK_ATTRACTIONS.find((x) => x.id === parseInt(body.attraction_id, 10))
+            : MOCK_RELATED.find((x) => x.id === parseInt(body.passeio_id, 10));
+          if (!alvo) return send({ ok: false, error: "Passeio não encontrado." }, 400);
+          alvo.tarifa_guia = guia;
+          alvo.tarifa_translado = trans;
+          return send(tarifarioOverview());
+        }
+        if (req.method === "PUT" && body.action === "tarifa_criar") {
+          tarifaOficialCriar(body.tipo, body.excursao, body.privativo);
+          return send(tarifarioOverview());
+        }
+        if (req.method === "PUT" && body.action === "tarifa_excluir") {
+          const moved = tarifaOficialExcluir(body.codigo);
+          return send(tarifarioOverview(moved));
         }
         if (req.method === "PUT" && body.action === "oferta") {
           const cats = passeioCategorias(body.categorias, 1);
@@ -1560,6 +2156,97 @@ function setMockUser(next) {
     delete user[k];
   });
   Object.assign(user, copy);
+}
+
+let mockCmsGuides = [
+  {
+    user_id: 21,
+    name: "Ana Guia",
+    full_name: "Ana Guia",
+    email: "ana@gcv.com",
+    status: "active",
+    approved_at: "2026-06-01 10:00:00",
+    was_approved: true,
+    profile_complete: true,
+    needs_resubmit: 0,
+    base_city_name: "Alto Paraíso de Goiás",
+    pix_key: "ana@gcv.com",
+    phone: "62999990001",
+    phone_ddi: "+55",
+  },
+  {
+    user_id: 22,
+    name: "Bruno Guia",
+    full_name: "Bruno Guia",
+    email: "bruno@gcv.com",
+    status: "pending",
+    profile_complete: true,
+    needs_resubmit: 0,
+    was_approved: false,
+    base_city_name: "São Jorge",
+    pix_key: "",
+    phone: "62999990002",
+    phone_ddi: "+55",
+  },
+  {
+    user_id: 23,
+    name: "Carla Rascunho",
+    full_name: "Carla Rascunho",
+    email: "carla@gcv.com",
+    status: "pending",
+    profile_complete: false,
+    needs_resubmit: 0,
+    was_approved: false,
+    base_city_name: "Cavalcante",
+    pix_key: "",
+    phone: "62999990003",
+    phone_ddi: "+55",
+  },
+];
+
+function handleCmsGuidesApi(urlPath, req, res) {
+  if (urlPath !== "/api/admin/cms-guides.php") return false;
+  if (req.method === "GET") {
+    const id = parseInt(new URL(req.url, "http://localhost").searchParams.get("id") || "0", 10);
+    if (id > 0) {
+      const row = mockCmsGuides.find((g) => g.user_id === id);
+      if (!row) {
+        res.writeHead(404, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: false, error: "Guia não encontrado" }));
+        return true;
+      }
+      res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify({ ok: true, data: row }));
+      return true;
+    }
+    res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+    res.end(JSON.stringify({
+      ok: true,
+      data: { guides: mockCmsGuides, blocked_emails: [], reject_reasons: [] },
+    }));
+    return true;
+  }
+  if (req.method === "DELETE") {
+    readJsonBody(req)
+      .then((body) => {
+        const id = parseInt(body.id || body.user_id || "0", 10);
+        const before = mockCmsGuides.length;
+        mockCmsGuides = mockCmsGuides.filter((g) => g.user_id !== id);
+        if (!id || mockCmsGuides.length === before) {
+          res.writeHead(404, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: false, error: "Guia não encontrado" }));
+          return;
+        }
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: true, data: { deleted: id } }));
+      })
+      .catch(() => {
+        res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: false, error: "JSON inválido" }));
+      });
+    return true;
+  }
+  return false;
 }
 
 function readJsonBody(req) {
@@ -2025,6 +2712,86 @@ const API_ROUTES = {
       atrativoPath: "atrativos/cataratas-dos-couros-guia-chapada-veadeiros-alto-paraiso.html",
       ...guia,
     };
+    const caracolSemGuia = {
+      dayNum: "19",
+      monthName: "setembro",
+      weekday: "Sábado",
+      dateISO: "2026-09-19",
+      embarque: "Alto Paraíso",
+      destino: "Caracol",
+      destinos: [
+        {
+          destino: "Caracol",
+          cardImg: "/assets/img/imagens/cachoeira-caracol-guia-chapada-veadeiros-alto-paraiso.webp",
+          atrativoPath: "atrativos/caracol-guia-chapada-veadeiros.html",
+        },
+      ],
+      hora: "10:00",
+      valor: 150,
+      confirmada: false,
+      quorumMin: 4,
+      faltamPessoas: 4,
+      pessoasInscritas: 0,
+      grupoMaximo: 10,
+      vagasRestantes: 10,
+      cartSlug: "mock-caracol-sem-guia-2026-09-19",
+      cardImg: "/assets/img/imagens/cachoeira-caracol-guia-chapada-veadeiros-alto-paraiso.webp",
+      atrativoPath: "atrativos/caracol-guia-chapada-veadeiros.html",
+    };
+    const dragaoConfirmada = {
+      dayNum: "19",
+      monthName: "setembro",
+      weekday: "Sábado",
+      dateISO: "2026-09-19",
+      embarque: "Alto Paraíso",
+      destino: "Cachoeira do Dragão",
+      destinos: [
+        {
+          destino: "Cachoeira do Dragão",
+          cardImg: "/assets/img/imagens/cachoeira-dragao-guia-chapada-veadeiros-alto-paraiso.webp",
+          atrativoPath: "",
+        },
+      ],
+      hora: "7:30",
+      valor: 160,
+      confirmada: true,
+      quorumMin: 4,
+      faltamPessoas: 0,
+      pessoasInscritas: 6,
+      grupoMaximo: 10,
+      vagasRestantes: 4,
+      cartSlug: "mock-dragao-confirmada-2026-09-19",
+      cardImg: "/assets/img/imagens/cachoeira-dragao-guia-chapada-veadeiros-alto-paraiso.webp",
+      atrativoPath: "",
+      ...guia,
+    };
+    const aguasConfirmada = {
+      dayNum: "20",
+      monthName: "setembro",
+      weekday: "Domingo",
+      dateISO: "2026-09-20",
+      embarque: "Alto Paraíso",
+      destino: "Águas Lindas",
+      destinos: [
+        {
+          destino: "Águas Lindas",
+          cardImg: "/assets/img/imagens/aguas-lindas-canjica-guia-chapada-veadeiros-alto-paraiso.webp",
+          atrativoPath: "",
+        },
+      ],
+      hora: "8:15",
+      valor: 150,
+      confirmada: true,
+      quorumMin: 4,
+      faltamPessoas: 0,
+      pessoasInscritas: 5,
+      grupoMaximo: 10,
+      vagasRestantes: 5,
+      cartSlug: "mock-aguas-lindas-confirmada-2026-09-20",
+      cardImg: "/assets/img/imagens/aguas-lindas-canjica-guia-chapada-veadeiros-alto-paraiso.webp",
+      atrativoPath: "",
+      ...guia,
+    };
     const sbBase = {
       dayNum: "20",
       monthName: "setembro",
@@ -2117,7 +2884,7 @@ const API_ROUTES = {
       ...guia,
     };
     const localize = (row, month, weekday) => ({ ...row, monthName: month, weekday });
-    const pt = [courosWalk, sbWalk, sbVan, valeVanOnly, pratinhaWalk];
+    const pt = [dragaoConfirmada, courosWalk, caracolSemGuia, aguasConfirmada, sbWalk, sbVan, valeVanOnly, pratinhaWalk];
     return devShiftCarousel({
       ok: true,
       data: {
@@ -2193,17 +2960,20 @@ function serveFile(res, filePath) {
       return;
     }
     const ext = path.extname(filePath).toLowerCase();
-    res.writeHead(200, { "Content-Type": MIME[ext] || "application/octet-stream" });
+    const headers = { "Content-Type": MIME[ext] || "application/octet-stream" };
+    if (ext === ".html" || ext === ".js" || ext === ".css") headers["Cache-Control"] = "no-cache";
+    res.writeHead(200, headers);
     if (ext === ".html") {
       let html = data.toString("utf8")
-        .replace(/site\.js\?v=[^"'&\s]+/g, "site.js?v=1.1.61")
-        .replace(/gcv-exc-cart-policies\.js\?v=[^"'&\s]+/g, "gcv-exc-cart-policies.js?v=1.1.60")
-        .replace(/gcv-exc-cart\.js\?v=[^"'&\s]+/g, "gcv-exc-cart.js?v=1.1.60")
-        .replace(/excursoes-carousel\.js\?v=[^"'&\s]+/g, "excursoes-carousel.js?v=1.1.62")
-        .replace(/excursoes\.css\?v=[^"'&\s]+/g, "excursoes.css?v=1.1.37")
+        .replace(/site\.js\?v=[^"'&\s]+/g, "site.js?v=1.1.73")
+        .replace(/gcv-exc-cart-policies\.js\?v=[^"'&\s]+/g, "gcv-exc-cart-policies.js?v=1.1.61")
+        .replace(/gcv-exc-cart\.js\?v=[^"'&\s]+/g, "gcv-exc-cart.js?v=1.1.62")
+        .replace(/excursoes-carousel\.js\?v=[^"'&\s]+/g, "excursoes-carousel.js?v=1.1.81")
+        .replace(/excursoes\.css\?v=[^"'&\s]+/g, "excursoes.css?v=1.1.82")
         .replace(/gcv-confirmacao\.js\?v=[^"'&\s]+/g, "gcv-confirmacao.js?v=1.1.36")
         .replace(/gcv-detail\.css\?v=[^"'&\s]+/g, "gcv-detail.css?v=1.1.37")
-        .replace(/gcv-passeios-shop\.js\?v=[^"'&\s]+/g, "gcv-passeios-shop.js?v=1.3.6");
+        .replace(/gcv-passeios-shop\.js\?v=[^"'&\s]+/g, "gcv-passeios-shop.js?v=1.3.10")
+        .replace(/gcv-datepicker\.js\?v=[^"'&\s]+/g, "gcv-datepicker.js?v=1.0.5");
       if (!html.includes('href="passeios.html"')) {
         html = html
           .replace(/(<a href="atrativos\.html"[^>]*>)Atrativos(<\/a>)/, '$1Atrativos$2\n      <a href="passeios.html">Passeios</a>')
@@ -2481,8 +3251,10 @@ const server = http.createServer((req, res) => {
       return;
     }
 
+    if (handleCmsGuidesApi(urlPath, req, res)) return;
     if (handleCmsAttractionsApi(urlPath, req, res)) return;
     if (handleTarifarioApi(urlPath, req, res)) return;
+    if (handleCupomApi(urlPath, req, res)) return;
     if (handleSettingsApi(urlPath, req, res)) return;
     if (urlPath === "/api/passeios.php" && req.method === "GET") {
       const slug = new URL(req.url, "http://localhost:" + PORT).searchParams.get("slug") || "";
@@ -2656,6 +3428,41 @@ const server = http.createServer((req, res) => {
         });
       return;
     }
+    if (urlPath === "/api/guides/check-in.php" && req.method === "POST") {
+      readJsonBody(req)
+        .then((body) => {
+          const raw = String(body.reservation_id || body.qr_text || body.code || "").toUpperCase();
+          const match = raw.match(/GCV-[A-Z0-9]{6}/);
+          if (!match) {
+            res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+            res.end(JSON.stringify({ ok: false, error: "QR / código da reserva inválido" }));
+            return;
+          }
+          const code = match[0];
+          const already = code === "GCV-JAFEITO";
+          res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({
+            ok: true,
+            data: {
+              already,
+              reservation_id: code,
+              tourist_name: "Ana Souza",
+              spots: 2,
+              attendance_status: "checked_in",
+              guide_whatsapp: !already,
+              message: already
+                ? "Check-in já estava confirmado. Bom passeio!"
+                : "Check-in foi confirmado. Bom passeio!",
+            },
+          }));
+        })
+        .catch(() => {
+          res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: false, error: "JSON inválido" }));
+        });
+      return;
+    }
+
     if (urlPath === "/api/guides/booking-confirmations.php") {
       if (req.method === "GET") {
         const rows = mockSiteBookings

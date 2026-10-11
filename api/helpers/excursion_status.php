@@ -474,3 +474,84 @@ function gcv_walk_guide_seat_error(array $trip): ?string
     }
     return 'O guia vai no carro do grupo. Com 1 carro de 5 lugares cabem no máximo 4 pessoas. Informe 2 ou mais carros (ou um veículo maior) para grupos maiores.';
 }
+
+function gcv_chapada_now(): DateTimeImmutable
+{
+    return new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo'));
+}
+
+/**
+ * Passeio avulso: antes das 4h20 (Brasília) a data mínima é hoje.
+ * A partir das 4h20, só amanhã em diante.
+ */
+function gcv_private_tour_min_date(?DateTimeImmutable $now = null): string
+{
+    $now = $now ?? gcv_chapada_now();
+    $minutes = ((int) $now->format('H')) * 60 + (int) $now->format('i');
+    if ($minutes < 4 * 60 + 20) {
+        return $now->format('Y-m-d');
+    }
+    return $now->modify('+1 day')->format('Y-m-d');
+}
+
+/** Excursão comprável enquanto faltarem pelo menos 1 hora para a saída. */
+function gcv_excursion_within_booking_window(string $dateIso, string $hora, ?DateTimeImmutable $now = null): bool
+{
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateIso)) {
+        return false;
+    }
+    if (!preg_match('/^(\d{1,2}):(\d{2})/', $hora, $m)) {
+        return false;
+    }
+    $now = $now ?? gcv_chapada_now();
+    $dep = DateTimeImmutable::createFromFormat(
+        'Y-m-d H:i:s',
+        sprintf('%s %02d:%02d:00', $dateIso, (int) $m[1], (int) $m[2]),
+        new DateTimeZone('America/Sao_Paulo')
+    );
+    if (!$dep) {
+        return false;
+    }
+    return $dep->getTimestamp() >= $now->getTimestamp() + 3600;
+}
+
+/**
+ * Recusa passeio do mesmo dia depois das 4h20, e excursão com menos de 1 h.
+ *
+ * @param array<int,mixed> $trips
+ */
+function gcv_booking_window_error(array $trips, string $locale = 'pt'): ?string
+{
+    $msgs = [
+        'pt' => 'Esse horário não está mais disponível. Passeio do mesmo dia só até 4h20. Excursão confirmada com vaga fica aberta até 1 hora antes da saída.',
+        'en' => 'That time is no longer available. Same-day tours close at 4:20 a.m. A confirmed departure with open spots stays bookable until 1 hour before it starts.',
+        'es' => 'Ese horario ya no está disponible. El paseo del mismo día solo hasta las 4:20. La excursión confirmada con plaza sigue abierta hasta 1 hora antes de la salida.',
+    ];
+    $msg = $msgs[$locale] ?? $msgs['pt'];
+    foreach ($trips as $trip) {
+        if (!is_array($trip)) {
+            continue;
+        }
+        $id = strtolower(trim((string) ($trip['cartId'] ?? $trip['id'] ?? '')));
+        $key = trim((string) ($trip['passeioKey'] ?? ''));
+        $date = substr(trim((string) ($trip['dateIso'] ?? $trip['dateISO'] ?? '')), 0, 10);
+        $isRoteiro = $key !== '' || str_starts_with($id, 'roteiro-');
+        if ($isRoteiro) {
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) || $date < gcv_private_tour_min_date()) {
+                return $msg;
+            }
+            continue;
+        }
+        if ($date === '') {
+            continue;
+        }
+        $hora = trim((string) ($trip['hora'] ?? ''));
+        if ($hora === '') {
+            $hora = '08:45';
+        }
+        if (!gcv_excursion_within_booking_window($date, $hora)) {
+            return $msg;
+        }
+    }
+    return null;
+}

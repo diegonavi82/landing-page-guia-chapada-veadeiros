@@ -220,8 +220,8 @@
   }
 
   var SAIDA_HORA_PADRAO = "8:45";
-  /** Reserva só com mais de 2 h até o embarque (horário Chapada). */
-  var BOOKING_CUTOFF_MS = 2 * 60 * 60 * 1000;
+  /** Excursão fica no site e pode ser comprada até 1 h antes da saída (horário Chapada). */
+  var BOOKING_CUTOFF_MS = 60 * 60 * 1000;
   /** Janela para concluir pagamento Pix após abrir o QR. */
   var PIX_PAY_WINDOW_MS = 8 * 60 * 1000;
 
@@ -275,6 +275,9 @@
       statusOk: "✅ Confirmado",
       statusSoldOut: "Lotado",
       statusWait: "⏳ Em formação",
+      joinTripTitle: "Inscrever-me na Excursão",
+      joinTripMissing: "Essa saída não está mais disponível.",
+      close: "Fechar",
       meetingPointLabel: "Ponto de encontro",
       guidePhoneLabel: "Telefone do guia",
       guiaPending: "A definir",
@@ -307,6 +310,7 @@
       pixPayPrice: "{total}",
       cardHoldNote: "No cartão, nada é cobrado agora: o valor fica reservado e só é cobrado quando o passeio confirmar (grupo mínimo + guia). Se não confirmar, a reserva é liberada.",
       mpFormTitle: "Dados do cartão",
+      mpSavedCardNote: "Encontramos um cartão salvo neste e-mail. Ele já vem preenchido: confirme e informe só o código de segurança. Dá para escolher outro cartão no formulário.",
       mpFormBack: "← Escolher outra forma",
       mpDevSimulate: "Simular cartão aprovado (só desenvolvimento)",
       mpFormUnavailable: "Pagamento com cartão indisponível no momento. Use o Pix ou tente mais tarde.",
@@ -467,9 +471,12 @@
       statusOk: "✅ Confirmed",
       statusSoldOut: "Sold out",
       statusWait: "⏳ Forming",
+      joinTripTitle: "Join this departure",
+      joinTripMissing: "This departure is no longer available.",
+      close: "Close",
       meetingPointLabel: "Meeting point",
       guidePhoneLabel: "Guide phone",
-      guiaPending: "To be announced",
+      guiaPending: "To be confirmed",
       pixBtnAria: "Pay {{valor}} with Pix",
       pixModalTitle: "Payment",
       pixModalScan: "Scan the QR code in your banking app",
@@ -499,6 +506,7 @@
       pixPayPrice: "{total}",
       cardHoldNote: "Nothing is charged now: the amount is held on your card and only charged once the tour is confirmed (minimum group + guide). If it is not confirmed, the hold is released.",
       mpFormTitle: "Card details",
+      mpSavedCardNote: "We found a card saved for this email. It is already filled in: confirm it and enter only the security code. You can pick another card in the form.",
       mpFormBack: "← Choose another method",
       mpDevSimulate: "Simulate approved card (development only)",
       mpFormUnavailable: "Card payment is unavailable right now. Please use Pix or try again later.",
@@ -659,6 +667,9 @@
       statusOk: "✅ Confirmado",
       statusSoldOut: "Agotado",
       statusWait: "⏳ Formando",
+      joinTripTitle: "Inscribirme en la excursión",
+      joinTripMissing: "Esta salida ya no está disponible.",
+      close: "Cerrar",
       meetingPointLabel: "Punto de encuentro",
       guidePhoneLabel: "Teléfono del guía",
       guiaPending: "Por definir",
@@ -691,6 +702,7 @@
       pixPayPrice: "{total}",
       cardHoldNote: "Con tarjeta no se cobra nada ahora: el monto queda reservado y solo se cobra cuando el paseo se confirme (grupo mínimo + guía). Si no se confirma, la reserva se libera.",
       mpFormTitle: "Datos de la tarjeta",
+      mpSavedCardNote: "Encontramos una tarjeta guardada en este correo. Ya viene completada: confírmala e ingresa solo el código de seguridad. Puedes elegir otra tarjeta en el formulario.",
       mpFormBack: "← Elegir otra forma",
       mpDevSimulate: "Simular tarjeta aprobada (solo desarrollo)",
       mpFormUnavailable: "El pago con tarjeta no está disponible ahora. Usa Pix o inténtalo más tarde.",
@@ -1039,21 +1051,18 @@
     );
   }
 
-  function cardSpotRowHtml(d, locale, transportBadge) {
-    var href = destHasPage(d) ? atrativoHrefFrom(d.atrativoPath || d.path, locale) : "";
+  function withSaida(href, cartId) {
+    if (!href || !cartId) return href;
+    return href + (href.indexOf("?") >= 0 ? "&" : "?") + "saida=" + encodeURIComponent(cartId);
+  }
+
+  function cardSpotRowHtml(d, locale, transportBadge, cartId) {
+    var href = destHasPage(d) ? withSaida(atrativoHrefFrom(d.atrativoPath || d.path, locale), cartId) : "";
     var label = escapeHtml(String(d.destino || "").trim());
     var sub = d.destinoSub
       ? '<span class="gcv-excursoes-card__dest-sub">' + escapeHtml(String(d.destinoSub)) + "</span>"
       : "";
     var destMod = sub ? " gcv-excursoes-card__spot-dest--has-sub" : "";
-    var title = label
-      ? '<span class="gcv-excursoes-card__dest gcv-excursoes-card__spot-dest' +
-        destMod +
-        '">' +
-        label +
-        sub +
-        "</span>"
-      : "";
     if (destIsTitleOnly(d)) {
       var names = titleOnlyLineNamesFromDest(d);
       if (!names.length && label) names = [String(d.destino || "").trim()];
@@ -1083,14 +1092,12 @@
       '<div class="gcv-excursoes-card__img-wrap gcv-excursoes-card__spot-img-wrap">' +
       cardPictureHtml(d.cardImg, d.cardImgAlt || d.destino) +
       "</div>";
-    // Título dentro da foto (mesmo stacking) — evita overlay sumir em alguns browsers
     var photo =
       '<div class="gcv-excursoes-card__spot-photo">' +
       '<div class="gcv-excursoes-card__atrativo-link--img">' +
       imgInner +
       "</div>" +
       (transportBadge || "") +
-      title +
       "</div>";
     // Imagem + título = um único link para a página do atrativo
     if (href) {
@@ -1131,20 +1138,106 @@
     return Math.max(0, q - site);
   }
 
-  function cardBandFlagsHtml(e, s, isLotado) {
-    var statusSpan = isLotado
-      ? '<span class="gcv-excursoes-card__status gcv-excursoes-card__status--full">' +
+  function cardStatusHtml(e, s, isLotado) {
+    if (isLotado) {
+      return (
+        '<span class="gcv-excursoes-card__status gcv-excursoes-card__status--full">' +
         escapeHtml(s.statusSoldOut) +
         "</span>"
-      : e.confirmada
-        ? '<span class="gcv-excursoes-card__status gcv-excursoes-card__status--ok">' +
-          escapeHtml(s.statusOk) +
-          "</span>"
-        : '<span class="gcv-excursoes-card__status gcv-excursoes-card__status--wait">' +
-          escapeHtml(s.statusWait) +
-          "</span>";
+      );
+    }
+    if (e.confirmada) {
+      return (
+        '<span class="gcv-excursoes-card__status gcv-excursoes-card__status--ok">' +
+        escapeHtml(s.statusOk) +
+        "</span>"
+      );
+    }
     return (
-      '<div class="gcv-excursoes-card__band-flags">' + statusSpan + capGrupoHtml(e, s) + "</div>"
+      '<span class="gcv-excursoes-card__status gcv-excursoes-card__status--wait">' +
+      escapeHtml(s.statusWait) +
+      "</span>"
+    );
+  }
+
+  var EXC_QUORUM = 4;
+  var EXC_LOW_STOCK = 3;
+  var EXC_STATUS_COPY = {
+    pt: {
+      esgotada: "Esgotada",
+      falta1: "⏳ Falta 1 para confirmar",
+      faltam: "⏳ Faltam {x} para confirmar",
+      ultima: "🔥 Última vaga",
+      ultimas: "🔥 Últimas {x} vagas",
+      confirmada: "✓ Confirmada · {x} vagas",
+    },
+    en: {
+      esgotada: "Sold out",
+      falta1: "⏳ 1 more to confirm",
+      faltam: "⏳ {x} more to confirm",
+      ultima: "🔥 Last spot",
+      ultimas: "🔥 Last {x} spots",
+      confirmada: "✓ Confirmed · {x} spots",
+    },
+    es: {
+      esgotada: "Agotada",
+      falta1: "⏳ Falta 1 para confirmar",
+      faltam: "⏳ Faltan {x} para confirmar",
+      ultima: "🔥 Última plaza",
+      ultimas: "🔥 Últimas {x} plazas",
+      confirmada: "✓ Confirmada · {x} plazas",
+    },
+  };
+
+  function getExcursionStatus(n, max, lang) {
+    var enrolled = Number.isFinite(Number(n)) ? Math.trunc(Number(n)) : 0;
+    var capacity = Number.isFinite(Number(max)) ? Math.trunc(Number(max)) : 0;
+    var code = lang === "en" || lang === "es" ? lang : "pt";
+    var t = EXC_STATUS_COPY[code];
+    function fill(template, x) {
+      return template.replace("{x}", String(x));
+    }
+    if (enrolled >= capacity) return { key: "esgotada", text: t.esgotada, variant: "neutral" };
+    if (enrolled < EXC_QUORUM) {
+      var faltam = EXC_QUORUM - enrolled;
+      if (faltam === 1) return { key: "faltam", text: t.falta1, variant: "warning" };
+      return { key: "faltam", text: fill(t.faltam, faltam), variant: "warning" };
+    }
+    var restantes = capacity - enrolled;
+    if (restantes <= EXC_LOW_STOCK) {
+      if (restantes === 1) return { key: "ultimas", text: t.ultima, variant: "urgent" };
+      return { key: "ultimas", text: fill(t.ultimas, restantes), variant: "urgent" };
+    }
+    return { key: "confirmada", text: fill(t.confirmada, restantes), variant: "success" };
+  }
+
+  function cardStatusBarHtml(e, s, locale) {
+    var status = getExcursionStatus(inscritosNoGrupo(e), grupoMaximoValor(e), locale);
+    return (
+      '<div class="gcv-excursoes-card__status-bar is-' + status.variant + '" data-status="' + status.key + '">' +
+      '<span class="gcv-excursoes-card__status-bar-label">' + escapeHtml(status.text) + "</span>" +
+      capGrupoHtml(e, s) +
+      "</div>"
+    );
+  }
+
+  function cardDateSideHtml(e, s, isLotado) {
+    return (
+      '<div class="gcv-excursoes-card__date-side">' +
+      '<div class="gcv-excursoes-card__date-side-row">' +
+      cardStatusHtml(e, s, isLotado) +
+      capGrupoHtml(e, s) +
+      "</div></div>"
+    );
+  }
+
+  function cardFaltaHtml(e, s, isLotado) {
+    var msg = cardBandNoticeText(e, s, isLotado);
+    if (!msg) return "";
+    return (
+      '<p class="gcv-excursoes-card__falta gcv-excursoes-card__falta--band">' +
+      escapeHtml(msg) +
+      "</p>"
     );
   }
 
@@ -1204,7 +1297,7 @@
       '">' +
       dests
         .map(function (d) {
-          return cardSpotRowHtml(d, locale, badge);
+          return cardSpotRowHtml(d, locale, badge, excursaoCartId(e));
         })
         .join("") +
       "</div>";
@@ -1377,7 +1470,7 @@
     var dep = excursaoDepartureEpochMs(e);
     var now = nowMs != null ? nowMs : Date.now();
     if (!Number.isFinite(dep)) return true;
-    return dep > now + BOOKING_CUTOFF_MS;
+    return dep >= now + BOOKING_CUTOFF_MS;
   }
 
   function isExcursaoFuture(e, nowMs) {
@@ -2149,16 +2242,18 @@
     );
 
     var panel = document.createElement("div");
-    panel.className = "gcv-excursoes-filters";
+    panel.className = "gcv-excursoes-filters is-min";
     panel.setAttribute("role", "search");
     panel.setAttribute("aria-label", s.filterTitle);
 
     var head = document.createElement("div");
     head.className = "gcv-excursoes-filters__head";
     head.innerHTML =
-      '<h3 class="gcv-excursoes-filters__title">' +
+      '<button type="button" class="gcv-excursoes-filters__toggle" data-gcv-filter-toggle aria-expanded="false" aria-controls="gcv-excursoes-filters-panel">' +
+      '<span class="gcv-excursoes-filters__title">' +
       escapeHtml(s.filterTitle) +
-      '</h3><div class="gcv-excursoes-filters__head-actions">' +
+      '</span><i class="ti ti-chevron-down" aria-hidden="true"></i></button>' +
+      '<div class="gcv-excursoes-filters__head-actions">' +
       '<p class="gcv-excursoes-filters__results" data-gcv-filter-results></p>' +
       '<button type="button" class="gcv-excursoes-filters__clear" data-gcv-filter-clear>' +
       escapeHtml(s.filterClear) +
@@ -2166,6 +2261,8 @@
 
     var grid = document.createElement("div");
     grid.className = "gcv-excursoes-filters__grid";
+    grid.id = "gcv-excursoes-filters-panel";
+    grid.hidden = true;
 
     var periodField = document.createElement("div");
     var embarqueField = document.createElement("div");
@@ -2303,6 +2400,15 @@
     var spotsFillEl = panel.querySelector("[data-gcv-spots-fill]");
     var resultsEl = panel.querySelector("[data-gcv-filter-results]");
     var clearBtn = panel.querySelector("[data-gcv-filter-clear]");
+    var toggleBtn = panel.querySelector("[data-gcv-filter-toggle]");
+    if (toggleBtn) {
+      toggleBtn.addEventListener("click", function () {
+        var open = panel.classList.contains("is-min");
+        panel.classList.toggle("is-min", !open);
+        grid.hidden = !open;
+        toggleBtn.setAttribute("aria-expanded", open ? "true" : "false");
+      });
+    }
 
     if (embarqueEl) {
       var optAll = document.createElement("option");
@@ -2548,7 +2654,7 @@
     var day = e && e.dayNum != null ? String(e.dayNum) : "";
     var monthRaw = String((e && e.monthName) || "").trim();
     var month = monthRaw
-      ? monthRaw.charAt(0).toUpperCase() + monthRaw.slice(1)
+      ? (monthRaw.charAt(0).toUpperCase() + monthRaw.slice(1)).slice(0, 3)
       : "";
     var iso = String((e && e.dateISO) || "").slice(0, 10);
     var year = /^\d{4}/.test(iso) ? iso.slice(0, 4) : "";
@@ -2624,7 +2730,9 @@
       '<button type="button" class="gcv-excursoes-card__qty-btn" data-gcv-exc-qty-min aria-label="' +
       escapeHtml(s.bookQtyMinus) +
       '">−</button>' +
-      '<input type="number" class="gcv-excursoes-card__qty-input" value="1" min="1" max="' +
+      '<input type="number" class="gcv-excursoes-card__qty-input" value="' +
+      excursaoPessoasPrefill(maxQty) +
+      '" min="1" max="' +
       maxQty +
       '" aria-label="' +
       escapeHtml(s.bookQtyAria) +
@@ -2803,13 +2911,55 @@
     done(window.confirm(msg));
   }
 
+  function excursaoPessoasPrefill(maxQty) {
+    var bag = window.GcvAddPeople;
+    var n = bag && parseInt(bag.n, 10);
+    if (!n || n < 1) n = 1;
+    var cap = parseInt(maxQty, 10);
+    if (!cap || cap < 1) cap = 15;
+    return Math.max(1, Math.min(cap, n));
+  }
+
+  function applyExcursaoPessoasPrefill() {
+    var root = document.getElementById("excursoes-junho");
+    if (!root) return;
+    var inCart = {};
+    if (window.GcvExcCart && typeof window.GcvExcCart.items === "function") {
+      window.GcvExcCart.items().forEach(function (it) {
+        if (it && it.id) inCart[it.id] = true;
+      });
+    }
+    root.querySelectorAll(".gcv-excursoes-card__book").forEach(function (block) {
+      if (block.classList.contains("gcv-excursoes-card__book--soldout")) return;
+      var cartId = block.getAttribute("data-cart-id") || "";
+      if (cartId && inCart[cartId]) return;
+      var input = block.querySelector(".gcv-excursoes-card__qty-input");
+      if (!input) return;
+      var max = parseInt(block.getAttribute("data-pix-max"), 10) || 10;
+      input.value = String(excursaoPessoasPrefill(max));
+      updateBookTotal(block);
+    });
+  }
+
+  function excursaoPessoasPrefillCommit(n) {
+    n = Math.max(1, Math.min(15, parseInt(n, 10) || 1));
+    var bag = window.GcvAddPeople;
+    var before = bag && parseInt(bag.n, 10);
+    if (!before || before < 1) before = 1;
+    window.GcvAddPeople = { n: n };
+    if (n !== before) applyExcursaoPessoasPrefill();
+  }
+
+  window.GcvApplyPeoplePrefill = applyExcursaoPessoasPrefill;
+
   function addExcursaoToCartWithGuideSeat(block, strings) {
     if (!window.GcvExcCart || typeof window.GcvExcCart.add !== "function") return;
     var e = excursaoFromBookBlock(block);
     var data = readBookBlock(block);
     confirmGuideSeatIfNeeded({ qty: data.qty, excursao: e, strings: strings }, function (ok) {
       if (!ok) return;
-      window.GcvExcCart.add(cartItemFromBook(block));
+      var added = window.GcvExcCart.add(cartItemFromBook(block));
+      if (added) excursaoPessoasPrefillCommit(data.qty);
     });
   }
 
@@ -2972,17 +3122,32 @@
     );
   }
 
+  function guiaAvatarHtml() {
+    return (
+      '<span class="gcv-excursoes-card__guide-photo-wrap">' +
+      '<span class="gcv-excursoes-card__guide-avatar" aria-hidden="true">' +
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+      '<circle cx="12" cy="8" r="5"></circle>' +
+      '<path d="M20 21a8 8 0 0 0-16 0"></path>' +
+      "</svg></span></span>"
+    );
+  }
+
   function guiaChipHtml(e, locale, s) {
-    var pending = !!(e && (e.guiaPendente === true || e.guiaPending === true));
-    var nome = e && e.guiaNome ? String(e.guiaNome) : null;
-    if (!nome && pending) {
+    var nome = e && e.guiaNome ? String(e.guiaNome).trim() : "";
+    if (!nome || !hasGuiaDefinido(e)) {
       return (
         '<div class="gcv-excursoes-card__guide gcv-excursoes-card__guide--pending">' +
-        guiaChipInnerHtml(s.guiaPending || "A definir", null, locale, "", ["pt"]) +
-        "</div>"
+        guiaAvatarHtml() +
+        '<div class="gcv-excursoes-card__guide-info">' +
+        '<span class="gcv-excursoes-card__guide-label">Guia</span>' +
+        '<span class="gcv-excursoes-card__guide-name">' +
+        escapeHtml(s.guiaPending || "A definir") +
+        "</span>" +
+        guiaLangsHtmlFromCodes(["pt"], locale) +
+        "</div></div>"
       );
     }
-    if (!nome) return "";
     var foto = e.guiaFoto ? String(e.guiaFoto) : null;
     var slug = resolveGuiaSlug(e, nome);
     var idiomas = resolveGuiaIdiomas(e, nome);
@@ -3471,6 +3636,7 @@
             "</li>");
     }
     return (
+      '<div class="gcv-excursoes-card__coverage">' +
       '<div class="gcv-excursoes-card__block gcv-excursoes-card__block--in">' +
       '<span class="gcv-excursoes-card__label gcv-excursoes-card__label--in">' +
       escapeHtml(s.inclLabel) +
@@ -3484,7 +3650,7 @@
       "</span>" +
       '<ul class="gcv-excursoes-card__list">' +
       exclItems +
-      "</ul></div>"
+      "</ul></div></div>"
     );
   }
 
@@ -3508,7 +3674,6 @@
     var timeLabel = escapeHtml(s.departureTimeLabel || "Saída");
     var embarqueLabel = escapeHtml(s.embarqueLabel || "Saída");
     var cityName = escapeHtml(excursaoEmbarque(e, s));
-    var toggleAddAria = escapeHtml(s.cardToggleAddAria || "Adicionar ao carrinho");
 
     var dateHeadline = escapeHtml(excursaoCardDateHeadline(e));
     var destHeadline = excursaoDestinoHeadline(e);
@@ -3520,12 +3685,18 @@
         "</div>"
       : "";
 
-    /* Faixa data + atrativo + hora + status; foto só com o nome do atrativo */
+    /* Status no topo; data + vagas na mesma linha; aviso em bloco próprio */
     var selectBand =
-      '<div class="gcv-excursoes-card__select-band" data-gcv-exc-card-toggle>' +
+      '<div class="gcv-excursoes-card__select-band">' +
+      '<div class="gcv-excursoes-card__select-band-status">' +
+      cardStatusBarHtml(e, s, locale) +
+      "</div>" +
       '<div class="gcv-excursoes-card__select-band-main">' +
       '<div class="gcv-excursoes-card__card-date">' +
+      '<span class="gcv-excursoes-card__card-date-text">' +
       dateHeadline +
+      "</span>" +
+      capGrupoHtml(e, s) +
       "</div>" +
       destHeadlineHtml +
       '<div class="gcv-excursoes-card__datestrip gcv-excursoes-card__datestrip--time-only">' +
@@ -3546,17 +3717,11 @@
       '">' +
       cityName +
       "</span></div>" +
-      "</div></div>" +
-      cardBandFlagsHtml(e, s, isLotado) +
-      cardBandGroupHtml(e, s, isLotado) +
-      "</div>" +
-      '<button type="button" class="gcv-excursoes-card__quick-add" data-gcv-exc-card-toggle aria-label="' +
-      toggleAddAria +
-      '" aria-pressed="false" title="' +
-      toggleAddAria +
-      '">' +
-      '<i class="ti ti-plus" aria-hidden="true"></i>' +
-      "</button></div>";
+      "</div></div></div>" +
+      '<div class="gcv-excursoes-card__select-band-guide">' +
+      guiaChipHtml(e, locale, s) +
+      '<div class="gcv-excursoes-card__guide-spacer" aria-hidden="true"></div>' +
+      "</div></div>";
 
     var cardImgBlock = cardSpotsBlockHtml(e, locale, s);
 
@@ -3581,7 +3746,6 @@
       cardImgBlock +
       "</div>" +
       '<div class="gcv-excursoes-card__body">' +
-      guiaChipHtml(e, locale, s) +
       inclExclBlocksHtml(e, s, locale) +
       bookingBlockHtml(e, s, locale) +
       "</div></article>"
@@ -4385,11 +4549,13 @@
     modal.classList.remove("gcv-pix-modal--checkout-active", "gcv-pix-modal--expired", "gcv-pix-modal--paid");
     modal.classList.add("gcv-pix-modal--await-email");
 
+    var cupom = (pending && pending.cupom) || "";
     modal._gcvPixPendingCheckout = {
       valor: valor,
       loc: loc,
       receiptData: receiptData,
       pixDesc: pixDesc,
+      cupom: cupom,
     };
 
     hidePixWaitingBlock(modal);
@@ -5195,6 +5361,7 @@
       phone: phoneStored,
       description: (reservationCode + " " + (pending.pixDesc || "")).trim(),
       return_path: (window.location.pathname || "/") + (window.location.search || ""),
+      cupom: pending.cupom || "",
     };
 
     if (isMp) {
@@ -5250,6 +5417,37 @@
 
   var MP_SDK_URL = "https://sdk.mercadopago.com/js/v2";
 
+  function mpBrickForm(raw) {
+    if (raw && raw.formData && typeof raw.formData === "object") return raw.formData;
+    return raw || {};
+  }
+
+  /** Cartões já salvos neste e-mail no Mercado Pago. Sem cartão, o formulário segue em branco. */
+  function fetchMpSavedCards(email, cb) {
+    if (!email) { cb(null); return; }
+    try {
+      var xhr = new XMLHttpRequest();
+      xhr.open("GET", "/api/mp_saved_cards.php?email=" + encodeURIComponent(email));
+      xhr.timeout = 8000;
+      xhr.onload = function () {
+        try {
+          var res = JSON.parse(xhr.responseText || "{}");
+          var ids = res && Array.isArray(res.card_ids) ? res.card_ids.filter(Boolean) : [];
+          if (res && res.success && res.customer_id && ids.length) {
+            cb({ customer_id: String(res.customer_id), card_ids: ids.map(String), methods: res.methods || {} });
+            return;
+          }
+        } catch (e) { /* segue sem cartão salvo */ }
+        cb(null);
+      };
+      xhr.onerror = function () { cb(null); };
+      xhr.ontimeout = function () { cb(null); };
+      xhr.send();
+    } catch (e) {
+      cb(null);
+    }
+  }
+
   function loadMpSdk(cb) {
     if (window.MercadoPago) return cb(null);
     var existing = document.querySelector('script[data-gcv-mp-sdk]');
@@ -5275,6 +5473,7 @@
   }
 
   function closeMpCardForm(modal) {
+    modal._gcvMpSeq = (modal._gcvMpSeq || 0) + 1;
     if (modal._gcvMpBrick && typeof modal._gcvMpBrick.unmount === "function") {
       try { modal._gcvMpBrick.unmount(); } catch (e) { /* noop */ }
     }
@@ -5353,34 +5552,100 @@
       return;
     }
 
-    loadMpSdk(function (err) {
-      if (err || !window.MercadoPago) {
-        wrap.querySelector("#gcv-mp-brick").innerHTML = '<p class="gcv-pix-modal__email-status gcv-pix-modal__email-status--err">' + escapeHtml(L.mpFormUnavailable) + "</p>";
-        return;
-      }
-      var mpLocale = loc === "en" ? "en-US" : loc === "es" ? "es-AR" : "pt-BR";
-      var mp = new window.MercadoPago(publicKey, { locale: mpLocale });
-      mp.bricks()
-        .create("cardPayment", "gcv-mp-brick", {
-          initialization: { amount: quote.total_brl_cents / 100, payer: { email: payload.email } },
-          customization: {
-            paymentMethods: { maxInstallments: quote.max_installments, minInstallments: 1 },
-            visual: { style: { theme: "default" } },
-          },
-          callbacks: {
-            onReady: function () { /* pronto */ },
-            onSubmit: function (formData) {
-              return mpSubmitCard(modal, payload, formData, loc);
+    function failBrick() {
+      var holder = wrap.querySelector("#gcv-mp-brick");
+      if (holder) holder.innerHTML = '<p class="gcv-pix-modal__email-status gcv-pix-modal__email-status--err">' + escapeHtml(L.mpFormUnavailable) + "</p>";
+    }
+    function mountBrick(saved) {
+      loadMpSdk(function (err) {
+        if (err || !window.MercadoPago) {
+          failBrick();
+          return;
+        }
+        var mpLocale = loc === "en" ? "en-US" : loc === "es" ? "es-AR" : "pt-BR";
+        var mp = new window.MercadoPago(publicKey, { locale: mpLocale });
+        var amount = quote.total_brl_cents / 100;
+        var parts = String(payload.name || "").trim().split(/\s+/).filter(Boolean);
+        var payer = { email: payload.email };
+        if (parts.length) {
+          payer.firstName = parts[0];
+          payer.lastName = parts.slice(1).join(" ");
+        }
+        var useSaved = !!(saved && saved.customer_id && saved.card_ids && saved.card_ids.length);
+        var savedMode = useSaved;
+        var settings;
+        if (useSaved) {
+          payer.customerId = saved.customer_id;
+          payer.cardsIds = saved.card_ids;
+          var note = wrap.querySelector(".gcv-pix-modal__card-note--inline");
+          if (note && L.mpSavedCardNote) note.textContent = L.mpSavedCardNote + " " + (L.cardHoldNote || "");
+          var preferred = saved.card_ids[saved.card_ids.length - 1];
+          settings = {
+            initialization: { amount: amount, payer: payer },
+            customization: {
+              paymentMethods: {
+                maxInstallments: quote.max_installments,
+                minInstallments: 1,
+                creditCard: "all",
+                debitCard: "all",
+                prepaidCard: "all",
+              },
+              visual: {
+                style: { theme: "default" },
+                hideFormTitle: true,
+                defaultPaymentOption: { savedCardForm: preferred },
+              },
             },
-            onError: function (e) {
-              if (window.console) console.warn("[mp brick]", e);
+          };
+        } else {
+          settings = {
+            initialization: { amount: amount, payer: { email: payload.email } },
+            customization: {
+              paymentMethods: { maxInstallments: quote.max_installments, minInstallments: 1 },
+              visual: { style: { theme: "default" } },
             },
+          };
+        }
+        settings.callbacks = {
+          onReady: function () { /* pronto */ },
+          onSubmit: function (raw) {
+            var formData = mpBrickForm(raw);
+            if (savedMode && !formData.payment_method_id && saved.card_ids.length === 1) {
+              formData.payment_method_id = (saved.methods && saved.methods[saved.card_ids[0]]) || "";
+            }
+            return mpSubmitCard(modal, payload, formData, loc);
           },
-        })
-        .then(function (controller) { modal._gcvMpBrick = controller; })
-        .catch(function () {
-          wrap.querySelector("#gcv-mp-brick").innerHTML = '<p class="gcv-pix-modal__email-status gcv-pix-modal__email-status--err">' + escapeHtml(L.mpFormUnavailable) + "</p>";
+          onError: function (e) {
+            if (window.console) console.warn("[mp brick]", e);
+          },
+        };
+        function mount(kind, cfg) {
+          return mp.bricks().create(kind, "gcv-mp-brick", cfg).then(function (controller) {
+            modal._gcvMpBrick = controller;
+          });
+        }
+        mount(useSaved ? "payment" : "cardPayment", settings).catch(function () {
+          if (!useSaved) { failBrick(); return; }
+          savedMode = false;
+          var holder = wrap.querySelector("#gcv-mp-brick");
+          if (holder) holder.innerHTML = "";
+          var note = wrap.querySelector(".gcv-pix-modal__card-note--inline");
+          if (note) note.textContent = L.cardHoldNote || "";
+          mount("cardPayment", {
+            initialization: { amount: amount, payer: { email: payload.email } },
+            customization: {
+              paymentMethods: { maxInstallments: quote.max_installments, minInstallments: 1 },
+              visual: { style: { theme: "default" } },
+            },
+            callbacks: settings.callbacks,
+          }).catch(failBrick);
         });
+      });
+    }
+    var seq = (modal._gcvMpSeq = (modal._gcvMpSeq || 0) + 1);
+    fetchMpSavedCards(payload.email, function (saved) {
+      if (modal._gcvMpSeq !== seq || !document.getElementById("gcv-mp-brick")) return;
+      mountBrick(saved);
     });
   }
 
@@ -5664,6 +5929,7 @@
         getModalReceiptPhone(modal) ||
         undefined,
       description: (pending && pending.pixDescWithCode) || reservationCode + " Guia Chapada Veadeiros",
+      cupom: (pending && pending.cupom) || "",
     };
     function startPollingIfReady(reg) {
       if (!reg || !reg.success) {
@@ -6083,6 +6349,7 @@
       loc: loc,
       receiptData: modal._gcvReceiptData,
       pixDesc: pixDesc,
+      cupom: (detailObj && detailObj.cupom) || "",
     };
     modal.classList.add("gcv-pix-modal--await-email");
     ensurePixEmailBlock(modal, loc);
@@ -6702,24 +6969,7 @@
       e.stopPropagation();
       return true;
     }
-    if (e.target.closest(".gcv-excursoes-card__book")) return false;
-    if (e.target.closest(".gcv-excursoes-card__cart-mark")) return false;
-    if (e.target.closest("a[href]")) return false;
-    if (e.target.closest("[data-guia-profile]")) return false;
-    if (e.target.closest("[data-gcv-exc-cart-add]")) return false;
-    if (e.target.closest("[data-gcv-exc-qty-min], [data-gcv-exc-qty-plus], .gcv-excursoes-card__qty-input")) {
-      return false;
-    }
-    var toggleZone = e.target.closest("[data-gcv-exc-card-toggle], .gcv-excursoes-card__datestrip--time-only, .gcv-excursoes-card__head");
-    if (!toggleZone) return false;
-    var card = toggleZone.closest(".gcv-excursoes-card");
-    if (!card) return false;
-    if (card.classList.contains("gcv-excursoes-card--day-blocked")) {
-      e.preventDefault();
-      return true;
-    }
-    e.preventDefault();
-    return toggleExcursaoCardInCart(card);
+    return false;
   }
 
   /** Alinha com o breakpoint do carrossel por dia (CSS ≤1023px). */
@@ -6759,6 +7009,43 @@
     map[iso] = order;
   }
 
+  /** Ordem aleatória estável do dia quando há mais de 3 saídas. */
+  function stableShuffleDayRows(root, iso, rows) {
+    var map = root._gcvDayCardOrderByIso || (root._gcvDayCardOrderByIso = {});
+    var saved = iso && map[iso];
+    if (saved && saved.length) {
+      var byId = {};
+      rows.forEach(function (e) {
+        byId[excursaoCartId(e)] = e;
+      });
+      var ordered = [];
+      saved.forEach(function (id) {
+        if (byId[id]) {
+          ordered.push(byId[id]);
+          delete byId[id];
+        }
+      });
+      rows.forEach(function (e) {
+        var id = excursaoCartId(e);
+        if (byId[id]) ordered.push(e);
+      });
+      return ordered;
+    }
+    var arr = rows.slice();
+    for (var i = arr.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = arr[i];
+      arr[i] = arr[j];
+      arr[j] = tmp;
+    }
+    if (iso) {
+      map[iso] = arr.map(function (e) {
+        return excursaoCartId(e);
+      });
+    }
+    return arr;
+  }
+
   /**
    * Move o selecionado para a 1ª posição à esquerda.
    * @param {boolean} [force] true = troca de data (todos os viewports); false = só mobile
@@ -6788,6 +7075,10 @@
     }
     // Desktop/notebook: seleção no mesmo dia não muda a posição
     if (!force && !isExcursaoMobileViewport()) {
+      captureDayCardOrder(root);
+      return;
+    }
+    if (cards.length > 3) {
       captureDayCardOrder(root);
       return;
     }
@@ -7035,7 +7326,9 @@
     if (window.GcvExcCart && typeof window.GcvExcCart.remove === "function") {
       var orphanIds = cartItems
         .filter(function (it) {
-          return it && it.id && !validIds[it.id];
+          if (!it || !it.id) return false;
+          if (it.passeioKey || String(it.id).indexOf("roteiro-") === 0) return false;
+          return !validIds[it.id];
         })
         .map(function (it) {
           return it.id;
@@ -7569,6 +7862,8 @@
         }
       }
 
+      if (rows.length > 3) return stableShuffleDayRows(root, iso, rows);
+
       var putLeadFirst = !!(forceLeadFirst || isExcursaoMobileViewport());
       if (putLeadFirst && leadId) {
         var lead = [];
@@ -7614,15 +7909,6 @@
       dateTabsEl.innerHTML = dates
         .map(function (d) {
           var selected = d.iso === selectedDateIso;
-          var dayRows = (carouselExcursoes || []).filter(function (e) {
-            return excursaoDateIso(e) === d.iso;
-          });
-          var singleDest = dayRows.length === 1 ? excursaoDestinoHeadline(dayRows[0]) : "";
-          var countLabel =
-            singleDest ||
-            (d.count === 1
-              ? s.dateTabCountOne || "1 passeio"
-              : tpl(s.dateTabCountMany || "{{n}} passeios", { n: d.count }));
           return (
             '<button type="button" class="gcv-excursoes__date-tab' +
             (selected ? " is-active" : "") +
@@ -7630,8 +7916,6 @@
             (selected ? "true" : "false") +
             '" data-date-iso="' +
             escapeHtml(d.iso) +
-            '" data-count-label="' +
-            escapeHtml(countLabel) +
             '"' +
             (selected ? ' aria-controls="gcv-excursoes-day-panel"' : "") +
             ">" +
@@ -7647,9 +7931,6 @@
             "</span>" +
             '<span class="gcv-excursoes__date-tab-weekday">' +
             escapeHtml(String(d.weekday || "")) +
-            "</span>" +
-            '<span class="gcv-excursoes__date-tab-count">' +
-            escapeHtml(countLabel) +
             "</span>" +
             "</span></button>"
           );
@@ -7763,6 +8044,10 @@
     }
 
     function scrollStepPx() {
+      if (!isExcursaoMobileViewport()) {
+        var page = viewport.clientWidth;
+        if (page > 8) return page;
+      }
       var cards = track.querySelectorAll(".gcv-excursoes-card");
       if (cards.length >= 2) {
         var delta = cards[1].getBoundingClientRect().left - cards[0].getBoundingClientRect().left;
@@ -8118,6 +8403,75 @@
       }
     });
   }
+
+  function ensureSaidaModal() {
+    var modal = document.getElementById("gcv-saida-modal");
+    if (modal) return modal;
+    modal = document.createElement("div");
+    modal.id = "gcv-saida-modal";
+    modal.className = "gcv-saida-modal";
+    modal.hidden = true;
+    modal.innerHTML =
+      '<div class="gcv-saida-modal__panel" role="dialog" aria-modal="true" aria-labelledby="gcv-saida-title">' +
+      '<button type="button" class="gcv-saida-modal__x" data-saida-close>×</button>' +
+      '<h2 id="gcv-saida-title" class="gcv-saida-modal__title"></h2>' +
+      '<div data-saida-body></div></div>';
+    modal.addEventListener("click", function (e) {
+      if (e.target === modal || (e.target.closest && e.target.closest("[data-saida-close]"))) modal.hidden = true;
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && modal && !modal.hidden) modal.hidden = true;
+    });
+    document.body.appendChild(modal);
+    return modal;
+  }
+
+  function paintSaidaCard(cartId, rows, locale) {
+    var s = STRINGS[locale] || STRINGS.pt;
+    var modal = ensureSaidaModal();
+    var title = modal.querySelector(".gcv-saida-modal__title");
+    var body = modal.querySelector("[data-saida-body]");
+    var closeBtn = modal.querySelector("[data-saida-close]");
+    if (title) title.textContent = s.joinTripTitle || "Inscrever-me na Excursão";
+    if (closeBtn) closeBtn.setAttribute("aria-label", s.close || "Fechar");
+    var found = null;
+    var idx = 0;
+    (rows || []).some(function (row, i) {
+      if (String(excursaoCartId(row)) === String(cartId)) {
+        found = row;
+        idx = i;
+        return true;
+      }
+      return false;
+    });
+    if (!found || !body) {
+      if (body) body.innerHTML = '<p class="gcv-saida-modal__empty">' + escapeHtml(s.joinTripMissing || "Essa saída não está mais disponível.") + "</p>";
+      modal.hidden = false;
+      return;
+    }
+    body.innerHTML =
+      '<div class="gcv-excursoes__track gcv-excursoes__track--day-list">' +
+      buildCard(found, idx, locale, s) +
+      "</div>";
+    modal.hidden = false;
+  }
+
+  window.GcvSaidaPopup = {
+    open: function (cartId) {
+      if (!cartId) return;
+      var locale = detectLocale(document.documentElement);
+      var modal = ensureSaidaModal();
+      modal.hidden = false;
+      fetchLiveExcursaoRows(locale, function (live) {
+        var rows = live && live.length ? filterFutureExcursoes(applyBookingOverlays(live)) : [];
+        if (!rows.length) {
+          var fallback = EXCURSOES[locale] || EXCURSOES.pt;
+          rows = filterFutureExcursoes(applyBookingOverlays(fallback || []));
+        }
+        paintSaidaCard(cartId, rows, locale);
+      });
+    },
+  };
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", init);

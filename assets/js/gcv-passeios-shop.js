@@ -26,6 +26,8 @@
       one: "1 atração",
       many: "atrações",
       open: "Ver atração",
+      pick: "Escolha a atração para maiores informações",
+      close: "Fechar",
       leave: "De {city}",
     },
     en: {
@@ -44,6 +46,8 @@
       one: "1 place",
       many: "places",
       open: "See place",
+      pick: "Choose a place for more details",
+      close: "Close",
       leave: "From {city}",
     },
     es: {
@@ -62,6 +66,8 @@
       one: "1 atractivo",
       many: "atractivos",
       open: "Ver atractivo",
+      pick: "Elige el atractivo para más información",
+      close: "Cerrar",
       leave: "De {city}",
     },
   }[lang] || {};
@@ -71,6 +77,22 @@
   }
   function reais(cents) {
     return "R$ " + String(Math.round((parseInt(cents, 10) || 0) / 100));
+  }
+
+  function precoVitrine(tarifa) {
+    var cents = parseInt(tarifa && tarifa.excursao_pessoa_cents, 10) || 0;
+    if (lang !== "en" && lang !== "es") return cents;
+    var tipo = tarifa && tarifa.bilingue_tipo;
+    var valor = tarifa && tarifa.bilingue_valor;
+    if (tipo === "percentual") {
+      var pct = Math.max(0, Math.min(100, parseInt(valor, 10) || 0));
+      return cents + Math.round((cents * pct) / 100);
+    }
+    var extra = valor;
+    if (extra == null || extra === "") extra = tarifa && tarifa.bilingue_cents;
+    if (extra == null || extra === "") extra = 4000;
+    var quorum = Math.max(1, parseInt(tarifa && tarifa.quorum, 10) || 4);
+    return cents + Math.round((parseInt(extra, 10) || 0) / quorum);
   }
   function catName(key) {
     var row = labels[key];
@@ -131,6 +153,57 @@
   function inCart(tour) {
     return cartMatches(tour).length > 0;
   }
+  function tourHref(href) {
+    var path = String(href || "").trim();
+    if (!path) return "passeios.html";
+    if (path.charAt(0) !== "/") path = "/" + path.replace(/^\/+/, "");
+    if (lang !== "pt" && path.indexOf("/" + lang + "/") !== 0) path = "/" + lang + path;
+    return path;
+  }
+  function partsOf(tour) {
+    return (tour.parts || []).filter(function (part) {
+      return part && part.href && (part.title || part.image);
+    }).slice(0, 3);
+  }
+  function pickHref(part, parts) {
+    var href = tourHref(part.href);
+    var others = parts.filter(function (item) {
+      return item && item !== part && item.id;
+    }).map(function (item) { return String(item.id); });
+    if (!others.length) return href;
+    return href + (href.indexOf("?") >= 0 ? "&" : "?") + "junto=" + encodeURIComponent(others.join(","));
+  }
+
+  function openPick(parts) {
+    var box = document.getElementById("gcv-pick");
+    if (!box) {
+      box = document.createElement("div");
+      box.id = "gcv-pick";
+      box.className = "gcv-pick";
+      box.hidden = true;
+      box.innerHTML =
+        '<div class="gcv-pick__sheet" role="dialog" aria-modal="true" aria-labelledby="gcv-pick-title">' +
+        '<button type="button" class="gcv-pick__close" data-pick-close>' + esc(copy.close) + "</button>" +
+        '<h2 id="gcv-pick-title"></h2>' +
+        '<div class="gcv-pick__grid"></div></div>';
+      document.body.appendChild(box);
+      box.addEventListener("click", function (ev) {
+        if (ev.target === box || (ev.target.closest && ev.target.closest("[data-pick-close]"))) box.hidden = true;
+      });
+      document.addEventListener("keydown", function (ev) {
+        if (ev.key === "Escape") box.hidden = true;
+      });
+    }
+    box.querySelector("#gcv-pick-title").textContent = copy.pick;
+    var gridBox = box.querySelector(".gcv-pick__grid");
+    gridBox.className = "gcv-pick__grid gcv-pick__grid--" + parts.length;
+    gridBox.innerHTML = parts.map(function (part) {
+      return '<a class="gcv-pick__item" href="' + esc(pickHref(part, parts)) + '">' +
+        '<span class="gcv-pick__photo"><img src="' + esc(part.image) + '" alt="" /></span>' +
+        "<span>" + esc(part.title) + "</span></a>";
+    }).join("");
+    box.hidden = false;
+  }
 
   function paint() {
     var list = tours.filter(function (tour) {
@@ -146,19 +219,23 @@
       var mine = inCart(tour);
       var show = showcase(tour);
       var time = horas(show.minutes);
-      var cents = tour.tarifa && tour.tarifa.excursao_pessoa_cents;
+      var cents = precoVitrine(tour.tarifa);
       var tags = (tour.categories || []).map(function (key) { return "<span>" + esc(catName(key)) + "</span>"; }).join("");
       var count = tour.count === 1 ? copy.one : tour.count + " " + copy.many;
-      var photo = tour.image
-        ? '<img src="' + esc(tour.image) + '" alt="" />'
-        : "";
+      var parts = partsOf(tour);
+      var photo = parts.length >= 2
+        ? '<span class="gcv-shop-card__mosaic gcv-shop-card__mosaic--' + parts.length + '">' +
+          parts.map(function (part) {
+            return '<img src="' + esc(part.image) + '" alt="' + esc(part.title) + '" />';
+          }).join("") + "</span>"
+        : (tour.image ? '<img src="' + esc(tour.image) + '" alt="" />' : "");
       return '<article class="gcv-shop-card' + (mine ? " is-in-cart" : "") + '">' +
         (mine ? '<span class="gcv-shop-card__badge">' + check + "</span>" : "") +
-        '<a class="gcv-shop-card__media" href="' + esc(tour.href) + '">' + photo +
+        '<a class="gcv-shop-card__media" href="' + esc(tourHref(tour.href)) + '" data-tour="' + esc(tour.id) + '">' + photo +
         '<p class="gcv-shop-card__count">' + esc(count) + "</p></a>" +
         '<div class="gcv-shop-card__body">' +
         '<p class="gcv-shop-card__tags">' + tags + "</p>" +
-        "<h2><a href=\"" + esc(tour.href) + "\">" + esc(tour.title) + "</a></h2>" +
+        "<h2><a href=\"" + esc(tourHref(tour.href)) + "\" data-tour=\"" + esc(tour.id) + "\">" + esc(tour.title) + "</a></h2>" +
         '<p class="gcv-shop-card__places">' + esc((tour.attractions || []).join(" · ")) + "</p>" +
         '<p class="gcv-shop-card__meta">' +
         (time ? "<span>" + clock + esc(time) + "</span>" : "") +
@@ -193,6 +270,16 @@
       });
     });
     root.addEventListener("click", function (e) {
+      var link = e.target.closest && e.target.closest("[data-tour]");
+      if (link && !(e.target.closest && e.target.closest("[data-add]"))) {
+        var linked = tours.filter(function (t) { return t.id === link.getAttribute("data-tour"); })[0];
+        var parts = linked ? partsOf(linked) : [];
+        if (parts.length > 1) {
+          e.preventDefault();
+          openPick(parts);
+          return;
+        }
+      }
       var btn = e.target.closest && e.target.closest("[data-add]");
       if (!btn || btn.disabled) return;
       var tour = tours.filter(function (t) { return t.id === btn.getAttribute("data-add"); })[0];

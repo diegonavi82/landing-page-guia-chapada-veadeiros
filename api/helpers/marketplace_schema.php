@@ -505,6 +505,7 @@ function gcv_marketplace_ensure_checkin_columns(PDO $pdo): void
             'notify_h2_sent_at' => 'ALTER TABLE gcv_sales ADD COLUMN notify_h2_sent_at DATETIME NULL',
             'notify_m15_sent_at' => 'ALTER TABLE gcv_sales ADD COLUMN notify_m15_sent_at DATETIME NULL',
             'notify_review_sent_at' => 'ALTER TABLE gcv_sales ADD COLUMN notify_review_sent_at DATETIME NULL',
+            'notify_guide_intro_sent_at' => 'ALTER TABLE gcv_sales ADD COLUMN notify_guide_intro_sent_at DATETIME NULL',
             'review_token' => 'ALTER TABLE gcv_sales ADD COLUMN review_token CHAR(64) NULL',
             'guide_amount_original_cents' => 'ALTER TABLE gcv_sales ADD COLUMN guide_amount_original_cents INT NULL',
             'platform_revenue_original_cents' => 'ALTER TABLE gcv_sales ADD COLUMN platform_revenue_original_cents INT NULL',

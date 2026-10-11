@@ -7,6 +7,7 @@ header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/helpers/pix_reservation_store.php';
 require_once __DIR__ . '/helpers/sicoob_api.php';
 require_once __DIR__ . '/helpers/excursion_status.php';
+require_once __DIR__ . '/helpers/cupons.php';
 
 gcv_pix_cors_headers();
 
@@ -40,8 +41,33 @@ if (!preg_match('/^GCV-[A-Z0-9]{6}$/', $reservationId)) {
 }
 
 $amount = (float)($data['amount'] ?? 0);
+$grossCents = 0;
+foreach (is_array($data['trips'] ?? null) ? $data['trips'] : [] as $trip) {
+    if (!is_array($trip)) {
+        continue;
+    }
+    $qty = max(1, (int)($trip['qty'] ?? 1));
+    $unit = (int) round(((float)($trip['valorUnit'] ?? 0)) * 100);
+    $grossCents += $unit * $qty;
+}
+$cupomCodigo = strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', (string)($data['cupom'] ?? '')));
+if ($cupomCodigo !== '' && $grossCents > 0) {
+    $cupom = gcv_cupom_sobre_carrinho($data, $grossCents);
+    if (!empty($cupom['invalido'])) {
+        gcv_pix_json_error(422, (string)($cupom['message'] ?? 'Cupom inválido'));
+    }
+    if (!empty($cupom['aplicado'])) {
+        $amount = round(((int)$cupom['esperado_cents']) / 100, 2);
+    }
+}
 if (!is_finite($amount) || $amount <= 0) {
     gcv_pix_json_error(422, 'Invalid amount');
+}
+
+$locale = in_array($data['locale'] ?? 'pt', ['pt', 'en', 'es'], true) ? (string) $data['locale'] : 'pt';
+$window = gcv_booking_window_error(is_array($data['trips'] ?? null) ? $data['trips'] : [], $locale);
+if ($window !== null) {
+    gcv_pix_json_error(422, $window);
 }
 
 $expiresIn = (int)($data['expires_in'] ?? 480);
@@ -106,6 +132,7 @@ $record = [
     'reservation_id' => $reservationId,
     'status' => 'PENDING',
     'amount' => round($amount, 2),
+    'cupom' => $cupomCodigo,
     'txid' => $txid,
     'brcode' => $brcode,
     'pix_mode' => $pixMode,

@@ -8,7 +8,10 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/css/site.css?v=1.1.33" />
-  <link rel="stylesheet" href="/assets/css/gcv-passeios-shop.css?v=1.2.4" />
+  <link rel="stylesheet" href="/assets/css/excursoes.css?v=1.1.33" />
+  <link rel="stylesheet" href="/assets/css/gcv-passeios-shop.css?v=1.2.7" />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" crossorigin="anonymous" />
 </head>
 <body>
   <div class="topbar">+55 62 98250-6891 | contato@guiachapadaveadeiros.com</div>
@@ -35,11 +38,38 @@
   </header>
   <main id="conteudo">
     <section id="gcv-shop" class="gcv-shop" aria-busy="true"></section>
+    <section id="excursoes-junho" class="gcv-excursoes gcv-excursoes--page" data-locale="pt" aria-labelledby="gcv-excursoes-heading" hidden aria-hidden="true" style="display:none">
+      <script type="application/json" id="gcv-excursoes-payload">{"pt":[],"en":[],"es":[]}</script>
+      <script type="application/json" id="gcv-guia-profiles">{}</script>
+      <div class="gcv-excursoes__head">
+        <span class="gcv-excursoes__badge">Excursões</span>
+        <h2 id="gcv-excursoes-heading" class="gcv-excursoes__title">Próximas saídas</h2>
+      </div>
+      <div class="gcv-excursoes__filters-host" id="gcv-excursoes-filters-host"></div>
+      <p class="gcv-excursoes__filter-empty" id="gcv-excursoes-filter-empty" hidden></p>
+      <div class="gcv-excursoes__shell gcv-excursoes__shell--by-date">
+        <div class="gcv-excursoes__date-tabs" id="gcv-excursoes-date-tabs" role="tablist" aria-label="Datas com passeios"></div>
+        <button type="button" class="gcv-excursoes__nav gcv-excursoes__nav--prev" aria-label="Excursão anterior" hidden aria-hidden="true">
+          <i class="ti ti-chevron-left" aria-hidden="true"></i>
+        </button>
+        <div class="gcv-excursoes__viewport gcv-excursoes__viewport--day-list" id="gcv-excursoes-day-panel">
+          <div class="gcv-excursoes__track gcv-excursoes__track--day-list"></div>
+        </div>
+        <button type="button" class="gcv-excursoes__nav gcv-excursoes__nav--next" aria-label="Próxima excursão" hidden aria-hidden="true">
+          <i class="ti ti-chevron-right" aria-hidden="true"></i>
+        </button>
+      </div>
+    </section>
   </main>
-  <script src="/assets/js/gcv-datepicker.js?v=1.0.3" defer></script>
+  <script type="application/json" id="gcv-exc-cart-catalog">{"pt":[],"en":[],"es":[]}</script>
+  <script src="/assets/js/gcv-datepicker.js?v=1.0.5" defer></script>
   <script src="/assets/js/site.js?v=1.1.60" defer></script>
+  <script src="/assets/js/gcv-confirm.js?v=1.1.31" defer></script>
+  <script src="/assets/js/gcv-exc-bookings.js?v=1.1.31" defer></script>
+  <script src="/assets/js/gcv-exc-waitlist.js?v=1.1.31" defer></script>
   <script src="/assets/js/gcv-exc-cart-policies.js?v=1.1.31" defer></script>
-  <script src="/assets/js/gcv-exc-cart.js?v=1.1.43" defer></script>
-  <script src="/assets/js/gcv-passeios-shop.js?v=1.3.6" defer></script>
+  <script src="/assets/js/gcv-exc-cart.js?v=1.1.44" defer></script>
+  <script src="/assets/js/excursoes-carousel.js?v=1.1.65" defer></script>
+  <script src="/assets/js/gcv-passeios-shop.js?v=1.3.9" defer></script>
 </body>
 </html>

@@ -143,22 +143,37 @@
         };
         return;
       }
+      if (!mp.customer_id || !mp.card_id) { showError(L.error); return; }
       box.innerHTML = '<div id="gcv-ca-brick"></div>';
       var sc = document.createElement("script");
       sc.src = "https://sdk.mercadopago.com/js/v2";
       sc.onload = function () {
         var sdk = new window.MercadoPago(mp.public_key, { locale: loc === "en" ? "en-US" : loc === "es" ? "es-AR" : "pt-BR" });
-        // Cartão salvo: o formulário pede só o código de segurança (CVV).
-        sdk.bricks().create("cardPayment", "gcv-ca-brick", {
+        // Cartão salvo: o Payment Brick abre o cartão e pede só o código de segurança (CVV).
+        sdk.bricks().create("payment", "gcv-ca-brick", {
           initialization: {
             amount: mp.amount,
-            payer: { customerId: mp.customer_id, cardsIds: mp.card_id ? [mp.card_id] : [] },
+            payer: { customerId: mp.customer_id, cardsIds: [mp.card_id] },
           },
-          customization: { paymentMethods: { maxInstallments: 1 } },
+          customization: {
+            paymentMethods: {
+              maxInstallments: 1,
+              minInstallments: 1,
+              creditCard: "all",
+              debitCard: "all",
+              prepaidCard: "all",
+            },
+            visual: {
+              hideFormTitle: true,
+              defaultPaymentOption: { savedCardForm: mp.card_id },
+            },
+          },
           callbacks: {
             onReady: function () {},
-            onSubmit: function (formData) {
-              return post({ action: "mp", token: formData.token }).then(afterPost);
+            onSubmit: function (arg) {
+              var formData = arg && arg.formData ? arg.formData : arg;
+              var token = formData && formData.token;
+              return post({ action: "mp", token: token }).then(afterPost);
             },
             onError: function (e) { if (window.console) console.warn("[mp]", e); },
           },

@@ -1,4 +1,56 @@
 (function () {
+  var GCV_LANG_KEY = "gcv-site-lang";
+
+  function clientSiteLang() {
+    var tag = (navigator.languages && navigator.languages[0]) || navigator.language || "en";
+    var base = String(tag).toLowerCase().split("-")[0];
+    if (base === "pt") return "pt";
+    if (base === "es") return "es";
+    return "en";
+  }
+
+  function pageSiteLang(path) {
+    if (path === "/en" || path.indexOf("/en/") === 0) return "en";
+    if (path === "/es" || path.indexOf("/es/") === 0) return "es";
+    return "pt";
+  }
+
+  function bareSitePath(path, have) {
+    var bare = path;
+    if (have === "en" || have === "es") bare = path.replace(/^\/(en|es)(?=\/|$)/, "") || "/";
+    if (!bare || bare === "/") return "/index.html";
+    return bare;
+  }
+
+  function redirectToClientLang() {
+    var path = window.location.pathname || "/";
+    if (/^\/(dashboard|admin|api|assets|tools)(\/|$)/.test(path)) return false;
+    if (/\.(css|js|mjs|json|xml|php|webp|png|jpe?g|gif|svg|ico|woff2?|map|txt)$/i.test(path)) return false;
+    var stored = "";
+    try { stored = sessionStorage.getItem(GCV_LANG_KEY) || ""; } catch (err) { stored = ""; }
+    var want = stored === "pt" || stored === "en" || stored === "es" ? stored : clientSiteLang();
+    var have = pageSiteLang(path);
+    if (want === have) return false;
+    var bare = bareSitePath(path, have);
+    var next = want === "pt" ? bare : "/" + want + bare;
+    if (next === path) return false;
+    window.location.replace(next + window.location.search + window.location.hash);
+    return true;
+  }
+
+  if (redirectToClientLang()) return;
+
+  document.addEventListener("click", function (ev) {
+    var link = ev.target && ev.target.closest ? ev.target.closest(".lang-switch a") : null;
+    if (!link) return;
+    var lang = String(link.getAttribute("lang") || link.getAttribute("hreflang") || "").toLowerCase();
+    if (lang.indexOf("pt") === 0) lang = "pt";
+    else if (lang.indexOf("es") === 0) lang = "es";
+    else if (lang.indexOf("en") === 0) lang = "en";
+    else return;
+    try { sessionStorage.setItem(GCV_LANG_KEY, lang); } catch (err) { /* segue o clique */ }
+  });
+
   var header = document.querySelector(".site-header");
   var toggle = document.querySelector(".nav-toggle");
   if (header && toggle) {
@@ -1147,6 +1199,25 @@
     if (!slug) return;
     var lang = window.location.pathname.indexOf("/en/") >= 0 ? "en" : (window.location.pathname.indexOf("/es/") >= 0 ? "es" : "pt");
     var copy = passeioCopy(lang);
+    var saidaId = "";
+    try {
+      saidaId = new URLSearchParams(window.location.search || "").get("saida") || "";
+    } catch (err) {
+      saidaId = "";
+    }
+    function openSaidaPopup(id) {
+      function go() {
+        if (window.GcvSaidaPopup && typeof window.GcvSaidaPopup.open === "function") window.GcvSaidaPopup.open(id);
+      }
+      if (window.GcvSaidaPopup) {
+        go();
+        return;
+      }
+      var script = document.createElement("script");
+      script.src = "/assets/js/excursoes-carousel.js?v=1.1.71";
+      script.onload = go;
+      document.head.appendChild(script);
+    }
     fetch("/api/passeios.php?slug=" + encodeURIComponent(slug))
       .then(function (res) { return res.json(); })
       .then(function (payload) {
@@ -1194,6 +1265,13 @@
           return plus;
         }
         function paintBtn() {
+          if (saidaId) {
+            btn.classList.remove("is-added");
+            btn.textContent = "";
+            btn.appendChild(roteiroMark("plus"));
+            btn.appendChild(document.createTextNode(copy.joinTrip));
+            return;
+          }
           var mine = matchingItems().length > 0;
           btn.classList.toggle("is-added", mine);
           btn.textContent = "";
@@ -1202,6 +1280,10 @@
         }
         paintBtn();
         btn.addEventListener("click", function () {
+          if (saidaId) {
+            openSaidaPopup(saidaId);
+            return;
+          }
           var mine = matchingItems();
           var cart = window.GcvExcCart;
           if (mine.length && cart && typeof cart.remove === "function") {
@@ -1240,6 +1322,10 @@
         person: "pessoa",
         peopleWord: "pessoas",
         guideLead: "É necessário uma vaga para o guia no seu veículo.",
+        modeWait: "Será confirmada a partir de {n} inscrições. Até lá, cancele quando quiser. Se não confirmar, devolvemos 100%.",
+        modeOk: "Excursão confirmada com {n} inscrições.",
+        modePrivate: "Este passeio é exclusivo para o seu grupo.",
+        modeMore: "Saiba mais",
         guideSeatError: "Com {people} pessoas, um carro de 5 lugares deixa o guia sem vaga. Leve {cars} carros e reserve 1 lugar para o guia. Sem essa vaga, o passeio pode ser cancelado.",
         rideCars: "Com {people} pessoas são {cars} carros e {guides} guias. Cada carro leva até 4 pessoas.",
         guideRest: "Com {people}, o grupo precisa de {cars}.",
@@ -1267,7 +1353,8 @@
         chipPerson: "/ pessoa",
         add: "Adicionar ao carrinho",
         roteiroBtn: "Adicionar ao roteiro",
-        shopAdd: "Adicionar",
+        shopAdd: "Adicionar Passeio",
+        joinTrip: "Inscrever-me na Excursão",
         roteiroAdded: "Adicionado",
         close: "Fechar",
         addedBtn: "Adicionado",
@@ -1299,6 +1386,10 @@
         person: "person",
         peopleWord: "people",
         guideLead: "A seat for the guide is required in your vehicle.",
+        modeWait: "It will be confirmed from {n} sign-ups. Until then, cancel anytime. If it is not confirmed, we refund 100%.",
+        modeOk: "Group tour confirmed with {n} sign-ups.",
+        modePrivate: "This tour is exclusive to your group.",
+        modeMore: "Learn more",
         guideSeatError: "With {people} people, a 5-seat car leaves no seat for the guide. Bring {cars} cars and keep 1 seat for the guide. Without that seat, the tour may be cancelled.",
         rideCars: "With {people} people that is {cars} cars and {guides} guides. Each car takes up to 4 people.",
         guideRest: "With {people}, the group needs {cars}.",
@@ -1326,7 +1417,8 @@
         chipPerson: "/ person",
         add: "Add to cart",
         roteiroBtn: "Add to itinerary",
-        shopAdd: "Add",
+        shopAdd: "Add tour",
+        joinTrip: "Join this departure",
         roteiroAdded: "Added",
         close: "Close",
         addedBtn: "Added",
@@ -1358,6 +1450,10 @@
         person: "persona",
         peopleWord: "personas",
         guideLead: "Se necesita un lugar para el guía en su vehículo.",
+        modeWait: "Se confirmará a partir de {n} inscripciones. Hasta entonces, cancela cuando quieras. Si no se confirma, devolvemos el 100%.",
+        modeOk: "Excursión confirmada con {n} inscripciones.",
+        modePrivate: "Este paseo es exclusivo para su grupo.",
+        modeMore: "Saber más",
         guideSeatError: "Con {people} personas, un coche de 5 plazas deja al guía sin lugar. Lleve {cars} coches y reserve 1 lugar para el guía. Sin esa plaza, el paseo puede cancelarse.",
         rideCars: "Con {people} personas son {cars} coches y {guides} guías. Cada coche lleva hasta 4 personas.",
         guideRest: "Con {people}, el grupo necesita {cars}.",
@@ -1385,7 +1481,8 @@
         chipPerson: "/ persona",
         add: "Agregar al carrito",
         roteiroBtn: "Añadir al itinerario",
-        shopAdd: "Agregar",
+        shopAdd: "Agregar paseo",
+        joinTrip: "Inscribirme en la excursión",
         roteiroAdded: "Añadido",
         close: "Cerrar",
         addedBtn: "Añadido",
@@ -1435,10 +1532,55 @@
     return d.getFullYear() + "-" + m + "-" + day;
   }
 
+  /** Agora em America/Sao_Paulo: data ISO e minutos desde meia-noite. */
+  function passeioPartesChapada(nowMs) {
+    var fmt = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Sao_Paulo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    });
+    var map = {};
+    fmt.formatToParts(new Date(nowMs == null ? Date.now() : nowMs)).forEach(function (p) {
+      if (p.type !== "literal") map[p.type] = p.value;
+    });
+    var hour = parseInt(map.hour, 10) || 0;
+    if (hour === 24) hour = 0;
+    return {
+      iso: map.year + "-" + map.month + "-" + map.day,
+      minutes: hour * 60 + (parseInt(map.minute, 10) || 0),
+    };
+  }
+
+  function passeioIsoMaisDias(iso, days) {
+    var d = new Date(iso + "T12:00:00Z");
+    if (isNaN(d.getTime())) return "";
+    d.setUTCDate(d.getUTCDate() + days);
+    var m = String(d.getUTCMonth() + 1).padStart(2, "0");
+    var day = String(d.getUTCDate()).padStart(2, "0");
+    return d.getUTCFullYear() + "-" + m + "-" + day;
+  }
+
+  /**
+   * Passeio avulso: antes das 4h20 (Brasília) vale o mesmo dia.
+   * A partir das 4h20, só de amanhã em diante. Datas passadas nunca.
+   */
+  function passeioPisoData(nowMs) {
+    var agora = passeioPartesChapada(nowMs);
+    if (!agora.iso || agora.iso.indexOf("undefined") >= 0) {
+      var d = new Date();
+      d.setDate(d.getDate() + 1);
+      return passeioIsoDeData(d);
+    }
+    if (agora.minutes < 4 * 60 + 20) return agora.iso;
+    return passeioIsoMaisDias(agora.iso, 1);
+  }
+
   function passeioAmanha() {
-    var d = new Date();
-    d.setDate(d.getDate() + 1);
-    return passeioIsoDeData(d);
+    return passeioPisoData();
   }
 
   function passeioDiaSeguinte(iso) {
@@ -1448,21 +1590,30 @@
     return passeioIsoDeData(d);
   }
 
-  /** Próxima data livre: depois do passeio mais recente que já está no carrinho. */
-  function passeioPisoData(exceptKey) {
-    var amanha = passeioAmanha();
+  function passeioItensCarrinho() {
     var cart = window.GcvExcCart;
-    var items = cart && typeof cart.items === "function" ? cart.items() : [];
-    var latest = "";
-    items.forEach(function (it) {
-      if (!it) return;
+    return cart && typeof cart.items === "function" ? cart.items() : [];
+  }
+
+  /** Datas que já têm outro passeio no carrinho. O próprio roteiro em edição continua livre. */
+  function passeioDatasOcupadas(exceptKey) {
+    var map = {};
+    passeioItensCarrinho().forEach(function (it) {
+      if (!it || !it.dateIso) return;
       if (exceptKey && it.passeioKey === exceptKey) return;
-      var iso = it.dateIso || "";
-      if (iso > latest) latest = iso;
+      map[String(it.dateIso).slice(0, 10)] = true;
     });
-    if (!latest) return amanha;
-    var next = passeioDiaSeguinte(latest);
-    return next > amanha ? next : amanha;
+    return map;
+  }
+
+  /** Mês do passeio que já está no carrinho, para o calendário abrir nele. */
+  function passeioMesIncluido() {
+    var iso = "";
+    passeioItensCarrinho().forEach(function (it) {
+      var d = it && it.dateIso ? String(it.dateIso).slice(0, 10) : "";
+      if (d && (!iso || d < iso)) iso = d;
+    });
+    return iso;
   }
 
   function passeioChave(data, sel) {
@@ -1556,6 +1707,20 @@
     });
   }
 
+  /** Parceiros do passeio de onde a pessoa veio (?junto=ids), se fecham um combo cadastrado. */
+  function passeioJuntoDaUrl(data) {
+    var raw = "";
+    try {
+      raw = new URLSearchParams(window.location.search || "").get("junto") || "";
+    } catch (err) {
+      raw = "";
+    }
+    var want = raw.split(",").map(function (s) { return String(s).trim(); }).filter(Boolean).sort();
+    if (!want.length) return [];
+    var combo = passeioCombos(data).filter(function (c) { return c.ids.join("|") === want.join("|"); })[0];
+    return combo ? combo.ids.slice() : [];
+  }
+
   /** Atrativos que podem entrar no mesmo dia (sem repetir). */
   function passeioOpcoes(data) {
     var seen = {};
@@ -1638,22 +1803,33 @@
   var PASSEIO_BILINGUE_CENTS = 4000;
 
   /**
-   * O total já está com o desconto de idade, quando houver.
-   * Português soma zero. Outro idioma entra uma vez: percentual sobre o total, ou valor fixo.
-   * Sem campo na cópia da cidade, o fixo padrão é R$ 40, uma vez só.
+   * Português soma zero. Outro idioma soma o acréscimo uma vez no total.
+   * fixo: centavos (padrão R$ 40). percentual: inteiro sobre o total do passeio.
    */
-  function passeioBilingueCents(tarifa, cidade, totalCents, ligado) {
+  function passeioBilingueCents(tarifa, totalCents, ligado) {
     if (!ligado) return 0;
-    var key = passeioCidadeKey(cidade);
-    var row = (tarifa && tarifa.cidades && tarifa.cidades[key]) || {};
-    var tipo = row.bilingue_tipo === "percentual" ? "percentual" : "fixo";
-    var total = Math.max(0, parseInt(totalCents, 10) || 0);
-    if (tipo === "percentual") {
-      var pct = Math.max(0, parseInt(row.bilingue_valor, 10) || 0);
-      return Math.round(total * pct / 100);
+    var tipo = tarifa && tarifa.bilingue_tipo;
+    var valor = tarifa && tarifa.bilingue_valor;
+    if (tipo !== "percentual" && tipo !== "fixo") {
+      var ap = tarifa && tarifa.cidades && tarifa.cidades["alto-paraiso"];
+      if (ap && ap.bilingue_tipo === "percentual") {
+        tipo = "percentual";
+        valor = ap.bilingue_valor;
+      } else if (ap && ap.bilingue_valor != null && ap.bilingue_valor !== "") {
+        tipo = "fixo";
+        valor = ap.bilingue_valor;
+      }
     }
-    if (row.bilingue_valor == null || row.bilingue_valor === "") return PASSEIO_BILINGUE_CENTS;
-    return Math.max(0, parseInt(row.bilingue_valor, 10) || 0);
+    if (tipo === "percentual") {
+      var pct = Math.max(0, Math.min(100, parseInt(valor, 10) || 0));
+      var base = Math.max(0, parseInt(totalCents, 10) || 0);
+      return Math.round((base * pct) / 100);
+    }
+    var cents = valor;
+    if ((cents == null || cents === "") && tipo !== "fixo") cents = tarifa && tarifa.bilingue_cents;
+    if (tipo === "fixo" && (cents == null || cents === "")) cents = tarifa && tarifa.bilingue_cents;
+    if (cents == null || cents === "") return PASSEIO_BILINGUE_CENTS;
+    return Math.max(0, parseInt(cents, 10) || 0);
   }
 
   /** Mesma conta de api/helpers/payments/pricing.php: sobe o percentual e arredonda o centavo para cima. */
@@ -1750,6 +1926,13 @@
       ".gcv-passeios__summary{display:none;margin:0}" +
       ".gcv-passeios__guide{display:flex;align-items:flex-start;gap:.45rem;margin:.35rem 0 0;padding:.6rem .75rem;border-radius:10px;background:#fef3c7;color:#92400e;font-size:.82rem;font-weight:600;line-height:1.4;letter-spacing:0;text-transform:none}" +
       ".gcv-passeios__guide[hidden]{display:none}.gcv-passeios__guide .ti{font-size:1.05rem;line-height:1.2;flex:none}" +
+      ".gcv-passeios__mode-note{display:flex;align-items:flex-start;gap:.45rem;margin:.4rem 0 0;padding:.6rem .75rem;border-radius:10px;font-size:.82rem;font-weight:600;line-height:1.45;letter-spacing:0;text-transform:none}" +
+      ".gcv-passeios__mode-note[hidden]{display:none}.gcv-passeios__mode-note .ti{font-size:1.05rem;line-height:1.2;flex:none}" +
+      ".gcv-passeios__mode-note.is-wait{background:#fef3c7;color:#92400e}" +
+      ".gcv-passeios__mode-note.is-ok{background:#dcfce7;color:#14532d}" +
+      ".gcv-passeios__mode-note.is-private{background:#e0f2fe;color:#0c4a6e}" +
+      ".gcv-passeios__mode-link{display:inline;margin:0 0 0 .2rem;padding:0;border:0;background:none;color:inherit;font:inherit;font-weight:800;text-decoration:underline;text-underline-offset:2px;cursor:pointer}" +
+      ".gcv-passeios__mode-link:hover{opacity:.8}" +
       ".gcv-passeios__foot{display:flex;align-items:center;justify-content:space-between;gap:.85rem;margin-top:.35rem;padding:.85rem 1.15rem 1.05rem;border-top:1px solid #eef2f0;background:#fff}" +
       ".gcv-passeios__budget{margin:0;display:flex;flex-direction:column;align-items:flex-start;gap:.2rem;min-width:0;line-height:1.2;font-size:.8rem;font-weight:600;letter-spacing:0;text-transform:none;color:#64748b}" +
       ".gcv-passeios__break{font-size:.78rem;font-weight:600;color:#64748b}" +
@@ -1758,6 +1941,7 @@
       ".gcv-passeios__pixin{font-size:.95rem;font-weight:800;color:#0f2a1d}" +
       ".gcv-passeios__off{display:inline-flex;align-items:center;padding:.12rem .45rem;border-radius:999px;background:#dcfce7;color:#166534;font-size:.72rem;font-weight:800;letter-spacing:.02em;line-height:1.2}" +
       ".gcv-passeios__cardline{display:block;max-width:28rem;font-size:.8rem;font-weight:600;color:#64748b;line-height:1.35}" +
+      ".gcv-passeios__money{color:var(--gp-blue);font-weight:800}" +
       ".gcv-passeios__actions{display:flex;flex:none}" +
       ".gcv-passeios__add{display:inline-flex;align-items:center;justify-content:center;gap:.45rem;margin:0;padding:.8rem 1.15rem;border:0;border-radius:12px;background:#14532d;color:#fff;font:inherit;font-size:.92rem;font-weight:800;cursor:pointer;box-shadow:none;transition:background .15s,transform .1s}" +
       ".gcv-passeios__add:hover{background:#0f3d2e}.gcv-passeios__add:active{transform:translateY(1px)}" +
@@ -1844,7 +2028,8 @@
       ];
     }
     var cities = saidas.map(function (c) { return c.nome; });
-    var langStart = copy.siteLang === "en" || copy.siteLang === "es" ? copy.siteLang : "pt";
+    var langForeign = copy.siteLang === "en" || copy.siteLang === "es";
+    var langStart = langForeign ? copy.siteLang : "pt";
     var brFlag = '<svg class="gcv-bi__flag" viewBox="0 0 19 13" aria-hidden="true"><rect width="19" height="13" fill="#009c3b"/><polygon points="9.5,1.15 17.3,6.5 9.5,11.85 1.7,6.5" fill="#ffdf00"/><circle cx="9.5" cy="6.5" r="2.05" fill="#002776"/></svg>';
     return "<style>" + css + "</style>" +
       '<p class="gcv-passeios__now">' + passeioEsc(copy.title) + "</p>" +
@@ -1855,14 +2040,15 @@
       '<label class="gcv-passeios__field gcv-passeios__field--date">' + copy.date + '<input type="text" data-passeio-date value="' + passeioAmanha() + '" /></label>' +
       '<div class="gcv-passeios__field gcv-passeios__field--people">' + copy.people +
         '<div class="gcv-passeios__stepper"><button type="button" data-passeio-step="-1" aria-label="−1">−</button>' +
-        '<input type="number" min="1" max="15" value="4" inputmode="numeric" aria-label="' + passeioEsc(copy.people) + '" data-passeio-people />' +
+        '<input type="number" min="1" max="15" value="' + gcvPessoasPrefill() + '" inputmode="numeric" aria-label="' + passeioEsc(copy.people) + '" data-passeio-people />' +
         '<button type="button" data-passeio-step="1" aria-label="+1">+</button></div></div>' +
       '<div class="gcv-passeios__field gcv-passeios__field--wide gcv-passeios__field--city">' + copy.city +
         seg("city", saidas.map(function (c) { return [c.nome, c.curta || passeioCidadeCurta(c.nome)]; })) +
         '<select class="gcv-passeios__hide" tabindex="-1" aria-hidden="true" data-passeio-city>' + cities.map(function (c) { return "<option>" + c + "</option>"; }).join("") + "</select></div>" +
       '<div class="gcv-passeios__field gcv-passeios__field--wide gcv-passeios__field--mode">' + copy.mode +
         seg("mode", [["excursao", copy.group], ["exclusivo", copy.private]]) +
-        '<select class="gcv-passeios__hide" tabindex="-1" aria-hidden="true" data-passeio-mode><option value="excursao">' + copy.group + '</option><option value="exclusivo">' + copy.private + "</option></select></div>" +
+        '<select class="gcv-passeios__hide" tabindex="-1" aria-hidden="true" data-passeio-mode><option value="excursao">' + copy.group + '</option><option value="exclusivo">' + copy.private + "</option></select>" +
+        '<p class="gcv-passeios__mode-note" data-passeio-mode-note hidden></p></div>' +
       '<div class="gcv-passeios__field gcv-passeios__field--wide gcv-passeios__field--transport">' + copy.transport +
         seg("transport", [["0", copy.withoutRide], ["1", copy.withRide, '<i class="gcv-passeios__ride" aria-hidden="true"></i>']]) +
         '<select class="gcv-passeios__hide" tabindex="-1" aria-hidden="true" data-passeio-transport><option value="0">' + copy.withoutRide + '</option><option value="1">' + copy.withRide + "</option></select>" +
@@ -1873,7 +2059,7 @@
         '<div class="gcv-bi__card">' +
           '<p class="gcv-bi__pick">' + passeioEsc(copy.pickLang) + "</p>" +
           '<div class="gcv-bi__langs" data-passeio-bi-langs>' +
-            '<button type="button" class="gcv-bi__lang' + (langStart === "pt" ? " is-on" : "") + '" data-bi-lang="pt">' + brFlag + " " + passeioEsc(copy.langBr) + "</button>" +
+            (langForeign ? "" : '<button type="button" class="gcv-bi__lang' + (langStart === "pt" ? " is-on" : "") + '" data-bi-lang="pt">' + brFlag + " " + passeioEsc(copy.langBr) + "</button>") +
             '<button type="button" class="gcv-bi__lang' + (langStart === "en" ? " is-on" : "") + '" data-bi-lang="en"><svg class="gcv-bi__flag" viewBox="0 0 19 13" aria-hidden="true"><rect width="19" height="13" fill="#b22234"/><rect y="1" width="19" height="1" fill="#fff"/><rect y="3" width="19" height="1" fill="#fff"/><rect y="5" width="19" height="1" fill="#fff"/><rect y="7" width="19" height="1" fill="#fff"/><rect y="9" width="19" height="1" fill="#fff"/><rect y="11" width="19" height="1" fill="#fff"/><rect width="8" height="7" fill="#3c3b6e"/></svg> ' + passeioEsc(copy.langEn) + "</button>" +
             '<button type="button" class="gcv-bi__lang' + (langStart === "es" ? " is-on" : "") + '" data-bi-lang="es"><svg class="gcv-bi__flag" viewBox="0 0 19 13" aria-hidden="true"><rect width="19" height="13" fill="#c60b1e"/><rect y="3.25" width="19" height="6.5" fill="#ffc400"/></svg> ' + passeioEsc(copy.langEs) + "</button>" +
           "</div>" +
@@ -1956,7 +2142,7 @@
       return;
     }
     var script = document.createElement("script");
-    script.src = "/assets/js/gcv-datepicker.js?v=1.0.3";
+    script.src = "/assets/js/gcv-datepicker.js?v=1.0.5";
     script.onload = go;
     document.head.appendChild(script);
   }
@@ -1984,20 +2170,18 @@
       var comTranslado = box.querySelector("[data-passeio-transport]").value === "1";
       var quando = new Date(date + "T08:00:00");
       if (sel.incompleto) return null;
-      if (!date || quando.getTime() <= Date.now()) return null;
+      if (!date || date < passeioPisoData()) return null;
       var total = passeioTotalCents(sel, modalidade, pessoas, comTranslado);
       var cars = passeioCarros(pessoas);
       var exclusivoPacote = modalidade === "exclusivo" && (pessoas <= 4 || comTranslado);
       var bi = passeioBiState();
       var billed = passeioPessoasCobradas(sel, modalidade, pessoas, comTranslado);
-      var biCents = passeioBilingueCents(tarifaAtiva(), cidade, total, bi.on);
+      var biCents = passeioBilingueCents(tarifaAtiva(), total, bi.on);
       var pay = passeioPagamento(total + biCents);
       var qty = exclusivoPacote ? 1 : billed;
       var pixReais = Math.round(pay.pix / 100);
       var langName = bi.lang === "es" ? copy.langEs : copy.langEn;
-      var langBtn = box.querySelector("[data-bi-lang].is-on");
-      var guiaIdioma = langBtn ? String(langBtn.getAttribute("data-bi-lang") || "pt") : "pt";
-      if (guiaIdioma !== "en" && guiaIdioma !== "es") guiaIdioma = "pt";
+      var guiaIdioma = bi.on ? bi.lang : "pt";
       var carrosTxt = comTranslado && cars > 1 ? " · " + cars + " " + (cars === 1 ? copy.car : copy.cars) + " · " + cars + " " + (copy.guides || "guias") : "";
       return {
         id: "roteiro-" + data.slug + "-" + sel.ids.join("-") + "-" + date + "-" + modalidade + "-" + (comTranslado ? "t" : "s") + (bi.on ? "-bi-" + bi.lang : ""),
@@ -2106,6 +2290,10 @@
     function passeioBiState() {
       var langEl = box.querySelector("[data-bi-lang].is-on");
       var lang = langEl ? langEl.getAttribute("data-bi-lang") : "pt";
+      if (copy.siteLang === "en" || copy.siteLang === "es") {
+        if (lang !== "en" && lang !== "es") lang = copy.siteLang;
+        return { on: true, lang: lang };
+      }
       return { on: lang === "en" || lang === "es", lang: lang === "es" ? "es" : "en" };
     }
 
@@ -2121,12 +2309,21 @@
       if (sel.incompleto) { metaEl.textContent = ""; return; }
       var cidadeEl = box.querySelector("[data-passeio-city]");
       var unit = modalidade === "exclusivo" ? (comTranslado ? sel.exclusivoT : sel.exclusivo) : (comTranslado ? sel.excursaoT : sel.excursao);
+      var bi = passeioBiState();
+      var pessoasEl = box.querySelector("[data-passeio-people]");
+      var nPessoas = Math.max(1, parseInt(pessoasEl && pessoasEl.value, 10) || 1);
+      var billed = passeioPessoasCobradas(sel, modalidade, nPessoas, comTranslado);
+      var unitShow = unit;
+      if (bi.on && billed > 0) {
+        var totalRota = passeioTotalCents(sel, modalidade, nPessoas, comTranslado);
+        unitShow = unit + Math.round(passeioBilingueCents(tarifaAtiva(), totalRota, true) / billed);
+      }
       var chips = [];
       if (sel.minutes) {
         chips.push('<span class="gcv-passeios__chip"><i class="ti ti-clock" aria-hidden="true"></i>' + passeioEsc(String(copy.chipDuration).replace("{t}", horasCurta(sel.minutes))) + "</span>");
       }
       chips.push('<span class="gcv-passeios__chip"><i class="ti ti-map-pin" aria-hidden="true"></i>' + passeioEsc(String(copy.chipLeave).replace("{city}", passeioCidadeCurta(cidadeEl ? cidadeEl.value : ""))) + "</span>");
-      chips.push('<span class="gcv-passeios__chip">' + passeioEsc(passeioReais(unit) + " " + copy.chipPerson) + "</span>");
+      chips.push('<span class="gcv-passeios__chip">' + passeioEsc(passeioReais(unitShow) + " " + copy.chipPerson) + "</span>");
       metaEl.innerHTML = chips.join("");
     }
 
@@ -2142,20 +2339,38 @@
       paint();
     });
 
+    function syncDateText(input, iso) {
+      var text = input.parentNode && input.parentNode.querySelector(".gcv-datepicker__text");
+      if (text && window.gcvFormatIsoBr) {
+        text.textContent = window.gcvFormatIsoBr(iso);
+        text.classList.remove("is-placeholder");
+      }
+    }
+
     function syncDateFloor() {
       var input = box.querySelector("[data-passeio-date]");
       if (!input) return;
-      var min = passeioPisoData(passeioChave(data, passeioSelecao(box, data)));
+      var exceptKey = passeioChave(data, passeioSelecao(box, data));
+      var min = passeioPisoData();
       if (!box._passeioDateOpts) box._passeioDateOpts = { min: min };
       box._passeioDateOpts.min = min;
+      box._passeioDateOpts.isDisabled = function (iso) {
+        return !!passeioDatasOcupadas(exceptKey)[iso];
+      };
+      box._passeioDateOpts.monthIso = function () {
+        return passeioMesIncluido();
+      };
       input.min = min;
-      if (input.value && input.value < min) {
-        input.value = min;
-        var text = input.parentNode && input.parentNode.querySelector(".gcv-datepicker__text");
-        if (text && window.gcvFormatIsoBr) {
-          text.textContent = window.gcvFormatIsoBr(min);
-          text.classList.remove("is-placeholder");
-        }
+      if (box._passeioDateOpts) box._passeioDateOpts.beforeOpen = syncDateFloor;
+      var next = input.value && input.value < min ? min : input.value;
+      var guard = 0;
+      while (next && box._passeioDateOpts.isDisabled(next) && guard < 400) {
+        next = passeioDiaSeguinte(next);
+        guard += 1;
+      }
+      if (next && next !== input.value) {
+        input.value = next;
+        syncDateText(input, next);
       }
     }
 
@@ -2282,6 +2497,47 @@
       var guide = box.querySelector("[data-passeio-guide]");
       var guideText = box.querySelector("[data-passeio-guide-text]");
       var nPessoas = Math.max(1, parseInt(pessoas, 10) || 1);
+      var modeNote = box.querySelector("[data-passeio-mode-note]");
+      if (modeNote) {
+        var quorumNota = parseInt(sel.quorum, 10) || 4;
+        var notaKind = "private";
+        var notaTxt = copy.modePrivate;
+        if (modalidade !== "exclusivo") {
+          if (nPessoas < quorumNota) {
+            notaKind = "wait";
+            notaTxt = String(copy.modeWait || "").replace("{n}", String(quorumNota));
+          } else {
+            notaKind = "ok";
+            notaTxt = String(copy.modeOk || "").replace("{n}", String(quorumNota));
+          }
+        }
+        modeNote.hidden = false;
+        modeNote.className = "gcv-passeios__mode-note is-" + notaKind;
+        modeNote.textContent = "";
+        var notaIcon = document.createElement("i");
+        notaIcon.className = notaKind === "ok" ? "ti ti-check" : "ti ti-info-circle";
+        notaIcon.setAttribute("aria-hidden", "true");
+        var notaSpan = document.createElement("span");
+        notaSpan.textContent = notaTxt || "";
+        if (notaKind !== "private") {
+          var notaLink = document.createElement("button");
+          notaLink.type = "button";
+          notaLink.className = "gcv-passeios__mode-link";
+          notaLink.setAttribute("data-gcv-cart-policy-open", "cancel");
+          notaLink.textContent = copy.modeMore || "";
+          notaLink.addEventListener("click", function (ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            if (window.GcvExcCart && typeof window.GcvExcCart.openPolicy === "function") {
+              window.GcvExcCart.openPolicy("cancel");
+            }
+          });
+          notaSpan.appendChild(document.createTextNode(" "));
+          notaSpan.appendChild(notaLink);
+        }
+        modeNote.appendChild(notaIcon);
+        modeNote.appendChild(notaSpan);
+      }
       var avisoVeiculo = passeioAvisoVeiculo(copy, nPessoas, comTranslado);
       if (guide) guide.hidden = !avisoVeiculo;
       if (guideText) guideText.textContent = avisoVeiculo;
@@ -2289,20 +2545,24 @@
       paintRoute(sel, modalidade, comTranslado);
       var unit = modalidade === "exclusivo" ? (comTranslado ? sel.exclusivoT : sel.exclusivo) : (comTranslado ? sel.excursaoT : sel.excursao);
       var billed = passeioPessoasCobradas(sel, modalidade, nPessoas, comTranslado);
-      var cidadeNome = box.querySelector("[data-passeio-city]").value;
-      var biCents = passeioBilingueCents(tarifaAtiva(), cidadeNome, total, bi.on);
+      var biCents = passeioBilingueCents(tarifaAtiva(), total, bi.on);
       var base = total + biCents;
       var pay = passeioComCotacao(passeioPagamento(base), base);
       if (!sel.incompleto) pedirCotacao(base);
       var word = billed === 1 ? copy.person : copy.peopleWord;
       var carsNow = passeioCarros(nPessoas);
+      var moneyHtml = function (text) {
+        return '<span class="gcv-passeios__money">' + passeioEsc(text) + "</span>";
+      };
       var breakTxt = modalidade === "exclusivo" && comTranslado && carsNow > 1
-        ? carsNow + " " + copy.cars + " × " + passeioReais(unit * (parseInt(sel.quorum, 10) || 4))
-        : billed + " " + word + " × " + passeioReais(unit);
-      if (bi.on) breakTxt += " + " + copy.bilingualShort + " (" + passeioReais(biCents) + ")";
+        ? passeioEsc(carsNow + " " + copy.cars + " × ") + moneyHtml(passeioReais(unit * (parseInt(sel.quorum, 10) || 4)))
+        : passeioEsc(billed + " " + word + " × ") + moneyHtml(passeioReais(unit));
+      if (bi.on) breakTxt += passeioEsc(" + " + copy.bilingualShort + " (") + moneyHtml(passeioReais(biCents)) + ")";
       var fill = function (tpl, map) {
         return String(tpl || "").replace(/\{(\w+)\}/g, function (_, k) {
-          return map[k] != null ? map[k] : "";
+          var v = map[k] != null ? String(map[k]) : "";
+          if (k === "price" || k === "inst") return moneyHtml(v);
+          return passeioEsc(v);
         });
       };
       var brTxt = fill(copy.cardBr, { price: passeioReais(pay.card), n: String(pay.n), inst: passeioReais(pay.inst) });
@@ -2310,11 +2570,11 @@
       var totalEl = box.querySelector("[data-passeio-total]");
       totalEl.innerHTML = sel.incompleto
         ? '<strong class="gcv-passeios__total-value">—</strong>'
-        : '<span class="gcv-passeios__break">' + passeioEsc(breakTxt) + "</span>" +
+        : '<span class="gcv-passeios__break">' + breakTxt + "</span>" +
           '<span class="gcv-passeios__pixline"><strong class="gcv-passeios__total-value">' + passeioEsc(passeioReais(pay.pix)) + "</strong>" +
           '<span class="gcv-passeios__pixin">' + passeioEsc(copy.pixIn) + "</span></span>" +
-          '<span class="gcv-passeios__cardline">' + passeioEsc(brTxt) + "</span>" +
-          '<span class="gcv-passeios__cardline">' + passeioEsc(intlTxt) + "</span>";
+          '<span class="gcv-passeios__cardline">' + brTxt + "</span>" +
+          '<span class="gcv-passeios__cardline">' + intlTxt + "</span>";
       var item = buildItem();
       if (item && itemInCart(item.id) && window.GcvExcCart && typeof window.GcvExcCart.sync === "function") {
         window.GcvExcCart.sync(item);
@@ -2364,6 +2624,7 @@
           if (msg) msg.textContent = copy.dayTaken;
           if (typeof cart.warnSameDay === "function") cart.warnSameDay();
         } else if (box.classList.contains("is-modal")) {
+          gcvPessoasPrefillCommit(item.pessoas);
           paintAddButton();
           closePasseioModal();
           if (typeof box._passeioDone === "function") box._passeioDone();
@@ -2381,6 +2642,23 @@
     bindPasseioDate(box);
     paint();
     if (!box.classList.contains("is-modal")) bindPasseioDock(box);
+  }
+
+  function gcvPessoasPrefill() {
+    var bag = window.GcvAddPeople;
+    var n = bag && parseInt(bag.n, 10);
+    if (!n || n < 1) n = 1;
+    if (n > 15) n = 15;
+    return n;
+  }
+
+  function gcvPessoasPrefillCommit(n) {
+    n = Math.max(1, Math.min(15, parseInt(n, 10) || 1));
+    var before = gcvPessoasPrefill();
+    window.GcvAddPeople = { n: n };
+    if (n !== before && typeof window.GcvApplyPeoplePrefill === "function") {
+      window.GcvApplyPeoplePrefill();
+    }
   }
 
   function closePasseioModal() {
@@ -2410,7 +2688,10 @@
         if (e.target.closest && e.target.closest("[data-passeio-modal-close]")) closePasseioModal();
       });
       document.addEventListener("keydown", function (e) {
-        if (e.key === "Escape") closePasseioModal();
+        if (e.key !== "Escape") return;
+        var policy = document.getElementById("gcv-exc-cart-policy-modal");
+        if (policy && policy.classList.contains("is-open")) return;
+        closePasseioModal();
       });
       document.body.appendChild(modal);
     }
@@ -2433,6 +2714,10 @@
         box._passeioExtras = tail ? tail.split(",").filter(Boolean) : [];
       }
     }
+    if (!existing) {
+      var junto = passeioJuntoDaUrl(data);
+      if (junto.length) box._passeioExtras = junto;
+    }
     body.innerHTML = "";
     body.appendChild(box);
     box.innerHTML = passeioBuilderHtml(copy, data);
@@ -2453,6 +2738,7 @@
       setField("transport", /-t(?:-bi-|$)/.test(String(existing.id || "")) ? "1" : "0");
       var biSaved = /-bi-(en|es)(?:$|-)/.exec(String(existing.id || ""));
       var biWant = biSaved ? biSaved[1] : "pt";
+      if ((copy.siteLang === "en" || copy.siteLang === "es") && biWant !== "en" && biWant !== "es") biWant = copy.siteLang;
       Array.prototype.forEach.call(box.querySelectorAll("[data-bi-lang]"), function (btn) {
         btn.classList.toggle("is-on", btn.getAttribute("data-bi-lang") === biWant);
       });

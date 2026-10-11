@@ -275,6 +275,60 @@ function gcv_mp_cancel(string $paymentId): bool
     return $p !== null && in_array((string) ($p['status'] ?? ''), ['cancelled', 'rejected'], true);
 }
 
+/**
+ * Cartões já salvos neste e-mail (não cria cliente).
+ * Serve para o Brick abrir o cartão preenchido e pedir só o CVV.
+ *
+ * @return array{customer_id:string, card_ids:list<string>, methods:array<string,string>}
+ */
+function gcv_mp_saved_cards(string $email): array
+{
+    $empty = ['customer_id' => '', 'card_ids' => [], 'methods' => []];
+    $email = strtolower(trim($email));
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        return $empty;
+    }
+    $found = gcv_mp_request('GET', '/v1/customers/search?email=' . rawurlencode($email));
+    $customerId = (string) ($found['data']['results'][0]['id'] ?? '');
+    if ($customerId === '') {
+        return $empty;
+    }
+    $list = gcv_mp_request('GET', '/v1/customers/' . rawurlencode($customerId) . '/cards');
+    $rows = $list['data'] ?? [];
+    if (isset($rows['results']) && is_array($rows['results'])) {
+        $rows = $rows['results'];
+    } elseif (isset($rows['id'])) {
+        $rows = [$rows];
+    }
+    if (!is_array($rows)) {
+        return $empty;
+    }
+    $year = (int) date('Y');
+    $month = (int) date('n');
+    $ids = [];
+    $methods = [];
+    foreach ($rows as $card) {
+        if (!is_array($card) || !isset($card['id']) || (string) $card['id'] === '') {
+            continue;
+        }
+        $expYear = (int) ($card['expiration_year'] ?? 0);
+        $expMonth = (int) ($card['expiration_month'] ?? 0);
+        if ($expYear > 0 && ($expYear < $year || ($expYear === $year && $expMonth > 0 && $expMonth < $month))) {
+            continue;
+        }
+        $id = (string) $card['id'];
+        $ids[] = $id;
+        $pm = (string) ($card['payment_method']['id'] ?? $card['payment_method_id'] ?? '');
+        if ($pm !== '') {
+            $methods[$id] = $pm;
+        }
+    }
+    if (!$ids) {
+        return $empty;
+    }
+    return ['customer_id' => $customerId, 'card_ids' => $ids, 'methods' => $methods];
+}
+
 /** Cliente MP pelo e-mail (cria se não existir). */
 function gcv_mp_customer_id(string $email, string $name): ?string
 {

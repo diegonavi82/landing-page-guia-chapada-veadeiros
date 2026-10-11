@@ -12,6 +12,7 @@ require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../pix_reservation_store.php';
 require_once __DIR__ . '/pricing.php';
 require_once __DIR__ . '/base_amount.php';
+require_once __DIR__ . '/../excursion_status.php';
 
 function gcv_checkout_fail(int $code, string $message, string $error = ''): void
 {
@@ -84,13 +85,19 @@ function gcv_checkout_read_request(): array
         gcv_checkout_fail(422, 'Invalid name');
     }
     $locale = in_array($data['locale'] ?? 'pt', ['pt', 'en', 'es'], true) ? (string) $data['locale'] : 'pt';
+    $window = gcv_booking_window_error(is_array($data['trips'] ?? null) ? $data['trips'] : [], $locale);
+    if ($window !== null) {
+        gcv_checkout_fail(422, $window, 'booking_window');
+    }
 
     $base = gcv_pay_resolve_base_amount($data);
     if (empty($base['ok'])) {
         $err = (string) ($base['error'] ?? 'invalid_amount');
         $msg = $err === 'price_changed' || $err === 'amount_mismatch'
             ? 'O preço deste passeio mudou. Atualize a página e tente de novo.'
-            : 'Valor inválido.';
+            : ($err === 'coupon_invalid'
+                ? 'Este cupom não vale para este carrinho.'
+                : 'Valor inválido.');
         gcv_checkout_fail(409, $msg, $err);
     }
 

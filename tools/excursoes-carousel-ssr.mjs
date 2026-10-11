@@ -18,6 +18,7 @@ import {
   resolveGuiaIdiomas,
 } from "./excursoes-carousel-data.mjs";
 import { GUIA_PROFILE_SLUG } from "./excursoes-guides-profiles.mjs";
+import { getExcursionStatus } from "./excursion-status.mjs";
 
 const WA_PHONE = "5562982506891";
 const SAIDA_HORA_PADRAO = "8:45";
@@ -204,7 +205,7 @@ const SSR = {
     exclTransport: "Transport",
     exclLunch: "Lunch",
     cta: "I want to join",
-    guiaPending: "To be announced",
+    guiaPending: "To be confirmed",
     guiaAbout: "About {{nome}}",
     guiaModalClose: "Close",
   },
@@ -357,14 +358,16 @@ function cardIsTitleOnly(e) {
   return dests.every(destIsTitleOnly);
 }
 
-function cardSpotRowSsr(d, locale, transportBadge) {
-  const href = destHasPage(d) ? atrativoHrefFrom(d.atrativoPath || d.path, locale) : "";
+function withSaida(href, cartId) {
+  if (!href || !cartId) return href;
+  return href + (href.indexOf("?") >= 0 ? "&" : "?") + "saida=" + encodeURIComponent(cartId);
+}
+
+function cardSpotRowSsr(d, locale, transportBadge, cartId) {
+  const href = destHasPage(d) ? withSaida(atrativoHrefFrom(d.atrativoPath || d.path, locale), cartId) : "";
   const label = esc(String(d.destino || "").trim());
   const sub = d.destinoSub ? `<span class="gcv-excursoes-card__dest-sub">${esc(String(d.destinoSub))}</span>` : "";
   const destMod = sub ? " gcv-excursoes-card__spot-dest--has-sub" : "";
-  const title = label
-    ? `<span class="gcv-excursoes-card__dest gcv-excursoes-card__spot-dest${destMod}">${label}${sub}</span>`
-    : "";
   if (destIsTitleOnly(d)) {
     let names = titleOnlyLineNamesFromDest(d);
     if (!names.length && label) names = [String(d.destino || "").trim()];
@@ -386,7 +389,7 @@ function cardSpotRowSsr(d, locale, transportBadge) {
   const photo =
     `<div class="gcv-excursoes-card__spot-photo">` +
     `<div class="gcv-excursoes-card__atrativo-link--img">${imgInner}</div>` +
-    `${transportBadge || ""}${title}</div>`;
+    `${transportBadge || ""}</div>`;
   if (href) {
     return (
       `<div class="gcv-excursoes-card__spot">` +
@@ -417,25 +420,6 @@ function faltamParaConfirmarSsr(e) {
   return Math.max(0, q - site);
 }
 
-function cardBandFlagsSsr(e, s, x, cap, labelAria, isLotado) {
-  const statusHtml = isLotado
-    ? `<span class="gcv-excursoes-card__status gcv-excursoes-card__status--full">${esc(s.statusSoldOut)}</span>`
-    : e.confirmada
-      ? `<span class="gcv-excursoes-card__status gcv-excursoes-card__status--ok">${esc(s.statusOk)}</span>`
-      : `<span class="gcv-excursoes-card__status gcv-excursoes-card__status--wait">${esc(s.statusWait)}</span>`;
-  return (
-    `<div class="gcv-excursoes-card__band-flags">` +
-    statusHtml +
-    `<span class="gcv-excursoes-card__cap" title="${esc(labelAria)}" aria-label="${esc(labelAria)}">` +
-    `<i class="ti ti-users" aria-hidden="true"></i>` +
-    `<span class="gcv-excursoes-card__cap-ratio" aria-hidden="true">` +
-    `<span class="gcv-excursoes-card__cap-x">${x}</span>` +
-    `<span class="gcv-excursoes-card__cap-slash">/</span>` +
-    `<span class="gcv-excursoes-card__cap-y">${cap}</span>` +
-    `</span></span></div>`
-  );
-}
-
 function cardBandNoticeTextSsr(e, s, isLotado) {
   if (isLotado) return "";
   if (e.confirmada) {
@@ -450,13 +434,52 @@ function cardBandNoticeTextSsr(e, s, isLotado) {
   return s.falta0 || "";
 }
 
-function cardBandGroupSsr(e, s, isLotado) {
-  const msg = cardBandNoticeTextSsr(e, s, isLotado);
-  if (!msg) return '<div class="gcv-excursoes-card__band-group"></div>';
+function cardStatusSsr(e, s, isLotado) {
+  if (isLotado) {
+    return `<span class="gcv-excursoes-card__status gcv-excursoes-card__status--full">${esc(s.statusSoldOut)}</span>`;
+  }
+  if (e.confirmada) {
+    return `<span class="gcv-excursoes-card__status gcv-excursoes-card__status--ok">${esc(s.statusOk)}</span>`;
+  }
+  return `<span class="gcv-excursoes-card__status gcv-excursoes-card__status--wait">${esc(s.statusWait)}</span>`;
+}
+
+function cardStatusBarSsr(e, s, x, cap, labelAria, locale) {
+  const status = getExcursionStatus(x, cap, locale);
   return (
-    `<div class="gcv-excursoes-card__band-group">` +
-    `<p class="gcv-excursoes-card__falta gcv-excursoes-card__falta--band">${esc(msg)}</p></div>`
+    `<div class="gcv-excursoes-card__status-bar is-${status.variant}" data-status="${status.key}">` +
+    `<span class="gcv-excursoes-card__status-bar-label">${esc(status.text)}</span>` +
+    cardCapSsr(x, cap, labelAria) +
+    `</div>`
   );
+}
+
+function cardDateSideSsr(e, s, x, cap, labelAria, isLotado) {
+  return (
+    `<div class="gcv-excursoes-card__date-side">` +
+    `<div class="gcv-excursoes-card__date-side-row">` +
+    cardStatusSsr(e, s, isLotado) +
+    cardCapSsr(x, cap, labelAria) +
+    `</div></div>`
+  );
+}
+
+function cardCapSsr(x, cap, labelAria) {
+  return (
+    `<span class="gcv-excursoes-card__cap" title="${esc(labelAria)}" aria-label="${esc(labelAria)}">` +
+    `<i class="ti ti-users" aria-hidden="true"></i>` +
+    `<span class="gcv-excursoes-card__cap-ratio" aria-hidden="true">` +
+    `<span class="gcv-excursoes-card__cap-x">${x}</span>` +
+    `<span class="gcv-excursoes-card__cap-slash">/</span>` +
+    `<span class="gcv-excursoes-card__cap-y">${cap}</span>` +
+    `</span></span>`
+  );
+}
+
+function cardFaltaSsr(e, s, isLotado) {
+  const msg = cardBandNoticeTextSsr(e, s, isLotado);
+  if (!msg) return "";
+  return `<p class="gcv-excursoes-card__falta gcv-excursoes-card__falta--band">${esc(msg)}</p>`;
 }
 
 function cardSpotsBlockSsr(e, locale, s) {
@@ -472,7 +495,7 @@ function cardSpotsBlockSsr(e, locale, s) {
     );
   }
   const n = destinosSpotsCount(e);
-  const inner = `<div class="gcv-excursoes-card__spots gcv-excursoes-card__spots--count-${n}" data-spots="${n}">${dests.map((d) => cardSpotRowSsr(d, locale, badge)).join("")}</div>`;
+  const inner = `<div class="gcv-excursoes-card__spots gcv-excursoes-card__spots--count-${n}" data-spots="${n}">${dests.map((d) => cardSpotRowSsr(d, locale, badge, excursaoCartIdSsr(e))).join("")}</div>`;
   return `<div class="gcv-excursoes-card__media">${inner}</div>`;
 }
 
@@ -559,18 +582,38 @@ function guiaChipInnerSsr(nome, foto, locale, altInPhoto, e) {
   );
 }
 
+function hasGuiaDefinidoSsr(e) {
+  if (!e || e.guiaPendente === true || e.guiaPending === true) return false;
+  if (String(e.guiaNome || "").trim()) return true;
+  const id = parseInt(String(e.guideUserId || e.guiaId || 0), 10);
+  return Number.isFinite(id) && id > 0;
+}
+
+function guiaAvatarSsr() {
+  return (
+    `<span class="gcv-excursoes-card__guide-photo-wrap">` +
+    `<span class="gcv-excursoes-card__guide-avatar" aria-hidden="true">` +
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">` +
+    `<circle cx="12" cy="8" r="5"></circle>` +
+    `<path d="M20 21a8 8 0 0 0-16 0"></path>` +
+    `</svg></span></span>`
+  );
+}
+
 function guiaChipSsr(e, locale) {
   const s = SSR[locale] || SSR.pt;
-  const pending = !!(e && (e.guiaPendente === true || e.guiaPending === true));
-  const nome = e && e.guiaNome ? String(e.guiaNome) : null;
-  if (!nome && pending) {
+  const nome = e && e.guiaNome ? String(e.guiaNome).trim() : "";
+  if (!nome || !hasGuiaDefinidoSsr(e)) {
     return (
       `<div class="gcv-excursoes-card__guide gcv-excursoes-card__guide--pending">` +
-      guiaChipInnerSsr(s.guiaPending || "A definir", null, locale, "", e) +
-      `</div>`
+      guiaAvatarSsr() +
+      `<div class="gcv-excursoes-card__guide-info">` +
+      `<span class="gcv-excursoes-card__guide-label">Guia</span>` +
+      `<span class="gcv-excursoes-card__guide-name">${esc(s.guiaPending || "A definir")}</span>` +
+      guiaLangsSsr("pt", locale, { guiaIdiomas: ["pt"] }) +
+      `</div></div>`
     );
   }
-  if (!nome) return "";
   const foto = e.guiaFoto ? String(e.guiaFoto) : null;
   const slug = (e.guiaSlug && String(e.guiaSlug).trim()) || GUIA_PROFILE_SLUG[nome] || slugifyGuiaNome(nome);
   const aboutLabel = tpl(s.guiaAbout, { nome });
@@ -673,7 +716,7 @@ function excursaoDateLabelSsr(e, locale) {
 function excursaoCardDateHeadlineSsr(e) {
   const day = e && e.dayNum != null ? String(e.dayNum) : "";
   const monthRaw = String((e && e.monthName) || "").trim();
-  const month = monthRaw ? monthRaw.charAt(0).toUpperCase() + monthRaw.slice(1) : "";
+  const month = monthRaw ? (monthRaw.charAt(0).toUpperCase() + monthRaw.slice(1)).slice(0, 3) : "";
   const iso = String((e && e.dateISO) || "").slice(0, 10);
   const year = /^\d{4}/.test(iso) ? iso.slice(0, 4) : "";
   return [day, month, year].filter(Boolean).join(" ");
@@ -778,8 +821,6 @@ export function excursionsCarouselTrackSsrHtml(locale) {
   const s = SSR[locale] || SSR.pt;
   const timeLabel = locale === "en" ? "Departure" : locale === "es" ? "Salida" : "Saída";
   const embarqueLabel = locale === "en" ? "City" : locale === "es" ? "Ciudad" : "Cidade";
-  const toggleAdd =
-    locale === "en" ? "Add to cart" : locale === "es" ? "Agregar al carrito" : "Adicionar ao carrinho";
   return rows
     .map((e, idx) => {
       const hora = horaExcursao(e);
@@ -801,9 +842,12 @@ export function excursionsCarouselTrackSsrHtml(locale) {
         (e.confirmada ? ' data-excursao-status="confirmada"' : ' data-excursao-status="formacao"') +
         ' data-ssr-fallback="1" aria-selected="false">' +
         '<div class="gcv-excursoes-card__head">' +
-        '<div class="gcv-excursoes-card__select-band" data-gcv-exc-card-toggle>' +
+        '<div class="gcv-excursoes-card__select-band">' +
+        '<div class="gcv-excursoes-card__select-band-status">' +
+        cardStatusBarSsr(e, s, x, cap, labelAria, locale) +
+        "</div>" +
         '<div class="gcv-excursoes-card__select-band-main">' +
-        `<div class="gcv-excursoes-card__card-date">${esc(excursaoCardDateHeadlineSsr(e))}</div>` +
+        `<div class="gcv-excursoes-card__card-date"><span class="gcv-excursoes-card__card-date-text">${esc(excursaoCardDateHeadlineSsr(e))}</span>${cardCapSsr(x, cap, labelAria)}</div>` +
         (excursaoDestinoHeadlineSsr(e)
           ? `<div class="gcv-excursoes-card__tour-dest" title="${esc(excursaoDestinoHeadlineSsr(e))}">${esc(excursaoDestinoHeadlineSsr(e))}</div>`
           : "") +
@@ -816,16 +860,14 @@ export function excursionsCarouselTrackSsrHtml(locale) {
         `<span class="gcv-excursoes-card__time-kicker">${esc(embarqueLabel)}</span>` +
         `<span class="gcv-excursoes-card__loc gcv-excursoes-card__loc--inline" title="${esc(city)}">` +
         esc(city) +
-        "</span></div></div></div>" +
-        cardBandFlagsSsr(e, s, x, cap, labelAria, isLotado) +
-        cardBandGroupSsr(e, s, isLotado) +
-        "</div>" +
-        `<button type="button" class="gcv-excursoes-card__quick-add" data-gcv-exc-card-toggle aria-label="${esc(toggleAdd)}" aria-pressed="false" title="${esc(toggleAdd)}">` +
-        '<i class="ti ti-plus" aria-hidden="true"></i></button></div>' +
+        "</span></div></div></div></div>" +
+        '<div class="gcv-excursoes-card__select-band-guide">' +
+        guiaChipSsr(e, locale) +
+        '<div class="gcv-excursoes-card__guide-spacer" aria-hidden="true"></div>' +
+        "</div></div>" +
         cardSpotsBlockSsr(e, locale, s) +
         "</div>" +
         '<div class="gcv-excursoes-card__body">' +
-        guiaChipSsr(e, locale) +
         inclExclBlocksSsr(e, s, locale) +
         bookingBlockSsr(e, s, locale) +
         "</div></article>"

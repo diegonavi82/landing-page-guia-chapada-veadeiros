@@ -241,7 +241,7 @@ function gcv_related_tour_one(PDO $pdo, int $passeioId): array
         return [];
     }
     $stmt = $pdo->prepare(
-        'SELECT a.id, a.title_pt, a.slug, a.duration_minutes, x.sort_order
+        'SELECT a.id, a.title_pt, a.slug, a.duration_minutes, a.cover_url, x.sort_order
          FROM gcv_passeio_relacionado_atrativo x
          INNER JOIN gcv_attractions a ON a.id = x.attraction_id
          WHERE x.passeio_id = ?
@@ -259,6 +259,7 @@ function gcv_related_tour_one(PDO $pdo, int $passeioId): array
             'title_pt' => (string)$row['title_pt'],
             'slug' => $slug,
             'duration_minutes' => (int)($row['duration_minutes'] ?? 0),
+            'cover_url' => (string)($row['cover_url'] ?? ''),
             'page' => gcv_attraction_public_html_path($slug),
         ];
     }
@@ -267,7 +268,9 @@ function gcv_related_tour_one(PDO $pdo, int $passeioId): array
     $tarifaRow = $tarifa->fetch();
     require_once __DIR__ . '/tarifarios.php';
     $tarifarioId = isset($passeio['tarifario_id']) && $passeio['tarifario_id'] !== null ? (int)$passeio['tarifario_id'] : null;
-    $tarifaPublica = gcv_tarifario_public_by_id($pdo, $tarifarioId);
+    $tarifaGuia = (string)($passeio['tarifa_guia'] ?? '');
+    $tarifaTranslado = (string)($passeio['tarifa_translado'] ?? '');
+    $tarifaPublica = gcv_tarifa_resolver($pdo, $tarifaGuia, $tarifaTranslado, $tarifarioId);
     $mapa = gcv_cidades_saida_mapa($pdo);
     $minutos = (int)$passeio['duration_minutes'];
     return [
@@ -275,6 +278,8 @@ function gcv_related_tour_one(PDO $pdo, int $passeioId): array
         'duration_minutes' => $minutos,
         'tarifa_id' => $tarifaRow ? (int)$tarifaRow['id'] : null,
         'tarifario_id' => $tarifarioId,
+        'tarifa_guia' => $tarifaGuia,
+        'tarifa_translado' => $tarifaTranslado,
         'duracao_cidades' => gcv_duracao_cidades($passeio['duracao_json'] ?? null, $minutos),
         'categorias' => gcv_passeio_categorias_parse($passeio['categorias'] ?? null, count($attractions)),
         'tarifa' => $tarifaPublica,

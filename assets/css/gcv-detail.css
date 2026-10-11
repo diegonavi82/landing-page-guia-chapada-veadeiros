@@ -482,15 +482,7 @@
 
 @media (min-width: 901px) {
   .gcv-detail-page:has(.gcv-detail-cta.is-ready) {
-    padding-bottom: 2rem;
-  }
-
-  .gcv-detail-cta.is-ready {
-    top: 50%;
-    bottom: auto;
-    left: auto;
-    right: calc(1rem + 3.35rem + 0.85rem);
-    transform: translateY(-50%);
+    padding-bottom: 6.5rem;
   }
 }
 
