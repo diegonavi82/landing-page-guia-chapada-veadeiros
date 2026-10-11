@@ -283,6 +283,7 @@
       guiaPending: "A definir",
       pixBtnAria: "Pagar {{valor}} com Pix",
       pixModalTitle: "Pagamento",
+      pixOpenFail: "Não foi possível abrir o pagamento. Tente de novo.",
       pixModalScan: "Escaneie o QR Code no app do banco",
       pixModalCopy: "Copiar código Pix",
       pixModalCopied: "Código copiado!",
@@ -331,6 +332,7 @@
       pixModalExpiredLead: "O Pix expirou. Gere um novo Pix para continuar.",
       pixModalRegenBtn: "Gerar novo Pix",
       pixModalEmbarque: "Saída",
+      pixModalWithRide: "Com translado",
       pixModalTime: "Horário",
       pixModalPeople: "Pessoas",
       pixModalPerson: "Pessoa",
@@ -479,6 +481,7 @@
       guiaPending: "To be confirmed",
       pixBtnAria: "Pay {{valor}} with Pix",
       pixModalTitle: "Payment",
+      pixOpenFail: "Could not open checkout. Please try again.",
       pixModalScan: "Scan the QR code in your banking app",
       pixModalCopy: "Copy Pix code",
       pixModalCopied: "Code copied!",
@@ -527,6 +530,7 @@
       pixModalExpiredLead: "The Pix payment window expired. Generate a new Pix to continue.",
       pixModalRegenBtn: "Generate new Pix",
       pixModalEmbarque: "Departure",
+      pixModalWithRide: "With transfer",
       pixModalTime: "Time",
       pixModalPeople: "People",
       pixModalPerson: "person",
@@ -675,6 +679,7 @@
       guiaPending: "Por definir",
       pixBtnAria: "Pagar {{valor}} con Pix",
       pixModalTitle: "Pago",
+      pixOpenFail: "No se pudo abrir el pago. Inténtalo de nuevo.",
       pixModalScan: "Escanea el código QR en la app del banco",
       pixModalCopy: "Copiar código Pix",
       pixModalCopied: "¡Código copiado!",
@@ -723,6 +728,7 @@
       pixModalExpiredLead: "El Pix expiró. Genera un nuevo Pix para continuar.",
       pixModalRegenBtn: "Generar nuevo Pix",
       pixModalEmbarque: "Salida",
+      pixModalWithRide: "Con traslado",
       pixModalTime: "Horario",
       pixModalPeople: "Personas",
       pixModalPerson: "persona",
@@ -2853,7 +2859,7 @@
     if (e && e.comTransporte === true) return true;
     if (trip && trip.comTransporte === true) return true;
     var id = String((trip && trip.cartId) || (trip && trip.id) || "");
-    return id.slice(-2) === "-t";
+    return /(?:^|-)t(?:-bi-(?:en|es))?$/.test(id);
   }
 
   function walkHasGuideSeat(e, trip) {
@@ -2943,10 +2949,15 @@
 
   function excursaoPessoasPrefillCommit(n) {
     n = Math.max(1, Math.min(15, parseInt(n, 10) || 1));
-    var bag = window.GcvAddPeople;
-    var before = bag && parseInt(bag.n, 10);
+    var bag = window.GcvAddPeople || {};
+    var before = parseInt(bag.n, 10);
     if (!before || before < 1) before = 1;
-    window.GcvAddPeople = { n: n };
+    window.GcvAddPeople = {
+      n: n,
+      city: String(bag.city || ""),
+      mode: bag.mode === "exclusivo" ? "exclusivo" : "excursao",
+      transport: bag.transport === "1" ? "1" : "0",
+    };
     if (n !== before) applyExcursaoPessoasPrefill();
   }
 
@@ -3516,6 +3527,9 @@
     var parts = [];
     if (trip.embarque) {
       parts.push((s.pixModalEmbarque || "Saída") + ": " + trip.embarque);
+    }
+    if (isTransportTrip(trip)) {
+      parts.push(s.pixModalWithRide || "Com translado");
     }
     if (trip.hora) {
       parts.push(String(trip.hora).replace(":", "h"));
@@ -6249,8 +6263,59 @@
     });
   }
 
+  function pixCheckoutReady() {
+    return !!(window.GcvPix && typeof window.GcvPix.buildPayload === "function");
+  }
+
+  function ensurePixCheckoutLibs(done) {
+    if (pixCheckoutReady()) {
+      done();
+      return;
+    }
+    var srcs = [
+      "/assets/js/qrcode.min.js?v=1.1.31",
+      "/assets/js/gcv-pix.js?v=1.1.31",
+      "/assets/js/gcv-pix-receipt.js?v=1.1.31",
+      "/assets/js/gcv-pix-polling.js?v=1.1.31",
+    ];
+    var i = 0;
+    function next(err) {
+      if (err) {
+        done(err);
+        return;
+      }
+      if (i >= srcs.length) {
+        done(pixCheckoutReady() ? null : new Error("pix"));
+        return;
+      }
+      var src = srcs[i++];
+      if (document.querySelector('script[src="' + src + '"]')) {
+        next();
+        return;
+      }
+      var script = document.createElement("script");
+      script.src = src;
+      script.onload = function () { next(); };
+      script.onerror = function () { next(new Error("script")); };
+      document.head.appendChild(script);
+    }
+    next();
+  }
+
   function openPixModal(valor, detail, trigger, locale, s, qty) {
-    if (!window.GcvPix || typeof window.GcvPix.buildPayload !== "function") return;
+    if (!pixCheckoutReady()) {
+      if (openPixModal._loading) return;
+      openPixModal._loading = true;
+      ensurePixCheckoutLibs(function (err) {
+        openPixModal._loading = false;
+        if (err || !pixCheckoutReady()) {
+          showExcToast((s && s.pixOpenFail) || "Não foi possível abrir o pagamento. Tente de novo.", "warning");
+          return;
+        }
+        openPixModal(valor, detail, trigger, locale, s, qty);
+      });
+      return;
+    }
     var modal = ensurePixModal();
     var lines;
     var pixDesc;

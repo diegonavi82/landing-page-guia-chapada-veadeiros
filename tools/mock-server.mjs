@@ -2965,10 +2965,10 @@ function serveFile(res, filePath) {
     res.writeHead(200, headers);
     if (ext === ".html") {
       let html = data.toString("utf8")
-        .replace(/site\.js\?v=[^"'&\s]+/g, "site.js?v=1.1.73")
+        .replace(/site\.js\?v=[^"'&\s]+/g, "site.js?v=1.1.78")
         .replace(/gcv-exc-cart-policies\.js\?v=[^"'&\s]+/g, "gcv-exc-cart-policies.js?v=1.1.61")
         .replace(/gcv-exc-cart\.js\?v=[^"'&\s]+/g, "gcv-exc-cart.js?v=1.1.62")
-        .replace(/excursoes-carousel\.js\?v=[^"'&\s]+/g, "excursoes-carousel.js?v=1.1.81")
+        .replace(/excursoes-carousel\.js\?v=[^"'&\s]+/g, "excursoes-carousel.js?v=1.1.84")
         .replace(/excursoes\.css\?v=[^"'&\s]+/g, "excursoes.css?v=1.1.82")
         .replace(/gcv-confirmacao\.js\?v=[^"'&\s]+/g, "gcv-confirmacao.js?v=1.1.36")
         .replace(/gcv-detail\.css\?v=[^"'&\s]+/g, "gcv-detail.css?v=1.1.37")

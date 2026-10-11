@@ -1304,6 +1304,96 @@
       .catch(function () {});
   }
 
+  var AVISO_MINIMO_EXCURSAO = 4;
+  var AVISO_LUGARES_CARRO = 5;
+  var AVISO_PASSAGEIROS_VEICULO = 4;
+  var AVISO_TEXTOS = {
+    pt: {
+      modAlert: "A excursão será publicada em nossa plataforma e será confirmada a partir de 4 inscrições ({faltam}). Até lá, cancele quando quiser. Se não confirmar, devolvemos 100%.",
+      modOk: "Seu grupo de {n} pessoas já completa as 4 inscrições mínimas: excursão confirmada! Ela continua publicada em nossa plataforma e outras pessoas poderão participar.",
+      modPrivate: "Passeio exclusivo para o seu grupo. Ele não será publicado em nossa plataforma e fica confirmado assim que a reserva for concluída.",
+      faltamOne: "faltam {n}",
+      faltamMany: "faltam {n}",
+      trSeat: "Reserve um lugar para o guia. O guia vai com vocês {onde}, saindo de {cidade}. Com {n} {pessoa}, sobra vaga {ondeVaga}. É só deixar 1 lugar livre para ele.",
+      trSeatMany: "Reserve um lugar para o guia. O guia vai com vocês em um dos carros, saindo de {cidade}. Com {n} pessoas em {c} carros de 5 lugares, sobra vaga. É só deixar 1 lugar livre para ele.",
+      trSeatCar: "no seu carro",
+      trSeatCars: "em um dos carros",
+      trSpareOne: "no carro de 5 lugares",
+      trSpareMany: "em {c} carros de 5 lugares",
+      personOne: "pessoa",
+      personMany: "pessoas",
+      trFull: "Lembre-se do lugar do guia. Com {n} pessoas, {completo} e não sobra espaço para o guia, que sai junto com vocês de {cidade}. Para o passeio acontecer, é importante ter 1 lugar disponível para ele, seja com mais um carro ou com outra organização do grupo. {bold}",
+      trFullOne: "o carro de 5 lugares fica completo",
+      trFullMany: "os {c} carros de 5 lugares ficam completos",
+      trFullBold: "Sem esse lugar, infelizmente o passeio precisará ser cancelado.",
+      trOpen: "Transporte incluso: o veículo com guia (até 4 passageiros + 1 guia), saindo de {cidade}, será publicado em nossa plataforma e depende das mesmas 4 inscrições para confirmar. Vagas abertas para outras pessoas: {livres}.",
+      trInOne: "Transporte incluso: 1 veículo com guia, saindo de {cidade}. Cada veículo leva até 4 passageiros + 1 guia.",
+      trInMany: "Transporte incluso: {v} veículos, cada um com guia, saindo de {cidade}. Cada veículo leva até 4 passageiros + 1 guia.",
+      trFullGroupOne: "O veículo fica completo com o seu grupo.",
+      trFullGroup: "Os veículos ficam completos com o seu grupo.",
+      trLeftOne: "A vaga restante no último veículo será publicada em nossa plataforma para outras pessoas.",
+      trLeftMany: "As {livres} vagas restantes no último veículo serão publicadas em nossa plataforma para outras pessoas.",
+      trExOne: "Transporte exclusivo: 1 veículo só para o seu grupo, com até 4 passageiros + 1 guia, saindo de {cidade}.",
+      trExMany: "Transporte exclusivo: {v} veículos só para o seu grupo, cada um com até 4 passageiros + 1 guia, saindo de {cidade}.",
+    },
+    en: {
+      modAlert: "The group tour will be listed on our platform and is confirmed from 4 sign-ups ({faltam}). Until then, cancel anytime. If it is not confirmed, we refund 100%.",
+      modOk: "Your group of {n} people already meets the minimum of 4 sign-ups: the group tour is confirmed! It stays listed on our platform and other people can join.",
+      modPrivate: "A tour exclusive to your group. It will not be listed on our platform and is confirmed as soon as the booking is complete.",
+      faltamOne: "1 still needed",
+      faltamMany: "{n} still needed",
+      trSeat: "Save a seat for the guide. The guide rides with you {onde}, leaving from {cidade}. With {n} {pessoa}, there is a spare seat {ondeVaga}. Just leave 1 seat free for the guide.",
+      trSeatMany: "Save a seat for the guide. The guide rides with you in one of the cars, leaving from {cidade}. With {n} people in {c} cars with 5 seats, there is a spare seat. Just leave 1 seat free for the guide.",
+      trSeatCar: "in your car",
+      trSeatCars: "in one of the cars",
+      trSpareOne: "in the 5-seat car",
+      trSpareMany: "across {c} cars with 5 seats",
+      personOne: "person",
+      personMany: "people",
+      trFull: "Remember the guide's seat. With {n} people, {completo} and there is no room for the guide, who leaves with you from {cidade}. For the tour to go ahead, it is important to have 1 seat available for the guide, either with one more car or by organizing the group another way. {bold}",
+      trFullOne: "the 5-seat car is full",
+      trFullMany: "the {c} cars with 5 seats are full",
+      trFullBold: "Without that seat, the tour will unfortunately have to be cancelled.",
+      trOpen: "Transfer included: the vehicle with a guide (up to 4 passengers + 1 guide), leaving from {cidade}, will be listed on our platform and depends on the same 4 sign-ups to be confirmed. Open seats for other people: {livres}.",
+      trInOne: "Transfer included: 1 vehicle with a guide, leaving from {cidade}. Each vehicle takes up to 4 passengers + 1 guide.",
+      trInMany: "Transfer included: {v} vehicles, each with a guide, leaving from {cidade}. Each vehicle takes up to 4 passengers + 1 guide.",
+      trFullGroupOne: "The vehicle is full with your group.",
+      trFullGroup: "The vehicles are full with your group.",
+      trLeftOne: "The remaining seat in the last vehicle will be listed on our platform for other people.",
+      trLeftMany: "The {livres} remaining seats in the last vehicle will be listed on our platform for other people.",
+      trExOne: "Private transfer: 1 vehicle just for your group, with up to 4 passengers + 1 guide, leaving from {cidade}.",
+      trExMany: "Private transfer: {v} vehicles just for your group, each with up to 4 passengers + 1 guide, leaving from {cidade}.",
+    },
+    es: {
+      modAlert: "La excursión se publicará en nuestra plataforma y se confirmará a partir de 4 inscripciones ({faltam}). Hasta entonces, cancela cuando quieras. Si no se confirma, devolvemos el 100%.",
+      modOk: "Su grupo de {n} personas ya completa las 4 inscripciones mínimas: ¡excursión confirmada! Sigue publicada en nuestra plataforma y otras personas podrán participar.",
+      modPrivate: "Paseo exclusivo para su grupo. No se publicará en nuestra plataforma y queda confirmado en cuanto se complete la reserva.",
+      faltamOne: "falta {n}",
+      faltamMany: "faltan {n}",
+      trSeat: "Reserve un lugar para el guía. El guía va con ustedes {onde}, saliendo de {cidade}. Con {n} {pessoa}, sobra un lugar {ondeVaga}. Solo hay que dejar 1 lugar libre para él.",
+      trSeatMany: "Reserve un lugar para el guía. El guía va con ustedes en uno de los coches, saliendo de {cidade}. Con {n} personas en {c} coches de 5 plazas, sobra un lugar. Solo hay que dejar 1 lugar libre para él.",
+      trSeatCar: "en su coche",
+      trSeatCars: "en uno de los coches",
+      trSpareOne: "en el coche de 5 plazas",
+      trSpareMany: "en {c} coches de 5 plazas",
+      personOne: "persona",
+      personMany: "personas",
+      trFull: "Recuerde el lugar del guía. Con {n} personas, {completo} y no queda espacio para el guía, que sale con ustedes desde {cidade}. Para que el paseo se realice, es importante tener 1 lugar disponible para él, ya sea con un coche más o con otra organización del grupo. {bold}",
+      trFullOne: "el coche de 5 plazas queda completo",
+      trFullMany: "los {c} coches de 5 plazas quedan completos",
+      trFullBold: "Sin ese lugar, lamentablemente el paseo tendrá que cancelarse.",
+      trOpen: "Traslado incluido: el vehículo con guía (hasta 4 pasajeros + 1 guía), saliendo de {cidade}, se publicará en nuestra plataforma y depende de las mismas 4 inscripciones para confirmarse. Plazas abiertas para otras personas: {livres}.",
+      trInOne: "Traslado incluido: 1 vehículo con guía, saliendo de {cidade}. Cada vehículo lleva hasta 4 pasajeros + 1 guía.",
+      trInMany: "Traslado incluido: {v} vehículos, cada uno con guía, saliendo de {cidade}. Cada vehículo lleva hasta 4 pasajeros + 1 guía.",
+      trFullGroupOne: "El vehículo queda completo con su grupo.",
+      trFullGroup: "Los vehículos quedan completos con su grupo.",
+      trLeftOne: "La plaza restante en el último vehículo se publicará en nuestra plataforma para otras personas.",
+      trLeftMany: "Las {livres} plazas restantes en el último vehículo se publicarán en nuestra plataforma para otras personas.",
+      trExOne: "Traslado exclusivo: 1 vehículo solo para su grupo, con hasta 4 pasajeros + 1 guía, saliendo de {cidade}.",
+      trExMany: "Traslado exclusivo: {v} vehículos solo para su grupo, cada uno con hasta 4 pasajeros + 1 guía, saliendo de {cidade}.",
+    },
+  };
+
   function passeioCopy(lang) {
     var all = {
       pt: {
@@ -1499,8 +1589,11 @@
         dayTaken: "Ya tienes un paseo en el carrito en esta fecha. Elige otra fecha.",
       },
     };
-    var copy = all[lang] || all.pt;
-    copy.siteLang = lang === "en" || lang === "es" ? lang : "pt";
+    var code = lang === "en" || lang === "es" ? lang : "pt";
+    var copy = all[code] || all.pt;
+    var avisos = AVISO_TEXTOS[code] || AVISO_TEXTOS.pt;
+    Object.keys(avisos).forEach(function (key) { copy[key] = avisos[key]; });
+    copy.siteLang = code;
     return copy;
   }
 
@@ -1881,22 +1974,94 @@
     return unit * pessoas;
   }
 
-  function passeioAvisoVeiculo(copy, pessoas, comTranslado) {
-    pessoas = Math.max(1, parseInt(pessoas, 10) || 1);
-    var cars = passeioCarros(pessoas);
-    if (comTranslado) {
-      if (cars <= 1) return "";
-      return String(copy.rideCars || "")
-        .replace("{people}", String(pessoas))
-        .replace("{cars}", String(cars))
-        .replace("{guides}", String(cars));
+  function avisoPreenche(tpl, map) {
+    return String(tpl || "").replace(/\{(\w+)\}/g, function (_, key) {
+      return map && map[key] != null ? String(map[key]) : "";
+    });
+  }
+
+  function avisoPessoas(n) {
+    n = parseInt(n, 10);
+    if (!n || n < 1) n = 1;
+    return n;
+  }
+
+  function avisoEhPrivativo(modalidade) {
+    return modalidade === "exclusivo" || modalidade === "privativo";
+  }
+
+  function avisoComTranslado(transporte) {
+    return transporte === "1" || transporte === 1 || transporte === true || transporte === "com";
+  }
+
+  function avisoTextosDe(textos) {
+    return textos && textos.modAlert ? textos : AVISO_TEXTOS.pt;
+  }
+
+  function getAvisoModalidade(n, modalidade, textos) {
+    var t = avisoTextosDe(textos);
+    n = avisoPessoas(n);
+    if (avisoEhPrivativo(modalidade)) {
+      return { tipo: "info", texto: t.modPrivate };
     }
-    if (pessoas >= 5) {
-      return String(copy.guideSeatError || copy.guideLead || "")
-        .replace("{people}", String(pessoas))
-        .replace("{cars}", String(cars));
+    if (n < AVISO_MINIMO_EXCURSAO) {
+      var faltamN = AVISO_MINIMO_EXCURSAO - n;
+      var faltam = avisoPreenche(t.faltamMany, { n: faltamN });
+      return { tipo: "alerta", texto: avisoPreenche(t.modAlert, { n: n, faltam: faltam }) };
     }
-    return copy.guideLead || "";
+    return { tipo: "sucesso", texto: avisoPreenche(t.modOk, { n: n }) };
+  }
+
+  function getAvisoTransporte(n, modalidade, transporte, cidade, textos) {
+    var t = avisoTextosDe(textos);
+    n = avisoPessoas(n);
+    cidade = cidade == null ? "" : String(cidade);
+    if (!avisoComTranslado(transporte)) {
+      var c = Math.ceil(n / AVISO_LUGARES_CARRO);
+      if (n % AVISO_LUGARES_CARRO !== 0) {
+        if (c > 1 && t.trSeatMany) {
+          return {
+            tipo: "info",
+            texto: avisoPreenche(t.trSeatMany, { cidade: cidade, n: n, c: c }),
+          };
+        }
+        return {
+          tipo: "info",
+          texto: avisoPreenche(t.trSeat, {
+            onde: t.trSeatCar,
+            cidade: cidade,
+            n: n,
+            pessoa: n === 1 ? t.personOne : t.personMany,
+            ondeVaga: t.trSpareOne,
+          }),
+        };
+      }
+      return {
+        tipo: "alerta",
+        texto: avisoPreenche(t.trFull, {
+          n: n,
+          cidade: cidade,
+          completo: c === 1 ? t.trFullOne : avisoPreenche(t.trFullMany, { c: c }),
+          bold: t.trFullBold,
+        }),
+      };
+    }
+    var v = Math.ceil(n / AVISO_PASSAGEIROS_VEICULO);
+    var livres = v * AVISO_PASSAGEIROS_VEICULO - n;
+    if (avisoEhPrivativo(modalidade)) {
+      return {
+        tipo: "sucesso",
+        texto: v === 1 ? avisoPreenche(t.trExOne, { cidade: cidade }) : avisoPreenche(t.trExMany, { v: v, cidade: cidade }),
+      };
+    }
+    if (n < AVISO_MINIMO_EXCURSAO) {
+      return { tipo: "alerta", texto: avisoPreenche(t.trOpen, { cidade: cidade, livres: livres, n: n }) };
+    }
+    var cabeca = v === 1 ? avisoPreenche(t.trInOne, { cidade: cidade }) : avisoPreenche(t.trInMany, { v: v, cidade: cidade });
+    var resto = v === 1 && t.trFullGroupOne ? t.trFullGroupOne : t.trFullGroup;
+    if (livres === 1) resto = t.trLeftOne;
+    else if (livres > 1) resto = avisoPreenche(t.trLeftMany, { livres: livres });
+    return { tipo: "sucesso", texto: cabeca + " " + resto };
   }
 
   function passeioBuilderHtml(copy, data) {
@@ -1924,13 +2089,13 @@
       ".gcv-passeios__seg button[hidden]{display:none!important}" +
       ".gcv-passeios__seg button:focus-visible,.gcv-passeios__stepper button:focus-visible,.gcv-passeios__add:focus-visible{outline:2px solid #0f766e;outline-offset:2px}" +
       ".gcv-passeios__summary{display:none;margin:0}" +
-      ".gcv-passeios__guide{display:flex;align-items:flex-start;gap:.45rem;margin:.35rem 0 0;padding:.6rem .75rem;border-radius:10px;background:#fef3c7;color:#92400e;font-size:.82rem;font-weight:600;line-height:1.4;letter-spacing:0;text-transform:none}" +
-      ".gcv-passeios__guide[hidden]{display:none}.gcv-passeios__guide .ti{font-size:1.05rem;line-height:1.2;flex:none}" +
-      ".gcv-passeios__mode-note{display:flex;align-items:flex-start;gap:.45rem;margin:.4rem 0 0;padding:.6rem .75rem;border-radius:10px;font-size:.82rem;font-weight:600;line-height:1.45;letter-spacing:0;text-transform:none}" +
-      ".gcv-passeios__mode-note[hidden]{display:none}.gcv-passeios__mode-note .ti{font-size:1.05rem;line-height:1.2;flex:none}" +
-      ".gcv-passeios__mode-note.is-wait{background:#fef3c7;color:#92400e}" +
-      ".gcv-passeios__mode-note.is-ok{background:#dcfce7;color:#14532d}" +
-      ".gcv-passeios__mode-note.is-private{background:#e0f2fe;color:#0c4a6e}" +
+      ".gcv-passeios__guide,.gcv-passeios__mode-note{display:flex;align-items:flex-start;flex:1;gap:.45rem;margin:.4rem 0 0;padding:.6rem .75rem;border-radius:10px;font-size:.82rem;font-weight:600;line-height:1.45;letter-spacing:0;text-transform:none}" +
+      ".gcv-passeios__guide[hidden],.gcv-passeios__mode-note[hidden]{display:none}" +
+      ".gcv-passeios__guide .ti,.gcv-passeios__mode-note .ti{font-size:1.05rem;line-height:1.2;flex:none}" +
+      ".gcv-passeios__guide.is-alerta,.gcv-passeios__mode-note.is-alerta{background:#fef3c7;color:#92400e}" +
+      ".gcv-passeios__guide.is-info,.gcv-passeios__mode-note.is-info{background:#e0f2fe;color:#0c4a6e}" +
+      ".gcv-passeios__guide.is-sucesso,.gcv-passeios__mode-note.is-sucesso{background:#dcfce7;color:#14532d}" +
+      ".gcv-passeios__guide strong,.gcv-passeios__mode-note strong{font-weight:800}" +
       ".gcv-passeios__mode-link{display:inline;margin:0 0 0 .2rem;padding:0;border:0;background:none;color:inherit;font:inherit;font-weight:800;text-decoration:underline;text-underline-offset:2px;cursor:pointer}" +
       ".gcv-passeios__mode-link:hover{opacity:.8}" +
       ".gcv-passeios__foot{display:flex;align-items:center;justify-content:space-between;gap:.85rem;margin-top:.35rem;padding:.85rem 1.15rem 1.05rem;border-top:1px solid #eef2f0;background:#fff}" +
@@ -2012,7 +2177,8 @@
       ".gcv-passeios.is-modal .gcv-passeios__now{padding-right:3rem}" +
       ".gcv-passeios.is-modal .gcv-passeios__body{overflow:auto;min-height:0}" +
       ".gcv-passeios.is-modal .gcv-passeios__foot{position:sticky;bottom:0}" +
-      "@media(max-width:640px){.gcv-passeio-modal{padding:.55rem}.gcv-passeios.is-modal{max-height:calc(100dvh - 1.1rem);border-radius:16px}}";
+      "@media(max-width:767px){.gcv-passeios.is-modal .gcv-passeios__field--mode,.gcv-passeios.is-modal .gcv-passeios__field--transport{grid-column:span 1}}" +
+      "@media(max-width:640px){.gcv-passeio-modal{padding:.55rem}.gcv-passeios.is-modal{max-height:calc(100dvh - 1.1rem);border-radius:16px}.gcv-passeios.is-modal .gcv-passeios__field--mode,.gcv-passeios.is-modal .gcv-passeios__field--transport{grid-column:1 / -1}}";
     function seg(name, options) {
       return '<div class="gcv-passeios__seg" role="radiogroup" data-passeio-seg="' + name + '">' +
         options.map(function (o, i) {
@@ -2048,11 +2214,11 @@
       '<div class="gcv-passeios__field gcv-passeios__field--wide gcv-passeios__field--mode">' + copy.mode +
         seg("mode", [["excursao", copy.group], ["exclusivo", copy.private]]) +
         '<select class="gcv-passeios__hide" tabindex="-1" aria-hidden="true" data-passeio-mode><option value="excursao">' + copy.group + '</option><option value="exclusivo">' + copy.private + "</option></select>" +
-        '<p class="gcv-passeios__mode-note" data-passeio-mode-note hidden></p></div>' +
+        '<p class="gcv-passeios__mode-note" data-passeio-mode-note></p></div>' +
       '<div class="gcv-passeios__field gcv-passeios__field--wide gcv-passeios__field--transport">' + copy.transport +
         seg("transport", [["0", copy.withoutRide], ["1", copy.withRide, '<i class="gcv-passeios__ride" aria-hidden="true"></i>']]) +
         '<select class="gcv-passeios__hide" tabindex="-1" aria-hidden="true" data-passeio-transport><option value="0">' + copy.withoutRide + '</option><option value="1">' + copy.withRide + "</option></select>" +
-        '<p class="gcv-passeios__guide" data-passeio-guide hidden><i class="ti ti-steering-wheel" aria-hidden="true"></i><span data-passeio-guide-text></span></p></div>' +
+        '<p class="gcv-passeios__guide" data-passeio-guide></p></div>' +
       "</div>" +
       '<div class="gcv-bi">' +
         '<p class="gcv-bi__label">' + passeioEsc(copy.extras) + "</p>" +
@@ -2494,32 +2660,29 @@
       var total = passeioTotalCents(sel, modalidade, pessoas, comTranslado);
       var bi = passeioBiState();
       paintSummary();
-      var guide = box.querySelector("[data-passeio-guide]");
-      var guideText = box.querySelector("[data-passeio-guide-text]");
       var nPessoas = Math.max(1, parseInt(pessoas, 10) || 1);
-      var modeNote = box.querySelector("[data-passeio-mode-note]");
-      if (modeNote) {
-        var quorumNota = parseInt(sel.quorum, 10) || 4;
-        var notaKind = "private";
-        var notaTxt = copy.modePrivate;
-        if (modalidade !== "exclusivo") {
-          if (nPessoas < quorumNota) {
-            notaKind = "wait";
-            notaTxt = String(copy.modeWait || "").replace("{n}", String(quorumNota));
-          } else {
-            notaKind = "ok";
-            notaTxt = String(copy.modeOk || "").replace("{n}", String(quorumNota));
-          }
+      var cidadeEl = box.querySelector("[data-passeio-city]");
+      var cidadeAviso = passeioCidadeCurta(cidadeEl ? cidadeEl.value : "");
+      function paintAviso(el, baseClass, aviso, comLink) {
+        if (!el || !aviso) return;
+        el.hidden = false;
+        el.className = baseClass + " is-" + aviso.tipo;
+        el.textContent = "";
+        var icon = document.createElement("i");
+        icon.className = aviso.tipo === "sucesso" ? "ti ti-check" : "ti ti-info-circle";
+        icon.setAttribute("aria-hidden", "true");
+        var span = document.createElement("span");
+        var texto = aviso.texto || "";
+        var bold = copy.trFullBold || "";
+        if (bold && texto.slice(-bold.length) === bold) {
+          span.appendChild(document.createTextNode(texto.slice(0, -bold.length)));
+          var strong = document.createElement("strong");
+          strong.textContent = bold;
+          span.appendChild(strong);
+        } else {
+          span.textContent = texto;
         }
-        modeNote.hidden = false;
-        modeNote.className = "gcv-passeios__mode-note is-" + notaKind;
-        modeNote.textContent = "";
-        var notaIcon = document.createElement("i");
-        notaIcon.className = notaKind === "ok" ? "ti ti-check" : "ti ti-info-circle";
-        notaIcon.setAttribute("aria-hidden", "true");
-        var notaSpan = document.createElement("span");
-        notaSpan.textContent = notaTxt || "";
-        if (notaKind !== "private") {
+        if (comLink && aviso.tipo === "alerta") {
           var notaLink = document.createElement("button");
           notaLink.type = "button";
           notaLink.className = "gcv-passeios__mode-link";
@@ -2532,15 +2695,24 @@
               window.GcvExcCart.openPolicy("cancel");
             }
           });
-          notaSpan.appendChild(document.createTextNode(" "));
-          notaSpan.appendChild(notaLink);
+          span.appendChild(document.createTextNode(" "));
+          span.appendChild(notaLink);
         }
-        modeNote.appendChild(notaIcon);
-        modeNote.appendChild(notaSpan);
+        el.appendChild(icon);
+        el.appendChild(span);
       }
-      var avisoVeiculo = passeioAvisoVeiculo(copy, nPessoas, comTranslado);
-      if (guide) guide.hidden = !avisoVeiculo;
-      if (guideText) guideText.textContent = avisoVeiculo;
+      paintAviso(
+        box.querySelector("[data-passeio-mode-note]"),
+        "gcv-passeios__mode-note",
+        getAvisoModalidade(nPessoas, modalidade, copy),
+        true
+      );
+      paintAviso(
+        box.querySelector("[data-passeio-guide]"),
+        "gcv-passeios__guide",
+        getAvisoTransporte(nPessoas, modalidade, comTranslado ? "1" : "0", cidadeAviso, copy),
+        false
+      );
       paintExtras();
       paintRoute(sel, modalidade, comTranslado);
       var unit = modalidade === "exclusivo" ? (comTranslado ? sel.exclusivoT : sel.exclusivo) : (comTranslado ? sel.excursaoT : sel.excursao);
@@ -2624,7 +2796,7 @@
           if (msg) msg.textContent = copy.dayTaken;
           if (typeof cart.warnSameDay === "function") cart.warnSameDay();
         } else if (box.classList.contains("is-modal")) {
-          gcvPessoasPrefillCommit(item.pessoas);
+          gcvAddPrefsCommit(item);
           paintAddButton();
           closePasseioModal();
           if (typeof box._passeioDone === "function") box._passeioDone();
@@ -2644,20 +2816,60 @@
     if (!box.classList.contains("is-modal")) bindPasseioDock(box);
   }
 
-  function gcvPessoasPrefill() {
-    var bag = window.GcvAddPeople;
-    var n = bag && parseInt(bag.n, 10);
+  function gcvAddPrefs() {
+    var bag = window.GcvAddPeople || {};
+    var n = parseInt(bag.n, 10);
     if (!n || n < 1) n = 1;
     if (n > 15) n = 15;
-    return n;
+    return {
+      n: n,
+      city: String(bag.city || ""),
+      mode: bag.mode === "exclusivo" ? "exclusivo" : "excursao",
+      transport: bag.transport === "1" ? "1" : "0",
+    };
   }
 
-  function gcvPessoasPrefillCommit(n) {
-    n = Math.max(1, Math.min(15, parseInt(n, 10) || 1));
-    var before = gcvPessoasPrefill();
-    window.GcvAddPeople = { n: n };
-    if (n !== before && typeof window.GcvApplyPeoplePrefill === "function") {
+  function gcvPessoasPrefill() {
+    return gcvAddPrefs().n;
+  }
+
+  function gcvAddPrefsCommit(item) {
+    if (!item) return;
+    var before = gcvAddPrefs();
+    var n = Math.max(1, Math.min(15, parseInt(item.pessoas, 10) || 1));
+    window.GcvAddPeople = {
+      n: n,
+      city: String(item.embarque || ""),
+      mode: item.modalidade === "exclusivo" ? "exclusivo" : "excursao",
+      transport: item.comTransporte ? "1" : "0",
+    };
+    if (n !== before.n && typeof window.GcvApplyPeoplePrefill === "function") {
       window.GcvApplyPeoplePrefill();
+    }
+  }
+
+  function gcvApplyAddPrefs(box) {
+    if (!box) return;
+    var prefs = gcvAddPrefs();
+    function setField(name, value) {
+      var sel = box.querySelector("[data-passeio-" + name + "]");
+      if (!sel || value == null || value === "") return;
+      sel.value = value;
+      sel.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    var citySel = box.querySelector("[data-passeio-city]");
+    if (citySel && prefs.city) {
+      var hasCity = Array.prototype.some.call(citySel.options, function (opt) {
+        return opt.value === prefs.city;
+      });
+      if (hasCity) setField("city", prefs.city);
+    }
+    setField("mode", prefs.mode);
+    setField("transport", prefs.transport);
+    var peopleEl = box.querySelector("[data-passeio-people]");
+    if (peopleEl) {
+      peopleEl.value = String(prefs.n);
+      peopleEl.dispatchEvent(new Event("change", { bubbles: true }));
     }
   }
 
@@ -2722,6 +2934,7 @@
     body.appendChild(box);
     box.innerHTML = passeioBuilderHtml(copy, data);
     bindPasseioBuilder(box, copy, data);
+    if (!existing) gcvApplyAddPrefs(box);
     if (existing) {
       var dateEl = box.querySelector("[data-passeio-date]");
       var peopleEl = box.querySelector("[data-passeio-people]");
@@ -2749,6 +2962,7 @@
   }
 
   window.GcvPasseioDialog = { open: openPasseioDialog, close: closePasseioModal };
+  window.GcvPasseioAvisos = { getAvisoModalidade: getAvisoModalidade, getAvisoTransporte: getAvisoTransporte };
 
   function bindPasseioDock(box) {
     var slot = document.createElement("div");
