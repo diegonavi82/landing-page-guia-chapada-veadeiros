@@ -50,8 +50,7 @@ jobs:
           if [ -z "$FTP_PASSWORD" ]; then echo "::error::Secret FTP_PASSWORD está vazio ou não existe."; ok=1; fi
           exit $ok
 
-      # Destino: na Hostinger o login FTP costuma ser a HOME (acima do site).
-      # Por isso usamos public_html/ — se o FTP já abrir dentro de public_html, mude o secret FTP_REMOTE_DIR para ./
+      # O login FTP abre em /public_html, mas o domínio é servido em outra pasta.
       - name: Forçar reupload completo
         if: contains(github.event.head_commit.message, '[ftp-full]') || github.event_name == 'workflow_dispatch'
         continue-on-error: true
@@ -60,7 +59,7 @@ jobs:
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
           FTP_SECURE: "true"
-          FTP_REMOTE_DIR: ./
+          FTP_REMOTE_DIR: domains/guiachapadaveadeiros.com/public_html
         run: node tools/ftp-reset-sync-state.mjs
 
       - name: Deploy FTP
@@ -73,9 +72,8 @@ jobs:
           port: 21
           security: loose
           local-dir: ./Build_prod/
-          # Na Hostinger o FTP desta conta já abre em public_html.
-          # Usar public_html/ aqui criaria public_html/public_html/ (site não atualiza).
-          server-dir: ./
+          # Login cai em /public_html. O site no ar está em domains/.../public_html.
+          server-dir: domains/guiachapadaveadeiros.com/public_html/
           dangerous-clean-slate: false
           exclude: |
             **/.env
