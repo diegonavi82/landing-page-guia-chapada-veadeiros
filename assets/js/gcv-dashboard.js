@@ -13,6 +13,11 @@
     'section-cms-tarifario': 'tarifario',
     'section-cms-cupons': 'cupons',
     'section-cms-guides': 'guias',
+    'section-admin-anfitrioes': 'anfitrioes',
+    'section-host-financial': 'ingressos',
+    'section-host-ranking': 'ranking',
+    'section-host-venda': 'venda',
+    'section-host-pending': 'aguardando',
     'section-admin-broadcast': 'broadcast',
     'section-admin-messages': 'mensagens',
     'section-cms-cities': 'cidades',
@@ -26,6 +31,7 @@
     'section-guide-create-tour': 'publicar',
     'section-guide-tours': 'agenda',
     'section-guide-financial': 'financeiro',
+    'section-guide-ranking': 'ranking',
     'section-client-tours': 'passeios',
     'section-client-bookings': 'reservas',
     'section-client-publish': 'propor',
@@ -44,9 +50,10 @@
       try { sessionStorage.setItem('gcv_open_create_tour', '1'); } catch (err) {}
       return 'section-cms-excursions';
     }
+    if (hash === 'terapia') return 'section-cms-attractions';
     if (hash === 'pagar-guias') return 'section-admin-payouts';
-    if (hash === 'confirmar-reservas') return 'section-guide-tours';
-    if (hash.indexOf('passeio/') === 0 && dashLoadMap['section-cms-passeios']) return 'section-cms-passeios';
+    if (hash === 'confirmar-reservas' || hash === 'publicar') return 'section-guide-tours';
+    if ((hash.indexOf('passeio/') === 0 || hash.indexOf('relacao/') === 0) && dashLoadMap['section-cms-passeios']) return 'section-cms-passeios';
     if (dashLoadMap[hash]) return hash;
     var found = '';
     Object.keys(SECTION_HASH).forEach(function (id) {
@@ -58,7 +65,7 @@
   function syncSectionHash(id) {
     if (!id || dashHashLock) return;
     var cur = String(location.hash || '').replace(/^#/, '').split('?')[0].split('&')[0];
-    if (id === 'section-cms-passeios' && cur.indexOf('passeio/') === 0) return;
+    if (id === 'section-cms-passeios' && (cur.indexOf('passeio/') === 0 || cur.indexOf('relacao/') === 0)) return;
     var slug = hashForSection(id);
     if (!slug) return;
     var next = '#' + slug;
@@ -124,6 +131,69 @@
     xhr.onerror = function () { cb(new Error('network'), {}); };
     xhr.send();
   }
+
+  function guideMarkClass(n) {
+    if (n >= 1 && n <= 3) return ' is-top3';
+    if (n >= 4 && n <= 10) return ' is-top10';
+    return '';
+  }
+
+  function guideMarkSvg(kind) {
+    if (kind === 'trophy') {
+      return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v5a5 5 0 01-10 0V4z"/><path d="M17 6h2a3 3 0 010 6h-2"/><path d="M7 6H5a3 3 0 000 6h2"/></svg>';
+    }
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="6" cy="7" r="2.2"/><path d="M2.2 16.5c.4-2.3 2-3.6 3.8-3.6s3.4 1.3 3.8 3.6"/><circle cx="13.2" cy="8.2" r="1.7"/><path d="M10.2 16.5c.3-1.8 1.5-2.8 3-2.8s2.7 1 3 2.8"/><circle cx="18.6" cy="9.2" r="1.25"/><path d="M16.4 16.5c.2-1.3 1.1-2 2.2-2s2 .7 2.2 2"/></svg>';
+  }
+
+  function paintGuideMarks(lugar, temporada, fila) {
+    var box = document.getElementById('dash-marks');
+    if (!box) return;
+    var rank = lugar > 0 ? lugar + 'º' : '—';
+    var queue = fila > 0 ? fila + 'º' : '—';
+    var rankTitle = lugar > 0
+      ? (lugar + 'º no Ranking ' + temporada)
+      : ('Sem pontuação no Ranking ' + temporada);
+    var queueTitle = fila > 0 ? (fila + 'º na fila de guias') : 'Sem lugar na fila';
+    box.hidden = false;
+    box.innerHTML =
+      '<span class="gcv-dash-mark' + guideMarkClass(lugar) + '" title="' + rankTitle + '">' + guideMarkSvg('trophy') + rank + '</span>' +
+      '<span class="gcv-dash-mark' + guideMarkClass(fila) + '" title="' + queueTitle + '">' + guideMarkSvg('fila') + queue + '</span>';
+  }
+
+  function refreshGuideMarks() {
+    if (!currentUser || (currentUser.role !== 'guide' && (currentUser.roles || []).indexOf('guide') < 0)) return;
+    if (currentUser.status !== 'active') return;
+    var asQ = '';
+    try {
+      asQ = new URLSearchParams(location.search).get('as') || sessionStorage.getItem('gcv_porta') || '';
+    } catch (e) {}
+    var q = (asQ ? '&as=' + encodeURIComponent(asQ) : '') + '&t=' + Date.now();
+    var mes = new Date().getMonth() + 1;
+    var chave = mes >= 4 && mes <= 9 ? 'xango' : 'oxum';
+    var temporada = chave === 'xango' ? 'Fogo' : 'Água';
+    var lugar = 0;
+    var fila = 0;
+    var left = 2;
+    function finish() {
+      left -= 1;
+      if (left > 0) return;
+      paintGuideMarks(lugar, temporada, fila);
+    }
+    get('/api/guides/ranking.php?' + q.replace(/^&/, ''), function (_e, res) {
+      var temp = res && res.data && res.data[chave];
+      var guias = (temp && temp.guias) || [];
+      guias.forEach(function (g, i) {
+        if (String(g.id) === String(currentUser.id)) lugar = g.lugar || (i + 1);
+      });
+      finish();
+    });
+    get('/api/guides/substituir.php?' + q.replace(/^&/, ''), function (_e, res) {
+      fila = Number(res && res.data && res.data.posicao) || 0;
+      finish();
+    });
+  }
+
+  window.gcvRefreshGuideMarks = refreshGuideMarks;
 
   function post(url, data, cb) {
     var xhr = new XMLHttpRequest();
@@ -1549,6 +1619,7 @@
       checkin_close_before_payout_minutes: 'finance',
       transfer_offer_hours: 'transfer',
       transfer_cancel_hours: 'transfer',
+      passeio_quorum: 'passeios',
       diaria_minima_reais: 'regras',
       pg_minimo_guia_reais: 'regras',
       pausa_convite_inicio_hora: 'regras',
@@ -1560,7 +1631,7 @@
     var groupMeta = {
       passeios: {
         title: 'Passeios do dia',
-        hint: 'Quantos atrativos cabem no mesmo passeio. 1 deixa só o passeio unitário. Cada relação acima disso é outro passeio, com tarifa própria. O padrão é 3.'
+        hint: 'Um passeio junta de 1 a 3 experiências. No site só entra o passeio feito só de atrativo (trilha). 1 deixa só o passeio unitário. O quórum é o pacote mínimo do privativo sem translado: o cliente paga esse número × PAX 4- Excursão. Cada tarifário pode ter outro quórum.'
       },
       notify: {
         title: 'Notificações de passeio',
@@ -1572,7 +1643,7 @@
       },
       regras: {
         title: 'Tarifa do roteiro',
-        hint: 'Diária mínima e pagamento mínimo do guia travam o salvamento da tarifa. A tarifa progressiva só sobe preço de passeio do admin ou aberto pelo cliente, nunca o do guia. O relógio de aceite para entre 22h e 8h.'
+        hint: 'A diária mínima de guiagem trava a tarifa: PAX 4- Excursão × quórum não pode ficar abaixo dela. O pagamento mínimo ao guia tem que ser menor que essa diária. A tarifa progressiva só sobe preço de passeio do admin ou aberto pelo cliente, nunca o do guia.'
       },
       finance: {
         title: 'Financeiro e repasse',
@@ -1605,7 +1676,7 @@
             : (/minute/.test(s.key_name) ? 'min' : (s.type === 'percent' ? '%' : (/hours|hour/.test(s.key_name) ? 'h' : ''))));
           row.innerHTML = '<div class="gcv-dash-settings-label"><strong>' + s.label + '</strong></div>'
             + '<div class="gcv-dash-settings-controls">'
-            + '<input class="gcv-dash-settings-input" type="number" min="' + (isMaxDia ? '1' : '0') + '"' + (isMaxDia ? ' max="5"' : '') + ' step="1" value="' + s.value + '" data-key="' + s.key_name + '" />'
+            + '<input class="gcv-dash-settings-input" type="number" min="' + (isMaxDia ? '1' : '0') + '"' + (isMaxDia ? ' max="3"' : '') + ' step="1" value="' + s.value + '" data-key="' + s.key_name + '" />'
             + (unit ? '<span class="gcv-dash-settings-unit">' + unit + '</span>' : '')
             + '<button type="button" class="gcv-dash-btn gcv-dash-btn--sm gcv-dash-btn--primary" data-save-key="' + s.key_name + '">Salvar</button>'
             + '<span class="gcv-dash-settings-ok" hidden>Salvo</span>'
@@ -2079,6 +2150,8 @@
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
       publish:
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>',
+      rank:
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v5a5 5 0 01-10 0V4z"/><path d="M17 6h2a3 3 0 010 6h-2"/><path d="M7 6H5a3 3 0 000 6h2"/></svg>',
       profile:
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
       money:
@@ -2112,11 +2185,12 @@
     if (isAdmin) {
       items = [
         { id: 'section-cms-articles',      icon: '📰', label: 'Revista',           load: function () { if (window.GcvAdminCms) window.GcvAdminCms.open('articles'); } },
-        { id: 'section-cms-attractions',   icon: '🏞️', label: 'Atrativos',         load: function () { if (window.GcvAdminCms) window.GcvAdminCms.open('attractions'); } },
+        { id: 'section-cms-attractions',   icon: '🏞️', label: 'Experiências',      load: function () { if (window.GcvAdminCms) window.GcvAdminCms.open('attractions'); } },
         { id: 'section-cms-passeios',      icon: '🥾', label: 'Passeios',          load: function () { if (window.GcvAdminTarifario) window.GcvAdminTarifario.openPasseios(); } },
         { id: 'section-cms-tarifario',     icon: '🎟️', label: 'Tarifário',         load: function () { if (window.GcvAdminTarifario) window.GcvAdminTarifario.open(); } },
         { id: 'section-cms-cupons',        icon: '🏷️', label: 'Cupons',            load: function () { if (window.GcvAdminCupons) window.GcvAdminCupons.open(); } },
         { id: 'section-cms-guides',        icon: '🧭', label: 'Guias credenciados', load: function () { if (window.GcvAdminCms) window.GcvAdminCms.open('guides'); } },
+        { id: 'section-admin-anfitrioes',  icon: '🏡', label: 'Anfitriões',        load: function () { if (window.GcvAnfitriao) window.GcvAnfitriao.openAdmin(); } },
         { id: 'section-admin-broadcast',   icon: '📣', label: 'Broadcast',         load: loadBroadcast      },
         { id: 'section-admin-messages',    icon: '💬', label: 'Mensagens',         load: loadMessages       },
         { id: 'section-cms-cities',        icon: '📍', label: 'Cidades',           load: function () { if (window.GcvAdminCms) window.GcvAdminCms.open('cities'); } },
@@ -2127,10 +2201,20 @@
         { id: 'section-admin-settings',    icon: '⚙️', label: 'Configurações',     load: loadSettings       },
       ];
       footerItems = [profileItem];
+    } else if (role === 'host' && status === 'active') {
+      items = [
+        { id: 'section-host-financial', icon: '💰', label: 'Financeiro', load: function () { if (window.GcvAnfitriao) window.GcvAnfitriao.openFinance(); } },
+        { id: 'section-host-ranking', icon: '🏆', label: 'Ranking', load: function () { if (window.GcvAnfitriao) window.GcvAnfitriao.openRankingHost(); } },
+        { id: 'section-host-venda', icon: '🎟️', label: 'Venda', load: function () { if (window.GcvAnfitriao) window.GcvAnfitriao.openVenda(); } },
+      ];
+    } else if (role === 'host') {
+      items = [
+        { id: 'section-host-pending', icon: '⏳', label: 'Aguardando', load: function () { if (window.GcvAnfitriao) window.GcvAnfitriao.openPending(status); } },
+      ];
     } else if (role === 'guide' && status === 'active') {
       items = [
-        { id: 'section-guide-create-tour',  icon: '➕', label: 'Publicar passeio',  tab: 'Publicar',   tabIcon: 'publish', load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuidePublish(); } },
         { id: 'section-guide-tours',        icon: '📅', label: 'Agenda',            tab: 'Agenda',      tabIcon: 'agenda',  load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideAgenda(); } },
+        { id: 'section-guide-ranking',      icon: '🏆', label: 'Ranking',          tab: 'Ranking',    tabIcon: 'rank',    load: function () { if (window.GcvAnfitriao) window.GcvAnfitriao.openRankingGuia(); } },
         { id: 'section-guide-financial',    icon: '💲', label: 'Financeiro',       tab: 'Financeiro', tabIcon: 'money',   load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideEarnings(); } },
       ];
       footerItems = [profileItem];
@@ -2177,7 +2261,7 @@
       if (!link) return;
       e.preventDefault();
       var sectionId = link.getAttribute('data-section');
-      if (sectionId === 'section-cms-passeios' && String(location.hash || '').indexOf('#passeio/') === 0) {
+      if (sectionId === 'section-cms-passeios' && /^#(passeio|relacao)\//.test(String(location.hash || ''))) {
         try {
           history.replaceState(null, '', location.pathname + location.search + '#passeios');
         } catch (err) {
@@ -2227,12 +2311,16 @@
       if (!wantScan) {
         var stored = '';
         try { stored = sessionStorage.getItem('gcv_dash_section') || ''; } catch (e) { stored = ''; }
-        var openId = sectionForHash(location.hash) || (loadMap[stored] ? stored : '');
+        var guiaAtivo = role === 'guide' && status === 'active';
+        var hashAgora = String(location.hash || '').replace(/^#/, '');
+        var openId = sectionForHash(location.hash);
+        if (!openId && !guiaAtivo && loadMap[stored]) openId = stored;
         if (!openId || !loadMap[openId]) {
-          openId = (role === 'guide' && status === 'active' && loadMap['section-guide-tours'])
+          openId = (guiaAtivo && loadMap['section-guide-tours'])
             ? 'section-guide-tours'
             : allItems[0].id;
         }
+        if (guiaAtivo && !hashAgora) openId = 'section-guide-tours';
         showSection(openId);
         if (loadMap[openId]) loadMap[openId]();
       }
@@ -2243,6 +2331,9 @@
       if (!window.__gcvGuideBadgeTimer) {
         window.__gcvGuideBadgeTimer = setInterval(refreshGuideBadge, 30000);
       }
+    }
+    if (role === 'guide' && status === 'active' && window.GcvDashRoles && typeof window.GcvDashRoles.syncAgendaAsks === 'function') {
+      window.GcvDashRoles.syncAgendaAsks();
     }
   }
 
@@ -2293,7 +2384,7 @@
       var nameEl   = document.getElementById('dash-name');
       var roleEl   = document.getElementById('dash-role');
       var avatarEl = document.getElementById('dash-avatar');
-      var roleMap  = { admin: 'Administrador', guide: 'Guia', client: 'Cliente' };
+      var roleMap  = { admin: 'Administrador', guide: 'Guia', client: 'Cliente', host: 'Anfitrião' };
 
       if (nameEl)   nameEl.textContent   = currentUser.name || '';
       if (roleEl) {
@@ -2319,6 +2410,7 @@
           if (url && avatarEl) avatarEl.innerHTML = '<img src="' + url + '" alt="Avatar" />';
         });
       }
+      refreshGuideMarks();
 
       buildNav(tabRole || currentUser.role, currentUser.status);
       document.querySelectorAll('[data-wa-tab]').forEach(function (tab) {

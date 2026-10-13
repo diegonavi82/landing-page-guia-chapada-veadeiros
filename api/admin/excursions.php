@@ -13,6 +13,7 @@ require_once __DIR__ . '/../helpers/marketplace/audit_service.php';
 require_once __DIR__ . '/../helpers/meeting_point.php';
 require_once __DIR__ . '/../helpers/google_places.php';
 require_once __DIR__ . '/../helpers/notify_ops.php';
+require_once __DIR__ . '/../helpers/tarifarios.php';
 
 header('Content-Type: application/json; charset=utf-8');
 $admin = require_admin();
@@ -54,19 +55,25 @@ function gcv_excursion_validate(array $body, bool $creating): ?string
     if ($creating || array_key_exists('quorum', $body)) {
         $q = (int)($body['quorum'] ?? 4);
         $maxP = (int)($body['max_people'] ?? 10);
-        if ($maxP < 1) {
-            $maxP = 1;
+        if ($maxP < 4) {
+            $maxP = 4;
         }
-        if ($maxP > 12) {
-            $maxP = 12;
+        if ($maxP > 15) {
+            $maxP = 15;
         }
         if ($q < 0 || $q > $maxP) {
             return 'Quórum deve ser 0 (já confirmado) ou até o número de vagas';
         }
     }
     if ($creating || array_key_exists('max_people', $body)) {
-        if (!isset($body['max_people']) || (int)$body['max_people'] < 1) return 'Máximo de pessoas obrigatório';
-        if ((int)$body['max_people'] > 12) return 'Máximo de pessoas é 12';
+        if (!isset($body['max_people'])) return 'Máximo de pessoas obrigatório';
+        $ids = gcv_excursion_normalize_attraction_ids($body);
+        if (!$ids && !empty($body['id'])) {
+            $ids = array_map(static fn($a) => (int)($a['id'] ?? 0), gcv_excursion_load_attractions((int)$body['id']));
+        }
+        require_once __DIR__ . '/../helpers/tarifarios.php';
+        $erroMax = gcv_max_people_excursao_erro(db(), $ids, (int)$body['max_people']);
+        if ($erroMax !== null) return $erroMax;
     }
     if ($creating || array_key_exists('preconfirmed_people', $body)) {
         $pre = (int)($body['preconfirmed_people'] ?? 0);
@@ -87,6 +94,17 @@ function gcv_excursion_validate(array $body, bool $creating): ?string
         if (array_key_exists('price_transport_cents', $body) && (int)$body['price_transport_cents'] < 0) {
             return 'Valor com transporte inválido';
         }
+    }
+    require_once __DIR__ . '/../helpers/anfitrioes.php';
+    $ids = [];
+    if ($creating || array_key_exists('attraction_ids', $body) || array_key_exists('attraction_id', $body)) {
+        $ids = gcv_excursion_normalize_attraction_ids($body);
+    }
+    $guideId = (int)($body['guide_user_id'] ?? 0);
+    $dateIso = (string)($body['date_iso'] ?? '');
+    if ($ids) {
+        $bloq = gcv_anfitriao_recusa_passeio(db(), $ids, $guideId, $dateIso);
+        if ($bloq) return $bloq;
     }
     return null;
 }
@@ -522,13 +540,15 @@ function gcv_admin_publish_as_guide(array $body, array $admin): array
 if ($method === 'GET' && !empty($_GET['publish_options'])) {
     require_once __DIR__ . '/../helpers/marketplace/commission_service.php';
     $attrs = db()->query(
-        "SELECT id, title_pt, slug, city_id, entry_price_cents, cover_url
+        "SELECT id, title_pt, slug, city_id, entry_price_cents, cover_url, experiencia_json
          FROM gcv_attractions
          WHERE status = 'published'
          ORDER BY title_pt ASC"
     )->fetchAll(PDO::FETCH_ASSOC) ?: [];
     $attrs = gcv_sort_attractions_catalog($attrs);
     foreach ($attrs as &$a) {
+        $a['max_participantes'] = gcv_experiencia_max_participantes($a['experiencia_json'] ?? null);
+        unset($a['experiencia_json']);
         $a['guide_net_max'] = gcv_guide_net_max_cents(
             (int)($a['id'] ?? 0),
             (string)($a['slug'] ?? ''),
@@ -576,8 +596,8 @@ if ($method === 'GET' && !empty($_GET['publish_options'])) {
         'cities' => $cities,
         'guides' => $guides,
         'min_quorum' => 0,
-        'max_quorum' => 12,
-        'max_people_cap' => 12,
+        'max_quorum' => 15,
+        'max_people_cap' => 15,
         'guide_net_min' => gcv_guide_net_min_cents() / 100,
         'guide_net_max' => gcv_guide_net_max_default_cents() / 100,
         'guide_net_max_dragao' => gcv_guide_net_max_dragao_cents() / 100,

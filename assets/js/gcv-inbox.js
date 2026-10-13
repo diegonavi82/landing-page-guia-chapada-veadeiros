@@ -73,7 +73,7 @@
       var badge = document.createElement('span');
       badge.className = tab ? 'gcv-dash-tab-badge' : 'gcv-dash-nav-badge';
       badge.textContent = n > 99 ? '99+' : String(n);
-      badge.setAttribute('aria-label', n + (n === 1 ? ' nova reserva' : ' novas reservas'));
+      badge.setAttribute('aria-label', n + (n === 1 ? ' passeio para confirmar' : ' passeios para confirmar'));
       link.appendChild(badge);
     });
   }
@@ -81,7 +81,6 @@
   function applyCounts(data) {
     data = data || {};
     setBadge(parseInt(data.unread, 10) || 0);
-    if (data.agenda_unread != null) setAgendaBadge(data.agenda_unread);
   }
 
   function renderList(items) {
@@ -114,8 +113,7 @@
       });
     }
     post('/api/inbox/read.php', { all: true }, function (err, res) {
-      if (res && res.ok && res.data) applyCounts(res.data);
-      else setAgendaBadge(0);
+      if (res && res.ok && res.data) setBadge(parseInt(res.data.unread, 10) || 0);
       if (typeof cb === 'function') cb();
     });
   }
@@ -198,6 +196,7 @@
     open: openPage,
     refresh: refreshBadge,
     load: loadList,
-    ackAgenda: ackAgenda
+    ackAgenda: ackAgenda,
+    setAgendaBadge: setAgendaBadge
   };
 })();

@@ -11,6 +11,7 @@ require_once __DIR__ . '/helpers/db.php';
 require_once __DIR__ . '/helpers/cms_schema.php';
 require_once __DIR__ . '/helpers/related_tours.php';
 require_once __DIR__ . '/helpers/tarifarios.php';
+require_once __DIR__ . '/helpers/site_launch.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
@@ -22,6 +23,20 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') {
 }
 
 try {
+    if (!gcv_passeios_visiveis()) {
+        $slug = trim((string) ($_GET['slug'] ?? ''));
+        if ($slug === '') {
+            echo json_encode(['ok' => true, 'data' => [
+                'tours' => [],
+                'categories' => [],
+                'max_atrativos' => 1,
+                'oculto' => true,
+            ]], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+        echo json_encode(['ok' => true, 'data' => ['tem_passeio' => false, 'oculto' => true]], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
     gcv_cms_ensure_schema();
     $pdo = db();
     $slug = trim((string)($_GET['slug'] ?? ''));

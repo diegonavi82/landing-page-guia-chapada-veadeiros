@@ -12,6 +12,8 @@ import { sendDevMail, buildRecoverEmailHtml, recoverEmailSubject } from "./mock-
 import { excursaoRowsForLocale } from "./excursoes-carousel-data.mjs";
 import { buildPixReceiptEmailHtml, receiptEmailSubject } from "./pix-receipt-html.mjs";
 import { createPaymentsMock } from "./mock-payments.mjs";
+import { createAnfitriaoApi } from "./mock-anfitriao.mjs";
+import { lerPaginasAtrativo, gravarPaginasAtrativo } from "./pagina-atrativo.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, "..");
@@ -143,6 +145,11 @@ function annotateMockTrips(rec) {
   });
 }
 
+function flagOn(key) {
+  const v = String(readEnvValue(key) || "").trim().toLowerCase();
+  return v === "1" || v === "true" || v === "on" || v === "sim";
+}
+
 function readEnvValue(key) {
   const envPath = path.join(ROOT, "api", ".env");
   if (!fs.existsSync(envPath)) return "";
@@ -180,6 +187,9 @@ function stripeForm(fields) {
 
 async function stripeApi(method, stripePath, fields) {
   const key = readEnvValue("STRIPE_SECRET_KEY");
+  if (key.startsWith("sk_live_") || key.startsWith("rk_live_")) {
+    return { ok: false, error: "producao_bloqueada_no_localhost" };
+  }
   if (!key.startsWith("sk_") && !key.startsWith("rk_")) {
     return { ok: false, error: "stripe_not_configured" };
   }
@@ -1122,8 +1132,13 @@ const ROLE = process.argv[2] || "guide";
 const MOCK_USERS = {
   admin: { id: 1, name: "Diego Navi", email: "diegocsp82@gmail.com", role: "admin", status: "active", avatar_url: null },
   guide: { id: 2, name: "Diego Guia", email: "guia@gcv.com", role: "guide", status: "active", avatar_url: null, email_verified: true },
+  "guide-ana": { id: 21, name: "Ana Guia", email: "ana@gcv.com", role: "guide", status: "active", avatar_url: null, email_verified: true },
+  "guide-martina": { id: 24, name: "Martina Motlova", email: "martina@gcv.com", role: "guide", status: "active", avatar_url: null, email_verified: true },
+  "guide-gyovanna": { id: 25, name: "Gyovanna Torres", email: "gyovanna@gcv.com", role: "guide", status: "active", avatar_url: null, email_verified: true },
   "guide-pending": { id: 3, name: "João Pendente", email: "pendente@gcv.com", role: "guide", status: "pending", avatar_url: null },
   client: { id: 4, name: "Maria Cliente", email: "cliente@gcv.com", role: "client", status: "active", avatar_url: null },
+  host: { id: 8, name: "Lúcia Anfitriã", email: "lucia@segredo.test", role: "host", status: "active", phone: "62977770001", avatar_url: null },
+  "host-pending": { id: 9, name: "Marina do Poço", email: "marina@poco.test", role: "host", status: "pending", phone: "62988881111", avatar_url: null },
 };
 
 const user = { ...(MOCK_USERS[ROLE] || MOCK_USERS.guide) };
@@ -1171,6 +1186,38 @@ function loadCatalogAttractions() {
 }
 
 const MOCK_ATTRACTIONS = loadCatalogAttractions();
+const PESO_INICIAL = {
+  "cachoeira-segredo-guia-chapada-veadeiros-sao-jorge": 3,
+  "vale-lua-guia-chapada-veadeiros-sao-jorge": 2,
+  "cachoeira-almecegas-poco-sao-bento-guia-chapada-veadeiros": 1,
+};
+const PREMIOS_INICIAL = {
+  "cachoeira-segredo-guia-chapada-veadeiros-sao-jorge": {
+    xango: { primeiro: "R$ 800", segundo: "R$ 500", terceiro: "R$ 250" },
+    oxum: { primeiro: "R$ 700", segundo: "R$ 400", terceiro: "R$ 200" },
+  },
+  "vale-lua-guia-chapada-veadeiros-sao-jorge": {
+    xango: { primeiro: "R$ 450", segundo: "R$ 250", terceiro: "R$ 120" },
+    oxum: { primeiro: "R$ 380", segundo: "R$ 200", terceiro: "R$ 100" },
+  },
+  "cachoeira-almecegas-poco-sao-bento-guia-chapada-veadeiros": {
+    xango: { primeiro: "R$ 300", segundo: "R$ 180", terceiro: "R$ 80" },
+    oxum: { primeiro: "R$ 260", segundo: "R$ 150", terceiro: "R$ 70" },
+  },
+};
+for (const atra of MOCK_ATTRACTIONS) {
+  const peso = PESO_INICIAL[atra.slug];
+  const premios = PREMIOS_INICIAL[atra.slug];
+  if (!peso && !premios) continue;
+  const exp = Object.assign({}, atra.experiencia || {});
+  if (peso) exp.peso = peso;
+  if (premios) {
+    const venda = Object.assign({}, exp.venda || {});
+    if (!venda.premiacao) venda.premiacao = premios;
+    exp.venda = venda;
+  }
+  atra.experiencia = exp;
+}
 
 function loadRelatedTourSeed() {
   const file = path.join(ROOT, "api", "data", "related-tours-seed.json");
@@ -1186,7 +1233,7 @@ const RELATED_SEED = loadRelatedTourSeed();
 const durationBySlug = new Map((RELATED_SEED.durations || []).map((d) => [d.slug, d]));
 /* ---------- Tarifário (mesmas regras de api/helpers/tarifarios.php) ---------- */
 const PASSEIO_CIDADE_KEYS = ["alto-paraiso", "sao-jorge", "cavalcante"];
-const TARIFARIO_CAMPOS = ["exclusivo_pessoa_cents", "exclusivo_transporte_cents", "excursao_pessoa_cents", "excursao_transporte_cents"];
+const TARIFARIO_CAMPOS = ["exclusivo_pessoa_cents", "exclusivo_pessoa_5_cents", "exclusivo_transporte_cents", "excursao_pessoa_cents", "excursao_pessoa_5_cents", "excursao_transporte_cents"];
 const TARIFARIO_CIDADES = { "alto-paraiso": "Alto Paraíso de Goiás", "sao-jorge": "São Jorge", cavalcante: "Cavalcante" };
 const TARIFAS_OFICIAIS = {
   guia: [
@@ -1200,6 +1247,12 @@ const TARIFAS_OFICIAIS = {
   ],
 };
 
+function nomeTarifaSemTranslado(exc4, exc5, pri4, pri5) {
+  const excShow = exc5 > 0 ? exc5 : exc4;
+  const priShow = pri5 > 0 ? pri5 : pri4;
+  return "EXC" + exc4 + "(" + excShow + ") / PRI" + pri4 + "(" + priShow + ")";
+}
+
 function tarifasOficiais() {
   if (!tarifasOficiais.live) {
     tarifasOficiais.live = [];
@@ -1210,9 +1263,15 @@ function tarifasOficiais() {
           tipo,
           excursao: row[1],
           privativo: row[2],
+          excursao_5: 0,
+          privativo_5: 0,
           excursao_cents: row[1] * 100,
           privativo_cents: row[2] * 100,
-          nome: (tipo === "guia" ? "Tarifa Guia" : "Tarifa Translado") + " · excursão " + row[1] + " / privativo " + row[2],
+          excursao_5_cents: 0,
+          privativo_5_cents: 0,
+          nome: tipo === "guia"
+            ? nomeTarifaSemTranslado(row[1], 0, row[2], 0)
+            : "Tarifa Translado · excursão " + row[1] + " / privativo " + row[2],
         });
       }
     }
@@ -1226,13 +1285,22 @@ function tarifaOficialUso(codigo) {
   return nAttr + nPass;
 }
 
-function tarifaOficialCriar(tipo, excursao, privativo) {
+function tarifaOficialCriar(tipo, excursao, privativo, excursao5, privativo5) {
   if (tipo !== "guia" && tipo !== "translado") throw new Error("Escolha Tarifa Guia ou Tarifa Translado.");
   excursao = parseInt(excursao, 10) || 0;
   privativo = parseInt(privativo, 10) || 0;
+  excursao5 = tipo === "guia" ? Math.max(0, parseInt(excursao5, 10) || 0) : 0;
+  privativo5 = tipo === "guia" ? Math.max(0, parseInt(privativo5, 10) || 0) : 0;
   if (excursao < 1 || privativo < 1 || excursao > 100000 || privativo > 100000) throw new Error("Informe a excursão e o privativo em reais.");
+  if (excursao5 > 100000 || privativo5 > 100000) throw new Error("Informe o PAX 5+ em reais.");
+  if (tipo === "guia") {
+    validarGuiaValores(excursao, excursao5, privativo, privativo5, "");
+    validarDiariaValor(excursao, settingInt("passeio_quorum", 4), settingInt("diaria_minima_reais", 320), "");
+  } else {
+    validarTransladoValores(excursao, privativo, "");
+  }
   const rows = tarifasOficiais();
-  if (rows.some((row) => row.tipo === tipo && row.excursao === excursao && row.privativo === privativo)) {
+  if (rows.some((row) => row.tipo === tipo && row.excursao === excursao && row.privativo === privativo && (row.excursao_5 || 0) === excursao5 && (row.privativo_5 || 0) === privativo5)) {
     throw new Error("Essa tarifa já existe.");
   }
   const prefix = tipo === "guia" ? "g" : "t";
@@ -1247,11 +1315,32 @@ function tarifaOficialCriar(tipo, excursao, privativo) {
     tipo,
     excursao,
     privativo,
+    excursao_5: excursao5,
+    privativo_5: privativo5,
     excursao_cents: excursao * 100,
     privativo_cents: privativo * 100,
-    nome: (tipo === "guia" ? "Tarifa Guia" : "Tarifa Translado") + " · excursão " + excursao + " / privativo " + privativo,
+    excursao_5_cents: excursao5 * 100,
+    privativo_5_cents: privativo5 * 100,
+    nome: tipo === "guia"
+      ? nomeTarifaSemTranslado(excursao, excursao5, privativo, privativo5)
+      : "Tarifa Translado · excursão " + excursao + " / privativo " + privativo,
   });
   return codigo;
+}
+
+function tarifaOficialPax5(codigo, excursao5, privativo5) {
+  const row = tarifasOficiais().find((item) => item.codigo === String(codigo || "").trim());
+  if (!row) throw new Error("Tarifa não encontrada.");
+  if (row.tipo !== "guia") throw new Error("PAX 5+ só existe na Tarifa Guia, sem translado.");
+  excursao5 = Math.max(0, parseInt(excursao5, 10) || 0);
+  privativo5 = Math.max(0, parseInt(privativo5, 10) || 0);
+  if (excursao5 > 100000 || privativo5 > 100000) throw new Error("Informe o PAX 5+ em reais.");
+  validarGuiaValores(row.excursao, excursao5, row.privativo, privativo5, row.nome);
+  validarDiariaValor(row.excursao, settingInt("passeio_quorum", 4), settingInt("diaria_minima_reais", 320), row.nome);
+  row.excursao_5 = excursao5;
+  row.privativo_5 = privativo5;
+  row.excursao_5_cents = excursao5 * 100;
+  row.privativo_5_cents = privativo5 * 100;
 }
 
 function tarifaOficialAcima(atual) {
@@ -1275,6 +1364,24 @@ function tarifaOficialExcluir(codigo) {
   if (uso > 0 && acima) {
     for (const row of MOCK_ATTRACTIONS) if (row[campo] === codigo) row[campo] = acima.codigo;
     for (const row of MOCK_RELATED) if (row[campo] === codigo) row[campo] = acima.codigo;
+    for (const row of MOCK_ATTRACTIONS) {
+      const emb = row.experiencia && row.experiencia.embarques;
+      if (!emb) continue;
+      for (const item of Object.values(emb)) {
+        if (!item || typeof item !== "object") continue;
+        if (campo === "tarifa_guia" && item.guia === codigo) item.guia = acima.codigo;
+        if (campo === "tarifa_translado" && (item.trans === codigo || item.translado === codigo)) {
+          item.trans = acima.codigo;
+          if (item.translado) item.translado = acima.codigo;
+        }
+      }
+    }
+    const jsonCampo = campo === "tarifa_guia" ? "guia" : "translado";
+    for (const tour of MOCK_RELATED) {
+      for (const item of Object.values(tour.tarifasSaida || {})) {
+        if (item && item[jsonCampo] === codigo) item[jsonCampo] = acima.codigo;
+      }
+    }
   }
   tarifasOficiais.live = tarifasOficiais().filter((row) => row.codigo !== codigo);
   return {
@@ -1303,27 +1410,240 @@ function bilingueUniversal() {
 function tarifaOficialMontar(guiaCodigo, transladoCodigo) {
   const guia = tarifaOficialItem(String(guiaCodigo || ""), "guia");
   const trans = tarifaOficialItem(String(transladoCodigo || ""), "translado");
-  if (!guia || !trans) return null;
+  if (!guia) return null;
   const cidades = {};
   for (const key of PASSEIO_CIDADE_KEYS) {
     cidades[key] = {
       excursao_pessoa_cents: guia.excursao_cents,
       exclusivo_pessoa_cents: guia.privativo_cents,
-      excursao_transporte_cents: trans.excursao_cents,
-      exclusivo_transporte_cents: trans.privativo_cents,
+      excursao_pessoa_5_cents: guia.excursao_5_cents || 0,
+      exclusivo_pessoa_5_cents: guia.privativo_5_cents || 0,
+      excursao_transporte_cents: trans ? trans.excursao_cents : 0,
+      exclusivo_transporte_cents: trans ? trans.privativo_cents : 0,
     };
   }
   const base = cidades["alto-paraiso"];
   return {
     id: 0,
-    nome: guia.nome + " + " + trans.nome,
+    nome: guia.nome + (trans ? " + " + trans.nome : ""),
     oficial: true,
     tarifa_guia: guia.codigo,
-    tarifa_translado: trans.codigo,
-    quorum: 4,
+    tarifa_translado: trans ? trans.codigo : "",
+    quorum: Math.max(1, Math.min(20, settingInt("passeio_quorum", 4))),
     ...base,
     cidades,
   };
+}
+
+function tarifaOficialEditar(codigo, excursao, privativo, excursao5, privativo5) {
+  const row = tarifasOficiais().find((item) => item.codigo === String(codigo || "").trim());
+  if (!row) throw new Error("Tarifa não encontrada.");
+  excursao = parseInt(excursao, 10) || 0;
+  privativo = parseInt(privativo, 10) || 0;
+  if (excursao < 1 || privativo < 1) throw new Error("Preencha todos os valores da tarifa.");
+  if (row.tipo !== "guia") {
+    excursao5 = 0;
+    privativo5 = 0;
+    validarTransladoValores(excursao, privativo, row.nome);
+  } else {
+    excursao5 = parseInt(excursao5, 10) || 0;
+    privativo5 = parseInt(privativo5, 10) || 0;
+    if (excursao5 < 1 || privativo5 < 1) throw new Error("Preencha o PAX 5+ da excursão e do privativo.");
+    validarGuiaValores(excursao, excursao5, privativo, privativo5, row.nome);
+    validarDiariaValor(excursao, settingInt("passeio_quorum", 4), settingInt("diaria_minima_reais", 320), row.nome);
+  }
+  if (tarifasOficiais().some((outra) => outra.codigo !== row.codigo && outra.tipo === row.tipo && outra.excursao === excursao && outra.privativo === privativo && (outra.excursao_5 || 0) === excursao5 && (outra.privativo_5 || 0) === privativo5)) {
+    throw new Error("Essa tarifa já existe.");
+  }
+  row.excursao = excursao;
+  row.privativo = privativo;
+  row.excursao_5 = excursao5;
+  row.privativo_5 = privativo5;
+  row.excursao_cents = excursao * 100;
+  row.privativo_cents = privativo * 100;
+  row.excursao_5_cents = excursao5 * 100;
+  row.privativo_5_cents = privativo5 * 100;
+  row.nome = row.tipo === "guia"
+    ? nomeTarifaSemTranslado(excursao, excursao5, privativo, privativo5)
+    : "Tarifa Translado · excursão " + excursao + " / privativo " + privativo;
+}
+
+function saidasTarifasAtrativo(a) {
+  const emb = (a && a.experiencia && a.experiencia.embarques) || {};
+  const fallbackGuia = String((a && a.tarifa_guia) || "");
+  const fallbackTrans = String((a && a.tarifa_translado) || "");
+  let chaves = Object.keys(emb).filter((key) => TARIFARIO_CIDADES[key] && emb[key] && typeof emb[key] === "object");
+  if (!chaves.length && a && a.duracao && typeof a.duracao === "object") {
+    chaves = Object.keys(a.duracao).filter((key) => TARIFARIO_CIDADES[key] && parseInt(a.duracao[key], 10) > 0);
+  }
+  if (!chaves.length && a && a.tarifario_id) {
+    const antiga = tarifarioById(a.tarifario_id);
+    if (antiga && antiga.cidades) {
+      chaves = PASSEIO_CIDADE_KEYS.filter((key) => {
+        const row = antiga.cidades[key] || {};
+        return (parseInt(row.excursao_pessoa_cents, 10) || 0) > 0 || (parseInt(row.excursao_transporte_cents, 10) || 0) > 0;
+      });
+    }
+  }
+  const out = chaves.map((key) => {
+    const salvo = emb[key] && typeof emb[key] === "object" ? emb[key] : {};
+    const temCampo = Object.prototype.hasOwnProperty.call(salvo, "guia") || Object.prototype.hasOwnProperty.call(salvo, "trans") || Object.prototype.hasOwnProperty.call(salvo, "translado");
+    return {
+      key,
+      nome: String(salvo.nome || TARIFARIO_CIDADES[key] || key),
+      guia: temCampo ? String(salvo.guia || "") : fallbackGuia,
+      translado: temCampo ? String(salvo.trans || salvo.translado || "") : fallbackTrans,
+    };
+  });
+  if (!out.length && (fallbackGuia || fallbackTrans)) {
+    out.push({ key: "", nome: "Sem cidade de saída", guia: fallbackGuia, translado: fallbackTrans });
+  }
+  return out;
+}
+
+function saidasTarifasPasseio(tour, chaves) {
+  const raw = (tour && tour.tarifasSaida) || {};
+  const fallbackGuia = String((tour && tour.tarifa_guia) || "");
+  const fallbackTrans = String((tour && tour.tarifa_translado) || "");
+  return (chaves || []).filter((key) => TARIFARIO_CIDADES[key]).map((key) => {
+    const salvo = raw[key];
+    const temCampo = !!(salvo && (Object.prototype.hasOwnProperty.call(salvo, "guia") || Object.prototype.hasOwnProperty.call(salvo, "translado")));
+    return {
+      key,
+      nome: TARIFARIO_CIDADES[key],
+      guia: temCampo ? String(salvo.guia || "") : fallbackGuia,
+      translado: temCampo ? String(salvo.translado || "") : fallbackTrans,
+    };
+  });
+}
+
+function colunasDaLista(lista) {
+  let escolha = null;
+  for (const pref of PASSEIO_CIDADE_KEYS) {
+    escolha = (lista || []).find((item) => item.key === pref && String(item.guia || "").trim());
+    if (escolha) break;
+  }
+  if (!escolha) escolha = (lista || []).find((item) => String(item.guia || "").trim()) || null;
+  return {
+    guia: escolha && escolha.guia ? escolha.guia : "",
+    translado: escolha && escolha.translado ? escolha.translado : "",
+  };
+}
+
+function gravarSaidasAtrativo(a, lista) {
+  const exp = a.experiencia && typeof a.experiencia === "object" ? a.experiencia : {};
+  const emb = exp.embarques && typeof exp.embarques === "object" ? { ...exp.embarques } : {};
+  for (const item of lista) {
+    if (!item.key) continue;
+    const atual = emb[item.key] && typeof emb[item.key] === "object" ? { ...emb[item.key] } : {};
+    atual.nome = item.nome || atual.nome || TARIFARIO_CIDADES[item.key] || item.key;
+    atual.guia = item.guia || "";
+    atual.trans = item.translado || "";
+    emb[item.key] = atual;
+  }
+  exp.embarques = emb;
+  a.experiencia = exp;
+  const cols = colunasDaLista(lista);
+  a.tarifa_guia = cols.guia;
+  a.tarifa_translado = cols.translado;
+}
+
+function gravarSaidasPasseio(tour, lista) {
+  const map = {};
+  for (const item of lista) {
+    if (!item.key) continue;
+    map[item.key] = { guia: item.guia || "", translado: item.translado || "" };
+  }
+  tour.tarifasSaida = map;
+  const cols = colunasDaLista(lista);
+  tour.tarifa_guia = cols.guia;
+  tour.tarifa_translado = cols.translado;
+}
+
+function chavesDoPasseio(tour) {
+  const listas = (tour.attractions || []).map((part) => {
+    const live = MOCK_ATTRACTIONS.find((a) => a.id === part.id) || {};
+    return embarquesPublic(live);
+  });
+  return chavesIntersecao(listas);
+}
+
+function tarifaDePares(pares) {
+  const cidades = {};
+  let base = null;
+  let guiaCodigo = "";
+  let transCodigo = "";
+  let nome = "";
+  for (const [key, par] of Object.entries(pares || {})) {
+    if (!key || !par) continue;
+    const guia = tarifaOficialItem(String(par.guia || ""), "guia");
+    const trans = tarifaOficialItem(String(par.translado || ""), "translado");
+    const row = {
+      excursao_pessoa_cents: guia ? guia.excursao_cents : 0,
+      exclusivo_pessoa_cents: guia ? guia.privativo_cents : 0,
+      excursao_pessoa_5_cents: guia ? (guia.excursao_5_cents || 0) : 0,
+      exclusivo_pessoa_5_cents: guia ? (guia.privativo_5_cents || 0) : 0,
+      excursao_transporte_cents: trans ? trans.excursao_cents : 0,
+      exclusivo_transporte_cents: trans ? trans.privativo_cents : 0,
+    };
+    cidades[key] = row;
+    if (!base && guia) {
+      base = row;
+      guiaCodigo = guia.codigo;
+      transCodigo = trans ? trans.codigo : "";
+      nome = guia.nome + (trans ? " + " + trans.nome : "");
+    }
+  }
+  if (!base) return null;
+  return {
+    id: 0,
+    nome,
+    oficial: true,
+    tarifa_guia: guiaCodigo,
+    tarifa_translado: transCodigo,
+    quorum: Math.max(1, Math.min(20, settingInt("passeio_quorum", 4))),
+    ...base,
+    cidades,
+  };
+}
+
+function tarifaPublicaDe(saidas) {
+  const pares = {};
+  for (const saida of saidas || []) {
+    if (!saida.key || (!saida.guia && !saida.translado)) continue;
+    pares[saida.key] = { guia: saida.guia, translado: saida.translado };
+  }
+  if (!Object.keys(pares).length) return null;
+  return aplicarBilingueUniversal(tarifaDePares(pares));
+}
+
+function aplicarParNasSaidas(alvo, guia, trans) {
+  if (alvo.attractions) {
+    const chaves = chavesDoPasseio(alvo);
+    const lista = saidasTarifasPasseio(alvo, chaves);
+    if (!lista.length) {
+      alvo.tarifa_guia = guia;
+      alvo.tarifa_translado = trans;
+      return;
+    }
+    for (const item of lista) {
+      item.guia = guia;
+      item.translado = trans;
+    }
+    gravarSaidasPasseio(alvo, lista);
+    return;
+  }
+  const lista = saidasTarifasAtrativo(alvo);
+  if (!lista.length) {
+    alvo.tarifa_guia = guia;
+    alvo.tarifa_translado = trans;
+    return;
+  }
+  for (const item of lista) {
+    item.guia = guia;
+    item.translado = trans;
+  }
+  gravarSaidasAtrativo(alvo, lista);
 }
 
 function aplicarBilingueUniversal(tarifa) {
@@ -1333,9 +1653,19 @@ function aplicarBilingueUniversal(tarifa) {
 }
 
 function tarifaDoPasseio(entity) {
+  const porCidade = entity && !entity.attractions ? tarifaPublicaDe(saidasTarifasAtrativo(entity)) : null;
+  if (porCidade) return porCidade;
   const oficial = tarifaOficialMontar(entity && entity.tarifa_guia, entity && entity.tarifa_translado);
   const base = oficial || tarifarioPublic(tarifarioById(entity && entity.tarifario_id));
   return aplicarBilingueUniversal(base);
+}
+
+function tarifaVende(tarifa) {
+  if (!tarifa) return false;
+  const campos = TARIFARIO_CAMPOS.filter((campo) => !campo.endsWith("_5_cents"));
+  const tem = (row) => campos.some((campo) => (parseInt(row && row[campo], 10) || 0) > 0);
+  if (tem(tarifa)) return true;
+  return Object.values(tarifa.cidades || {}).some((row) => tem(row));
 }
 
 function bilingueOf(raw) {
@@ -1372,6 +1702,78 @@ function bilingueOf(raw) {
     }
   }
   return { tipo: "fixo", valor: 4000, cents: 4000 };
+}
+
+function settingInt(key, fallback) {
+  const row = MOCK_SETTINGS.find((s) => s.key_name === key);
+  const n = parseInt(row && row.value, 10);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function ondeMsg(onde, msg) {
+  return onde ? onde + ": " + msg : msg;
+}
+
+function validarGuiaValores(exc4, exc5, pri4, pri5, onde) {
+  if (exc4 > 0 && pri4 > 0 && exc4 >= pri4) throw new Error(ondeMsg(onde, "PAX 4- Excursão tem que ser menor que o PAX 4- Privativo."));
+  if (exc4 > 0 && (exc5 <= 0 || exc5 >= exc4)) throw new Error(ondeMsg(onde, "PAX 5+ Excursão tem que ser menor que o PAX 4- Excursão."));
+  if (pri4 > 0 && (pri5 <= 0 || pri5 >= pri4)) throw new Error(ondeMsg(onde, "PAX 5+ Privativo tem que ser menor que o PAX 4- Privativo."));
+  if (exc5 > 0 && pri5 > 0 && exc5 >= pri5) throw new Error(ondeMsg(onde, "PAX 5+ Excursão tem que ser menor que o PAX 5+ Privativo."));
+}
+
+function validarTransladoValores(excT, priT, onde) {
+  if (excT > 0 && priT > 0 && excT >= priT) throw new Error(ondeMsg(onde, "Excursão com translado tem que ser menor que Privativo com translado."));
+}
+
+function validarDiariaValor(exc4, quorum, diaria, onde) {
+  quorum = Math.max(1, parseInt(quorum, 10) || 1);
+  if (exc4 > 0 && diaria > 0 && exc4 * quorum < diaria) {
+    throw new Error(ondeMsg(onde, "PAX 4- Excursão × quórum " + quorum + " fica abaixo da diária mínima de guiagem."));
+  }
+}
+
+function validarCidadesTarifa(cidades, quorum, diariaCents, nome) {
+  for (const key of PASSEIO_CIDADE_KEYS) {
+    const row = (cidades && cidades[key]) || {};
+    const onde = (nome ? nome + " · " : "") + (TARIFARIO_CIDADES[key] || key);
+    validarGuiaValores(row.excursao_pessoa_cents || 0, row.excursao_pessoa_5_cents || 0, row.exclusivo_pessoa_cents || 0, row.exclusivo_pessoa_5_cents || 0, onde);
+    validarTransladoValores(row.excursao_transporte_cents || 0, row.exclusivo_transporte_cents || 0, onde);
+    validarDiariaValor(row.excursao_pessoa_cents || 0, quorum, diariaCents, onde);
+  }
+}
+
+function checarPiso(diariaReais, pagamentoReais, quorumGlobal) {
+  if (diariaReais < 1 || pagamentoReais < 1) throw new Error("Informe a diária mínima e o pagamento mínimo de guiagem.");
+  if (pagamentoReais >= diariaReais) throw new Error("O pagamento mínimo de guiagem tem que ser menor que a diária mínima de guiagem.");
+  quorumGlobal = Math.max(1, Math.min(20, parseInt(quorumGlobal, 10) || 4));
+  const falhas = [];
+  for (const t of MOCK_TARIFARIOS) {
+    for (const key of PASSEIO_CIDADE_KEYS) {
+      const exc = (t.cidades && t.cidades[key] && t.cidades[key].excursao_pessoa_cents) || 0;
+      try {
+        validarDiariaValor(exc, t.quorum, diariaReais * 100, t.nome + " · " + (TARIFARIO_CIDADES[key] || key));
+      } catch (err) {
+        falhas.push(err.message);
+      }
+    }
+  }
+  for (const oficial of tarifasOficiais()) {
+    if (oficial.tipo !== "guia") continue;
+    try {
+      validarDiariaValor(oficial.excursao, quorumGlobal, diariaReais, oficial.nome);
+    } catch (err) {
+      falhas.push(err.message);
+    }
+  }
+  if (falhas.length) throw new Error(falhas.slice(0, 4).join(" ") + (falhas.length > 4 ? " E mais " + (falhas.length - 4) + "." : ""));
+}
+
+function regrasTarifa() {
+  return {
+    quorum: Math.max(1, Math.min(20, settingInt("passeio_quorum", 4))),
+    diaria_minima_reais: Math.max(0, settingInt("diaria_minima_reais", 320)),
+    pg_minimo_guia_reais: Math.max(0, settingInt("pg_minimo_guia_reais", 280)),
+  };
 }
 
 function tarifarioNormalize(raw) {
@@ -1412,43 +1814,140 @@ function cidadeCurta(nome) {
   return pos > 2 ? n.slice(0, pos) : n;
 }
 
-function saidasPublic(tarifa, duracao, fallbackMinutes) {
-  if (!tarifa) return [];
+function cidadeChave(name) {
+  let n = String(name || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const known = {
+    "alto paraiso de goias": "alto-paraiso",
+    "alto paraiso": "alto-paraiso",
+    "sao jorge": "sao-jorge",
+    cavalcante: "cavalcante",
+  };
+  if (known[n]) return known[n];
+  n = n.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  return n || "cidade";
+}
+
+function cidadesSaidaMapa() {
+  const map = { ...TARIFARIO_CIDADES };
+  for (const c of MOCK_CITIES) {
+    const name = String(c.name || "").trim();
+    if (name) map[cidadeChave(name)] = name;
+  }
+  return map;
+}
+
+function saidasPublic(tarifa, duracao, fallbackMinutes, chaves) {
+  if (!tarifa && !Array.isArray(chaves)) return [];
+  const mapa = cidadesSaidaMapa();
+  const keys = Array.isArray(chaves) ? chaves : Object.keys(mapa);
   const out = [];
-  for (const key of Object.keys(TARIFARIO_CIDADES)) {
-    const row = (tarifa.cidades && tarifa.cidades[key]) || {};
+  const base = (tarifa && tarifa.cidades && tarifa.cidades["alto-paraiso"]) || {};
+  for (const key of keys) {
+    if (!mapa[key]) continue;
+    let row = (tarifa && tarifa.cidades && tarifa.cidades[key]) || {};
+    const temPreco = TARIFARIO_CAMPOS.some((campo) => !campo.endsWith("_5_cents") && (parseInt(row[campo], 10) || 0) > 0);
+    if (!temPreco) row = base;
     const item = {
       key,
-      nome: TARIFARIO_CIDADES[key],
-      curta: cidadeCurta(TARIFARIO_CIDADES[key]),
+      nome: mapa[key],
+      curta: cidadeCurta(mapa[key]),
       minutes: (duracao && parseInt(duracao[key], 10)) || Math.max(0, parseInt(fallbackMinutes, 10) || 0),
     };
     let vende = false;
     for (const campo of TARIFARIO_CAMPOS) {
       item[campo] = Math.max(0, parseInt(row[campo], 10) || 0);
-      if (item[campo] > 0) vende = true;
+      if (item[campo] > 0 && !campo.endsWith("_5_cents")) vende = true;
     }
-    if (vende) out.push(item);
+    if (vende || Array.isArray(chaves)) out.push(item);
   }
   return out;
+}
+
+function embarquesChaves(entity) {
+  const emb = entity && entity.experiencia && entity.experiencia.embarques;
+  if (!emb || typeof emb !== "object" || !Object.keys(emb).length) return null;
+  const mapa = cidadesSaidaMapa();
+  return Object.keys(emb).filter((key) => {
+    if (!mapa[key]) return false;
+    const row = emb[key];
+    return !!(row && typeof row === "object");
+  });
+}
+
+function embarquesPublic(entity) {
+  const explicit = embarquesChaves(entity);
+  if (explicit) return explicit;
+  if (!entity) return [];
+  return saidasPublic(tarifaDoPasseio(entity), {}, 0).map((s) => s.key);
+}
+
+function tarifaRelacaoPlana(tarifa) {
+  if (!tarifa) return tarifa;
+  const clone = JSON.parse(JSON.stringify(tarifa));
+  const cidades = {};
+  for (const key of PASSEIO_CIDADE_KEYS) {
+    cidades[key] = {};
+    for (const campo of TARIFARIO_CAMPOS) {
+      cidades[key][campo] = Math.max(0, parseInt(tarifa[campo], 10) || 0);
+    }
+  }
+  clone.cidades = cidades;
+  return clone;
+}
+
+function chavesIntersecao(listas) {
+  const base = listas[0] || [];
+  return base.filter((key) => listas.every((lista) => lista.includes(key)));
 }
 
 function tarifarioById(id) {
   return MOCK_TARIFARIOS.find((t) => t.id === id) || null;
 }
 
-function duracaoCidades(map, fallback) {
+function minutosCampo(entity, key) {
+  if (!entity) return 0;
+  const emb = entity.experiencia && entity.experiencia.embarques;
+  const salvo = emb && emb[key];
+  const doCampo = salvo && parseInt(salvo.minutos, 10);
+  if (doCampo > 0) return Math.min(doCampo, 1440);
+  const mapa = entity.duracao;
+  const doMapa = mapa && parseInt(mapa[key], 10);
+  if (doMapa > 0) return Math.min(doMapa, 1440);
+  if (key === "alto-paraiso") {
+    const geral = parseInt(entity.duration_minutes, 10) || 0;
+    if (geral > 0) return Math.min(geral, 1440);
+  }
+  return 0;
+}
+
+function duracaoPublica(entity, chaves) {
+  const keys = chaves && chaves.length ? chaves : embarquesPublic(entity);
+  const lista = keys.length ? keys : PASSEIO_CIDADE_KEYS;
   const out = {};
-  for (const key of PASSEIO_CIDADE_KEYS) {
-    const v = map && parseInt(map[key], 10);
-    out[key] = v > 0 ? Math.min(v, 1440) : Math.max(0, parseInt(fallback, 10) || 0);
+  for (const key of lista) out[key] = minutosCampo(entity, key);
+  return out;
+}
+
+function duracaoCombo(parts, chaves) {
+  const lista = chaves && chaves.length ? chaves : PASSEIO_CIDADE_KEYS;
+  const out = {};
+  for (const key of lista) {
+    let sum = 0;
+    for (const part of parts) {
+      const live = MOCK_ATTRACTIONS.find((a) => a.id === part.id) || part;
+      sum += minutosCampo(live, key);
+    }
+    out[key] = Math.min(sum, 1440 * 3);
   }
   return out;
 }
 
 function duracaoClean(raw) {
   const out = {};
-  for (const key of PASSEIO_CIDADE_KEYS) {
+  const mapa = cidadesSaidaMapa();
+  const keys = new Set([...PASSEIO_CIDADE_KEYS, ...Object.keys(mapa), ...Object.keys(raw || {})]);
+  for (const key of keys) {
+    if (!mapa[key] && PASSEIO_CIDADE_KEYS.indexOf(key) < 0) continue;
     const v = raw && parseInt(raw[key], 10);
     if (v > 0) out[key] = Math.min(v, 1440);
   }
@@ -1456,10 +1955,11 @@ function duracaoClean(raw) {
 }
 
 const MOCK_SETTINGS = [
-  { key_name: "passeio_max_atrativos", value: "3", label: "Número máximo de atrativos no mesmo passeio", type: "integer" },
+  { key_name: "passeio_max_atrativos", value: "3", label: "Número máximo de experiências no mesmo passeio (até 3)", type: "integer" },
   { key_name: "passeio_bilingue", value: "{\"tipo\":\"fixo\",\"valor\":4000}", label: "Guia em outro idioma, vale para todas as tarifas", type: "json" },
-  { key_name: "diaria_minima_reais", value: "320", label: "Diária mínima do cliente no exclusivo e no fechamento da excursão (R$)", type: "integer" },
-  { key_name: "pg_minimo_guia_reais", value: "280", label: "Pagamento mínimo do guia sem transporte (R$)", type: "integer" },
+  { key_name: "passeio_quorum", value: "4", label: "Quórum do passeio (pessoas no pacote mínimo do privativo sem translado)", type: "integer" },
+  { key_name: "diaria_minima_reais", value: "320", label: "Diária mínima de guiagem (R$)", type: "integer" },
+  { key_name: "pg_minimo_guia_reais", value: "280", label: "Pagamento mínimo de guiagem (R$). Tem que ser menor que a diária mínima.", type: "integer" },
   { key_name: "pausa_convite_inicio_hora", value: "22", label: "Convite ao guia: o relógio para a partir desta hora", type: "integer" },
   { key_name: "pausa_convite_fim_hora", value: "8", label: "Convite ao guia: o relógio volta nesta hora", type: "integer" },
   { key_name: "tarifa_ia_ativa", value: "0", label: "Tarifa inteligência artificial progressiva: 0 inativa, 1 ativa", type: "integer" },
@@ -1472,7 +1972,7 @@ const MOCK_SETTINGS = [
 function maxAtrativos() {
   const row = MOCK_SETTINGS.find((s) => s.key_name === "passeio_max_atrativos");
   const n = parseInt(row && row.value, 10);
-  return Math.max(1, Math.min(5, Number.isFinite(n) ? n : 3));
+  return Math.max(1, Math.min(3, Number.isFinite(n) ? n : 3));
 }
 
 for (const attraction of MOCK_ATTRACTIONS) {
@@ -1571,21 +2071,58 @@ function relatedSignature(ids) {
   }
 })();
 
+function experienciaSo4x4(entity) {
+  const log = entity && entity.experiencia && entity.experiencia.logistica;
+  return !!(log && log.so4x4);
+}
+
+function experienciaMaxParticipantes(entity) {
+  const direto = parseInt(entity && entity.max_participantes, 10);
+  if (direto >= 4 && direto <= 15) return direto;
+  const log = entity && entity.experiencia && entity.experiencia.logistica;
+  const n = parseInt(log && log.max, 10);
+  return n >= 4 && n <= 15 ? n : 0;
+}
+
+function menorMaxParticipantes(lista) {
+  const nums = (lista || []).map((item) => experienciaMaxParticipantes(item)).filter((n) => n >= 4);
+  return nums.length ? Math.min(...nums) : 0;
+}
+
 function presentRelated(tour) {
   refreshRelatedDuration(tour);
+  const attractions = tour.attractions.map((part) => {
+    const live = MOCK_ATTRACTIONS.find((a) => a.id === part.id);
+    return {
+      ...part,
+      title_pt: live ? live.title_pt : part.title_pt,
+      duration_minutes: live ? live.duration_minutes || 0 : part.duration_minutes,
+      embarques: embarquesPublic(live || {}),
+      somente_4x4: experienciaSo4x4(live),
+      max_participantes: experienciaMaxParticipantes(live),
+    };
+  });
+  const inter = chavesIntersecao(attractions.map((part) => part.embarques || []));
+  const saidasTarifas = saidasTarifasPasseio(tour, inter);
+  const chavesDuracao = inter.length ? inter : PASSEIO_CIDADE_KEYS;
+  const minutos = tour.duracao_manual
+    ? Object.fromEntries(chavesDuracao.map((key) => [key, tour.duration_minutes || 0]))
+    : duracaoCombo(tour.attractions, chavesDuracao);
+  const tarifa = tarifaPublicaDe(saidasTarifas) || tarifaRelacaoPlana(tarifaDoPasseio(tour));
   return {
     id: tour.id,
     duration_minutes: tour.duration_minutes,
-    duracao_cidades: duracaoCidades(tour.duracao, tour.duration_minutes),
+    duracao_cidades: minutos,
     tarifario_id: tour.tarifario_id,
     tarifa_guia: tour.tarifa_guia || "",
     tarifa_translado: tour.tarifa_translado || "",
-    tarifa: tarifaDoPasseio(tour),
-    saidas: saidasPublic(tarifaDoPasseio(tour), duracaoCidades(tour.duracao, tour.duration_minutes), tour.duration_minutes),
-    attractions: tour.attractions.map((part) => {
-      const live = MOCK_ATTRACTIONS.find((a) => a.id === part.id);
-      return { ...part, title_pt: live ? live.title_pt : part.title_pt, duration_minutes: live ? live.duration_minutes || 0 : part.duration_minutes };
-    }),
+    saidas_tarifas: saidasTarifas,
+    categorias: passeioCategorias(tour.categorias, (tour.attractions || []).length),
+    tarifa,
+    saidas: saidasPublic(tarifa, minutos, 0, inter),
+    somente_4x4: attractions.some((part) => part.somente_4x4),
+    max_participantes: menorMaxParticipantes(attractions),
+    attractions,
   };
 }
 
@@ -1605,6 +2142,18 @@ const PASSEIO_CATEGORIAS = {
   aventura: "Aventura",
 };
 
+function experienciaVendeNoSite(a) {
+  if (!a || a.status !== "published" || a.tem_passeio === false || !a.page) return false;
+  return tarifaVende(tarifaDoPasseio(a));
+}
+
+function passeioPartesVendem(parts) {
+  return (parts || []).length > 0 && parts.every((part) => {
+    const live = MOCK_ATTRACTIONS.find((a) => a.id === part.id);
+    return experienciaVendeNoSite(live);
+  });
+}
+
 function passeioCategorias(raw, count) {
   const allowed = Object.keys(PASSEIO_CATEGORIAS);
   const list = Array.isArray(raw) ? raw.filter((key) => allowed.includes(key)) : [];
@@ -1614,7 +2163,7 @@ function passeioCategorias(raw, count) {
 function passeioCatalog() {
   const max = maxAtrativos();
   const combos = MOCK_RELATED.map(presentRelated)
-    .filter((tour) => tour.tarifa && tour.attractions.length <= max)
+    .filter((tour) => tarifaVende(tour.tarifa) && tour.attractions.length >= 2 && tour.attractions.length <= max && passeioPartesVendem(tour.attractions))
     .map((presented) => {
       const first = presented.attractions[0] || {};
       const live = MOCK_ATTRACTIONS.find((a) => a.id === first.id);
@@ -1632,6 +2181,8 @@ function passeioCatalog() {
         tarifa: presented.tarifa,
         saidas: presented.saidas || [],
         image: (live && live.cover_url) || "",
+        somente_4x4: !!presented.somente_4x4,
+        max_participantes: presented.max_participantes || 0,
         href: first.page ? "/" + String(first.page).replace(/^\/+/, "") : "/passeios.html",
         attractions: presented.attractions.map((part) => part.title_pt),
         parts: presented.attractions.map((part) => {
@@ -1646,7 +2197,7 @@ function passeioCatalog() {
         }),
       };
     });
-  const singles = MOCK_ATTRACTIONS.filter((a) => a.page && a.tem_passeio !== false && !String(a.title_pt).includes(" + ") && tarifaDoPasseio(a)).map((a) => ({
+  const singles = MOCK_ATTRACTIONS.filter((a) => experienciaVendeNoSite(a) && !String(a.title_pt).includes(" + ")).map((a) => ({
     id: "a-" + a.id,
     kind: "atrativo",
     slug: a.slug,
@@ -1655,10 +2206,13 @@ function passeioCatalog() {
     count: 1,
     categories: passeioCategorias(a.categorias, 1),
     duration_minutes: a.duration_minutes || 0,
-    duracao_cidades: duracaoCidades(a.duracao, a.duration_minutes),
+    duracao_cidades: duracaoPublica(a, embarquesPublic(a)),
     tarifa: tarifaDoPasseio(a),
-    saidas: saidasPublic(tarifaDoPasseio(a), duracaoCidades(a.duracao, a.duration_minutes), a.duration_minutes),
+    embarques: embarquesPublic(a),
+    saidas: saidasPublic(tarifaDoPasseio(a), duracaoPublica(a, embarquesPublic(a)), 0, embarquesPublic(a)),
     image: a.cover_url || "",
+    somente_4x4: experienciaSo4x4(a),
+    max_participantes: experienciaMaxParticipantes(a),
     href: "/" + String(a.page).replace(/^\/+/, ""),
     attractions: [a.title_pt],
     parts: [{
@@ -1675,17 +2229,22 @@ function passeioPublicPayload(slug) {
   const attraction = MOCK_ATTRACTIONS.find((a) => a.slug === slug);
   if (!attraction) return null;
   const max = maxAtrativos();
+  const tarifa = tarifaDoPasseio(attraction);
+  const vende = experienciaVendeNoSite(attraction);
   return {
     slug: attraction.slug,
     title: attraction.title_pt,
     duration_minutes: attraction.duration_minutes || 0,
-    duracao_cidades: duracaoCidades(attraction.duracao, attraction.duration_minutes),
-    tem_passeio: attraction.tem_passeio !== false,
+    duracao_cidades: duracaoPublica(attraction, embarquesPublic(attraction)),
+    tem_passeio: attraction.tem_passeio !== false && vende,
     categorias: passeioCategorias(attraction.categorias, 1),
-    tarifa: attraction.tem_passeio === false ? null : tarifaDoPasseio(attraction),
-    saidas: attraction.tem_passeio === false ? [] : saidasPublic(tarifaDoPasseio(attraction), duracaoCidades(attraction.duracao, attraction.duration_minutes), attraction.duration_minutes),
+    tarifa: vende ? tarifa : null,
+    embarques: vende ? embarquesPublic(attraction) : [],
+    saidas: vende ? saidasPublic(tarifa, duracaoPublica(attraction, embarquesPublic(attraction)), 0, embarquesPublic(attraction)) : [],
     max_atrativos: max,
-    related_tours: mockRelatedFor(attraction.id).filter((t) => t.tarifa && t.attractions.length <= max),
+    somente_4x4: experienciaSo4x4(attraction),
+    max_participantes: experienciaMaxParticipantes(attraction),
+    related_tours: mockRelatedFor(attraction.id).filter((t) => tarifaVende(t.tarifa) && t.attractions.length >= 2 && t.attractions.length <= max && passeioPartesVendem(t.attractions)),
   };
 }
 
@@ -1712,9 +2271,10 @@ function tarifarioOverview(extra) {
       tarifario_id: a.tarifario_id,
       tarifa_guia: a.tarifa_guia || "",
       tarifa_translado: a.tarifa_translado || "",
-      duracao_cidades: duracaoCidades(a.duracao, a.duration_minutes),
+      saidas_tarifas: saidasTarifasAtrativo(a),
+      duracao_cidades: duracaoPublica(a, embarquesPublic(a)),
     }));
-  return { ok: true, data: { max_atrativos: maxAtrativos(), categorias: PASSEIO_CATEGORIAS, cidades: TARIFARIO_CIDADES, tarifas_oficiais: tarifasOficiais(), bilingue: bilingueUniversal(), tarifarios, atrativos, passeios: MOCK_RELATED.map(presentRelated), ...(extra || {}) } };
+  return { ok: true, data: { max_atrativos: maxAtrativos(), categorias: PASSEIO_CATEGORIAS, cidades: TARIFARIO_CIDADES, tarifas_oficiais: tarifasOficiais(), bilingue: bilingueUniversal(), regras: regrasTarifa(), tarifarios, atrativos, passeios: MOCK_RELATED.map(presentRelated), ...(extra || {}) } };
 }
 
 function mockRelatedSave(rawIds) {
@@ -1724,8 +2284,6 @@ function mockRelatedSave(rawIds) {
   if (ids.length < 2 || ids.length > max) throw new Error("Um passeio com mais de um atrativo tem de 2 a " + max + " atrativos.");
   const picked = ids.map((id) => MOCK_ATTRACTIONS.find((a) => a.id === id)).filter(Boolean);
   if (picked.length !== ids.length) throw new Error("Atrativo não encontrado.");
-  const semPagina = picked.find((a) => !a.page);
-  if (semPagina) throw new Error("Só entra atrativo que tem página: " + semPagina.title_pt);
   let tour = MOCK_RELATED.find((row) => relatedSignature(row.attractions.map((a) => a.id)) === relatedSignature(ids));
   if (!tour) {
     tour = {
@@ -1958,14 +2516,16 @@ function handleTarifarioApi(urlPath, req, res) {
         if (req.method === "POST" || (req.method === "PUT" && !body.action)) {
           const nome = String(body.nome || "").trim().slice(0, 160);
           if (!nome) return send({ ok: false, error: "Dê um nome ao tarifário." }, 400);
+          const norm = tarifarioNormalize(body);
+          validarCidadesTarifa(norm.cidades, norm.quorum, settingInt("diaria_minima_reais", 320) * 100, nome);
           if (req.method === "POST") {
-            const t = { id: mockTarifarioSeq++, nome, ...tarifarioNormalize(body) };
+            const t = { id: mockTarifarioSeq++, nome, ...norm };
             MOCK_TARIFARIOS.push(t);
             return send(tarifarioOverview({ saved_id: t.id }));
           }
           const t = tarifarioById(parseInt(body.id, 10));
           if (!t) return send({ ok: false, error: "Tarifário não encontrado." }, 400);
-          Object.assign(t, { nome }, tarifarioNormalize(body));
+          Object.assign(t, { nome }, norm);
           return send(tarifarioOverview({ saved_id: t.id }));
         }
         if (req.method === "PUT" && body.action === "link") {
@@ -1989,6 +2549,16 @@ function handleTarifarioApi(urlPath, req, res) {
           if (row) row.value = JSON.stringify({ tipo, valor });
           return send(tarifarioOverview());
         }
+        if (req.method === "PUT" && body.action === "regras") {
+          const diaria = Math.round(Number(body.diaria_minima_reais));
+          const pg = Math.round(Number(body.pg_minimo_guia_reais));
+          checarPiso(diaria, pg, settingInt("passeio_quorum", 4));
+          const dRow = MOCK_SETTINGS.find((s) => s.key_name === "diaria_minima_reais");
+          const pRow = MOCK_SETTINGS.find((s) => s.key_name === "pg_minimo_guia_reais");
+          if (dRow) dRow.value = String(diaria);
+          if (pRow) pRow.value = String(pg);
+          return send(tarifarioOverview());
+        }
         if (req.method === "PUT" && body.action === "oficiais") {
           const guia = String(body.tarifa_guia || "").trim();
           const trans = String(body.tarifa_translado || "").trim();
@@ -1998,12 +2568,67 @@ function handleTarifarioApi(urlPath, req, res) {
             ? MOCK_ATTRACTIONS.find((x) => x.id === parseInt(body.attraction_id, 10))
             : MOCK_RELATED.find((x) => x.id === parseInt(body.passeio_id, 10));
           if (!alvo) return send({ ok: false, error: "Passeio não encontrado." }, 400);
-          alvo.tarifa_guia = guia;
-          alvo.tarifa_translado = trans;
+          aplicarParNasSaidas(alvo, guia, trans);
           return send(tarifarioOverview());
         }
+        if (req.method === "PUT" && body.action === "tarifa_editar") {
+          tarifaOficialEditar(body.codigo, body.excursao, body.privativo, body.excursao_5, body.privativo_5);
+          return send(tarifarioOverview());
+        }
+        if (req.method === "PUT" && body.action === "tarifa_saida") {
+          const kind = String(body.kind || "");
+          const id = parseInt(body.id, 10);
+          const cidade = String(body.cidade || "");
+          const campo = body.campo === "translado" ? "translado" : body.campo === "guia" ? "guia" : "";
+          const codigo = String(body.codigo || "").trim();
+          if (!campo) return send({ ok: false, error: "Informe se é tarifa de guia ou de translado." }, 400);
+          if (codigo && !tarifaOficialItem(codigo, campo === "guia" ? "guia" : "translado")) {
+            return send({ ok: false, error: "Tarifa não está na lista." }, 400);
+          }
+          if (cidade && !TARIFARIO_CIDADES[cidade]) return send({ ok: false, error: "Cidade de saída inválida." }, 400);
+          if (kind === "atrativo") {
+            const a = MOCK_ATTRACTIONS.find((x) => x.id === id);
+            if (!a) return send({ ok: false, error: "Experiência não encontrada." }, 400);
+            const lista = saidasTarifasAtrativo(a);
+            let found = false;
+            for (const item of lista) {
+              if (item.key !== cidade) continue;
+              item[campo] = codigo;
+              found = true;
+              break;
+            }
+            if (!found) {
+              if (!cidade) return send({ ok: false, error: "Essa experiência não tem cidade de saída." }, 400);
+              lista.push({
+                key: cidade,
+                nome: TARIFARIO_CIDADES[cidade],
+                guia: campo === "guia" ? codigo : "",
+                translado: campo === "translado" ? codigo : "",
+              });
+            }
+            gravarSaidasAtrativo(a, lista);
+            return send(tarifarioOverview());
+          }
+          if (kind === "passeio") {
+            const tour = MOCK_RELATED.find((x) => x.id === id);
+            if (!tour) return send({ ok: false, error: "Passeio não encontrado." }, 400);
+            const chaves = chavesDoPasseio(tour);
+            if (cidade && chaves.indexOf(cidade) < 0) return send({ ok: false, error: "Essa saída não faz parte do passeio." }, 400);
+            const lista = saidasTarifasPasseio(tour, chaves);
+            const item = lista.find((s) => s.key === cidade);
+            if (!item) return send({ ok: false, error: "Essa saída não faz parte do passeio." }, 400);
+            item[campo] = codigo;
+            gravarSaidasPasseio(tour, lista);
+            return send(tarifarioOverview());
+          }
+          return send({ ok: false, error: "Informe a experiência ou o passeio." }, 400);
+        }
         if (req.method === "PUT" && body.action === "tarifa_criar") {
-          tarifaOficialCriar(body.tipo, body.excursao, body.privativo);
+          tarifaOficialCriar(body.tipo, body.excursao, body.privativo, body.excursao_5, body.privativo_5);
+          return send(tarifarioOverview());
+        }
+        if (req.method === "PUT" && body.action === "tarifa_pax5") {
+          tarifaOficialPax5(body.codigo, body.excursao_5, body.privativo_5);
           return send(tarifarioOverview());
         }
         if (req.method === "PUT" && body.action === "tarifa_excluir") {
@@ -2075,7 +2700,18 @@ function handleSettingsApi(urlPath, req, res) {
       if (!row) return send({ ok: false, error: "Configuração não encontrada" });
       if (body.key_name === "passeio_max_atrativos") {
         const n = Math.round(Number(body.value));
-        if (!Number.isFinite(n) || n < 1 || n > 5) return send({ ok: false, error: "Informe de 1 a 5 atrativos no mesmo passeio" });
+        if (!Number.isFinite(n) || n < 1 || n > 3) return send({ ok: false, error: "Informe de 1 a 3 experiências no mesmo passeio" });
+        row.value = String(n);
+        return send({ ok: true, data: row });
+      }
+      if (body.key_name === "diaria_minima_reais" || body.key_name === "pg_minimo_guia_reais" || body.key_name === "passeio_quorum") {
+        const n = Math.round(Number(body.value));
+        if (body.key_name === "passeio_quorum" && !(n >= 1 && n <= 20)) return send({ ok: false, error: "O quórum fica entre 1 e 20 pessoas." });
+        if (body.key_name !== "passeio_quorum" && !(n >= 1 && n <= 100000)) return send({ ok: false, error: "Informe um valor em reais." });
+        const diaria = body.key_name === "diaria_minima_reais" ? n : settingInt("diaria_minima_reais", 320);
+        const pg = body.key_name === "pg_minimo_guia_reais" ? n : settingInt("pg_minimo_guia_reais", 280);
+        const quorum = body.key_name === "passeio_quorum" ? n : settingInt("passeio_quorum", 4);
+        try { checarPiso(diaria, pg, quorum); } catch (err) { return send({ ok: false, error: err.message }); }
         row.value = String(n);
         return send({ ok: true, data: row });
       }
@@ -2087,11 +2723,236 @@ function handleSettingsApi(urlPath, req, res) {
 }
 
 function refreshRelatedDuration(tour) {
-  tour.duration_minutes = tour.attractions.reduce((sum, part) => {
+  const sum = tour.attractions.reduce((total, part) => {
     const live = MOCK_ATTRACTIONS.find((a) => a.id === part.id);
     part.duration_minutes = live ? (live.duration_minutes || 0) : part.duration_minutes;
-    return sum + (part.duration_minutes || 0);
+    return total + (part.duration_minutes || 0);
   }, 0);
+  if (!tour.duracao_manual) tour.duration_minutes = sum;
+}
+
+function comTextoDaPagina(row) {
+  const paginas = lerPaginasAtrativo(ROOT, row && row.slug);
+  const out = { ...row };
+  for (const lang of ["pt", "en", "es"]) {
+    const pagina = paginas[lang];
+    if (!pagina) continue;
+    const bodyKey = "content_" + lang;
+    const sideKey = "sidebar_html_" + lang;
+    if (!String(out[bodyKey] || "").replace(/<[^>]*>/g, "").trim() && pagina.bodyHtml) out[bodyKey] = pagina.bodyHtml;
+    if (!String(out[sideKey] || "").trim() && pagina.sidebarHtml) out[sideKey] = pagina.sidebarHtml;
+    if (pagina.subtitle) {
+      const exp = out.experiencia && typeof out.experiencia === "object" ? { ...out.experiencia } : {};
+      if (!String(exp["subtitulo_" + lang] || "").trim()) exp["subtitulo_" + lang] = pagina.subtitle;
+      out.experiencia = exp;
+    }
+  }
+  return out;
+}
+
+function gravarTextoDaPagina(row) {
+  if (!row || !row.slug) return;
+  const exp = row.experiencia && typeof row.experiencia === "object" ? row.experiencia : {};
+  gravarPaginasAtrativo(ROOT, row.slug, {
+    pt: {
+      bodyHtml: row.content_pt || "",
+      sidebarHtml: row.sidebar_html_pt || "",
+      title: row.title_pt || "",
+      subtitle: exp.subtitulo_pt || "",
+    },
+    en: { subtitle: exp.subtitulo_en || "" },
+    es: { subtitle: exp.subtitulo_es || "" },
+  });
+}
+
+function aplicarFichaAtrativo(row, body) {
+  const texto = ["title_pt", "title_en", "title_es", "slug", "status", "excerpt_pt", "excerpt_en", "excerpt_es", "content_pt", "content_en", "content_es", "seo_title_pt", "seo_title_en", "seo_title_es", "seo_desc_pt", "seo_desc_en", "seo_desc_es", "sidebar_html_pt", "sidebar_html_en", "sidebar_html_es", "cover_url", "parking_info", "recommended_period", "entry_price_label", "difficulty", "tarifa_guia", "tarifa_translado"];
+  for (const k of texto) {
+    if (Object.prototype.hasOwnProperty.call(body, k) && body[k] != null) row[k] = String(body[k]);
+  }
+  if (Object.prototype.hasOwnProperty.call(body, "tem_passeio")) row.tem_passeio = body.tem_passeio !== false && body.tem_passeio !== 0 && body.tem_passeio !== "0";
+  if (Object.prototype.hasOwnProperty.call(body, "entry_price_cents")) {
+    row.entry_price_cents = body.entry_price_cents === "" || body.entry_price_cents == null
+      ? null
+      : Math.max(0, parseInt(body.entry_price_cents, 10) || 0);
+  }
+  for (const k of ["distance_km", "trail_distance_km"]) {
+    if (!Object.prototype.hasOwnProperty.call(body, k)) continue;
+    row[k] = body[k] === "" || body[k] == null ? "" : String(body[k]);
+  }
+  if (Object.prototype.hasOwnProperty.call(body, "duration_minutes")) {
+    row.duration_minutes = body.duration_minutes === "" || body.duration_minutes == null
+      ? null
+      : Math.max(0, parseInt(body.duration_minutes, 10) || 0);
+  }
+  if (Object.prototype.hasOwnProperty.call(body, "cidade_nome")) {
+    const nome = String(body.cidade_nome || "").trim();
+    const city = MOCK_CITIES.find((c) => c.name === nome);
+    row.city_id = city ? city.id : (nome ? row.city_id || null : null);
+  }
+  if (body.experiencia && typeof body.experiencia === "object") row.experiencia = body.experiencia;
+  if (Array.isArray(body.gallery)) row.gallery = body.gallery;
+  if (body.duracao && typeof body.duracao === "object") row.duracao = duracaoClean(body.duracao);
+  if (Object.prototype.hasOwnProperty.call(body, "tarifario_id")) {
+    const tid = body.tarifario_id ? parseInt(body.tarifario_id, 10) : null;
+    row.tarifario_id = tid && tarifarioById(tid) ? tid : null;
+  }
+}
+
+let MOCK_TERAPIAS = [];
+let mockTerapiaSeq = 1;
+
+function terapiaSlug(nome, exceptoId) {
+  const base = String(nome || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "") || "terapia";
+  let slug = base;
+  let n = 2;
+  while (MOCK_TERAPIAS.some((t) => t.slug === slug && t.id !== exceptoId)) {
+    slug = base + "-" + n;
+    n += 1;
+  }
+  return slug;
+}
+
+function terapiaLinha(body, atual) {
+  const nome = String(body.nome || "").trim();
+  if (!nome) throw new Error("Dê um nome à terapia.");
+  let precoRaw = String(body.preco_hora_reais ?? "").replace(/R\$/g, "").replace(/\s/g, "");
+  if (precoRaw.includes(",") && precoRaw.includes(".")) precoRaw = precoRaw.replace(/\./g, "").replace(",", ".");
+  else precoRaw = precoRaw.replace(",", ".");
+  const preco = Math.round(Number(precoRaw) * 100);
+  if (!Number.isFinite(preco) || preco <= 0) throw new Error("Informe o preço por hora.");
+  let minutos = null;
+  if (body.duracao_padrao_min !== "" && body.duracao_padrao_min != null) {
+    minutos = parseInt(body.duracao_padrao_min, 10);
+    if (!Number.isFinite(minutos) || minutos < 15 || minutos > 720) {
+      throw new Error("A duração padrão fica entre 15 e 720 minutos.");
+    }
+  }
+  const status = ["draft", "published", "archived"].includes(body.status) ? body.status : "draft";
+  const id = atual ? atual.id : mockTerapiaSeq++;
+  return {
+    id,
+    nome: nome.slice(0, 160),
+    slug: terapiaSlug(nome, atual ? atual.id : 0),
+    status,
+    descricao: String(body.descricao || "").trim().slice(0, 4000),
+    preco_hora_cents: preco,
+    duracao_padrao_min: minutos,
+    updated_at: new Date().toISOString(),
+  };
+}
+
+function handleTerapiaApi(urlPath, req, res) {
+  if (urlPath !== "/api/admin/terapias.php") return false;
+  const send = (payload, status = 200) => {
+    res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
+    res.end(JSON.stringify(payload));
+  };
+  if (req.method === "GET") {
+    return send({
+      ok: true,
+      data: {
+        terapias: MOCK_TERAPIAS,
+        nota: "Terapia é vendida por hora e não aparece no site. Só o passeio feito só de atrativo é publicado.",
+      },
+    }), true;
+  }
+  readJsonBody(req).then((body) => {
+    try {
+      if (req.method === "POST") {
+        const row = terapiaLinha(body, null);
+        MOCK_TERAPIAS.push(row);
+        return send({ ok: true, data: row });
+      }
+      if (req.method === "PUT") {
+        const id = parseInt(body.id, 10);
+        const index = MOCK_TERAPIAS.findIndex((t) => t.id === id);
+        if (index < 0) return send({ ok: false, error: "Terapia não encontrada." }, 400);
+        MOCK_TERAPIAS[index] = terapiaLinha(body, MOCK_TERAPIAS[index]);
+        return send({ ok: true, data: MOCK_TERAPIAS[index] });
+      }
+      return send({ ok: false, error: "Método não permitido" }, 405);
+    } catch (err) {
+      return send({ ok: false, error: err.message || "Não foi possível salvar a terapia." }, 400);
+    }
+  }).catch(() => send({ ok: false, error: "JSON inválido" }, 400));
+  return true;
+}
+
+function faltasParaAtivarAtrativo(body) {
+  if (String(body.status || "") !== "published") return [];
+  const faltas = [];
+  if (!String(body.title_pt || "").trim()) faltas.push("Nome da experiência");
+  if (!String(body.content_pt || "").replace(/<[^>]*>/g, "").trim()) faltas.push("Descrição");
+  const exp = body.experiencia && typeof body.experiencia === "object" ? body.experiencia : {};
+  const cidade = String(body.cidade_nome || exp.cidade || "").trim();
+  if (!cidade) faltas.push("Cidade da experiência");
+  const embarques = exp.embarques && typeof exp.embarques === "object" ? exp.embarques : null;
+  if (embarques) {
+    let comSaida = 0;
+    for (const [key, row] of Object.entries(embarques)) {
+      if (!row || typeof row !== "object") continue;
+      comSaida += 1;
+      const nome = String(row.nome || key);
+      if (!String(row.guia || "").trim()) faltas.push("Tarifa Guia em " + nome);
+      if (!(parseInt(row.minutos, 10) > 0)) faltas.push("Duração em " + nome);
+    }
+    if (!comSaida) faltas.push("Pelo menos uma cidade de saída");
+  } else {
+    if (!String(body.tarifa_guia || "").trim()) {
+      faltas.push("Tarifa Guia");
+    }
+    if (!(parseInt(body.duration_minutes, 10) > 0)) faltas.push("Duração do passeio");
+  }
+  return faltas;
+}
+
+function reaisLista(cents) {
+  return Math.round((parseInt(cents, 10) || 0) / 100);
+}
+
+function saidasParaLista(a) {
+  const mapa = cidadesSaidaMapa();
+  const exp = (a && a.experiencia) || {};
+  const emb = exp.embarques;
+  if (emb && typeof emb === "object" && Object.keys(emb).length) {
+    const out = [];
+    for (const [key, item] of Object.entries(emb)) {
+      if (!item || typeof item !== "object") continue;
+      const guia = String(item.guia || "").trim().toUpperCase();
+      const trans = String(item.trans || "").trim().toUpperCase();
+      out.push({
+        nome: String(item.nome || mapa[key] || key).trim(),
+        codigo: [guia, trans].filter(Boolean).join(" · "),
+        detalhe: "",
+      });
+    }
+    if (out.length) return out;
+  }
+  const tarifa = tarifaDoPasseio(a);
+  if (!tarifa || !tarifaVende(tarifa)) return [];
+  const guia = String((a && a.tarifa_guia) || tarifa.tarifa_guia || "").trim().toUpperCase();
+  const trans = String((a && a.tarifa_translado) || tarifa.tarifa_translado || "").trim().toUpperCase();
+  const codigo = [guia, trans].filter(Boolean).join(" · ");
+  const cidades = tarifa.cidades || {};
+  const out = [];
+  for (const key of Object.keys(TARIFARIO_CIDADES)) {
+    const row = cidades[key];
+    if (!row) continue;
+    const exc = reaisLista(row.excursao_pessoa_cents);
+    const pri = reaisLista(row.exclusivo_pessoa_cents);
+    const exc5 = reaisLista(row.excursao_pessoa_5_cents);
+    if (exc < 1 && pri < 1) continue;
+    const partes = [exc, pri];
+    if (exc5 > 0) partes.push(exc5);
+    out.push({ nome: mapa[key] || TARIFARIO_CIDADES[key], codigo, detalhe: "(" + partes.join("/") + ")" });
+  }
+  return out;
 }
 
 function handleCmsAttractionsApi(urlPath, req, res) {
@@ -2107,28 +2968,70 @@ function handleCmsAttractionsApi(urlPath, req, res) {
     if (id > 0) {
       const row = MOCK_ATTRACTIONS.find((a) => a.id === id);
       if (!row) return send({ ok: false, error: "Atrativo não encontrado" }, 404), true;
-      return send({ ok: true, data: { ...row, related_tours: mockRelatedFor(id) } }), true;
+      return send({ ok: true, data: { ...comTextoDaPagina(row), related_tours: mockRelatedFor(id) } }), true;
     }
-    return send({ ok: true, data: { attractions: MOCK_ATTRACTIONS } }), true;
+    return send({
+      ok: true,
+      data: {
+        attractions: MOCK_ATTRACTIONS.map((a) => ({ ...a, saidas_lista: saidasParaLista(a) })),
+      },
+    }), true;
   }
 
   readJsonBody(req).then((body) => {
     if (urlPath === "/api/admin/attractions.php" && req.method === "PUT") {
       const row = MOCK_ATTRACTIONS.find((a) => a.id === parseInt(body.id, 10));
       if (!row) return send({ ok: false, error: "Atrativo não encontrado" }, 404);
-      if (body.duration_minutes === "" || body.duration_minutes == null) row.duration_minutes = null;
-      else row.duration_minutes = Math.max(0, parseInt(body.duration_minutes, 10) || 0);
-      if (body.title_pt) row.title_pt = String(body.title_pt);
-      if (Object.prototype.hasOwnProperty.call(body, "tarifario_id")) {
-        const tid = body.tarifario_id ? parseInt(body.tarifario_id, 10) : null;
-        row.tarifario_id = tid && tarifarioById(tid) ? tid : null;
+      const jaPublicada = String(row.status || "") === "published";
+      const statusPedido = String(body.status || row.status || "");
+      const exigirAtivacao = body.exigir_ativacao === true || (!jaPublicada && statusPedido === "published");
+      if (exigirAtivacao) {
+        const faltasPut = faltasParaAtivarAtrativo({ ...body, status: statusPedido });
+        if (faltasPut.length) return send({ ok: false, error: "Para ativar, preencha: " + faltasPut.join(", ") + "." }, 400);
       }
+      aplicarFichaAtrativo(row, body);
+      gravarTextoDaPagina(row);
       MOCK_RELATED.forEach(refreshRelatedDuration);
       return send({ ok: true, data: { ...row, related_tours: mockRelatedFor(row.id) } });
     }
+    if (urlPath === "/api/admin/attractions.php" && req.method === "POST") {
+      if (!String(body.title_pt || "").trim()) return send({ ok: false, error: "O nome da experiência é obrigatório." }, 400);
+      const faltasPost = faltasParaAtivarAtrativo(body);
+      if (faltasPost.length) return send({ ok: false, error: "Para ativar, preencha: " + faltasPost.join(", ") + "." }, 400);
+      const row = {
+        id: MOCK_ATTRACTIONS.reduce((max, a) => Math.max(max, a.id || 0), 0) + 1,
+        title_pt: "",
+        slug: "",
+        status: "draft",
+        gallery: [],
+        tarifario_id: null,
+        tarifa_guia: "",
+        tarifa_translado: "",
+        duracao: {},
+        tem_passeio: true,
+      };
+      aplicarFichaAtrativo(row, body);
+      MOCK_ATTRACTIONS.push(row);
+      return send({ ok: true, data: { ...row, related_tours: [] } });
+    }
     if (urlPath === "/api/admin/related-tours.php" && req.method === "POST") {
       try {
-        return send({ ok: true, data: presentRelated(mockRelatedSave(body.attraction_ids)) });
+        const tour = mockRelatedSave(body.attraction_ids);
+        if (body.tarifa_guia != null || body.tarifa_translado != null) {
+          aplicarParNasSaidas(tour, String(body.tarifa_guia || "").trim(), String(body.tarifa_translado || "").trim());
+        }
+        if (body.horas != null) {
+          const raw = String(body.horas).trim();
+          if (raw === "") {
+            tour.duracao_manual = false;
+            refreshRelatedDuration(tour);
+          } else {
+            const horas = Math.max(1, Math.min(24, parseInt(raw, 10) || 0));
+            tour.duration_minutes = horas * 60;
+            tour.duracao_manual = true;
+          }
+        }
+        return send({ ok: true, data: presentRelated(tour) });
       } catch (err) {
         return send({ ok: false, error: err.message }, 400);
       }
@@ -2144,10 +3047,19 @@ function handleCmsAttractionsApi(urlPath, req, res) {
   return true;
 }
 const MOCK_CITIES = [
-  { id: 1, name: "Alto Paraíso de Goiás" },
-  { id: 2, name: "São Jorge" },
-  { id: 3, name: "Cavalcante" },
+  { id: 1, name: "Alto Paraíso de Goiás", status: "active" },
+  { id: 2, name: "São Jorge", status: "active" },
+  { id: 3, name: "Cavalcante", status: "active" },
+  { id: 4, name: "Teresina de Goiás", status: "active" },
+  { id: 5, name: "São João d'Aliança", status: "active" },
 ];
+
+function handleCitiesApi(urlPath, req, res) {
+  if (urlPath !== "/api/admin/cities.php" || req.method !== "GET") return false;
+  res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+  res.end(JSON.stringify({ ok: true, data: { cities: MOCK_CITIES } }));
+  return true;
+}
 
 /** Muda o usuário mockado em runtime (login / Google). */
 function setMockUser(next) {
@@ -2321,17 +3233,55 @@ const mockSiteBookings = [
 /** Segundo passeio novo do site, independente da decisão de Loquinhas. */
 let mockValeDecision = "waiting";
 
+/** Fila de guias ativos. Quem aceita uma substituição vai para o fim. */
+let guideQueue = [
+  { id: 2, nome: "Diego Guia", foto: "/assets/img/imagens/guia-diego-navi.webp", cidade: "Alto Paraíso de Goiás" },
+  { id: 21, nome: "Ana Guia", foto: "", cidade: "Alto Paraíso de Goiás" },
+  { id: 24, nome: "Martina Motlova", foto: "/assets/img/imagens/guia-martina-motlova.webp", cidade: "São Jorge" },
+  { id: 25, nome: "Gyovanna Torres", foto: "/assets/img/imagens/guia-gyovanna-torres.webp", cidade: "Cavalcante" },
+];
+const tourOwner = { 101: 2, 202: 2, 88: 2 };
+let substitutions = [];
+let substitutionSeq = 1;
+
+function mockDaysAhead(days) {
+  const d = new Date();
+  d.setHours(12, 0, 0, 0);
+  d.setDate(d.getDate() + days);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/** Prazo do guia: saída menos 12 h (mesmo recorte de PAY_DECISION_HOURS). */
+function mockConfirmDeadline(dateIso, time) {
+  const [y, mo, da] = String(dateIso).split("-").map(Number);
+  const parts = String(time || "08:00").slice(0, 5).split(":");
+  const start = new Date(y, (mo || 1) - 1, da || 1, Number(parts[0]) || 0, Number(parts[1]) || 0, 0, 0);
+  const deadline = new Date(start.getTime() - 12 * 60 * 60 * 1000);
+  const pad = (n) => String(n).padStart(2, "0");
+  const off = -deadline.getTimezoneOffset();
+  const sign = off >= 0 ? "+" : "-";
+  const abs = Math.abs(off);
+  return `${deadline.getFullYear()}-${pad(deadline.getMonth() + 1)}-${pad(deadline.getDate())}T${pad(deadline.getHours())}:${pad(deadline.getMinutes())}:00${sign}${pad(Math.floor(abs / 60))}:${pad(abs % 60)}`;
+}
+
 function mockAcceptedTour() {
   return {
     id: 88,
-    date_iso: "2026-07-15",
+    date_iso: mockDaysAhead(4),
     departure_time: "08:00:00",
     attraction_title: "Trilha da Carioca",
     departure_city_name: "Alto Paraíso",
     price_cents: 18000,
+    price_transport_cents: 26000,
+    offer_transport: true,
     booked_people: 1,
+    booked_people_transport: 2,
     quorum: 4,
+    quorum_transport: 4,
     max_people: 8,
+    max_people_transport: 4,
+    walk_guide_seat_ok: true,
     status: "published",
     created_by_origin: "GUIDE",
     guide_launched: true,
@@ -2355,8 +3305,23 @@ function mockAcceptedTour() {
         total_cents: 18000,
         guide_confirmed: true,
       },
+      {
+        name: "Rafael Dias",
+        email: "rafael.dias@email.com",
+        phone: "62922223333",
+        whatsapp: "https://wa.me/5562922223333",
+        spots: 2,
+        people: 2,
+        status: "PAID",
+        reservation_id: "GCV-PIX89",
+        with_transport: true,
+        attendance_status: "pending",
+        payment_kind: "pix",
+        total_cents: 52000,
+        guide_confirmed: true,
+      },
     ],
-    clients_count: 1,
+    clients_count: 2,
     pending_requests: 0,
   };
 }
@@ -2364,10 +3329,13 @@ function mockAcceptedTour() {
 function mockValeTour() {
   if (mockValeDecision === "declined") return null;
   const waiting = mockValeDecision === "waiting";
+  const dateIso = mockDaysAhead(8);
   return {
     id: 202,
-    date_iso: "2026-08-03",
+    date_iso: dateIso,
     departure_time: "14:00:00",
+    confirm_deadline: waiting ? mockConfirmDeadline(dateIso, "14:00:00") : null,
+    decision_hours: 12,
     attraction_title: "Vale da Lua",
     departure_city_name: "São Jorge",
     price_cents: 22000,
@@ -2378,8 +3346,8 @@ function mockValeTour() {
     created_by_origin: "ADMIN",
     guide_launched: false,
     awaiting_guide: waiting,
-    lifecycle: waiting ? "em_espera" : "em_formacao",
-    lifecycle_label: waiting ? "Em espera" : "Em formação",
+    lifecycle: "em_formacao",
+    lifecycle_label: "Em formação",
     can_cancel: true,
     clients: [
       {
@@ -2426,6 +3394,188 @@ const mockInboxItems = [
   },
 ];
 
+function mockGuideById(id) {
+  return guideQueue.find((g) => g.id === Number(id)) || null;
+}
+
+function mockQueuePublic() {
+  return guideQueue.map((g, i) => ({ id: g.id, nome: g.nome, foto: g.foto, cidade: g.cidade, posicao: i + 1 }));
+}
+
+function mockMoveGuideToEnd(id) {
+  const at = guideQueue.findIndex((g) => g.id === Number(id));
+  if (at < 0) return 0;
+  const [row] = guideQueue.splice(at, 1);
+  guideQueue.push(row);
+  return guideQueue.length;
+}
+
+function mockAllAgendaTours() {
+  return [mockAgendaExcursion(), mockValeTour(), mockAcceptedTour()].filter(Boolean);
+}
+
+function mockGuideBusy(guideId, tour) {
+  return mockAllAgendaTours().some((row) => {
+    if (row.id === tour.id) return false;
+    if ((tourOwner[row.id] || 2) !== guideId) return false;
+    return row.date_iso === tour.date_iso && String(row.departure_time || "").slice(0, 5) === String(tour.departure_time || "").slice(0, 5);
+  });
+}
+
+function mockAvailableGuides(tour, fromId) {
+  return mockQueuePublic().filter((g) => g.id !== fromId && !mockGuideBusy(g.id, tour));
+}
+
+function mockGuideExcursionsFor(guideId) {
+  const all = mockAllAgendaTours();
+  const mine = [];
+  const incoming = [];
+  all.forEach((row) => {
+    const owner = tourOwner[row.id] || 2;
+    const copy = { ...row, clients: (row.clients || []).map((client) => ({ ...client })), guide_id: owner };
+    if (copy.awaiting_guide) copy.clients = [];
+    copy.can_substitute = owner === guideId && !copy.awaiting_guide && copy.can_cancel !== false;
+    const pending = substitutions.find((s) => s.excursion_id === row.id && s.status === "pending" && s.from_user_id === owner);
+    if (pending && owner === guideId) {
+      const alvo = mockGuideById(pending.to_user_id);
+      copy.substitution_to_name = alvo ? alvo.nome : "outro guia";
+      copy.substitution_to_id = pending.to_user_id;
+      copy.substitution_offer_out = pending.id;
+    }
+    if (owner === guideId) mine.push(copy);
+  });
+  substitutions.filter((s) => s.status === "pending" && s.to_user_id === guideId).forEach((s) => {
+    const row = all.find((t) => t.id === s.excursion_id);
+    if (!row) return;
+    const from = mockGuideById(s.from_user_id);
+    incoming.push({
+      ...row,
+      clients: [],
+      awaiting_guide: true,
+      can_substitute: false,
+      can_cancel: false,
+      guide_id: guideId,
+      substitution_offer_id: s.id,
+      substitution_from_name: from ? from.nome : "Um guia",
+    });
+  });
+  const posicao = mockQueuePublic().find((g) => g.id === guideId);
+  return {
+    upcoming: incoming.concat(mine),
+    fila_posicao: posicao ? posicao.posicao : 0,
+    fila_total: guideQueue.length,
+  };
+}
+
+function mockCurrentGuide(req) {
+  try {
+    const as = new URL(req.url, "http://localhost").searchParams.get("as");
+    if (as && MOCK_USERS[as] && MOCK_USERS[as].role === "guide") return MOCK_USERS[as];
+  } catch (err) {}
+  if (user.role === "guide") return user;
+  return MOCK_USERS.guide;
+}
+
+function mockSubstitutionApi(req, res) {
+  const guide = mockCurrentGuide(req);
+  const send = (code, body) => {
+    res.writeHead(code, { "Content-Type": "application/json; charset=utf-8" });
+    res.end(JSON.stringify(body));
+  };
+  if (req.method === "GET") {
+    const id = parseInt(new URL(req.url, "http://localhost").searchParams.get("excursion_id") || "0", 10);
+    if (!id) {
+      send(200, { ok: true, data: { posicao: mockGuideExcursionsFor(guide.id).fila_posicao, fila: mockQueuePublic() } });
+      return;
+    }
+    const tour = mockAllAgendaTours().find((row) => row.id === id);
+    const owner = tour ? (tourOwner[tour.id] || 2) : 0;
+    if (!tour || owner !== guide.id) {
+      send(404, { ok: false, error: "Passeio não encontrado" });
+      return;
+    }
+    const pending = substitutions.find((s) => s.excursion_id === id && s.status === "pending" && s.from_user_id === guide.id);
+    const alvo = pending ? mockGuideById(pending.to_user_id) : null;
+    send(200, {
+      ok: true,
+      data: {
+        excursion_id: id,
+        title: tour.attraction_title,
+        pending: pending ? { id: pending.id, to_id: pending.to_user_id, to_nome: alvo ? alvo.nome : "" } : null,
+        guias: mockAvailableGuides(tour, guide.id),
+      },
+    });
+    return;
+  }
+  if (req.method !== "POST") {
+    send(405, { ok: false, error: "Método não permitido" });
+    return;
+  }
+  readJsonBody(req).then((body) => {
+    const action = String(body.action || "");
+    if (action === "offer") {
+      const excursionId = parseInt(body.excursion_id || "0", 10);
+      const toId = parseInt(body.to_user_id || "0", 10);
+      const tour = mockAllAgendaTours().find((row) => row.id === excursionId);
+      const owner = tour ? (tourOwner[tour.id] || 2) : 0;
+      if (!tour || owner !== guide.id || tour.awaiting_guide) {
+        send(404, { ok: false, error: "Este passeio não pode ser passado agora" });
+        return;
+      }
+      if (substitutions.some((s) => s.excursion_id === excursionId && s.status === "pending")) {
+        send(409, { ok: false, error: "Já existe um pedido de substituição aguardando aceite" });
+        return;
+      }
+      const alvo = mockAvailableGuides(tour, guide.id).find((g) => g.id === toId);
+      if (!alvo) {
+        send(422, { ok: false, error: "Este guia não está disponível para esta saída" });
+        return;
+      }
+      const offer = { id: substitutionSeq++, excursion_id: excursionId, from_user_id: guide.id, to_user_id: toId, status: "pending" };
+      substitutions.push(offer);
+      send(200, { ok: true, data: { id: offer.id, message: "Pedido enviado para " + alvo.nome + ". O passeio continua com você até o aceite." } });
+      return;
+    }
+    if (action === "cancel") {
+      const offer = substitutions.find((s) => s.id === parseInt(body.id || "0", 10) && s.status === "pending" && s.from_user_id === guide.id);
+      if (!offer) {
+        send(404, { ok: false, error: "Pedido não encontrado" });
+        return;
+      }
+      offer.status = "cancelled";
+      send(200, { ok: true, data: { message: "Pedido cancelado." } });
+      return;
+    }
+    if (action === "accept" || action === "decline") {
+      const offer = substitutions.find((s) => s.id === parseInt(body.id || "0", 10) && s.status === "pending" && s.to_user_id === guide.id);
+      if (!offer) {
+        send(404, { ok: false, error: "Este pedido não está aguardando você" });
+        return;
+      }
+      if (action === "decline") {
+        offer.status = "declined";
+        send(200, { ok: true, data: { message: "Você recusou o passeio. Sua posição na fila não mudou." } });
+        return;
+      }
+      const tour = mockAllAgendaTours().find((row) => row.id === offer.excursion_id);
+      if (tour && mockGuideBusy(guide.id, tour)) {
+        send(409, { ok: false, error: "Você já tem uma saída neste horário" });
+        return;
+      }
+      offer.status = "accepted";
+      substitutions.forEach((s) => {
+        if (s.excursion_id === offer.excursion_id && s.status === "pending") s.status = "declined";
+      });
+      tourOwner[offer.excursion_id] = guide.id;
+      const posicao = mockMoveGuideToEnd(guide.id);
+      const title = tour ? tour.attraction_title : "o passeio";
+      send(200, { ok: true, data: { posicao, message: "Você assumiu " + title + " e foi para o fim da fila (" + posicao + "º)." } });
+      return;
+    }
+    send(422, { ok: false, error: "Ação inválida" });
+  }).catch(() => send(400, { ok: false, error: "JSON inválido" }));
+}
+
 function mockInboxPayload() {
   const unread = mockInboxItems.filter((item) => item.unread).length;
   const agendaUnread = mockInboxItems.filter((item) => item.unread && item.kind === "new_booking").length;
@@ -2439,6 +3589,7 @@ function mockInboxPayload() {
 function mockAgendaExcursion() {
   if (mockGuideDecision === "declined") return null;
   const waiting = mockGuideDecision === "waiting";
+  const dateIso = mockDaysAhead(1);
   const clients = mockSiteBookings.map((row) => ({
     ...row,
     needs_confirm: false,
@@ -2446,8 +3597,10 @@ function mockAgendaExcursion() {
   }));
   return {
     id: 101,
-    date_iso: "2026-07-23",
+    date_iso: dateIso,
     departure_time: "09:00:00",
+    confirm_deadline: waiting ? mockConfirmDeadline(dateIso, "09:00:00") : null,
+    decision_hours: 12,
     attraction_title: "Loquinhas + Cristais",
     departure_city_name: "Alto Paraíso",
     price_cents: 23000,
@@ -2458,8 +3611,8 @@ function mockAgendaExcursion() {
     created_by_origin: "ADMIN",
     guide_launched: false,
     awaiting_guide: waiting,
-    lifecycle: waiting ? "em_espera" : "em_formacao",
-    lifecycle_label: waiting ? "Em espera" : "Em formação",
+    lifecycle: "em_formacao",
+    lifecycle_label: "Em formação",
     can_cancel: true,
     clients,
     clients_count: clients.length,
@@ -2550,13 +3703,8 @@ const API_ROUTES = {
   },
 
   "/api/guides/excursions.php": () => {
-    const tour = mockAgendaExcursion();
-    const vale = mockValeTour();
-    const upcoming = [tour, vale, mockAcceptedTour()].filter(Boolean).map((row) => {
-      const copy = { ...row, clients: (row.clients || []).map((client) => ({ ...client })) };
-      if (copy.awaiting_guide) copy.clients = [];
-      return copy;
-    });
+    const packed = mockGuideExcursionsFor(user.role === "guide" ? user.id : 2);
+    const upcoming = packed.upcoming;
     return {
       ok: true,
       data: {
@@ -2564,8 +3712,10 @@ const API_ROUTES = {
         min_quorum: 4,
         attractions: MOCK_ATTRACTIONS,
         cities: MOCK_CITIES,
+        fila_posicao: packed.fila_posicao,
+        fila_total: packed.fila_total,
         upcoming,
-        excursions: upcoming.map((row) => Object.assign({}, row, { clients: row.clients.map((client) => ({ ...client })) })),
+        excursions: upcoming.map((row) => Object.assign({}, row, { clients: (row.clients || []).map((client) => ({ ...client })) })),
       },
     };
   },
@@ -2680,6 +3830,9 @@ const API_ROUTES = {
   }),
 
   "/api/excursions/carousel.php": () => {
+    if (!flagOn("PASSEIOS_PUBLICOS")) {
+      return { ok: true, data: { pt: [], en: [], es: [], oculto: true } };
+    }
     const guia = {
       guiaNome: "Diego Navi",
       guiaFoto: "/assets/img/imagens/guia-diego-navi.webp",
@@ -2925,14 +4078,19 @@ const API_ROUTES = {
     });
   },
 
-  "/api/tours/list.php": () => ({
+  "/api/tours/list.php": () => {
+    if (!flagOn("PASSEIOS_PUBLICOS")) {
+      return { ok: true, data: { tours: [], total: 0, oculto: true } };
+    }
+    return {
     ok: true,
     data: {
       tours: [
         { id: 1, title: "Trilha da Carioca", description: "Cachoeiras e cerrado", price_cents: 18000, max_participants: 10, status: "active", category: "hiking", date: "2026-07-15", spots_left: 4, guide_name: "Diego Guia" },
       ],
     },
-  }),
+    };
+  },
 };
 
 const MIME = {
@@ -2965,21 +4123,15 @@ function serveFile(res, filePath) {
     res.writeHead(200, headers);
     if (ext === ".html") {
       let html = data.toString("utf8")
-        .replace(/site\.js\?v=[^"'&\s]+/g, "site.js?v=1.1.78")
+        .replace(/site\.js\?v=[^"'&\s]+/g, "site.js?v=1.1.84")
         .replace(/gcv-exc-cart-policies\.js\?v=[^"'&\s]+/g, "gcv-exc-cart-policies.js?v=1.1.61")
         .replace(/gcv-exc-cart\.js\?v=[^"'&\s]+/g, "gcv-exc-cart.js?v=1.1.62")
-        .replace(/excursoes-carousel\.js\?v=[^"'&\s]+/g, "excursoes-carousel.js?v=1.1.84")
+        .replace(/excursoes-carousel\.js\?v=[^"'&\s]+/g, "excursoes-carousel.js?v=1.1.86")
         .replace(/excursoes\.css\?v=[^"'&\s]+/g, "excursoes.css?v=1.1.82")
         .replace(/gcv-confirmacao\.js\?v=[^"'&\s]+/g, "gcv-confirmacao.js?v=1.1.36")
         .replace(/gcv-detail\.css\?v=[^"'&\s]+/g, "gcv-detail.css?v=1.1.37")
-        .replace(/gcv-passeios-shop\.js\?v=[^"'&\s]+/g, "gcv-passeios-shop.js?v=1.3.10")
+        .replace(/gcv-passeios-shop\.js\?v=[^"'&\s]+/g, "gcv-passeios-shop.js?v=1.3.11")
         .replace(/gcv-datepicker\.js\?v=[^"'&\s]+/g, "gcv-datepicker.js?v=1.0.5");
-      if (!html.includes('href="passeios.html"')) {
-        html = html
-          .replace(/(<a href="atrativos\.html"[^>]*>)Atrativos(<\/a>)/, '$1Atrativos$2\n      <a href="passeios.html">Passeios</a>')
-          .replace(/(<a href="atrativos\.html"[^>]*>)Attractions(<\/a>)/, '$1Attractions$2\n      <a href="passeios.html">Tours</a>')
-          .replace(/(<a href="atrativos\.html"[^>]*>)Atractivos(<\/a>)/, '$1Atractivos$2\n      <a href="passeios.html">Paseos</a>');
-      }
       res.end(html);
       return;
     }
@@ -3037,6 +4189,13 @@ const handlePaymentsApi = createPaymentsMock({
   confirmPathForLocale,
   onGuideExcursion(body) {
     const excursionId = parseInt(body.excursion_id || "0", 10);
+    if (excursionId === 202) {
+      if (mockValeDecision !== "waiting") {
+        return { ok: false, error: "Este passeio não está aguardando a sua confirmação" };
+      }
+      mockValeDecision = body.action === "decline" ? "declined" : "accepted";
+      return { ok: true, data: { result: mockValeDecision } };
+    }
     if (excursionId !== 101 || mockGuideDecision !== "waiting") {
       return { ok: false, error: "Este passeio não está aguardando a sua confirmação" };
     }
@@ -3048,6 +4207,19 @@ const handlePaymentsApi = createPaymentsMock({
     return { ok: true, data: { result: mockGuideDecision } };
   },
 });
+
+let anfitriaoApiRef = null;
+function anfitriaoApi() {
+  if (!anfitriaoApiRef) {
+    anfitriaoApiRef = createAnfitriaoApi({
+      getAttractions: () => MOCK_ATTRACTIONS,
+      getGuides: () => mockCmsGuides,
+      getUser: () => user,
+      users: MOCK_USERS,
+    });
+  }
+  return anfitriaoApiRef;
+}
 
 const server = http.createServer((req, res) => {
   // Remove query string
@@ -3180,6 +4352,9 @@ const server = http.createServer((req, res) => {
         admin: [{ key: "admin", label: "Diego Navi (Admin)", email: MOCK_USERS.admin.email }],
         guide: [
           { key: "guide", label: "Diego Guia (ativo)", email: MOCK_USERS.guide.email },
+          { key: "guide-ana", label: "Ana Guia", email: MOCK_USERS["guide-ana"].email },
+          { key: "guide-martina", label: "Martina Motlova", email: MOCK_USERS["guide-martina"].email },
+          { key: "guide-gyovanna", label: "Gyovanna Torres", email: MOCK_USERS["guide-gyovanna"].email },
           { key: "guide-pending", label: "João Pendente (aguardando)", email: MOCK_USERS["guide-pending"].email },
         ],
         client: [{ key: "client", label: "Maria Cliente", email: MOCK_USERS.client.email }],
@@ -3252,11 +4427,22 @@ const server = http.createServer((req, res) => {
     }
 
     if (handleCmsGuidesApi(urlPath, req, res)) return;
+    if (handleCitiesApi(urlPath, req, res)) return;
+    if (handleTerapiaApi(urlPath, req, res)) return;
     if (handleCmsAttractionsApi(urlPath, req, res)) return;
+    if (anfitriaoApi().handle(urlPath, req, res)) return;
     if (handleTarifarioApi(urlPath, req, res)) return;
     if (handleCupomApi(urlPath, req, res)) return;
     if (handleSettingsApi(urlPath, req, res)) return;
     if (urlPath === "/api/passeios.php" && req.method === "GET") {
+      if (!flagOn("PASSEIOS_PUBLICOS")) {
+        const slugOff = new URL(req.url, "http://localhost:" + PORT).searchParams.get("slug") || "";
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify(slugOff
+          ? { ok: true, data: { tem_passeio: false, oculto: true } }
+          : { ok: true, data: { tours: [], categories: {}, max_atrativos: 1, oculto: true } }));
+        return;
+      }
       const slug = new URL(req.url, "http://localhost:" + PORT).searchParams.get("slug") || "";
       if (!slug) {
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
@@ -3285,6 +4471,14 @@ const server = http.createServer((req, res) => {
       readJsonBody(req)
         .then((data) => {
           console.log("[mock]", req.method, urlPath, data || {});
+          if (urlPath === "/api/guides/excursions.php" || urlPath === "/api/client/excursions.php") {
+            const recusa = anfitriaoApi().recusaExcursao(data || {});
+            if (recusa) {
+              res.writeHead(422, { "Content-Type": "application/json; charset=utf-8" });
+              res.end(JSON.stringify({ ok: false, error: recusa }));
+              return;
+            }
+          }
           res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
           res.end(
             JSON.stringify({
@@ -3471,7 +4665,7 @@ const server = http.createServer((req, res) => {
             id: row.trip_id,
             reservation_id: row.reservation_id,
             title: "Loquinhas + Cristais",
-            starts_at: "2026-07-23 09:00:00",
+            starts_at: mockDaysAhead(1) + " 09:00:00",
             people: row.people,
             payment_kind: row.payment_kind,
             tourist_name: row.guide_confirmed ? row.name : "",
@@ -3531,6 +4725,48 @@ const server = http.createServer((req, res) => {
           });
         return;
       }
+    }
+
+    if (urlPath === "/api/auth/me.php" && req.method === "GET") {
+      const as = new URL(req.url, "http://localhost:" + PORT).searchParams.get("as");
+      const picked = as && MOCK_USERS[as] ? MOCK_USERS[as] : user;
+      res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify({
+        ok: true,
+        data: Object.assign({}, picked, { profile_complete: picked.status !== "pending" }),
+      }));
+      return;
+    }
+
+    if (urlPath === "/api/guides/excursions.php" && req.method === "GET") {
+      const packed = mockGuideExcursionsFor(mockCurrentGuide(req).id);
+      const upcoming = packed.upcoming;
+      res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify({
+        ok: true,
+        data: {
+          profile_complete: true,
+          financial_ready: true,
+          guide_net_min: 50,
+          guide_net_max: 160,
+          guide_net_max_dragao: 190,
+          guide_net_max_transport: 550,
+          max_people_cap: 15,
+          min_quorum: 4,
+          attractions: MOCK_ATTRACTIONS,
+          cities: MOCK_CITIES,
+          fila_posicao: packed.fila_posicao,
+          fila_total: packed.fila_total,
+          upcoming,
+          excursions: upcoming.map((row) => Object.assign({}, row, { clients: (row.clients || []).map((client) => ({ ...client })) })),
+        },
+      }));
+      return;
+    }
+
+    if (urlPath === "/api/guides/substituir.php") {
+      mockSubstitutionApi(req, res);
+      return;
     }
 
     const handler = API_ROUTES[urlPath];

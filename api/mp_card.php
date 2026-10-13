@@ -19,6 +19,7 @@ require_once __DIR__ . '/helpers/payments/checkout_common.php';
 require_once __DIR__ . '/helpers/payments/mercadopago_api.php';
 require_once __DIR__ . '/helpers/payments/authorization.php';
 require_once __DIR__ . '/helpers/payments/rate_limit.php';
+require_once __DIR__ . '/helpers/site_launch.php';
 
 gcv_pix_cors_headers();
 
@@ -28,6 +29,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     gcv_checkout_fail(405, 'Method not allowed');
+}
+if (!gcv_cartao_visivel()) {
+    gcv_checkout_fail(403, 'Cartão indisponível no momento. Use Pix.', 'card_disabled');
 }
 gcv_rate_limit_or_fail('mp_card', 8, 600);
 

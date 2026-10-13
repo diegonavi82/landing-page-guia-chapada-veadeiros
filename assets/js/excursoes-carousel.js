@@ -4502,14 +4502,15 @@
     closePixDdiDropdown(modal);
     var continueBtn = modal.querySelector("[data-gcv-pix-email-continue]");
     if (continueBtn) continueBtn.hidden = false;
+    var cardsOn = !!(modal._gcvPayQuotes && modal._gcvPayQuotes.cardsEnabled === true);
     var cardPayBtn = modal.querySelector("[data-gcv-stripe-card]");
-    if (cardPayBtn) cardPayBtn.hidden = false;
+    if (cardPayBtn) cardPayBtn.hidden = !cardsOn;
     var mpPayBtn = modal.querySelector("[data-gcv-mp-card]");
-    if (mpPayBtn) mpPayBtn.hidden = false;
+    if (mpPayBtn) mpPayBtn.hidden = !cardsOn;
     var cardNoteEl = modal.querySelector(".gcv-pix-modal__card-note");
-    if (cardNoteEl) cardNoteEl.hidden = false;
+    if (cardNoteEl) cardNoteEl.hidden = !cardsOn;
     var payChoice = modal.querySelector(".gcv-pix-modal__pay-choice");
-    if (payChoice) payChoice.hidden = false;
+    if (payChoice) payChoice.hidden = !cardsOn;
     modal.querySelectorAll("[data-gcv-pix-email-clear], [data-gcv-pix-phone-clear]").forEach(function (btn) {
       btn.hidden = true;
       btn.disabled = true;
@@ -4777,8 +4778,8 @@
         '<p class="gcv-pix-modal__field-error" id="gcv-pix-modal-phone-error" role="alert" hidden></p>' +
         '<p class="gcv-pix-modal__pay-choice"></p>' +
         '<button type="button" class="gcv-pix-modal__email-continue" data-gcv-pix-email-continue></button>' +
-        '<button type="button" class="gcv-pix-modal__card-pay gcv-pix-modal__card-pay--br" data-gcv-mp-card></button>' +
-        '<button type="button" class="gcv-pix-modal__card-pay gcv-pix-modal__card-pay--intl" data-gcv-stripe-card></button>' +
+        '<button type="button" class="gcv-pix-modal__card-pay gcv-pix-modal__card-pay--br" data-gcv-mp-card hidden></button>' +
+        '<button type="button" class="gcv-pix-modal__card-pay gcv-pix-modal__card-pay--intl" data-gcv-stripe-card hidden></button>' +
         '<p class="gcv-pix-modal__email-status" id="gcv-pix-modal-email-status" hidden></p>';
       if (payZone && payZone.parentNode) {
         payZone.parentNode.insertBefore(block, payZone);
@@ -4927,6 +4928,7 @@
       cardEl.type = "button";
       cardEl.className = "gcv-pix-modal__card-pay";
       cardEl.setAttribute("data-gcv-stripe-card", "");
+      cardEl.hidden = true;
       if (continueBtn && continueBtn.parentNode) {
         continueBtn.parentNode.insertBefore(choiceEl, continueBtn);
         continueBtn.insertAdjacentElement("afterend", cardEl);
@@ -4940,6 +4942,7 @@
       mpEl.type = "button";
       mpEl.className = "gcv-pix-modal__card-pay gcv-pix-modal__card-pay--br";
       mpEl.setAttribute("data-gcv-mp-card", "");
+      mpEl.hidden = true;
       var stripeEl = block.querySelector("[data-gcv-stripe-card]");
       if (stripeEl && stripeEl.parentNode) stripeEl.parentNode.insertBefore(mpEl, stripeEl);
       else block.appendChild(mpEl);
@@ -5063,8 +5066,13 @@
       });
     }
 
+    var cardsOn = !!(modal._gcvPayQuotes && modal._gcvPayQuotes.cardsEnabled === true);
+    modal.querySelectorAll(".gcv-pix-modal__card-note, .gcv-pix-modal__pay-choice").forEach(function (el) {
+      el.hidden = !cardsOn;
+    });
     var br = modal.querySelector("[data-gcv-mp-card]");
-    if (br && !modal._gcvStripeBusy) {
+    if (br) br.hidden = !cardsOn;
+    if (br && cardsOn && !modal._gcvStripeBusy) {
       br.classList.add("gcv-pay-opt", "gcv-pay-opt--br");
       var qb = q && q.card_br && q.card_br.ok ? q.card_br : null;
       var n = qb ? qb.max_installments : PAY_DEFAULTS.maxInstallments;
@@ -5085,7 +5093,8 @@
     }
 
     var intl = modal.querySelector("[data-gcv-stripe-card]");
-    if (intl && !modal._gcvStripeBusy) {
+    if (intl) intl.hidden = !cardsOn;
+    if (intl && cardsOn && !modal._gcvStripeBusy) {
       intl.classList.add("gcv-pay-opt", "gcv-pay-opt--intl");
       var qi = q && q.card_intl && q.card_intl.ok ? q.card_intl : null;
       var usd = qi && String(qi.currency).toLowerCase() === "usd";
@@ -5117,7 +5126,12 @@
       .then(function (r) { return r.json(); })
       .then(function (res) {
         if (res && res.success && res.quotes) {
-          modal._gcvPayQuotes = { base: base, quotes: res.quotes, mpPublicKey: res.mp_public_key || "" };
+          modal._gcvPayQuotes = {
+            base: base,
+            quotes: res.quotes,
+            mpPublicKey: res.mp_public_key || "",
+            cardsEnabled: res.cards_enabled === true,
+          };
           renderPayButtonLabels(modal, modal._gcvPixLocale || loc || "pt");
         }
       })
@@ -5480,9 +5494,15 @@
   }
 
   function setPayChoiceHidden(modal, hidden) {
+    var cardsOn = !!(modal._gcvPayQuotes && modal._gcvPayQuotes.cardsEnabled === true);
     ["[data-gcv-pix-email-continue]", "[data-gcv-mp-card]", "[data-gcv-stripe-card]", ".gcv-pix-modal__pay-choice", ".gcv-pix-modal__card-note"].forEach(function (sel) {
       var el = modal.querySelector(sel);
-      if (el) el.hidden = hidden;
+      if (!el) return;
+      if (!hidden && !cardsOn && sel !== "[data-gcv-pix-email-continue]") {
+        el.hidden = true;
+        return;
+      }
+      el.hidden = hidden;
     });
   }
 
@@ -6127,8 +6147,8 @@
       '<p class="gcv-pix-modal__field-error" id="gcv-pix-modal-phone-error" role="alert" hidden></p>' +
       '<p class="gcv-pix-modal__pay-choice"></p>' +
       '<button type="button" class="gcv-pix-modal__email-continue" data-gcv-pix-email-continue></button>' +
-      '<button type="button" class="gcv-pix-modal__card-pay gcv-pix-modal__card-pay--br" data-gcv-mp-card></button>' +
-      '<button type="button" class="gcv-pix-modal__card-pay gcv-pix-modal__card-pay--intl" data-gcv-stripe-card></button>' +
+      '<button type="button" class="gcv-pix-modal__card-pay gcv-pix-modal__card-pay--br" data-gcv-mp-card hidden></button>' +
+      '<button type="button" class="gcv-pix-modal__card-pay gcv-pix-modal__card-pay--intl" data-gcv-stripe-card hidden></button>' +
       '<p class="gcv-pix-modal__email-status" id="gcv-pix-modal-email-status" hidden></p></div>' +
       '<div class="gcv-pix-modal__pay-zone">' +
       '<p class="gcv-pix-modal__amount"></p>' +
@@ -6541,14 +6561,16 @@
       var mpCardBtn = e.target.closest("[data-gcv-mp-card]");
       if (mpCardBtn) {
         e.preventDefault();
-        if (mpCardBtn.disabled) return;
+        if (mpCardBtn.hidden || mpCardBtn.disabled) return;
+        if (!(modal._gcvPayQuotes && modal._gcvPayQuotes.cardsEnabled === true)) return;
         startCardCheckout(modal, "mp");
         return;
       }
       var cardPayBtn = e.target.closest("[data-gcv-stripe-card]");
       if (cardPayBtn) {
         e.preventDefault();
-        if (cardPayBtn.disabled) return;
+        if (cardPayBtn.hidden || cardPayBtn.disabled) return;
+        if (!(modal._gcvPayQuotes && modal._gcvPayQuotes.cardsEnabled === true)) return;
         startCardCheckout(modal, "stripe");
         return;
       }
@@ -7824,6 +7846,24 @@
   }
 
   function bootExcursaoCarousel() {
+    var root = document.getElementById("excursoes-junho");
+    if (!root) return;
+    hideExcursaoSection(root);
+    try {
+      var xhr = new XMLHttpRequest();
+      xhr.open("GET", "/api/passeios.php");
+      xhr.timeout = 8000;
+      xhr.onload = function () {
+        var res = {};
+        try { res = JSON.parse(xhr.responseText || "{}"); } catch (e) { return; }
+        if (!res.ok || !res.data || res.data.oculto) return;
+        bootExcursaoCarouselOpen();
+      };
+      xhr.send();
+    } catch (e) { /* seção continua oculta */ }
+  }
+
+  function bootExcursaoCarouselOpen() {
     var root = document.getElementById("excursoes-junho");
     if (!root) return;
 

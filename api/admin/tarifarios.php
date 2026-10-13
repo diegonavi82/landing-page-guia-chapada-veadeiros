@@ -59,12 +59,42 @@ try {
             gcv_bilingue_universal_save($pdo, $body);
             gcv_tarifario_reply($pdo);
         }
+        if ($action === 'regras') {
+            gcv_tarifario_regras_save($pdo, $body);
+            gcv_tarifario_reply($pdo);
+        }
         if ($action === 'oficiais') {
             gcv_tarifa_oficial_vincular($pdo, $body);
             gcv_tarifario_reply($pdo);
         }
         if ($action === 'tarifa_criar') {
-            gcv_tarifa_oficial_criar($pdo, (string)($body['tipo'] ?? ''), (int)($body['excursao'] ?? 0), (int)($body['privativo'] ?? 0));
+            gcv_tarifa_oficial_criar(
+                $pdo,
+                (string)($body['tipo'] ?? ''),
+                (int)($body['excursao'] ?? 0),
+                (int)($body['privativo'] ?? 0),
+                (int)($body['excursao_5'] ?? 0),
+                (int)($body['privativo_5'] ?? 0)
+            );
+            gcv_tarifario_reply($pdo);
+        }
+        if ($action === 'tarifa_pax5') {
+            gcv_tarifa_oficial_pax5($pdo, (string)($body['codigo'] ?? ''), (int)($body['excursao_5'] ?? 0), (int)($body['privativo_5'] ?? 0));
+            gcv_tarifario_reply($pdo);
+        }
+        if ($action === 'tarifa_editar') {
+            gcv_tarifa_oficial_editar(
+                $pdo,
+                (string)($body['codigo'] ?? ''),
+                (int)($body['excursao'] ?? 0),
+                (int)($body['privativo'] ?? 0),
+                (int)($body['excursao_5'] ?? 0),
+                (int)($body['privativo_5'] ?? 0)
+            );
+            gcv_tarifario_reply($pdo);
+        }
+        if ($action === 'tarifa_saida') {
+            gcv_tarifa_saida_salvar($pdo, $body);
             gcv_tarifario_reply($pdo);
         }
         if ($action === 'tarifa_excluir') {

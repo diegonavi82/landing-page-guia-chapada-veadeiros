@@ -18,6 +18,7 @@ export function createPaymentsMock(deps) {
   const { ROOT, pixRead, pixWrite, readEnvValue, stripeApi, stripeLineItems, requestOrigin, safeReturnPath, confirmPathForLocale } = deps;
   const LEDGER = path.join(ROOT, "api", "storage", "payment_ledger_dev.json");
 
+  const flagOn = (key) => ["1", "true", "on", "sim"].includes(String(readEnvValue(key) || "").trim().toLowerCase());
   const envNum = (k, d) => {
     const v = parseFloat(String(readEnvValue(k) || "").replace(",", "."));
     return Number.isFinite(v) ? v : d;
@@ -151,9 +152,19 @@ export function createPaymentsMock(deps) {
   }
 
   // ---------- Mercado Pago ----------
+  function mpIsLive() {
+    return String(readEnvValue("MP_ACCESS_TOKEN") || "").startsWith("APP_USR-");
+  }
+
+  function mpPublicKeyForBrowser() {
+    if (mpIsLive()) return "";
+    return readEnvValue("MP_PUBLIC_KEY") || "";
+  }
+
   async function mpApi(method, p, body) {
     const token = readEnvValue("MP_ACCESS_TOKEN");
     if (!token) return { ok: false, error: "mp_not_configured" };
+    if (mpIsLive() && method !== "GET") return { ok: false, error: "producao_bloqueada_no_localhost" };
     const r = await fetch("https://api.mercadopago.com" + p, {
       method,
       headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
@@ -202,7 +213,7 @@ export function createPaymentsMock(deps) {
       return;
     }
     const empty = { success: true, customer_id: "", card_ids: [], methods: {} };
-    if (!readEnvValue("MP_ACCESS_TOKEN")) { json(res, 200, empty); return; }
+    if (!readEnvValue("MP_ACCESS_TOKEN") || mpIsLive()) { json(res, 200, empty); return; }
     const search = await mpApi("GET", "/v1/customers/search?email=" + encodeURIComponent(email));
     const customerId = search.ok && search.data && search.data.results && search.data.results[0] && search.data.results[0].id;
     if (!customerId) { json(res, 200, empty); return; }
@@ -227,6 +238,10 @@ export function createPaymentsMock(deps) {
   }
 
   async function handleMpCard(req, res) {
+    if (!flagOn("PAGAMENTO_CARTAO")) {
+      json(res, 403, { success: false, message: "Cartão indisponível no momento. Use Pix.", code: "card_disabled" });
+      return;
+    }
     let data;
     try { data = JSON.parse((await readBody(req)) || "{}"); } catch { json(res, 400, { success: false, message: "Invalid JSON" }); return; }
     const v = validate(data);
@@ -243,6 +258,7 @@ export function createPaymentsMock(deps) {
     let authId = "mp_dev_" + v.id.slice(-6);
     if (card.token !== "dev-test-token") {
       // Sandbox real do Mercado Pago (MP_ACCESS_TOKEN de TESTE no api/.env).
+      if (mpIsLive()) { json(res, 403, { success: false, message: "Localhost não cobra o Mercado Pago de produção. O cartão real só vale no site publicado." }); return; }
       if (!readEnvValue("MP_ACCESS_TOKEN")) { json(res, 501, { success: false, message: "Configure MP_ACCESS_TOKEN no api/.env." }); return; }
       if (inWindow(rec, 4)) {
         const ident = card.payer && card.payer.identification;
@@ -297,6 +313,10 @@ export function createPaymentsMock(deps) {
 
   // ---------- Stripe (USD) ----------
   async function handleStripeCheckout(req, res) {
+    if (!flagOn("PAGAMENTO_CARTAO")) {
+      json(res, 403, { success: false, message: "Cartão indisponível no momento. Use Pix.", code: "card_disabled" });
+      return;
+    }
     let data;
     try { data = JSON.parse((await readBody(req)) || "{}"); } catch { json(res, 400, { success: false, message: "Invalid JSON" }); return; }
     const v = validate(data);
@@ -306,7 +326,9 @@ export function createPaymentsMock(deps) {
     pixWrite(v.id, rec);
     const origin = requestOrigin(req);
     let url;
-    if (readEnvValue("STRIPE_SECRET_KEY")) {
+    const stripeKey = readEnvValue("STRIPE_SECRET_KEY") || "";
+    const stripeSandbox = stripeKey.startsWith("sk_test_") || stripeKey.startsWith("rk_test_");
+    if (stripeSandbox) {
       const items = stripeLineItems(data, v.id, q.charge_minor, v.locale).map((it) => {
         it.price_data.currency = q.currency;
         return it;
@@ -341,7 +363,9 @@ export function createPaymentsMock(deps) {
     let paidMinor = 0;
     let currency = "";
     let pi = "";
-    if (/^cs_mock_GCV[A-Z0-9]{6}$/.test(sessionId) && !readEnvValue("STRIPE_SECRET_KEY")) {
+    const stripeKey = readEnvValue("STRIPE_SECRET_KEY") || "";
+    const stripeSandbox = stripeKey.startsWith("sk_test_") || stripeKey.startsWith("rk_test_");
+    if (/^cs_mock_GCV[A-Z0-9]{6}$/.test(sessionId) && !stripeSandbox) {
       id = "GCV-" + sessionId.slice(-6);
       const r = pixRead(id);
       paidMinor = r ? r.charged_minor : 0;
@@ -381,6 +405,10 @@ export function createPaymentsMock(deps) {
 
   // ---------- confirmar cartão (link do e-mail) ----------
   async function handleCardAction(req, res) {
+    if (!flagOn("PAGAMENTO_CARTAO")) {
+      json(res, 403, { success: false, message: "Cartão indisponível no momento. Use Pix." });
+      return;
+    }
     const u = new URL(req.url, "http://localhost");
     let body = {};
     if (req.method === "POST") { try { body = JSON.parse((await readBody(req)) || "{}"); } catch { /* noop */ } }
@@ -392,7 +420,7 @@ export function createPaymentsMock(deps) {
         success: true, reservation_id: id, status: rec.status, gateway: rec.gateway, locale: rec.locale, charged_label: rec.charged_label,
         trips: (rec.trips || []).map((t) => ({ title: t.destino, starts_at: (t.dateIso || "") + " " + (t.hora || ""), people: t.qty })),
         mp: rec.gateway === "mercadopago" ? {
-          public_key: readEnvValue("MP_PUBLIC_KEY") || "",
+          public_key: mpPublicKeyForBrowser(),
           customer_id: (rec.card_saved && rec.card_saved.customer_id) || "",
           card_id: (rec.card_saved && rec.card_saved.card_id) || "",
           last4: (rec.card_saved && rec.card_saved.last4) || "4242",
@@ -404,6 +432,7 @@ export function createPaymentsMock(deps) {
     if (rec.status !== "CARD_SAVED") { json(res, 200, { success: true, status: rec.status, redirect: confirmPathForLocale(rec.locale) + "?id=" + id }); return; }
     let caId = "dev_auth_" + id.slice(-6);
     if (rec.gateway === "mercadopago" && body.token && body.token !== "dev-test-token") {
+      if (mpIsLive()) { json(res, 403, { success: false, message: "Localhost não cobra o Mercado Pago de produção." }); return; }
       const cs = rec.card_saved || {};
       const pay = await mpApi("POST", "/v1/payments", {
         transaction_amount: rec.charged_minor / 100, token: body.token, installments: cs.installments || 1,
@@ -440,6 +469,7 @@ export function createPaymentsMock(deps) {
       if (rec && rec.status === "AUTHORIZED") {
         const authId = String((rec.card_auth && rec.card_auth.id) || "");
         if (rec.gateway === "mercadopago" && /^\d+$/.test(authId)) {
+          if (mpIsLive()) { json(res, 403, { ok: false, error: "Localhost não captura pagamento de produção." }); return; }
           const cap = await mpApi("PUT", "/v1/payments/" + authId, { capture: true });
           console.log("[mp] sandbox capture", authId, cap.ok && cap.data.status);
           if (!cap.ok) { json(res, 502, { ok: false, error: "Falha ao cobrar no Mercado Pago (sandbox)." }); return; }
@@ -546,7 +576,8 @@ export function createPaymentsMock(deps) {
       const base = Math.round(Number(String(u.searchParams.get("amount") || "0").replace(",", ".")) * 100);
       if (!Number.isFinite(base) || base < 100) { json(res, 422, { success: false, message: "Invalid amount" }); return true; }
       Promise.all(["pix", "card_br", "card_intl"].map((m) => quote(base, m))).then(([pix, card_br, card_intl]) => {
-        json(res, 200, { success: true, base_cents: base, quotes: { pix, card_br, card_intl }, mp_public_key: readEnvValue("MP_PUBLIC_KEY") || "" });
+        const cards = flagOn("PAGAMENTO_CARTAO");
+        json(res, 200, { success: true, base_cents: base, quotes: { pix, card_br, card_intl }, cards_enabled: cards, mp_public_key: cards ? mpPublicKeyForBrowser() : "" });
       });
       return true;
     }

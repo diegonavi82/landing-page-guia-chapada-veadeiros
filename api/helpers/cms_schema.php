@@ -68,6 +68,25 @@ function gcv_cms_ensure_schema(): void
     } catch (Throwable $e) {
         error_log('marketplace ensure from cms: ' . $e->getMessage());
     }
+    gcv_cms_ensure_experiencia($pdo);
+    try {
+        require_once __DIR__ . '/experiencias.php';
+        gcv_experiencias_ensure($pdo);
+    } catch (Throwable $e) {
+        error_log('experiencias ensure: ' . $e->getMessage());
+    }
+}
+
+function gcv_cms_ensure_experiencia(PDO $pdo): void
+{
+    try {
+        $col = $pdo->query("SHOW COLUMNS FROM gcv_attractions LIKE 'experiencia_json'")->fetch();
+        if (!$col) {
+            $pdo->exec('ALTER TABLE gcv_attractions ADD COLUMN experiencia_json MEDIUMTEXT NULL');
+        }
+    } catch (Throwable $e) {
+        error_log('experiencia_json: ' . $e->getMessage());
+    }
 }
 
 function gcv_cms_ensure_core_tables(PDO $pdo): void
@@ -216,7 +235,7 @@ function gcv_cms_ensure_core_tables(PDO $pdo): void
           INDEX idx_exc_status (status)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
-        // Até 4 atrativos por saída (attraction_id em gcv_excursions = o 1º / principal)
+        // Até 3 experiências por saída (attraction_id em gcv_excursions = a 1ª / principal)
         "CREATE TABLE IF NOT EXISTS gcv_excursion_attractions (
           excursion_id INT UNSIGNED NOT NULL,
           attraction_id INT UNSIGNED NOT NULL,

@@ -125,7 +125,16 @@ function loadEnv() {
 loadEnv();
 
 const cmsPath = join(__dirname, "cms-generated.json");
+const pageEditsPath = join(__dirname, "attraction-page-edits.json");
 let CMS = null;
+let PAGE_EDITS = {};
+if (existsSync(pageEditsPath)) {
+  try {
+    PAGE_EDITS = JSON.parse(readFileSync(pageEditsPath, "utf8"));
+  } catch (e) {
+    console.warn("[build] attraction-page-edits.json:", e.message);
+  }
+}
 if (existsSync(cmsPath)) {
   try {
     CMS = JSON.parse(readFileSync(cmsPath, "utf8"));
@@ -381,7 +390,18 @@ function attractionGuideWaUrl(pageTitle) {
 function getCmsAttraction(locale, baseSlug) {
   const pages = CMS?.locales?.[locale]?.attractionPages;
   if (!pages) return null;
-  return pages.find((p) => p.baseSlug === baseSlug) ?? null;
+  const page = pages.find((p) => p.baseSlug === baseSlug) ?? null;
+  if (!page) return null;
+  const edit = PAGE_EDITS?.[baseSlug]?.[locale];
+  if (!edit || typeof edit !== "object") return page;
+  return {
+    ...page,
+    ...(edit.title ? { title: String(edit.title) } : {}),
+    ...(edit.bodyHtml != null ? { bodyHtml: String(edit.bodyHtml) } : {}),
+    ...(edit.sidebarHtml != null ? { sidebarHtml: String(edit.sidebarHtml) } : {}),
+    ...(edit.excerpt ? { excerpt: String(edit.excerpt) } : {}),
+    ...(Object.prototype.hasOwnProperty.call(edit, "subtitle") ? { subtitle: String(edit.subtitle || "") } : {}),
+  };
 }
 
 /** Nome do atrativo sempre em português (títulos exibidos e SEO de página). */
@@ -1421,7 +1441,6 @@ function headerHtml(ctx) {
       ${nav("home", "", S.nav.home)}
       ${nav("revista", "revista.html", S.nav.revista)}
       ${nav("atrativos", "atrativos.html", S.nav.atrativos)}
-      ${nav("passeios", "passeios.html", S.nav.passeios)}
       ${nav("reservas", "consultar-reserva.html", S.nav.reservas)}
       ${nav("contact", "contato.html", S.nav.contact)}
       <div class="nav-search-wrap" data-gcv-search data-locale="${esc(locale)}" data-page-out="${esc(cur)}" data-search-index="${esc(publicDataSrc("search-index.json", cur))}" data-no-results="${esc(S.searchNoResults)}">
@@ -2499,6 +2518,26 @@ function atrativoDetailMain(locale, localeSlug, ap, pathKey) {
 
   if (isBlank) {
     mainColumnHtml = "";
+  } else if (String(cms?.bodyHtml || "").trim() || String(cms?.sidebarHtml || "").trim()) {
+    let mainHtml = rewriteHtmlMediaUrls(String(cms.bodyHtml || ""));
+    if (hasManifestGallery) {
+      mainHtml = stripLegacyFusionGalleryFromHtml(mainHtml);
+    }
+    mainHtml = fixAttractionActionHrefs(mainHtml, contatoHref);
+    mainHtml = htmlWithStaticAssetPrefix(mainHtml, ap);
+    const waGuideUrl = esc(attractionGuideWaUrl(title));
+    mainHtml = rewriteGuideLocalCtaToWhatsApp(mainHtml, waGuideUrl);
+    const sidebarHtml = htmlWithStaticAssetPrefix(rewriteHtmlMediaUrls(String(cms.sidebarHtml || "")), ap);
+    const excerptText = (cms?.excerpt && String(cms.excerpt).trim()) || "";
+    mainColumnHtml = `<section class="gcv-detail-layout">
+  <aside class="gcv-detail-sidebar">
+    ${detailImgHref ? `<img src="${esc(detailImgHref)}" alt="${esc(detailImgAlt)}" class="gcv-detail-main-image" loading="eager" />` : ""}
+    <div class="gcv-detail-cta"><a href="${waGuideUrl}" class="button" target="_blank" rel="noopener noreferrer">Contrate um guia local!</a></div>
+    ${sidebarHtml ? `<div class="gcv-detail-info">${sidebarHtml}</div>` : ""}
+    ${excerptText ? `<p class="gcv-detail-excerpt">${esc(excerptText)}</p>` : ""}
+  </aside>
+  <div class="gcv-detail-content">${mainHtml}</div>
+</section>`;
   } else if (rawContent.trim()) {
     const detailBody = prepareDetailContent(rawContent, firstImage?.tag);
     const detailParts = splitDetailContent(detailBody);
@@ -2605,7 +2644,7 @@ function atrativoDetailMain(locale, localeSlug, ap, pathKey) {
     ${bc.html}
     ${pillarLink}
     <header class="gcv-detail-title">
-      <h1>${esc(title)}</h1>
+      <h1>${esc(title)}</h1>${String(cms?.subtitle || "").trim() ? `\n      <p class="gcv-detail-subtitle">${esc(String(cms.subtitle).trim())}</p>` : ""}
     </header>
     ${mainColumnHtml}
     ${gal}

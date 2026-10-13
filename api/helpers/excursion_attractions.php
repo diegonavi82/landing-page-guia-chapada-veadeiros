@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /**
- * Helpers: 1 a 4 atrativos por excursão (gcv_excursion_attractions).
+ * Helpers: 1 a 3 experiências por excursão (gcv_excursion_attractions).
  * gcv_excursions.attraction_id permanece como o primeiro (compatível com APIs antigas).
  */
 
@@ -35,7 +35,7 @@ function gcv_excursion_normalize_attraction_ids(array $body): array
     } elseif (!empty($body['attraction_id'])) {
         $ids[] = (int)$body['attraction_id'];
     }
-    return array_slice($ids, 0, 4);
+    return $ids;
 }
 
 function gcv_excursion_validate_attraction_ids(array $ids): ?string
@@ -44,8 +44,8 @@ function gcv_excursion_validate_attraction_ids(array $ids): ?string
     if ($n < 1) {
         return 'Selecione pelo menos 1 atrativo';
     }
-    if ($n > 4) {
-        return 'No máximo 4 atrativos por dia';
+    if ($n > 3) {
+        return 'No máximo 3 experiências por dia';
     }
     return null;
 }
@@ -95,9 +95,11 @@ function gcv_excursion_save_attractions(int $excursionId, array $attractionIds):
             $ids[] = $id;
         }
     }
-    $ids = array_slice($ids, 0, 4);
     if ($ids === []) {
         throw new InvalidArgumentException('Selecione pelo menos 1 atrativo');
+    }
+    if (count($ids) > 3) {
+        throw new InvalidArgumentException('No máximo 3 experiências por dia');
     }
 
     db()->prepare('DELETE FROM gcv_excursion_attractions WHERE excursion_id = ?')->execute([$excursionId]);
@@ -107,8 +109,16 @@ function gcv_excursion_save_attractions(int $excursionId, array $attractionIds):
     foreach ($ids as $i => $aid) {
         $ins->execute([$excursionId, $aid, $i]);
     }
-    // Principal = primeiro
+    // Principal = primeiro. A excursão aponta para o passeio desse conjunto.
     db()->prepare('UPDATE gcv_excursions SET attraction_id = ? WHERE id = ?')->execute([$ids[0], $excursionId]);
+    try {
+        if (!function_exists('gcv_excursion_bind_passeio')) {
+            require_once __DIR__ . '/experiencias.php';
+        }
+        gcv_excursion_bind_passeio(db(), $excursionId);
+    } catch (Throwable $e) {
+        error_log('bind passeio: ' . $e->getMessage());
+    }
 }
 
 function gcv_excursion_titles_joined(array $attrRows, string $lang = 'pt'): string

@@ -363,8 +363,8 @@ function gcv_clamp_walk_quorum($value, $maxPeople): int
     if ($cap < 1) {
         $cap = 1;
     }
-    if ($cap > 12) {
-        $cap = 12;
+    if ($cap > 15) {
+        $cap = 15;
     }
     if ($n > $cap) {
         return $cap;

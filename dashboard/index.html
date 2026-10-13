@@ -10,11 +10,13 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="/assets/css/site.css?v=1.0.39" />
-  <link rel="stylesheet" href="/assets/css/gcv-dashboard.css?v=1.1.71" />
+  <link rel="stylesheet" href="/assets/css/gcv-dashboard.css?v=1.1.81" />
 <link rel="stylesheet" href="/assets/css/gcv-confirm.css?v=1.0.6" />
 <link rel="stylesheet" href="/assets/css/gcv-tours.css?v=1.0.1" />
 <link rel="stylesheet" href="/assets/css/gcv-payment.css?v=1.0.1" />
-<link rel="stylesheet" href="/assets/css/gcv-admin-tarifario.css?v=1.1.4" />
+<link rel="stylesheet" href="/assets/css/gcv-admin-tarifario.css?v=1.2.2" />
+<link rel="stylesheet" href="/assets/css/gcv-admin-experiencia.css?v=1.0.26" />
+<link rel="stylesheet" href="/assets/css/gcv-admin-anfitriao.css?v=1.0.1" />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lipis/flag-icons@7.2.3/css/flag-icons.min.css" />
 </head>
 <body class="gcv-dash-page">
@@ -28,7 +30,10 @@
       <aside class="gcv-dash-sidebar" id="gcv-dash-sidebar">
         <div class="gcv-dash-sidebar__top">
           <div class="gcv-dash-user">
-            <div class="gcv-dash-avatar" id="dash-avatar">?</div>
+            <div class="gcv-dash-photo" id="dash-photo">
+              <div class="gcv-dash-avatar" id="dash-avatar">?</div>
+              <div class="gcv-dash-photo__marks" id="dash-marks" hidden></div>
+            </div>
             <div class="gcv-dash-user-meta">
               <div class="gcv-dash-user-name" id="dash-name">—</div>
               <div class="gcv-dash-user-role" id="dash-role">—</div>
@@ -74,7 +79,13 @@
         </section>
 
         <section class="gcv-dash-section" id="section-cms-attractions">
-          <h2 class="gcv-dash-section-title" id="cms-attr-title">Atrativos</h2>
+          <div class="xp-lista-head">
+            <div class="xp-lista-head__text">
+              <p class="xp-crumb" id="cms-attr-crumb">Painel <span aria-hidden="true">›</span> Experiências</p>
+              <h2 class="gcv-dash-section-title" id="cms-attr-title">Experiências</h2>
+            </div>
+            <div class="xp-lista-actions" id="cms-attr-actions"></div>
+          </div>
           <div id="cms-attractions-root"></div>
         </section>
 
@@ -104,6 +115,28 @@
             Cadastro, aprovação e PIX ficam no <strong>perfil</strong>. Aprovar libera o guia. Recusar mantém o perfil e trava novo pedido por 45 dias. Bloquear elimina o perfil e impede novo cadastro deste e-mail. Pagamentos só para guias ativos com PIX verificado.
           </p>
           <div id="cms-guides-root"></div>
+        </section>
+
+        <section class="gcv-dash-section" id="section-admin-anfitrioes">
+          <h2 class="gcv-dash-section-title">Anfitriões</h2>
+          <div id="admin-anfitrioes-root"></div>
+        </section>
+
+        <section class="gcv-dash-section" id="section-host-financial">
+          <div id="host-finance-root"></div>
+        </section>
+
+        <section class="gcv-dash-section" id="section-host-ranking">
+          <div id="host-ranking-root"></div>
+        </section>
+
+        <section class="gcv-dash-section" id="section-host-venda">
+          <h2 class="gcv-dash-section-title">Venda da experiência</h2>
+          <div id="host-venda-root"></div>
+        </section>
+
+        <section class="gcv-dash-section" id="section-host-pending">
+          <div id="host-pending-root"></div>
         </section>
 
         <section class="gcv-dash-section" id="section-admin-broadcast">
@@ -302,22 +335,36 @@
 
         <!-- ===== GUIDE SECTIONS ===== -->
 
-        <section class="gcv-dash-section" id="section-guide-create-tour">
-          <div class="gcv-dash-section-head">
-            <h2 class="gcv-dash-section-title">Publicar passeio</h2>
-            <button type="button" class="gcv-dash-btn gcv-dash-btn--blue gcv-dash-btn--sm" id="ge-clear-publish">Limpar</button>
-          </div>
-          <form class="gcv-dash-form gcv-dash-form--publish" id="gcv-guide-create-tour-form" novalidate></form>
-        </section>
-
         <section class="gcv-dash-section" id="section-guide-tours">
           <h2 class="gcv-dash-section-title">Agenda</h2>
+          <div class="gcv-guide-agenda-scan" id="guide-agenda-tools">
+            <button type="button" class="gcv-dash-btn gcv-dash-btn--primary gcv-agenda-scan-btn" id="gcv-agenda-scan-qr">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3z"/><path d="M20 14v7"/><path d="M14 20h7"/></svg>
+              <span>Ler QR Code da Reserva</span>
+            </button>
+            <button type="button" class="gcv-dash-btn gcv-agenda-scan-btn gcv-agenda-scan-btn--publish" id="gcv-agenda-open-publish">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+              <span>Publicar passeio</span>
+            </button>
+          </div>
+          <div class="gcv-agenda-publish" id="guide-publish-box" hidden>
+            <div class="gcv-dash-section-head">
+              <h3>Publicar passeio</h3>
+              <button type="button" class="gcv-dash-btn gcv-dash-btn--blue gcv-dash-btn--sm" id="ge-clear-publish">Limpar</button>
+            </div>
+            <form class="gcv-dash-form gcv-dash-form--publish" id="gcv-guide-create-tour-form" novalidate></form>
+          </div>
           <div id="guide-tours-list"></div>
         </section>
 
         <section class="gcv-dash-section" id="section-guide-profile">
           <h2 class="gcv-dash-section-title">Meu perfil</h2>
           <div id="guide-profile-root"></div>
+        </section>
+
+        <section class="gcv-dash-section" id="section-guide-ranking">
+          <h2 class="gcv-dash-section-title">Ranking</h2>
+          <div id="guide-ranking-root"></div>
         </section>
 
         <section class="gcv-dash-section" id="section-guide-financial">
@@ -429,15 +476,18 @@
   <script src="/assets/js/gcv-meeting-point.js?v=1.0.3" defer></script>
   <script src="/assets/js/gcv-datepicker.js?v=1.0.2" defer></script>
   <script src="/assets/js/gcv-tarifa-regras.js?v=1.0.0" defer></script>
-  <script src="/assets/js/gcv-admin-cms.js?v=1.0.109" defer></script>
-  <script src="/assets/js/gcv-admin-tarifario.js?v=1.1.8" defer></script>
+  <script src="/assets/js/gcv-admin-experiencia.js?v=1.0.36" defer></script>
+  <script src="/assets/js/gcv-admin-anfitriao.js?v=1.0.7" defer></script>
+  <script src="/assets/js/gcv-admin-cms.js?v=1.0.126" defer></script>
+  <script src="/assets/js/gcv-admin-tarifario.js?v=1.2.12" defer></script>
+  <script src="/assets/js/gcv-admin-terapia.js?v=1.0.2" defer></script>
   <script src="/assets/js/gcv-admin-cupons.js?v=1.0.0" defer></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
-  <script src="/assets/js/gcv-dash-roles.js?v=1.1.63" defer></script>
-  <script src="/assets/js/gcv-inbox.js?v=1.0.6" defer></script>
+  <script src="/assets/js/gcv-dash-roles.js?v=1.1.72" defer></script>
+  <script src="/assets/js/gcv-inbox.js?v=1.0.7" defer></script>
   <script src="/assets/js/gcv-payment-ledger.js?v=1.0.0" defer></script>
   <script src="/assets/js/gcv-booking-confirm.js?v=1.0.0" defer></script>
-  <script src="/assets/js/gcv-dashboard.js?v=1.1.13" defer></script>
+  <script src="/assets/js/gcv-dashboard.js?v=1.1.24" defer></script>
   <script src="/assets/js/gcv-payment.js?v=1.0.40" defer></script>
   <script src="/assets/js/site.js?v=1.0.40" defer></script>
 </body>

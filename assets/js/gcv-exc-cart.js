@@ -621,8 +621,72 @@
   function cartCount(items) {
     items = items || loadItems();
     return items.reduce(function (n, it) {
+      if (it && it.faixa) return n + (parseInt(String(it.pessoas), 10) || 1);
       return n + (parseInt(String(it.qty), 10) || 0);
     }, 0);
+  }
+
+  /** Sem translado. Privativo até o quórum = quórum × excursão. Devolve reais, já com o guia bilíngue. */
+  function faixaBaseCents(faixa, pessoas) {
+    pessoas = Math.max(1, parseInt(pessoas, 10) || 1);
+    var quorum = parseInt(faixa.quorum, 10) || 4;
+    var temExcursao = faixa.excursao4Cents != null && faixa.excursao4Cents !== "";
+    if (!temExcursao) {
+      var antigo4 = Math.max(0, parseInt(faixa.pax4Cents, 10) || 0);
+      var antigo5 = parseInt(faixa.pax5Cents, 10) || 0;
+      if (antigo5 <= 0) antigo5 = antigo4;
+      if (faixa.modalidade === "exclusivo" && pessoas <= quorum) return antigo4 * quorum;
+      return pessoas <= 4 ? antigo4 * pessoas : 4 * antigo4 + (pessoas - 4) * antigo5;
+    }
+    var exc4 = Math.max(0, parseInt(faixa.excursao4Cents, 10) || 0);
+    var exc5 = parseInt(faixa.excursao5Cents, 10) || 0;
+    if (exc5 <= 0) exc5 = exc4;
+    var pri5 = parseInt(faixa.privativo5Cents, 10) || 0;
+    if (pri5 <= 0) pri5 = parseInt(faixa.privativo4Cents, 10) || exc4;
+    if (faixa.modalidade === "exclusivo") {
+      if (pessoas <= quorum) return exc4 * quorum;
+      return exc4 * quorum + (pessoas - quorum) * pri5;
+    }
+    return pessoas <= 4 ? exc4 * pessoas : 4 * exc4 + (pessoas - 4) * exc5;
+  }
+
+  function faixaTotalReais(faixa, pessoas) {
+    var base = faixaBaseCents(faixa, pessoas);
+    var extra = 0;
+    if (faixa.bilingueOn) {
+      if (faixa.bilingueTipo === "percentual") {
+        var pct = Math.max(0, Math.min(100, parseInt(faixa.bilingueValor, 10) || 0));
+        extra = Math.round((base * pct) / 100);
+      } else {
+        extra = Math.max(0, parseInt(faixa.bilingueValor, 10) || 0);
+      }
+    }
+    return Math.round((base + extra) / 100);
+  }
+
+  function faixaPartesReais(faixa, pessoas) {
+    pessoas = Math.max(1, parseInt(pessoas, 10) || 1);
+    var quorum = parseInt(faixa.quorum, 10) || 4;
+    var temExcursao = faixa.excursao4Cents != null && faixa.excursao4Cents !== "";
+    if (!temExcursao) {
+      var antigo4 = Math.round((parseInt(faixa.pax4Cents, 10) || 0) / 100);
+      var antigo5raw = parseInt(faixa.pax5Cents, 10) || 0;
+      var antigo5 = antigo5raw > 0 ? Math.round(antigo5raw / 100) : antigo4;
+      if (faixa.modalidade === "exclusivo" && pessoas <= quorum) return [{ q: quorum, u: antigo4 }];
+      if (pessoas <= 4) return [{ q: pessoas, u: antigo4 }];
+      return [{ q: 4, u: antigo4 }, { q: pessoas - 4, u: antigo5 }];
+    }
+    var exc4 = Math.round((parseInt(faixa.excursao4Cents, 10) || 0) / 100);
+    var exc5raw = parseInt(faixa.excursao5Cents, 10) || 0;
+    var exc5 = exc5raw > 0 ? Math.round(exc5raw / 100) : exc4;
+    var pri5raw = parseInt(faixa.privativo5Cents, 10) || 0;
+    var pri5 = pri5raw > 0 ? Math.round(pri5raw / 100) : Math.round((parseInt(faixa.privativo4Cents, 10) || 0) / 100);
+    if (faixa.modalidade === "exclusivo") {
+      if (pessoas <= quorum) return [{ q: quorum, u: exc4 }];
+      return [{ q: quorum, u: exc4 }, { q: pessoas - quorum, u: pri5 }];
+    }
+    if (pessoas <= 4) return [{ q: pessoas, u: exc4 }];
+    return [{ q: 4, u: exc4 }, { q: pessoas - 4, u: exc5 }];
   }
 
   var MONTH_SLUG = {
@@ -1113,34 +1177,40 @@
     );
   }
 
-  function cartItemPrice(it) {
+  function cartMoneyText(it) {
+    var suffix = s("cartLineTotal") || "(total)";
+    if (it && it.faixa) {
+      var pessoas = parseInt(String(it.pessoas), 10) || 1;
+      var partes = faixaPartesReais(it.faixa, pessoas);
+      var base = 0;
+      var pedacos = partes.map(function (p) {
+        base += p.q * p.u;
+        var word = p.q === 1 ? s("cartSeatOne") || "Pessoa" : s("cartSeatsMany") || "Pessoas";
+        return String(p.q) + " " + word + " × " + formatBrl(p.u);
+      });
+      var total = parseInt(String(it.valorUnit), 10) || faixaTotalReais(it.faixa, pessoas);
+      var extra = total - base;
+      if (extra > 0) pedacos.push(formatBrl(extra));
+      return pedacos.join(" + ") + " = " + formatBrl(total) + " BRL " + suffix;
+    }
     var qty = parseInt(String(it.qty), 10) || 0;
     var unit = parseInt(String(it.valorUnit), 10) || 0;
     var seatsWord = qty === 1 ? s("cartSeatOne") || "Pessoa" : s("cartSeatsMany") || "Pessoas";
-    var suffix = s("cartLineTotal") || "(total)";
-    return (
-      String(qty) +
-      " " +
-      seatsWord +
-      " × " +
-      formatBrl(unit) +
-      " = " +
-      formatBrl(unit * qty) +
-      " BRL " +
-      suffix
-    );
+    return String(qty) + " " + seatsWord + " × " + formatBrl(unit) + " = " + formatBrl(unit * qty) + " BRL " + suffix;
+  }
+
+  function cartItemPrice(it) {
+    return cartMoneyText(it);
   }
 
   function cartItemPriceHtml(it) {
-    var qty = parseInt(String(it.qty), 10) || 0;
-    var unit = parseInt(String(it.valorUnit), 10) || 0;
-    var seatsWord = qty === 1 ? s("cartSeatOne") || "Pessoa" : s("cartSeatsMany") || "Pessoas";
-    var suffix = s("cartLineTotal") || "(total)";
-    var totalPart = formatBrl(unit * qty) + " BRL " + suffix;
+    var text = cartMoneyText(it);
+    var eq = text.lastIndexOf(" = ");
+    if (eq < 0) return escapeHtml(text);
     return (
-      escapeHtml(String(qty) + " " + seatsWord + " × " + formatBrl(unit) + " = ") +
+      escapeHtml(text.slice(0, eq + 3)) +
       '<strong class="gcv-exc-cart-item__total">' +
-      escapeHtml(totalPart) +
+      escapeHtml(text.slice(eq + 3)) +
       "</strong>"
     );
   }
@@ -1516,7 +1586,7 @@
           escapeHtml(s("bookQtyMinus")) +
           '">−</button>' +
           '<span class="gcv-excursoes-card__qty-val">' +
-          escapeHtml(String(it.qty)) +
+          escapeHtml(String(it.faixa ? (parseInt(String(it.pessoas), 10) || 1) : it.qty)) +
           "</span>" +
           '<button type="button" class="gcv-excursoes-card__qty-btn" data-gcv-cart-qty-plus data-cart-id="' +
           id +
@@ -1599,6 +1669,13 @@
       if (item.departureMs) existing.departureMs = item.departureMs;
       if (item.passeioKey) existing.passeioKey = item.passeioKey;
       if (item.pessoas) existing.pessoas = item.pessoas;
+      if (item.faixa) {
+        existing.faixa = item.faixa;
+        existing.qty = 1;
+        existing.valorUnit = item.valorUnit;
+      } else {
+        existing.faixa = null;
+      }
       if (item.comTransporte != null) existing.comTransporte = item.comTransporte === true;
       if (item.guiaIdioma) existing.guiaIdioma = item.guiaIdioma;
       if (item.modalidade) existing.modalidade = item.modalidade;
@@ -1630,6 +1707,7 @@
         guiaTelefone: item.guiaTelefone || "",
         passeioKey: item.passeioKey || "",
         pessoas: item.pessoas || qty,
+        faixa: item.faixa || null,
         comTransporte: item.comTransporte === true,
         guiaIdioma: item.guiaIdioma || "",
         modalidade: item.modalidade || "",
@@ -1662,7 +1740,13 @@
     if (!it) return;
     var max = parseInt(String(it.maxQty), 10) || 10;
     qty = Math.max(1, Math.min(max, qty));
-    it.qty = qty;
+    if (it.faixa) {
+      it.pessoas = qty;
+      it.qty = 1;
+      it.valorUnit = faixaTotalReais(it.faixa, qty);
+    } else {
+      it.qty = qty;
+    }
     saveItems(items);
   }
 
@@ -1796,7 +1880,7 @@
         var itM = loadItems().find(function (x) {
           return x.id === idM;
         });
-        if (itM) updateItemQty(idM, (parseInt(String(itM.qty), 10) || 1) - 1);
+        if (itM) updateItemQty(idM, (itM.faixa ? (parseInt(String(itM.pessoas), 10) || 1) : (parseInt(String(itM.qty), 10) || 1)) - 1);
         return;
       }
       var plusBtn = e.target.closest("[data-gcv-cart-qty-plus]");
@@ -1805,7 +1889,7 @@
         var itP = loadItems().find(function (x) {
           return x.id === idP;
         });
-        if (itP) updateItemQty(idP, (parseInt(String(itP.qty), 10) || 1) + 1);
+        if (itP) updateItemQty(idP, (itP.faixa ? (parseInt(String(itP.pessoas), 10) || 1) : (parseInt(String(itP.qty), 10) || 1)) + 1);
       }
     });
 

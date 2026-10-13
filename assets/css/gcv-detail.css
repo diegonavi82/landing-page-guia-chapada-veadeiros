@@ -363,6 +363,19 @@
   overflow-wrap: anywhere;
 }
 
+.gcv-detail-subtitle {
+  margin: 0.55rem 0 0;
+  max-width: 42rem;
+  color: #fff;
+  font-family: inherit;
+  font-size: clamp(1rem, 2.1vw, 1.22rem);
+  font-weight: 400;
+  font-style: normal;
+  letter-spacing: 0;
+  line-height: 1.45;
+  text-shadow: none;
+}
+
 .gcv-detail-layout {
   display: grid;
   grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
@@ -686,6 +699,11 @@
     font-size: clamp(1.45rem, 6.2vw, 1.75rem);
     overflow-wrap: anywhere;
     hyphens: auto;
+  }
+
+  .gcv-detail-subtitle {
+    font-size: 1rem;
+    font-weight: 400;
   }
 
   .gcv-detail-info {

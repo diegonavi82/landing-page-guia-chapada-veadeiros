@@ -4,11 +4,16 @@ declare(strict_types=1);
 require_once __DIR__ . '/../helpers/db.php';
 require_once __DIR__ . '/../helpers/auth.php';
 require_once __DIR__ . '/../helpers/validator.php';
+require_once __DIR__ . '/../helpers/site_launch.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     json_response(false, null, 'Método não permitido', 405);
+}
+
+if (!gcv_passeios_visiveis()) {
+    json_response(true, ['tours' => [], 'total' => 0, 'page' => 1, 'limit' => 0, 'oculto' => true]);
 }
 
 $lang     = 'pt';

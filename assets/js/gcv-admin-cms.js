@@ -95,7 +95,7 @@
     if (!sel) return 0;
     maxPeople = parseInt(maxPeople, 10);
     if (!Number.isFinite(maxPeople) || maxPeople < 1) maxPeople = 10;
-    if (maxPeople > 12) maxPeople = 12;
+    if (maxPeople > 15) maxPeople = 15;
     var cur = parseInt(selected != null ? selected : sel.value, 10);
     if (!Number.isFinite(cur) || cur < 1) cur = Math.min(4, maxPeople);
     if (cur > maxPeople) cur = maxPeople;
@@ -527,27 +527,164 @@
     };
   }
 
+  function statusExperiencia(status) {
+    if (status === 'published') return { texto: 'Ativada', cls: 'xp-flag--on' };
+    if (status === 'archived') return { texto: 'Desativada', cls: 'xp-flag--off' };
+    return { texto: 'Rascunho', cls: 'xp-flag--draft' };
+  }
+
+  function statusTerapia(status) {
+    if (status === 'published') return { texto: 'Pronta', cls: 'xp-flag--on' };
+    if (status === 'archived') return { texto: 'Arquivada', cls: 'xp-flag--off' };
+    return { texto: 'Rascunho', cls: 'xp-flag--draft' };
+  }
+
+  function cidadePeloSlugLista(slug) {
+    slug = String(slug || '');
+    if (slug.indexOf('sao-jorge') >= 0) return 'São Jorge';
+    if (slug.indexOf('cavalcante') >= 0) return 'Cavalcante';
+    if (slug.indexOf('teresina') >= 0) return 'Teresina de Goiás';
+    if (slug.indexOf('sao-joao') >= 0) return "São João d'Aliança";
+    if (slug.indexOf('alto-paraiso') >= 0) return 'Alto Paraíso de Goiás';
+    return '';
+  }
+
+  function chipsHtml(itens, extraCls) {
+    var lista = (itens || []).filter(function (item) { return String(item || '').trim(); });
+    if (!lista.length) return '<span class="xp-muted">—</span>';
+    return '<div class="xp-chips">' + lista.map(function (item) {
+      return '<span class="xp-chip' + (extraCls ? ' ' + extraCls : '') + '">' + esc(item) + '</span>';
+    }).join('') + '</div>';
+  }
+
+  function categoriasTrilha(a) {
+    var exp = (a && a.experiencia) || {};
+    var sub = String(exp.subcategoria || '').trim() || 'Cachoeira';
+    var pills = ['Trilha'];
+    if (sub.toLowerCase() !== 'trilha') pills.push(sub);
+    return pills;
+  }
+
+  function cidadesTrilha(a) {
+    var nomes = [];
+    var saidas = Array.isArray(a.saidas_lista) ? a.saidas_lista : [];
+    saidas.forEach(function (s) {
+      var nome = String((s && s.nome) || '').trim();
+      if (nome && nomes.indexOf(nome) < 0) nomes.push(nome);
+    });
+    if (nomes.length) return nomes;
+    var exp = a.experiencia || {};
+    var uma = String(exp.cidade || a.city_name || cidadePeloSlugLista(a.slug) || '').trim();
+    return uma ? [uma] : [];
+  }
+
+  function enriquecerSaidas(atrativos, tarifarios) {
+    var porId = {};
+    (tarifarios || []).forEach(function (t) { if (t && t.id) porId[t.id] = t; });
+    var nomes = {
+      'alto-paraiso': 'Alto Paraíso de Goiás',
+      'sao-jorge': 'São Jorge',
+      'cavalcante': 'Cavalcante'
+    };
+    return (atrativos || []).map(function (a) {
+      if (a.saidas_lista && a.saidas_lista.length) return a;
+      var t = porId[a.tarifario_id];
+      var cidades = t && t.cidades;
+      if (!cidades) return a;
+      var guia = String(a.tarifa_guia || '').trim().toUpperCase();
+      var trans = String(a.tarifa_translado || '').trim().toUpperCase();
+      var codigo = [guia, trans].filter(Boolean).join(' · ');
+      var saidas = [];
+      Object.keys(nomes).forEach(function (key) {
+        var row = cidades[key] || {};
+        var exc = Math.round((parseInt(row.excursao_pessoa_cents, 10) || 0) / 100);
+        var pri = Math.round((parseInt(row.exclusivo_pessoa_cents, 10) || 0) / 100);
+        if (exc < 1 && pri < 1) return;
+        saidas.push({ nome: nomes[key], codigo: codigo, detalhe: '(' + exc + '/' + pri + ')' });
+      });
+      if (!saidas.length) return a;
+      return Object.assign({}, a, { saidas_lista: saidas });
+    });
+  }
+
+  function saidasHtml(a) {
+    var saidas = Array.isArray(a.saidas_lista) ? a.saidas_lista : [];
+    if (saidas.length) {
+      return saidas.map(function (s) {
+        var extra = [s.codigo, s.detalhe].filter(function (p) { return String(p || '').trim(); }).join(' ');
+        return '<p class="xp-saida"><strong>' + esc(s.nome || 'Saída') + '</strong>' +
+          (extra ? '<span>' + esc(extra) + '</span>' : '') + '</p>';
+      }).join('');
+    }
+    if (a.entry_price_label) {
+      return '<p class="xp-saida"><strong>Entrada</strong><span>' + esc(a.entry_price_label) + '</span></p>';
+    }
+    if (!a.tarifario_id && !a.tarifa_guia && !a.tarifa_translado) {
+      return '<span class="xp-muted">Sem tarifa<br>fora do site</span>';
+    }
+    return '<span class="xp-muted">Tarifário vinculado</span>';
+  }
+
+  function flagHtml(info) {
+    return '<span class="xp-flag ' + info.cls + '">' + esc(info.texto) + '</span>';
+  }
+
   /* ---------- ATRATIVOS ---------- */
-  function paintAttractionsList(rows) {
+  function trilhaLinha(a) {
+    var tags = (a.experiencia && Array.isArray(a.experiencia.tags)) ? a.experiencia.tags : [];
+    var cidades = cidadesTrilha(a);
+    return (
+      '<tr>' +
+      '<td class="xp-grade__titulo">' + esc(a.title_pt) + '</td>' +
+      '<td>' + chipsHtml(categoriasTrilha(a)) + '</td>' +
+      '<td class="xp-cidades">' + (cidades.length ? cidades.map(function (nome) {
+        return '<span class="xp-cidade">' + esc(nome) + '</span>';
+      }).join(', ') : '<span class="xp-muted">—</span>') + '</td>' +
+      '<td>' + chipsHtml(tags) + '</td>' +
+      '<td>' + saidasHtml(a) + '</td>' +
+      '<td>' + flagHtml(statusExperiencia(a.status)) + '</td>' +
+      '<td>' + cmsRowActions(
+        'data-edit-attr="' + a.id + '"',
+        'data-del-attr="' + a.id + '" data-del-label="' + esc(a.title_pt) + '"'
+      ) + '</td></tr>'
+    );
+  }
+
+  function terapiaLinha(t) {
+    var preco = window.GcvAdminTerapia ? window.GcvAdminTerapia.money(t.preco_hora_cents) : '';
+    var tempo = t.duracao_padrao_min ? t.duracao_padrao_min + ' min' : '';
+    var detalhe = (preco ? preco + '/h' : 'por hora') + (tempo ? ' · ' + tempo : '') + ' · fora do site';
+    return (
+      '<tr>' +
+      '<td class="xp-grade__titulo">' + esc(t.nome) + '</td>' +
+      '<td>' + chipsHtml(['Terapia'], 'xp-chip--terapia') + '</td>' +
+      '<td class="xp-cidades"><span class="xp-muted">—</span></td>' +
+      '<td><span class="xp-muted">—</span></td>' +
+      '<td><p class="xp-saida"><strong>Por hora</strong><span>' + esc(detalhe) + '</span></p></td>' +
+      '<td>' + flagHtml(statusTerapia(t.status)) + '</td>' +
+      '<td>' + cmsRowActions('data-edit-terapia="' + t.id + '"', '') + '</td></tr>'
+    );
+  }
+
+  function paintAttractionsList(rows, terapias, terapiaErro) {
     var list = root('cms-attr-list');
     if (!list) return;
     state.attractions = rows || [];
-    list.innerHTML = rows.length ? rows.map(function (a) {
-      return (
-        '<article class="gcv-cms-row"><div><strong>' + esc(a.title_pt) + '</strong>' +
-        '<div class="gcv-cms-muted">/' + esc(a.slug) + ' · ' + esc(a.status) +
-        (a.duration_minutes ? ' · ' + esc(formatTourMinutes(a.duration_minutes)) : '') +
-        (a.page && !a.tarifario_id ? ' · <span style="color:#b45309;font-weight:600">sem tarifário (fora da venda)</span>' : '') +
-        (a.page ? ' · com página' : '') +
-        (a.entry_price_label ? ' · ' + esc(a.entry_price_label) : '') + '</div></div>' +
-        '<div class="gcv-cms-row-side">' +
-        cmsRowActions(
-          'data-edit-attr="' + a.id + '"',
-          'data-del-attr="' + a.id + '" data-del-label="' + esc(a.title_pt) + '"'
-        ) +
-        '</div></article>'
-      );
-    }).join('') : '<p>Nenhum atrativo. Use <strong>Importar do site</strong> para carregar os 18 atrativos atuais.</p>';
+    state.terapias = terapias || [];
+    var linhas = state.attractions.map(trilhaLinha).concat(state.terapias.map(terapiaLinha)).join('');
+    if (!linhas) {
+      linhas = '<tr><td class="xp-grade__vazio" colspan="7">Nenhuma experiência cadastrada.</td></tr>';
+    }
+    var aviso = terapiaErro
+      ? '<p class="gcv-dash-alert xp-lista-erro">' + esc(terapiaErro) + '</p>'
+      : '';
+    list.innerHTML =
+      aviso +
+      '<div class="xp-grade-wrap"><table class="xp-grade">' +
+      '<thead><tr>' +
+      '<th>Título</th><th>Categorias</th><th>Cidade</th><th>Tags</th>' +
+      '<th>Embarques e tarifas</th><th>Status</th><th>Ações</th>' +
+      '</tr></thead><tbody>' + linhas + '</tbody></table></div>';
     list.querySelectorAll('[data-edit-attr]').forEach(function (btn) {
       btn.onclick = function () {
         get('/api/admin/attractions.php?id=' + btn.getAttribute('data-edit-attr'), function (e, r) {
@@ -555,68 +692,90 @@
         });
       };
     });
+    list.querySelectorAll('[data-edit-terapia]').forEach(function (btn) {
+      btn.onclick = function () {
+        var id = parseInt(btn.getAttribute('data-edit-terapia'), 10);
+        var atual = null;
+        state.terapias.forEach(function (t) { if (t.id === id) atual = t; });
+        if (atual) openTerapiaForm(atual);
+      };
+    });
     bindRowDelete(list, 'data-del-attr', '/api/admin/attractions.php', function () {
-      get('/api/admin/attractions.php', function (err, res) {
-        paintAttractionsList((res && res.data && res.data.attractions) || []);
-      });
+      renderAttractions();
     });
   }
 
   function renderAttractions() {
+    attractionScreenTitle('Experiências');
+    setAttractionsBrowse(true);
     var box = root('cms-attractions-root');
     if (!box) return;
+    var actions = document.getElementById('cms-attr-actions');
+    var botoes =
+      '<button type="button" class="gcv-dash-btn xp-btn xp-btn--terapia" id="cms-terapia-new">Nova Terapia</button>' +
+      '<button type="button" class="gcv-dash-btn xp-btn xp-btn--trilha" id="cms-trilha-new">Nova Trilha</button>';
+    if (actions) actions.innerHTML = botoes;
     box.innerHTML =
-      '<div class="gcv-cms-toolbar">' +
-      '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary" id="cms-attr-new">+ Novo atrativo</button>' +
-      '<button type="button" class="gcv-dash-btn" id="cms-attr-seed">Importar do site</button>' +
-      '</div>' +
+      (actions ? '' : '<div class="gcv-cms-toolbar xp-lista-actions">' + botoes + '</div>') +
       '<div id="cms-attr-form" class="gcv-cms-card" hidden></div>' +
-      '<div id="cms-attr-list" class="gcv-cms-list">Carregando…</div>';
-    root('cms-attr-new').onclick = function () { openAttractionForm(null); };
-    root('cms-attr-seed').onclick = function () {
-      var btn = root('cms-attr-seed');
-      if (btn) { btn.disabled = true; btn.textContent = 'Importando…'; }
-      seedAttractions(function (err, res) {
-        if (btn) { btn.disabled = false; btn.textContent = 'Importar do site'; }
-        if (!res || !res.ok) {
-          alert((res && res.error) || 'Falha ao importar');
-          return;
-        }
-        alert(res.message || 'Atrativos importados');
-        renderAttractions();
-      });
+      '<div id="cms-attr-list">Carregando…</div>';
+    root('cms-trilha-new').onclick = function () {
+      openAttractionForm({ experiencia: { tipo: 'trilha', subcategoria: 'Cachoeira' } }, { titulo: 'Nova trilha' });
     };
-    get('/api/admin/attractions.php', function (err, res) {
-      if (err || !res.ok) {
+    root('cms-terapia-new').onclick = function () { openTerapiaForm(null); };
+    carregarExperiencias(false);
+  }
+
+  function carregarExperiencias(jaTentouSeed) {
+    var pendente = 3;
+    var atrativos = [];
+    var terapias = [];
+    var tarifarios = [];
+    var erroAtrativo = '';
+    var erroTerapia = '';
+    function fim() {
+      if (--pendente) return;
+      if (erroAtrativo) {
         var list = root('cms-attr-list');
-        if (list) list.innerHTML = '<p class="gcv-dash-alert">Erro ao carregar atrativos.</p>';
+        if (list) list.innerHTML = '<p class="gcv-dash-alert">' + esc(erroAtrativo) + '</p>';
         return;
       }
-      var rows = (res.data && res.data.attractions) || [];
-      if (rows.length === 0) {
+      if (!atrativos.length && !jaTentouSeed) {
         seedAttractions(function (e2, r2) {
-          if (r2 && r2.ok) {
-            get('/api/admin/attractions.php', function (e3, r3) {
-              paintAttractionsList((r3 && r3.data && r3.data.attractions) || []);
-            });
-          } else {
-            paintAttractionsList([]);
-          }
+          if (r2 && r2.ok) carregarExperiencias(true);
+          else paintAttractionsList([], terapias, erroTerapia);
         });
         return;
       }
-      paintAttractionsList(rows);
+      paintAttractionsList(enriquecerSaidas(atrativos, tarifarios), terapias, erroTerapia);
+    }
+    get('/api/admin/attractions.php', function (err, res) {
+      if (err || !res.ok) erroAtrativo = 'Erro ao carregar as trilhas.';
+      else atrativos = (res.data && res.data.attractions) || [];
+      fim();
+    });
+    get('/api/admin/tarifarios.php', function (err, res) {
+      tarifarios = (res && res.data && res.data.tarifarios) || [];
+      fim();
+    });
+    if (!window.GcvAdminTerapia) {
+      erroTerapia = 'Não foi possível carregar as terapias.';
+      fim();
+      return;
+    }
+    window.GcvAdminTerapia.carregar(function (err, rows) {
+      if (err) erroTerapia = err.message;
+      else terapias = rows || [];
+      fim();
     });
   }
 
   function formatTourMinutes(m) {
     m = parseInt(m, 10) || 0;
     if (!m) return 'sem duração';
-    var h = Math.floor(m / 60);
-    var min = m % 60;
-    if (!h) return min + ' min';
-    if (!min) return h + ' h';
-    return h + ' h ' + min + ' min';
+    var h = Math.round(m / 60);
+    if (h < 1) h = 1;
+    return h + ' h';
   }
 
   function simuladorTarifaHtml() {
@@ -787,7 +946,7 @@
   function attractionScreenTitle(name) {
     var head = document.getElementById('cms-attr-title');
     var formTitle = root('att-form-title');
-    var text = name && String(name).trim() ? String(name).trim() : 'Atrativos';
+    var text = name && String(name).trim() ? String(name).trim() : 'Experiências';
     if (head) head.textContent = text;
     if (formTitle) formTitle.textContent = text;
   }
@@ -802,7 +961,7 @@
     return '<div class="gcv-dash-field" style="margin:0.75rem 0;padding:0.75rem 0.9rem;border:1px solid #dcebe3;border-radius:10px;background:#f4f8f6">' +
       '<label class="gcv-dash-label">Preço, duração por cidade e passeios do mesmo dia</label>' +
       '<p class="gcv-cms-muted" style="margin:0.2rem 0 0.6rem">Ficam no menu <strong>Tarifário</strong>. ' +
-      (a && a.id ? (a.tarifario_id ? 'Este atrativo já tem tarifário.' : '<span style="color:#b45309;font-weight:600">Este atrativo ainda não tem tarifário e não aparece à venda.</span>') : 'Salve o atrativo e depois ligue um tarifário.') +
+      (a && a.id ? ((a.tarifario_id || a.tarifa_guia || a.tarifa_translado) ? 'A tarifa deste passeio já está associada.' : 'Sem tarifa: o passeio fica cadastrado e fora do site.') : 'A tarifa pode ser associada depois. Sem ela, o passeio não entra no site.') +
       '</p>' +
       (a && a.id ? '<button type="button" class="gcv-dash-btn gcv-dash-btn--secondary gcv-dash-btn--sm" id="att-go-tarifario">Abrir Tarifário</button>' : '') +
       '</div>';
@@ -848,127 +1007,125 @@
     return cidades;
   }
 
-  function openAttractionForm(a) {
+  function closeAttractionForm() {
     var form = root('cms-attr-form');
-    if (!form) return;
-    form.hidden = false;
-    var gallery = (a && a.gallery) || [];
-    form.innerHTML =
-      '<h3 id="att-form-title">' + esc(a && a.title_pt ? a.title_pt : 'Novo atrativo') + '</h3>' +
-      '<div class="gcv-dash-field-row">' +
-      '<div class="gcv-dash-field"><label class="gcv-dash-label">Título PT *</label><input class="gcv-dash-input" id="att-title" value="' + esc(a && a.title_pt || '') + '" /></div>' +
-      '<div class="gcv-dash-field"><label class="gcv-dash-label">Slug</label><input class="gcv-dash-input" id="att-slug" value="' + esc(a && a.slug || '') + '" /></div>' +
-      '<div class="gcv-dash-field"><label class="gcv-dash-label">Status</label><select class="gcv-dash-select" id="att-status"><option value="draft">Rascunho</option><option value="published">Publicado</option></select></div>' +
-      '</div>' +
-      '<div class="gcv-dash-field-row">' +
-      '<div class="gcv-dash-field"><label class="gcv-dash-label">Distância (km)</label><input class="gcv-dash-input" id="att-dist" value="' + esc(a && a.distance_km || '') + '" /></div>' +
-      '<div class="gcv-dash-field"><label class="gcv-dash-label">Trilha (km)</label><input class="gcv-dash-input" id="att-trail" value="' + esc(a && a.trail_distance_km || '') + '" /></div>' +
-      '<div class="gcv-dash-field"><label class="gcv-dash-label">Duração</label><input class="gcv-dash-input" id="att-duration" inputmode="numeric" value="' + esc(a && a.duration_minutes != null ? a.duration_minutes : '') + '" /><p class="gcv-rel-card__time" id="att-duration-big">' + esc(formatTourMinutes(a && a.duration_minutes)) + '</p></div>' +
-      '<div class="gcv-dash-field"><label class="gcv-dash-label">Dificuldade</label><select class="gcv-dash-select" id="att-diff"><option value="">—</option><option value="easy">Fácil</option><option value="medium">Médio</option><option value="hard">Difícil</option></select></div>' +
-      '</div>' +
-      tarifarioNoticeHtml(a) +
-      '<div class="gcv-dash-field-row">' +
-      '<div class="gcv-dash-field"><label class="gcv-dash-label">Label preço</label><input class="gcv-dash-input" id="att-price-label" value="' + esc(a && a.entry_price_label || '') + '" placeholder="Ex.: R$ 60" /></div>' +
-      '<div class="gcv-dash-field"><label class="gcv-dash-label">Estacionamento</label><input class="gcv-dash-input" id="att-parking" value="' + esc(a && a.parking_info || '') + '" /></div>' +
-      '</div>' +
-      '<div class="gcv-dash-field"><label class="gcv-dash-label">Período recomendado</label><input class="gcv-dash-input" id="att-period" value="' + esc(a && a.recommended_period || '') + '" /></div>' +
-      '<div class="gcv-dash-field"><label class="gcv-dash-label">Info lateral (HTML)</label><textarea class="gcv-dash-input" id="att-sidebar" rows="4">' + esc(a && a.sidebar_html_pt || '') + '</textarea></div>' +
-      '<div class="gcv-dash-field"><label class="gcv-dash-label">Conteúdo principal (HTML)</label><textarea class="gcv-dash-input gcv-cms-editor" id="att-content" rows="12">' + esc(a && a.content_pt || '') + '</textarea></div>' +
-      '<div class="gcv-dash-field"><label class="gcv-dash-label">Capa URL</label><input class="gcv-dash-input" id="att-cover" value="' + esc(a && a.cover_url || '') + '" /></div>' +
-      '<div class="gcv-dash-field"><label class="gcv-dash-label">Upload capa / galeria</label><input type="file" id="att-files" accept="image/*" multiple /></div>' +
-      '<div id="att-gallery" class="gcv-cms-gallery"></div>' +
-      simuladorTarifaHtml() +
-      '<div style="display:flex;gap:0.5rem;margin-top:0.75rem;">' +
-      '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary" id="att-save">Salvar</button>' +
-      '<button type="button" class="gcv-dash-btn" id="att-cancel">Cancelar</button></div>';
-
-    if (a) {
-      if (a.status) root('att-status').value = a.status;
-      if (a.difficulty) root('att-diff').value = a.difficulty;
-    }
-    attractionScreenTitle(a && a.title_pt ? a.title_pt : 'Novo atrativo');
-    var titleInput = root('att-title');
-    if (titleInput) {
-      titleInput.addEventListener('input', function () {
-        attractionScreenTitle(titleInput.value);
-      });
-    }
-    bindSimuladorTarifa();
-    var goTf = root('att-go-tarifario');
-    if (goTf) goTf.onclick = function () { location.hash = 'tarifario'; };
-    var durInput = root('att-duration');
-    if (durInput) {
-      durInput.oninput = function () {
-        var big = root('att-duration-big');
-        if (big) big.textContent = formatTourMinutes(durInput.value);
-      };
-    }
-    function paintGallery() {
-      var g = root('att-gallery');
-      g.innerHTML = gallery.map(function (item, idx) {
-        return (
-          '<div class="gcv-cms-gallery__item">' +
-          '<img src="' + esc(item.url) + '" alt="" />' +
-          '<button type="button" data-rm="' + idx + '">×</button></div>'
-        );
-      }).join('');
-      g.querySelectorAll('[data-rm]').forEach(function (b) {
-        b.onclick = function () {
-          gallery.splice(parseInt(b.getAttribute('data-rm'), 10), 1);
-          paintGallery();
-        };
-      });
-    }
-    paintGallery();
-    root('att-files').onchange = function () {
-      var files = Array.prototype.slice.call(root('att-files').files || []);
-      files.forEach(function (f) {
-        uploadFile(f, 'atrativos', function (e, r) {
-          if (r && r.ok && r.data) {
-            if (!root('att-cover').value) root('att-cover').value = r.data.url;
-            gallery.push({ url: r.data.url, media_id: r.data.id, alt_text: '' });
-            paintGallery();
-          }
-        });
-      });
-    };
-    root('att-cancel').onclick = function () {
+    if (form) {
       form.hidden = true;
-      attractionScreenTitle('Atrativos');
-    };
-    root('att-save').onclick = function () {
-      var payload = {
-        id: a && a.id,
-        title_pt: root('att-title').value.trim(),
-        slug: root('att-slug').value.trim(),
-        status: root('att-status').value,
-        distance_km: root('att-dist').value,
-        trail_distance_km: root('att-trail').value,
-        duration_minutes: root('att-duration') ? root('att-duration').value.trim() : '',
-        difficulty: root('att-diff').value,
-        entry_price_label: root('att-price-label').value.trim(),
-        parking_info: root('att-parking').value.trim(),
-        recommended_period: root('att-period').value.trim(),
-        sidebar_html_pt: root('att-sidebar').value,
-        content_pt: root('att-content').value,
-        cover_url: root('att-cover').value.trim(),
-        gallery: gallery,
-      };
-      if (!payload.title_pt) { alert('Título obrigatório'); return; }
-      sendJson(a ? 'PUT' : 'POST', '/api/admin/attractions.php', payload, function (e, r) {
-        if (!r || !r.ok) {
-          var msg = (r && (r.error || r.detail)) || 'Erro ao salvar atrativo';
-          if (r && r.detail && r.error && r.detail !== r.error) msg += '\n' + r.detail;
-          alert(msg);
-          return;
-        }
-        form.hidden = true;
-        attractionScreenTitle('Atrativos');
-        renderAttractions();
-      });
-    };
+      form.innerHTML = '';
+    }
+    setAttractionsBrowse(true);
+    attractionScreenTitle('Experiências');
   }
 
+  function setAttractionsBrowse(visible) {
+    var list = root('cms-attr-list');
+    var actions = document.getElementById('cms-attr-actions');
+    var crumb = document.getElementById('cms-attr-crumb');
+    if (list) list.hidden = !visible;
+    if (actions) actions.hidden = !visible;
+    if (crumb) crumb.hidden = !visible;
+  }
+
+  function openTerapiaForm(atual) {
+    var form = root('cms-attr-form');
+    if (!form || !window.GcvAdminTerapia) {
+      alert('A ficha da terapia não carregou. Atualize a página.');
+      return;
+    }
+    setAttractionsBrowse(false);
+    window.GcvAdminTerapia.abrir(form, atual || null, {
+      onTitle: function (name) { attractionScreenTitle(name || 'Nova terapia'); },
+      onCancel: closeAttractionForm,
+      onSaved: function () {
+        carregarExperiencias(true);
+      }
+    });
+  }
+
+  function textoDaPaginaPublica(a, done) {
+    var atual = a || {};
+    if (String(atual.content_pt || '').replace(/<[^>]*>/g, '').trim()) {
+      done(atual);
+      return;
+    }
+    var slug = String(atual.slug || '').replace(/[^a-z0-9-]/gi, '');
+    if (!slug) {
+      done(atual);
+      return;
+    }
+    var idiomas = [
+      { lang: 'pt', url: '/atrativos/' + slug + '.html' },
+      { lang: 'en', url: '/en/atrativos/' + slug + '.html' },
+      { lang: 'es', url: '/es/atrativos/' + slug + '.html' }
+    ];
+    Promise.all(idiomas.map(function (item) {
+      return fetch(item.url, { cache: 'no-store', credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.text() : ''; })
+        .catch(function () { return ''; })
+        .then(function (html) { return { lang: item.lang, html: html }; });
+    })).then(function (partes) {
+      partes.forEach(function (parte) {
+        if (!parte.html) return;
+        var doc = new DOMParser().parseFromString(parte.html, 'text/html');
+        var content = doc.querySelector('.gcv-detail-content');
+        var side = doc.querySelector('.gcv-detail-info');
+        if (content && !String(atual['content_' + parte.lang] || '').replace(/<[^>]*>/g, '').trim()) {
+          atual['content_' + parte.lang] = content.innerHTML.trim();
+        }
+        if (side && !String(atual['sidebar_html_' + parte.lang] || '').trim()) {
+          atual['sidebar_html_' + parte.lang] = side.innerHTML.trim();
+        }
+      });
+      done(atual);
+    }).catch(function () { done(atual); });
+  }
+
+  function openAttractionForm(a, opts) {
+    opts = opts || {};
+    var record = a || {};
+    var form = root('cms-attr-form');
+    if (!form) return;
+    if (!window.GcvExperiencia) {
+      alert('A ficha da experiência não carregou. Atualize a página.');
+      return;
+    }
+    textoDaPaginaPublica(record, function (completo) {
+    form.hidden = false;
+    setAttractionsBrowse(false);
+    window.GcvExperiencia.mount(form, completo || {}, {
+      formatMinutes: formatTourMinutes,
+      upload: function (file, cb) { uploadFile(file, 'atrativos', cb); },
+      loadTarifas: function (cb) {
+        get('/api/admin/tarifarios.php', function (err, res) {
+          cb((res && res.data && res.data.tarifas_oficiais) || []);
+        });
+      },
+      loadGuias: function (cb) {
+        get('/api/admin/cms-guides.php', function (err, res) {
+          var rows = (res && res.data && res.data.guides) || [];
+          cb(rows.filter(function (g) { return g.status === 'active'; }).map(function (g) {
+            return { id: g.user_id, nome: g.full_name || g.name || 'Guia' };
+          }));
+        });
+      },
+      onTitle: function (name) { attractionScreenTitle(name || opts.titulo || 'Nova trilha'); },
+      onCancel: closeAttractionForm,
+      onSave: function (payload, done) {
+        sendJson(record.id ? 'PUT' : 'POST', '/api/admin/attractions.php', payload, function (err, res) {
+          if (!res || !res.ok) {
+            var msg = (res && (res.error || res.detail)) || 'Erro ao salvar a experiência';
+            if (res && res.detail && res.error && res.detail !== res.error) msg += '\n' + res.detail;
+            done(msg);
+            return;
+          }
+          if (res.data && res.data.id) record.id = res.data.id;
+          done(null);
+          carregarExperiencias(true);
+        });
+      }
+    });
+    });
+  }
   /* ---------- GUIAS ---------- */
   function setGuideBrowseVisible(visible) {
     var section = document.getElementById('section-cms-guides');
@@ -1989,7 +2146,7 @@
 
   /* ---------- EXCURSÕES ---------- */
   var EX_ATTR_MIN = 1;
-  var EX_ATTR_MAX = 4;
+  var EX_ATTR_MAX = 3;
 
   function seedAttractions(done) {
     get('/api/admin/seed-attractions.php', function (err, res) {
@@ -2016,12 +2173,12 @@
     });
     if (!usable.length) {
       return (
-        '<p class="gcv-dash-alert" id="ex-attr-empty">Nenhum atrativo no banco. Cadastre em <strong>Atrativos</strong> no menu.</p>'
+        '<p class="gcv-dash-alert" id="ex-attr-empty">Nenhuma experiência no banco. Cadastre em <strong>Experiências</strong> no menu.</p>'
       );
     }
     return (
-      '<p class="gcv-cms-muted" style="margin:0 0 0.35rem;">Clique para marcar/desmarcar — mínimo ' + EX_ATTR_MIN + ', máximo ' + EX_ATTR_MAX + ' no dia.</p>' +
-      '<div class="gcv-cms-attr-pick" id="ex-attr-pick" role="group" aria-label="Atrativos do dia">' +
+      '<p class="gcv-cms-muted" style="margin:0 0 0.35rem;">Clique para marcar/desmarcar — mínimo ' + EX_ATTR_MIN + ', máximo ' + EX_ATTR_MAX + ' experiências no dia.</p>' +
+      '<div class="gcv-cms-attr-pick" id="ex-attr-pick" role="group" aria-label="Experiências do dia">' +
       usable.map(function (a) {
         var active = selected.indexOf(String(a.id)) !== -1;
         var ord = active ? (selected.indexOf(String(a.id)) + 1) : 0;
@@ -2523,14 +2680,38 @@
     );
   }
 
+  function maxParticipantesPlanilha(a) {
+    var n = parseInt(a && a.max_participantes, 10);
+    if (n >= 4 && n <= 15) return n;
+    var log = a && a.experiencia && a.experiencia.logistica;
+    n = parseInt(log && log.max, 10);
+    return n >= 4 && n <= 15 ? n : 0;
+  }
+
+  function tetoVagasExcursao(e) {
+    var ids = (e && e.attraction_ids && e.attraction_ids.length) ? e.attraction_ids.slice() : [];
+    if (e && e.attraction_id) {
+      if (!ids.length) ids = [e.attraction_id];
+      else ids[0] = e.attraction_id;
+    }
+    var nums = [];
+    ids.forEach(function (id) {
+      var a = (excSheet.attractions || []).filter(function (x) { return String(x.id) === String(id); })[0];
+      var n = maxParticipantesPlanilha(a);
+      if (n) nums.push(n);
+    });
+    return nums.length ? Math.min.apply(null, nums) : 15;
+  }
+
   function excSheetRowHtml(e) {
     e = rowWithDraft(e);
     var pending = e.status === 'pending_approval';
     var dirty = !!excSheet.drafts[String(e.id)];
     var timeVal = String(e.departure_time || '').slice(0, 5);
+    var teto = tetoVagasExcursao(e);
     var maxP = parseInt(e.max_people, 10);
-    if (!Number.isFinite(maxP) || maxP < 1) maxP = 10;
-    if (maxP > 12) maxP = 12;
+    if (!Number.isFinite(maxP) || maxP < 4) maxP = Math.min(10, teto);
+    if (maxP > teto) maxP = teto;
     var q = parseInt(e.quorum, 10);
     if (!Number.isFinite(q) || q < 0) q = 4;
     var rowClass = [];
@@ -2545,7 +2726,7 @@
       '<td class="gcv-exc-sheet__clip gcv-exc-sheet__name" title="' + esc((e.attraction_title || '') + (e.departure_city_name ? ' · ' + e.departure_city_name : '')) + '">' + excAttrSelectHtml(e) + '</td>' +
       '<td class="gcv-exc-sheet__clip gcv-exc-sheet__name" title="' + esc(e.guide_name || '') + '">' + excGuideSelectHtml(e) + '</td>' +
       '<td class="gcv-exc-sheet__grupo" data-col="grupo">' + grupoCellHtml(e) + '</td>' +
-      '<td title="Máximo de vagas">' + numSelectHtml('max_people', e.id, 1, 12, maxP) + '</td>' +
+      '<td title="Máximo de vagas">' + numSelectHtml('max_people', e.id, 4, teto, maxP) + '</td>' +
       '<td class="gcv-exc-sheet__walk" title="Quórum sem translado">' + numSelectHtml('quorum', e.id, 0, maxP, Math.min(q, maxP)) + '</td>' +
       '<td title="Inscritos por fora">' + numSelectHtml('preconfirmed_people', e.id, 0, 5, e.preconfirmed_people || 0) + '</td>' +
       transportCellsHtml(e) +
@@ -2885,6 +3066,17 @@
         toLabel: formatSheetValue(base, field, next),
         fieldLabel: fieldLabel(field)
       };
+    }
+    if (field === 'attraction_id' && !extra._fromCap) {
+      var depois = rowWithDraft(base);
+      var tetoAttr = tetoVagasExcursao(depois);
+      var atualMax = parseInt(depois.max_people, 10);
+      var nextMax = !Number.isFinite(atualMax) || atualMax > tetoAttr ? tetoAttr : atualMax;
+      if (nextMax < 4) nextMax = 4;
+      if (nextMax !== atualMax) {
+        queueExcSheetChange(id, 'max_people', nextMax, { replaceRow: true, _fromCap: true });
+      }
+      extra.replaceRow = true;
     }
     syncSheetSaveBar();
     var display = rowWithDraft(base);

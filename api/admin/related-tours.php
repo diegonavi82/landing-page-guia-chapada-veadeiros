@@ -19,7 +19,10 @@ try {
         foreach ((array)($body['attraction_ids'] ?? []) as $raw) {
             $ids[] = (int)$raw;
         }
-        $tour = gcv_related_tour_save(db(), $ids);
+        $pdo = db();
+        $tour = gcv_related_tour_save($pdo, $ids);
+        gcv_related_tour_aplicar_ficha($pdo, (int)$tour['id'], $body);
+        $tour = gcv_related_tour_one($pdo, (int)$tour['id']);
         echo json_encode(['ok' => true, 'data' => $tour]);
         exit;
     }

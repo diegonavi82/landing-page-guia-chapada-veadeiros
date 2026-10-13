@@ -40,7 +40,8 @@ curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_HTTPHEADER     => ['Content-Type: application/x-www-form-urlencoded'],
     CURLOPT_POSTFIELDS     => http_build_query([
-        'client_secret' => $_ENV['MP_ACCESS_TOKEN'] ?? '',
+        'client_id'     => $_ENV['MP_APP_ID'] ?? '',
+        'client_secret' => $_ENV['MP_CLIENT_SECRET'] ?? '',
         'grant_type'    => 'authorization_code',
         'code'          => $code,
         'redirect_uri'  => $appUrl . '/api/guides/mp-callback.php',

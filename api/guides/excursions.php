@@ -18,10 +18,12 @@ require_once __DIR__ . '/../helpers/marketplace/pricing_service.php';
 require_once __DIR__ . '/../helpers/marketplace/commission_service.php';
 require_once __DIR__ . '/../helpers/marketplace/guide_financial_service.php';
 require_once __DIR__ . '/../helpers/guide_profile.php';
+require_once __DIR__ . '/../helpers/tarifarios.php';
 require_once __DIR__ . '/../helpers/meeting_point.php';
 require_once __DIR__ . '/../helpers/pix_reservation_store.php';
 require_once __DIR__ . '/../helpers/excursion_attractions.php';
 require_once __DIR__ . '/../helpers/guide_agenda.php';
+require_once __DIR__ . '/../helpers/guide_substitution.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate');
@@ -45,7 +47,7 @@ if ($accountStatus !== 'active') {
     );
 }
 $MIN_QUORUM = 0;
-$MAX_PEOPLE_CAP = 12;
+$MAX_PEOPLE_CAP = 15;
 
 function gcv_map_excursion_row(array $r): array
 {
@@ -486,6 +488,8 @@ function gcv_guide_attach_booking_requests(array $rows, int $guideUserId): array
         $r['clients_count'] = count($r['clients'] ?? []);
         if (!empty($r['awaiting_guide'])) {
             $r['clients'] = [];
+            $r['confirm_deadline'] = gcv_guide_confirm_deadline($r);
+            $r['decision_hours'] = gcv_guide_decision_hours();
         }
     }
     unset($r);
@@ -505,6 +509,7 @@ if ($method === 'GET') {
     $stmt->execute([(int)$user['id']]);
     $rows = array_map('gcv_map_excursion_row', $stmt->fetchAll(PDO::FETCH_ASSOC) ?: []);
     $rows = gcv_guide_attach_clients($rows, (int)$user['id']);
+    $rows = gcv_substitution_attach($rows, (int)$user['id']);
 
     $today = (new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo')))->format('Y-m-d');
     $upcoming = [];
@@ -518,13 +523,15 @@ if ($method === 'GET') {
     }
 
     $attrs = db()->query(
-        "SELECT id, title_pt, slug, city_id, entry_price_cents, cover_url
+        "SELECT id, title_pt, slug, city_id, entry_price_cents, cover_url, experiencia_json
          FROM gcv_attractions
          WHERE status = 'published'
          ORDER BY title_pt ASC"
     )->fetchAll(PDO::FETCH_ASSOC);
     $attrs = gcv_sort_attractions_catalog($attrs);
     foreach ($attrs as &$a) {
+        $a['max_participantes'] = gcv_experiencia_max_participantes($a['experiencia_json'] ?? null);
+        unset($a['experiencia_json']);
         $a['guide_net_max'] = gcv_guide_net_max_cents(
             (int)($a['id'] ?? 0),
             (string)($a['slug'] ?? ''),
@@ -554,6 +561,8 @@ if ($method === 'GET') {
         'guide_net_max_transport' => gcv_guide_net_max_transport_cents() / 100,
         'commission_pct' => (float)$commission['pct'],
         'commission_scope' => (string)$commission['scope_type'],
+        'fila_posicao' => gcv_substitution_fila_posicao((int)$user['id']),
+        'fila_total' => count(gcv_substitution_queue()),
         'profile_complete' => gcv_guide_profile_is_complete((int)$user['id']),
         'financial_ready' => gcv_guide_financial_is_ready((int)$user['id']),
         'business_mode' => 'GUIDE_MARKETPLACE',
@@ -584,12 +593,6 @@ if ($method === 'POST') {
                 : (int)round(((float)($data['price'] ?? 0)) * 100)));
 
     $maxPeople = (int)($data['max_people'] ?? 10);
-    if ($maxPeople < 1) {
-        $maxPeople = 1;
-    }
-    if ($maxPeople > $MAX_PEOPLE_CAP) {
-        $maxPeople = $MAX_PEOPLE_CAP;
-    }
     $quorum = gcv_clamp_walk_quorum($data['quorum'] ?? 4, $maxPeople);
     $preconfirmed = gcv_clamp_preconfirmed($data['preconfirmed_people'] ?? 0, $maxPeople, 0);
     $notes = sanitize_textarea((string)($data['notes_pt'] ?? ''), 2000);
@@ -607,6 +610,11 @@ if ($method === 'POST') {
     }
     if ($cityId <= 0 || $attrId <= 0) {
         json_response(false, null, 'Cidade e atrativo são obrigatórios', 422);
+    }
+    require_once __DIR__ . '/../helpers/anfitrioes.php';
+    $bloq = gcv_anfitriao_recusa_passeio(db(), [$attrId], (int)$user['id'], $date);
+    if ($bloq) {
+        json_response(false, null, $bloq, 422);
     }
     $includeTransport = !empty($data['include_transport']) && empty($data['offer_transport']);
     $netRangeErr = gcv_guide_net_range_error($guideNetCents, $attrId, null, $includeTransport);
@@ -638,6 +646,10 @@ if ($method === 'POST') {
     $a->execute([$attrId]);
     if (!$a->fetch()) {
         json_response(false, null, 'Atrativo inválido ou não publicado pelo admin', 422);
+    }
+    $erroMax = gcv_max_people_excursao_erro(db(), [$attrId], $maxPeople);
+    if ($erroMax !== null) {
+        json_response(false, null, $erroMax, 422);
     }
     $c = db()->prepare("SELECT id, name FROM gcv_cities WHERE id = ? AND status = 'active'");
     $c->execute([$cityId]);

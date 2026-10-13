@@ -14,6 +14,7 @@ header('Cache-Control: no-store');
 require_once __DIR__ . '/helpers/db.php';
 require_once __DIR__ . '/helpers/pix_reservation_store.php';
 require_once __DIR__ . '/helpers/payments/pricing.php';
+require_once __DIR__ . '/helpers/site_launch.php';
 
 gcv_pix_cors_headers();
 
@@ -39,6 +40,9 @@ echo json_encode([
     'success' => true,
     'base_cents' => $cents,
     'quotes' => gcv_pay_quote_all($cents),
+    'cards_enabled' => gcv_cartao_visivel(),
     // Chave pública do Mercado Pago (pode ir ao navegador) para o formulário de cartão embutido.
-    'mp_public_key' => (string) ($_ENV['MP_PUBLIC_KEY'] ?? getenv('MP_PUBLIC_KEY') ?: ''),
+    'mp_public_key' => gcv_cartao_visivel()
+        ? (string) ($_ENV['MP_PUBLIC_KEY'] ?? getenv('MP_PUBLIC_KEY') ?: '')
+        : '',
 ], JSON_UNESCAPED_UNICODE);
