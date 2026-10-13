@@ -1,18 +1,13 @@
 ---
-description: Deploy pausado até o dono liberar — trabalhar só em dev
+description: Deploy automático na Hostinger a cada push na main
 alwaysApply: true
 ---
 
-# Deploy pausado (dev até ficar pronto)
+# Deploy automático
 
-Decisão do dono, em 3 de outubro de 2026: **não publicar nada** enquanto o trabalho de passeios e atrativos estiver em desenvolvimento.
+O dono religou o deploy em 13 de outubro de 2026. Push na branch `main` publica o site na Hostinger pelo GitHub Actions (`.github/workflows/deploy-hostinger-ftp.yml`). Também dá para disparar à mão em Actions → Deploy Hostinger (FTP) → Run workflow.
 
-- Não enviar arquivos para a Hostinger.
-- Não rodar `npm run deploy:prod`.
-- Não rodar migrations no banco da Hostinger (`npm run db:migrate`).
-- Não religar o workflow de deploy. Ele continua só manual (`workflow_dispatch`).
-- Nunca apagar nem limpar arquivos que já estão na Hostinger.
-- Pedir “sobe”, “deploy” ou “publica” **não autoriza** envio enquanto esta pausa estiver valendo. Só volta a publicar quando o dono disser, com essas palavras, que o dev está pronto e que pode publicar de novo.
-- Ao terminar uma tarefa, dizer o que mudou no localhost e que **não foi para o ar**.
-
-Localhost mostra o widget de passeio e a página Passeios. Produção não.
+- O envio é incremental. `dangerous-clean-slate` continua `false`: não apagar nem limpar arquivos que já estão na Hostinger.
+- Segredos não entram no pacote (`.env`, `config.local.php`).
+- Não rodar migration no banco da Hostinger (`npm run db:migrate`) a menos que o dono peça essa migration.
+- Ao terminar uma tarefa que já está na `main` e foi enviada, dizer o que foi para o ar. Trabalho só local, fora da `main`, continua só no localhost até o push.
