@@ -145,6 +145,22 @@ function annotateMockTrips(rec) {
   });
 }
 
+function hasAdminPreview(req) {
+  return /(?:^|;\s*)gcv_preview=1(?:;|$)/.test(String((req && req.headers && req.headers.cookie) || ""));
+}
+
+function isPreviewAdmin(account) {
+  const email = String((account && account.email) || "").toLowerCase();
+  return account && account.role === "admin" && account.status === "active"
+    && (email === "diegonavi82@gmail.com" || email === "diegocsp82@gmail.com");
+}
+
+function previewCookie(on) {
+  return "gcv_preview=" + (on ? "1" : "") + "; Path=/; Max-Age=" + (on ? "86400" : "0") + "; SameSite=Lax";
+}
+
+let adminPreviewCookie = false;
+
 function flagOn(key) {
   const v = String(readEnvValue(key) || "").trim().toLowerCase();
   return v === "1" || v === "true" || v === "on" || v === "sim";
@@ -3180,7 +3196,7 @@ function readJsonBody(req) {
 
 function pickUserByLogin(email, context) {
   const e = String(email || "").toLowerCase().trim();
-  if (e.includes("admin") || e === "diegocsp82@gmail.com") return MOCK_USERS.admin;
+  if (e.includes("admin") || e === "diegocsp82@gmail.com" || e === "diegonavi82@gmail.com") return MOCK_USERS.admin;
   if (e.includes("guia") || e.includes("guide") || context === "guide") {
     if (e.includes("pendente") || e.includes("pending")) return MOCK_USERS["guide-pending"];
     return MOCK_USERS.guide;
@@ -3830,7 +3846,7 @@ const API_ROUTES = {
   }),
 
   "/api/excursions/carousel.php": () => {
-    if (!flagOn("PASSEIOS_PUBLICOS")) {
+    if (!flagOn("PASSEIOS_PUBLICOS") && !adminPreviewCookie) {
       return { ok: true, data: { pt: [], en: [], es: [], oculto: true } };
     }
     const guia = {
@@ -4079,7 +4095,7 @@ const API_ROUTES = {
   },
 
   "/api/tours/list.php": () => {
-    if (!flagOn("PASSEIOS_PUBLICOS")) {
+    if (!flagOn("PASSEIOS_PUBLICOS") && !adminPreviewCookie) {
       return { ok: true, data: { tours: [], total: 0, oculto: true } };
     }
     return {
@@ -4123,7 +4139,7 @@ function serveFile(res, filePath) {
     res.writeHead(200, headers);
     if (ext === ".html") {
       let html = data.toString("utf8")
-        .replace(/site\.js\?v=[^"'&\s]+/g, "site.js?v=1.1.84")
+        .replace(/site\.js\?v=[^"'&\s]+/g, "site.js?v=1.1.85")
         .replace(/gcv-exc-cart-policies\.js\?v=[^"'&\s]+/g, "gcv-exc-cart-policies.js?v=1.1.61")
         .replace(/gcv-exc-cart\.js\?v=[^"'&\s]+/g, "gcv-exc-cart.js?v=1.1.62")
         .replace(/excursoes-carousel\.js\?v=[^"'&\s]+/g, "excursoes-carousel.js?v=1.1.86")
@@ -4222,6 +4238,7 @@ function anfitriaoApi() {
 }
 
 const server = http.createServer((req, res) => {
+  adminPreviewCookie = hasAdminPreview(req);
   // Remove query string
   const urlPath = req.url.split("?")[0];
 
@@ -4332,7 +4349,10 @@ const server = http.createServer((req, res) => {
           const next = pickUserByLogin(email, contextHint);
           setMockUser(next);
           console.log("[mock] login →", user.email, "(" + user.role + ")");
-          res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+          res.writeHead(200, {
+            "Content-Type": "application/json; charset=utf-8",
+            "Set-Cookie": previewCookie(isPreviewAdmin(user)),
+          });
           res.end(JSON.stringify({ ok: true, data: { ...user } }));
         })
         .catch(() => {
@@ -4382,7 +4402,10 @@ const server = http.createServer((req, res) => {
         }
         setMockUser(MOCK_USERS[pick]);
         console.log("[mock] Google pick →", user.email, "(" + user.role + ")");
-        res.writeHead(302, { Location: "/dashboard/" });
+        res.writeHead(302, {
+          Location: "/dashboard/",
+          "Set-Cookie": previewCookie(isPreviewAdmin(user)),
+        });
         res.end();
         return;
       }
@@ -4435,7 +4458,7 @@ const server = http.createServer((req, res) => {
     if (handleCupomApi(urlPath, req, res)) return;
     if (handleSettingsApi(urlPath, req, res)) return;
     if (urlPath === "/api/passeios.php" && req.method === "GET") {
-      if (!flagOn("PASSEIOS_PUBLICOS")) {
+      if (!flagOn("PASSEIOS_PUBLICOS") && !adminPreviewCookie) {
         const slugOff = new URL(req.url, "http://localhost:" + PORT).searchParams.get("slug") || "";
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
         res.end(JSON.stringify(slugOff
@@ -4446,7 +4469,15 @@ const server = http.createServer((req, res) => {
       const slug = new URL(req.url, "http://localhost:" + PORT).searchParams.get("slug") || "";
       if (!slug) {
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-        res.end(JSON.stringify({ ok: true, data: { tours: passeioCatalog(), categories: PASSEIO_CATEGORIAS, max_atrativos: maxAtrativos() } }));
+        res.end(JSON.stringify({
+          ok: true,
+          data: {
+            tours: passeioCatalog(),
+            categories: PASSEIO_CATEGORIAS,
+            max_atrativos: maxAtrativos(),
+            preview: !flagOn("PASSEIOS_PUBLICOS") && adminPreviewCookie,
+          },
+        }));
         return;
       }
       const data = passeioPublicPayload(slug);
@@ -4784,7 +4815,10 @@ const server = http.createServer((req, res) => {
 
   // Logout mock: apenas redireciona
   if (urlPath === "/api/auth/logout.php") {
-    res.writeHead(200, { "Content-Type": "application/json" });
+    res.writeHead(200, {
+      "Content-Type": "application/json",
+      "Set-Cookie": previewCookie(false),
+    });
     res.end(JSON.stringify({ ok: true }));
     return;
   }

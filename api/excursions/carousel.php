@@ -19,7 +19,7 @@ require_once __DIR__ . '/../helpers/guide_languages.php';
 require_once __DIR__ . '/../helpers/site_launch.php';
 
 header('Content-Type: application/json; charset=utf-8');
-header('Cache-Control: public, max-age=60');
+header('Cache-Control: private, no-store');
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') {
     json_response(false, null, 'Método não permitido', 405);

@@ -1176,6 +1176,22 @@
     grid.innerHTML = picked.map(cardHtml).join("\n");
   }
 
+  function showPasseioPreview(lang) {
+    if (document.getElementById("gcv-passeio-preview")) return;
+    var bar = document.createElement("p");
+    bar.id = "gcv-passeio-preview";
+    bar.setAttribute("role", "status");
+    bar.textContent = lang === "en"
+      ? "Preview: only your admin login can see the tours. Visitors cannot."
+      : lang === "es"
+        ? "Vista previa: solo tu acceso de admin ve los paseos. El público no."
+        : "Prévia: só o seu login de admin vê os passeios. O público não vê.";
+    bar.style.cssText = "margin:0;padding:8px 16px;background:#1c3a2e;color:#f4efe4;font:600 14px/1.4 system-ui,sans-serif;text-align:center";
+    var header = document.querySelector("header");
+    if (header) header.insertAdjacentElement("afterend", bar);
+    else document.body.prepend(bar);
+  }
+
   function initMenuPasseios() {
     document.querySelectorAll('.nav-main a[href*="passeios.html"]').forEach(function (a) {
       a.remove();
@@ -1184,7 +1200,7 @@
       var el = document.getElementById(id);
       if (el) el.hidden = true;
     });
-    fetch("/api/passeios.php", { headers: { Accept: "application/json" } })
+    fetch("/api/passeios.php", { headers: { Accept: "application/json" }, credentials: "same-origin" })
       .then(function (r) { return r.json(); })
       .then(function (res) {
         if (!res || !res.ok || !res.data || res.data.oculto) return;
@@ -1205,6 +1221,7 @@
           var el = document.getElementById(id);
           if (el) el.hidden = false;
         });
+        if (res.data.preview) showPasseioPreview(lang);
       })
       .catch(function () {});
   }
