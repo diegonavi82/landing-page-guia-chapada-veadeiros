@@ -16,17 +16,12 @@ require_once __DIR__ . '/../helpers/marketplace_schema.php';
 require_once __DIR__ . '/../helpers/excursion_attractions.php';
 require_once __DIR__ . '/../helpers/google_places.php';
 require_once __DIR__ . '/../helpers/guide_languages.php';
-require_once __DIR__ . '/../helpers/site_launch.php';
 
 header('Content-Type: application/json; charset=utf-8');
-header('Cache-Control: private, no-store');
+header('Cache-Control: public, max-age=60');
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') {
     json_response(false, null, 'Método não permitido', 405);
-}
-
-if (!gcv_passeios_visiveis()) {
-    json_response(true, ['pt' => [], 'en' => [], 'es' => [], 'oculto' => true]);
 }
 
 try {

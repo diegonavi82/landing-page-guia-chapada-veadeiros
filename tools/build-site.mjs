@@ -1549,8 +1549,11 @@ function homeExcursionsSection(locale) {
   };
   const L = copy[locale];
   if (!L) return "";
-  // Oculto até a API liberar. Sem PASSEIOS_PUBLICOS o público não vê o carrossel.
-  const shellHiddenAttrs = ' hidden aria-hidden="true" style="display:none"';
+  // Sem saídas no seed, o shell começa oculto. O JS mostra quando a API traz próximas saídas.
+  const hasStaticRows = excursaoRowsForLocale(locale).length > 0;
+  const shellHiddenAttrs = hasStaticRows
+    ? ""
+    : ' hidden aria-hidden="true" style="display:none"';
   return `    <div id="excursoes"></div>
     <section id="excursoes-junho" class="gcv-excursoes" data-locale="${esc(locale)}" aria-labelledby="gcv-excursoes-heading"${shellHiddenAttrs}>
       <script type="application/json" id="gcv-excursoes-payload">${safeJsonLd(excursaoPayloadForSite())}</script>
@@ -3012,7 +3015,7 @@ for (const locale of LOCALES) {
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" crossorigin="anonymous" />`,
           extraFooterScripts:
             homeExcursionsHideScript +
-            `  <script src="${esc(publicJsSrc("gcv-hero-slider.js", outPk).replace(BUILD_ASSET_QUERY, "?v=1.1.31"))}" defer></script>\n  <script src="${esc(publicJsSrc("qrcode.min.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix-receipt.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix-polling.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-confirm.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-bookings.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-waitlist.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-cart-policies.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-cart.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("excursoes-carousel.js", outPk).replace(BUILD_ASSET_QUERY, "?v=1.1.36"))}" defer></script>\n`,
+            `  <script src="${esc(publicJsSrc("gcv-hero-slider.js", outPk).replace(BUILD_ASSET_QUERY, "?v=1.1.31"))}" defer></script>\n  <script src="${esc(publicJsSrc("qrcode.min.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix-receipt.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix-polling.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-confirm.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-bookings.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-waitlist.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-cart-policies.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-cart.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("excursoes-carousel.js", outPk).replace(BUILD_ASSET_QUERY, "?v=1.1.37"))}" defer></script>\n`,
         }
       : {};
     const homeConsultarScript = "";
