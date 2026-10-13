@@ -340,6 +340,7 @@ if ($method === 'GET') {
             'SELECT ' . $select . ', c.name AS city_name
              FROM gcv_attractions a
              LEFT JOIN gcv_cities c ON c.id = a.city_id
+             WHERE a.title_pt NOT LIKE \'% + %\'
              ORDER BY a.title_pt ASC'
         )->fetchAll();
         $tarifas = [];
@@ -398,6 +399,11 @@ if ($method === 'POST') {
         if ($row['title_pt'] === '') {
             http_response_code(400);
             echo json_encode(['ok' => false, 'error' => 'Título (PT) obrigatório']);
+            exit;
+        }
+        if (str_contains($row['title_pt'], ' + ')) {
+            http_response_code(400);
+            echo json_encode(['ok' => false, 'error' => 'Cada experiência fica sozinha. Para juntar, use a aba Relacionados.']);
             exit;
         }
         $erroAtivar = gcv_attraction_erro_ativar(array_merge($body, ['status' => $row['status']]));
@@ -471,6 +477,11 @@ if ($method === 'PUT') {
             exit;
         }
         $row = gcv_attraction_from_body($body, $existing);
+        if (str_contains($row['title_pt'], ' + ')) {
+            http_response_code(400);
+            echo json_encode(['ok' => false, 'error' => 'Cada experiência fica sozinha. Para juntar, use a aba Relacionados.']);
+            exit;
+        }
         $jaPublicada = (string)($existing['status'] ?? '') === 'published';
         $exigirAtivacao = !empty($body['exigir_ativacao']) || (!$jaPublicada && (string)($row['status'] ?? '') === 'published');
         if ($exigirAtivacao) {

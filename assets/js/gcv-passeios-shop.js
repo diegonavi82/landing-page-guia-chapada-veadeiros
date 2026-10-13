@@ -313,7 +313,7 @@
         });
         return;
       }
-      fetch("/api/passeios.php?slug=" + encodeURIComponent(tour.slug || ""))
+      fetch("/api/passeios.php?slug=" + encodeURIComponent(tour.slug || ""), { credentials: "same-origin", cache: "no-store", headers: { Accept: "application/json" } })
         .then(function (res) { return res.json(); })
         .then(function (payload) {
           if (payload && payload.ok && payload.data) openWith(payload.data);
@@ -325,7 +325,7 @@
     });
   }
 
-  fetch("/api/passeios.php")
+  fetch("/api/passeios.php", { credentials: "same-origin", cache: "no-store", headers: { Accept: "application/json" } })
     .then(function (res) { return res.json(); })
     .then(function (payload) {
       var data = (payload && payload.data) || {};

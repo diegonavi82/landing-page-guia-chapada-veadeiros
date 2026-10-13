@@ -248,36 +248,109 @@
           "page": "atrativos/vale-lua-guia-chapada-veadeiros-sao-jorge.html"
         }
       ]
-    }
-  ],
-  "skipped": [
+    },
     {
       "source": "Santa Bárbara + Capivara",
-      "reason": "sem página: Capivara"
+      "minutes": 420,
+      "attractions": [
+        {
+          "title": "Santa Bárbara",
+          "slug": "cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante"
+        },
+        {
+          "title": "Capivara",
+          "slug": "capivara-guia-chapada-veadeiros"
+        }
+      ]
     },
     {
       "source": "Santa Bárbara + Candaru",
-      "reason": "sem página: Candaru"
+      "minutes": 420,
+      "attractions": [
+        {
+          "title": "Santa Bárbara",
+          "slug": "cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante"
+        },
+        {
+          "title": "Candaru",
+          "slug": "candaru-guia-chapada-veadeiros"
+        }
+      ]
     },
     {
       "source": "Santa Bárbara + Capivara + Candaru",
-      "reason": "sem página: Capivara, Candaru"
+      "minutes": 600,
+      "attractions": [
+        {
+          "title": "Santa Bárbara",
+          "slug": "cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante"
+        },
+        {
+          "title": "Capivara",
+          "slug": "capivara-guia-chapada-veadeiros"
+        },
+        {
+          "title": "Candaru",
+          "slug": "candaru-guia-chapada-veadeiros"
+        }
+      ]
     },
     {
       "source": "Morada do Sol + Raizama",
-      "reason": "sem página: Morada do Sol, Raizama"
+      "minutes": 360,
+      "attractions": [
+        {
+          "title": "Morada do Sol",
+          "slug": "morada-do-sol-guia-chapada-veadeiros"
+        },
+        {
+          "title": "Raizama",
+          "slug": "raizama-guia-chapada-veadeiros"
+        }
+      ]
     },
     {
       "source": "Morada do Sol + Lajeado",
-      "reason": "sem página: Morada do Sol, Lajeado"
+      "minutes": 360,
+      "attractions": [
+        {
+          "title": "Morada do Sol",
+          "slug": "morada-do-sol-guia-chapada-veadeiros"
+        },
+        {
+          "title": "Lajeado",
+          "slug": "lajeado-guia-chapada-veadeiros"
+        }
+      ]
     },
     {
       "source": "Lajeado + Raizama",
-      "reason": "sem página: Lajeado, Raizama"
+      "minutes": 360,
+      "attractions": [
+        {
+          "title": "Lajeado",
+          "slug": "lajeado-guia-chapada-veadeiros"
+        },
+        {
+          "title": "Raizama",
+          "slug": "raizama-guia-chapada-veadeiros"
+        }
+      ]
     },
     {
       "source": "Vale da Lua + Raizama",
-      "reason": "sem página: Raizama"
+      "minutes": 330,
+      "attractions": [
+        {
+          "title": "Vale da Lua",
+          "slug": "vale-lua-guia-chapada-veadeiros-sao-jorge"
+        },
+        {
+          "title": "Raizama",
+          "slug": "raizama-guia-chapada-veadeiros"
+        }
+      ]
     }
-  ]
+  ],
+  "skipped": []
 }

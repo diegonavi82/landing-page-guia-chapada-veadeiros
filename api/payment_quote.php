@@ -9,7 +9,10 @@ declare(strict_types=1);
  */
 
 header('Content-Type: application/json; charset=utf-8');
-header('Cache-Control: no-store');
+header('Cache-Control: private, no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+header('Expires: 0');
+header('X-LiteSpeed-Cache-Control: no-cache');
 
 require_once __DIR__ . '/helpers/db.php';
 require_once __DIR__ . '/helpers/pix_reservation_store.php';
@@ -17,6 +20,9 @@ require_once __DIR__ . '/helpers/payments/pricing.php';
 require_once __DIR__ . '/helpers/site_launch.php';
 
 gcv_pix_cors_headers();
+header('Vary: Origin, Cookie');
+header('Cache-Control: private, no-store, no-cache, must-revalidate, max-age=0');
+header('X-LiteSpeed-Cache-Control: no-cache');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);

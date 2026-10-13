@@ -279,8 +279,20 @@ function gcv_related_tour_one(PDO $pdo, int $passeioId): array
     if (!$passeio) {
         return [];
     }
+    $cols = [];
+    foreach ($pdo->query('SHOW COLUMNS FROM gcv_attractions')->fetchAll() as $col) {
+        $cols[strtolower((string)($col['Field'] ?? ''))] = true;
+    }
+    $partes = ['id', 'title_pt', 'slug', 'duration_minutes', 'duracao_json', 'cover_url', 'experiencia_json', 'saidas_json', 'tarifa_guia', 'tarifa_translado', 'tarifario_id'];
+    $select = [];
+    foreach ($partes as $nome) {
+        if (!empty($cols[$nome])) {
+            $select[] = 'a.' . $nome;
+        }
+    }
+    $select[] = 'x.sort_order';
     $stmt = $pdo->prepare(
-        'SELECT a.id, a.title_pt, a.slug, a.duration_minutes, a.duracao_json, a.cover_url, a.experiencia_json, a.saidas_json, a.tarifa_guia, a.tarifa_translado, a.tarifario_id, x.sort_order
+        'SELECT ' . implode(', ', $select) . '
          FROM gcv_passeio_relacionado_atrativo x
          INNER JOIN gcv_attractions a ON a.id = x.attraction_id
          WHERE x.passeio_id = ?

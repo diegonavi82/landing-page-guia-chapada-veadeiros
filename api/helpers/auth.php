@@ -36,15 +36,35 @@ function gcv_request_porta(): ?string
     return null;
 }
 
+function gcv_auth_cookie_domain(): string
+{
+    $host = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
+    $host = (string) (preg_replace('/:\d+$/', '', $host) ?? $host);
+    if ($host === 'guiachapadaveadeiros.com' || str_ends_with($host, '.guiachapadaveadeiros.com')) {
+        return '.guiachapadaveadeiros.com';
+    }
+    return '';
+}
+
 function gcv_set_auth_cookie(string $name, string $value, int $expires): void
 {
-    setcookie($name, $value, [
-        'expires' => $expires,
+    if (headers_sent()) {
+        return;
+    }
+    $base = [
         'path' => '/',
         'secure' => true,
         'httponly' => true,
         'samesite' => 'Lax',
-    ]);
+    ];
+    $domain = gcv_auth_cookie_domain();
+    if ($domain !== '') {
+        // O cookie antigo valia só para um host (com ou sem www). Apaga esse e grava para os dois.
+        setcookie($name, '', $base + ['expires' => time() - 3600]);
+        setcookie($name, $value, $base + ['expires' => $expires, 'domain' => $domain]);
+        return;
+    }
+    setcookie($name, $value, $base + ['expires' => $expires]);
 }
 
 function current_user(): ?array {
@@ -95,6 +115,9 @@ function current_user(): ?array {
     $user['roles'] = $roles;
     $user['active_role'] = $active;
     $user['role'] = $active;
+    if (gcv_auth_cookie_domain() !== '') {
+        gcv_set_auth_cookie('gcv_session', $sessionId, time() + 86400);
+    }
     return $user;
 }
 

@@ -7,6 +7,8 @@ require_once __DIR__ . '/../helpers/validator.php';
 require_once __DIR__ . '/../helpers/site_launch.php';
 
 header('Content-Type: application/json; charset=utf-8');
+header('Vary: Cookie');
+header('X-LiteSpeed-Cache-Control: no-cache');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     json_response(false, null, 'Método não permitido', 405);

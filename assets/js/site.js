@@ -1194,29 +1194,40 @@
 
   function initMenuPasseios() {
     document.querySelectorAll('.nav-main a[href*="passeios.html"]').forEach(function (a) {
+      if (a.closest && a.closest(".lang-switch")) return;
       a.remove();
     });
     ["gcv-home-passeios", "proximas-saidas"].forEach(function (id) {
       var el = document.getElementById(id);
       if (el) el.hidden = true;
     });
-    fetch("/api/passeios.php", { headers: { Accept: "application/json" }, credentials: "same-origin" })
+    fetch("/api/passeios.php", { headers: { Accept: "application/json" }, credentials: "same-origin", cache: "no-store" })
       .then(function (r) { return r.json(); })
       .then(function (res) {
         if (!res || !res.ok || !res.data || res.data.oculto) return;
         var nav = document.querySelector(".nav-main");
-        if (!nav || nav.querySelector('a[href*="passeios.html"]')) return;
-        var atr = null;
-        Array.prototype.forEach.call(nav.querySelectorAll("a"), function (a) {
-          if (/(^|\/)atrativos\.html$/.test(a.getAttribute("href") || "")) atr = a;
-        });
-        if (!atr) return;
-        var href = atr.getAttribute("href") || "atrativos.html";
-        var lang = href.indexOf("/en/") >= 0 || window.location.pathname.indexOf("/en/") >= 0 ? "en" : (href.indexOf("/es/") >= 0 || window.location.pathname.indexOf("/es/") >= 0 ? "es" : "pt");
-        var link = document.createElement("a");
-        link.href = href.replace(/atrativos\.html$/, "passeios.html");
-        link.textContent = lang === "en" ? "Tours" : lang === "es" ? "Paseos" : "Passeios";
-        atr.insertAdjacentElement("afterend", link);
+        var lang = window.location.pathname.indexOf("/en/") >= 0 ? "en" : (window.location.pathname.indexOf("/es/") >= 0 ? "es" : "pt");
+        if (nav) {
+          var jaTem = false;
+          Array.prototype.forEach.call(nav.querySelectorAll("a"), function (a) {
+            if (a.closest && a.closest(".lang-switch")) return;
+            if ((a.getAttribute("href") || "").indexOf("passeios.html") >= 0) jaTem = true;
+          });
+          var atr = null;
+          Array.prototype.forEach.call(nav.querySelectorAll("a"), function (a) {
+            if (a.closest && a.closest(".lang-switch")) return;
+            if (/(^|\/)atrativos\.html$/.test(a.getAttribute("href") || "")) atr = a;
+          });
+          if (!jaTem && atr) {
+            var href = atr.getAttribute("href") || "atrativos.html";
+            if (href.indexOf("/en/") >= 0) lang = "en";
+            else if (href.indexOf("/es/") >= 0) lang = "es";
+            var link = document.createElement("a");
+            link.href = href.replace(/atrativos\.html$/, "passeios.html");
+            link.textContent = lang === "en" ? "Tours" : lang === "es" ? "Paseos" : "Passeios";
+            atr.insertAdjacentElement("afterend", link);
+          }
+        }
         ["gcv-home-passeios", "proximas-saidas"].forEach(function (id) {
           var el = document.getElementById(id);
           if (el) el.hidden = false;
@@ -2809,12 +2820,14 @@
       if (box._payQuoteLoading === base) return;
       box._payQuoteLoading = base;
       fetch("/api/payment_quote.php?amount=" + encodeURIComponent((base / 100).toFixed(2)), {
+        credentials: "same-origin",
+        cache: "no-store",
         headers: { Accept: "application/json" },
       })
         .then(function (r) { return r.json(); })
         .then(function (res) {
           if (res && res.success && res.quotes) {
-            box._payQuote = { base: base, quotes: res.quotes };
+            box._payQuote = { base: base, quotes: res.quotes, cardsEnabled: res.cards_enabled === true };
             paint();
           }
         })
@@ -2972,14 +2985,18 @@
       };
       var brTxt = fill(copy.cardBr, { price: passeioReais(pay.card), n: String(pay.n), inst: passeioReais(pay.inst) });
       var intlTxt = fill(copy.cardIntl, { price: pay.usd ? passeioUsd(pay.usd) : passeioReais(pay.intl) });
+      var cardsOn = !!(box._payQuote && box._payQuote.base === base && box._payQuote.cardsEnabled === true);
+      var cardHtml = cardsOn
+        ? '<span class="gcv-passeios__cardline">' + brTxt + "</span>" +
+          '<span class="gcv-passeios__cardline">' + intlTxt + "</span>"
+        : "";
       var totalEl = box.querySelector("[data-passeio-total]");
       totalEl.innerHTML = sel.incompleto || sel.semCidade
         ? '<strong class="gcv-passeios__total-value">—</strong>'
         : '<span class="gcv-passeios__break">' + breakTxt + "</span>" +
           '<span class="gcv-passeios__pixline"><strong class="gcv-passeios__total-value">' + passeioEsc(passeioReais(pay.pix)) + "</strong>" +
           '<span class="gcv-passeios__pixin">' + passeioEsc(copy.pixIn) + "</span></span>" +
-          '<span class="gcv-passeios__cardline">' + brTxt + "</span>" +
-          '<span class="gcv-passeios__cardline">' + intlTxt + "</span>";
+          cardHtml;
       var item = buildItem();
       if (item && itemInCart(item.id) && window.GcvExcCart && typeof window.GcvExcCart.sync === "function") {
         window.GcvExcCart.sync(item);
@@ -3035,8 +3052,13 @@
           if (typeof cart.warnSameDay === "function") cart.warnSameDay();
         } else if (box.classList.contains("is-modal")) {
           gcvAddPrefsCommit(item);
-          paintAddButton();
           closePasseioModal();
+          var destino = paginaDePasseios();
+          if (destino) {
+            window.location.href = destino;
+            return;
+          }
+          paintAddButton();
           if (typeof box._passeioDone === "function") box._passeioDone();
           return;
         }
@@ -3109,6 +3131,14 @@
       peopleEl.value = String(prefs.n);
       peopleEl.dispatchEvent(new Event("change", { bubbles: true }));
     }
+  }
+
+  function paginaDePasseios() {
+    var path = window.location.pathname || "";
+    if (/\/passeios\.html$/.test(path)) return "";
+    if (path.indexOf("/en/") >= 0) return "/en/passeios.html";
+    if (path.indexOf("/es/") >= 0) return "/es/passeios.html";
+    return "/passeios.html";
   }
 
   function closePasseioModal() {

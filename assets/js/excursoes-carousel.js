@@ -5121,6 +5121,8 @@
     if (modal._gcvPayQuotesLoading === base) return;
     modal._gcvPayQuotesLoading = base;
     fetch("/api/payment_quote.php?amount=" + encodeURIComponent((base / 100).toFixed(2)), {
+      credentials: "same-origin",
+      cache: "no-store",
       headers: { Accept: "application/json" },
     })
       .then(function (r) { return r.json(); })
@@ -5402,6 +5404,7 @@
     modal._gcvStripeAbort = ac;
     fetch("/api/stripe_checkout.php", {
       method: "POST",
+      credentials: "same-origin",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify(payload),
       signal: ac.signal,
@@ -5527,6 +5530,7 @@
     body.card = card;
     return fetch("/api/mp_card.php", {
       method: "POST",
+      credentials: "same-origin",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify(body),
     })

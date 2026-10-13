@@ -669,7 +669,9 @@
   function paintAttractionsList(rows, terapias, terapiaErro) {
     var list = root('cms-attr-list');
     if (!list) return;
-    state.attractions = rows || [];
+    state.attractions = (rows || []).filter(function (a) {
+      return String((a && a.title_pt) || '').indexOf(' + ') < 0;
+    });
     state.terapias = terapias || [];
     var linhas = state.attractions.map(trilhaLinha).concat(state.terapias.map(terapiaLinha)).join('');
     if (!linhas) {
