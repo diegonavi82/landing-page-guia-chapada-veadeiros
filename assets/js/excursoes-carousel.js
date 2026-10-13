@@ -6932,6 +6932,26 @@
   function bootExcursaoCarousel() {
     var root = document.getElementById("excursoes-junho");
     if (!root) return;
+    hideExcursaoSection(root);
+    try {
+      var xhr = new XMLHttpRequest();
+      xhr.open("GET", "/api/passeios.php");
+      xhr.timeout = 8000;
+      xhr.onload = function () {
+        var res = {};
+        try { res = JSON.parse(xhr.responseText || "{}"); } catch (e) { return; }
+        if (!res.ok || !res.data || res.data.oculto) return;
+        bootExcursaoCarouselOpen();
+      };
+      xhr.onerror = function () {};
+      xhr.ontimeout = function () {};
+      xhr.send();
+    } catch (e) { /* seção continua oculta */ }
+  }
+
+  function bootExcursaoCarouselOpen() {
+    var root = document.getElementById("excursoes-junho");
+    if (!root) return;
 
     var locale = detectLocale(root);
     var s = STRINGS[locale] || STRINGS.pt;

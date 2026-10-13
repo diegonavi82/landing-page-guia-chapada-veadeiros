@@ -1124,20 +1124,63 @@
     grid.innerHTML = picked.map(cardHtml).join("\n");
   }
 
+  function showPasseioPreview(lang) {
+    if (document.getElementById("gcv-passeio-preview")) return;
+    var bar = document.createElement("p");
+    bar.id = "gcv-passeio-preview";
+    bar.setAttribute("role", "status");
+    bar.textContent = lang === "en"
+      ? "Preview: only your admin login can see the tours. Visitors cannot."
+      : lang === "es"
+        ? "Vista previa: solo tu acceso de admin ve los paseos. El público no."
+        : "Prévia: só o seu login de admin vê os passeios. O público não vê.";
+    bar.style.cssText = "margin:0;padding:8px 16px;background:#1c3a2e;color:#f4efe4;font:600 14px/1.4 system-ui,sans-serif;text-align:center";
+    var header = document.querySelector("header");
+    if (header) header.insertAdjacentElement("afterend", bar);
+    else document.body.prepend(bar);
+  }
+
+  function isPasseioMenuLink(a) {
+    if (!a || (a.closest && a.closest(".lang-switch"))) return false;
+    return /passeios\.html(?:$|[?#])/.test(a.getAttribute("href") || "");
+  }
+
   function initMenuPasseios() {
-    var nav = document.querySelector(".nav-main");
-    if (!nav || nav.querySelector('a[href*="passeios.html"]')) return;
-    var atr = null;
-    Array.prototype.forEach.call(nav.querySelectorAll("a"), function (a) {
-      if (/(^|\/)atrativos\.html$/.test(a.getAttribute("href") || "")) atr = a;
+    document.querySelectorAll(".nav-main a").forEach(function (a) {
+      if (isPasseioMenuLink(a)) a.remove();
     });
-    if (!atr) return;
-    var href = atr.getAttribute("href") || "atrativos.html";
-    var lang = href.indexOf("/en/") >= 0 || window.location.pathname.indexOf("/en/") >= 0 ? "en" : (href.indexOf("/es/") >= 0 || window.location.pathname.indexOf("/es/") >= 0 ? "es" : "pt");
-    var link = document.createElement("a");
-    link.href = href.replace(/atrativos\.html$/, "passeios.html");
-    link.textContent = lang === "en" ? "Tours" : lang === "es" ? "Paseos" : "Passeios";
-    atr.insertAdjacentElement("afterend", link);
+    ["gcv-home-passeios", "proximas-saidas"].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.hidden = true;
+    });
+    fetch("/api/passeios.php", { headers: { Accept: "application/json" }, credentials: "same-origin" })
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        if (!res || !res.ok || !res.data || res.data.oculto) return;
+        var nav = document.querySelector(".nav-main");
+        if (!nav) return;
+        var atr = null;
+        var already = false;
+        Array.prototype.forEach.call(nav.querySelectorAll("a"), function (a) {
+          if (isPasseioMenuLink(a)) already = true;
+          if (a.closest && a.closest(".lang-switch")) return;
+          if (/(^|\/)atrativos\.html$/.test(a.getAttribute("href") || "")) atr = a;
+        });
+        var href = (atr && atr.getAttribute("href")) || "atrativos.html";
+        var lang = href.indexOf("/en/") >= 0 || window.location.pathname.indexOf("/en/") >= 0 ? "en" : (href.indexOf("/es/") >= 0 || window.location.pathname.indexOf("/es/") >= 0 ? "es" : "pt");
+        if (!already && atr) {
+          var link = document.createElement("a");
+          link.href = href.replace(/atrativos\.html$/, "passeios.html");
+          link.textContent = lang === "en" ? "Tours" : lang === "es" ? "Paseos" : "Passeios";
+          atr.insertAdjacentElement("afterend", link);
+        }
+        ["gcv-home-passeios", "proximas-saidas"].forEach(function (id) {
+          var el = document.getElementById(id);
+          if (el) el.hidden = false;
+        });
+        if (res.data.preview) showPasseioPreview(lang);
+      })
+      .catch(function () {});
   }
 
   function initPasseiosPublicos() {

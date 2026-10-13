@@ -11,6 +11,7 @@ require_once __DIR__ . '/helpers/db.php';
 require_once __DIR__ . '/helpers/cms_schema.php';
 require_once __DIR__ . '/helpers/related_tours.php';
 require_once __DIR__ . '/helpers/tarifarios.php';
+require_once __DIR__ . '/helpers/site_launch.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
@@ -22,15 +23,33 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') {
 }
 
 try {
+    if (!gcv_passeios_visiveis()) {
+        $slug = trim((string) ($_GET['slug'] ?? ''));
+        if ($slug === '') {
+            echo json_encode(['ok' => true, 'data' => [
+                'tours' => [],
+                'categories' => [],
+                'max_atrativos' => 1,
+                'oculto' => true,
+            ]], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+        echo json_encode(['ok' => true, 'data' => ['tem_passeio' => false, 'oculto' => true]], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
     gcv_cms_ensure_schema();
     $pdo = db();
     $slug = trim((string)($_GET['slug'] ?? ''));
     if ($slug === '') {
-        echo json_encode(['ok' => true, 'data' => [
+        $catalog = [
             'tours' => gcv_tarifario_public_catalog($pdo),
             'categories' => GCV_PASSEIO_CATEGORIAS,
             'max_atrativos' => gcv_passeio_max_atrativos($pdo),
-        ]], JSON_UNESCAPED_UNICODE);
+        ];
+        if (gcv_passeios_so_preview()) {
+            $catalog['preview'] = true;
+        }
+        echo json_encode(['ok' => true, 'data' => $catalog], JSON_UNESCAPED_UNICODE);
         exit;
     }
     if (!preg_match('/^[a-z0-9-]{1,190}$/', $slug)) {

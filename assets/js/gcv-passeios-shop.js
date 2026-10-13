@@ -22,6 +22,7 @@
       added: "Adicionado",
       taken: "Esse dia já tem passeio",
       empty: "Nenhum passeio nessa categoria.",
+      closed: "Nenhum passeio disponível.",
       fail: "Não foi possível carregar os passeios.",
       one: "1 atração",
       many: "atrações",
@@ -40,6 +41,7 @@
       added: "Added",
       taken: "That day already has a tour",
       empty: "No tours in this category.",
+      closed: "No tours available.",
       fail: "Could not load the tours.",
       one: "1 place",
       many: "places",
@@ -58,6 +60,7 @@
       added: "Añadido",
       taken: "Ese día ya tiene un paseo",
       empty: "No hay paseos en esta categoría.",
+      closed: "No hay paseos disponibles.",
       fail: "No se pudieron cargar los paseos.",
       one: "1 atractivo",
       many: "atractivos",
@@ -242,7 +245,8 @@
       var cats = Object.keys(data.categories || labels);
       shell(cats);
       if (!tours.length) {
-        root.querySelector("[data-shop-grid]").innerHTML = '<p class="gcv-shop__empty">' + esc(copy.fail) + "</p>";
+        var vazio = payload && payload.ok ? (copy.closed || copy.empty) : copy.fail;
+        root.querySelector("[data-shop-grid]").innerHTML = '<p class="gcv-shop__empty">' + esc(vazio) + "</p>";
         return;
       }
       paint();
