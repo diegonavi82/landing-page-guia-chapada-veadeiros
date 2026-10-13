@@ -27,6 +27,7 @@ export const DEPLOY_ROOT_ENTRIES = [
   "confirmacao.html",
   "revista.html",
   "atrativos.html",
+  "passeios.html",
   "excursoes.html",
   "login.html",
   "cadastro.html",

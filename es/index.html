@@ -49,11 +49,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="../assets/css/site.css?v=1.1.31" />
-    <link rel="stylesheet" href="../assets/css/gcv-detail.css?v=1.1.32" />
+    <link rel="stylesheet" href="../assets/css/gcv-detail.css?v=1.1.31" />
     <link rel="stylesheet" href="../assets/css/gcv-seo.css?v=1.1.31" />
     <link rel="stylesheet" href="../assets/css/gcv-hero-slider.css?v=1.1.32" />
     <link rel="stylesheet" href="../assets/css/excursoes.css?v=1.1.34" />
-    <link rel="stylesheet" href="../assets/css/gcv-home-passeios.css?v=1.1.36" />
+    <link rel="stylesheet" href="../assets/css/gcv-home-passeios.css?v=1.1.31" />
     <script>(function(){var P="../assets/img/hero/";var V="5";var pool={"exclusivo":[{"n":"passeio-exclusivo-cachoeira-chapada-dos-veadeiros","alt":"Grupo en un paseo exclusivo con guía frente a una cascada en Chapada dos Veadeiros"},{"n":"passeio-exclusivo-guia-local-mirante-cachoeira-chapada-dos-veadeiros-02","alt":"Familia en un paseo exclusivo con guía local en el mirador de una cascada en Chapada dos Veadeiros"},{"n":"passeio-exclusivo-guia-local-amigos-cachoeira-chapada-dos-veadeiros-03","alt":"Cuatro amigos en un paseo exclusivo con guía local frente a una cascada alta en Chapada dos Veadeiros"},{"n":"passeio-exclusivo-guia-local-mirante-cachoeiras-chapada-dos-veadeiros-04","alt":"Tres amigas abrazadas observando cascadas en secuencia durante un paseo con guía local en Chapada dos Veadeiros"},{"n":"passeio-exclusivo-guia-local-familia-banho-de-argila-chapada-dos-veadeiros-05","alt":"Familia en un paseo exclusivo con guía local tras un baño de arcilla a orillas de un lago en Chapada dos Veadeiros"}],"compartilhado":[{"n":"passeio-compartilhado-cachoeira-chapada-dos-veadeiros","alt":"Viajeros en un paseo compartido posando frente a una cascada en Chapada dos Veadeiros"},{"n":"passeio-compartilhado-guia-local-grupo-rio-chapada-dos-veadeiros-02","alt":"Grupo de viajeros meditando en las piedras junto al río en un paseo compartido con guía local en Chapada dos Veadeiros"},{"n":"passeio-compartilhado-guia-local-trilha-canion-cachoeira-chapada-dos-veadeiros-03","alt":"Grupo en un paseo compartido con guía local en el sendero al borde de un cañón con cascada en Chapada dos Veadeiros"},{"n":"passeio-compartilhado-guia-local-banho-cachoeira-chapada-dos-veadeiros-04","alt":"Viajeros nadando en el pozo de una cascada en un paseo compartido con guía local en Chapada dos Veadeiros"},{"n":"passeio-compartilhado-guia-local-poco-natural-chapada-dos-veadeiros-05","alt":"Amigas descansando en un pozo natural de aguas color ámbar durante un paseo con guía local en Chapada dos Veadeiros"},{"n":"passeio-compartilhado-guia-local-paredao-de-pedra-chapada-dos-veadeiros-06","alt":"Grupo de paseo compartido con guía local posando ante un paredón de piedra cerca de las cascadas de Chapada dos Veadeiros"},{"n":"passeio-compartilhado-guia-local-grupo-cachoeira-chapada-dos-veadeiros-07","alt":"Grupo sobre una losa de piedra frente a la cascada en un paseo compartido con guía local en Chapada dos Veadeiros"},{"n":"passeio-compartilhado-guia-local-trilha-dos-saltos-chapada-dos-veadeiros-08","alt":"Grupo de viajeros en el letrero del sendero de los Saltos, Carrusel y Corrientes en un paseo con guía local en Chapada dos Veadeiros","soCelular":1}]};function pick(key,mobile){var list=pool[key].filter(function(it){return mobile||!it.soCelular;});var last="";try{last=localStorage.getItem("gcvHeroLast:"+key)||"";}catch(e){}var choices=list.filter(function(it){return it.n!==last;});if(!choices.length)choices=list;var item=choices[Math.floor(Math.random()*choices.length)];try{localStorage.setItem("gcvHeroLast:"+key,item.n);}catch(e){}return item;}var mobile=window.matchMedia("(max-width:780px)").matches;var exclusivo=pick("exclusivo",mobile);var compartilhado=pick("compartilhado",mobile);window.GCV_HERO_PICK={exclusivo:exclusivo,compartilhado:compartilhado,mobile:mobile};window.GCV_HERO_APPLY=function(theme){var pickItem=window.GCV_HERO_PICK[theme];var pic=document.querySelector('.gcv-slide[data-theme="'+theme+'"] picture.gcv-media');if(!pickItem||!pic)return;var v="?v="+V;function u(suffix,ext){return P+pickItem.n+suffix+"."+ext+v;}var sources=pic.querySelectorAll("source");sources[0].srcset=u("-mobile-1x","avif")+" 1x, "+u("-mobile","avif")+" 2x";sources[1].srcset=u("-mobile-1x","webp")+" 1x, "+u("-mobile","webp")+" 2x";if(!pickItem.soCelular){sources[2].srcset=u("-desktop-1x","avif")+" 1x, "+u("-desktop","avif")+" 2x";sources[3].srcset=u("-desktop-1x","webp")+" 1x, "+u("-desktop","webp")+" 2x";}var img=pic.querySelector("img");img.src=pickItem.soCelular?u("-mobile","webp"):u("-desktop","webp");img.alt=pickItem.alt;};var kind=mobile?"mobile":"desktop";var one=P+exclusivo.n+"-"+kind+"-1x.avif?v="+V;var two=P+exclusivo.n+"-"+kind+".avif?v="+V;var link=document.createElement("link");link.rel="preload";link.as="image";link.type="image/avif";link.setAttribute("fetchpriority","high");link.href=one;link.setAttribute("imagesrcset",one+" 1x, "+two+" 2x");document.head.appendChild(link);})();</script>
     <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&display=swap" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
@@ -76,7 +76,6 @@
       <a href="index.html"  aria-current="page">Inicio</a>
       <a href="revista.html" >Revista</a>
       <a href="atrativos.html" >Atractivos</a>
-      <a href="passeios.html" >Paseos</a>
       <a href="consultar-reserva.html" >Reservas</a>
       <a href="contato.html" >Contacto</a>
       <div class="nav-search-wrap" data-gcv-search data-locale="es" data-page-out="es/index.html" data-search-index="/assets/data/search-index.json?v=1.1.31" data-no-results="Ninguna página encontrada">
@@ -543,15 +542,15 @@
   <div class="gcv-review-grid" data-gcv-reviews-grid>
 <article class="gcv-review-card">
   <div class="gcv-review-card__head">
-    <div class="gcv-review-card__avatar"><img src="../assets/img/imagens/vale-lua-guia-chapada-veadeiros-sao-jorge-1.jpg" alt="" width="80" height="80" loading="lazy" decoding="async" /></div>
+    <div class="gcv-review-card__avatar"><img src="../assets/img/imagens/cataratas-couros-guia-chapada-veadeiros-alto-paraiso.jpg" alt="" width="80" height="80" loading="lazy" decoding="async" /></div>
     <div class="gcv-review-card__meta">
       <p class="gcv-review-card__stars" aria-hidden="true">★★★★★</p>
-      <h3 class="gcv-review-card__name">Cintia Mariele</h3>
+      <h3 class="gcv-review-card__name">Paula Altenfelder</h3>
       <p class="gcv-review-card__city">Reseña Google · 5 estrellas</p>
-      <p class="gcv-review-card__tour">Dicas de passeio na Chapada</p>
+      <p class="gcv-review-card__tour">Transporte + passeio</p>
     </div>
   </div>
-  <blockquote class="gcv-review-card__quote"><span class="gcv-review-card__quo">“</span>D... é um guia incrível! Sempre com as melhores dicas de passeio, muito conhecimento local e super solícito com os grupos. Recomendo demais!<span class="gcv-review-card__quo">”</span></blockquote>
+  <blockquote class="gcv-review-card__quote"><span class="gcv-review-card__quo">“</span>O D... é um excelente guia, espirituoso, solícito, parceiro, extremamente pontual (sempre estava no horário combinado para o passeio), bem humorado, responsável, ótimo motorista. Um dos poucos guias da Chapada que fazem o pacote completo de transporte e passeio. Nota 10! Recomendo de olhos fechados.<span class="gcv-review-card__quo">”</span></blockquote>
 </article>
 <article class="gcv-review-card">
   <div class="gcv-review-card__head">
@@ -567,15 +566,15 @@
 </article>
 <article class="gcv-review-card">
   <div class="gcv-review-card__head">
-    <div class="gcv-review-card__avatar"><img src="../assets/img/imagens/cataratas-couros-guia-chapada-veadeiros-alto-paraiso.jpg" alt="" width="80" height="80" loading="lazy" decoding="async" /></div>
+    <div class="gcv-review-card__avatar"><img src="../assets/img/imagens/vale-lua-guia-chapada-veadeiros-sao-jorge-1.jpg" alt="" width="80" height="80" loading="lazy" decoding="async" /></div>
     <div class="gcv-review-card__meta">
       <p class="gcv-review-card__stars" aria-hidden="true">★★★★★</p>
-      <h3 class="gcv-review-card__name">Paula Altenfelder</h3>
+      <h3 class="gcv-review-card__name">Cintia Mariele</h3>
       <p class="gcv-review-card__city">Reseña Google · 5 estrellas</p>
-      <p class="gcv-review-card__tour">Transporte + passeio</p>
+      <p class="gcv-review-card__tour">Dicas de passeio na Chapada</p>
     </div>
   </div>
-  <blockquote class="gcv-review-card__quote"><span class="gcv-review-card__quo">“</span>O D... é um excelente guia, espirituoso, solícito, parceiro, extremamente pontual (sempre estava no horário combinado para o passeio), bem humorado, responsável, ótimo motorista. Um dos poucos guias da Chapada que fazem o pacote completo de transporte e passeio. Nota 10! Recomendo de olhos fechados.<span class="gcv-review-card__quo">”</span></blockquote>
+  <blockquote class="gcv-review-card__quote"><span class="gcv-review-card__quo">“</span>D... é um guia incrível! Sempre com as melhores dicas de passeio, muito conhecimento local e super solícito com os grupos. Recomendo demais!<span class="gcv-review-card__quo">”</span></blockquote>
 </article>
   </div>
   <noscript><p class="gcv-home-reviews__noscript"><a href="/assets/data/google-reviews.json?v=1.1.31">Ver todas as avaliações</a></p></noscript>
@@ -691,9 +690,9 @@
   <script src="/assets/js/gcv-exc-bookings.js?v=1.1.31" defer></script>
   <script src="/assets/js/gcv-exc-waitlist.js?v=1.1.31" defer></script>
   <script src="/assets/js/gcv-exc-cart-policies.js?v=1.1.31" defer></script>
-  <script src="/assets/js/gcv-exc-cart.js?v=1.1.46" defer></script>
-  <script src="/assets/js/excursoes-carousel.js?v=1.1.65" defer></script>
-  <script src="/assets/js/gcv-home-passeios.js?v=1.1.38" defer></script>
-<script src="/assets/js/site.js?v=1.1.37" defer></script>
+  <script src="/assets/js/gcv-exc-cart.js?v=1.1.31" defer></script>
+  <script src="/assets/js/excursoes-carousel.js?v=1.1.64" defer></script>
+  <script src="/assets/js/gcv-home-passeios.js?v=1.1.37" defer></script>
+<script src="/assets/js/site.js?v=1.1.31" defer></script>
 </body>
 </html>

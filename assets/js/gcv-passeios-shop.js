@@ -29,7 +29,7 @@
       open: "Ver atração",
       pick: "Escolha a atração para maiores informações",
       close: "Fechar",
-      leave: "De {city}",
+      leave: "{city}",
     },
     en: {
       kicker: "Chapada dos Veadeiros",
@@ -50,7 +50,7 @@
       open: "See place",
       pick: "Choose a place for more details",
       close: "Close",
-      leave: "From {city}",
+      leave: "{city}",
     },
     es: {
       kicker: "Chapada dos Veadeiros",
@@ -71,7 +71,7 @@
       open: "Ver atractivo",
       pick: "Elige el atractivo para más información",
       close: "Cerrar",
-      leave: "De {city}",
+      leave: "{city}",
     },
   }[lang] || {};
 
@@ -132,6 +132,7 @@
     return tour._show;
   }
   var clock = '<svg class="gcv-shop-card__ico" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 4.6V8.2l2.3 1.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
+  var pin = '<svg class="gcv-shop-card__ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 14.5S3.4 9.7 3.4 6.7a4.6 4.6 0 1 1 9.2 0c0 3-4.6 7.8-4.6 7.8z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><circle cx="8" cy="6.65" r="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>';
   var check = '<svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.17 12.17 2.4 8.4l1.13-1.13 2.64 2.64 6.3-6.3 1.13 1.13z"/></svg>';
   var filter = "all";
   var tours = [];
@@ -242,7 +243,7 @@
         '<p class="gcv-shop-card__places">' + esc((tour.attractions || []).join(" · ")) + "</p>" +
         '<p class="gcv-shop-card__meta">' +
         (time ? "<span>" + clock + esc(time) + "</span>" : "") +
-        "<span>" + esc(copy.leave.replace("{city}", show.city)) + "</span></p>" +
+        "<span>" + pin + esc(copy.leave.replace("{city}", show.city)) + "</span></p>" +
         '<div class="gcv-shop-card__foot">' +
         '<p class="gcv-shop-card__price">' + esc(copy.from) + "<strong>" + reais(cents) + "</strong>" + esc(copy.person) + "</p>" +
         '<button type="button" class="gcv-shop-card__add' + (mine ? " is-added" : "") + '" data-add="' + esc(tour.id) + '">' +
