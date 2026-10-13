@@ -403,6 +403,7 @@
       exclLunch: "Almoço",
       cta: "Quero participar",
       guiaAbout: "Sobre {{nome}}",
+      guiaAboutSecret: "Sobre o guia",
       guiaModalClose: "Fechar",
       guiaModalBack: "Voltar",
       guiaBioEmpty: "Este guia ainda não adicionou uma descrição.",
@@ -601,6 +602,7 @@
       exclLunch: "Lunch",
       cta: "I want to join",
       guiaAbout: "About {{nome}}",
+      guiaAboutSecret: "About the guide",
       guiaModalClose: "Close",
       guiaModalBack: "Back",
       guiaBioEmpty: "This guide has not added a description yet.",
@@ -799,6 +801,7 @@
       exclLunch: "Almuerzo",
       cta: "Quiero participar",
       guiaAbout: "Acerca de {{nome}}",
+      guiaAboutSecret: "Acerca del guía",
       guiaModalClose: "Cerrar",
       guiaModalBack: "Volver",
       guiaBioEmpty: "Este guía aún no agregó una descripción.",
@@ -2256,6 +2259,7 @@
     head.className = "gcv-excursoes-filters__head";
     head.innerHTML =
       '<button type="button" class="gcv-excursoes-filters__toggle" data-gcv-filter-toggle aria-expanded="false" aria-controls="gcv-excursoes-filters-panel">' +
+      '<i class="ti ti-adjustments-horizontal" aria-hidden="true"></i>' +
       '<span class="gcv-excursoes-filters__title">' +
       escapeHtml(s.filterTitle) +
       '</span><i class="ti ti-chevron-down" aria-hidden="true"></i></button>' +
@@ -2323,43 +2327,8 @@
       escapeHtml(s.filterTransportWith) +
       "</span></span></label></div>";
 
-    var priceField = document.createElement("div");
-    priceField.className = "gcv-excursoes-filters__field gcv-excursoes-filters__field--range";
-    priceField.innerHTML =
-      '<div class="gcv-excursoes-filters__range-head"><span class="gcv-excursoes-filters__label">' +
-      escapeHtml(s.filterPrice) +
-      '</span><span class="gcv-excursoes-filters__range-value" data-gcv-price-label></span></div>' +
-      '<div class="gcv-excursoes-filters__range-track"><span class="gcv-excursoes-filters__range-fill" data-gcv-price-fill></span>' +
-      '<input class="gcv-excursoes-filters__range" type="range" data-gcv-filter="priceMin" aria-label="' +
-      escapeHtml(s.filterPrice) +
-      ' min" />' +
-      '<input class="gcv-excursoes-filters__range" type="range" data-gcv-filter="priceMax" aria-label="' +
-      escapeHtml(s.filterPrice) +
-      ' max" /></div>';
-
-    var spotsField = document.createElement("div");
-    spotsField.className = "gcv-excursoes-filters__field gcv-excursoes-filters__field--range";
-    spotsField.innerHTML =
-      '<div class="gcv-excursoes-filters__range-head"><span class="gcv-excursoes-filters__label">' +
-      escapeHtml(s.filterSpots) +
-      '</span><span class="gcv-excursoes-filters__range-value" data-gcv-spots-label></span></div>' +
-      '<div class="gcv-excursoes-filters__range-track"><span class="gcv-excursoes-filters__range-fill" data-gcv-spots-fill></span>' +
-      '<input class="gcv-excursoes-filters__range" type="range" data-gcv-filter="spotsMin" min="0" max="' +
-      escapeHtml(String(bounds.spotsMax)) +
-      '" aria-label="' +
-      escapeHtml(s.filterSpots) +
-      ' min" />' +
-      '<input class="gcv-excursoes-filters__range" type="range" data-gcv-filter="spotsMax" min="0" max="' +
-      escapeHtml(String(bounds.spotsMax)) +
-      '" aria-label="' +
-      escapeHtml(s.filterSpots) +
-      ' max" /></div>';
-
     var rowPrimary = document.createElement("div");
     rowPrimary.className = "gcv-excursoes-filters__row gcv-excursoes-filters__row--primary";
-
-    var rowSecondary = document.createElement("div");
-    rowSecondary.className = "gcv-excursoes-filters__row gcv-excursoes-filters__row--secondary";
 
     rowPrimary.appendChild(periodField);
     rowPrimary.appendChild(embarqueField);
@@ -2369,12 +2338,8 @@
     rowTransport.className = "gcv-excursoes-filters__row gcv-excursoes-filters__row--transport";
     rowTransport.appendChild(transportField);
 
-    rowSecondary.appendChild(priceField);
-    rowSecondary.appendChild(spotsField);
-
     grid.appendChild(rowTransport);
     grid.appendChild(rowPrimary);
-    grid.appendChild(rowSecondary);
 
     panel.appendChild(head);
     panel.appendChild(grid);
@@ -2391,19 +2356,12 @@
         emit();
       },
     );
+    var defaultRange = datePicker.getRange();
 
     var embarqueEl = panel.querySelector('[data-gcv-filter="embarque"]');
-    var priceMinEl = panel.querySelector('[data-gcv-filter="priceMin"]');
-    var priceMaxEl = panel.querySelector('[data-gcv-filter="priceMax"]');
-    var priceLabelEl = panel.querySelector("[data-gcv-price-label]");
-    var priceFillEl = panel.querySelector("[data-gcv-price-fill]");
     var transportComEl = panel.querySelector("[data-gcv-transport-com]");
     var transportSemEl = panel.querySelector("[data-gcv-transport-sem]");
     var statusEl = panel.querySelector('[data-gcv-filter="status"]');
-    var spotsMinEl = panel.querySelector('[data-gcv-filter="spotsMin"]');
-    var spotsMaxEl = panel.querySelector('[data-gcv-filter="spotsMax"]');
-    var spotsLabelEl = panel.querySelector("[data-gcv-spots-label]");
-    var spotsFillEl = panel.querySelector("[data-gcv-spots-fill]");
     var resultsEl = panel.querySelector("[data-gcv-filter-results]");
     var clearBtn = panel.querySelector("[data-gcv-filter-clear]");
     var toggleBtn = panel.querySelector("[data-gcv-filter-toggle]");
@@ -2429,43 +2387,6 @@
       });
     }
 
-    if (priceMinEl && priceMaxEl) {
-      priceMinEl.min = String(bounds.priceMin);
-      priceMinEl.max = String(bounds.priceMax);
-      priceMinEl.step = "1";
-      priceMinEl.value = String(bounds.priceMin);
-      priceMaxEl.min = String(bounds.priceMin);
-      priceMaxEl.max = String(bounds.priceMax);
-      priceMaxEl.step = "1";
-      priceMaxEl.value = String(bounds.priceMax);
-    }
-
-    if (spotsMinEl && spotsMaxEl) {
-      spotsMinEl.min = "0";
-      spotsMinEl.max = String(bounds.spotsMax);
-      spotsMinEl.value = "0";
-      spotsMaxEl.min = "0";
-      spotsMaxEl.max = String(bounds.spotsMax);
-      spotsMaxEl.value = String(bounds.spotsMax);
-    }
-
-    function updateRangeLabels() {
-      if (priceLabelEl && priceMinEl && priceMaxEl) {
-        priceLabelEl.textContent = tpl(s.filterPriceValue, {
-          min: priceMinEl.value,
-          max: priceMaxEl.value,
-        });
-        syncDualRangeFill(priceMinEl, priceMaxEl, priceFillEl);
-      }
-      if (spotsLabelEl && spotsMinEl && spotsMaxEl) {
-        spotsLabelEl.textContent = tpl(s.filterSpotsValue, {
-          min: spotsMinEl.value,
-          max: spotsMaxEl.value,
-        });
-        syncDualRangeFill(spotsMinEl, spotsMaxEl, spotsFillEl);
-      }
-    }
-
     function readFilters() {
       var range = datePicker.getRange();
       var clamped = clampIsoRangeToFloor(range.dateFrom, range.dateTo, bounds.dateMax);
@@ -2474,31 +2395,39 @@
         dateTo: clamped.dateTo,
         dateMax: bounds.dateMax,
         embarque: embarqueEl ? embarqueEl.value : "",
-        priceMin: priceMinEl ? parseInt(String(priceMinEl.value), 10) : bounds.priceMin,
-        priceMax: priceMaxEl ? parseInt(String(priceMaxEl.value), 10) : bounds.priceMax,
+        priceMin: bounds.priceMin,
+        priceMax: bounds.priceMax,
         transportCom: transportComEl ? transportComEl.checked : false,
         transportSem: transportSemEl ? transportSemEl.checked : true,
         status: statusEl ? statusEl.value : "",
-        spotsMin: spotsMinEl ? parseInt(String(spotsMinEl.value), 10) : 0,
-        spotsMax: spotsMaxEl ? parseInt(String(spotsMaxEl.value), 10) : bounds.spotsMax,
+        spotsMin: 0,
+        spotsMax: bounds.spotsMax,
       };
     }
 
+    function filtersAreDefault() {
+      var f = readFilters();
+      return (
+        f.dateFrom === defaultRange.dateFrom &&
+        f.dateTo === defaultRange.dateTo &&
+        !f.embarque &&
+        !f.status &&
+        f.transportSem &&
+        !f.transportCom
+      );
+    }
+
     function emit() {
-      updateRangeLabels();
+      if (clearBtn) clearBtn.hidden = filtersAreDefault();
       onChange(readFilters(), resultsEl);
     }
 
     function reset() {
       datePicker.reset();
       if (embarqueEl) embarqueEl.value = "";
-      if (priceMinEl) priceMinEl.value = String(bounds.priceMin);
-      if (priceMaxEl) priceMaxEl.value = String(bounds.priceMax);
       if (transportComEl) transportComEl.checked = false;
       if (transportSemEl) transportSemEl.checked = true;
       if (statusEl) statusEl.value = "";
-      if (spotsMinEl) spotsMinEl.value = "0";
-      if (spotsMaxEl) spotsMaxEl.value = String(bounds.spotsMax);
       emit();
     }
 
@@ -2519,7 +2448,6 @@
     });
     if (clearBtn) clearBtn.addEventListener("click", reset);
 
-    updateRangeLabels();
     emit();
     return { reset: reset, read: readFilters };
   }
@@ -2834,8 +2762,8 @@
       item.hora = horaExcursao(e);
       item.departureMs = excursaoDepartureEpochMs(e);
       item.dateIso = excursaoDateIso(e);
-      if (e.guiaNome) item.guiaNome = String(e.guiaNome);
-      if (e.guiaTelefone) item.guiaTelefone = String(e.guiaTelefone);
+      if (e.confirmada && e.guiaNome) item.guiaNome = String(e.guiaNome);
+      if (e.confirmada && e.guiaTelefone) item.guiaTelefone = String(e.guiaTelefone);
       item.comTransporte = e.comTransporte === true;
       item.walkGuideSeatOk = e.walkGuideSeatOk === true;
       if (e.meetingPoint) item.meetingPoint = String(e.meetingPoint);
@@ -3144,20 +3072,77 @@
     );
   }
 
+  var GUIA_NAME_PARTICLES = {
+    de: 1, da: 1, do: 1, dos: 1, das: 1, e: 1, di: 1, du: 1, del: 1, van: 1, von: 1, y: 1,
+  };
+
+  /** Primeira letra do nome + primeira letra do primeiro sobrenome + "." */
+  function guiaIniciaisTexto(raw) {
+    var parts = String(raw || "").trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return "";
+    var first = parts[0];
+    var surname = "";
+    for (var i = 1; i < parts.length; i++) {
+      if (GUIA_NAME_PARTICLES[parts[i].toLocaleLowerCase()]) continue;
+      surname = parts[i];
+      break;
+    }
+    var letters = first.charAt(0).toLocaleUpperCase() + (surname ? surname.charAt(0).toLocaleUpperCase() : "");
+    return letters ? letters + "." : "";
+  }
+
+  function guiaFotoHtml(foto) {
+    if (!foto) return guiaAvatarHtml();
+    return (
+      '<span class="gcv-excursoes-card__guide-photo-wrap">' +
+      '<img class="gcv-excursoes-card__guide-photo" src="' +
+      escapeHtml(foto) +
+      '" alt="" loading="lazy" decoding="async"></span>'
+    );
+  }
+
+  function guiaChipPendenteHtml(label, locale, idiomas, foto, ariaLabel) {
+    var inner =
+      guiaFotoHtml(foto) +
+      '<div class="gcv-excursoes-card__guide-info">' +
+      '<span class="gcv-excursoes-card__guide-label">Guia</span>' +
+      '<span class="gcv-excursoes-card__guide-name">' +
+      escapeHtml(label) +
+      "</span>" +
+      guiaLangsHtmlFromCodes(idiomas || ["pt"], locale) +
+      "</div>";
+    if (!ariaLabel) {
+      return '<div class="gcv-excursoes-card__guide gcv-excursoes-card__guide--pending">' + inner + "</div>";
+    }
+    return (
+      '<button type="button" class="gcv-excursoes-card__guide gcv-excursoes-card__guide--btn gcv-excursoes-card__guide--pending" data-guia-sigilo="1" aria-label="' +
+      escapeHtml(ariaLabel) +
+      '">' +
+      inner +
+      "</button>"
+    );
+  }
+
   function guiaChipHtml(e, locale, s) {
-    var nome = e && e.guiaNome ? String(e.guiaNome).trim() : "";
-    if (!nome || !hasGuiaDefinido(e)) {
-      return (
-        '<div class="gcv-excursoes-card__guide gcv-excursoes-card__guide--pending">' +
-        guiaAvatarHtml() +
-        '<div class="gcv-excursoes-card__guide-info">' +
-        '<span class="gcv-excursoes-card__guide-label">Guia</span>' +
-        '<span class="gcv-excursoes-card__guide-name">' +
-        escapeHtml(s.guiaPending || "A definir") +
-        "</span>" +
-        guiaLangsHtmlFromCodes(["pt"], locale) +
-        "</div></div>"
+    if (!hasGuiaDefinido(e)) {
+      return guiaChipPendenteHtml(s.guiaPending || "A definir", locale, ["pt"]);
+    }
+    if (!e.confirmada) {
+      var ini =
+        (e.guiaIniciais && String(e.guiaIniciais).trim()) ||
+        guiaIniciaisTexto(e.guiaNomeCompleto || e.guiaNome || "");
+      var langs = e && Array.isArray(e.guiaIdiomas) && e.guiaIdiomas.length ? e.guiaIdiomas : ["pt"];
+      return guiaChipPendenteHtml(
+        ini || s.guiaPending || "A definir",
+        locale,
+        langs,
+        e.guiaFoto ? String(e.guiaFoto) : "",
+        s.guiaAboutSecret || "Sobre o guia"
       );
+    }
+    var nome = String(e.guiaNome || e.guiaNomeCompleto || "").trim();
+    if (!nome) {
+      return guiaChipPendenteHtml(s.guiaPending || "A definir", locale, ["pt"]);
     }
     var foto = e.guiaFoto ? String(e.guiaFoto) : null;
     var slug = resolveGuiaSlug(e, nome);
@@ -3365,8 +3350,8 @@
       dateIso: dateIso,
       dayNum: e && e.dayNum != null ? String(e.dayNum) : "",
       monthName: e && e.monthName ? String(e.monthName) : "",
-      guiaNome: e && e.guiaNome ? String(e.guiaNome) : "",
-      guiaTelefone: e && e.guiaTelefone ? String(e.guiaTelefone) : "",
+      guiaNome: e && e.confirmada && e.guiaNome ? String(e.guiaNome) : "",
+      guiaTelefone: e && e.confirmada && e.guiaTelefone ? String(e.guiaTelefone) : "",
     };
   }
 
@@ -3414,8 +3399,8 @@
         if (!out.dateIso) out.dateIso = excursaoDateIso(rows[i]);
         if (!out.dayNum && rows[i].dayNum != null) out.dayNum = String(rows[i].dayNum);
         if (!out.monthName && rows[i].monthName) out.monthName = String(rows[i].monthName);
-        if (!out.guiaNome && rows[i].guiaNome) out.guiaNome = String(rows[i].guiaNome);
-        if (!out.guiaTelefone && rows[i].guiaTelefone) out.guiaTelefone = String(rows[i].guiaTelefone);
+        if (!out.guiaNome && rows[i].confirmada && rows[i].guiaNome) out.guiaNome = String(rows[i].guiaNome);
+        if (!out.guiaTelefone && rows[i].confirmada && rows[i].guiaTelefone) out.guiaTelefone = String(rows[i].guiaTelefone);
         if (!out.meetingPoint && rows[i].meetingPoint) out.meetingPoint = String(rows[i].meetingPoint);
         if ((out.meetingLat == null || out.meetingLat === "") && rows[i].meetingLat != null) {
           out.meetingLat = rows[i].meetingLat;
@@ -5509,7 +5494,75 @@
     });
   }
 
+  /** O Brick do Mercado Pago escreve "Sem acréscimo" e não aceita esse texto na customização. */
+  function mpInterestFreeLabel(value) {
+    return String(value || "").replace(/sem\s+acr[eé]scimos?/gi, function (m) {
+      return m.charAt(0) === "S" ? "Sem juros" : "sem juros";
+    });
+  }
+
+  function rewriteMpInterestFree(node) {
+    if (!node) return;
+    if (node.nodeType === 3) {
+      if (node.nodeValue && /acr[eé]scimo/i.test(node.nodeValue)) {
+        var next = mpInterestFreeLabel(node.nodeValue);
+        if (next !== node.nodeValue) node.nodeValue = next;
+      }
+      return;
+    }
+    if (node.nodeType !== 1 && node.nodeType !== 11) return;
+    var walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+    var text;
+    while ((text = walker.nextNode())) {
+      if (!text.nodeValue || !/acr[eé]scimo/i.test(text.nodeValue)) continue;
+      var updated = mpInterestFreeLabel(text.nodeValue);
+      if (updated !== text.nodeValue) text.nodeValue = updated;
+    }
+    if (!node.querySelectorAll) return;
+    var hosts = node.querySelectorAll("*");
+    for (var i = 0; i < hosts.length; i++) {
+      if (hosts[i].shadowRoot) rewriteMpInterestFree(hosts[i].shadowRoot);
+    }
+  }
+
+  function watchMpInterestFree(root) {
+    if (!root || typeof MutationObserver !== "function") return function () {};
+    var seen = typeof WeakSet === "function" ? new WeakSet() : null;
+    var obs = new MutationObserver(function () { run(); });
+    function arm(node) {
+      if (!node || (seen && seen.has(node))) return;
+      if (seen) seen.add(node);
+      try {
+        obs.observe(node, { subtree: true, childList: true, characterData: true });
+      } catch (e) { /* noop */ }
+    }
+    function armShadows(node) {
+      if (!node || !node.querySelectorAll) return;
+      var hosts = node.querySelectorAll("*");
+      for (var i = 0; i < hosts.length; i++) {
+        if (!hosts[i].shadowRoot) continue;
+        arm(hosts[i].shadowRoot);
+        armShadows(hosts[i].shadowRoot);
+      }
+    }
+    function run() {
+      rewriteMpInterestFree(root);
+      armShadows(root);
+    }
+    arm(root);
+    run();
+    return function () { obs.disconnect(); };
+  }
+
+  function stopMpInterestFree(modal) {
+    if (modal && modal._gcvMpInterestStop) {
+      try { modal._gcvMpInterestStop(); } catch (e) { /* noop */ }
+      modal._gcvMpInterestStop = null;
+    }
+  }
+
   function closeMpCardForm(modal) {
+    stopMpInterestFree(modal);
     modal._gcvMpSeq = (modal._gcvMpSeq || 0) + 1;
     if (modal._gcvMpBrick && typeof modal._gcvMpBrick.unmount === "function") {
       try { modal._gcvMpBrick.unmount(); } catch (e) { /* noop */ }
@@ -5565,6 +5618,8 @@
       '<p class="gcv-pix-modal__email-status gcv-pix-modal__email-status--err" id="gcv-mp-card-error" hidden></p>';
     if (status && status.parentNode) status.parentNode.insertBefore(wrap, status);
     else modal.querySelector(".gcv-pix-modal__panel").appendChild(wrap);
+    stopMpInterestFree(modal);
+    modal._gcvMpInterestStop = watchMpInterestFree(wrap.querySelector("#gcv-mp-brick"));
     showPayBack(modal, "");
 
     if (!quote || !quote.ok) {
@@ -7605,6 +7660,23 @@
       .catch(function () {});
   }
 
+  function profileGuiaSigilo(row, s) {
+    var ini = row && row.guiaIniciais ? String(row.guiaIniciais).trim() : "";
+    var idiomas =
+      row && Array.isArray(row.guiaIdiomas) && row.guiaIdiomas.length
+        ? normalizeGuiaIdiomas(row.guiaIdiomas)
+        : ["pt"];
+    return {
+      nome: ini || (s && s.guiaPending) || "Guia",
+      nomeCompleto: "",
+      foto: row && row.guiaFoto ? String(row.guiaFoto) : "",
+      idiomas: idiomas,
+      bio: row && row.guiaBio ? row.guiaBio : {},
+      guideUserId: parseInt(String((row && (row.guideUserId || row.guiaId)) || 0), 10) || 0,
+      sigilo: true,
+    };
+  }
+
   function openGuiaModal(slug, trigger, locale, s, profiles) {
     var card = trigger && trigger.closest ? trigger.closest(".gcv-excursoes-card") : null;
     var row = null;
@@ -7618,7 +7690,8 @@
         if (rows && Number.isFinite(idx) && rows[idx]) row = rows[idx];
       }
     }
-    var profile = resolveGuiaProfile(slug, row, profiles);
+    var sigilo = trigger && trigger.getAttribute && trigger.getAttribute("data-guia-sigilo") === "1";
+    var profile = sigilo ? profileGuiaSigilo(row, s) : resolveGuiaProfile(slug, row, profiles);
     if (!profile || !profile.nome) return;
     var modal = ensureGuiaModal();
     var loc = locale === "en" || locale === "es" ? locale : "pt";
@@ -7633,12 +7706,15 @@
     var photo = modal.querySelector(".gcv-guia-modal__photo");
     if (photo) {
       photo.src = profile.foto || "";
-      photo.alt = profile.nome || "";
+      photo.alt = profile.sigilo ? "" : profile.nome || "";
     }
     var title = modal.querySelector(".gcv-guia-modal__name");
     if (title) title.textContent = profile.nome || "";
     var full = modal.querySelector(".gcv-guia-modal__fullname");
-    if (full) full.textContent = profile.nomeCompleto || "";
+    if (full) {
+      full.textContent = profile.sigilo ? "" : profile.nomeCompleto || "";
+      full.hidden = !!profile.sigilo || !String(full.textContent || "").trim();
+    }
     var langs = modal.querySelector(".gcv-guia-modal__langs");
     if (langs) {
       langs.innerHTML =
@@ -7691,13 +7767,14 @@
         }
       });
       document.addEventListener("click", function (e) {
-        var btn = e.target.closest("[data-guia-profile]");
+        var btn = e.target.closest("[data-guia-profile], [data-guia-sigilo]");
         if (!btn) return;
         var sec = btn.closest("#excursoes-junho");
         var loc = sec ? detectLocale(sec) : locale;
         var strings = STRINGS[loc] || STRINGS.pt;
-        var slug = btn.getAttribute("data-guia-profile");
-        if (!slug) return;
+        var sigilo = btn.getAttribute("data-guia-sigilo") === "1";
+        var slug = btn.getAttribute("data-guia-profile") || "";
+        if (!sigilo && !slug) return;
         e.preventDefault();
         e.stopPropagation();
         openGuiaModal(slug, btn, loc, strings, profiles);

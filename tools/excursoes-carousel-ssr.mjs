@@ -153,6 +153,7 @@ const SSR = {
     cta: "Quero participar",
     guiaPending: "A definir",
     guiaAbout: "Sobre {{nome}}",
+    guiaAboutSecret: "Sobre o guia",
     guiaModalClose: "Fechar",
   },
   en: {
@@ -207,6 +208,7 @@ const SSR = {
     cta: "I want to join",
     guiaPending: "To be confirmed",
     guiaAbout: "About {{nome}}",
+    guiaAboutSecret: "About the guide",
     guiaModalClose: "Close",
   },
   es: {
@@ -261,6 +263,7 @@ const SSR = {
     cta: "Quiero participar",
     guiaPending: "Por definir",
     guiaAbout: "Acerca de {{nome}}",
+    guiaAboutSecret: "Acerca del guía",
     guiaModalClose: "Cerrar",
   },
 };
@@ -600,20 +603,65 @@ function guiaAvatarSsr() {
   );
 }
 
+const GUIA_NAME_PARTICLES = { de: 1, da: 1, do: 1, dos: 1, das: 1, e: 1, di: 1, du: 1, del: 1, van: 1, von: 1, y: 1 };
+
+function guiaIniciaisSsr(raw) {
+  const parts = String(raw || "").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "";
+  let surname = "";
+  for (let i = 1; i < parts.length; i++) {
+    if (GUIA_NAME_PARTICLES[parts[i].toLocaleLowerCase()]) continue;
+    surname = parts[i];
+    break;
+  }
+  const letters = parts[0].charAt(0).toLocaleUpperCase() + (surname ? surname.charAt(0).toLocaleUpperCase() : "");
+  return letters ? letters + "." : "";
+}
+
+function guiaFotoSsr(foto) {
+  if (!foto) return guiaAvatarSsr();
+  return (
+    `<span class="gcv-excursoes-card__guide-photo-wrap">` +
+    `<img class="gcv-excursoes-card__guide-photo" src="${esc(foto)}" alt="" loading="lazy" width="230" height="90">` +
+    `</span>`
+  );
+}
+
+function guiaChipPendenteSsr(label, locale, idiomas, foto, ariaLabel) {
+  const inner =
+    guiaFotoSsr(foto) +
+    `<div class="gcv-excursoes-card__guide-info">` +
+    `<span class="gcv-excursoes-card__guide-label">Guia</span>` +
+    `<span class="gcv-excursoes-card__guide-name">${esc(label)}</span>` +
+    guiaLangsSsr("pt", locale, { guiaIdiomas: idiomas || ["pt"] }) +
+    `</div>`;
+  if (!ariaLabel) {
+    return `<div class="gcv-excursoes-card__guide gcv-excursoes-card__guide--pending">${inner}</div>`;
+  }
+  return (
+    `<button type="button" class="gcv-excursoes-card__guide gcv-excursoes-card__guide--btn gcv-excursoes-card__guide--pending" data-guia-sigilo="1" aria-label="${esc(ariaLabel)}">` +
+    `${inner}</button>`
+  );
+}
+
 function guiaChipSsr(e, locale) {
   const s = SSR[locale] || SSR.pt;
-  const nome = e && e.guiaNome ? String(e.guiaNome).trim() : "";
-  if (!nome || !hasGuiaDefinidoSsr(e)) {
-    return (
-      `<div class="gcv-excursoes-card__guide gcv-excursoes-card__guide--pending">` +
-      guiaAvatarSsr() +
-      `<div class="gcv-excursoes-card__guide-info">` +
-      `<span class="gcv-excursoes-card__guide-label">Guia</span>` +
-      `<span class="gcv-excursoes-card__guide-name">${esc(s.guiaPending || "A definir")}</span>` +
-      guiaLangsSsr("pt", locale, { guiaIdiomas: ["pt"] }) +
-      `</div></div>`
+  if (!hasGuiaDefinidoSsr(e)) {
+    return guiaChipPendenteSsr(s.guiaPending || "A definir", locale, ["pt"]);
+  }
+  if (!e.confirmada) {
+    const ini = (e.guiaIniciais && String(e.guiaIniciais).trim()) || guiaIniciaisSsr(e.guiaNomeCompleto || e.guiaNome || "");
+    const langs = Array.isArray(e.guiaIdiomas) && e.guiaIdiomas.length ? e.guiaIdiomas : ["pt"];
+    return guiaChipPendenteSsr(
+      ini || s.guiaPending || "A definir",
+      locale,
+      langs,
+      e.guiaFoto ? String(e.guiaFoto) : "",
+      s.guiaAboutSecret || "Sobre o guia"
     );
   }
+  const nome = String((e && e.guiaNome) || (e && e.guiaNomeCompleto) || "").trim();
+  if (!nome) return guiaChipPendenteSsr(s.guiaPending || "A definir", locale, ["pt"]);
   const foto = e.guiaFoto ? String(e.guiaFoto) : null;
   const slug = (e.guiaSlug && String(e.guiaSlug).trim()) || GUIA_PROFILE_SLUG[nome] || slugifyGuiaNome(nome);
   const aboutLabel = tpl(s.guiaAbout, { nome });

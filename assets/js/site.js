@@ -1259,7 +1259,7 @@
         return;
       }
       var script = document.createElement("script");
-      script.src = "/assets/js/excursoes-carousel.js?v=1.1.71";
+      script.src = "/assets/js/excursoes-carousel.js?v=1.1.72";
       script.onload = go;
       document.head.appendChild(script);
     }
@@ -2090,10 +2090,10 @@
   }
 
   /**
-   * Sem translado, excursão: até 4 pessoas pagam o PAX 4-. Da 5ª em diante,
-   * total = 4 × PAX 4- + (pessoas − 4) × PAX 5+. PAX 5+ vazio ainda repete o PAX 4-
+   * Sem translado, excursão: até 4 pessoas pagam o PAX 4. Da 5ª em diante,
+   * total = 4 × PAX 4 + (pessoas − 4) × PAX 5+. PAX 5+ vazio ainda repete o PAX 4
    * para não zerar um passeio já publicado.
-   * Sem translado, privativo de 1 pessoa até o quórum: quórum × PAX 4- Excursão.
+   * Sem translado, privativo de 1 pessoa até o quórum: quórum × PAX 4 Excursão.
    * Acima do quórum: esse pacote + (pessoas − quórum) × PAX 5+ Privativo.
    * Com translado não há faixa: o preço por pessoa (ou por carro) não muda.
    */

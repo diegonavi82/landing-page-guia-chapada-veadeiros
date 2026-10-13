@@ -607,6 +607,37 @@
     });
   }
 
+  function textoBusca(s) {
+    return String(s || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+  }
+
+  function saidasTexto(a) {
+    var saidas = Array.isArray(a.saidas_lista) ? a.saidas_lista : [];
+    if (saidas.length) {
+      return saidas.map(function (s) {
+        return [s.nome || 'Saída', s.codigo, s.detalhe].filter(function (p) {
+          return String(p || '').trim();
+        }).join(' ');
+      }).join(' ');
+    }
+    if (a.entry_price_label) return 'Entrada ' + a.entry_price_label;
+    if (!a.tarifario_id && !a.tarifa_guia && !a.tarifa_translado) return 'Sem tarifa fora do site';
+    return 'Tarifário vinculado';
+  }
+
+  var xpFiltros = { titulo: '', categorias: '', cidade: '', tags: '', embarques: '', status: '' };
+  var XP_FILTRO_COLS = [
+    ['titulo', 'Filtrar título'],
+    ['categorias', 'Filtrar categorias'],
+    ['cidade', 'Filtrar cidade'],
+    ['tags', 'Filtrar tags'],
+    ['embarques', 'Filtrar embarques'],
+    ['status', 'Filtrar status']
+  ];
+
   function saidasHtml(a) {
     var saidas = Array.isArray(a.saidas_lista) ? a.saidas_lista : [];
     if (saidas.length) {
@@ -666,27 +697,43 @@
     );
   }
 
-  function paintAttractionsList(rows, terapias, terapiaErro) {
-    var list = root('cms-attr-list');
-    if (!list) return;
-    state.attractions = (rows || []).filter(function (a) {
-      return String((a && a.title_pt) || '').indexOf(' + ') < 0;
+  function linhaBuscaTrilha(a) {
+    var tags = (a.experiencia && Array.isArray(a.experiencia.tags)) ? a.experiencia.tags : [];
+    return {
+      titulo: a.title_pt || '',
+      categorias: categoriasTrilha(a).join(' '),
+      cidade: cidadesTrilha(a).join(' '),
+      tags: tags.join(' '),
+      embarques: saidasTexto(a),
+      status: statusExperiencia(a.status).texto,
+      html: trilhaLinha(a)
+    };
+  }
+
+  function linhaBuscaTerapia(t) {
+    var preco = window.GcvAdminTerapia ? window.GcvAdminTerapia.money(t.preco_hora_cents) : '';
+    var tempo = t.duracao_padrao_min ? t.duracao_padrao_min + ' min' : '';
+    var detalhe = (preco ? preco + '/h' : 'por hora') + (tempo ? ' · ' + tempo : '') + ' · fora do site';
+    return {
+      titulo: t.nome || '',
+      categorias: 'Terapia',
+      cidade: '',
+      tags: '',
+      embarques: 'Por hora ' + detalhe,
+      status: statusTerapia(t.status).texto,
+      html: terapiaLinha(t)
+    };
+  }
+
+  function experienciaPassaFiltro(row) {
+    return XP_FILTRO_COLS.every(function (col) {
+      var q = textoBusca(xpFiltros[col[0]]);
+      if (!q) return true;
+      return textoBusca(row[col[0]]).indexOf(q) >= 0;
     });
-    state.terapias = terapias || [];
-    var linhas = state.attractions.map(trilhaLinha).concat(state.terapias.map(terapiaLinha)).join('');
-    if (!linhas) {
-      linhas = '<tr><td class="xp-grade__vazio" colspan="7">Nenhuma experiência cadastrada.</td></tr>';
-    }
-    var aviso = terapiaErro
-      ? '<p class="gcv-dash-alert xp-lista-erro">' + esc(terapiaErro) + '</p>'
-      : '';
-    list.innerHTML =
-      aviso +
-      '<div class="xp-grade-wrap"><table class="xp-grade">' +
-      '<thead><tr>' +
-      '<th>Título</th><th>Categorias</th><th>Cidade</th><th>Tags</th>' +
-      '<th>Embarques e tarifas</th><th>Status</th><th>Ações</th>' +
-      '</tr></thead><tbody>' + linhas + '</tbody></table></div>';
+  }
+
+  function ligarAcoesExperiencia(list) {
     list.querySelectorAll('[data-edit-attr]').forEach(function (btn) {
       btn.onclick = function () {
         get('/api/admin/attractions.php?id=' + btn.getAttribute('data-edit-attr'), function (e, r) {
@@ -705,6 +752,48 @@
     bindRowDelete(list, 'data-del-attr', '/api/admin/attractions.php', function () {
       renderAttractions();
     });
+  }
+
+  function pintarCorpoExperiencias(list) {
+    var tbody = list.querySelector('#xp-grade-body');
+    if (!tbody) return;
+    var visiveis = (state.xpLinhas || []).filter(experienciaPassaFiltro);
+    tbody.innerHTML = visiveis.length
+      ? visiveis.map(function (row) { return row.html; }).join('')
+      : '<tr><td class="xp-grade__vazio" colspan="7">' +
+        ((state.xpLinhas || []).length ? 'Nenhuma experiência com esses filtros.' : 'Nenhuma experiência cadastrada.') +
+        '</td></tr>';
+    ligarAcoesExperiencia(list);
+  }
+
+  function paintAttractionsList(rows, terapias, terapiaErro) {
+    var list = root('cms-attr-list');
+    if (!list) return;
+    state.attractions = (rows || []).filter(function (a) {
+      return String((a && a.title_pt) || '').indexOf(' + ') < 0;
+    });
+    state.terapias = terapias || [];
+    state.xpLinhas = state.attractions.map(linhaBuscaTrilha).concat(state.terapias.map(linhaBuscaTerapia));
+    var aviso = terapiaErro
+      ? '<p class="gcv-dash-alert xp-lista-erro">' + esc(terapiaErro) + '</p>'
+      : '';
+    var filtros = '<tr class="xp-grade__filtros">' + XP_FILTRO_COLS.map(function (col) {
+      return '<th><input class="xp-grade__filtro" data-xp-filtro="' + col[0] + '" value="' + esc(xpFiltros[col[0]] || '') + '" placeholder="' + col[1] + '" aria-label="' + col[1] + '" /></th>';
+    }).join('') + '<th></th></tr>';
+    list.innerHTML =
+      aviso +
+      '<div class="xp-grade-wrap"><table class="xp-grade">' +
+      '<thead><tr>' +
+      '<th>Título</th><th>Categorias</th><th>Cidade</th><th>Tags</th>' +
+      '<th>Embarques e tarifas</th><th>Status</th><th>Ações</th>' +
+      '</tr>' + filtros + '</thead><tbody id="xp-grade-body"></tbody></table></div>';
+    list.querySelectorAll('[data-xp-filtro]').forEach(function (input) {
+      input.addEventListener('input', function () {
+        xpFiltros[input.getAttribute('data-xp-filtro')] = input.value;
+        pintarCorpoExperiencias(list);
+      });
+    });
+    pintarCorpoExperiencias(list);
   }
 
   function renderAttractions() {

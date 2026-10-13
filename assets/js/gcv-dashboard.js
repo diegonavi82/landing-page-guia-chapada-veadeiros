@@ -1631,7 +1631,7 @@
     var groupMeta = {
       passeios: {
         title: 'Passeios do dia',
-        hint: 'Um passeio junta de 1 a 3 experiências. No site só entra o passeio feito só de atrativo (trilha). 1 deixa só o passeio unitário. O quórum é o pacote mínimo do privativo sem translado: o cliente paga esse número × PAX 4- Excursão. Cada tarifário pode ter outro quórum.'
+        hint: 'Um passeio junta de 1 a 3 experiências. No site só entra o passeio feito só de atrativo (trilha). 1 deixa só o passeio unitário. O quórum é o pacote mínimo do privativo sem translado: o cliente paga esse número × PAX 4 Excursão. Cada tarifário pode ter outro quórum.'
       },
       notify: {
         title: 'Notificações de passeio',
@@ -1643,7 +1643,7 @@
       },
       regras: {
         title: 'Tarifa do roteiro',
-        hint: 'A diária mínima de guiagem trava a tarifa: PAX 4- Excursão × quórum não pode ficar abaixo dela. O pagamento mínimo ao guia tem que ser menor que essa diária. A tarifa progressiva só sobe preço de passeio do admin ou aberto pelo cliente, nunca o do guia.'
+        hint: 'A diária mínima de guiagem trava a tarifa: PAX 4 Excursão × quórum não pode ficar abaixo dela. O pagamento mínimo ao guia tem que ser menor que essa diária. A tarifa progressiva só sobe preço de passeio do admin ou aberto pelo cliente, nunca o do guia.'
       },
       finance: {
         title: 'Financeiro e repasse',

@@ -160,6 +160,105 @@ function gcv_format_guide_phone(?string $ddi, ?string $phone): string
     return $ddi . ' ' . $digits;
 }
 
+/** @return array{0:string,1:string} primeiro nome e primeiro sobrenome, sem apelido */
+function gcv_guide_name_parts(string $legal): array
+{
+    $particles = ['de', 'da', 'do', 'dos', 'das', 'e', 'di', 'du', 'del', 'van', 'von', 'y'];
+    $parts = preg_split('/\s+/u', trim($legal)) ?: [];
+    $parts = array_values(array_filter($parts, static function ($part) {
+        return $part !== '';
+    }));
+    if (!$parts) {
+        return ['', ''];
+    }
+    $first = (string)$parts[0];
+    $surname = '';
+    for ($i = 1, $n = count($parts); $i < $n; $i++) {
+        if (in_array(mb_strtolower((string)$parts[$i]), $particles, true)) {
+            continue;
+        }
+        $surname = (string)$parts[$i];
+        break;
+    }
+    return [$first, $surname];
+}
+
+function gcv_guide_initials(string $legal): string
+{
+    [$first, $surname] = gcv_guide_name_parts($legal);
+    $a = $first !== '' ? mb_strtoupper(mb_substr($first, 0, 1)) : '';
+    $b = $surname !== '' ? mb_strtoupper(mb_substr($surname, 0, 1)) : '';
+    $letters = $a . $b;
+    return $letters !== '' ? $letters . '.' : '';
+}
+
+function gcv_guide_public_name(string $legal): string
+{
+    [$first, $surname] = gcv_guide_name_parts($legal);
+    $name = trim($first . ($surname !== '' ? ' ' . $surname : ''));
+    return $name !== '' ? $name : trim($legal);
+}
+
+/** Troca nome, sobrenome e apelido por iniciais, sem cortar no meio de outra palavra. */
+function gcv_redact_guide_text(string $text, array $needles, string $replacement): string
+{
+    $clean = [];
+    foreach ($needles as $needle) {
+        $needle = trim((string)$needle);
+        if ($needle === '' || mb_strlen($needle) < 3) {
+            continue;
+        }
+        $clean[$needle] = $needle;
+    }
+    $clean = array_values($clean);
+    usort($clean, static function (string $a, string $b): int {
+        return mb_strlen($b) <=> mb_strlen($a);
+    });
+    foreach ($clean as $needle) {
+        $pattern = '/(?<![\p{L}\p{M}\p{N}])' . preg_quote($needle, '/') . '(?![\p{L}\p{M}\p{N}])/iu';
+        $next = preg_replace($pattern, $replacement, $text);
+        if (is_string($next)) {
+            $text = $next;
+        }
+    }
+    return $text;
+}
+
+/** Em formação o card público não leva nome, apelido nem contato. A foto e a bio (sem o nome) continuam. */
+function gcv_carousel_hide_guide_until_confirmed(array $card): array
+{
+    $apelido = trim((string)($card['guiaApelido'] ?? ''));
+    unset($card['guiaApelido']);
+    if (!empty($card['confirmada'])) {
+        return $card;
+    }
+    $initials = trim((string)($card['guiaIniciais'] ?? ''));
+    $legal = trim((string)($card['guiaNomeCompleto'] ?? ''));
+    $publico = trim((string)($card['guiaNome'] ?? ''));
+    [$first, $surname] = gcv_guide_name_parts($legal !== '' ? $legal : $publico);
+    if (isset($card['guiaBio']) && is_array($card['guiaBio'])) {
+        $needles = [$legal, $publico, $apelido, trim($first . ' ' . $surname), $first, $surname];
+        foreach (['pt', 'en', 'es'] as $lang) {
+            if (!isset($card['guiaBio'][$lang]) || !is_array($card['guiaBio'][$lang])) {
+                continue;
+            }
+            $card['guiaBio'][$lang] = array_map(static function ($paragraph) use ($needles, $initials) {
+                return gcv_redact_guide_text((string)$paragraph, $needles, $initials);
+            }, $card['guiaBio'][$lang]);
+        }
+    }
+    unset(
+        $card['guiaNome'],
+        $card['guiaNomeCompleto'],
+        $card['guiaTelefone'],
+        $card['guiaSlug']
+    );
+    if ($initials !== '') {
+        $card['guiaIniciais'] = $initials;
+    }
+    return $card;
+}
+
 function gcv_row_to_card(array $r, string $lang, array $months, array $weekdays): array
 {
     $attrs = gcv_excursion_load_attractions((int)$r['id']);
@@ -186,7 +285,11 @@ function gcv_row_to_card(array $r, string $lang, array $months, array $weekdays)
     if ($cartSlug === '') {
         $cartSlug = ($slug !== '' ? $slug : 'excursao') . '-' . $r['date_iso'] . '-' . str_replace(':', '', $hora);
     }
-    $guideName = (string)($r['guide_nickname'] ?: $r['guide_name'] ?: '');
+    $legalName = trim((string)($r['guide_full_name'] ?? ''));
+    if ($legalName === '') {
+        $legalName = trim((string)($r['guide_name'] ?? ''));
+    }
+    $guideName = gcv_guide_public_name($legalName);
     $guidePhoto = (string)($r['guide_photo'] ?: $r['guide_photo_3x4'] ?: '');
     $guidePhone = gcv_format_guide_phone(
         isset($r['guide_phone_ddi']) ? (string)$r['guide_phone_ddi'] : null,
@@ -246,15 +349,18 @@ function gcv_row_to_card(array $r, string $lang, array $months, array $weekdays)
     if ($guideId > 0) {
         $card['guideUserId'] = $guideId;
     }
-    if ($guideName !== '') {
+    if ($legalName !== '') {
         $card['guiaNome'] = $guideName;
+        $card['guiaIniciais'] = gcv_guide_initials($legalName);
         if ($guidePhoto !== '') $card['guiaFoto'] = $guidePhoto;
         if ($guidePhone !== '') $card['guiaTelefone'] = $guidePhone;
-        $fullName = trim((string)($r['guide_full_name'] ?? ''));
-        if ($fullName !== '') {
-            $card['guiaNomeCompleto'] = $fullName;
+        $card['guiaNomeCompleto'] = $legalName;
+        $nickname = trim((string)($r['guide_nickname'] ?? ''));
+        if ($nickname !== '') {
+            $card['guiaApelido'] = $nickname;
         }
-        $card['guiaSlug'] = gcv_guide_public_slug($guideName, (int)($r['guide_user_id'] ?? 0));
+        $slugSource = trim((string)($nickname !== '' ? $nickname : ($r['guide_name'] ?: $legalName)));
+        $card['guiaSlug'] = gcv_guide_public_slug($slugSource, (int)($r['guide_user_id'] ?? 0));
         $card['guiaIdiomas'] = gcv_guide_languages_normalize($r['guide_languages_json'] ?? null);
         $bio = gcv_guide_bio_i18n(
             isset($r['guide_bio_pt']) ? (string)$r['guide_bio_pt'] : null,
@@ -306,14 +412,14 @@ function gcv_row_to_cards(array $r, string $lang, array $months, array $weekdays
 
     if ($legacyTransportOnly) {
         $walk['comTransporte'] = true;
-        return [$walk];
+        return [gcv_carousel_hide_guide_until_confirmed($walk)];
     }
 
     $walk['comTransporte'] = false;
     $walk['walkGuideSeatOk'] = gcv_walk_has_spare_guide_seat($r);
     $cards = [$walk];
     if (!$offer || !empty($occ['transport_cancelled'])) {
-        return $cards;
+        return array_map('gcv_carousel_hide_guide_until_confirmed', $cards);
     }
 
     $van = $walk;
@@ -331,7 +437,7 @@ function gcv_row_to_cards(array $r, string $lang, array $months, array $weekdays
     $van['confirmada'] = $vanMet;
     $van['walkGuideSeatOk'] = true;
     $cards[] = $van;
-    return $cards;
+    return array_map('gcv_carousel_hide_guide_until_confirmed', $cards);
 }
 
 /**

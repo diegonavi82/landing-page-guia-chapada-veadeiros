@@ -283,7 +283,7 @@ function gcv_related_tour_one(PDO $pdo, int $passeioId): array
     foreach ($pdo->query('SHOW COLUMNS FROM gcv_attractions')->fetchAll() as $col) {
         $cols[strtolower((string)($col['Field'] ?? ''))] = true;
     }
-    $partes = ['id', 'title_pt', 'slug', 'duration_minutes', 'duracao_json', 'cover_url', 'experiencia_json', 'saidas_json', 'tarifa_guia', 'tarifa_translado', 'tarifario_id'];
+    $partes = ['id', 'title_pt', 'slug', 'duration_minutes', 'duracao_json', 'cover_url', 'experiencia_json', 'saidas_json', 'tarifa_guia', 'tarifa_translado', 'tarifario_id', 'categorias'];
     $select = [];
     foreach ($partes as $nome) {
         if (!empty($cols[$nome])) {
@@ -304,8 +304,10 @@ function gcv_related_tour_one(PDO $pdo, int $passeioId): array
     }
     require_once __DIR__ . '/tarifarios.php';
     $attractions = [];
+    $catsPartes = [];
     $mapaPartes = gcv_cidades_saida_mapa($pdo);
     foreach ($stmt->fetchAll() as $row) {
+        $catsPartes[] = $row['categorias'] ?? null;
         $slug = (string)$row['slug'];
         $tarifaParte = gcv_tarifa_resolver(
             $pdo,
@@ -388,7 +390,7 @@ function gcv_related_tour_one(PDO $pdo, int $passeioId): array
         'tarifa_translado' => $tarifaTranslado,
         'saidas_tarifas' => $saidasTarifas,
         'duracao_cidades' => $duracao,
-        'categorias' => gcv_passeio_categorias_parse($passeio['categorias'] ?? null, count($attractions)),
+        'categorias' => gcv_passeio_categorias_merge($catsPartes),
         'tarifa' => $tarifaPublica,
         'saidas' => gcv_saidas_public(
             $inter,

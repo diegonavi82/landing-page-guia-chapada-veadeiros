@@ -116,13 +116,17 @@
   }
 
   function rotuloTarifa(item) {
-    var cod = String(item.codigo || '').toUpperCase();
+    var exc = Math.round(Number(item.excursao) || 0);
+    var pri = Math.round(Number(item.privativo) || 0);
     if (item.tipo === 'guia') {
-      var exc = item.excursao_5 > 0 ? item.excursao + ' (' + item.excursao_5 + ')' : String(item.excursao);
-      var pri = item.privativo_5 > 0 ? item.privativo + ' (' + item.privativo_5 + ')' : String(item.privativo);
-      return cod + ' · excursão ' + exc + ' / privativo ' + pri;
+      var exc5 = Math.round(Number(item.excursao_5) || 0);
+      var pri5 = Math.round(Number(item.privativo_5) || 0);
+      if (exc < 1 && pri < 1) return '';
+      if (exc5 < 1 || pri5 < 1) return 'EXC' + exc + ' / PRI' + pri;
+      return 'EXC' + exc + '(' + exc5 + ') / PRI' + pri + '(' + pri5 + ')';
     }
-    return cod + ' · excursão ' + item.excursao + ' / privativo ' + item.privativo;
+    if (exc < 1 && pri < 1) return '';
+    return 'EXC' + exc + 'T / PRI' + (pri * 4) + 'T';
   }
 
   function ingressoInicial(a, x) {
@@ -282,7 +286,6 @@
       catalogoSaida.push({ key: key, nome: salvo.nome || key });
     });
     var chavesIniciais = Object.keys(embarques);
-    if (!chavesIniciais.length) chavesIniciais = SAIDAS.map(function (c) { return c.key; });
     if (chavesIniciais.indexOf(principal) < 0) principal = chavesIniciais[0] || '';
 
     function nomeSaida(key) {
@@ -308,6 +311,27 @@
     }
 
     var tours = Array.isArray(a.related_tours) ? a.related_tours.filter(function (t) { return t && (t.attractions || t.title); }) : [];
+
+    var CATS_PASSEIO = [
+      ['classicos', 'Clássicos'],
+      ['destaque', 'Destaque'],
+      ['lado-b', 'Lado B'],
+      ['familia', 'Família'],
+      ['aventura', 'Aventura']
+    ];
+    function catsDaExperiencia(raw) {
+      var lista = raw;
+      if (typeof raw === 'string' && raw) {
+        try { lista = JSON.parse(raw); } catch (e) { lista = []; }
+      }
+      if (!Array.isArray(lista) || !lista.length) return ['classicos'];
+      return lista;
+    }
+    var catsOn = catsDaExperiencia(a.categorias);
+    var catsHtml = CATS_PASSEIO.map(function (c) {
+      var on = catsOn.indexOf(c[0]) >= 0;
+      return '<label class="xp-check"><input type="checkbox" data-passeio-cat="' + c[0] + '"' + (on ? ' checked' : '') + ' /> ' + c[1] + '</label>';
+    }).join('');
 
     var diffAtual = { easy: 'Fácil', medium: 'Médio', hard: 'Difícil' }[a.difficulty] || '';
     var pesoSalvo = parseInt(x.peso, 10);
@@ -361,6 +385,8 @@
       '<label class="xp-peso' + (pesoAtual === 2 ? ' is-on' : '') + '"><input type="radio" name="xp-peso" value="2"' + (pesoAtual === 2 ? ' checked' : '') + ' /><strong>2 Moderado</strong></label>' +
       '<label class="xp-peso' + (pesoAtual === 3 ? ' is-on' : '') + '"><input type="radio" name="xp-peso" value="3"' + (pesoAtual === 3 ? ' checked' : '') + ' /><strong>3 Difícil</strong></label>' +
       '</div>' +
+      '<div class="xp-field"><span>Categorias</span><div class="xp-checks" id="xp-cats">' + catsHtml + '</div></div>' +
+      '<p class="xp-note">O passeio desta experiência entra nestas categorias. Um passeio com várias experiências entra em todas: uma em Destaque e outra em Lado B aparece nas duas.</p>' +
       '<label class="xp-field"><span>Subcategoria</span><input class="gcv-dash-input" id="xp-subcat" list="xp-subcats" value="' + esc(x.subcategoria || 'Cachoeira') + '" /><datalist id="xp-subcats"><option value="Cachoeira"></option><option value="Poço"></option><option value="Mirante"></option><option value="Cânion"></option><option value="Vale"></option><option value="Parque"></option></datalist></label>' +
       '<label class="xp-field"><span>CNPJ</span><input class="gcv-dash-input" id="xp-cnpj" inputmode="numeric" placeholder="00.000.000/0001-00" value="' + esc(x.cnpj || '') + '" /></label>' +
       '<div class="xp-field"><span>Tags</span><div class="xp-tags" id="xp-tags"></div><div class="xp-inline"><input class="gcv-dash-input" id="xp-tag-input" placeholder="Nova tag" /><button type="button" class="gcv-dash-btn" id="xp-tag-add">Adicionar</button></div></div>' +
@@ -373,11 +399,9 @@
       '<p class="xp-note">Entrada do parque, separada da tarifa do guia. O primeiro ingresso em real continua na página pública. Meia-entrada e desconto variável não entram aqui.</p>' +
       '<div id="xp-ingressos"></div><button type="button" class="gcv-dash-btn" id="xp-ing-add">+ Adicionar tipo de ingresso</button></div></div>' +
       '<div class="xp-panel" data-panel="local" hidden><div class="xp-card"><h3>Localização e tarifário</h3>' +
-      '<label class="xp-field"><span class="xp-req">Cidade da experiência</span><select class="gcv-dash-select" id="xp-cidade">' + cidadeOpts + '</select></label>' +
-      '<p class="xp-note">Adicione ou exclua as cidades de onde este passeio embarca. Cada cidade adicionada já é uma saída. Rascunho e Desativada salvam sem tarifa e ficam fora do site. Ativada exige, em cada cidade, Tarifa Guia e duração, além dos campos marcados com *. Tarifa Translado pode ficar vazia. Sozinho, cada cidade usa a tarifa dela. Com duas ou três experiências, o widget mostra apenas a cidade presente em todas, e cada saída do conjunto tem a própria Tarifa Guia e, se houver, a própria Tarifa Translado.</p>' +
+      '<label class="xp-field"><span class="xp-req">Localização</span><select class="gcv-dash-select" id="xp-cidade">' + cidadeOpts + '</select></label>' +
+      '<div class="xp-saida-add"><select class="gcv-dash-select" id="xp-saida-nova"></select><button type="button" class="gcv-dash-btn" id="xp-saida-add">Adicionar Cidade de Embarque</button></div>' +
       '<div id="xp-saidas">' + chavesIniciais.map(cartaoCidade).join('') + '</div>' +
-      '<div class="xp-saida-add"><select class="gcv-dash-select" id="xp-saida-nova"></select><button type="button" class="gcv-dash-btn" id="xp-saida-add">Adicionar cidade</button></div>' +
-      '<label class="xp-field"><span>Estacionamento</span><input class="gcv-dash-input" id="xp-parking" value="' + esc(a.parking_info || '') + '" /></label>' +
       '</div></div>' +
       '<div class="xp-panel" data-panel="horario" hidden><div class="xp-card"><h3>Horário de funcionamento</h3>' +
       '<div class="xp-copy"><span>Copiar</span><select class="gcv-dash-select" id="xp-dia-modelo">' + diaOpts + '</select>' +
@@ -728,7 +752,7 @@
       var faltas = [];
       if (!q('xp-title-pt').value.trim()) faltas.push('Nome da experiência');
       if (!q('xp-content-pt').value.trim()) faltas.push('Descrição');
-      if (!q('xp-cidade').value) faltas.push('Cidade da experiência');
+      if (!q('xp-cidade').value) faltas.push('Localização');
       var comSaida = 0;
       form.querySelectorAll('#xp-saidas [data-city]').forEach(function (row) {
         comSaida += 1;
@@ -848,8 +872,15 @@
         : { tem_passeio: a.tem_passeio !== false, venda: x.venda || {} };
       if (vendaOut.erro) return { erro: vendaOut.erro };
 
+      var categorias = [];
+      form.querySelectorAll('[data-passeio-cat]').forEach(function (input) {
+        if (input.checked) categorias.push(input.getAttribute('data-passeio-cat'));
+      });
+      if (!categorias.length) return { erro: 'Marque pelo menos uma categoria.' };
+
       var payload = {
         id: a.id,
+        categorias: categorias,
         exigir_ativacao: statusForcado === 'published',
         title_pt: title,
         title_en: a.title_en || '',
@@ -871,7 +902,7 @@
         seo_desc_pt: a.seo_desc_pt || '',
         seo_desc_en: a.seo_desc_en || '',
         seo_desc_es: a.seo_desc_es || '',
-        parking_info: q('xp-parking').value.trim(),
+        parking_info: '',
         recommended_period: periodoTexto(meses),
         trail_distance_km: trilha.replace(',', '.'),
         distance_km: String(baseSaida.km || '').replace(',', '.'),
@@ -1227,7 +1258,7 @@
       var vazio = q('xp-saidas').querySelector('.xp-saida-vazia');
       var tem = q('xp-saidas').querySelector('[data-city]');
       if (!tem && !vazio) {
-        q('xp-saidas').insertAdjacentHTML('afterbegin', '<p class="xp-note xp-saida-vazia">Nenhuma cidade de saída. Adicione uma cidade.</p>');
+        q('xp-saidas').insertAdjacentHTML('afterbegin', '<p class="xp-note xp-saida-vazia">Nenhuma cidade de embarque.</p>');
       }
       if (tem && vazio) vazio.remove();
     }

@@ -67,6 +67,9 @@ function gcv_attraction_anexar_experiencia(array $row): array
         }
     }
     $row['experiencia'] = $exp;
+    if (array_key_exists('categorias', $row)) {
+        $row['categorias'] = gcv_passeio_categorias_parse($row['categorias'] ?? null, 1);
+    }
     return $row;
 }
 
@@ -184,6 +187,13 @@ function gcv_attraction_save_ficha(int $id, array $body): void
                 $id,
             ]);
         }
+        if (array_key_exists('categorias', $body)) {
+            $cats = gcv_passeio_categorias_parse($body['categorias'] ?? [], 1);
+            db()->prepare('UPDATE gcv_attractions SET categorias = ? WHERE id = ?')->execute([
+                json_encode($cats, JSON_UNESCAPED_UNICODE),
+                $id,
+            ]);
+        }
         if (isset($body['duracao']) && is_array($body['duracao'])) {
             gcv_duracao_save(db(), 'atrativo', $id, $body['duracao']);
         }
@@ -267,7 +277,7 @@ function gcv_attraction_erro_ativar(array $body): ?string
     $exp = is_array($body['experiencia'] ?? null) ? $body['experiencia'] : [];
     $cidade = trim((string)($body['cidade_nome'] ?? ($exp['cidade'] ?? '')));
     if ($cidade === '') {
-        $faltas[] = 'Cidade da experiência';
+        $faltas[] = 'Localização';
     }
     $embarques = is_array($exp['embarques'] ?? null) ? $exp['embarques'] : null;
     if ($embarques !== null) {
@@ -321,6 +331,19 @@ if ($method === 'GET') {
             $row['page'] = gcv_attraction_public_html_path((string)($row['slug'] ?? ''));
             $row['related_tours'] = gcv_related_tours_for_attraction(db(), $id);
             $row = gcv_attraction_anexar_experiencia($row);
+            $legadoId = isset($row['tarifario_id']) && $row['tarifario_id'] !== null ? (int)$row['tarifario_id'] : 0;
+            $legado = $legadoId > 0 ? gcv_tarifario_public_by_id(db(), $legadoId) : null;
+            $row = gcv_admin_ficha_ligar_tarifa_legada($row, $legado);
+            if (!empty($row['related_tours']) && is_array($row['related_tours'])) {
+                foreach ($row['related_tours'] as $i => $tour) {
+                    if (!is_array($tour)) {
+                        continue;
+                    }
+                    $tourId = isset($tour['tarifario_id']) && $tour['tarifario_id'] !== null ? (int)$tour['tarifario_id'] : 0;
+                    $tourLegado = $tourId > 0 ? gcv_tarifario_public_by_id(db(), $tourId) : null;
+                    $row['related_tours'][$i] = gcv_admin_ligar_tarifa_legada($tour, $tourLegado);
+                }
+            }
             $row = gcv_pagina_atrativo_completar($row);
             echo json_encode(['ok' => true, 'data' => $row]);
             exit;

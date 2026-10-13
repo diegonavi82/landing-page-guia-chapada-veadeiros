@@ -12,10 +12,10 @@
 
   var API = '/api/admin/tarifarios.php';
   var CAMPOS = [
-    ['excursao_pessoa_cents', 'PAX 4- Excursão', 'sem translado'],
+    ['excursao_pessoa_cents', 'PAX 4 Excursão', 'sem translado'],
     ['excursao_pessoa_5_cents', 'PAX 5+ Excursão', 'sem translado'],
     ['excursao_transporte_cents', 'Excursão', 'com translado'],
-    ['exclusivo_pessoa_cents', 'PAX 4- Privativo', 'sem translado'],
+    ['exclusivo_pessoa_cents', 'PAX 4 Privativo', 'sem translado'],
     ['exclusivo_pessoa_5_cents', 'PAX 5+ Privativo', 'sem translado'],
     ['exclusivo_transporte_cents', 'Privativo', 'com translado']
   ];
@@ -43,14 +43,14 @@
     relacaoId: 0,
     sortKey: 'passeio',
     sortDir: 1,
-    filters: { passeio: '', tarifa_guia: '', tarifa_translado: '', categorias: '' }
+    filters: { passeio: '', tarifa_guia: '', tarifa_translado: '' },
+    tarifaSaveSeq: {}
   };
 
   var PASSEIO_COLS = [
     ['passeio', 'Passeio'],
     ['tarifa_guia', 'Tarifa Guia'],
-    ['tarifa_translado', 'Tarifa Translado'],
-    ['categorias', 'Categorias']
+    ['tarifa_translado', 'Tarifa Translado']
   ];
 
   /* ---------- utilidades ---------- */
@@ -114,14 +114,25 @@
   }
 
   function erroGuia(exc4, exc5, pri4, pri5, quorum, diariaCents) {
-    if (exc4 > 0 && pri4 > 0 && exc4 >= pri4) return 'PAX 4- Excursão tem que ser menor que o PAX 4- Privativo.';
-    if (exc4 > 0 && (exc5 <= 0 || exc5 >= exc4)) return 'PAX 5+ Excursão tem que ser menor que o PAX 4- Excursão.';
-    if (pri4 > 0 && (pri5 <= 0 || pri5 >= pri4)) return 'PAX 5+ Privativo tem que ser menor que o PAX 4- Privativo.';
+    if (exc4 > 0 && pri4 > 0 && exc4 >= pri4) return 'PAX 4 Excursão tem que ser menor que o PAX 4 Privativo.';
+    if (exc4 > 0 && (exc5 <= 0 || exc5 >= exc4)) return 'PAX 5+ Excursão tem que ser menor que o PAX 4 Excursão.';
+    if (pri4 > 0 && (pri5 <= 0 || pri5 >= pri4)) return 'PAX 5+ Privativo tem que ser menor que o PAX 4 Privativo.';
     if (exc5 > 0 && pri5 > 0 && exc5 >= pri5) return 'PAX 5+ Excursão tem que ser menor que o PAX 5+ Privativo.';
     if (exc4 > 0 && diariaCents > 0 && exc4 * quorum < diariaCents) {
-      return 'PAX 4- Excursão × quórum ' + quorum + ' = ' + reais(exc4 * quorum) + ' fica abaixo da diária mínima de guiagem (' + reais(diariaCents) + ').';
+      return 'PAX 4 Excursão × quórum ' + quorum + ' = ' + reais(exc4 * quorum) + ' fica abaixo da diária mínima de guiagem (' + reais(diariaCents) + ').';
     }
     return '';
+  }
+
+  function diariaDoGuia(excCents) {
+    var reg = regrasAtuais();
+    var total = reg.quorum * (parseInt(excCents, 10) || 0);
+    var piso = reg.diariaReais * 100;
+    return {
+      total: total,
+      piso: piso,
+      abaixo: total > 0 && piso > 0 && total < piso
+    };
   }
 
   function erroTranslado(excT, priT) {
@@ -257,10 +268,18 @@
 
   function experienciasDa(tipo, codigo) {
     var campo = tipo === 'guia' ? 'guia' : 'translado';
+    var col = tipo === 'guia' ? 'tarifa_guia' : 'tarifa_translado';
     var out = [];
-    cadaSaida(function (kind, id, nome, s) {
-      if ((s[campo] || '') !== codigo) return;
-      out.push({ kind: kind, id: id, nome: nome, cidade: s.key || '', cidadeNome: s.nome || '' });
+    (st.data.atrativos || []).forEach(function (a) {
+      saidasDe(a).forEach(function (s) {
+        if (!s.key || (s[campo] || '') !== codigo) return;
+        out.push({ kind: 'atrativo', id: a.id, nome: a.title_pt, cidade: s.key, cidadeNome: s.nome || '' });
+      });
+    });
+    (st.data.passeios || []).forEach(function (p) {
+      if ((p.attractions || []).length < 2) return;
+      if ((p[col] || '') !== codigo) return;
+      out.push({ kind: 'passeio', id: p.id, nome: passeioNome(p), cidade: '', cidadeNome: '' });
     });
     return out;
   }
@@ -305,7 +324,7 @@
   function oficialLabel(item) {
     if (!item) return '';
     if (item.tipo === 'guia') return nomeTarifaGuia(item.excursao, item.excursao_5, item.privativo, item.privativo_5);
-    return 'Excursão ' + reais(item.excursao_cents) + ' · Privativo ' + reais(item.privativo_cents);
+    return nomeTarifaTranslado(item.excursao, item.privativo);
   }
 
   function oficialSelect(tipo, current) {
@@ -319,12 +338,36 @@
       '</select>';
   }
 
+  function tarifaCampoSelect(tipo, current) {
+    var rows = oficiaisDo(tipo);
+    var campo = tipo === 'guia' ? 'guia' : 'translado';
+    return '<select class="gcv-dash-select tf-select" data-saida-campo="' + campo + '">' +
+      '<option value="">— escolher —</option>' +
+      rows.map(function (row) {
+        return '<option value="' + esc(row.codigo) + '"' + (row.codigo === current ? ' selected' : '') + '>' + esc(oficialLabel(row)) + '</option>';
+      }).join('') +
+      '</select>';
+  }
+
+  function saidasTarifaFields(kind, id, saidas) {
+    var rows = (saidas || []).filter(function (s) { return s && s.key; });
+    if (!rows.length) {
+      return '<p class="gcv-cms-muted tf-small">Nenhuma cidade de embarque. Cadastre em Localização e tarifário. A tarifa daqui é a mesma de lá e do Tarifário.</p>';
+    }
+    return rows.map(function (s) {
+      return '<div class="tf-grid2" data-saida-tarifa="' + kind + '" data-saida-id="' + id + '" data-saida-cidade="' + esc(s.key) + '">' +
+        '<p class="tf-saida-nome"><strong>' + esc(s.nome || s.key) + '</strong></p>' +
+        '<label class="tf-field"><span>Tarifa Guia</span>' + tarifaCampoSelect('guia', s.guia || '') + '</label>' +
+        '<label class="tf-field"><span>Tarifa Translado</span>' + tarifaCampoSelect('translado', s.translado || '') + '</label>' +
+        '</div>';
+    }).join('');
+  }
+
   function oficiaisFields(kind, id, guia, translado) {
     return '<div class="tf-grid2" data-oficiais="' + kind + '" data-oficial-id="' + id + '">' +
       '<label class="tf-field"><span>Tarifa Guia · sem translado</span>' + oficialSelect('guia', guia || '') + '</label>' +
       '<label class="tf-field"><span>Tarifa Translado · com translado</span>' + oficialSelect('translado', translado || '') + '</label>' +
-      '</div>' +
-      '<p class="gcv-cms-muted tf-small">Sem Tarifa Guia, o passeio fica fora do site. A Tarifa Translado pode ficar vazia. Cada cidade de saída se ajusta no Tarifário.</p>';
+      '</div>';
   }
 
   function tarifarioSelect(attrs, current, emptyLabel) {
@@ -380,14 +423,8 @@
       return;
     }
     box.innerHTML =
-      (st.mode === 'passeios' ? '' :
-        '<div class="tf-head">' +
-          '<input class="gcv-dash-input tf-search" id="tf-search" type="search" placeholder="Buscar tarifa ou experiência" value="' + esc(st.q) + '" />' +
-        '</div>') +
       '<div id="tf-body"></div>' +
       '<div class="tf-toast" id="tf-toast" role="status" aria-live="polite"></div>';
-    var search = $('tf-search');
-    if (search) search.oninput = function () { st.q = search.value; paintBody(); };
     paintBody();
   }
 
@@ -465,7 +502,7 @@
     exc = Math.round(Number(exc) || 0);
     pri = Math.round(Number(pri) || 0);
     if (exc < 1 && pri < 1) return '';
-    return 'Excursão R$ ' + exc + ' · Privativo R$ ' + pri;
+    return 'EXC' + exc + 'T / PRI' + (pri * VEICULO) + 'T';
   }
 
   /** Oficial da Tarifa Guia, senão a parte sem translado da tabela antiga. */
@@ -494,9 +531,10 @@
     );
   }
 
-  function catsTexto(lista) {
-    var cats = st.data.categorias || {};
-    return (lista || []).map(function (k) { return cats[k] || k; }).join(', ');
+  function catsRotulo(lista) {
+    var nomes = st.data.categorias || { classicos: 'Clássicos', destaque: 'Destaque', 'lado-b': 'Lado B', familia: 'Família', aventura: 'Aventura' };
+    var texto = (lista || []).map(function (k) { return nomes[k] || k; }).filter(Boolean).join(', ');
+    return texto || 'Clássicos';
   }
 
   function linhaPasseio(item, kind) {
@@ -507,8 +545,7 @@
       atrativos: n,
       passeio: kind === 'relacao' ? passeioNome(item) : (item.title_pt || ''),
       tarifa_guia: tarifaSemTranslado(item),
-      tarifa_translado: tarifaComTranslado(item),
-      categorias: catsTexto(item.categorias)
+      tarifa_translado: tarifaComTranslado(item)
     };
   }
 
@@ -532,7 +569,6 @@
     if (!hasText('passeio', r.passeio)) return false;
     if (!hasText('tarifa_guia', r.tarifa_guia || 'sem tarifa')) return false;
     if (!hasText('tarifa_translado', r.tarifa_translado || 'sem translado')) return false;
-    if (!hasText('categorias', r.categorias)) return false;
     return true;
   }
 
@@ -550,31 +586,6 @@
     if (!q) return true;
     var norm = function (s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); };
     return norm(text).indexOf(norm(q)) >= 0;
-  }
-
-  function catChecks(selected) {
-    var on = selected || [];
-    var cats = st.data.categorias || { classicos: 'Clássicos', destaque: 'Destaque', 'lado-b': 'Lado B', familia: 'Família', aventura: 'Aventura' };
-    return Object.keys(cats).map(function (key) {
-      var checked = on.indexOf(key) >= 0 ? ' checked' : '';
-      return '<label class="tf-check"><input type="checkbox" data-cat="' + esc(key) + '"' + checked + ' /> ' + esc(cats[key]) + '</label>';
-    }).join('');
-  }
-
-  function saveOferta(wrap, extra) {
-    var ids = [];
-    wrap.querySelectorAll('[data-cat]').forEach(function (input) {
-      if (input.checked) ids.push(input.getAttribute('data-cat'));
-    });
-    if (!ids.length) {
-      toast('Marque pelo menos uma categoria', true);
-      return;
-    }
-    var payload = { action: 'oferta', categorias: ids };
-    if (wrap.getAttribute('data-cats') === 'passeio') payload.passeio_id = parseInt(wrap.getAttribute('data-cat-id'), 10);
-    else payload.attraction_id = parseInt(wrap.getAttribute('data-cat-id'), 10);
-    if (extra) Object.keys(extra).forEach(function (k) { payload[k] = extra[k]; });
-    request('PUT', payload, function (res) { apply(res, 'Passeio atualizado'); });
   }
 
   /* ---------- lista: unitários e relações ---------- */
@@ -629,7 +640,7 @@
       count.textContent = rows.length === all.length ? base : (rows.length + ' de ' + all.length);
     }
     if (!rows.length) {
-      tbody.innerHTML = '<tr><td class="ps-empty" colspan="5">Nenhum passeio com esses filtros.</td></tr>';
+      tbody.innerHTML = '<tr><td class="ps-empty" colspan="4">Nenhum passeio com esses filtros.</td></tr>';
       return;
     }
     tbody.innerHTML = rows.map(function (r) {
@@ -644,7 +655,6 @@
         '<td class="ps-passeio"><button type="button" class="ps-name" data-open-kind="' + r.kind + '" data-open-passeio="' + r.id + '">' + esc(r.passeio) + '</button>' + chip + '</td>' +
         '<td>' + guia + '</td>' +
         '<td>' + trans + '</td>' +
-        '<td class="ps-cats">' + (r.categorias ? esc(r.categorias) : '<span class="ps-missing">—</span>') + '</td>' +
         '<td class="ps-act"><button type="button" class="gcv-dash-btn gcv-dash-btn--primary gcv-dash-btn--sm" data-open-kind="' + r.kind + '" data-open-passeio="' + r.id + '">Editar</button></td>' +
       '</tr>';
     }).join('');
@@ -708,18 +718,18 @@
         '<header class="ps-hero">' +
           '<p class="ps-kicker">Passeio unitário · 1 atração</p>' +
           '<h3>' + esc(a.title_pt) + '</h3>' +
-          '<p class="ps-sub">' + (oficialItem('guia', a.tarifa_guia) ? 'Tem tarifa de guia. O translado pode ficar vazio. Cada cidade de saída se ajusta no Tarifário.' : 'Sem tarifa de guia. O passeio fica fora do site.') + '</p>' +
+          '<p class="ps-sub">Cada cidade de embarque usa a mesma tarifa da aba Localização e tarifário e do Tarifário.</p>' +
         '</header>' +
         '<section class="ps-card">' +
           '<h4>Este passeio</h4>' +
           '<label class="tf-check"><input type="checkbox" data-tem-passeio="' + a.id + '"' + (a.tem_passeio === false ? '' : ' checked') + ' /> À venda no site</label>' +
-          '<div class="tf-field"><span>Categorias</span><div class="tf-cats" data-cats="atrativo" data-cat-id="' + a.id + '">' + catChecks(a.categorias) + '</div></div>' +
-          oficiaisFields('atrativo', a.id, a.tarifa_guia, a.tarifa_translado) +
+          '<p class="gcv-cms-muted tf-small">Entra em ' + esc(catsRotulo(a.categorias)) + '. A categoria se marca na experiência.</p>' +
+          saidasTarifaFields('atrativo', a.id, a.saidas_tarifas) +
           '<div class="tf-field"><span>Duração saindo de cada cidade</span>' + duracaoInputs('atrativo', a.id, a.duracao_cidades) + '</div>' +
         '</section>' +
         '<section class="ps-card">' +
           '<h4>Relações</h4>' +
-          '<p class="gcv-cms-muted">Cada relação é outro passeio. A Tarifa Guia e, se houver, a Tarifa Translado valem para cada cidade de saída. O preço nunca soma. Elas ficam só nesta página.</p>' +
+          '<p class="gcv-cms-muted">Cada relação é outro passeio. A tarifa daqui é a mesma da aba Relacionados e do Tarifário. O preço nunca soma.</p>' +
           (passeios.length ? passeios.map(function (p) { return passeioCard(p, a.id); }).join('') : '<p class="gcv-cms-muted">Nenhuma relação ainda.</p>') +
           (max >= 2
             ? '<div class="tf-add ps-join">' + addSelects +
@@ -740,8 +750,8 @@
       '<div class="tf-combo__top"><p class="tf-combo__name">' + nomes + '</p>' +
       '<button type="button" class="tf-x" data-combo-del="' + p.id + '" title="Desfazer este passeio" aria-label="Desfazer ' + esc(passeioNome(p)) + '">×</button></div>' +
       oficiaisFields('passeio', p.id, p.tarifa_guia, p.tarifa_translado) +
-      (p.tarifa_guia ? '' : '<span class="tf-warn tf-small">Sem tarifa de guia, este passeio fica fora do site.</span>') +
-      '<div class="tf-cats" data-cats="passeio" data-cat-id="' + p.id + '">' + catChecks(p.categorias) + '</div>' +
+      '<p class="gcv-cms-muted tf-small">A mesma tarifa do Tarifário, de Relacionados e de Localização e tarifário. Sem Tarifa Guia, o passeio fica fora do site.</p>' +
+      '<p class="gcv-cms-muted tf-small">Entra em ' + esc(catsRotulo(p.categorias)) + '. São as categorias de todas as experiências deste passeio.</p>' +
       '<div class="tf-field"><span>Duração saindo de cada cidade</span>' + duracaoInputs('passeio', p.id, p.duracao_cidades) + '</div>' +
     '</div>';
   }
@@ -749,6 +759,22 @@
   function bindAtrativos(body) {
     body.querySelectorAll('[data-edit-tf]').forEach(function (b) {
       b.onclick = function () { openEditor(tarifarioById(b.getAttribute('data-edit-tf'))); };
+    });
+    body.querySelectorAll('[data-saida-tarifa] select').forEach(function (sel) {
+      sel.onchange = function () {
+        var box = sel.closest('[data-saida-tarifa]');
+        if (!box) return;
+        request('PUT', {
+          action: 'tarifa_saida',
+          kind: box.getAttribute('data-saida-tarifa'),
+          id: parseInt(box.getAttribute('data-saida-id'), 10),
+          cidade: box.getAttribute('data-saida-cidade') || '',
+          campo: sel.getAttribute('data-saida-campo'),
+          codigo: sel.value || ''
+        }, function (res) {
+          apply(res, sel.value ? 'Tarifa ligada. O mesmo valor vale na experiência e no Tarifário.' : 'Tarifa tirada');
+        });
+      };
     });
     body.querySelectorAll('[data-oficiais]').forEach(function (box) {
       box.querySelectorAll('select').forEach(function (sel) {
@@ -798,15 +824,15 @@
     });
     body.querySelectorAll('[data-tem-passeio]').forEach(function (input) {
       input.onchange = function () {
-        var scope = input.closest('.ps-page') || input.closest('.tf-attr__body');
-        var wrap = scope && scope.querySelector('[data-cats="atrativo"]');
-        if (wrap) saveOferta(wrap, { tem_passeio: input.checked ? 1 : 0 });
+        var id = parseInt(input.getAttribute('data-tem-passeio'), 10);
+        var a = attrById(id);
+        request('PUT', {
+          action: 'oferta',
+          attraction_id: id,
+          tem_passeio: input.checked ? 1 : 0,
+          categorias: (a && a.categorias && a.categorias.length) ? a.categorias : ['classicos']
+        }, function (res) { apply(res, 'Passeio atualizado'); });
       };
-    });
-    body.querySelectorAll('[data-cats]').forEach(function (wrap) {
-      wrap.querySelectorAll('[data-cat]').forEach(function (input) {
-        input.onchange = function () { saveOferta(wrap); };
-      });
     });
     body.querySelectorAll('[data-combo-add]').forEach(function (b) {
       b.onclick = function () {
@@ -837,24 +863,31 @@
   function paintTarifarios() {
     var body = $('tf-body');
     var bi = bilingueOf({ bilingue_tipo: (st.data.bilingue || {}).tipo, bilingue_valor: (st.data.bilingue || {}).valor, bilingue_cents: (st.data.bilingue || {}).cents });
-    function campoNova(attr, label) {
-      return '<label class="tf-field"><span>' + label + '</span><span class="tf-cell"><span class="tf-money"><em>R$</em><input inputmode="decimal" ' + attr + ' aria-label="' + label + '" /></span><span class="tf-side" data-nova-side="' + attr + '"></span></span></label>';
+    function campoNova(attr, label, total) {
+      var side = '';
+      if (total === 'diaria') side = '<span class="tf-side" data-nova-side="' + attr + '">Diária <b class="tf-side__val">R$ 0</b></span>';
+      if (total === 'translado') side = '<span class="tf-side tf-side--abaixo" data-nova-side="' + attr + '">Veículo <b class="tf-side__val">R$ 0</b></span>';
+      return '<label class="tf-field"><span>' + label + '</span><span class="tf-money"><em>R$</em><input inputmode="decimal" ' + attr + ' aria-label="' + label + '" /></span>' + side + '</label>';
     }
     function refreshNova(form) {
       var tipo = form.getAttribute('data-nova');
-      var q = regrasAtuais().quorum;
       var exc = toCents((form.querySelector('[data-nova-exc]') || {}).value);
       var pri = toCents((form.querySelector('[data-nova-pri]') || {}).value);
-      function set(attr, text) {
-        var el = form.querySelector('[data-nova-side="' + attr + '"]');
-        if (el) el.textContent = text;
+      function set(attr, valor, baixo) {
+        var side = form.querySelector('[data-nova-side="' + attr + '"]');
+        if (!side) return;
+        var val = side.querySelector('.tf-side__val');
+        if (val) val.textContent = valor;
+        side.classList.toggle('is-baixo', !!baixo);
       }
       if (tipo === 'guia') {
-        set('data-nova-exc', exc > 0 ? 'Diária ' + reais(q * exc) : '');
-        set('data-nova-pri', exc > 0 ? 'Diária ' + reais(q * exc) : '');
+        var diaExc = diariaDoGuia(exc);
+        var diaPri = diariaDoGuia(pri);
+        set('data-nova-exc', reais(diaExc.total), diaExc.abaixo);
+        set('data-nova-pri', reais(diaPri.total), false);
       } else {
-        set('data-nova-exc', exc > 0 ? 'Veículo ' + reais(VEICULO * exc) : '');
-        set('data-nova-pri', pri > 0 ? 'Veículo ' + reais(VEICULO * pri) : '');
+        set('data-nova-exc', reais(VEICULO * exc), false);
+        set('data-nova-pri', reais(VEICULO * pri), false);
       }
     }
     function cardCombina(tipo, row) {
@@ -869,19 +902,32 @@
         return '<span class="tf-chip' + (e.kind === 'passeio' ? ' tf-chip--combo' : '') + '">' + esc(rotulo) +
           '<button type="button" data-tirar-exp="' + esc(row.codigo) + '" data-kind="' + esc(e.kind) + '" data-id="' + e.id + '" data-cidade="' + esc(e.cidade) + '" data-nome="' + esc(rotulo) + '" data-tipo="' + tipo + '" aria-label="Tirar ' + esc(rotulo) + '">×</button></span>';
       }).join('');
-      var opcoes = '';
-      cadaSaida(function (kind, id, nome, s) {
-        var campo = tipo === 'guia' ? 'guia' : 'translado';
-        if ((s[campo] || '') === row.codigo) return;
-        if (!s.key) return;
-        var rotulo = nome + (s.nome ? ' · ' + s.nome : '');
-        if (st.q && !matches(rotulo) && !matches(oficialLabel(row))) return;
-        opcoes += '<option value="' + esc(kind + ':' + id + ':' + s.key) + '" data-atual="' + esc(s[campo] || '') + '">' + esc(rotulo) + '</option>';
+      var campo = tipo === 'guia' ? 'guia' : 'translado';
+      var col = tipo === 'guia' ? 'tarifa_guia' : 'tarifa_translado';
+      var opcoesCidades = '';
+      var opcoesPasseios = '';
+      (st.data.atrativos || []).forEach(function (a) {
+        saidasDe(a).forEach(function (s) {
+          if (!s.key || (s[campo] || '') === row.codigo) return;
+          var rotulo = a.title_pt + ' · ' + (s.nome || s.key);
+          if (st.q && !matches(rotulo) && !matches(oficialLabel(row))) return;
+          opcoesCidades += '<option value="atrativo:' + a.id + ':' + esc(s.key) + '" data-atual="' + esc(s[campo] || '') + '">' + esc(rotulo) + '</option>';
+        });
       });
-      return '<div class="tf-exps"><span>Experiências</span><div class="tf-card__use">' +
-        (chips || '<span class="gcv-cms-muted tf-small">Nenhuma nesta tarifa.</span>') +
-        '</div><select class="gcv-dash-select tf-use-add" data-add-exp="' + esc(row.codigo) + '" data-tipo="' + tipo + '" aria-label="Adicionar experiência">' +
-        '<option value="">Adicionar experiência…</option>' + opcoes + '</select></div>';
+      (st.data.passeios || []).forEach(function (p) {
+        if ((p.attractions || []).length < 2) return;
+        if ((p[col] || '') === row.codigo) return;
+        var rotulo = passeioNome(p);
+        if (st.q && !matches(rotulo) && !matches(oficialLabel(row))) return;
+        opcoesPasseios += '<option value="passeio:' + p.id + ':" data-atual="' + esc(p[col] || '') + '">' + esc(rotulo) + '</option>';
+      });
+      return '<div class="tf-exps"><span>Onde vale</span><div class="tf-card__use">' +
+        (chips || '<span class="gcv-cms-muted tf-small">Nenhuma cidade nem passeio relacionado.</span>') +
+        '</div><select class="gcv-dash-select tf-use-add" data-add-exp="' + esc(row.codigo) + '" data-tipo="' + tipo + '" aria-label="Associar tarifa">' +
+        '<option value="">Associar à cidade ou ao passeio relacionado…</option>' +
+        (opcoesCidades ? '<optgroup label="Cidades de embarque da experiência">' + opcoesCidades + '</optgroup>' : '') +
+        (opcoesPasseios ? '<optgroup label="Passeios relacionados">' + opcoesPasseios + '</optgroup>' : '') +
+        '</select></div>';
     }
     function lista(tipo, titulo) {
       var guia = tipo === 'guia';
@@ -889,83 +935,39 @@
       var visiveis = todas.filter(function (row) { return cardCombina(tipo, row); });
       var cards = visiveis.map(function (row) {
           var paxEdit = guia
-            ? campoCard('data-exc', 'PAX 4- Excursão', row.excursao_cents) +
-              campoCard('data-pri', 'PAX 4- Privativo', row.privativo_cents) +
+            ? campoCard('data-exc', 'PAX 4 Excursão', row.excursao_cents, 'diaria') +
+              campoCard('data-pri', 'PAX 4 Privativo', row.privativo_cents, 'diaria') +
               campoCard('data-exc5', 'PAX 5+ Excursão', row.excursao_5_cents) +
               campoCard('data-pri5', 'PAX 5+ Privativo', row.privativo_5_cents)
-            : campoCard('data-exc', 'Excursão', row.excursao_cents) + campoCard('data-pri', 'Privativo', row.privativo_cents);
-          var ladoOficial = guia
-            ? '<span class="tf-side">Diária ' + reais(regrasAtuais().quorum * row.excursao_cents) + '</span>'
-            : '<span class="tf-side">Veículo ' + reais(VEICULO * row.excursao_cents) + ' · ' + reais(VEICULO * row.privativo_cents) + '</span>';
-          return '<article class="tf-oficial__item" data-edit-tarifa="' + esc(row.codigo) + '"><b>' + esc(oficialLabel(row)) + '</b>' + ladoOficial +
-            '<div class="tf-card-edit">' + paxEdit +
-            '<button type="button" class="gcv-dash-btn gcv-dash-btn--secondary gcv-dash-btn--sm" data-save-tarifa="' + esc(row.codigo) + '">Salvar</button></div>' +
+            : campoCard('data-exc', 'Excursão', row.excursao_cents, 'translado') + campoCard('data-pri', 'Privativo', row.privativo_cents, 'translado');
+          return '<article class="tf-oficial__item" data-edit-tarifa="' + esc(row.codigo) + '" data-tipo="' + tipo + '">' +
+            '<button type="button" class="tf-oficial__del" data-del-oficial="' + esc(row.codigo) + '" aria-label="Excluir" title="Excluir">' +
+              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>' +
+            '</button>' +
+            '<b>' + esc(oficialLabel(row)) + '</b>' +
+            '<div class="tf-card-edit">' + paxEdit + '</div>' +
             experienciasHtml(tipo, row) +
-            '<button type="button" class="gcv-dash-btn gcv-dash-btn--danger gcv-dash-btn--sm" data-del-oficial="' + esc(row.codigo) + '">Excluir</button></article>';
+            '</article>';
       }).join('');
       return '<section class="tf-oficial"><h3>' + titulo + '</h3>' +
         '<form class="tf-oficial__new" data-nova="' + tipo + '">' +
           (guia
-            ? campoNova('data-nova-exc', 'PAX 4- Excursão') + campoNova('data-nova-pri', 'PAX 4- Privativo') + campoNova('data-nova-exc5', 'PAX 5+ Excursão') + campoNova('data-nova-pri5', 'PAX 5+ Privativo')
-            : campoNova('data-nova-exc', 'Excursão') + campoNova('data-nova-pri', 'Privativo')) +
+            ? campoNova('data-nova-exc', 'PAX 4 Excursão', 'diaria') + campoNova('data-nova-pri', 'PAX 4 Privativo', 'diaria') + campoNova('data-nova-exc5', 'PAX 5+ Excursão') + campoNova('data-nova-pri5', 'PAX 5+ Privativo')
+            : campoNova('data-nova-exc', 'Excursão', 'translado') + campoNova('data-nova-pri', 'Privativo', 'translado')) +
           '<button type="submit" class="gcv-dash-btn gcv-dash-btn--primary gcv-dash-btn--sm">Criar tarifa</button>' +
         '</form>' +
         '<div class="tf-oficial__list' + (guia ? ' tf-oficial__list--guia' : '') + '">' +
         (cards || (todas.length ? '<p class="gcv-cms-muted tf-small">Nenhuma tarifa com esse filtro.</p>' : '')) +
         '</div></section>';
     }
-    function campoCard(attr, label, cents) {
-      return '<label class="tf-field"><span>' + label + '</span><span class="tf-money"><em>R$</em><input inputmode="decimal" ' + attr + ' value="' + esc(moneyInput(cents)) + '" aria-label="' + label + '" /></span></label>';
-    }
-    function selectOficial(tipo, atual, vazio) {
-      return '<option value="">' + vazio + '</option>' + oficiaisDo(tipo).map(function (row) {
-        return '<option value="' + esc(row.codigo) + '"' + (row.codigo === atual ? ' selected' : '') + '>' + esc(oficialLabel(row)) + '</option>';
-      }).join('');
-    }
-    function orfasHtml() {
-      var grupos = [];
-      function por(kind, id) {
-        for (var i = 0; i < grupos.length; i++) {
-          if (grupos[i].kind === kind && grupos[i].id === id) return grupos[i];
-        }
-        return null;
-      }
-      (st.data.atrativos || []).forEach(function (a) {
-        var faltam = saidasDe(a).filter(function (s) { return s.key && !s.guia; });
-        var sem = !saidasDe(a).length;
-        if (!faltam.length && !sem) return;
-        if (st.q && !matches(a.title_pt)) return;
-        grupos.push({ kind: 'atrativo', id: a.id, nome: a.title_pt, saidas: faltam, semCidade: sem });
-      });
-      (st.data.passeios || []).forEach(function (p) {
-        if ((p.attractions || []).length < 2) return;
-        var nome = passeioNome(p);
-        var faltam = saidasDe(p).filter(function (s) { return s.key && !s.guia; });
-        var sem = !saidasDe(p).length;
-        if (!faltam.length && !sem) return;
-        if (st.q && !matches(nome)) return;
-        if (por('passeio', p.id)) return;
-        grupos.push({ kind: 'passeio', id: p.id, nome: nome, saidas: faltam, semCidade: sem });
-      });
-      if (!grupos.length) {
-        return '<section class="tf-orfas"><h3>Sem tarifa de guia</h3><p class="gcv-cms-muted tf-small">Todas as saídas têm tarifa de guia.</p></section>';
-      }
-      return '<section class="tf-orfas"><h3>Sem tarifa de guia</h3>' +
-        grupos.map(function (g) {
-          var linhas = g.semCidade
-            ? '<p class="gcv-cms-muted tf-small">Nenhuma cidade de saída. Defina as saídas na experiência.</p>'
-            : g.saidas.map(function (s) {
-              return '<div class="tf-orfa__row" data-orfa-kind="' + esc(g.kind) + '" data-orfa-id="' + g.id + '" data-orfa-cidade="' + esc(s.key) + '">' +
-                '<span>' + esc(s.nome) + '</span>' +
-                '<label class="tf-field"><span>Tarifa Guia</span><select class="gcv-dash-select" data-orfa-guia>' + selectOficial('guia', '', '— escolher —') + '</select></label>' +
-                '<label class="tf-field"><span>Tarifa Translado</span><select class="gcv-dash-select" data-orfa-trans>' + selectOficial('translado', s.translado || '', '— sem translado —') + '</select></label>' +
-              '</div>';
-            }).join('');
-          return '<article class="tf-orfa' + (g.kind === 'passeio' ? ' tf-orfa--combo' : '') + '"><b>' + esc(g.nome) + '</b>' + linhas + '</article>';
-        }).join('') +
-      '</section>';
+    function campoCard(attr, label, cents, total) {
+      var side = '';
+      if (total === 'diaria') side = '<span class="tf-side" data-side="diaria">Diária <b class="tf-side__val">' + esc(reais(regrasAtuais().quorum * (parseInt(cents, 10) || 0))) + '</b></span>';
+      if (total === 'translado') side = '<span class="tf-side tf-side--abaixo" data-side="translado">Veículo <b class="tf-side__val">' + esc(reais(VEICULO * cents)) + '</b></span>';
+      return '<label class="tf-field"><span>' + label + '</span><span class="tf-money"><em>R$</em><input inputmode="decimal" ' + attr + ' value="' + esc(moneyInput(cents)) + '" aria-label="' + label + '" /></span>' + side + '</label>';
     }
     body.innerHTML =
+      '<div class="tf-regras-row">' +
       '<section class="tf-oficial tf-oficial--bi">' +
         '<h3>Guia em outro idioma</h3>' +
         '<div class="tf-bi">' +
@@ -976,18 +978,16 @@
           '<label class="tf-field"><span id="tf-bi-leg">Valor</span><span class="tf-money"><em id="tf-bi-unit">' + (bi.tipo === 'percentual' ? '%' : 'R$') + '</em><input inputmode="decimal" id="tf-bilingue" value="' + esc(bi.texto) + '" aria-label="Valor do guia em outro idioma" /></span></label>' +
           '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary gcv-dash-btn--sm" id="tf-bi-save">Salvar</button>' +
         '</div></section>' +
-      '<section class="tf-oficial tf-oficial--bi">' +
+      '<section class="tf-oficial tf-oficial--bi tf-oficial--diaria">' +
         '<h3>Diária mínima de guiagem</h3>' +
-        '<p class="gcv-cms-muted tf-small">Vale para todas as tarifas, como o guia em outro idioma. O pacote do privativo sem translado é o PAX 4- Excursão × quórum e não pode ficar abaixo desta diária. O pagamento mínimo ao guia tem que ser menor que a diária.</p>' +
         '<div class="tf-bi">' +
           '<label class="tf-field"><span>Diária mínima de guiagem</span><span class="tf-money"><em>R$</em><input inputmode="decimal" id="tf-diaria" value="' + esc(String(regrasAtuais().diariaReais)) + '" aria-label="Diária mínima de guiagem" /></span></label>' +
           '<label class="tf-field"><span>Pagamento mínimo de guiagem</span><span class="tf-money"><em>R$</em><input inputmode="decimal" id="tf-pagamento" value="' + esc(String(regrasAtuais().pagamentoReais)) + '" aria-label="Pagamento mínimo de guiagem" /></span></label>' +
           '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary gcv-dash-btn--sm" id="tf-regras-save">Salvar</button>' +
         '</div>' +
-      '</section>' +
+      '</section></div>' +
       lista('guia', 'Tarifa Guia') +
-      lista('translado', 'Tarifa Translado') +
-      orfasHtml();
+      lista('translado', 'Tarifa Translado');
     $('tf-bi-tipo').onchange = function () {
       var unit = $('tf-bi-unit');
       if (unit) unit.textContent = this.value === 'percentual' ? '%' : 'R$';
@@ -1013,6 +1013,16 @@
     };
     body.querySelectorAll('[data-nova]').forEach(function (form) {
       form.oninput = function () { refreshNova(form); };
+      var excNova = form.querySelector('[data-nova-exc]');
+      if (excNova && form.getAttribute('data-nova') === 'guia') {
+        excNova.addEventListener('change', function () {
+          var dia = diariaDoGuia(toCents(excNova.value));
+          if (!dia.abaixo) return;
+          excNova.value = '';
+          refreshNova(form);
+          toast('PAX 4 Excursão × quórum dá ' + reais(dia.total) + ', abaixo da diária mínima de ' + reais(dia.piso) + '.', true);
+        });
+      }
       form.onsubmit = function (ev) {
         if (ev) ev.preventDefault();
         var tipo = form.getAttribute('data-nova');
@@ -1035,26 +1045,121 @@
         });
       };
     });
-    body.querySelectorAll('[data-save-tarifa]').forEach(function (btn) {
-      btn.onclick = function () {
-        var box = btn.closest('[data-edit-tarifa]');
-        var codigo = btn.getAttribute('data-save-tarifa');
-        var row = ((st.data && st.data.tarifas_oficiais) || []).filter(function (r) { return r.codigo === codigo; })[0];
-        if (!box || !row) return;
-        var exc = toCents((box.querySelector('[data-exc]') || {}).value) / 100;
-        var pri = toCents((box.querySelector('[data-pri]') || {}).value) / 100;
-        var exc5 = toCents((box.querySelector('[data-exc5]') || {}).value) / 100;
-        var pri5 = toCents((box.querySelector('[data-pri5]') || {}).value) / 100;
-        if (!exc || !pri || (row.tipo === 'guia' && (!exc5 || !pri5))) { toast('Preencha todos os valores da tarifa.', true); return; }
-        var reg = regrasAtuais();
-        var erro = row.tipo === 'guia'
-          ? erroGuia(exc * 100, exc5 * 100, pri * 100, pri5 * 100, reg.quorum, reg.diariaReais * 100)
-          : erroTranslado(exc * 100, pri * 100);
-        if (erro) { toast(erro, true); return; }
-        request('PUT', { action: 'tarifa_editar', codigo: codigo, excursao: exc, privativo: pri, excursao_5: exc5, privativo_5: pri5 }, function (res) {
-          apply(res, 'Tarifa salva');
-        });
+    function centsDo(box, attr) {
+      return toCents((box.querySelector('[' + attr + ']') || {}).value);
+    }
+    function atualizarCard(box) {
+      var tipo = box.getAttribute('data-tipo') === 'guia' ? 'guia' : 'translado';
+      var exc = centsDo(box, 'data-exc');
+      var pri = centsDo(box, 'data-pri');
+      var exc5 = centsDo(box, 'data-exc5');
+      var pri5 = centsDo(box, 'data-pri5');
+      var titulo = box.querySelector('b');
+      function pintarTotal(inputAttr, texto, baixo) {
+        var input = box.querySelector('[' + inputAttr + ']');
+        var field = input && input.closest ? input.closest('.tf-field') : null;
+        var side = field ? field.querySelector('.tf-side') : null;
+        if (!side) return;
+        var val = side.querySelector('.tf-side__val');
+        if (val) val.textContent = texto;
+        side.classList.toggle('is-baixo', !!baixo);
+      }
+      if (tipo === 'guia') {
+        var diaExcCard = diariaDoGuia(exc);
+        var diaPriCard = diariaDoGuia(pri);
+        pintarTotal('data-exc', reais(diaExcCard.total), diaExcCard.abaixo);
+        pintarTotal('data-pri', reais(diaPriCard.total), false);
+        var nome = nomeTarifaGuia(exc / 100, exc5 / 100, pri / 100, pri5 / 100);
+        if (titulo && nome) titulo.textContent = nome;
+      } else {
+        pintarTotal('data-exc', reais(VEICULO * exc), false);
+        pintarTotal('data-pri', reais(VEICULO * pri), false);
+        var nomeTrans = nomeTarifaTranslado(exc / 100, pri / 100);
+        if (titulo && nomeTrans) titulo.textContent = nomeTrans;
+      }
+    }
+    function focoTarifa() {
+      var el = document.activeElement;
+      if (!el || !el.closest) return null;
+      var box = el.closest('[data-edit-tarifa]');
+      if (!box) return null;
+      var attrs = ['data-exc', 'data-pri', 'data-exc5', 'data-pri5'];
+      var attr = '';
+      for (var i = 0; i < attrs.length; i++) {
+        if (el.hasAttribute(attrs[i])) { attr = attrs[i]; break; }
+      }
+      if (!attr) return null;
+      return {
+        codigo: box.getAttribute('data-edit-tarifa') || '',
+        attr: attr,
+        value: el.value,
+        start: el.selectionStart,
+        end: el.selectionEnd
       };
+    }
+    function restaurarFoco(foco) {
+      if (!foco || !foco.codigo) return;
+      var boxes = document.querySelectorAll('[data-edit-tarifa]');
+      var box = null;
+      for (var i = 0; i < boxes.length; i++) {
+        if (boxes[i].getAttribute('data-edit-tarifa') === foco.codigo) { box = boxes[i]; break; }
+      }
+      if (!box) return;
+      var el = box.querySelector('[' + foco.attr + ']');
+      if (!el) return;
+      el.value = foco.value;
+      el.focus();
+      if (el.setSelectionRange && foco.start != null) {
+        try { el.setSelectionRange(foco.start, foco.end); } catch (e) { /* input numérico */ }
+      }
+      atualizarCard(box);
+    }
+    function salvarCard(box) {
+      var codigo = box.getAttribute('data-edit-tarifa') || '';
+      var row = ((st.data && st.data.tarifas_oficiais) || []).filter(function (r) { return r.codigo === codigo; })[0];
+      if (!row) return;
+      var exc = centsDo(box, 'data-exc') / 100;
+      var pri = centsDo(box, 'data-pri') / 100;
+      var exc5 = centsDo(box, 'data-exc5') / 100;
+      var pri5 = centsDo(box, 'data-pri5') / 100;
+      if (exc === row.excursao && pri === row.privativo && exc5 === (row.excursao_5 || 0) && pri5 === (row.privativo_5 || 0)) return;
+      if (!exc || !pri || (row.tipo === 'guia' && (!exc5 || !pri5))) { toast('Preencha todos os valores da tarifa.', true); return; }
+      var reg = regrasAtuais();
+      var erro = row.tipo === 'guia'
+        ? erroGuia(exc * 100, exc5 * 100, pri * 100, pri5 * 100, reg.quorum, reg.diariaReais * 100)
+        : erroTranslado(exc * 100, pri * 100);
+      if (erro) {
+        toast(erro, true);
+        if (row.tipo === 'guia' && diariaDoGuia(exc * 100).abaixo) {
+          var campoExc = box.querySelector('[data-exc]');
+          if (campoExc) campoExc.value = moneyInput(row.excursao_cents);
+          atualizarCard(box);
+        }
+        return;
+      }
+      var seq = (st.tarifaSaveSeq[codigo] || 0) + 1;
+      st.tarifaSaveSeq[codigo] = seq;
+      request('PUT', { action: 'tarifa_editar', codigo: codigo, excursao: exc, privativo: pri, excursao_5: exc5, privativo_5: pri5 }, function (res) {
+        if (st.tarifaSaveSeq[codigo] !== seq) return;
+        var foco = focoTarifa();
+        if (!apply(res, 'Tarifa salva')) return;
+        restaurarFoco(foco);
+      });
+    }
+    body.querySelectorAll('[data-edit-tarifa] input').forEach(function (input) {
+      input.addEventListener('input', function () {
+        var box = input.closest('[data-edit-tarifa]');
+        if (box) atualizarCard(box);
+      });
+      input.addEventListener('change', function () {
+        var box = input.closest('[data-edit-tarifa]');
+        if (box) salvarCard(box);
+      });
+      input.addEventListener('keydown', function (ev) {
+        if (ev.key !== 'Enter') return;
+        ev.preventDefault();
+        input.blur();
+      });
     });
     function salvarSaida(kind, id, cidade, campo, codigo, okMsg) {
       request('PUT', { action: 'tarifa_saida', kind: kind, id: id, cidade: cidade, campo: campo, codigo: codigo }, function (res) {
@@ -1085,34 +1190,6 @@
         if (atual) {
           confirmar('Essa saída já está em outra tarifa.\n\nTrocar para esta?', 'Trocar').then(function (ok) {
             if (!ok) { sel.value = ''; return; }
-            go();
-          });
-          return;
-        }
-        go();
-      };
-    });
-    body.querySelectorAll('[data-orfa-guia], [data-orfa-trans]').forEach(function (sel) {
-      sel.setAttribute('data-antes', sel.value || '');
-      sel.onchange = function () {
-        var row = sel.closest('[data-orfa-cidade]');
-        if (!row) return;
-        var antes = sel.getAttribute('data-antes') || '';
-        var guia = sel.hasAttribute('data-orfa-guia');
-        function go() {
-          sel.setAttribute('data-antes', sel.value || '');
-          salvarSaida(
-            row.getAttribute('data-orfa-kind'),
-            parseInt(row.getAttribute('data-orfa-id'), 10),
-            row.getAttribute('data-orfa-cidade') || '',
-            guia ? 'guia' : 'translado',
-            sel.value,
-            guia ? (sel.value ? 'Tarifa de guia definida' : 'Tarifa de guia tirada') : (sel.value ? 'Tarifa de translado definida' : 'Tarifa de translado tirada')
-          );
-        }
-        if (antes && antes !== sel.value) {
-          confirmar(sel.value ? 'Essa saída já está em outra tarifa.\n\nTrocar para esta?' : 'Tirar a tarifa desta saída?', sel.value ? 'Trocar' : 'Tirar').then(function (ok) {
-            if (!ok) { sel.value = antes; return; }
             go();
           });
           return;
@@ -1183,7 +1260,7 @@
           '<label class="tf-field"><span>Nome</span><input class="gcv-dash-input" id="tf-nome" value="' + esc(nome) + '" placeholder="Ex.: Vale da Lua + Loquinhas" /></label>' +
           '<label class="tf-field tf-field--sm"><span>Quórum desta tarifa</span><div class="tf-suffix"><input class="gcv-dash-input" id="tf-quorum" inputmode="numeric" value="' + esc(t ? t.quorum : regrasAtuais().quorum) + '" /><em>pessoas</em></div></label>' +
         '</div>' +
-        '<p class="gcv-cms-muted tf-small">O quórum novo começa no valor global. No privativo sem translado, de 1 pessoa até este quórum, o cliente paga o quórum × PAX 4- Excursão. O azul ao lado do campo é essa diária, ou o veículo cheio (4 × o valor com translado).</p>' +
+        '<p class="gcv-cms-muted tf-small">O quórum novo começa no valor global. No privativo sem translado, de 1 pessoa até este quórum, o cliente paga o quórum × PAX 4 Excursão. O azul embaixo de cada campo PAX 4 é o quórum × o valor daquele campo. No translado, é o veículo cheio (4 × o valor).</p>' +
         '<div class="tf-table-wrap"><table class="tf-table">' +
           '<thead><tr><th scope="col">Saindo de</th>' + CAMPOS.map(function (c) {
             return '<th scope="col">' + esc(c[1]) + '<small>' + esc(c[2]) + '</small></th>';
@@ -1199,7 +1276,7 @@
           }).join('') +
         '</tbody></table></div>' +
         '<div class="tf-editor__tools"><button type="button" class="gcv-dash-btn gcv-dash-btn--secondary gcv-dash-btn--sm" id="tf-copy">Copiar Alto Paraíso para as outras cidades</button>' +
-        '<span class="gcv-cms-muted tf-small">PAX 5+ tem que ser preenchido e menor que o PAX 4- do mesmo tipo. Excursão menor que privativo. Campo vazio no translado = não vende essa opção.</span></div>' +
+        '<span class="gcv-cms-muted tf-small">PAX 5+ tem que ser preenchido e menor que o PAX 4 do mesmo tipo. Excursão menor que privativo. Campo vazio no translado = não vende essa opção.</span></div>' +
         (t ?
           '<div class="tf-field"><span>Usado em</span><div class="tf-card__use">' +
             (usados.length ? usados.map(function (u) {
@@ -1228,8 +1305,9 @@
           if (el) el.textContent = text;
         }
         var exc = cents('excursao_pessoa_cents');
-        set('excursao_pessoa_cents', exc > 0 ? 'Diária ' + reais(q * exc) : '');
-        set('exclusivo_pessoa_cents', exc > 0 ? 'Diária ' + reais(q * exc) : '');
+        var pri = cents('exclusivo_pessoa_cents');
+        set('excursao_pessoa_cents', 'Diária ' + reais(q * exc));
+        set('exclusivo_pessoa_cents', 'Diária ' + reais(q * pri));
         var excT = cents('excursao_transporte_cents');
         var priT = cents('exclusivo_transporte_cents');
         set('excursao_transporte_cents', excT > 0 ? 'Veículo ' + reais(VEICULO * excT) : '');

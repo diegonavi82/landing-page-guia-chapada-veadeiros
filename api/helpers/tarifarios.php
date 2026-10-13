@@ -12,19 +12,19 @@ declare(strict_types=1);
  * - Sem tarifário, o atrativo ou o passeio não é vendido no site.
  *
  * Preços em centavos, por cidade de saída:
- *   exclusivo_pessoa_cents       PAX 4- privativo, sem translado
- *   exclusivo_pessoa_5_cents     PAX 5+ privativo, sem translado (tem que ser menor que o PAX 4-)
+ *   exclusivo_pessoa_cents       PAX 4 privativo, sem translado
+ *   exclusivo_pessoa_5_cents     PAX 5+ privativo, sem translado (tem que ser menor que o PAX 4)
  *   exclusivo_transporte_cents   privativo com translado (sem faixa)
- *   excursao_pessoa_cents        PAX 4- excursão, sem translado
- *   excursao_pessoa_5_cents      PAX 5+ excursão, sem translado (tem que ser menor que o PAX 4-)
+ *   excursao_pessoa_cents        PAX 4 excursão, sem translado
+ *   excursao_pessoa_5_cents      PAX 5+ excursão, sem translado (tem que ser menor que o PAX 4)
  *   excursao_transporte_cents    excursão com translado (sem faixa)
  *
- * Sem translado, excursão: até 4 pessoas pagam o PAX 4-. Da 5ª em diante,
- * total = 4 × PAX 4- + (pessoas − 4) × PAX 5+.
- * Sem translado, privativo de 1 pessoa até o quórum: total = quórum × PAX 4- Excursão.
+ * Sem translado, excursão: até 4 pessoas pagam o PAX 4. Da 5ª em diante,
+ * total = 4 × PAX 4 + (pessoas − 4) × PAX 5+.
+ * Sem translado, privativo de 1 pessoa até o quórum: total = quórum × PAX 4 Excursão.
  * Acima do quórum: esse pacote + (pessoas − quórum) × PAX 5+ Privativo.
  * Excursão é sempre menor que o privativo do mesmo campo. Não podem ser iguais.
- * PAX 4- Excursão × quórum não pode ficar abaixo da diária mínima de guiagem.
+ * PAX 4 Excursão × quórum não pode ficar abaixo da diária mínima de guiagem.
  * Com translado não há PAX 5+. O guia em outro idioma entra uma vez nesse total.
  * bilingue_tipo fixo = bilingue_valor em centavos. percentual = bilingue_valor inteiro (0–100).
  * Português soma zero. Vazio no fixo = R$ 40. Vazio no percentual = 0.
@@ -184,8 +184,8 @@ function gcv_passeio_max_atrativos_ensure(PDO $pdo): void
     }
 }
 
-/** @param mixed $raw */
-function gcv_passeio_categorias_parse($raw, int $count): array
+/** Categorias gravadas, sem inventar Clássicos. @param mixed $raw @return list<string> */
+function gcv_passeio_categorias_lista($raw): array
 {
     $allowed = array_keys(GCV_PASSEIO_CATEGORIAS);
     $list = [];
@@ -197,11 +197,38 @@ function gcv_passeio_categorias_parse($raw, int $count): array
     } elseif (is_array($raw)) {
         $list = $raw;
     }
-    $list = array_values(array_unique(array_intersect($allowed, array_map('strval', $list))));
-    if (!$list) {
-        $list = $count >= 2 ? ['destaque', 'classicos'] : ['classicos'];
+    return array_values(array_unique(array_intersect($allowed, array_map('strval', $list))));
+}
+
+/** Uma experiência sem categoria cai em Clássicos. O segundo argumento não muda a lista. @param mixed $raw */
+function gcv_passeio_categorias_parse($raw, int $count = 1): array
+{
+    unset($count);
+    return gcv_passeio_categorias_lista($raw) ?: ['classicos'];
+}
+
+/**
+ * Passeio com várias experiências entra em todas as categorias de cada uma.
+ * Experiência 1 em Destaque e experiência 2 em Lado B: o passeio aparece nas duas.
+ * Categoria vazia não entra na união. Se nenhuma experiência tiver categoria, fica Clássicos.
+ * @param list<mixed> $brutos
+ * @return list<string>
+ */
+function gcv_passeio_categorias_merge(array $brutos): array
+{
+    $tem = [];
+    foreach ($brutos as $raw) {
+        foreach (gcv_passeio_categorias_lista($raw) as $key) {
+            $tem[$key] = true;
+        }
     }
-    return $list;
+    $out = [];
+    foreach (array_keys(GCV_PASSEIO_CATEGORIAS) as $key) {
+        if (!empty($tem[$key])) {
+            $out[] = $key;
+        }
+    }
+    return $out ?: ['classicos'];
 }
 
 /** @param list<string> $cats */
@@ -484,6 +511,12 @@ function gcv_tarifas_oficiais_catalogo(): array
     return $out;
 }
 
+/** EXC120T / PRI600T. EXC é por pessoa. PRI é o privativo das 4 pessoas do veículo. */
+function gcv_tarifa_nome_translado(int $excursao, int $privativo): string
+{
+    return 'EXC' . $excursao . 'T / PRI' . ($privativo * 4) . 'T';
+}
+
 /** EXC120(100) / PRI150(130). Fora do parêntese: até 4 pessoas. Dentro: da 5ª. 0 no 5+ repete o 4-. */
 function gcv_tarifa_nome_sem_translado(int $excursao, int $excursao5, int $privativo, int $privativo5): string
 {
@@ -513,7 +546,7 @@ function gcv_tarifa_oficial_linha(string $tipo, string $codigo, int $excursao, i
         'privativo_5_cents' => $privativo5 * 100,
         'nome' => $tipo === 'guia'
             ? gcv_tarifa_nome_sem_translado($excursao, $excursao5, $privativo, $privativo5)
-            : ('Tarifa Translado · excursão ' . $excursao . ' / privativo ' . $privativo),
+            : gcv_tarifa_nome_translado($excursao, $privativo),
     ];
 }
 
@@ -549,12 +582,16 @@ function gcv_tarifas_oficiais_ler(PDO $pdo): array
     try {
         $stmt = $pdo->prepare('SELECT value FROM gcv_settings WHERE key_name = ? LIMIT 1');
         $stmt->execute(['tarifas_oficiais']);
-        $raw = json_decode((string)$stmt->fetchColumn(), true);
+        $col = $stmt->fetchColumn();
     } catch (Throwable $e) {
         return gcv_tarifas_oficiais_catalogo();
     }
-    if (!is_array($raw) || !$raw) {
+    if ($col === false || $col === null) {
         return gcv_tarifas_oficiais_catalogo();
+    }
+    $raw = json_decode((string)$col, true);
+    if (!is_array($raw)) {
+        return [];
     }
     $out = [];
     foreach ($raw as $row) {
@@ -565,12 +602,17 @@ function gcv_tarifas_oficiais_ler(PDO $pdo): array
         $codigo = trim((string)($row['codigo'] ?? ''));
         $exc = (int)($row['excursao'] ?? 0);
         $pri = (int)($row['privativo'] ?? 0);
+        $exc5 = (int)($row['excursao_5'] ?? 0);
+        $pri5 = (int)($row['privativo_5'] ?? 0);
         if (($tipo !== 'guia' && $tipo !== 'translado') || $codigo === '' || $exc < 1 || $pri < 1) {
             continue;
         }
-        $out[] = gcv_tarifa_oficial_linha($tipo, $codigo, $exc, $pri, (int)($row['excursao_5'] ?? 0), (int)($row['privativo_5'] ?? 0));
+        if ($tipo === 'guia' && ($exc5 < 1 || $pri5 < 1)) {
+            continue;
+        }
+        $out[] = gcv_tarifa_oficial_linha($tipo, $codigo, $exc, $pri, $exc5, $pri5);
     }
-    return $out ?: gcv_tarifas_oficiais_catalogo();
+    return $out;
 }
 
 /** @param list<array<string,mixed>> $rows */
@@ -693,7 +735,7 @@ function gcv_tarifa_oficial_criar(PDO $pdo, string $tipo, int $excursao, int $pr
     return $codigo;
 }
 
-/** Grava o PAX 5+ de uma Tarifa Guia já existente. Tem que ser menor que o PAX 4-. */
+/** Grava o PAX 5+ de uma Tarifa Guia já existente. Tem que ser menor que o PAX 4. */
 function gcv_tarifa_oficial_pax5(PDO $pdo, string $codigo, int $excursao5, int $privativo5): void
 {
     $codigo = trim($codigo);
@@ -822,7 +864,7 @@ function gcv_tarifa_oficial_excluir(PDO $pdo, string $codigo): array
     return [
         'moved' => $uso,
         'para' => $acima['codigo'] ?? '',
-        'para_nome' => $acima ? ('Excursão R$ ' . $acima['excursao'] . ' · Privativo R$ ' . $acima['privativo']) : '',
+        'para_nome' => $acima ? (string)($acima['nome'] ?? '') : '',
     ];
 }
 
@@ -1490,6 +1532,16 @@ function gcv_tarifa_saida_salvar(PDO $pdo, array $body): void
         if (!$passeio) {
             throw new InvalidArgumentException('Passeio não encontrado.');
         }
+        if ($cidade === '') {
+            $guia = $campo === 'guia' ? $codigo : trim((string)($passeio['tarifa_guia'] ?? ''));
+            $trans = $campo === 'translado' ? $codigo : trim((string)($passeio['tarifa_translado'] ?? ''));
+            gcv_tarifa_oficial_vincular($pdo, [
+                'passeio_id' => $id,
+                'tarifa_guia' => $guia,
+                'tarifa_translado' => $trans,
+            ]);
+            return;
+        }
         if (!function_exists('gcv_related_tour_one')) {
             require_once __DIR__ . '/related_tours.php';
         }
@@ -1586,9 +1638,18 @@ function gcv_tarifa_oficial_realocar_json(PDO $pdo, string $de, string $para, st
     }
 }
 
-/** Carga inicial: só roda com a tabela vazia. */
+/** Carga inicial: só roda com a tabela vazia e se ninguém tiver apagado as tarifas de propósito. */
 function gcv_tarifarios_seed(PDO $pdo): void
 {
+    try {
+        $flag = $pdo->prepare('SELECT value FROM gcv_settings WHERE key_name = ? LIMIT 1');
+        $flag->execute(['tarifario_sem_seed']);
+        if ((string)$flag->fetchColumn() === '1') {
+            return;
+        }
+    } catch (Throwable $e) {
+        // segue a carga inicial
+    }
     $count = (int)$pdo->query('SELECT COUNT(*) FROM gcv_tarifario')->fetchColumn();
     if ($count > 0) {
         return;
@@ -1801,13 +1862,13 @@ function gcv_tarifario_msg(string $onde, string $msg): string
 function gcv_tarifario_validar_guia_valores(int $exc4, int $exc5, int $pri4, int $pri5, string $onde): void
 {
     if ($exc4 > 0 && $pri4 > 0 && $exc4 >= $pri4) {
-        throw new InvalidArgumentException(gcv_tarifario_msg($onde, 'PAX 4- Excursão tem que ser menor que o PAX 4- Privativo.'));
+        throw new InvalidArgumentException(gcv_tarifario_msg($onde, 'PAX 4 Excursão tem que ser menor que o PAX 4 Privativo.'));
     }
     if ($exc4 > 0 && ($exc5 <= 0 || $exc5 >= $exc4)) {
-        throw new InvalidArgumentException(gcv_tarifario_msg($onde, 'PAX 5+ Excursão tem que ser menor que o PAX 4- Excursão.'));
+        throw new InvalidArgumentException(gcv_tarifario_msg($onde, 'PAX 5+ Excursão tem que ser menor que o PAX 4 Excursão.'));
     }
     if ($pri4 > 0 && ($pri5 <= 0 || $pri5 >= $pri4)) {
-        throw new InvalidArgumentException(gcv_tarifario_msg($onde, 'PAX 5+ Privativo tem que ser menor que o PAX 4- Privativo.'));
+        throw new InvalidArgumentException(gcv_tarifario_msg($onde, 'PAX 5+ Privativo tem que ser menor que o PAX 4 Privativo.'));
     }
     if ($exc5 > 0 && $pri5 > 0 && $exc5 >= $pri5) {
         throw new InvalidArgumentException(gcv_tarifario_msg($onde, 'PAX 5+ Excursão tem que ser menor que o PAX 5+ Privativo.'));
@@ -1821,12 +1882,12 @@ function gcv_tarifario_validar_translado_valores(int $excT, int $priT, string $o
     }
 }
 
-/** $exc4 e $diaria na mesma unidade. A diária do cliente é PAX 4- Excursão × quórum. */
+/** $exc4 e $diaria na mesma unidade. A diária do cliente é PAX 4 Excursão × quórum. */
 function gcv_tarifario_validar_diaria_valor(int $exc4, int $quorum, int $diaria, string $onde): void
 {
     $quorum = max(1, $quorum);
     if ($exc4 > 0 && $diaria > 0 && ($exc4 * $quorum) < $diaria) {
-        throw new InvalidArgumentException(gcv_tarifario_msg($onde, 'PAX 4- Excursão × quórum ' . $quorum . ' fica abaixo da diária mínima de guiagem.'));
+        throw new InvalidArgumentException(gcv_tarifario_msg($onde, 'PAX 4 Excursão × quórum ' . $quorum . ' fica abaixo da diária mínima de guiagem.'));
     }
 }
 
@@ -2074,6 +2135,176 @@ function gcv_tarifario_delete(PDO $pdo, int $id): void
     $pdo->prepare('DELETE FROM gcv_tarifario WHERE id = ?')->execute([$id]);
 }
 
+function gcv_tarifa_reais_de_cents(int $cents): int
+{
+    return (int)round($cents / 100);
+}
+
+/** Acha o código oficial com o mesmo valor. Vazio se não houver par igual. */
+function gcv_tarifa_oficial_codigo_por_valor(string $tipo, int $exc, int $pri, int $exc5 = 0, int $pri5 = 0): string
+{
+    if ($exc < 1 || $pri < 1) {
+        return '';
+    }
+    $tipo = $tipo === 'translado' ? 'translado' : 'guia';
+    $candidatos = [];
+    foreach (gcv_tarifas_oficiais() as $row) {
+        if ((string)($row['tipo'] ?? '') !== $tipo) {
+            continue;
+        }
+        if ((int)$row['excursao'] !== $exc || (int)$row['privativo'] !== $pri) {
+            continue;
+        }
+        $candidatos[] = $row;
+    }
+    if (!$candidatos) {
+        return '';
+    }
+    if (count($candidatos) === 1) {
+        return (string)$candidatos[0]['codigo'];
+    }
+    foreach ($candidatos as $row) {
+        if ((int)($row['excursao_5'] ?? 0) === $exc5 && (int)($row['privativo_5'] ?? 0) === $pri5) {
+            return (string)$row['codigo'];
+        }
+    }
+    return '';
+}
+
+/**
+ * Traduz o preço antigo de uma cidade para os códigos da Tarifa Guia e da Tarifa Translado.
+ *
+ * @param array<string,mixed>|null $legado
+ * @return array{guia:string,translado:string}
+ */
+function gcv_tarifa_codigos_da_cidade(?array $legado, string $cidade): array
+{
+    $vazio = ['guia' => '', 'translado' => ''];
+    if (!$legado || $cidade === '') {
+        return $vazio;
+    }
+    $cidades = is_array($legado['cidades'] ?? null) ? $legado['cidades'] : [];
+    $row = is_array($cidades[$cidade] ?? null) ? $cidades[$cidade] : null;
+    if (!$row) {
+        return $vazio;
+    }
+    return [
+        'guia' => gcv_tarifa_oficial_codigo_por_valor(
+            'guia',
+            gcv_tarifa_reais_de_cents((int)($row['excursao_pessoa_cents'] ?? 0)),
+            gcv_tarifa_reais_de_cents((int)($row['exclusivo_pessoa_cents'] ?? 0)),
+            gcv_tarifa_reais_de_cents((int)($row['excursao_pessoa_5_cents'] ?? 0)),
+            gcv_tarifa_reais_de_cents((int)($row['exclusivo_pessoa_5_cents'] ?? 0))
+        ),
+        'translado' => gcv_tarifa_oficial_codigo_por_valor(
+            'translado',
+            gcv_tarifa_reais_de_cents((int)($row['excursao_transporte_cents'] ?? 0)),
+            gcv_tarifa_reais_de_cents((int)($row['exclusivo_transporte_cents'] ?? 0))
+        ),
+    ];
+}
+
+/**
+ * Preenche códigos vazios a partir do tarifário antigo. Não grava no banco e não mexe no preço público.
+ *
+ * @param array<string,mixed> $item
+ * @param array<string,mixed>|null $legado
+ * @return array<string,mixed>
+ */
+function gcv_admin_ligar_tarifa_legada(array $item, ?array $legado): array
+{
+    if (!$legado) {
+        return $item;
+    }
+    $ap = gcv_tarifa_codigos_da_cidade($legado, 'alto-paraiso');
+    if (trim((string)($item['tarifa_guia'] ?? '')) === '' && $ap['guia'] !== '') {
+        $item['tarifa_guia'] = $ap['guia'];
+    }
+    if (trim((string)($item['tarifa_translado'] ?? '')) === '' && $ap['translado'] !== '') {
+        $item['tarifa_translado'] = $ap['translado'];
+    }
+    $saidas = is_array($item['saidas_tarifas'] ?? null) ? $item['saidas_tarifas'] : [];
+    if (!$saidas) {
+        foreach (GCV_TARIFARIO_CIDADES as $key => $nome) {
+            $cod = gcv_tarifa_codigos_da_cidade($legado, $key);
+            if ($cod['guia'] === '' && $cod['translado'] === '') {
+                continue;
+            }
+            $saidas[] = ['key' => $key, 'nome' => $nome, 'guia' => $cod['guia'], 'translado' => $cod['translado']];
+        }
+        $item['saidas_tarifas'] = $saidas;
+        return $item;
+    }
+    foreach ($saidas as $i => $saida) {
+        if (!is_array($saida)) {
+            continue;
+        }
+        $key = (string)($saida['key'] ?? '');
+        if ($key === '' || !isset(GCV_TARIFARIO_CIDADES[$key])) {
+            $key = 'alto-paraiso';
+        }
+        $cod = gcv_tarifa_codigos_da_cidade($legado, $key);
+        if (trim((string)($saida['guia'] ?? '')) === '' && $cod['guia'] !== '') {
+            $saidas[$i]['guia'] = $cod['guia'];
+        }
+        if (trim((string)($saida['translado'] ?? '')) === '' && $cod['translado'] !== '') {
+            $saidas[$i]['translado'] = $cod['translado'];
+        }
+    }
+    $item['saidas_tarifas'] = $saidas;
+    return $item;
+}
+
+/**
+ * A ficha da experiência guarda a tarifa dentro de embarques. Copia o código antigo para o campo que o select lê.
+ *
+ * @param array<string,mixed> $row
+ * @param array<string,mixed>|null $legado
+ * @return array<string,mixed>
+ */
+function gcv_admin_ficha_ligar_tarifa_legada(array $row, ?array $legado): array
+{
+    if (!$legado) {
+        return $row;
+    }
+    $exp = is_array($row['experiencia'] ?? null) ? $row['experiencia'] : [];
+    $embarques = is_array($exp['embarques'] ?? null) ? $exp['embarques'] : [];
+    $saidas = [];
+    foreach ($embarques as $key => $item) {
+        if (!is_array($item)) {
+            continue;
+        }
+        $saidas[] = [
+            'key' => (string)$key,
+            'nome' => (string)($item['nome'] ?? ''),
+            'guia' => trim((string)($item['guia'] ?? '')),
+            'translado' => trim((string)($item['trans'] ?? ($item['translado'] ?? ''))),
+        ];
+    }
+    $ligado = gcv_admin_ligar_tarifa_legada([
+        'tarifa_guia' => (string)($row['tarifa_guia'] ?? ''),
+        'tarifa_translado' => (string)($row['tarifa_translado'] ?? ''),
+        'saidas_tarifas' => $saidas,
+    ], $legado);
+    $row['tarifa_guia'] = (string)$ligado['tarifa_guia'];
+    $row['tarifa_translado'] = (string)$ligado['tarifa_translado'];
+    foreach ($ligado['saidas_tarifas'] as $saida) {
+        $key = (string)($saida['key'] ?? '');
+        if ($key === '' || !isset($embarques[$key]) || !is_array($embarques[$key])) {
+            continue;
+        }
+        if (trim((string)($embarques[$key]['guia'] ?? '')) === '' && ($saida['guia'] ?? '') !== '') {
+            $embarques[$key]['guia'] = $saida['guia'];
+        }
+        if (trim((string)($embarques[$key]['trans'] ?? '')) === '' && ($saida['translado'] ?? '') !== '') {
+            $embarques[$key]['trans'] = $saida['translado'];
+        }
+    }
+    $exp['embarques'] = $embarques;
+    $row['experiencia'] = $exp;
+    return $row;
+}
+
 /** Tudo que o menu Tarifário precisa numa chamada. */
 function gcv_tarifario_admin_overview(PDO $pdo): array
 {
@@ -2111,6 +2342,7 @@ function gcv_tarifario_admin_overview(PDO $pdo): array
             'saidas_tarifas' => gcv_saidas_tarifas_atrativo($row, $mapaSaidas),
             'duracao_cidades' => gcv_duracao_cidades($row['duracao_json'] ?? null, (int)($row['duration_minutes'] ?? 0)),
         ];
+        $item = gcv_admin_ligar_tarifa_legada($item, $tid && isset($tarifarios[$tid]) ? $tarifarios[$tid] : null);
         $attractions[] = $item;
         if ($tid && isset($tarifarios[$tid])) {
             $tarifarios[$tid]['atrativos'][] = ['id' => $item['id'], 'title_pt' => $item['title_pt']];
@@ -2122,9 +2354,8 @@ function gcv_tarifario_admin_overview(PDO $pdo): array
         if (!$tour || count($tour['attractions'] ?? []) < 2) {
             continue;
         }
-        if (empty($tour['publicado']) && ($tour['tarifa_guia'] ?? '') === '' && ($tour['tarifa_translado'] ?? '') === '' && empty($tour['tarifario_id'])) {
-            continue;
-        }
+        $tidTour = isset($tour['tarifario_id']) && $tour['tarifario_id'] !== null ? (int)$tour['tarifario_id'] : 0;
+        $tour = gcv_admin_ligar_tarifa_legada($tour, $tidTour && isset($tarifarios[$tidTour]) ? $tarifarios[$tidTour] : null);
         $passeios[] = $tour;
         $tid = $tour['tarifario_id'] ?? null;
         if ($tid && isset($tarifarios[$tid])) {

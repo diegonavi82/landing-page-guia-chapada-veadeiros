@@ -1263,6 +1263,10 @@ const TARIFAS_OFICIAIS = {
   ],
 };
 
+function nomeTarifaTranslado(exc, pri) {
+  return "EXC" + Math.round(Number(exc) || 0) + "T / PRI" + (Math.round(Number(pri) || 0) * 4) + "T";
+}
+
 function nomeTarifaSemTranslado(exc4, exc5, pri4, pri5) {
   const excShow = exc5 > 0 ? exc5 : exc4;
   const priShow = pri5 > 0 ? pri5 : pri4;
@@ -1287,7 +1291,7 @@ function tarifasOficiais() {
           privativo_5_cents: 0,
           nome: tipo === "guia"
             ? nomeTarifaSemTranslado(row[1], 0, row[2], 0)
-            : "Tarifa Translado · excursão " + row[1] + " / privativo " + row[2],
+            : nomeTarifaTranslado(row[1], row[2]),
         });
       }
     }
@@ -1339,7 +1343,7 @@ function tarifaOficialCriar(tipo, excursao, privativo, excursao5, privativo5) {
     privativo_5_cents: privativo5 * 100,
     nome: tipo === "guia"
       ? nomeTarifaSemTranslado(excursao, excursao5, privativo, privativo5)
-      : "Tarifa Translado · excursão " + excursao + " / privativo " + privativo,
+      : nomeTarifaTranslado(excursao, privativo),
   });
   return codigo;
 }
@@ -1403,7 +1407,7 @@ function tarifaOficialExcluir(codigo) {
   return {
     moved: uso,
     para: acima ? acima.codigo : "",
-    para_nome: acima ? ("Excursão R$ " + acima.excursao + " · Privativo R$ " + acima.privativo) : "",
+    para_nome: acima ? (acima.nome || "") : "",
   };
 }
 
@@ -1481,7 +1485,7 @@ function tarifaOficialEditar(codigo, excursao, privativo, excursao5, privativo5)
   row.privativo_5_cents = privativo5 * 100;
   row.nome = row.tipo === "guia"
     ? nomeTarifaSemTranslado(excursao, excursao5, privativo, privativo5)
-    : "Tarifa Translado · excursão " + excursao + " / privativo " + privativo;
+    : nomeTarifaTranslado(excursao, privativo);
 }
 
 function saidasTarifasAtrativo(a) {
@@ -1731,9 +1735,9 @@ function ondeMsg(onde, msg) {
 }
 
 function validarGuiaValores(exc4, exc5, pri4, pri5, onde) {
-  if (exc4 > 0 && pri4 > 0 && exc4 >= pri4) throw new Error(ondeMsg(onde, "PAX 4- Excursão tem que ser menor que o PAX 4- Privativo."));
-  if (exc4 > 0 && (exc5 <= 0 || exc5 >= exc4)) throw new Error(ondeMsg(onde, "PAX 5+ Excursão tem que ser menor que o PAX 4- Excursão."));
-  if (pri4 > 0 && (pri5 <= 0 || pri5 >= pri4)) throw new Error(ondeMsg(onde, "PAX 5+ Privativo tem que ser menor que o PAX 4- Privativo."));
+  if (exc4 > 0 && pri4 > 0 && exc4 >= pri4) throw new Error(ondeMsg(onde, "PAX 4 Excursão tem que ser menor que o PAX 4 Privativo."));
+  if (exc4 > 0 && (exc5 <= 0 || exc5 >= exc4)) throw new Error(ondeMsg(onde, "PAX 5+ Excursão tem que ser menor que o PAX 4 Excursão."));
+  if (pri4 > 0 && (pri5 <= 0 || pri5 >= pri4)) throw new Error(ondeMsg(onde, "PAX 5+ Privativo tem que ser menor que o PAX 4 Privativo."));
   if (exc5 > 0 && pri5 > 0 && exc5 >= pri5) throw new Error(ondeMsg(onde, "PAX 5+ Excursão tem que ser menor que o PAX 5+ Privativo."));
 }
 
@@ -1744,7 +1748,7 @@ function validarTransladoValores(excT, priT, onde) {
 function validarDiariaValor(exc4, quorum, diaria, onde) {
   quorum = Math.max(1, parseInt(quorum, 10) || 1);
   if (exc4 > 0 && diaria > 0 && exc4 * quorum < diaria) {
-    throw new Error(ondeMsg(onde, "PAX 4- Excursão × quórum " + quorum + " fica abaixo da diária mínima de guiagem."));
+    throw new Error(ondeMsg(onde, "PAX 4 Excursão × quórum " + quorum + " fica abaixo da diária mínima de guiagem."));
   }
 }
 
@@ -2074,17 +2078,6 @@ function relatedSignature(ids) {
   const semPasseio = MOCK_ATTRACTIONS.find((a) => a.slug === "cachoeira-poco-encantado-guia-chapada-veadeiros-teresina-de-goias");
   if (semPasseio) semPasseio.tem_passeio = false;
 
-  const porCombo = [
-    [["cachoeira-anjos-arcanjos-guia-chapada-veadeiros-alto-paraiso", "caracol-guia-chapada-veadeiros"], ["classicos"]],
-    [["cachoeira-almecegas-poco-sao-bento-guia-chapada-veadeiros", "vale-lua-guia-chapada-veadeiros-sao-jorge"], ["familia", "destaque"]],
-    [["cachoeira-almecegas-poco-sao-bento-guia-chapada-veadeiros", "vale-lua-guia-chapada-veadeiros-sao-jorge", "cachoeira-ponte-de-pedra-guia-chapada-veadeiros-cavalcante"], ["aventura", "destaque"]],
-    [["cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso", "vale-lua-guia-chapada-veadeiros-sao-jorge"], ["lado-b", "familia"]],
-  ];
-  for (const [slugs, categorias] of porCombo) {
-    const ids = slugs.map((slug) => (MOCK_ATTRACTIONS.find((a) => a.slug === slug) || {}).id).filter(Boolean);
-    const tour = MOCK_RELATED.find((r) => relatedSignature(r.attractions.map((a) => a.id)) === relatedSignature(ids));
-    if (tour) tour.categorias = categorias;
-  }
 })();
 
 function experienciaSo4x4(entity) {
@@ -2133,7 +2126,7 @@ function presentRelated(tour) {
     tarifa_guia: tour.tarifa_guia || "",
     tarifa_translado: tour.tarifa_translado || "",
     saidas_tarifas: saidasTarifas,
-    categorias: passeioCategorias(tour.categorias, (tour.attractions || []).length),
+    categorias: categoriasMerge(tour.attractions),
     tarifa,
     saidas: saidasPublic(tarifa, minutos, 0, inter),
     somente_4x4: attractions.some((part) => part.somente_4x4),
@@ -2170,10 +2163,25 @@ function passeioPartesVendem(parts) {
   });
 }
 
-function passeioCategorias(raw, count) {
+function passeioCategoriasLista(raw) {
   const allowed = Object.keys(PASSEIO_CATEGORIAS);
-  const list = Array.isArray(raw) ? raw.filter((key) => allowed.includes(key)) : [];
-  return list.length ? list : count >= 2 ? ["destaque", "classicos"] : ["classicos"];
+  return Array.isArray(raw) ? raw.filter((key) => allowed.includes(key)) : [];
+}
+
+function passeioCategorias(raw) {
+  const list = passeioCategoriasLista(raw);
+  return list.length ? list : ["classicos"];
+}
+
+function categoriasMerge(parts) {
+  const allowed = Object.keys(PASSEIO_CATEGORIAS);
+  const tem = {};
+  (parts || []).forEach((part) => {
+    const live = MOCK_ATTRACTIONS.find((a) => a.id === part.id) || part;
+    passeioCategoriasLista(live.categorias).forEach((key) => { tem[key] = true; });
+  });
+  const out = allowed.filter((key) => tem[key]);
+  return out.length ? out : ["classicos"];
 }
 
 function passeioCatalog() {
@@ -2183,7 +2191,6 @@ function passeioCatalog() {
     .map((presented) => {
       const first = presented.attractions[0] || {};
       const live = MOCK_ATTRACTIONS.find((a) => a.id === first.id);
-      const source = MOCK_RELATED.find((row) => row.id === presented.id);
       return {
         id: "r-" + presented.id,
         kind: "combo",
@@ -2191,7 +2198,7 @@ function passeioCatalog() {
         attraction_ids: presented.attractions.map((part) => part.id),
         title: relatedTitle(presented),
         count: presented.attractions.length,
-        categories: passeioCategorias(source && source.categorias, presented.attractions.length),
+        categories: categoriasMerge(presented.attractions),
         duration_minutes: presented.duration_minutes,
         duracao_cidades: presented.duracao_cidades,
         tarifa: presented.tarifa,
@@ -2907,7 +2914,7 @@ function faltasParaAtivarAtrativo(body) {
   if (!String(body.content_pt || "").replace(/<[^>]*>/g, "").trim()) faltas.push("Descrição");
   const exp = body.experiencia && typeof body.experiencia === "object" ? body.experiencia : {};
   const cidade = String(body.cidade_nome || exp.cidade || "").trim();
-  if (!cidade) faltas.push("Cidade da experiência");
+  if (!cidade) faltas.push("Localização");
   const embarques = exp.embarques && typeof exp.embarques === "object" ? exp.embarques : null;
   if (embarques) {
     let comSaida = 0;
