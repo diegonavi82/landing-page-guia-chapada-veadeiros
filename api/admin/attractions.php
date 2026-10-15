@@ -275,6 +275,15 @@ function gcv_attraction_erro_ativar(array $body): ?string
         $faltas[] = 'Descrição';
     }
     $exp = is_array($body['experiencia'] ?? null) ? $body['experiencia'] : [];
+    $logMax = is_array($exp['logistica'] ?? null) ? $exp['logistica'] : [];
+    $maxPart = (int)($logMax['max'] ?? 0);
+    if ($maxPart < 4 || $maxPart > 15) {
+        $faltas[] = 'Máximo de participantes por guia';
+    }
+    $trilha = $body['trail_distance_km'] ?? null;
+    if ($trilha === null || $trilha === '' || !is_numeric($trilha) || (float)$trilha < 0) {
+        $faltas[] = 'Caminhada (trilha, km)';
+    }
     $cidade = trim((string)($body['cidade_nome'] ?? ($exp['cidade'] ?? '')));
     if ($cidade === '') {
         $faltas[] = 'Localização';
@@ -313,6 +322,31 @@ function gcv_attraction_erro_ativar(array $body): ?string
         return null;
     }
     return 'Para ativar, preencha: ' . implode(', ', $faltas) . '.';
+}
+
+function gcv_attraction_erro_max_participantes(array $body): ?string
+{
+    if (!isset($body['experiencia']) || !is_array($body['experiencia'])) {
+        return null;
+    }
+    $log = is_array($body['experiencia']['logistica'] ?? null) ? $body['experiencia']['logistica'] : [];
+    $n = (int)($log['max'] ?? 0);
+    if ($n >= 4 && $n <= 15) {
+        return null;
+    }
+    return 'O máximo de participantes por guia é obrigatório. Escolha de 4 a 15.';
+}
+
+function gcv_attraction_erro_caminhada(array $body): ?string
+{
+    if (!isset($body['experiencia']) || !is_array($body['experiencia'])) {
+        return null;
+    }
+    $trilha = $body['trail_distance_km'] ?? null;
+    if ($trilha === null || $trilha === '' || !is_numeric($trilha) || (float)$trilha < 0) {
+        return 'A caminhada (trilha, km) é obrigatória.';
+    }
+    return null;
 }
 
 if ($method === 'GET') {
@@ -354,7 +388,7 @@ if ($method === 'GET') {
             $fields[(string)($col['Field'] ?? '')] = true;
         }
         $select = 'a.id, a.slug, a.status, a.title_pt, a.cover_url, a.difficulty, a.duration_minutes, a.tarifario_id, a.entry_price_cents, a.entry_price_label, a.city_id, a.updated_at';
-        foreach (['tarifa_guia', 'tarifa_translado', 'experiencia_json'] as $col) {
+        foreach (['tarifa_guia', 'tarifa_translado', 'experiencia_json', 'duracao_json', 'saidas_json'] as $col) {
             if (!empty($fields[$col])) {
                 $select .= ', a.' . $col;
             }
@@ -396,6 +430,7 @@ if ($method === 'GET') {
                 }
             }
             $row['experiencia'] = gcv_attraction_experiencia_lista($full);
+            $row['horas_embarque'] = gcv_atrativo_maior_horas_embarque($pdo, $row);
             $row['max_participantes'] = gcv_experiencia_max_participantes($full);
             $tid = (int)($row['tarifario_id'] ?? 0);
             $row['saidas_lista'] = gcv_attraction_saidas_lista($row, $tarifas[$tid] ?? null);
@@ -427,6 +462,18 @@ if ($method === 'POST') {
         if (str_contains($row['title_pt'], ' + ')) {
             http_response_code(400);
             echo json_encode(['ok' => false, 'error' => 'Cada experiência fica sozinha. Para juntar, use a aba Relacionados.']);
+            exit;
+        }
+        $erroMax = gcv_attraction_erro_max_participantes($body);
+        if ($erroMax !== null) {
+            http_response_code(400);
+            echo json_encode(['ok' => false, 'error' => $erroMax]);
+            exit;
+        }
+        $erroTrilha = gcv_attraction_erro_caminhada($body);
+        if ($erroTrilha !== null) {
+            http_response_code(400);
+            echo json_encode(['ok' => false, 'error' => $erroTrilha]);
             exit;
         }
         $erroAtivar = gcv_attraction_erro_ativar(array_merge($body, ['status' => $row['status']]));
@@ -504,6 +551,33 @@ if ($method === 'PUT') {
             http_response_code(400);
             echo json_encode(['ok' => false, 'error' => 'Cada experiência fica sozinha. Para juntar, use a aba Relacionados.']);
             exit;
+        }
+        $erroMax = gcv_attraction_erro_max_participantes($body);
+        if ($erroMax !== null) {
+            http_response_code(400);
+            echo json_encode(['ok' => false, 'error' => $erroMax]);
+            exit;
+        }
+        $erroTrilha = gcv_attraction_erro_caminhada($body);
+        if ($erroTrilha !== null) {
+            http_response_code(400);
+            echo json_encode(['ok' => false, 'error' => $erroTrilha]);
+            exit;
+        }
+        if (isset($body['experiencia']['embarques']) && is_array($body['experiencia']['embarques'])) {
+            require_once __DIR__ . '/../helpers/tarifarios.php';
+            $erroRel = gcv_atrativo_erro_embarques_vs_relacionados(db(), $id, $body);
+            if ($erroRel !== null) {
+                http_response_code(400);
+                echo json_encode(['ok' => false, 'error' => $erroRel]);
+                exit;
+            }
+            $erroHoras = gcv_atrativo_erro_horas_vs_relacionados(db(), $id, $body);
+            if ($erroHoras !== null) {
+                http_response_code(400);
+                echo json_encode(['ok' => false, 'error' => $erroHoras]);
+                exit;
+            }
         }
         $jaPublicada = (string)($existing['status'] ?? '') === 'published';
         $exigirAtivacao = !empty($body['exigir_ativacao']) || (!$jaPublicada && (string)($row['status'] ?? '') === 'published');

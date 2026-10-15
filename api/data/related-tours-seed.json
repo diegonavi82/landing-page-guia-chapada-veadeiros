@@ -213,27 +213,6 @@
       ]
     },
     {
-      "source": "Almécegas + Vale da Lua + Ponte de Pedra",
-      "minutes": 570,
-      "attractions": [
-        {
-          "title": "Almécegas",
-          "slug": "cachoeira-almecegas-poco-sao-bento-guia-chapada-veadeiros",
-          "page": "atrativos/cachoeira-almecegas-poco-sao-bento-guia-chapada-veadeiros.html"
-        },
-        {
-          "title": "Vale da Lua",
-          "slug": "vale-lua-guia-chapada-veadeiros-sao-jorge",
-          "page": "atrativos/vale-lua-guia-chapada-veadeiros-sao-jorge.html"
-        },
-        {
-          "title": "Ponte de Pedra",
-          "slug": "cachoeira-ponte-de-pedra-guia-chapada-veadeiros-cavalcante",
-          "page": "atrativos/cachoeira-ponte-de-pedra-guia-chapada-veadeiros-cavalcante.html"
-        }
-      ]
-    },
-    {
       "source": "Cordovil + Vale da Lua",
       "minutes": 450,
       "attractions": [

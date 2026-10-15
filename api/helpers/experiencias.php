@@ -436,6 +436,9 @@ function gcv_passeio_garantir_conjunto(PDO $pdo, array $attractionIds): int
     $sorted = $ids;
     sort($sorted);
     $signature = implode('-', $sorted);
+    if (gcv_related_tour_foi_apagado($pdo, $signature)) {
+        return 0;
+    }
     $find = $pdo->prepare('SELECT id FROM gcv_passeio_relacionado WHERE signature = ? LIMIT 1');
     $find->execute([$signature]);
     $passeioId = (int)($find->fetchColumn() ?: 0);

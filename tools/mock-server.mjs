@@ -1962,6 +1962,20 @@ function duracaoCombo(parts, chaves) {
   return out;
 }
 
+function duracaoRelacionada(tour, chaves) {
+  const salvo = tour.duracao && typeof tour.duracao === "object" ? tour.duracao : {};
+  const tem = Object.values(salvo).some((v) => parseInt(v, 10) > 0);
+  const soma = duracaoCombo(tour.attractions, chaves);
+  const out = {};
+  for (const key of chaves) {
+    const n = parseInt(salvo[key], 10) || 0;
+    if (n > 0) out[key] = Math.min(n, 1440);
+    else if (tour.duracao_manual && !tem) out[key] = tour.duration_minutes || 0;
+    else out[key] = soma[key] || 0;
+  }
+  return out;
+}
+
 function duracaoClean(raw) {
   const out = {};
   const mapa = cidadesSaidaMapa();
@@ -2114,9 +2128,7 @@ function presentRelated(tour) {
   const inter = chavesIntersecao(attractions.map((part) => part.embarques || []));
   const saidasTarifas = saidasTarifasPasseio(tour, inter);
   const chavesDuracao = inter.length ? inter : PASSEIO_CIDADE_KEYS;
-  const minutos = tour.duracao_manual
-    ? Object.fromEntries(chavesDuracao.map((key) => [key, tour.duration_minutes || 0]))
-    : duracaoCombo(tour.attractions, chavesDuracao);
+  const minutos = duracaoRelacionada(tour, chavesDuracao);
   const tarifa = tarifaPublicaDe(saidasTarifas) || tarifaRelacaoPlana(tarifaDoPasseio(tour));
   return {
     id: tour.id,
@@ -2158,8 +2170,8 @@ function experienciaVendeNoSite(a) {
 
 function passeioPartesVendem(parts) {
   return (parts || []).length > 0 && parts.every((part) => {
-    const live = MOCK_ATTRACTIONS.find((a) => a.id === part.id);
-    return experienciaVendeNoSite(live);
+    const live = MOCK_ATTRACTIONS.find((a) => a.id === part.id) || part;
+    return live && live.status === "published";
   });
 }
 
@@ -2679,7 +2691,17 @@ function handleTarifarioApi(urlPath, req, res) {
             if (a) a.duracao = clean;
           } else if (body.passeio_id) {
             const r = MOCK_RELATED.find((x) => x.id === parseInt(body.passeio_id, 10));
-            if (r) r.duracao = clean;
+            if (r) {
+              r.duracao = clean;
+              const base = clean["alto-paraiso"] || Object.values(clean)[0] || 0;
+              if (base > 0) {
+                r.duration_minutes = base;
+                r.duracao_manual = 1;
+              } else {
+                r.duracao_manual = 0;
+                refreshRelatedDuration(r);
+              }
+            }
           }
           return send(tarifarioOverview());
         }

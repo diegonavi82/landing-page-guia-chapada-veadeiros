@@ -64,11 +64,30 @@ function gcv_related_tours_ensure(PDO $pdo): void
     } catch (Throwable $e) {
         // a coluna já existe
     }
+    gcv_related_tour_principal_ensure($pdo);
+    gcv_related_tour_apagados_ensure($pdo);
 
     gcv_related_tours_seed($pdo);
 
     require_once __DIR__ . '/tarifarios.php';
     gcv_tarifarios_ensure($pdo);
+}
+
+function gcv_related_tour_principal_ensure(PDO $pdo): void
+{
+    static $ok = false;
+    if ($ok) {
+        return;
+    }
+    $ok = true;
+    try {
+        $col = $pdo->query("SHOW COLUMNS FROM gcv_passeio_relacionado LIKE 'principal_atrativo_id'")->fetch();
+        if (!$col) {
+            $pdo->exec('ALTER TABLE gcv_passeio_relacionado ADD COLUMN principal_atrativo_id INT UNSIGNED NULL');
+        }
+    } catch (Throwable $e) {
+        error_log('principal_atrativo_id: ' . $e->getMessage());
+    }
 }
 
 function gcv_related_tours_seed(PDO $pdo): void
@@ -129,7 +148,58 @@ function gcv_related_tours_seed(PDO $pdo): void
         if (count($ids) < 2) {
             continue;
         }
+        $sorted = $ids;
+        sort($sorted);
+        if (gcv_related_tour_foi_apagado($pdo, implode('-', $sorted))) {
+            continue;
+        }
         gcv_related_tour_save($pdo, $ids);
+    }
+}
+
+function gcv_related_tour_apagados_ensure(PDO $pdo): void
+{
+    $pdo->exec(
+        "CREATE TABLE IF NOT EXISTS gcv_passeio_relacionado_apagado (
+          signature VARCHAR(80) NOT NULL PRIMARY KEY,
+          created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+    );
+}
+
+function gcv_related_tour_foi_apagado(PDO $pdo, string $signature): bool
+{
+    if ($signature === '') {
+        return false;
+    }
+    try {
+        gcv_related_tour_apagados_ensure($pdo);
+        $stmt = $pdo->prepare('SELECT 1 FROM gcv_passeio_relacionado_apagado WHERE signature = ? LIMIT 1');
+        $stmt->execute([$signature]);
+        return (bool)$stmt->fetchColumn();
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
+function gcv_related_tour_marcar_apagado(PDO $pdo, string $signature): void
+{
+    if ($signature === '' || !str_contains($signature, '-')) {
+        return;
+    }
+    gcv_related_tour_apagados_ensure($pdo);
+    $pdo->prepare('INSERT IGNORE INTO gcv_passeio_relacionado_apagado (signature) VALUES (?)')->execute([$signature]);
+}
+
+function gcv_related_tour_limpar_apagado(PDO $pdo, string $signature): void
+{
+    if ($signature === '') {
+        return;
+    }
+    try {
+        $pdo->prepare('DELETE FROM gcv_passeio_relacionado_apagado WHERE signature = ?')->execute([$signature]);
+    } catch (Throwable $e) {
+        // a relação ainda pode ser criada
     }
 }
 
@@ -164,6 +234,7 @@ function gcv_related_tour_save(PDO $pdo, array $attractionIds): array
     $sorted = $ids;
     sort($sorted);
     $signature = implode('-', $sorted);
+    gcv_related_tour_limpar_apagado($pdo, $signature);
     $minutes = 0;
     foreach ($rows as $row) {
         $minutes += (int)($row['duration_minutes'] ?? 0);
@@ -226,9 +297,25 @@ function gcv_related_refresh_durations(PDO $pdo, int $attractionId): void
 function gcv_related_tour_aplicar_ficha(PDO $pdo, int $passeioId, array $body): void
 {
     if (array_key_exists('horas', $body)) {
+        require_once __DIR__ . '/tarifarios.php';
         $raw = trim((string)$body['horas']);
         if ($raw === '') {
-            $pdo->prepare('UPDATE gcv_passeio_relacionado SET duracao_manual = 0 WHERE id = ?')->execute([$passeioId]);
+            $sum = $pdo->prepare(
+                'SELECT COALESCE(SUM(a.duration_minutes), 0)
+                 FROM gcv_passeio_relacionado_atrativo x
+                 INNER JOIN gcv_attractions a ON a.id = x.attraction_id
+                 WHERE x.passeio_id = ?'
+            );
+            $sum->execute([$passeioId]);
+            $erroHoras = gcv_passeio_erro_horas_abaixo_cidades($pdo, $passeioId, gcv_horas_de_minutos((int)$sum->fetchColumn()));
+        } else {
+            $erroHoras = gcv_passeio_erro_horas_abaixo_cidades($pdo, $passeioId, max(1, min(24, (int)$raw)));
+        }
+        if ($erroHoras !== null) {
+            throw new InvalidArgumentException($erroHoras);
+        }
+        if ($raw === '') {
+            $pdo->prepare('UPDATE gcv_passeio_relacionado SET duracao_manual = 0, duracao_json = NULL WHERE id = ?')->execute([$passeioId]);
             $sum = $pdo->prepare(
                 'SELECT COALESCE(SUM(a.duration_minutes), 0)
                  FROM gcv_passeio_relacionado_atrativo x
@@ -239,7 +326,15 @@ function gcv_related_tour_aplicar_ficha(PDO $pdo, int $passeioId, array $body): 
             $pdo->prepare('UPDATE gcv_passeio_relacionado SET duration_minutes = ? WHERE id = ?')->execute([(int)$sum->fetchColumn(), $passeioId]);
         } else {
             $horas = max(1, min(24, (int)$raw));
-            $pdo->prepare('UPDATE gcv_passeio_relacionado SET duration_minutes = ?, duracao_manual = 1 WHERE id = ?')->execute([$horas * 60, $passeioId]);
+            $pdo->prepare('UPDATE gcv_passeio_relacionado SET duration_minutes = ?, duracao_manual = 1, duracao_json = NULL WHERE id = ?')->execute([$horas * 60, $passeioId]);
+        }
+    } else {
+        require_once __DIR__ . '/tarifarios.php';
+        $atual = $pdo->prepare('SELECT duration_minutes FROM gcv_passeio_relacionado WHERE id = ? LIMIT 1');
+        $atual->execute([$passeioId]);
+        $erroHoras = gcv_passeio_erro_horas_abaixo_cidades($pdo, $passeioId, gcv_horas_de_minutos((int)$atual->fetchColumn()));
+        if ($erroHoras !== null) {
+            throw new InvalidArgumentException($erroHoras);
         }
     }
     if (array_key_exists('tarifa_guia', $body) || array_key_exists('tarifa_translado', $body)) {
@@ -250,6 +345,45 @@ function gcv_related_tour_aplicar_ficha(PDO $pdo, int $passeioId, array $body): 
             'tarifa_translado' => (string)($body['tarifa_translado'] ?? ''),
         ]);
     }
+    if (array_key_exists('principal', $body)) {
+        gcv_related_tour_definir_principal($pdo, $passeioId, $body);
+    }
+}
+
+function gcv_related_tour_definir_principal(PDO $pdo, int $passeioId, array $body): void
+{
+    gcv_related_tour_principal_ensure($pdo);
+    $stmt = $pdo->prepare('SELECT attraction_id FROM gcv_passeio_relacionado_atrativo WHERE passeio_id = ? ORDER BY sort_order ASC, attraction_id ASC');
+    $stmt->execute([$passeioId]);
+    $ids = [];
+    foreach ($stmt->fetchAll() as $row) {
+        $id = (int)($row['attraction_id'] ?? 0);
+        if ($id > 0) {
+            $ids[] = $id;
+        }
+    }
+    if (!$ids) {
+        return;
+    }
+    $editando = (int)($body['attraction_ids'][0] ?? 0);
+    if (!in_array($editando, $ids, true)) {
+        $editando = $ids[0];
+    }
+    $sim = filter_var($body['principal'], FILTER_VALIDATE_BOOLEAN);
+    if ($sim) {
+        $pid = $editando;
+    } else {
+        $atualStmt = $pdo->prepare('SELECT principal_atrativo_id FROM gcv_passeio_relacionado WHERE id = ? LIMIT 1');
+        $atualStmt->execute([$passeioId]);
+        $atual = (int)$atualStmt->fetchColumn();
+        $outros = array_values(array_filter($ids, static fn(int $id): bool => $id !== $editando));
+        if ($atual > 0 && $atual !== $editando && in_array($atual, $ids, true)) {
+            $pid = $atual;
+        } else {
+            $pid = $outros[0] ?? $editando;
+        }
+    }
+    $pdo->prepare('UPDATE gcv_passeio_relacionado SET principal_atrativo_id = ? WHERE id = ?')->execute([$pid, $passeioId]);
 }
 
 /** @return list<array<string,mixed>> */
@@ -273,6 +407,7 @@ function gcv_related_tours_for_attraction(PDO $pdo, int $attractionId): array
 /** @return array<string,mixed> */
 function gcv_related_tour_one(PDO $pdo, int $passeioId): array
 {
+    gcv_related_tour_principal_ensure($pdo);
     $head = $pdo->prepare('SELECT * FROM gcv_passeio_relacionado WHERE id = ?');
     $head->execute([$passeioId]);
     $passeio = $head->fetch();
@@ -315,6 +450,7 @@ function gcv_related_tour_one(PDO $pdo, int $passeioId): array
             (string)($row['tarifa_translado'] ?? ''),
             isset($row['tarifario_id']) && $row['tarifario_id'] !== null ? (int)$row['tarifario_id'] : null
         );
+        $subtitulosParte = gcv_experiencia_subtitulos($row['experiencia_json'] ?? null);
         $embarquesParte = gcv_embarques_publicos(
             isset($row['experiencia_json']) ? (string)$row['experiencia_json'] : null,
             $row['saidas_json'] ?? null,
@@ -328,6 +464,7 @@ function gcv_related_tour_one(PDO $pdo, int $passeioId): array
             'duration_minutes' => (int)($row['duration_minutes'] ?? 0),
             'cover_url' => (string)($row['cover_url'] ?? ''),
             'page' => gcv_attraction_public_html_path($slug),
+            'subtitulos' => $subtitulosParte,
             'embarques' => $embarquesParte,
             'somente_4x4' => gcv_experiencia_so4x4($row['experiencia_json'] ?? null),
             'max_participantes' => gcv_experiencia_max_participantes($row['experiencia_json'] ?? null),
@@ -364,9 +501,26 @@ function gcv_related_tour_one(PDO $pdo, int $passeioId): array
     $chavesDuracao = $inter ?: array_keys(GCV_TARIFARIO_CIDADES);
     $minutosGuardados = (int)($passeio['duration_minutes'] ?? 0);
     $manual = (int)($passeio['duracao_manual'] ?? 0) === 1 && $minutosGuardados > 0;
+    $mapaPasseio = [];
+    $rawDur = $passeio['duracao_json'] ?? null;
+    if (is_string($rawDur) && $rawDur !== '') {
+        $decoded = json_decode($rawDur, true);
+        if (is_array($decoded)) {
+            $mapaPasseio = $decoded;
+        }
+    } elseif (is_array($rawDur)) {
+        $mapaPasseio = $rawDur;
+    }
+    $veioDoPasseio = false;
+    foreach ($mapaPasseio as $val) {
+        if ((int)$val > 0) {
+            $veioDoPasseio = true;
+            break;
+        }
+    }
     $duracao = [];
     foreach ($chavesDuracao as $key) {
-        if ($manual) {
+        if ($manual && !$veioDoPasseio) {
             $duracao[$key] = $minutosGuardados;
             continue;
         }
@@ -400,6 +554,7 @@ function gcv_related_tour_one(PDO $pdo, int $passeioId): array
             $mapa
         ),
         'publicado' => !array_key_exists('publicado', $passeio) || (int)$passeio['publicado'] === 1,
+        'principal_atrativo_id' => (int)($passeio['principal_atrativo_id'] ?? 0),
         'somente_4x4' => (bool)array_filter($attractions, static fn($parte) => !empty($parte['somente_4x4'])),
         'max_participantes' => (function (array $partes): int {
             $nums = [];
@@ -417,6 +572,9 @@ function gcv_related_tour_one(PDO $pdo, int $passeioId): array
 
 function gcv_related_tour_delete(PDO $pdo, int $passeioId): void
 {
+    $sig = $pdo->prepare('SELECT signature FROM gcv_passeio_relacionado WHERE id = ? LIMIT 1');
+    $sig->execute([$passeioId]);
+    $signature = (string)($sig->fetchColumn() ?: '');
     try {
         $pdo->prepare('UPDATE gcv_excursions SET passeio_id = NULL WHERE passeio_id = ?')->execute([$passeioId]);
     } catch (Throwable $e) {
@@ -430,4 +588,7 @@ function gcv_related_tour_delete(PDO $pdo, int $passeioId): void
     $pdo->prepare('DELETE FROM gcv_tarifa WHERE passeio_relacionado_id = ?')->execute([$passeioId]);
     $pdo->prepare('DELETE FROM gcv_passeio_relacionado_atrativo WHERE passeio_id = ?')->execute([$passeioId]);
     $pdo->prepare('DELETE FROM gcv_passeio_relacionado WHERE id = ?')->execute([$passeioId]);
+    if ($signature !== '') {
+        gcv_related_tour_marcar_apagado($pdo, $signature);
+    }
 }

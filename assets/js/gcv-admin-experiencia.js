@@ -305,7 +305,7 @@
         '<label><span class="xp-req">Tarifa Guia</span><select class="gcv-dash-select" data-kind="guia" data-atual="' + esc(tarifaInicial(key, 'guia')) + '"><option value="">— escolher —</option></select></label>' +
         '<label><span>Tarifa Translado</span><select class="gcv-dash-select" data-kind="trans" data-atual="' + esc(tarifaInicial(key, 'trans')) + '"><option value="">— sem translado —</option></select></label>' +
         '<label><span>Distância de carro (km)</span><input class="gcv-dash-input" data-km inputmode="decimal" value="' + esc(kmInicial(key)) + '" /></label>' +
-        '<label><span class="xp-req">Duração do passeio</span><span class="xp-dur"><input class="gcv-dash-input" data-h inputmode="numeric" value="' + esc(horas) + '" /> h</span></label>' +
+        '<label><span class="xp-req">Duração do passeio</span><span class="xp-dur"><input class="gcv-dash-input" data-h inputmode="numeric" data-atual="' + esc(horas) + '" value="' + esc(horas) + '" /> h</span></label>' +
         '</div></div>'
       );
     }
@@ -409,10 +409,10 @@
       diasHtml + '</div></div>' +
       '<div class="xp-panel" data-panel="logistica" hidden><div class="xp-card"><h3>Logística e nível de dificuldade</h3>' +
       '<div class="xp-pair">' +
-      '<label class="xp-field"><span>Máximo de participantes por guia</span><select class="gcv-dash-select" id="xp-max">' + opcoesMax(log.max) + '</select></label>' +
-      '<label class="xp-field"><span>Caminhada (trilha, km)</span><input class="gcv-dash-input" id="xp-trail" inputmode="decimal" value="' + esc(a.trail_distance_km || '') + '" /></label>' +
+      '<label class="xp-field"><span class="xp-req">Máximo de participantes por guia</span><select class="gcv-dash-select" id="xp-max">' + opcoesMax(log.max) + '</select></label>' +
+      '<label class="xp-field"><span class="xp-req">Caminhada (trilha, km)</span><input class="gcv-dash-input" id="xp-trail" inputmode="decimal" value="' + esc(a.trail_distance_km || '') + '" /></label>' +
       '</div>' +
-      '<p class="xp-note">Opcional. De 4 a 15. O passeio usa o menor máximo das experiências. Na compra, o grupo não passa desse número. Na excursão, as vagas já vêm com esse máximo e podem ser reduzidas até 4.</p>' +
+      '<p class="xp-note">De 4 a 15. O passeio usa o menor máximo das experiências. Na compra, o grupo não passa desse número. Na excursão, as vagas já vêm com esse máximo e podem ser reduzidas até 4.</p>' +
       '<div class="xp-checks">' +
       '<label class="xp-check"><input type="checkbox" id="xp-pet"' + (log.pet ? ' checked' : '') + ' /> Pet friendly</label>' +
       '<label class="xp-check"><input type="checkbox" id="xp-4x4"' + (log.so4x4 ? ' checked' : '') + ' /> Somente veículos 4x4</label></div>' +
@@ -426,7 +426,7 @@
       '<div class="xp-diff">' + diffHtml + '</div><p class="xp-sum" id="xp-diff-sum"></p>' +
       '</div></div>' +
       '<div class="xp-panel" data-panel="relacionados" hidden><div class="xp-card"><h3>Relacionados e tarifário</h3>' +
-      '<p class="xp-note">Cada experiência de trilha já é um passeio unitário. Relacionar com outra cria um passeio novo, com as experiências escolhidas. Máximo de 3 por passeio. A Tarifa Guia publica esse passeio. A Tarifa Translado pode ficar vazia.</p>' +
+      '<p class="xp-note">Cada experiência de trilha já é um passeio unitário. Relacionar com outra cria um passeio novo, com as experiências escolhidas. Máximo de 3 por passeio. A Tarifa Guia publica esse passeio e o PAX 4 (excursão) dela fica acima da maior PAX 4 (excursão) das cidades de embarque. A duração do passeio também fica acima da maior duração dessas cidades. A Tarifa Translado pode ficar vazia. Atividade principal marca se esta experiência é a principal do passeio. O subtítulo público sai só dela.</p>' +
       '<div id="xp-rels"></div>' +
       '<button type="button" class="xp-rel-add" id="xp-rel-add">+ Adicionar relacionamento</button></div></div>' +
       '<div class="xp-panel" data-panel="venda" hidden><div class="xp-card"><h3>Venda de ingressos e passeio</h3>' +
@@ -591,10 +591,12 @@
       });
       var box = q('xp-diff-sum');
       if (!algum) {
-        box.textContent = 'Vazio. Não é obrigatório. Se preencher algum, a soma fecha em 100.';
+        box.textContent = '';
+        box.hidden = true;
         box.className = 'xp-sum';
         return soma;
       }
+      box.hidden = false;
       box.textContent = 'Soma ' + soma + (soma === 100 ? '.' : ' — precisa fechar 100.');
       box.className = 'xp-sum ' + (soma === 100 ? 'is-ok' : 'is-bad');
       return soma;
@@ -751,6 +753,10 @@
     function faltasParaAtivar() {
       var faltas = [];
       if (!q('xp-title-pt').value.trim()) faltas.push('Nome da experiência');
+      var maxN = parseInt(q('xp-max').value, 10);
+      if (!(maxN >= 4 && maxN <= 15)) faltas.push('Máximo de participantes por guia');
+      var kmTrilha = parseFloat(String(q('xp-trail').value || '').replace(',', '.'));
+      if (!(kmTrilha >= 0)) faltas.push('Caminhada (trilha, km)');
       if (!q('xp-content-pt').value.trim()) faltas.push('Descrição');
       if (!q('xp-cidade').value) faltas.push('Localização');
       var comSaida = 0;
@@ -811,9 +817,9 @@
       }
       if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { erro: 'O e-mail do anfitrião precisa ter o formato nome@dominio.' };
       if (q('xp-cnpj').value.trim() && cnpj.length !== 14) return { erro: 'O CNPJ precisa ter 14 números.' };
-      if (maxRaw !== '' && !(parseInt(maxRaw, 10) >= 4 && parseInt(maxRaw, 10) <= 15)) return { erro: 'O máximo de participantes fica entre 4 e 15.' };
+      if (!(parseInt(maxRaw, 10) >= 4 && parseInt(maxRaw, 10) <= 15)) return { erro: 'O máximo de participantes por guia é obrigatório. Escolha de 4 a 15.' };
       if (algumDiff && soma !== 100) return { erro: 'A dificuldade precisa somar 100.' };
-      if (trilha !== '' && !(parseFloat(trilha.replace(',', '.')) >= 0)) return { erro: 'A trilha em km precisa ser um número.' };
+      if (!(parseFloat(trilha.replace(',', '.')) >= 0)) return { erro: 'A caminhada (trilha, km) é obrigatória.' };
 
       ingressos = lerIngressos().filter(function (ing) {
         return ing.nome || ing.preco || ing.gratis || ing.qtd;
@@ -852,6 +858,10 @@
         if (minutos > 0) duracaoOut[key] = minutos;
       });
       if (erroDist) return { erro: erroDist };
+      var erroRel = erroRelacionadoAbaixo();
+      if (erroRel) return { erro: erroRel };
+      var erroHoras = erroHorasRelacionado();
+      if (erroHoras) return { erro: erroHoras };
 
       var principalKey = (x.principal && saidas[x.principal]) ? x.principal : (Object.keys(saidas)[0] || '');
       var baseSaida = principalKey ? saidas[principalKey] : { km: '', guia: '', trans: '', minutos: '' };
@@ -1229,19 +1239,126 @@
 
     var tarifasLista = [];
 
+    function excursaoPax4(codigo) {
+      var row = tarifasLista.filter(function (item) { return item.codigo === codigo && item.tipo === 'guia'; })[0];
+      return row ? Math.round(Number(row.excursao) || 0) : 0;
+    }
+
+    function maiorExcursaoCidades() {
+      var maior = 0;
+      form.querySelectorAll('#xp-saidas [data-city] [data-kind="guia"]').forEach(function (sel) {
+        var n = excursaoPax4(valorTarifa(sel));
+        if (n > maior) maior = n;
+      });
+      return maior;
+    }
+
+    function erroRelacionadoAbaixo() {
+      var piso = maiorExcursaoCidades();
+      if (piso < 1) return '';
+      var msg = '';
+      form.querySelectorAll('[data-rel-guia]').forEach(function (sel) {
+        if (msg) return;
+        var codigo = sel.value || '';
+        if (!codigo) return;
+        var exc = excursaoPax4(codigo);
+        if (exc > piso) return;
+        var row = sel.closest('.xp-rel');
+        var nome = row ? nomeLinha(row) : 'relacionado';
+        msg = 'A Tarifa Guia de ' + nome + ' precisa ter PAX 4 (excursão) maior que R$ ' + piso + ', que é a maior das cidades de embarque.';
+      });
+      return msg;
+    }
+
+    function horasDoCampo(input) {
+      if (!input || String(input.value || '').trim() === '') return 0;
+      var h = parseInt(input.value, 10) || 0;
+      if (h < 1) return 0;
+      return Math.min(24, h);
+    }
+
+    function maiorHorasFormulario() {
+      var maior = 0;
+      form.querySelectorAll('#xp-saidas [data-h]').forEach(function (input) {
+        var n = horasDoCampo(input);
+        if (n > maior) maior = n;
+      });
+      return maior;
+    }
+
+    function horasParceiro(id) {
+      var item = catalogoRel.filter(function (x) { return Number(x.id) === Number(id); })[0];
+      return item ? (parseInt(item.horas_embarque, 10) || 0) : 0;
+    }
+
+    function pisoHorasLinha(row) {
+      var maior = maiorHorasFormulario();
+      if (!row) return maior;
+      idsDaLinha(row).forEach(function (id) {
+        var n = horasParceiro(id);
+        if (n > maior) maior = n;
+      });
+      return maior;
+    }
+
+    function erroHorasRelacionado() {
+      var msg = '';
+      form.querySelectorAll('.xp-rel').forEach(function (row) {
+        if (msg || !linhaRelPronta(row)) return;
+        var input = row.querySelector('[data-rel-horas]');
+        var n = horasDoCampo(input);
+        if (n < 1) return;
+        var piso = pisoHorasLinha(row);
+        if (piso < 1 || n > piso) return;
+        msg = 'A maior duração das cidades de embarque ficaria em ' + piso + ' h. O passeio ' + nomeLinha(row) + ' está em ' + n + ' h e precisa ser maior que isso.';
+      });
+      return msg;
+    }
+
+    function aoMudarHorasCidade(input) {
+      var erro = erroHorasRelacionado();
+      if (erro) {
+        input.value = input.getAttribute('data-atual') || '';
+        mostrarErro(erro);
+        return;
+      }
+      input.setAttribute('data-atual', String(input.value || '').trim());
+      mostrarErro('');
+    }
+
+    function aoMudarTarifaCidade(select) {
+      var erro = erroRelacionadoAbaixo();
+      if (erro) {
+        select.value = select.getAttribute('data-atual') || '';
+        mostrarErro(erro);
+        return;
+      }
+      select.setAttribute('data-atual', select.value || '');
+      mostrarErro('');
+      form.querySelectorAll('[data-rel-guia]').forEach(preencherSelectTarifa);
+    }
+
     function preencherSelectTarifa(select) {
         var tipo = select.getAttribute('data-kind') === 'guia' ? 'guia' : 'translado';
       var atual = select.value || select.getAttribute('data-atual') || '';
       var vazio = select.hasAttribute('data-rel-trans') ? '— sem translado —' : '— escolher —';
+      var relGuia = select.hasAttribute('data-rel-guia');
+      var piso = relGuia ? maiorExcursaoCidades() : 0;
       var html = '<option value="">' + vazio + '</option>';
         var achou = !atual;
-      tarifasLista.filter(function (row) { return row.tipo === tipo; }).forEach(function (row) {
+      tarifasLista.filter(function (row) { return row.tipo === tipo; }).slice().sort(function (a, b) {
+          return rotuloTarifa(a).localeCompare(rotuloTarifa(b), 'pt');
+        }).forEach(function (row) {
+          if (relGuia && piso > 0 && Math.round(Number(row.excursao) || 0) <= piso) return;
           if (row.codigo === atual) achou = true;
           html += '<option value="' + esc(row.codigo) + '"' + (row.codigo === atual ? ' selected' : '') + '>' + esc(rotuloTarifa(row)) + '</option>';
         });
         if (atual && !achou) html += '<option value="' + esc(atual) + '" selected>' + esc(atual) + '</option>';
         select.innerHTML = html;
         select.value = atual;
+        if (!relGuia && tipo === 'guia' && select.closest('#xp-saidas')) {
+          select.onchange = function () { aoMudarTarifaCidade(select); };
+        }
     }
 
     function atualizarSelectSaidas() {
@@ -1277,6 +1394,11 @@
       if (row) row.querySelectorAll('[data-kind]').forEach(preencherSelectTarifa);
       atualizarSelectSaidas();
     };
+    q('xp-saidas').addEventListener('change', function (ev) {
+      var input = ev.target;
+      if (!input || !input.hasAttribute || !input.hasAttribute('data-h') || !input.closest('#xp-saidas')) return;
+      aoMudarHorasCidade(input);
+    });
     q('xp-saidas').addEventListener('click', function (ev) {
       var btn = ev.target.closest ? ev.target.closest('[data-del-saida]') : null;
       if (!btn) return;
@@ -1328,6 +1450,14 @@
       return html;
     }
 
+    function estaEhPrincipal(tour) {
+      if (!tour) return true;
+      var pid = parseInt(tour.principal_atrativo_id, 10) || 0;
+      if (pid) return pid === Number(a.id);
+      var primeira = (tour.attractions || [])[0];
+      return !primeira || Number(primeira.id) === Number(a.id);
+    }
+
     function linhaRelHtml(tour) {
       var outros = tour ? outrosDoPasseio(tour) : [];
       var qtd = outros.length > 1 ? 2 : 1;
@@ -1336,6 +1466,7 @@
       var id = tour && tour.id ? tour.id : '';
       var guia = tour && tour.tarifa_guia ? tour.tarifa_guia : '';
       var trans = tour && tour.tarifa_translado ? tour.tarifa_translado : '';
+      var principal = estaEhPrincipal(tour) ? '1' : '0';
       return '<article class="xp-rel" data-rel="' + esc(id) + '">' +
         '<div class="xp-rel__grid' + (qtd > 1 ? ' is-2' : '') + '">' +
         '<label><span>Qtd</span><select class="gcv-dash-select" data-rel-qtd aria-label="Quantidade de experiências relacionadas">' +
@@ -1343,9 +1474,12 @@
         '<option value="2"' + (qtd === 2 ? ' selected' : '') + '>2</option></select></label>' +
         '<label><span>Experiência 1</span><select class="gcv-dash-select" data-rel-exp="0" aria-label="Experiência 1">' + opcoesExperiencia(exp1) + '</select></label>' +
         '<label data-rel-col="1"' + (qtd > 1 ? '' : ' hidden') + '><span>Experiência 2</span><select class="gcv-dash-select" data-rel-exp="1" aria-label="Experiência 2">' + opcoesExperiencia(exp2) + '</select></label>' +
+        '<label><span>Atividade principal</span><select class="gcv-dash-select" data-rel-principal aria-label="Atividade principal">' +
+        '<option value="1"' + (principal === '1' ? ' selected' : '') + '>Sim</option>' +
+        '<option value="0"' + (principal === '0' ? ' selected' : '') + '>Não</option></select></label>' +
         '<label><span>Tarifa Guia</span><select class="gcv-dash-select" data-kind="guia" data-rel-guia data-atual="' + esc(guia) + '" aria-label="Tarifa Guia"><option value="">— escolher —</option></select></label>' +
         '<label><span>Tarifa Translado</span><select class="gcv-dash-select" data-kind="trans" data-rel-trans data-atual="' + esc(trans) + '" aria-label="Tarifa Translado"><option value="">— sem translado —</option></select></label>' +
-        '<label><span>Duração do passeio</span><span class="xp-dur"><input class="gcv-dash-input" data-rel-horas inputmode="numeric" value="' + esc(tour ? horasDoPasseio(tour) : '') + '" aria-label="Duração do passeio em horas" /> h</span></label>' +
+        '<label><span>Duração do passeio</span><span class="xp-dur"><input class="gcv-dash-input" data-rel-horas inputmode="numeric" data-atual="' + esc(tour ? horasDoPasseio(tour) : '') + '" value="' + esc(tour ? horasDoPasseio(tour) : '') + '" aria-label="Duração do passeio em horas" /> h</span></label>' +
         '<button type="button" class="xp-rel__del" data-rel-del aria-label="Excluir relacionamento">' + lixoRel + '</button>' +
         '</div></article>';
     }
@@ -1416,9 +1550,27 @@
         mostrarErro('Esse passeio já está na lista.');
         return;
       }
+      var guiaSel = row.querySelector('[data-rel-guia]');
+      var guiaCodigo = (guiaSel || {}).value || '';
+      var piso = maiorExcursaoCidades();
+      if (guiaCodigo && piso > 0 && excursaoPax4(guiaCodigo) <= piso) {
+        mostrarErro('A Tarifa Guia de ' + nomeLinha(row) + ' precisa ter PAX 4 (excursão) maior que R$ ' + piso + ', que é a maior das cidades de embarque.');
+        if (guiaSel) guiaSel.value = guiaSel.getAttribute('data-atual') || '';
+        return;
+      }
+      var horasCampo = row.querySelector('[data-rel-horas]');
+      var horasNum = horasDoCampo(horasCampo);
+      var pisoHoras = pisoHorasLinha(row);
+      if (horasNum > 0 && pisoHoras > 0 && horasNum <= pisoHoras) {
+        mostrarErro('A duração de ' + nomeLinha(row) + ' precisa ser maior que ' + pisoHoras + ' h, que é a maior das cidades de embarque.');
+        if (horasCampo) horasCampo.value = horasCampo.getAttribute('data-atual') || '';
+        if (guiaSel) guiaSel.value = guiaSel.getAttribute('data-atual') || '';
+        return;
+      }
       var payload = {
         attraction_ids: ids,
-        tarifa_guia: (row.querySelector('[data-rel-guia]') || {}).value || '',
+        principal: ((row.querySelector('[data-rel-principal]') || {}).value || '1') === '1',
+        tarifa_guia: guiaCodigo,
         tarifa_translado: (row.querySelector('[data-rel-trans]') || {}).value || ''
       };
       var horas = row.querySelector('[data-rel-horas]');
@@ -1436,7 +1588,11 @@
         }
         var novo = String(res.data.id || '');
         row.setAttribute('data-rel', novo);
-        if (horas && res.data.duration_minutes) horas.value = horasDoPasseio(res.data);
+        if (guiaSel) guiaSel.setAttribute('data-atual', guiaCodigo);
+        if (horas && res.data.duration_minutes) {
+          horas.value = horasDoPasseio(res.data);
+          horas.setAttribute('data-atual', horas.value);
+        }
         var idx = tours.findIndex(function (t) { return String(t.id) === antigo || String(t.id) === novo; });
         if (idx >= 0) tours[idx] = res.data;
         else tours.push(res.data);
@@ -1474,6 +1630,8 @@
       row.querySelectorAll('[data-rel-exp]').forEach(function (sel) {
         sel.onchange = function () { salvarLinhaRel(row); };
       });
+      var principalSel = row.querySelector('[data-rel-principal]');
+      if (principalSel) principalSel.onchange = function () { salvarLinhaRel(row); };
       row.querySelectorAll('[data-rel-guia], [data-rel-trans]').forEach(function (sel) {
         sel.onchange = function () { salvarLinhaRel(row); };
       });

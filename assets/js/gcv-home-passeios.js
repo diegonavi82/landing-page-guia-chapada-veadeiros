@@ -19,6 +19,16 @@
       .replace(/"/g, "&quot;");
   }
 
+  function subtituloDe(tour) {
+    var sub = tour && tour.subtitle;
+    var texto = "";
+    if (sub && typeof sub === "object") texto = sub[lang] || "";
+    else texto = sub || "";
+    texto = String(texto).trim();
+    if (!texto || texto === String((tour && tour.title) || "").trim()) return "";
+    return texto;
+  }
+
   function shuffle(list) {
     var out = list.slice();
     for (var i = out.length - 1; i > 0; i--) {
@@ -148,8 +158,7 @@
     var cents = precoVitrine(tour.tarifa);
     var tag = tagLabel(tour._homeCat || "destaque");
     var photo = photoHtml(tour);
-    var names = tour.attractions || [];
-    var places = names.length > 1 ? names.join(" · ") : "";
+    var places = subtituloDe(tour);
     var mine = inCart(tour);
     return '<article class="gcv-home-passeio' + (mine ? " is-in-cart" : "") + '">' +
       '<a class="gcv-home-passeio__link" href="' + esc(tourHref(tour.href)) + '" data-tour="' + esc(tour.id) + '">' +
@@ -173,30 +182,24 @@
     root.hidden = false;
   }
 
+  var maxAtrativos = 3;
+
   function openTour(tour) {
     if (!window.GcvPasseioDialog) return;
-    function openWith(data) {
-      window.GcvPasseioDialog.open(data, paint);
-    }
-    if (tour.kind === "combo") {
-      openWith({
-        slug: tour.slug,
-        title: tour.title,
-        duration_minutes: tour.duration_minutes,
-        duracao_cidades: tour.duracao_cidades,
-        tarifa: tour.tarifa,
-        max_atrativos: 1,
-        related_tours: [],
-        passeioKey: productKey(tour),
-      });
-      return;
-    }
-    fetch("/api/passeios.php?slug=" + encodeURIComponent(tour.slug || ""))
-      .then(function (res) { return res.json(); })
-      .then(function (payload) {
-        if (payload && payload.ok && payload.data) openWith(payload.data);
-      })
-      .catch(function () {});
+    window.GcvPasseioDialog.open({
+      slug: tour.slug,
+      title: tour.title,
+      duration_minutes: tour.duration_minutes,
+      duracao_cidades: tour.duracao_cidades,
+      tarifa: tour.tarifa,
+      embarques: tour.embarques,
+      saidas: tour.saidas,
+      somente_4x4: !!tour.somente_4x4,
+      max_participantes: tour.max_participantes,
+      max_atrativos: tour.kind === "combo" ? 1 : maxAtrativos,
+      related_tours: tour.kind === "combo" ? [] : (tour.related_tours || []),
+      passeioKey: tour.kind === "combo" ? productKey(tour) : "",
+    }, paint);
   }
 
   function pickHref(part, parts) {
@@ -278,7 +281,9 @@
   fetch("/api/passeios.php")
     .then(function (res) { return res.json(); })
     .then(function (payload) {
-      var tours = (payload && payload.data && payload.data.tours) || [];
+      var data = (payload && payload.data) || {};
+      maxAtrativos = parseInt(data.max_atrativos, 10) || maxAtrativos;
+      var tours = data.tours || [];
       picked = pickEight(tours);
       paint();
     })

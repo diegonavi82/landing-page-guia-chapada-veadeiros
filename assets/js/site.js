@@ -1849,8 +1849,46 @@
     return passeioSaidasLista(source).map(function (c) { return c.key || passeioCidadeKey(c.nome); });
   }
 
-  /** Uma experiência: as saídas dela. Várias: só a cidade que está em todas. */
+  function passeioComboAtual(box, data) {
+    var extras = passeioExtras(box).slice().sort();
+    if (!extras.length) return null;
+    return passeioCombos(data).filter(function (c) { return c.ids.join("|") === extras.join("|"); })[0] || null;
+  }
+
+  /** Cidades e preço do passeio cadastrado, não a interseção das experiências. */
+  function passeioCidadesDoTour(tour) {
+    if (!tour) return [];
+    var vistos = {};
+    var out = [];
+    function add(key) {
+      if (!key || !PASSEIO_CIDADE_ROTULO[key] || vistos[key]) return;
+      vistos[key] = true;
+      out.push(passeioRotuloCidade(key));
+    }
+    (tour.saidas || []).forEach(function (c) {
+      if (!c) return;
+      add(c.key || passeioCidadeKey(c.nome));
+    });
+    if (!out.length && tour.tarifa && tour.tarifa.cidades) {
+      PASSEIO_CIDADE_ORDEM.forEach(function (key) {
+        if (passeioCidadeVende(tour.tarifa, PASSEIO_CIDADE_ROTULO[key][0])) add(key);
+      });
+    }
+    var plana = tour.tarifa && (
+      (parseInt(tour.tarifa.excursao_pessoa_cents, 10) || 0) > 0 ||
+      (parseInt(tour.tarifa.exclusivo_pessoa_cents, 10) || 0) > 0
+    );
+    if (!out.length && plana) PASSEIO_CIDADE_ORDEM.forEach(add);
+    return out;
+  }
+
+  /** Uma experiência: as saídas dela. Passeio combinado: as cidades da tarifa dele. */
   function passeioCidadesDaEscolha(box, data) {
+    var combo = passeioComboAtual(box, data);
+    if (combo) {
+      var doTour = passeioCidadesDoTour(combo.tour);
+      if (doTour.length) return doTour;
+    }
     var listas = [passeioChavesDe(data)];
     var opcoes = passeioOpcoes(data);
     passeioExtras(box).forEach(function (id) {
@@ -2334,7 +2372,8 @@
       ".gcv-passeios.is-dock.is-mini .gcv-passeios__add{padding:.45rem .7rem;font-size:.82rem}" +
       ".gcv-passeio-modal{position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;padding:1rem;overflow:auto;background:rgba(4,10,8,.78)}" +
       ".gcv-passeio-modal[hidden]{display:none!important}" +
-      ".gcv-passeio-modal__panel{position:relative;width:min(720px,100%);margin:auto}" +
+      ".gcv-passeio-modal__backdrop{position:absolute;inset:0;z-index:0}" +
+      ".gcv-passeio-modal__panel{position:relative;z-index:1;width:min(720px,100%);margin:auto}" +
       ".gcv-passeio-modal__x{position:absolute;top:.7rem;right:.75rem;z-index:3;width:2rem;height:2rem;border:1px solid #e2e8f0;border-radius:999px;background:#fff;color:#0f2a1d;font-size:1.35rem;line-height:1;cursor:pointer}" +
       ".gcv-passeios.is-modal{overflow:hidden;margin:0;max-width:none;width:100%;max-height:calc(100dvh - 2rem);display:flex;flex-direction:column;background:#fff;border:1px solid #e7eeea;box-shadow:0 24px 60px rgba(8,20,14,.28)}" +
       ".gcv-passeios.is-modal .gcv-passeios__now{padding-right:3rem}" +
@@ -3144,6 +3183,9 @@
   function closePasseioModal() {
     var modal = document.getElementById("gcv-passeio-modal");
     if (modal) modal.hidden = true;
+    document.querySelectorAll(".gcv-datepicker__pop").forEach(function (pop) {
+      pop.hidden = true;
+    });
   }
 
   function openPasseioDialog(data, onDone) {
@@ -3165,7 +3207,13 @@
         '<button type="button" class="gcv-passeio-modal__x" data-passeio-modal-close>×</button>' +
         '<div data-passeio-modal-body></div></div>';
       modal.addEventListener("click", function (e) {
-        if (e.target.closest && e.target.closest("[data-passeio-modal-close]")) closePasseioModal();
+        var t = e.target;
+        if (!t || !t.closest) return;
+        if (t.closest(".gcv-passeio-modal__panel")) {
+          if (t.closest("[data-passeio-modal-close]")) closePasseioModal();
+          return;
+        }
+        closePasseioModal();
       });
       document.addEventListener("keydown", function (e) {
         if (e.key !== "Escape") return;

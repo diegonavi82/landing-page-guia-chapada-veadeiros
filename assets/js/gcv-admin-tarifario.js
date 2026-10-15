@@ -174,28 +174,6 @@
     return { tipo: 'fixo', texto: moneyInput(bilingueCentsOf(t)) };
   }
 
-  /** "2h30", "2:30", "2,5", "150" (minutos) → minutos */
-  function parseHoras(v) {
-    var s = String(v == null ? '' : v).trim().toLowerCase().replace(/\s+/g, '');
-    if (!s) return 0;
-    var m = s.match(/^(\d{1,2})(?:h|:)(\d{1,2})?(?:min|m)?$/);
-    if (m) return parseInt(m[1], 10) * 60 + (parseInt(m[2] || '0', 10) || 0);
-    m = s.match(/^(\d+)(?:min|m)$/);
-    if (m) return parseInt(m[1], 10);
-    var f = parseFloat(s.replace(',', '.'));
-    if (!Number.isFinite(f) || f <= 0) return 0;
-    return f <= 24 ? Math.round(f * 60) : Math.round(f);
-  }
-
-  function horas(min) {
-    min = parseInt(min, 10) || 0;
-    if (!min) return '';
-    var h = Math.floor(min / 60);
-    var m = min % 60;
-    if (!h) return m + 'min';
-    return h + 'h' + (m ? String(m).padStart(2, '0') : '');
-  }
-
   function toast(msg, bad) {
     var el = $('tf-toast');
     if (!el) return;
@@ -271,10 +249,17 @@
     var col = tipo === 'guia' ? 'tarifa_guia' : 'tarifa_translado';
     var out = [];
     (st.data.atrativos || []).forEach(function (a) {
+      if (String(a.title_pt || '').indexOf(' + ') >= 0) return;
+      var colAtrativo = tipo === 'guia' ? 'tarifa_guia' : 'tarifa_translado';
+      var mostrouCidade = false;
       saidasDe(a).forEach(function (s) {
         if (!s.key || (s[campo] || '') !== codigo) return;
+        mostrouCidade = true;
         out.push({ kind: 'atrativo', id: a.id, nome: a.title_pt, cidade: s.key, cidadeNome: s.nome || '' });
       });
+      if (!mostrouCidade && (a[colAtrativo] || '') === codigo) {
+        out.push({ kind: 'atrativo', id: a.id, nome: a.title_pt, cidade: '', cidadeNome: '' });
+      }
     });
     (st.data.passeios || []).forEach(function (p) {
       if ((p.attractions || []).length < 2) return;
@@ -327,47 +312,45 @@
     return nomeTarifaTranslado(item.excursao, item.privativo);
   }
 
-  function oficialSelect(tipo, current) {
-    var rows = oficiaisDo(tipo);
-    var attr = tipo === 'guia' ? 'data-oficial-guia' : 'data-oficial-translado';
-    return '<select class="gcv-dash-select tf-select" ' + attr + '>' +
-      '<option value="">— escolher —</option>' +
+  function opcoesOficiais(tipo) {
+    return oficiaisDo(tipo).slice();
+  }
+
+  function pisoExcursaoPasseio(p) {
+    var maior = 0;
+    (p.attractions || []).forEach(function (parte) {
+      var a = attrById(parte.id) || parte;
+      var saidas = a.saidas_tarifas || [];
+      var teve = false;
+      saidas.forEach(function (s) {
+        if (!s || !s.guia) return;
+        teve = true;
+        var item = oficialItem('guia', s.guia);
+        var n = item ? Math.round(Number(item.excursao) || 0) : 0;
+        if (n > maior) maior = n;
+      });
+      if (!teve && a.tarifa_guia) {
+        var direto = oficialItem('guia', a.tarifa_guia);
+        var n2 = direto ? Math.round(Number(direto.excursao) || 0) : 0;
+        if (n2 > maior) maior = n2;
+      }
+    });
+    return maior;
+  }
+
+  function tarifaDashSelect(tipo, current, piso) {
+    var rows = opcoesOficiais(tipo).filter(function (row) {
+      if (tipo !== 'guia' || !(piso > 0) || row.codigo === current) return true;
+      return Math.round(Number(row.excursao) || 0) > piso;
+    });
+    var vazio = tipo === 'guia' ? 'Sem tarifa' : 'sem translado';
+    var rotulo = tipo === 'guia' ? 'Tarifa Guia' : 'Tarifa Translado';
+    return '<select class="ps-tarifa-select' + (tipo === 'translado' ? ' ps-tarifa-select--trans' : '') + (current ? '' : ' is-empty') + '" data-tarifa-tipo="' + tipo + '" data-atual="' + esc(current || '') + '" aria-label="' + rotulo + '" title="Clique para escolher a ' + rotulo + '">' +
+      '<option value="">' + vazio + '</option>' +
       rows.map(function (row) {
         return '<option value="' + esc(row.codigo) + '"' + (row.codigo === current ? ' selected' : '') + '>' + esc(oficialLabel(row)) + '</option>';
       }).join('') +
       '</select>';
-  }
-
-  function tarifaCampoSelect(tipo, current) {
-    var rows = oficiaisDo(tipo);
-    var campo = tipo === 'guia' ? 'guia' : 'translado';
-    return '<select class="gcv-dash-select tf-select" data-saida-campo="' + campo + '">' +
-      '<option value="">— escolher —</option>' +
-      rows.map(function (row) {
-        return '<option value="' + esc(row.codigo) + '"' + (row.codigo === current ? ' selected' : '') + '>' + esc(oficialLabel(row)) + '</option>';
-      }).join('') +
-      '</select>';
-  }
-
-  function saidasTarifaFields(kind, id, saidas) {
-    var rows = (saidas || []).filter(function (s) { return s && s.key; });
-    if (!rows.length) {
-      return '<p class="gcv-cms-muted tf-small">Nenhuma cidade de embarque. Cadastre em Localização e tarifário. A tarifa daqui é a mesma de lá e do Tarifário.</p>';
-    }
-    return rows.map(function (s) {
-      return '<div class="tf-grid2" data-saida-tarifa="' + kind + '" data-saida-id="' + id + '" data-saida-cidade="' + esc(s.key) + '">' +
-        '<p class="tf-saida-nome"><strong>' + esc(s.nome || s.key) + '</strong></p>' +
-        '<label class="tf-field"><span>Tarifa Guia</span>' + tarifaCampoSelect('guia', s.guia || '') + '</label>' +
-        '<label class="tf-field"><span>Tarifa Translado</span>' + tarifaCampoSelect('translado', s.translado || '') + '</label>' +
-        '</div>';
-    }).join('');
-  }
-
-  function oficiaisFields(kind, id, guia, translado) {
-    return '<div class="tf-grid2" data-oficiais="' + kind + '" data-oficial-id="' + id + '">' +
-      '<label class="tf-field"><span>Tarifa Guia · sem translado</span>' + oficialSelect('guia', guia || '') + '</label>' +
-      '<label class="tf-field"><span>Tarifa Translado · com translado</span>' + oficialSelect('translado', translado || '') + '</label>' +
-      '</div>';
   }
 
   function tarifarioSelect(attrs, current, emptyLabel) {
@@ -379,15 +362,6 @@
       }).join('') +
       '<option value="__novo">+ Criar tarifário novo…</option>' +
       '</select>';
-  }
-
-  function duracaoInputs(kind, id, duracao) {
-    return '<div class="tf-dur" data-dur-kind="' + kind + '" data-dur-id="' + id + '">' +
-      Object.keys(CIDADE_CURTA).map(function (k) {
-        return '<label class="tf-dur__cell"><span>' + esc(CIDADE_CURTA[k]) + '</span>' +
-          '<input class="gcv-dash-input" data-dur-city="' + k + '" value="' + esc(horas(duracao && duracao[k])) + '" placeholder="ex.: 4h30" inputmode="text" /></label>';
-      }).join('') +
-      '</div>';
   }
 
   /* ---------- carregar ---------- */
@@ -430,59 +404,8 @@
 
   function paintBody() {
     if (st.editing) return paintEditor();
-    if (st.mode === 'passeios') {
-      if (st.relacaoId) return paintRelacaoPage();
-      if (st.passeioId) return paintPasseioPage();
-      return paintPasseiosTable();
-    }
+    if (st.mode === 'passeios') return paintPasseiosTable();
     return paintTarifarios();
-  }
-
-  function passeioIdFromHash() {
-    var m = String(location.hash || '').match(/^#passeio\/(\d+)$/);
-    return m ? parseInt(m[1], 10) : 0;
-  }
-
-  function goPasseio(id) {
-    st.passeioId = id;
-    st.relacaoId = 0;
-    st.editing = null;
-    var next = '#passeio/' + id;
-    if ((location.hash || '') !== next) {
-      history.pushState(null, '', location.pathname + location.search + next);
-    }
-    paint();
-    var box = $(st.rootId);
-    if (box && box.scrollIntoView) box.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-
-  function relacaoIdFromHash() {
-    var m = String(location.hash || '').match(/^#relacao\/(\d+)$/);
-    return m ? parseInt(m[1], 10) : 0;
-  }
-
-  function goRelacao(id) {
-    st.relacaoId = id;
-    st.passeioId = 0;
-    st.editing = null;
-    var next = '#relacao/' + id;
-    if ((location.hash || '') !== next) {
-      history.pushState(null, '', location.pathname + location.search + next);
-    }
-    paint();
-    var box = $(st.rootId);
-    if (box && box.scrollIntoView) box.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-
-  function leavePasseio() {
-    st.passeioId = 0;
-    st.relacaoId = 0;
-    st.editing = null;
-    var h = String(location.hash || '');
-    if (h.indexOf('#passeio/') === 0 || h.indexOf('#relacao/') === 0) {
-      history.pushState(null, '', location.pathname + location.search + '#passeios');
-    }
-    paint();
   }
 
   function norm(s) {
@@ -537,15 +460,35 @@
     return texto || 'Clássicos';
   }
 
+  function codigoAtual(item, tipo) {
+    var col = tipo === 'guia' ? 'tarifa_guia' : 'tarifa_translado';
+    var campo = tipo === 'guia' ? 'guia' : 'translado';
+    var direto = String((item && item[col]) || '').trim();
+    if (direto) return direto;
+    var saidas = saidasDe(item);
+    for (var i = 0; i < saidas.length; i++) {
+      var cod = String((saidas[i] && saidas[i][campo]) || '').trim();
+      if (cod) return cod;
+    }
+    return '';
+  }
+
   function linhaPasseio(item, kind) {
     var n = kind === 'relacao' ? (item.attractions || []).length : 1;
+    var guiaCodigo = codigoAtual(item, 'guia');
+    var transCodigo = codigoAtual(item, 'translado');
+    var guiaOf = oficialItem('guia', guiaCodigo);
+    var transOf = oficialItem('translado', transCodigo);
     return {
       id: item.id,
       kind: kind,
       atrativos: n,
       passeio: kind === 'relacao' ? passeioNome(item) : (item.title_pt || ''),
-      tarifa_guia: tarifaSemTranslado(item),
-      tarifa_translado: tarifaComTranslado(item)
+      tarifa_guia: guiaOf ? oficialLabel(guiaOf) : tarifaSemTranslado(item),
+      tarifa_translado: transOf ? oficialLabel(transOf) : tarifaComTranslado(item),
+      guiaCodigo: guiaOf ? guiaCodigo : '',
+      transCodigo: transOf ? transCodigo : '',
+      piso: kind === 'relacao' ? pisoExcursaoPasseio(item) : 0
     };
   }
 
@@ -604,10 +547,10 @@
             return '<th scope="col" aria-sort="' + sortName + '"><button type="button" class="ps-sort' + (on ? ' is-on' : '') + '" data-sort="' + c[0] + '">' +
               '<span>' + esc(c[1]) + '</span>' +
               '<i aria-hidden="true">' + arrow + '</i></button></th>';
-          }).join('') + '<th scope="col" class="ps-act-h"><span>Abrir</span></th></tr>' +
+          }).join('') + '</tr>' +
           '<tr class="ps-filters">' + PASSEIO_COLS.map(function (c) {
             return '<th><input class="gcv-dash-input ps-filter" data-filter="' + c[0] + '" value="' + esc(st.filters[c[0]] || '') + '" aria-label="Filtrar ' + esc(c[1]) + '" placeholder="Filtrar" /></th>';
-          }).join('') + '<th></th></tr></thead>' +
+          }).join('') + '</tr></thead>' +
           '<tbody id="ps-rows"></tbody></table></div></div>';
 
     body.querySelectorAll('[data-sort]').forEach(function (btn) {
@@ -640,222 +583,48 @@
       count.textContent = rows.length === all.length ? base : (rows.length + ' de ' + all.length);
     }
     if (!rows.length) {
-      tbody.innerHTML = '<tr><td class="ps-empty" colspan="4">Nenhum passeio com esses filtros.</td></tr>';
+      tbody.innerHTML = '<tr><td class="ps-empty" colspan="3">Nenhum passeio com esses filtros.</td></tr>';
       return;
     }
     tbody.innerHTML = rows.map(function (r) {
-      var guia = r.tarifa_guia
-        ? '<code class="ps-tarifa" title="Tarifa Guia, sem translado. Fora dos parênteses: até 4 pessoas. Dentro: da 5ª em diante.">' + esc(r.tarifa_guia) + '</code>'
-        : '<span class="ps-missing">Sem tarifa</span>';
-      var trans = r.tarifa_translado
-        ? '<code class="ps-tarifa ps-tarifa--trans" title="Tarifa Translado.">' + esc(r.tarifa_translado) + '</code>'
-        : '<span class="ps-missing">sem translado</span>';
       var chip = r.atrativos > 1 ? '<span class="ps-multi">' + r.atrativos + ' atrativos</span>' : '';
-      return '<tr class="' + (r.atrativos > 1 ? 'ps-row--multi' : '') + '">' +
-        '<td class="ps-passeio"><button type="button" class="ps-name" data-open-kind="' + r.kind + '" data-open-passeio="' + r.id + '">' + esc(r.passeio) + '</button>' + chip + '</td>' +
-        '<td>' + guia + '</td>' +
-        '<td>' + trans + '</td>' +
-        '<td class="ps-act"><button type="button" class="gcv-dash-btn gcv-dash-btn--primary gcv-dash-btn--sm" data-open-kind="' + r.kind + '" data-open-passeio="' + r.id + '">Editar</button></td>' +
+      return '<tr class="' + (r.atrativos > 1 ? 'ps-row--multi' : '') + '" data-kind="' + r.kind + '" data-id="' + r.id + '">' +
+        '<td class="ps-passeio"><span class="ps-name">' + esc(r.passeio) + '</span>' + chip + '</td>' +
+        '<td>' + tarifaDashSelect('guia', r.guiaCodigo, r.piso) + '</td>' +
+        '<td>' + tarifaDashSelect('translado', r.transCodigo, 0) + '</td>' +
       '</tr>';
     }).join('');
-    tbody.querySelectorAll('[data-open-passeio]').forEach(function (b) {
-      b.onclick = function () {
-        var id = parseInt(b.getAttribute('data-open-passeio'), 10);
-        if (b.getAttribute('data-open-kind') === 'relacao') goRelacao(id);
-        else goPasseio(id);
-      };
+    tbody.querySelectorAll('[data-tarifa-tipo]').forEach(function (sel) {
+      sel.onchange = function () { salvarTarifaLinha(sel); };
     });
   }
 
-  function paintRelacaoPage() {
-    var body = $('tf-body');
-    var p = (st.data.passeios || []).filter(function (x) { return x.id === st.relacaoId; })[0];
-    if (!p || (p.attractions || []).length < 2) {
-      body.innerHTML = '<div class="ps-page"><button type="button" class="tf-back" id="ps-back">← Passeios</button><p class="gcv-cms-muted">Essa relação não está na lista.</p></div>';
-      $('ps-back').onclick = leavePasseio;
-      return;
-    }
-    var n = (p.attractions || []).length;
-    body.innerHTML =
-      '<div class="ps-page">' +
-        '<button type="button" class="tf-back" id="ps-back">← Passeios</button>' +
-        '<header class="ps-hero">' +
-          '<p class="ps-kicker">Passeio com ' + n + ' atrativos</p>' +
-          '<h3>' + esc(passeioNome(p)) + '</h3>' +
-          '<p class="ps-sub">A tarifa vale só para este roteiro. O preço não soma o dos atrativos.</p>' +
-        '</header>' +
-        '<section class="ps-card">' + passeioCard(p, 0) + '</section>' +
-      '</div>';
-    $('ps-back').onclick = leavePasseio;
-    bindAtrativos(body);
-  }
-
-  /* ---------- página de um passeio unitário ---------- */
-  function paintPasseioPage() {
-    var body = $('tf-body');
-    var a = attrById(st.passeioId);
-    if (!a || String(a.title_pt || '').indexOf(' + ') >= 0) {
-      body.innerHTML = '<div class="ps-page"><button type="button" class="tf-back" id="ps-back">← Passeios</button><p class="gcv-cms-muted">Esse passeio não está na lista de unitários.</p></div>';
-      $('ps-back').onclick = leavePasseio;
-      return;
-    }
-    var t = tarifarioById(a.tarifario_id);
-    var max = parseInt(st.data.max_atrativos, 10) || 3;
-    var passeios = passeiosDo(a.id);
-    var outros = (st.data.atrativos || []).filter(function (x) {
-      return x.id !== a.id && String(x.title_pt || '').indexOf(' + ') < 0;
-    });
-    var opts = '<option value="">— escolher atração —</option>' + outros.map(function (x) {
-      return '<option value="' + x.id + '">' + esc(x.title_pt) + '</option>';
-    }).join('');
-    var addSelects = '';
-    for (var i = 1; i < max && i <= 4; i++) {
-      addSelects += '<label class="tf-field"><span>Atração ' + (i + 1) + '</span><select class="gcv-dash-select" data-combo-pick="' + a.id + '" aria-label="Atração ' + (i + 1) + '">' + opts + '</select></label>';
-    }
-    body.innerHTML =
-      '<div class="ps-page">' +
-        '<button type="button" class="tf-back" id="ps-back">← Passeios</button>' +
-        '<header class="ps-hero">' +
-          '<p class="ps-kicker">Passeio unitário · 1 atração</p>' +
-          '<h3>' + esc(a.title_pt) + '</h3>' +
-          '<p class="ps-sub">Cada cidade de embarque usa a mesma tarifa da aba Localização e tarifário e do Tarifário.</p>' +
-        '</header>' +
-        '<section class="ps-card">' +
-          '<h4>Este passeio</h4>' +
-          '<label class="tf-check"><input type="checkbox" data-tem-passeio="' + a.id + '"' + (a.tem_passeio === false ? '' : ' checked') + ' /> À venda no site</label>' +
-          '<p class="gcv-cms-muted tf-small">Entra em ' + esc(catsRotulo(a.categorias)) + '. A categoria se marca na experiência.</p>' +
-          saidasTarifaFields('atrativo', a.id, a.saidas_tarifas) +
-          '<div class="tf-field"><span>Duração saindo de cada cidade</span>' + duracaoInputs('atrativo', a.id, a.duracao_cidades) + '</div>' +
-        '</section>' +
-        '<section class="ps-card">' +
-          '<h4>Relações</h4>' +
-          '<p class="gcv-cms-muted">Cada relação é outro passeio. A tarifa daqui é a mesma da aba Relacionados e do Tarifário. O preço nunca soma.</p>' +
-          (passeios.length ? passeios.map(function (p) { return passeioCard(p, a.id); }).join('') : '<p class="gcv-cms-muted">Nenhuma relação ainda.</p>') +
-          (max >= 2
-            ? '<div class="tf-add ps-join">' + addSelects +
-                '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary" data-combo-add="' + a.id + '">Criar relação</button></div>' +
-                '<p class="gcv-cms-muted tf-small">Até ' + max + ' atrações no mesmo dia. <a href="#configuracoes">Mudar o máximo em Configurações</a>.</p>'
-            : '<p class="gcv-cms-muted">Em Configurações o máximo é 1 atração por passeio. Não há relação.</p>') +
-        '</section>' +
-      '</div>';
-    $('ps-back').onclick = leavePasseio;
-    bindAtrativos(body);
-  }
-
-  function passeioCard(p, fromAttr) {
-    var nomes = (p.attractions || []).map(function (x) {
-      return x.id === fromAttr ? '<span>' + esc(x.title_pt) + '</span>' : '<b>' + esc(x.title_pt) + '</b>';
-    }).join(' <i>+</i> ');
-    return '<div class="tf-combo' + (p.tarifa_guia ? '' : ' is-off') + '">' +
-      '<div class="tf-combo__top"><p class="tf-combo__name">' + nomes + '</p>' +
-      '<button type="button" class="tf-x" data-combo-del="' + p.id + '" title="Desfazer este passeio" aria-label="Desfazer ' + esc(passeioNome(p)) + '">×</button></div>' +
-      oficiaisFields('passeio', p.id, p.tarifa_guia, p.tarifa_translado) +
-      '<p class="gcv-cms-muted tf-small">A mesma tarifa do Tarifário, de Relacionados e de Localização e tarifário. Sem Tarifa Guia, o passeio fica fora do site.</p>' +
-      '<p class="gcv-cms-muted tf-small">Entra em ' + esc(catsRotulo(p.categorias)) + '. São as categorias de todas as experiências deste passeio.</p>' +
-      '<div class="tf-field"><span>Duração saindo de cada cidade</span>' + duracaoInputs('passeio', p.id, p.duracao_cidades) + '</div>' +
-    '</div>';
-  }
-
-  function bindAtrativos(body) {
-    body.querySelectorAll('[data-edit-tf]').forEach(function (b) {
-      b.onclick = function () { openEditor(tarifarioById(b.getAttribute('data-edit-tf'))); };
-    });
-    body.querySelectorAll('[data-saida-tarifa] select').forEach(function (sel) {
-      sel.onchange = function () {
-        var box = sel.closest('[data-saida-tarifa]');
-        if (!box) return;
-        request('PUT', {
-          action: 'tarifa_saida',
-          kind: box.getAttribute('data-saida-tarifa'),
-          id: parseInt(box.getAttribute('data-saida-id'), 10),
-          cidade: box.getAttribute('data-saida-cidade') || '',
-          campo: sel.getAttribute('data-saida-campo'),
-          codigo: sel.value || ''
-        }, function (res) {
-          apply(res, sel.value ? 'Tarifa ligada. O mesmo valor vale na experiência e no Tarifário.' : 'Tarifa tirada');
-        });
-      };
-    });
-    body.querySelectorAll('[data-oficiais]').forEach(function (box) {
-      box.querySelectorAll('select').forEach(function (sel) {
-        sel.onchange = function () {
-          var payload = {
-            action: 'oficiais',
-            tarifa_guia: (box.querySelector('[data-oficial-guia]') || {}).value || '',
-            tarifa_translado: (box.querySelector('[data-oficial-translado]') || {}).value || ''
-          };
-          if (box.getAttribute('data-oficiais') === 'passeio') payload.passeio_id = parseInt(box.getAttribute('data-oficial-id'), 10);
-          else payload.attraction_id = parseInt(box.getAttribute('data-oficial-id'), 10);
-          request('PUT', payload, function (res) {
-            apply(res, payload.tarifa_guia ? 'Tarifa de guia salva. O translado pode ficar vazio.' : 'Sem tarifa de guia, fica fora do site');
-          });
-        };
-      });
-    });
-    body.querySelectorAll('select[data-link-attr], select[data-link-passeio]').forEach(function (sel) {
-      sel.onchange = function () {
-        var payload = { action: 'link' };
-        var nome;
-        if (sel.hasAttribute('data-link-attr')) {
-          payload.attraction_id = parseInt(sel.getAttribute('data-link-attr'), 10);
-          nome = (attrById(payload.attraction_id) || {}).title_pt;
-        } else {
-          payload.passeio_id = parseInt(sel.getAttribute('data-link-passeio'), 10);
-          nome = sel.getAttribute('data-passeio-nome');
-        }
-        if (sel.value === '__novo') {
-          openEditor(null, { nome: nome, link: payload });
-          return;
-        }
-        payload.tarifario_id = sel.value ? parseInt(sel.value, 10) : null;
-        request('PUT', payload, function (res) { apply(res, payload.tarifario_id ? 'Tarifário ligado' : 'Tirado da venda'); });
-      };
-    });
-    body.querySelectorAll('.tf-dur').forEach(function (wrap) {
-      wrap.querySelectorAll('input').forEach(function (input) {
-        input.onchange = function () {
-          var duracao = {};
-          wrap.querySelectorAll('input').forEach(function (i) { duracao[i.getAttribute('data-dur-city')] = parseHoras(i.value); });
-          var payload = { action: 'duracao', duracao: duracao };
-          payload[wrap.getAttribute('data-dur-kind') === 'passeio' ? 'passeio_id' : 'attraction_id'] = parseInt(wrap.getAttribute('data-dur-id'), 10);
-          request('PUT', payload, function (res) { apply(res, 'Duração salva'); });
-        };
-      });
-    });
-    body.querySelectorAll('[data-tem-passeio]').forEach(function (input) {
-      input.onchange = function () {
-        var id = parseInt(input.getAttribute('data-tem-passeio'), 10);
-        var a = attrById(id);
-        request('PUT', {
-          action: 'oferta',
-          attraction_id: id,
-          tem_passeio: input.checked ? 1 : 0,
-          categorias: (a && a.categorias && a.categorias.length) ? a.categorias : ['classicos']
-        }, function (res) { apply(res, 'Passeio atualizado'); });
-      };
-    });
-    body.querySelectorAll('[data-combo-add]').forEach(function (b) {
-      b.onclick = function () {
-        var attrId = parseInt(b.getAttribute('data-combo-add'), 10);
-        var ids = [attrId];
-        body.querySelectorAll('[data-combo-pick="' + attrId + '"]').forEach(function (sel) {
-          var v = parseInt(sel.value, 10);
-          if (v && ids.indexOf(v) < 0) ids.push(v);
-        });
-        if (ids.length < 2) { toast('Escolha com qual atrativo juntar.', true); return; }
-        request('PUT', { action: 'combo', attraction_ids: ids }, function (res) {
-          apply(res, 'Relação criada. A tarifa é opcional. Sem ela, o passeio não entra no site.');
-        });
-      };
-    });
-    body.querySelectorAll('[data-combo-del]').forEach(function (b) {
-      b.onclick = function () {
-        var p = (st.data.passeios || []).filter(function (x) { return x.id === parseInt(b.getAttribute('data-combo-del'), 10); })[0];
-        confirmar('Desfazer o passeio\n' + (p ? passeioNome(p) : '') + '?\n\nEle sai da página de todos os atrativos dele.', 'Desfazer').then(function (ok) {
-          if (!ok) return;
-          request('DELETE', { passeio_id: p.id }, function (res) { apply(res, 'Passeio desfeito'); });
-        });
-      };
+  function salvarTarifaLinha(sel) {
+    var tr = sel.closest('tr');
+    if (!tr) return;
+    var guia = tr.querySelector('[data-tarifa-tipo="guia"]');
+    var trans = tr.querySelector('[data-tarifa-tipo="translado"]');
+    var payload = {
+      action: 'oficiais',
+      tarifa_guia: guia ? guia.value : '',
+      tarifa_translado: trans ? trans.value : ''
+    };
+    if (tr.getAttribute('data-kind') === 'relacao') payload.passeio_id = parseInt(tr.getAttribute('data-id'), 10);
+    else payload.attraction_id = parseInt(tr.getAttribute('data-id'), 10);
+    var anterior = sel.getAttribute('data-atual') || '';
+    var escolhida = sel.value;
+    sel.disabled = true;
+    request('PUT', payload, function (res) {
+      if (!res.ok) {
+        sel.disabled = false;
+        sel.value = anterior;
+        sel.classList.toggle('is-empty', !anterior);
+        toast(res.error || 'Não salvou', true);
+        return;
+      }
+      st.data = res.data;
+      fillPasseioRows();
+      toast(escolhida ? 'Tarifa atualizada.' : 'Tarifa tirada.');
     });
   }
 
@@ -904,25 +673,36 @@
       }).join('');
       var campo = tipo === 'guia' ? 'guia' : 'translado';
       var col = tipo === 'guia' ? 'tarifa_guia' : 'tarifa_translado';
+      function livre(valor) { return !String(valor || '').trim(); }
       var opcoesCidades = '';
       var opcoesPasseios = '';
       (st.data.atrativos || []).forEach(function (a) {
-        saidasDe(a).forEach(function (s) {
-          if (!s.key || (s[campo] || '') === row.codigo) return;
-          var rotulo = a.title_pt + ' · ' + (s.nome || s.key);
+        if (String(a.title_pt || '').indexOf(' + ') >= 0) return;
+        var cidades = saidasDe(a).filter(function (s) { return s && s.key; });
+        if (!cidades.length) {
+          if (!livre(a[col])) return;
+          if (st.q && !matches(a.title_pt) && !matches(oficialLabel(row))) return;
+          opcoesCidades += '<option value="atrativo:' + a.id + ':">' + esc(a.title_pt) + '</option>';
+          return;
+        }
+        cidades.forEach(function (s) {
+          if (!livre(s[campo])) return;
+          var rotulo = a.title_pt + ' - ' + (s.nome || s.key);
           if (st.q && !matches(rotulo) && !matches(oficialLabel(row))) return;
-          opcoesCidades += '<option value="atrativo:' + a.id + ':' + esc(s.key) + '" data-atual="' + esc(s[campo] || '') + '">' + esc(rotulo) + '</option>';
+          opcoesCidades += '<option value="atrativo:' + a.id + ':' + esc(s.key) + '">' + esc(rotulo) + '</option>';
         });
       });
       (st.data.passeios || []).forEach(function (p) {
         if ((p.attractions || []).length < 2) return;
-        if ((p[col] || '') === row.codigo) return;
+        var saidas = saidasDe(p).filter(function (s) { return s && s.key; });
+        var ocupado = !livre(p[col]) || saidas.some(function (s) { return !livre(s[campo]); });
+        if (ocupado) return;
         var rotulo = passeioNome(p);
         if (st.q && !matches(rotulo) && !matches(oficialLabel(row))) return;
-        opcoesPasseios += '<option value="passeio:' + p.id + ':" data-atual="' + esc(p[col] || '') + '">' + esc(rotulo) + '</option>';
+        opcoesPasseios += '<option value="passeio:' + p.id + ':">' + esc(rotulo) + '</option>';
       });
       return '<div class="tf-exps"><span>Onde vale</span><div class="tf-card__use">' +
-        (chips || '<span class="gcv-cms-muted tf-small">Nenhuma cidade nem passeio relacionado.</span>') +
+        (chips || '<span class="gcv-cms-muted tf-small">Nenhuma experiência nem passeio relacionado.</span>') +
         '</div><select class="gcv-dash-select tf-use-add" data-add-exp="' + esc(row.codigo) + '" data-tipo="' + tipo + '" aria-label="Associar tarifa">' +
         '<option value="">Associar à cidade ou ao passeio relacionado…</option>' +
         (opcoesCidades ? '<optgroup label="Cidades de embarque da experiência">' + opcoesCidades + '</optgroup>' : '') +
@@ -1424,8 +1204,10 @@
     st.passeioId = 0;
     st.relacaoId = 0;
     if (mode === 'passeios') {
-      st.relacaoId = relacaoIdFromHash();
-      st.passeioId = st.relacaoId ? 0 : passeioIdFromHash();
+      var h = String(location.hash || '');
+      if (h.indexOf('#passeio/') === 0 || h.indexOf('#relacao/') === 0) {
+        try { history.replaceState(null, '', location.pathname + location.search + '#passeios'); } catch (err) {}
+      }
     }
     var box = $(rootId);
     if (!box) return;

@@ -666,7 +666,7 @@
     var cidades = cidadesTrilha(a);
     return (
       '<tr>' +
-      '<td class="xp-grade__titulo">' + esc(a.title_pt) + '</td>' +
+      '<td class="xp-grade__titulo"><button type="button" class="xp-grade__abrir" data-edit-attr="' + a.id + '">' + esc(a.title_pt) + '</button></td>' +
       '<td>' + chipsHtml(categoriasTrilha(a)) + '</td>' +
       '<td class="xp-cidades">' + (cidades.length ? cidades.map(function (nome) {
         return '<span class="xp-cidade">' + esc(nome) + '</span>';
@@ -687,7 +687,7 @@
     var detalhe = (preco ? preco + '/h' : 'por hora') + (tempo ? ' · ' + tempo : '') + ' · fora do site';
     return (
       '<tr>' +
-      '<td class="xp-grade__titulo">' + esc(t.nome) + '</td>' +
+      '<td class="xp-grade__titulo"><button type="button" class="xp-grade__abrir" data-edit-terapia="' + t.id + '">' + esc(t.nome) + '</button></td>' +
       '<td>' + chipsHtml(['Terapia'], 'xp-chip--terapia') + '</td>' +
       '<td class="xp-cidades"><span class="xp-muted">—</span></td>' +
       '<td><span class="xp-muted">—</span></td>' +
@@ -1268,7 +1268,7 @@
   function guideAccountBadge(g) {
     var st = String((g && g.status) || '');
     var approved = guideWasApproved(g);
-    if (st === 'active') return '<span class="gcv-badge gcv-badge--active">' + gWord(g, 'APROVADO', 'APROVADA') + '</span>';
+    if (st === 'active') return '<span class="gcv-badge gcv-badge--active">ATIVO</span>';
     if (st === 'inactive') return '<span class="gcv-badge gcv-badge--muted">' + gWord(g, 'INATIVO', 'INATIVA') + '</span>';
     if (st === 'cancelled' || (st === 'suspended' && approved)) {
       return '<span class="gcv-badge gcv-badge--cancelled">' + gWord(g, 'CANCELADO', 'CANCELADA') + '</span>';
@@ -1510,7 +1510,7 @@
       '<select class="gcv-dash-select" id="cms-guide-status">' +
       '<option value="">Todos</option>' +
       '<option value="awaiting">Aguardando</option>' +
-      '<option value="approved">Aprovado</option>' +
+      '<option value="approved">Ativo</option>' +
       '<option value="draft">Rascunho</option>' +
       '<option value="rejected">Recusado</option>' +
       '<option value="inactive">Inativo</option>' +
@@ -1651,10 +1651,6 @@
         var recusado = g.status === 'suspended' && !guideWasApproved(g);
         var draftReturn = g.status === 'pending' && !!g.needs_resubmit;
         var name = g.full_name || g.name || g.nickname || 'Guia';
-        var bucket = guideFilterKey(g);
-        var deleteBtn = (bucket === 'draft' || bucket === 'awaiting' || bucket === 'approved')
-          ? '<button type="button" class="gcv-dash-btn gcv-dash-btn--danger gcv-dash-btn--sm" data-del-guide="' + g.user_id + '" data-del-label="' + esc(name) + '">Excluir</button>'
-          : '';
         var email = String(g.email || '').trim();
         var city = String(g.base_city_name || '').trim() || '—';
         var pix = String(g.pix_key || '').trim();
@@ -1666,15 +1662,12 @@
             '<button type="button" class="gcv-dash-btn gcv-dash-btn--success gcv-dash-btn--sm" data-approve-guide="' + g.user_id + '">Aprovar</button>' +
             '<button type="button" class="gcv-dash-btn gcv-dash-btn--danger gcv-dash-btn--sm" data-reject-guide="' + g.user_id + '">Recusar</button>' +
             '<button type="button" class="gcv-dash-btn gcv-dash-btn--block gcv-dash-btn--sm" data-block-guide="' + g.user_id + '">Bloquear</button>' +
-            deleteBtn +
             '</div>';
         } else if (recusado) {
           decide = '<div class="gcv-guide-sheet__decide">' +
             '<button type="button" class="gcv-dash-btn gcv-dash-btn--success gcv-dash-btn--sm" data-approve-guide="' + g.user_id + '">Aprovar</button>' +
             '<button type="button" class="gcv-dash-btn gcv-dash-btn--block gcv-dash-btn--sm" data-block-guide="' + g.user_id + '">Bloquear</button>' +
             '</div>';
-        } else if (deleteBtn) {
-          decide = '<div class="gcv-guide-sheet__decide">' + deleteBtn + '</div>';
         }
         var phoneHtml = phone
           ? (wa
@@ -1791,7 +1784,7 @@
       }
     } else if (approved) {
       actions =
-        guideStatusChip('active', g.status, uid, gWord(g, 'Aprovado', 'Aprovada'), 'ok') +
+        guideStatusChip('active', g.status, uid, 'Ativo', 'ok') +
         guideStatusChip('pending', g.status, uid, 'Rascunho', 'draft') +
         guideStatusChip('inactive', g.status, uid, gWord(g, 'Inativo', 'Inativa'), 'muted') +
         guideStatusChip('cancelled', g.status, uid, gWord(g, 'Cancelado', 'Cancelada'), 'no');

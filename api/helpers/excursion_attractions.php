@@ -16,9 +16,10 @@ function gcv_normalize_media_url(?string $url): string
     if ($url === '') {
         return '';
     }
+    $url = preg_replace('#https?://(?:www\.)?guiachapadaveadeiros\.com#i', '', $url) ?? $url;
     $url = preg_replace('#(/assets/img/imagens)/\d{4}/\d{2}/#', '$1/', $url) ?? $url;
-    $url = preg_replace('#(/imagens)/\d{4}/\d{2}/#', '$1/', $url) ?? $url;
-    $url = preg_replace('#(/wp-content/uploads)/\d{4}/\d{2}/#', '/assets/img/imagens/', $url) ?? $url;
+    $url = preg_replace('#(?<!/assets/img)(/imagens)(?:/\d{4}/\d{2})?/#', '/assets/img/imagens/', $url) ?? $url;
+    $url = preg_replace('#(/wp-content/uploads)(?:/\d{4}/\d{2})?/#', '/assets/img/imagens/', $url) ?? $url;
     return $url;
 }
 
