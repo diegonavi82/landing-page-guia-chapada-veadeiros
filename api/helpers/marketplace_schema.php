@@ -628,8 +628,9 @@ function gcv_marketplace_ensure_settings(PDO $pdo): void
         ['transfer_offer_hours', '48', 'Troca: horas antes da saída para oferecer a lista (só em formação → passeio confirmado do mesmo dia)', 'integer'],
         ['diaria_minima_reais', '320', 'Diária mínima do cliente no exclusivo e no fechamento da excursão (R$)', 'integer'],
         ['pg_minimo_guia_reais', '280', 'Pagamento mínimo do guia sem transporte, no fechamento da diária ou do quórum (R$)', 'integer'],
-        ['pausa_convite_inicio_hora', '22', 'Convite ao guia: o relógio para a partir desta hora', 'integer'],
-        ['pausa_convite_fim_hora', '8', 'Convite ao guia: o relógio volta nesta hora', 'integer'],
+        ['oportunidade_top3_horas', '2', 'TOP 3: horas exclusivas antes de chamar o restante da fila', 'integer'],
+        ['oportunidade_aceite_minutos', '260', 'Tempo para aceitar a oportunidade, em minutos (260 = 4h20)', 'integer'],
+        ['oportunidade_urgente_horas', '24', 'Faltando menos horas que isto para o passeio, todos os guias são chamados juntos', 'integer'],
         ['tarifa_ia_ativa', '0', 'Tarifa inteligência artificial progressiva: 0 inativa, 1 ativa. Não vale para passeio publicado pelo guia', 'integer'],
         ['tarifa_ia_passo_pct', '2', 'Passo da tarifa progressiva (%) sobre o último preço vendido', 'percent'],
     ];
@@ -699,6 +700,16 @@ function gcv_marketplace_ensure_settings(PDO $pdo): void
             "UPDATE gcv_settings
              SET label = 'Cancelamento automático: horas antes da saída se o quórum não fechou (sempre depois da troca)'
              WHERE key_name = 'transfer_cancel_hours'"
+        );
+        $pdo->exec(
+            "UPDATE gcv_settings
+             SET label = 'Substituído: a oportunidade do TOP 3 dura 2 horas corridas'
+             WHERE key_name = 'pausa_convite_inicio_hora'"
+        );
+        $pdo->exec(
+            "UPDATE gcv_settings
+             SET label = 'Substituído: o aceite da oportunidade é de 4h20 corridas'
+             WHERE key_name = 'pausa_convite_fim_hora'"
         );
     } catch (Throwable $e) {
         // ignore

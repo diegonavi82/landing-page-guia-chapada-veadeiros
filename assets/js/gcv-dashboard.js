@@ -1549,8 +1549,9 @@
       transfer_cancel_hours: 'transfer',
       diaria_minima_reais: 'regras',
       pg_minimo_guia_reais: 'regras',
-      pausa_convite_inicio_hora: 'regras',
-      pausa_convite_fim_hora: 'regras',
+      oportunidade_top3_horas: 'regras',
+      oportunidade_aceite_minutos: 'regras',
+      oportunidade_urgente_horas: 'regras',
       tarifa_ia_ativa: 'regras',
       tarifa_ia_passo_pct: 'regras',
       passeio_max_atrativos: 'passeios'
@@ -1570,7 +1571,7 @@
       },
       regras: {
         title: 'Tarifa do roteiro',
-        hint: 'Diária mínima e pagamento mínimo do guia travam o salvamento da tarifa. A tarifa progressiva só sobe preço de passeio do admin ou aberto pelo cliente, nunca o do guia. O relógio de aceite para entre 22h e 8h.'
+        hint: 'Diária mínima e pagamento mínimo do guia travam o salvamento da tarifa. A tarifa progressiva só sobe preço de passeio do admin ou aberto pelo cliente, nunca o do guia. A oportunidade vai ao TOP 3 por 2 horas. O aceite é de 4h20 corridas, sem pausa noturna.'
       },
       finance: {
         title: 'Financeiro e repasse',
@@ -1582,6 +1583,7 @@
       if (!res || !res.ok) return;
       var buckets = { passeios: [], notify: [], transfer: [], finance: [], regras: [], other: [] };
       (res.data.settings || []).forEach(function (s) {
+        if (s.key_name === 'pausa_convite_inicio_hora' || s.key_name === 'pausa_convite_fim_hora') return;
         var g = groupOf[s.key_name] || 'other';
         buckets[g].push(s);
       });

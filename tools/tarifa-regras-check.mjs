@@ -50,7 +50,9 @@ assert(regras.pontoEncontroPadrao("Cavalcante") === "Café com Delícias", "pont
 assert(regras.pontoEncontroPadrao("Alto Paraíso de Goiás") === "Padaria Santa Maria", "ponto Alto Paraíso");
 
 const ate = regras.responderAte(new Date(2026, 8, 23, 23, 0, 0), 2, cfg);
-assert(ate.getHours() === 10 && ate.getMinutes() === 0, "2h a partir das 23h termina às 10h");
+assert(ate.getDate() === 24 && ate.getHours() === 1 && ate.getMinutes() === 0, "2h corridas a partir das 23h terminam à 1h");
+const aceite = regras.prazoAceite(new Date(2026, 8, 23, 10, 0, 0), cfg);
+assert(aceite.getHours() === 14 && aceite.getMinutes() === 20, "aceite é 4h20 corridas");
 
 const cedo = regras.cancelamentoPrivativo(10, 10, false);
 assert(cedo.devolvePct === 100, "até 48h devolve 100");

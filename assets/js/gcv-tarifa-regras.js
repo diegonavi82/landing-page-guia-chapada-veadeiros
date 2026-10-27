@@ -11,8 +11,6 @@
     return {
       diariaMinimaCents: 32000,
       pgMinimoGuiaCents: 28000,
-      pausaInicioHora: 22,
-      pausaFimHora: 8,
       idadeAtiva: false,
       descontoIdosoPct: 0,
       descontoCriancaPct: 0,
@@ -20,6 +18,8 @@
       aiAtiva: false,
       aiPassoPct: 2,
       conviteHoras: 2,
+      exclusividadeHoras: 2,
+      aceiteMinutos: 260,
     };
   }
 
@@ -182,20 +182,20 @@
     return "";
   }
 
-  /** Relógio parado entre 22h e 8h. Devolve o instante em que as horas úteis se completam. */
+  /** Horas corridas, sem pausa noturna. */
   function responderAte(inicio, horas, config) {
     config = Object.assign(configPadrao(), config || {});
-    var cursor = new Date(inicio.getTime());
-    var restam = (parseInt(horas, 10) || config.conviteHoras) * 60;
-    var guard = 0;
-    while (restam > 0 && guard < 24 * 60 * 4) {
-      var h = cursor.getHours();
-      var pausado = h >= config.pausaInicioHora || h < config.pausaFimHora;
-      if (!pausado) restam -= 1;
-      cursor = new Date(cursor.getTime() + 60000);
-      guard += 1;
-    }
-    return cursor;
+    var h = parseInt(horas, 10);
+    if (!Number.isFinite(h) || h <= 0) h = config.exclusividadeHoras || config.conviteHoras;
+    return new Date(inicio.getTime() + h * 60 * 60000);
+  }
+
+  /** Prazo de aceite da oportunidade: 4 horas e 20 minutos corridos. */
+  function prazoAceite(inicio, config) {
+    config = Object.assign(configPadrao(), config || {});
+    var mins = parseInt(config.aceiteMinutos, 10);
+    if (!Number.isFinite(mins) || mins <= 0) mins = 260;
+    return new Date(inicio.getTime() + mins * 60000);
   }
 
   function cancelamentoPrivativo(horasDesdeCompra, diasAtePasseio, guiaEscolhido) {
@@ -223,6 +223,7 @@
     precoClienteCents: precoClienteCents,
     pontoEncontroPadrao: pontoEncontroPadrao,
     responderAte: responderAte,
+    prazoAceite: prazoAceite,
     cancelamentoPrivativo: cancelamentoPrivativo,
   };
 });
