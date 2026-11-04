@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/tarifa_repasse.php';
+
 /**
  * Tarifário: tabela de preços por pessoa usada pelo site.
  *
@@ -28,6 +30,8 @@ declare(strict_types=1);
  * Com translado não há PAX 5+. O guia em outro idioma entra uma vez nesse total.
  * bilingue_tipo fixo = bilingue_valor em centavos. percentual = bilingue_valor inteiro (0–100).
  * Português soma zero. Vazio no fixo = R$ 40. Vazio no percentual = 0.
+ * O repasse do guia no catálogo e na excursão do admin sai da taxa gravada em cada tarifa oficial.
+ * O global dessa taxa só preenche tarifa nova. A excursão criada pelo guia não usa essa taxa.
  */
 
 require_once __DIR__ . '/experiencias.php';
@@ -546,14 +550,15 @@ function gcv_tarifa_nome_sem_translado(int $excursao, int $excursao5, int $priva
 }
 
 /** @return array{codigo:string,tipo:string,excursao:int,privativo:int,excursao_5:int,privativo_5:int,excursao_cents:int,privativo_cents:int,excursao_5_cents:int,privativo_5_cents:int,nome:string} */
-function gcv_tarifa_oficial_linha(string $tipo, string $codigo, int $excursao, int $privativo, int $excursao5 = 0, int $privativo5 = 0): array
+function gcv_tarifa_oficial_linha(string $tipo, string $codigo, int $excursao, int $privativo, int $excursao5 = 0, int $privativo5 = 0, ?array $taxas = null): array
 {
     $tipo = $tipo === 'translado' ? 'translado' : 'guia';
     $excursao = max(0, $excursao);
     $privativo = max(0, $privativo);
     $excursao5 = $tipo === 'guia' ? max(0, $excursao5) : 0;
     $privativo5 = $tipo === 'guia' ? max(0, $privativo5) : 0;
-    return [
+    $taxas = gcv_tarifa_taxas_normalizar($taxas);
+    $linha = [
         'codigo' => $codigo,
         'tipo' => $tipo,
         'excursao' => $excursao,
@@ -564,10 +569,16 @@ function gcv_tarifa_oficial_linha(string $tipo, string $codigo, int $excursao, i
         'privativo_cents' => $privativo * 100,
         'excursao_5_cents' => $excursao5 * 100,
         'privativo_5_cents' => $privativo5 * 100,
+        'taxa_privativo_pct' => $taxas['taxa_privativo_pct'],
+        'taxa_excursao_4_reais' => $tipo === 'guia' ? $taxas['taxa_excursao_4_reais'] : 0,
+        'taxa_excursao_5_reais' => $tipo === 'guia' ? $taxas['taxa_excursao_5_reais'] : 0,
+        'taxa_excursao_reais' => $tipo === 'translado' ? $taxas['taxa_excursao_reais'] : 0,
         'nome' => $tipo === 'guia'
             ? gcv_tarifa_nome_sem_translado($excursao, $excursao5, $privativo, $privativo5)
             : gcv_tarifa_nome_translado($excursao, $privativo),
     ];
+    $linha['exemplo_4'] = gcv_tarifa_exemplo_4($linha);
+    return $linha;
 }
 
 /** @return list<array{codigo:string,tipo:string,excursao:int,privativo:int,excursao_cents:int,privativo_cents:int,nome:string}> */
@@ -618,7 +629,9 @@ function gcv_tarifas_oficiais_ler(PDO $pdo): array
         }
         return $salvas;
     }
+    $globais = gcv_tarifa_taxas_globais_get($pdo);
     $out = [];
+    $dirty = false;
     foreach ($raw as $row) {
         if (!is_array($row)) {
             continue;
@@ -634,8 +647,19 @@ function gcv_tarifas_oficiais_ler(PDO $pdo): array
         }
         if ($tipo === 'guia' && ($exc5 < 1 || $pri5 < 1)) {
             continue;
+        }
+        $modelo = $tipo === 'guia' ? $globais['guia'] : $globais['translado'];
+        $temTaxa = $tipo === 'guia'
+            ? array_key_exists('taxa_excursao_4_reais', $row)
+            : array_key_exists('taxa_excursao_reais', $row);
+        if (!$temTaxa) {
+            $dirty = true;
+        }
+        $taxas = $temTaxa ? $row : $modelo;
+        $out[] = gcv_tarifa_oficial_linha($tipo, $codigo, $exc, $pri, $exc5, $pri5, $taxas);
     }
-        $out[] = gcv_tarifa_oficial_linha($tipo, $codigo, $exc, $pri, $exc5, $pri5);
+    if ($dirty && $out) {
+        gcv_tarifas_oficiais_gravar($pdo, $out);
     }
     return $out;
 }
@@ -682,6 +706,10 @@ function gcv_tarifas_oficiais_gravar(PDO $pdo, array $rows): void
             'privativo' => (int)$row['privativo'],
             'excursao_5' => (int)($row['excursao_5'] ?? 0),
             'privativo_5' => (int)($row['privativo_5'] ?? 0),
+            'taxa_privativo_pct' => (int)($row['taxa_privativo_pct'] ?? 0),
+            'taxa_excursao_4_reais' => (int)($row['taxa_excursao_4_reais'] ?? 0),
+            'taxa_excursao_5_reais' => (int)($row['taxa_excursao_5_reais'] ?? 0),
+            'taxa_excursao_reais' => (int)($row['taxa_excursao_reais'] ?? 0),
         ];
     }
     $json = json_encode($payload, JSON_UNESCAPED_UNICODE);
@@ -747,7 +775,7 @@ function gcv_tarifa_oficial_uso(PDO $pdo, string $codigo): int
     return $n;
 }
 
-function gcv_tarifa_oficial_criar(PDO $pdo, string $tipo, int $excursao, int $privativo, int $excursao5 = 0, int $privativo5 = 0): string
+function gcv_tarifa_oficial_criar(PDO $pdo, string $tipo, int $excursao, int $privativo, int $excursao5 = 0, int $privativo5 = 0, ?array $taxas = null): string
 {
     if ($tipo !== 'guia' && $tipo !== 'translado') {
         throw new InvalidArgumentException('Escolha Tarifa Guia ou Tarifa Translado.');
@@ -762,13 +790,14 @@ function gcv_tarifa_oficial_criar(PDO $pdo, string $tipo, int $excursao, int $pr
     if ($excursao5 < 0 || $excursao5 > 100000 || $privativo5 < 0 || $privativo5 > 100000) {
         throw new InvalidArgumentException('Informe o PAX 5+ em reais.');
     }
-    $quorum = max(1, gcv_tarifario_setting_int($pdo, 'passeio_quorum', 4));
-    $diaria = gcv_tarifario_setting_int($pdo, 'diaria_minima_reais', 320);
+    $globais = gcv_tarifa_taxas_globais_get($pdo);
+    $taxas = gcv_tarifa_taxas_normalizar(array_merge($tipo === 'guia' ? $globais['guia'] : $globais['translado'], is_array($taxas) ? $taxas : []));
     if ($tipo === 'guia') {
         gcv_tarifario_validar_guia_valores($excursao, $excursao5, $privativo, $privativo5, '');
-        gcv_tarifario_validar_diaria_valor($excursao, $quorum, $diaria, '');
+        gcv_tarifa_validar_taxas('guia', $excursao, $excursao5, $taxas);
     } else {
         gcv_tarifario_validar_translado_valores($excursao, $privativo, '');
+        gcv_tarifa_validar_taxas('translado', $excursao, 0, $taxas);
     }
     $rows = gcv_tarifas_oficiais_ler($pdo);
     foreach ($rows as $row) {
@@ -785,7 +814,7 @@ function gcv_tarifa_oficial_criar(PDO $pdo, string $tipo, int $excursao, int $pr
         $codigo = $prefix . $excursao . '-' . $n;
         $n++;
     }
-    $rows[] = gcv_tarifa_oficial_linha($tipo, $codigo, $excursao, $privativo, $excursao5, $privativo5);
+    $rows[] = gcv_tarifa_oficial_linha($tipo, $codigo, $excursao, $privativo, $excursao5, $privativo5, $taxas);
     gcv_tarifas_oficiais_gravar($pdo, $rows);
     return $codigo;
 }
@@ -799,8 +828,6 @@ function gcv_tarifa_oficial_pax5(PDO $pdo, string $codigo, int $excursao5, int $
     }
     $rows = gcv_tarifas_oficiais_ler($pdo);
     $found = false;
-    $quorum = max(1, gcv_tarifario_setting_int($pdo, 'passeio_quorum', 4));
-    $diaria = gcv_tarifario_setting_int($pdo, 'diaria_minima_reais', 320);
     foreach ($rows as $i => $row) {
         if ($row['codigo'] !== $codigo) {
             continue;
@@ -809,8 +836,9 @@ function gcv_tarifa_oficial_pax5(PDO $pdo, string $codigo, int $excursao5, int $
             throw new InvalidArgumentException('PAX 5+ só existe na Tarifa Guia, sem translado.');
         }
         gcv_tarifario_validar_guia_valores((int)$row['excursao'], $excursao5, (int)$row['privativo'], $privativo5, (string)$row['nome']);
-        gcv_tarifario_validar_diaria_valor((int)$row['excursao'], $quorum, $diaria, (string)$row['nome']);
-        $rows[$i] = gcv_tarifa_oficial_linha('guia', $codigo, (int)$row['excursao'], (int)$row['privativo'], $excursao5, $privativo5);
+        $taxas = gcv_tarifa_taxas_normalizar($row);
+        gcv_tarifa_validar_taxas('guia', (int)$row['excursao'], $excursao5, $taxas);
+        $rows[$i] = gcv_tarifa_oficial_linha('guia', $codigo, (int)$row['excursao'], (int)$row['privativo'], $excursao5, $privativo5, $taxas);
         $found = true;
         break;
     }
@@ -821,7 +849,7 @@ function gcv_tarifa_oficial_pax5(PDO $pdo, string $codigo, int $excursao5, int $
 }
 
 /** Altera os valores de uma tarifa já existente. O código não muda, para os vínculos continuarem. */
-function gcv_tarifa_oficial_editar(PDO $pdo, string $codigo, int $excursao, int $privativo, int $excursao5 = 0, int $privativo5 = 0): void
+function gcv_tarifa_oficial_editar(PDO $pdo, string $codigo, int $excursao, int $privativo, int $excursao5 = 0, int $privativo5 = 0, ?array $taxas = null): void
 {
     $codigo = trim($codigo);
     if ($excursao < 1 || $excursao > 100000 || $privativo < 1 || $privativo > 100000) {
@@ -829,23 +857,23 @@ function gcv_tarifa_oficial_editar(PDO $pdo, string $codigo, int $excursao, int 
     }
     $rows = gcv_tarifas_oficiais_ler($pdo);
     $found = false;
-    $quorum = max(1, gcv_tarifario_setting_int($pdo, 'passeio_quorum', 4));
-    $diaria = gcv_tarifario_setting_int($pdo, 'diaria_minima_reais', 320);
     foreach ($rows as $i => $row) {
         if ($row['codigo'] !== $codigo) {
             continue;
         }
         $tipo = (string)$row['tipo'];
+        $taxasSalvas = gcv_tarifa_taxas_normalizar(array_merge($row, is_array($taxas) ? $taxas : []));
         if ($tipo !== 'guia') {
             $excursao5 = 0;
             $privativo5 = 0;
             gcv_tarifario_validar_translado_valores($excursao, $privativo, (string)$row['nome']);
+            gcv_tarifa_validar_taxas('translado', $excursao, 0, $taxasSalvas);
         } else {
             if ($excursao5 < 1 || $privativo5 < 1) {
                 throw new InvalidArgumentException('Preencha o PAX 5+ da excursão e do privativo.');
             }
             gcv_tarifario_validar_guia_valores($excursao, $excursao5, $privativo, $privativo5, (string)$row['nome']);
-            gcv_tarifario_validar_diaria_valor($excursao, $quorum, $diaria, (string)$row['nome']);
+            gcv_tarifa_validar_taxas('guia', $excursao, $excursao5, $taxasSalvas);
         }
         foreach ($rows as $outra) {
             if ($outra['codigo'] === $codigo || $outra['tipo'] !== $tipo) {
@@ -856,7 +884,7 @@ function gcv_tarifa_oficial_editar(PDO $pdo, string $codigo, int $excursao, int 
                 throw new InvalidArgumentException('Essa tarifa já existe.');
             }
         }
-        $rows[$i] = gcv_tarifa_oficial_linha($tipo, $codigo, $excursao, $privativo, $excursao5, $privativo5);
+        $rows[$i] = gcv_tarifa_oficial_linha($tipo, $codigo, $excursao, $privativo, $excursao5, $privativo5, $taxasSalvas);
         $found = true;
         break;
     }
@@ -2759,6 +2787,7 @@ function gcv_tarifario_admin_overview(PDO $pdo): array
         'tarifas_oficiais' => gcv_tarifas_oficiais(),
         'bilingue' => gcv_bilingue_universal_get($pdo),
         'regras' => gcv_tarifario_regras_get($pdo),
+        'taxas_globais' => gcv_tarifa_taxas_globais_get($pdo),
         'tarifarios' => array_values($tarifarios),
         'atrativos' => $attractions,
         'passeios' => $passeios,

@@ -1269,6 +1269,10 @@
           valorUnit: parseInt(String(it.valorUnit), 10) || 0,
           guiaIdioma: guideLangFromItem(it),
           modalidade: modeFromItem(it),
+          tarifaGuia: it.tarifaGuia || "",
+          tarifaTranslado: it.tarifaTranslado || "",
+          bilingueExtraCents: parseInt(String(it.bilingueExtraCents), 10) || 0,
+          abreCatalogo: it.abreCatalogo === true,
           guiaNome: it.guiaNome || "",
           guiaTelefone: it.guiaTelefone || "",
           dateIso: it.dateIso || "",
@@ -1683,6 +1687,10 @@
       if (item.guias) existing.guias = item.guias;
       if (item.quorum) existing.quorum = item.quorum;
       if (item.vagaGuiaObrigatoria != null) existing.vagaGuiaObrigatoria = item.vagaGuiaObrigatoria === true;
+      if (item.tarifaGuia) existing.tarifaGuia = item.tarifaGuia;
+      if (item.tarifaTranslado) existing.tarifaTranslado = item.tarifaTranslado;
+      existing.bilingueExtraCents = parseInt(String(item.bilingueExtraCents), 10) || 0;
+      existing.abreCatalogo = item.abreCatalogo === true;
       if (Array.isArray(item.destinos) && item.destinos.length) existing.destinos = item.destinos.slice();
     } else {
       items.push({
@@ -1715,6 +1723,10 @@
         guias: parseInt(item.guias, 10) || 0,
         quorum: parseInt(item.quorum, 10) || 0,
         vagaGuiaObrigatoria: item.vagaGuiaObrigatoria === true,
+        tarifaGuia: item.tarifaGuia || "",
+        tarifaTranslado: item.tarifaTranslado || "",
+        bilingueExtraCents: parseInt(String(item.bilingueExtraCents), 10) || 0,
+        abreCatalogo: item.abreCatalogo === true,
       });
     }
     saveItems(items);

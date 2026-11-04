@@ -1644,7 +1644,7 @@
       },
       regras: {
         title: 'Tarifa do roteiro',
-        hint: 'Diária mínima e pagamento mínimo do guia travam o salvamento da tarifa. PAX 4 Excursão × quórum não pode ficar abaixo da diária, e o pagamento mínimo tem que ser menor que ela. A tarifa progressiva só sobe preço de passeio do admin ou aberto pelo cliente, nunca o do guia. A oportunidade vai ao TOP 3 por 2 horas. O aceite é de 4h20 corridas, sem pausa noturna.'
+        hint: 'Cada tarifa oficial guarda a própria taxa do guia. O modelo global só preenche a tarifa nova. Passeio criado pelo guia continua na comissão da plataforma. A oportunidade vai ao TOP 3 por 2 horas. O aceite é de 4h20 corridas, sem pausa noturna.'
       },
       finance: {
         title: 'Financeiro e repasse',

@@ -118,10 +118,69 @@
     if (exc4 > 0 && (exc5 <= 0 || exc5 >= exc4)) return 'PAX 5+ Excursão tem que ser menor que o PAX 4 Excursão.';
     if (pri4 > 0 && (pri5 <= 0 || pri5 >= pri4)) return 'PAX 5+ Privativo tem que ser menor que o PAX 4 Privativo.';
     if (exc5 > 0 && pri5 > 0 && exc5 >= pri5) return 'PAX 5+ Excursão tem que ser menor que o PAX 5+ Privativo.';
-    if (exc4 > 0 && diariaCents > 0 && exc4 * quorum < diariaCents) {
-      return 'PAX 4 Excursão × quórum ' + quorum + ' = ' + reais(exc4 * quorum) + ' fica abaixo da diária mínima de guiagem (' + reais(diariaCents) + ').';
-    }
     return '';
+  }
+
+  function taxasGlobais() {
+    var t = (st.data && st.data.taxas_globais) || {};
+    var g = t.guia || {};
+    var tr = t.translado || {};
+    function n(v, fb) {
+      var x = parseInt(v, 10);
+      return Number.isFinite(x) ? x : fb;
+    }
+    return {
+      guiaPct: n(g.taxa_privativo_pct, 20),
+      guia4: n(g.taxa_excursao_4_reais, 15),
+      guia5: n(g.taxa_excursao_5_reais, 5),
+      transPct: n(tr.taxa_privativo_pct, 20),
+      transReais: n(tr.taxa_excursao_reais, 40)
+    };
+  }
+
+  function inteiroCampo(v) {
+    var s = String(v == null ? '' : v).trim().replace(',', '.');
+    if (s === '') return null;
+    var n = parseInt(s, 10);
+    return Number.isFinite(n) && n >= 0 ? n : null;
+  }
+
+  function erroTaxa(tipo, excReais, exc5Reais, taxa) {
+    if (taxa.pct == null || taxa.pct >= 100) return 'O percentual do privativo tem que ser menor que 100%.';
+    if (tipo === 'guia') {
+      if (taxa.ate4 == null || taxa.desde5 == null) return 'Preencha as taxas da tarifa.';
+      if (excReais > 0 && taxa.ate4 >= excReais) return 'A taxa da excursão até 4 pessoas tem que ser menor que o preço do lugar.';
+      var preco5 = exc5Reais > 0 ? exc5Reais : excReais;
+      if (preco5 > 0 && taxa.desde5 >= preco5) return 'A taxa da 5ª pessoa tem que ser menor que o preço dessa faixa.';
+      return '';
+    }
+    if (taxa.porPessoa == null) return 'Preencha as taxas da tarifa.';
+    if (excReais > 0 && taxa.porPessoa >= excReais) return 'A taxa da excursão com carro tem que ser menor que o preço do lugar.';
+    return '';
+  }
+
+  function exemploQuatro(tipo, excReais, priReais, pct, taxaReais) {
+    excReais = parseInt(excReais, 10) || 0;
+    priReais = parseInt(priReais, 10) || 0;
+    pct = parseInt(pct, 10) || 0;
+    taxaReais = parseInt(taxaReais, 10) || 0;
+    if (tipo === 'translado') {
+      var pixExc = Math.round(excReais * 4 * 100);
+      var fee = Math.round(taxaReais * 4 * 100);
+      var pixPri = Math.round(priReais * 4 * 100);
+      var platPri = Math.round(pixPri * pct / 100);
+      return [
+        'Excursão com carro, 4 pessoas. Cliente ' + reais(pixExc) + '. Plataforma ' + reais(fee) + '. Guia ' + reais(Math.max(0, pixExc - fee)) + '.',
+        'Privativo com carro. Cliente ' + reais(pixPri) + '. Plataforma ' + reais(platPri) + '. Guia ' + reais(Math.max(0, pixPri - platPri)) + '.'
+      ];
+    }
+    var pix = Math.round(excReais * 4 * 100);
+    var feeGuia = Math.round(taxaReais * 4 * 100);
+    var plat = Math.round(pix * pct / 100);
+    return [
+      'Excursão sem carro, 4 pessoas. Cliente ' + reais(pix) + '. Plataforma ' + reais(feeGuia) + '. Guia ' + reais(Math.max(0, pix - feeGuia)) + '.',
+      'Privativo sem carro, 4 pessoas. Cliente ' + reais(pix) + '. Plataforma ' + reais(plat) + '. Guia ' + reais(Math.max(0, pix - plat)) + '.'
+    ];
   }
 
   function diariaDoGuia(excCents) {
@@ -652,12 +711,23 @@
       if (tipo === 'guia') {
         var diaExc = diariaDoGuia(exc);
         var diaPri = diariaDoGuia(pri);
-        set('data-nova-exc', reais(diaExc.total), diaExc.abaixo);
+        set('data-nova-exc', reais(diaExc.total), false);
         set('data-nova-pri', reais(diaPri.total), false);
       } else {
         set('data-nova-exc', reais(VEICULO * exc), false);
         set('data-nova-pri', reais(VEICULO * pri), false);
       }
+      var exemplo = form.querySelector('[data-exemplo-nova]');
+      if (exemplo) {
+        var pct = inteiroCampo((form.querySelector('[data-nova-pct]') || {}).value) || 0;
+        var taxa = tipo === 'guia'
+          ? (inteiroCampo((form.querySelector('[data-nova-4]') || {}).value) || 0)
+          : (inteiroCampo((form.querySelector('[data-nova-carro]') || {}).value) || 0);
+        exemplo.innerHTML = exemploQuatro(tipo, exc / 100, pri / 100, pct, taxa).map(esc).join('<br>');
+      }
+    }
+    function campoTaxa(attr, label, valor, unit) {
+      return '<label class="tf-field tf-field--taxa"><span>' + label + '</span><span class="tf-money"><em>' + unit + '</em><input inputmode="decimal" ' + attr + ' value="' + esc(String(valor)) + '" aria-label="' + label + '" /></span></label>';
     }
     function cardCombina(tipo, row) {
       if (!st.q) return true;
@@ -714,26 +784,38 @@
       var todas = oficiaisDo(tipo);
       var visiveis = todas.filter(function (row) { return cardCombina(tipo, row); });
       var cards = visiveis.map(function (row) {
+          var glob = taxasGlobais();
           var paxEdit = guia
             ? campoCard('data-exc', 'PAX 4 Excursão', row.excursao_cents, 'diaria') +
               campoCard('data-pri', 'PAX 4 Privativo', row.privativo_cents, 'diaria') +
               campoCard('data-exc5', 'PAX 5+ Excursão', row.excursao_5_cents) +
-              campoCard('data-pri5', 'PAX 5+ Privativo', row.privativo_5_cents)
-            : campoCard('data-exc', 'Excursão', row.excursao_cents, 'translado') + campoCard('data-pri', 'Privativo', row.privativo_cents, 'translado');
+              campoCard('data-pri5', 'PAX 5+ Privativo', row.privativo_5_cents) +
+              campoTaxa('data-taxa-pct', 'Privativo %', row.taxa_privativo_pct != null ? row.taxa_privativo_pct : glob.guiaPct, '%') +
+              campoTaxa('data-taxa-4', 'Excursão até 4', row.taxa_excursao_4_reais != null ? row.taxa_excursao_4_reais : glob.guia4, 'R$') +
+              campoTaxa('data-taxa-5', 'A partir da 5ª', row.taxa_excursao_5_reais != null ? row.taxa_excursao_5_reais : glob.guia5, 'R$')
+            : campoCard('data-exc', 'Excursão', row.excursao_cents, 'translado') +
+              campoCard('data-pri', 'Privativo', row.privativo_cents, 'translado') +
+              campoTaxa('data-taxa-pct', 'Privativo %', row.taxa_privativo_pct != null ? row.taxa_privativo_pct : glob.transPct, '%') +
+              campoTaxa('data-taxa-carro', 'Excursão por pessoa', row.taxa_excursao_reais != null ? row.taxa_excursao_reais : glob.transReais, 'R$');
           return '<article class="tf-oficial__item" data-edit-tarifa="' + esc(row.codigo) + '" data-tipo="' + tipo + '">' +
             '<button type="button" class="tf-oficial__del" data-del-oficial="' + esc(row.codigo) + '" aria-label="Excluir" title="Excluir">' +
               '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>' +
             '</button>' +
             '<b>' + esc(oficialLabel(row)) + '</b>' +
             '<div class="tf-card-edit">' + paxEdit + '</div>' +
+            '<p class="tf-exemplo" data-exemplo></p>' +
             experienciasHtml(tipo, row) +
             '</article>';
       }).join('');
+      var globNova = taxasGlobais();
       return '<section class="tf-oficial"><h3>' + titulo + '</h3>' +
         '<form class="tf-oficial__new" data-nova="' + tipo + '">' +
           (guia
-            ? campoNova('data-nova-exc', 'PAX 4 Excursão', 'diaria') + campoNova('data-nova-pri', 'PAX 4 Privativo', 'diaria') + campoNova('data-nova-exc5', 'PAX 5+ Excursão') + campoNova('data-nova-pri5', 'PAX 5+ Privativo')
-            : campoNova('data-nova-exc', 'Excursão', 'translado') + campoNova('data-nova-pri', 'Privativo', 'translado')) +
+            ? campoNova('data-nova-exc', 'PAX 4 Excursão', 'diaria') + campoNova('data-nova-pri', 'PAX 4 Privativo', 'diaria') + campoNova('data-nova-exc5', 'PAX 5+ Excursão') + campoNova('data-nova-pri5', 'PAX 5+ Privativo') +
+              campoTaxa('data-nova-pct', 'Privativo %', globNova.guiaPct, '%') + campoTaxa('data-nova-4', 'Excursão até 4', globNova.guia4, 'R$') + campoTaxa('data-nova-5', 'A partir da 5ª', globNova.guia5, 'R$')
+            : campoNova('data-nova-exc', 'Excursão', 'translado') + campoNova('data-nova-pri', 'Privativo', 'translado') +
+              campoTaxa('data-nova-pct', 'Privativo %', globNova.transPct, '%') + campoTaxa('data-nova-carro', 'Excursão por pessoa', globNova.transReais, 'R$')) +
+          '<p class="tf-exemplo" data-exemplo-nova></p>' +
           '<button type="submit" class="gcv-dash-btn gcv-dash-btn--primary gcv-dash-btn--sm">Criar tarifa</button>' +
         '</form>' +
         '<div class="tf-oficial__list' + (guia ? ' tf-oficial__list--guia' : '') + '">' +
@@ -759,11 +841,15 @@
           '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary gcv-dash-btn--sm" id="tf-bi-save">Salvar</button>' +
         '</div></section>' +
       '<section class="tf-oficial tf-oficial--bi tf-oficial--diaria">' +
-        '<h3>Diária mínima de guiagem</h3>' +
+        '<h3>Modelo para tarifa nova</h3>' +
+        '<p class="tf-small gcv-cms-muted">Só preenche a próxima tarifa. Cada tarifa guarda a própria taxa.</p>' +
         '<div class="tf-bi">' +
-          '<label class="tf-field"><span>Diária mínima de guiagem</span><span class="tf-money"><em>R$</em><input inputmode="decimal" id="tf-diaria" value="' + esc(String(regrasAtuais().diariaReais)) + '" aria-label="Diária mínima de guiagem" /></span></label>' +
-          '<label class="tf-field"><span>Pagamento mínimo de guiagem</span><span class="tf-money"><em>R$</em><input inputmode="decimal" id="tf-pagamento" value="' + esc(String(regrasAtuais().pagamentoReais)) + '" aria-label="Pagamento mínimo de guiagem" /></span></label>' +
-          '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary gcv-dash-btn--sm" id="tf-regras-save">Salvar</button>' +
+          '<label class="tf-field"><span>Privativo sem carro %</span><span class="tf-money"><em>%</em><input inputmode="decimal" id="tf-glob-guia-pct" value="' + esc(String(taxasGlobais().guiaPct)) + '" aria-label="Percentual do privativo sem carro" /></span></label>' +
+          '<label class="tf-field"><span>Excursão até 4</span><span class="tf-money"><em>R$</em><input inputmode="decimal" id="tf-glob-guia-4" value="' + esc(String(taxasGlobais().guia4)) + '" aria-label="Taxa da excursão até 4 pessoas" /></span></label>' +
+          '<label class="tf-field"><span>A partir da 5ª</span><span class="tf-money"><em>R$</em><input inputmode="decimal" id="tf-glob-guia-5" value="' + esc(String(taxasGlobais().guia5)) + '" aria-label="Taxa a partir da quinta pessoa" /></span></label>' +
+          '<label class="tf-field"><span>Privativo com carro %</span><span class="tf-money"><em>%</em><input inputmode="decimal" id="tf-glob-trans-pct" value="' + esc(String(taxasGlobais().transPct)) + '" aria-label="Percentual do privativo com carro" /></span></label>' +
+          '<label class="tf-field"><span>Excursão com carro</span><span class="tf-money"><em>R$</em><input inputmode="decimal" id="tf-glob-trans" value="' + esc(String(taxasGlobais().transReais)) + '" aria-label="Taxa da excursão com carro" /></span></label>' +
+          '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary gcv-dash-btn--sm" id="tf-regras-save">Salvar modelo</button>' +
         '</div>' +
       '</section></div>' +
       lista('guia', 'Tarifa Guia') +
@@ -773,12 +859,28 @@
       if (unit) unit.textContent = this.value === 'percentual' ? '%' : 'R$';
     };
     $('tf-regras-save').onclick = function () {
-      var diaria = Math.round(toCents($('tf-diaria').value) / 100);
-      var pg = Math.round(toCents($('tf-pagamento').value) / 100);
-      if (!diaria || !pg) { toast('Informe a diária mínima e o pagamento mínimo de guiagem.', true); return; }
-      if (pg >= diaria) { toast('O pagamento mínimo de guiagem tem que ser menor que a diária mínima de guiagem.', true); return; }
-      request('PUT', { action: 'regras', diaria_minima_reais: diaria, pg_minimo_guia_reais: pg }, function (res) {
-        apply(res, 'Diária e pagamento mínimo salvos');
+      var guiaPct = inteiroCampo($('tf-glob-guia-pct').value);
+      var guia4 = inteiroCampo($('tf-glob-guia-4').value);
+      var guia5 = inteiroCampo($('tf-glob-guia-5').value);
+      var transPct = inteiroCampo($('tf-glob-trans-pct').value);
+      var transReais = inteiroCampo($('tf-glob-trans').value);
+      if (guiaPct == null || guia4 == null || guia5 == null || transPct == null || transReais == null) {
+        toast('Preencha o modelo das taxas.', true);
+        return;
+      }
+      if (guiaPct >= 100 || transPct >= 100) {
+        toast('O percentual do privativo tem que ser menor que 100%.', true);
+        return;
+      }
+      request('PUT', {
+        action: 'taxas_globais',
+        taxa_guia_privativo_pct: guiaPct,
+        taxa_guia_excursao_4_reais: guia4,
+        taxa_guia_excursao_5_reais: guia5,
+        taxa_translado_privativo_pct: transPct,
+        taxa_translado_excursao_reais: transReais
+      }, function (res) {
+        apply(res, 'Modelo salvo. As tarifas que já existem não mudam.');
       });
     };
     $('tf-bi-save').onclick = function () {
@@ -793,16 +895,7 @@
     };
     body.querySelectorAll('[data-nova]').forEach(function (form) {
       form.oninput = function () { refreshNova(form); };
-      var excNova = form.querySelector('[data-nova-exc]');
-      if (excNova && form.getAttribute('data-nova') === 'guia') {
-        excNova.addEventListener('change', function () {
-          var dia = diariaDoGuia(toCents(excNova.value));
-          if (!dia.abaixo) return;
-          excNova.value = '';
-          refreshNova(form);
-          toast('PAX 4 Excursão × quórum dá ' + reais(dia.total) + ', abaixo da diária mínima de ' + reais(dia.piso) + '.', true);
-        });
-      }
+      refreshNova(form);
       form.onsubmit = function (ev) {
         if (ev) ev.preventDefault();
         var tipo = form.getAttribute('data-nova');
@@ -815,12 +908,29 @@
         var exc5 = exc5Cents / 100;
         var pri5 = pri5Cents / 100;
         if (!exc || !pri || (tipo === 'guia' && (!exc5 || !pri5))) { toast('Preencha todos os valores da tarifa.', true); return; }
-        var reg = regrasAtuais();
+        var taxa = {
+          pct: inteiroCampo((form.querySelector('[data-nova-pct]') || {}).value),
+          ate4: inteiroCampo((form.querySelector('[data-nova-4]') || {}).value),
+          desde5: inteiroCampo((form.querySelector('[data-nova-5]') || {}).value),
+          porPessoa: inteiroCampo((form.querySelector('[data-nova-carro]') || {}).value)
+        };
         var erro = tipo === 'guia'
-          ? erroGuia(excCents, exc5Cents, priCents, pri5Cents, reg.quorum, reg.diariaReais * 100)
+          ? erroGuia(excCents, exc5Cents, priCents, pri5Cents)
           : erroTranslado(excCents, priCents);
+        erro = erro || erroTaxa(tipo, exc, exc5, taxa);
         if (erro) { toast(erro, true); return; }
-        request('PUT', { action: 'tarifa_criar', tipo: tipo, excursao: exc, privativo: pri, excursao_5: exc5, privativo_5: pri5 }, function (res) {
+        request('PUT', {
+          action: 'tarifa_criar',
+          tipo: tipo,
+          excursao: exc,
+          privativo: pri,
+          excursao_5: exc5,
+          privativo_5: pri5,
+          taxa_privativo_pct: taxa.pct,
+          taxa_excursao_4_reais: tipo === 'guia' ? taxa.ate4 : 0,
+          taxa_excursao_5_reais: tipo === 'guia' ? taxa.desde5 : 0,
+          taxa_excursao_reais: tipo === 'guia' ? 0 : taxa.porPessoa
+        }, function (res) {
           apply(res, 'Tarifa criada');
         });
       };
@@ -844,18 +954,22 @@
         if (val) val.textContent = texto;
         side.classList.toggle('is-baixo', !!baixo);
       }
+      var pct = inteiroCampo((box.querySelector('[data-taxa-pct]') || {}).value) || 0;
+      var exemplo = box.querySelector('[data-exemplo]');
       if (tipo === 'guia') {
         var diaExcCard = diariaDoGuia(exc);
         var diaPriCard = diariaDoGuia(pri);
-        pintarTotal('data-exc', reais(diaExcCard.total), diaExcCard.abaixo);
+        pintarTotal('data-exc', reais(diaExcCard.total), false);
         pintarTotal('data-pri', reais(diaPriCard.total), false);
         var nome = nomeTarifaGuia(exc / 100, exc5 / 100, pri / 100, pri5 / 100);
         if (titulo && nome) titulo.textContent = nome;
+        if (exemplo) exemplo.innerHTML = exemploQuatro('guia', exc / 100, pri / 100, pct, inteiroCampo((box.querySelector('[data-taxa-4]') || {}).value) || 0).map(esc).join('<br>');
       } else {
         pintarTotal('data-exc', reais(VEICULO * exc), false);
         pintarTotal('data-pri', reais(VEICULO * pri), false);
         var nomeTrans = nomeTarifaTranslado(exc / 100, pri / 100);
         if (titulo && nomeTrans) titulo.textContent = nomeTrans;
+        if (exemplo) exemplo.innerHTML = exemploQuatro('translado', exc / 100, pri / 100, pct, inteiroCampo((box.querySelector('[data-taxa-carro]') || {}).value) || 0).map(esc).join('<br>');
       }
     }
     function focoTarifa() {
@@ -863,7 +977,7 @@
       if (!el || !el.closest) return null;
       var box = el.closest('[data-edit-tarifa]');
       if (!box) return null;
-      var attrs = ['data-exc', 'data-pri', 'data-exc5', 'data-pri5'];
+      var attrs = ['data-exc', 'data-pri', 'data-exc5', 'data-pri5', 'data-taxa-pct', 'data-taxa-4', 'data-taxa-5', 'data-taxa-carro'];
       var attr = '';
       for (var i = 0; i < attrs.length; i++) {
         if (el.hasAttribute(attrs[i])) { attr = attrs[i]; break; }
@@ -902,30 +1016,43 @@
       var pri = centsDo(box, 'data-pri') / 100;
       var exc5 = centsDo(box, 'data-exc5') / 100;
       var pri5 = centsDo(box, 'data-pri5') / 100;
-      if (exc === row.excursao && pri === row.privativo && exc5 === (row.excursao_5 || 0) && pri5 === (row.privativo_5 || 0)) return;
+      var taxa = {
+        pct: inteiroCampo((box.querySelector('[data-taxa-pct]') || {}).value),
+        ate4: inteiroCampo((box.querySelector('[data-taxa-4]') || {}).value),
+        desde5: inteiroCampo((box.querySelector('[data-taxa-5]') || {}).value),
+        porPessoa: inteiroCampo((box.querySelector('[data-taxa-carro]') || {}).value)
+      };
+      var mesmaTaxa = row.tipo === 'guia'
+        ? taxa.pct === (parseInt(row.taxa_privativo_pct, 10) || 0) && taxa.ate4 === (parseInt(row.taxa_excursao_4_reais, 10) || 0) && taxa.desde5 === (parseInt(row.taxa_excursao_5_reais, 10) || 0)
+        : taxa.pct === (parseInt(row.taxa_privativo_pct, 10) || 0) && taxa.porPessoa === (parseInt(row.taxa_excursao_reais, 10) || 0);
+      if (exc === row.excursao && pri === row.privativo && exc5 === (row.excursao_5 || 0) && pri5 === (row.privativo_5 || 0) && mesmaTaxa) return;
       if (!exc || !pri || (row.tipo === 'guia' && (!exc5 || !pri5))) { toast('Preencha todos os valores da tarifa.', true); return; }
-      var reg = regrasAtuais();
       var erro = row.tipo === 'guia'
-        ? erroGuia(exc * 100, exc5 * 100, pri * 100, pri5 * 100, reg.quorum, reg.diariaReais * 100)
+        ? erroGuia(exc * 100, exc5 * 100, pri * 100, pri5 * 100)
         : erroTranslado(exc * 100, pri * 100);
-      if (erro) {
-        toast(erro, true);
-        if (row.tipo === 'guia' && diariaDoGuia(exc * 100).abaixo) {
-          var campoExc = box.querySelector('[data-exc]');
-          if (campoExc) campoExc.value = moneyInput(row.excursao_cents);
-          atualizarCard(box);
-        }
-        return;
-      }
+      erro = erro || erroTaxa(row.tipo, exc, exc5, taxa);
+      if (erro) { toast(erro, true); return; }
       var seq = (st.tarifaSaveSeq[codigo] || 0) + 1;
       st.tarifaSaveSeq[codigo] = seq;
-      request('PUT', { action: 'tarifa_editar', codigo: codigo, excursao: exc, privativo: pri, excursao_5: exc5, privativo_5: pri5 }, function (res) {
+      request('PUT', {
+        action: 'tarifa_editar',
+        codigo: codigo,
+        excursao: exc,
+        privativo: pri,
+        excursao_5: exc5,
+        privativo_5: pri5,
+        taxa_privativo_pct: taxa.pct,
+        taxa_excursao_4_reais: row.tipo === 'guia' ? taxa.ate4 : 0,
+        taxa_excursao_5_reais: row.tipo === 'guia' ? taxa.desde5 : 0,
+        taxa_excursao_reais: row.tipo === 'guia' ? 0 : taxa.porPessoa
+      }, function (res) {
         if (st.tarifaSaveSeq[codigo] !== seq) return;
         var foco = focoTarifa();
         if (!apply(res, 'Tarifa salva')) return;
         restaurarFoco(foco);
       });
     }
+    body.querySelectorAll('[data-edit-tarifa]').forEach(function (box) { atualizarCard(box); });
     body.querySelectorAll('[data-edit-tarifa] input').forEach(function (input) {
       input.addEventListener('input', function () {
         var box = input.closest('[data-edit-tarifa]');

@@ -329,7 +329,7 @@ function gcv_auth_evaluate(string $reservationId): array
                 }
             }
             $guideOk = !empty($r['guide_confirmed_at']);
-            if (!$guideOk && $exc && gcv_excursion_is_guide_submitted($exc)
+            if (!$guideOk && $exc && (int)($exc['guide_user_id'] ?? 0) > 0 && gcv_excursion_is_guide_submitted($exc)
                 && in_array((string)($exc['status'] ?? ''), ['published', 'soldout'], true)) {
                 // Saída que o guia já lançou: ele já aceitou guiar. Não pede de novo, por cliente.
                 $guideOk = true;
@@ -795,6 +795,10 @@ function gcv_auth_open_guide_trips(int $excursionId, array $user, bool $isAdmin)
  */
 function gcv_auth_guide_confirm_excursion(int $excursionId, array $user, bool $isAdmin = false): array
 {
+    require_once __DIR__ . '/../guide_queue_offer.php';
+    if (gcv_guiagem_pending_for($excursionId, (int)($user['id'] ?? 0))) {
+        return gcv_guiagem_accept($excursionId, $user);
+    }
     $trips = gcv_auth_open_guide_trips($excursionId, $user, $isAdmin);
     if (!$trips) {
         return ['ok' => false, 'error' => 'Este passeio não está aguardando a sua confirmação'];
@@ -811,51 +815,20 @@ function gcv_auth_guide_confirm_excursion(int $excursionId, array $user, bool $i
 }
 
 /**
- * O guia recusa guiar a saída. Libera o cartão e tira o passeio da agenda.
+ * O guia recusa a guiagem. A vaga volta ao topo da fila, como uma compra nova.
+ * Não cancela a reserva do cliente.
  *
  * @param array<string,mixed> $user
  */
 function gcv_auth_guide_decline_excursion(int $excursionId, array $user, bool $isAdmin = false): array
 {
     gcv_auth_ensure_schema();
-    $st = db()->prepare('SELECT * FROM gcv_excursions WHERE id = ? LIMIT 1');
-    $st->execute([$excursionId]);
-    $exc = $st->fetch(PDO::FETCH_ASSOC);
-    if (!$exc) {
-        return ['ok' => false, 'error' => 'Passeio não encontrado'];
+    require_once __DIR__ . '/../guide_queue_offer.php';
+    $guideId = (int)($user['id'] ?? 0);
+    if (gcv_guiagem_pending_for($excursionId, $guideId)) {
+        return gcv_guiagem_decline($excursionId, $guideId);
     }
-    if (!$isAdmin && (int)($exc['guide_user_id'] ?? 0) !== (int)($user['id'] ?? -1)) {
-        return ['ok' => false, 'error' => 'Este passeio não é seu'];
-    }
-    require_once __DIR__ . '/../excursion_status.php';
-    if (gcv_excursion_is_guide_submitted($exc) && in_array((string)($exc['status'] ?? ''), ['published', 'soldout'], true)) {
-        return ['ok' => false, 'error' => 'Este passeio já foi lançado por você'];
-    }
-    $trips = gcv_auth_open_guide_trips($excursionId, $user, $isAdmin);
-    if (!$trips) {
-        return ['ok' => false, 'error' => 'Este passeio não está aguardando a sua confirmação'];
-    }
-    $ids = array_map(static fn ($t) => (int)$t['id'], $trips);
-    $place = implode(',', array_fill(0, count($ids), '?'));
-    db()->prepare(
-        "UPDATE gcv_booking_trips SET decision = 'CANCELLED', decided_at = NOW() WHERE id IN ($place)"
-    )->execute($ids);
-    $seen = [];
-    foreach ($trips as $t) {
-        $rid = (string)($t['reservation_id'] ?? '');
-        if ($rid === '' || isset($seen[$rid]) || ($t['payment_kind'] ?? '') !== 'card') {
-            continue;
-        }
-        $seen[$rid] = true;
-        gcv_auth_process_reservation($rid);
-    }
-    if (!$isAdmin) {
-        db()->prepare("UPDATE gcv_excursions SET status = 'cancelled' WHERE id = ? AND guide_user_id = ?")
-            ->execute([$excursionId, (int)($user['id'] ?? 0)]);
-    } else {
-        db()->prepare("UPDATE gcv_excursions SET status = 'cancelled' WHERE id = ?")->execute([$excursionId]);
-    }
-    return ['ok' => true, 'result' => 'declined', 'trips' => count($trips)];
+    return gcv_guiagem_release($excursionId, $user, $isAdmin);
 }
 
 /**

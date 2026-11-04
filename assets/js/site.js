@@ -2587,6 +2587,10 @@
         guias: comTranslado ? cars : 1,
         quorum: sel.quorum || 4,
         vagaGuiaObrigatoria: !comTranslado,
+        tarifaGuia: tarifa && tarifa.tarifa_guia ? String(tarifa.tarifa_guia) : "",
+        tarifaTranslado: tarifa && tarifa.tarifa_translado ? String(tarifa.tarifa_translado) : "",
+        bilingueExtraCents: bi.on ? biCents : 0,
+        abreCatalogo: modalidade === "excursao" && !comTranslado && pessoas > 4,
       };
     }
 

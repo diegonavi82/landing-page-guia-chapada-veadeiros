@@ -871,25 +871,23 @@
 
   function simuladorTarifaHtml() {
     return '<div class="gcv-dash-field" id="att-sim">' +
-      '<label class="gcv-dash-label">Simular tarifa do roteiro</label>' +
-      '<p class="gcv-cms-muted">Vale para passeio do admin e turma aberta pelo cliente. Passeio publicado pelo guia continua com o líquido dele mais 10% e não entra aqui. Os números iniciais são só o exemplo da regra.</p>' +
+      '<label class="gcv-dash-label">Simular pagamento do guia</label>' +
+      '<p class="gcv-cms-muted">Vale para passeio do admin e compra do catálogo. Passeio publicado pelo guia continua com o líquido dele mais a comissão e não entra aqui. O valor da tabela é o PIX, sem o acréscimo do cartão.</p>' +
       '<div class="gcv-dash-field-row">' +
-      '<div class="gcv-dash-field"><label class="gcv-dash-label">Exclusivo por pessoa (R$)</label><input class="gcv-dash-input" id="sim-ex" value="125" /></div>' +
-      '<div class="gcv-dash-field"><label class="gcv-dash-label">Excursão por pessoa (R$)</label><input class="gcv-dash-input" id="sim-ec" value="80" /></div>' +
-      '<div class="gcv-dash-field"><label class="gcv-dash-label">Quórum</label><input class="gcv-dash-input" id="sim-q" value="4" /></div>' +
-      '<div class="gcv-dash-field"><label class="gcv-dash-label">Taxa mínima (R$)</label><input class="gcv-dash-input" id="sim-tm" value="40" /></div>' +
-      '</div>' +
-      '<div class="gcv-dash-field-row">' +
-      '<div class="gcv-dash-field"><label class="gcv-dash-label">Taxa por pessoa (R$)</label><input class="gcv-dash-input" id="sim-tp" value="20" /></div>' +
-      '<div class="gcv-dash-field"><label class="gcv-dash-label">Carro exclusivo (R$)</label><input class="gcv-dash-input" id="sim-car" value="1200" /></div>' +
-      '<div class="gcv-dash-field"><label class="gcv-dash-label">Extra transporte (R$)</label><input class="gcv-dash-input" id="sim-extra" value="50" /></div>' +
-      '<div class="gcv-dash-field"><label class="gcv-dash-label">Taxa de transporte (R$)</label><input class="gcv-dash-input" id="sim-tt" value="100" /></div>' +
-      '</div>' +
-      '<div class="gcv-dash-field-row">' +
+      '<div class="gcv-dash-field"><label class="gcv-dash-label">PIX da tabela (R$)</label><input class="gcv-dash-input" id="sim-pix" value="320" /></div>' +
+      '<div class="gcv-dash-field"><label class="gcv-dash-label">Extra bilingue (R$)</label><input class="gcv-dash-input" id="sim-bi" value="0" /></div>' +
       '<div class="gcv-dash-field"><label class="gcv-dash-label">Pessoas</label><input class="gcv-dash-input" id="sim-n" value="4" /></div>' +
-      '<div class="gcv-dash-field"><label class="gcv-dash-label">Modalidade</label><select class="gcv-dash-select" id="sim-mod"><option value="exclusivo">Privativo</option><option value="excursao">Excursão</option></select></div>' +
-      '<div class="gcv-dash-field"><label class="gcv-dash-label">Transporte</label><select class="gcv-dash-select" id="sim-tr"><option value="0">Sem transporte</option><option value="1">Com transporte</option></select></div>' +
-      '<div class="gcv-dash-field"><label class="gcv-dash-label">Ponto de Saída</label><input class="gcv-dash-input" id="sim-city" value="Alto Paraíso" /></div>' +
+      '<div class="gcv-dash-field"><label class="gcv-dash-label">Privativo %</label><input class="gcv-dash-input" id="sim-pct" value="20" /></div>' +
+      '</div>' +
+      '<div class="gcv-dash-field-row">' +
+      '<div class="gcv-dash-field"><label class="gcv-dash-label">Excursão até 4 (R$)</label><input class="gcv-dash-input" id="sim-t4" value="15" /></div>' +
+      '<div class="gcv-dash-field"><label class="gcv-dash-label">A partir da 5ª (R$)</label><input class="gcv-dash-input" id="sim-t5" value="5" /></div>' +
+      '<div class="gcv-dash-field"><label class="gcv-dash-label">Excursão com carro (R$)</label><input class="gcv-dash-input" id="sim-tcar" value="40" /></div>' +
+      '</div>' +
+      '<div class="gcv-dash-field-row">' +
+      '<div class="gcv-dash-field"><label class="gcv-dash-label">Modalidade</label><select class="gcv-dash-select" id="sim-mod"><option value="excursao">Excursão</option><option value="exclusivo">Privativo</option></select></div>' +
+      '<div class="gcv-dash-field"><label class="gcv-dash-label">Transporte</label><select class="gcv-dash-select" id="sim-tr"><option value="0">Sem carro</option><option value="1">Com carro</option></select></div>' +
+      '<div class="gcv-dash-field"><label class="gcv-dash-label">Abre pelo catálogo</label><select class="gcv-dash-select" id="sim-abre"><option value="0">Não</option><option value="1">Sim, 5 ou mais</option></select></div>' +
       '</div>' +
       '<button type="button" class="gcv-dash-btn" id="sim-run">Calcular</button>' +
       '<pre id="sim-out" class="gcv-cms-muted" style="white-space:pre-wrap;margin-top:0.5rem"></pre></div>';
@@ -897,41 +895,34 @@
 
   function bindSimuladorTarifa() {
     var btn = root('sim-run');
-    if (!btn || !window.GcvTarifaRegras) return;
+    if (!btn) return;
     btn.onclick = function () {
-      var regras = window.GcvTarifaRegras;
       var reais = function (id) { return Math.round((parseFloat(String(root(id).value).replace(',', '.')) || 0) * 100); };
-      var tarifa = {
-        exclusivoPessoaCents: reais('sim-ex'),
-        excursaoPessoaCents: reais('sim-ec'),
-        quorum: parseInt(root('sim-q').value, 10) || 4,
-        taxaMinimaCents: reais('sim-tm'),
-        taxaPorPessoaCents: reais('sim-tp'),
-        transporteFixoCents: reais('sim-car'),
-        transporteExtraCents: reais('sim-extra'),
-        taxaTransporteCents: reais('sim-tt'),
-        passoPct: 4,
-        deslocamentoGuiaCents: 0,
-      };
       var pessoas = parseInt(root('sim-n').value, 10) || 0;
-      var modalidade = root('sim-mod').value;
+      var tabela = reais('sim-pix');
+      var extra = reais('sim-bi');
+      var pct = parseInt(root('sim-pct').value, 10) || 0;
+      var taxa4 = reais('sim-t4');
+      var taxa5 = reais('sim-t5');
+      var taxaCarro = reais('sim-tcar');
+      var exclusivo = root('sim-mod').value === 'exclusivo';
       var transporte = root('sim-tr').value === '1';
-      var erros = regras.validarTarifa(tarifa, regras.configPadrao());
-      var cliente = regras.precoClienteCents(tarifa, modalidade, transporte, pessoas);
-      var guia = regras.repasseGuiaCents(tarifa, modalidade, pessoas, transporte);
-      var grupo = regras.contagemQuorum({ adultos: 2, criancas: 2 }, { idadeAtiva: true, descontoCriancaPct: 50 });
-      var falta = regras.faltaParaQuorum(tarifa.quorum, grupo.quorum);
-      var cancel = regras.cancelamentoPrivativo(72, 10, true);
-      var ponto = regras.pontoEncontroPadrao(root('sim-city').value);
+      var abre = root('sim-abre').value === '1';
+      var guiaBi = Math.floor(extra / 2);
+      var platBi = extra - guiaBi;
+      var fee = 0;
+      if (pessoas >= 1 && tabela >= 1) {
+        if (transporte) fee = exclusivo ? Math.round(tabela * pct / 100) : pessoas * taxaCarro;
+        else if (exclusivo) fee = Math.round(tabela * pct / 100);
+        else if (abre && pessoas > 4) fee = 4 * taxa4 + (pessoas - 4) * taxa5;
+        else fee = pessoas * taxa4;
+        if (fee > tabela) fee = tabela;
+      }
       var money = function (c) { return 'R$ ' + (c / 100).toFixed(2).replace('.', ','); };
       root('sim-out').textContent =
-        (erros.length ? 'Não salva:\n- ' + erros.join('\n- ') : 'Tarifa pode ser salva.') +
-        '\nCliente: ' + money(cliente) +
-        '\nGuia: ' + money(guia) +
-        '\nVeículos: ' + regras.veiculosDe(pessoas, tarifa.quorum) +
-        '\nPonto da turma: ' + (ponto || 'sem padrão') +
-        '\nExemplo de quórum (2 adultos + 2 crianças a 50%): conta ' + grupo.quorum + ', falta ' + falta +
-        '\nPrivativo 72h depois, 10 dias, guia escolhido: ' + cancel.texto;
+        'Cliente no PIX: ' + money(tabela + extra) +
+        '\nPlataforma: ' + money(Math.max(0, fee + platBi)) +
+        '\nGuia: ' + money(Math.max(0, tabela - fee + guiaBi));
     };
   }
 

@@ -67,6 +67,10 @@ try {
             gcv_tarifa_oficial_vincular($pdo, $body);
             gcv_tarifario_reply($pdo);
         }
+        if ($action === 'taxas_globais') {
+            gcv_tarifa_taxas_globais_save($pdo, $body);
+            gcv_tarifario_reply($pdo);
+        }
         if ($action === 'tarifa_criar') {
             gcv_tarifa_oficial_criar(
                 $pdo,
@@ -74,7 +78,8 @@ try {
                 (int)($body['excursao'] ?? 0),
                 (int)($body['privativo'] ?? 0),
                 (int)($body['excursao_5'] ?? 0),
-                (int)($body['privativo_5'] ?? 0)
+                (int)($body['privativo_5'] ?? 0),
+                $body
             );
             gcv_tarifario_reply($pdo);
         }
@@ -89,7 +94,8 @@ try {
                 (int)($body['excursao'] ?? 0),
                 (int)($body['privativo'] ?? 0),
                 (int)($body['excursao_5'] ?? 0),
-                (int)($body['privativo_5'] ?? 0)
+                (int)($body['privativo_5'] ?? 0),
+                $body
             );
             gcv_tarifario_reply($pdo);
         }

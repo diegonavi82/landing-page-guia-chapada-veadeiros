@@ -72,6 +72,10 @@ function gcv_sale_capture_from_pix_reservation(array $reservation, string $sourc
 
     $trip = gcv_sale_first_trip($reservation);
     $spots = max(1, (int)($reservation['qty'] ?? $reservation['people'] ?? $reservation['spots'] ?? $trip['qty'] ?? $trip['people'] ?? 1));
+    $pessoasTrip = (int)($trip['pessoas'] ?? 0);
+    if ($pessoasTrip > $spots) {
+        $spots = $pessoasTrip;
+    }
     $excursion = gcv_sale_resolve_excursion($reservation);
     $guide = gcv_sale_resolve_guide($excursion);
 
@@ -99,7 +103,9 @@ function gcv_sale_capture_from_pix_reservation(array $reservation, string $sourc
         GcvCreatedBy::ADMIN
     );
 
-    // Snapshot: valores congelados da excursão no momento da venda
+    // Snapshot: valores congelados da excursão no momento da venda.
+    // Passeio do guia continua no líquido + comissão. Catálogo e admin usam a taxa da tarifa.
+    $repasseGuia = null;
     if ($businessMode === GcvBusinessMode::GUIDE_MARKETPLACE) {
         $unitGuide = $withTransport
             ? (int)($excursion['guide_net_transport_cents'] ?? $excursion['guide_net_cents'] ?? 0)
@@ -122,9 +128,18 @@ function gcv_sale_capture_from_pix_reservation(array $reservation, string $sourc
             $commissionPct = $unitCents > 0 ? round(($unitPlatform / $unitCents) * 100, 3) : 0.0;
             $ruleId = isset($excursion['commission_rule_id']) ? (int)$excursion['commission_rule_id'] : null;
         }
+        $repasseGuia = ($excursion && function_exists('gcv_excursion_is_guide_submitted') && gcv_excursion_is_guide_submitted($excursion))
+            ? null
+            : gcv_sale_repasse_catalogo($excursion, $trip, $spots, $soldCents, $withTransport);
+        if ($repasseGuia !== null) {
+            $unitGuide = $spots > 0 ? (int)round(((int)$repasseGuia['guia_cents']) / $spots) : 0;
+            $unitPlatform = max(0, $unitCents - $unitGuide);
+            $commissionPct = $soldCents > 0 ? round((max(0, $soldCents - (int)$repasseGuia['guia_cents']) / $soldCents) * 100, 3) : 0.0;
+            $ruleId = null;
+        }
     }
 
-    $guideAmount = $unitGuide * $spots;
+    $guideAmount = $repasseGuia !== null ? (int)$repasseGuia['guia_cents'] : $unitGuide * $spots;
     $platformRevenue = max(0, $soldCents - $guideAmount);
     // Se o total cobrado divergir do unit*spots (descontos), ajusta plataforma
     if ($guideAmount > $soldCents) {
@@ -560,11 +575,60 @@ function gcv_sale_upsert_pix_payment(array $sale, array $reservation, string $st
     ]);
 }
 
-/** @return array<string,mixed>|null */
 /**
- * @param array<string,mixed> $reservation
- * @return array<string,mixed>
+ * Repasse do catálogo ou da excursão do admin. Null se a reserva não trouxer a tarifa.
+ *
+ * @param array<string,mixed>|null $excursion
+ * @param array<string,mixed> $trip
+ * @return array{guia_cents:int,plataforma_cents:int,taxa_cents:int}|null
  */
+function gcv_sale_repasse_catalogo(?array $excursion, array $trip, int $spots, int $soldCents, bool $withTransport): ?array
+{
+    require_once __DIR__ . '/../tarifarios.php';
+    $codigo = $withTransport
+        ? trim((string)($trip['tarifaTranslado'] ?? $trip['tarifa_translado'] ?? ''))
+        : trim((string)($trip['tarifaGuia'] ?? $trip['tarifa_guia'] ?? ''));
+    if ($codigo === '' && $excursion) {
+        $aid = (int)($excursion['attraction_id'] ?? 0);
+        if ($aid > 0) {
+            try {
+                $col = $withTransport ? 'tarifa_translado' : 'tarifa_guia';
+                $stmt = db()->prepare('SELECT ' . $col . ' FROM gcv_attractions WHERE id = ? LIMIT 1');
+                $stmt->execute([$aid]);
+                $codigo = trim((string)$stmt->fetchColumn());
+            } catch (Throwable $e) {
+                $codigo = '';
+            }
+        }
+    }
+    if ($codigo === '') {
+        return null;
+    }
+    $tarifa = gcv_tarifa_oficial_item($codigo, $withTransport ? 'translado' : 'guia');
+    if (!$tarifa) {
+        return null;
+    }
+    $extra = max(0, (int)($trip['bilingueExtraCents'] ?? $trip['bilingue_extra_cents'] ?? 0));
+    if ($extra > $soldCents) {
+        $extra = 0;
+    }
+    $modalidade = strtolower(trim((string)($trip['modalidade'] ?? 'excursao')));
+    if ($modalidade !== 'exclusivo') {
+        $modalidade = 'excursao';
+    }
+    $abre = !empty($trip['abreCatalogo']) || !empty($trip['abre_catalogo']);
+    unset($excursion);
+    return gcv_tarifa_repasse_cents([
+        'modalidade' => $modalidade,
+        'com_transporte' => $withTransport,
+        'pessoas' => max(1, (int)($trip['pessoas'] ?? $spots)),
+        'tabela_cents' => $soldCents - $extra,
+        'bilingue_extra_cents' => $extra,
+        'abre_catalogo' => $abre,
+        'tarifa' => $tarifa,
+    ]);
+}
+
 function gcv_sale_first_trip(array $reservation): array
 {
     foreach (['trips', 'packages'] as $key) {

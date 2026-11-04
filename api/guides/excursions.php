@@ -5,7 +5,7 @@ declare(strict_types=1);
  * Agenda / publicar / cancelar excursões do guia (gcv_excursions).
  * GET  — lista minhas saídas + opções (atrativos, cidades)
  * POST — publica saída (preço/pessoa, quórum da caminhada até as vagas, van 0–4, confirmados por fora 0–5, máximo 12)
- * PUT  — cancela saída futura (status=cancelled)
+ * PUT  — cancela a guiagem (a vaga volta ao topo da fila; o passeio dos clientes continua)
  */
 require_once __DIR__ . '/../helpers/db.php';
 require_once __DIR__ . '/../helpers/auth.php';
@@ -24,6 +24,7 @@ require_once __DIR__ . '/../helpers/pix_reservation_store.php';
 require_once __DIR__ . '/../helpers/excursion_attractions.php';
 require_once __DIR__ . '/../helpers/guide_agenda.php';
 require_once __DIR__ . '/../helpers/guide_substitution.php';
+require_once __DIR__ . '/../helpers/guide_queue_offer.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate');
@@ -510,6 +511,7 @@ if ($method === 'GET') {
     $rows = array_map('gcv_map_excursion_row', $stmt->fetchAll(PDO::FETCH_ASSOC) ?: []);
     $rows = gcv_guide_attach_clients($rows, (int)$user['id']);
     $rows = gcv_substitution_attach($rows, (int)$user['id']);
+    $rows = gcv_guiagem_attach($rows, (int)$user['id']);
 
     $today = (new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo')))->format('Y-m-d');
     $upcoming = [];
@@ -718,23 +720,14 @@ if ($method === 'PUT') {
     }
 
     if ($action === 'cancel') {
-        $mapped = gcv_map_excursion_row($ex);
-        if (empty($mapped['can_cancel'])) {
-            json_response(false, null, 'Só é possível cancelar passeios futuros ainda não realizados', 409);
-        }
-        db()->prepare(
-            'UPDATE gcv_excursions SET status = \'cancelled\', updated_by = ? WHERE id = ?'
-        )->execute([(int)$user['id'], $id]);
-        $ex['status'] = 'cancelled';
-        try {
-            require_once __DIR__ . '/../helpers/notify_ops.php';
-            gcv_ops_notify_tour_cancelled($id, 'guia');
-        } catch (Throwable $e) {
-            error_log('notify tour cancel: ' . $e->getMessage());
+        $out = gcv_guiagem_release($id, $user, false);
+        if (empty($out['ok'])) {
+            json_response(false, null, (string)($out['error'] ?? 'Não foi possível cancelar a guiagem'), (int)($out['status'] ?? 409));
         }
         json_response(true, [
-            'message' => 'Passeio cancelado. Clientes avisados no WhatsApp.',
-            'excursion' => gcv_map_excursion_row($ex),
+            'message' => (string)($out['message'] ?? 'Guiagem cancelada.'),
+            'offered' => (int)($out['offered'] ?? 0),
+            'posicao' => (int)($out['posicao'] ?? 0),
         ]);
     }
 

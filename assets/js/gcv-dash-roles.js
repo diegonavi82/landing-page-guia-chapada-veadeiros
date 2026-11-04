@@ -2458,7 +2458,7 @@
       actions += '<button type="button" class="gcv-guide-upcoming__swap" data-sub-exc="' + e.id + '" aria-label="Substituir guia">' + agendaSwapIcon() + '</button>';
     }
     if (e.can_cancel && !e.substitution_offer_id) {
-      actions += '<button type="button" class="gcv-guide-upcoming__trash" data-cancel-exc="' + e.id + '" aria-label="Cancelar passeio">' + agendaTrashIcon() + '</button>';
+      actions += '<button type="button" class="gcv-guide-upcoming__trash" data-cancel-exc="' + e.id + '" aria-label="Cancelar guiagem" title="Cancelar guiagem">' + agendaTrashIcon() + '</button>';
     }
     var pendingNote = pending
       ? '<p class="gcv-dash-alert gcv-dash-alert--warning" style="margin:0.7rem 0 0;">Aguardando aprovação do administrador. Ainda não aparece no site.</p>'
@@ -2632,7 +2632,7 @@
   function bindAgendaCardActions(list) {
     list.querySelectorAll('[data-cancel-exc]').forEach(function (btn) {
       btn.onclick = function () {
-        if (!confirm('Cancelar este passeio?')) return;
+        if (!confirm('Cancelar esta guiagem? Você vai para o final da fila. Os clientes continuam no passeio e o topo da fila recebe o aceite, como em uma compra nova.')) return;
         sendJson('PUT', '/api/guides/excursions.php', {
           id: parseInt(btn.getAttribute('data-cancel-exc'), 10),
           action: 'cancel',
@@ -2679,14 +2679,14 @@
           });
         };
         if (typeof global.gcvConfirm === 'function') {
-          global.gcvConfirm('Não guiar este passeio? As reservas do site nesta saída serão liberadas.', {
+          global.gcvConfirm('Não guiar este passeio? Os clientes continuam na reserva. A vaga segue para outro guia do topo da fila.', {
             okText: 'Não guiar',
             cancelText: 'Voltar',
             danger: true
           }).then(function (ok) { if (ok) sendNo(); });
           return;
         }
-        if (confirm('Não guiar este passeio?')) sendNo();
+        if (confirm('Não guiar este passeio? Os clientes continuam na reserva. A vaga segue para outro guia do topo da fila.')) sendNo();
       };
     });
     list.querySelectorAll('[data-agenda-tab]').forEach(function (btn) {

@@ -209,8 +209,13 @@ function gcv_excursion_transport_quorum_met(array $e): bool
     if (!gcv_excursion_offers_transport($e)) {
         return false;
     }
+    $inscritos = gcv_excursion_platform_inscriptions_transport($e);
+    // Catálogo e excursão do admin: cada carro precisa de 4 lugares. 5, 6 ou 7 ainda estão em formação.
+    if (!gcv_excursion_is_guide_submitted($e) && $inscritos > 0) {
+        return $inscritos >= 4 && $inscritos % 4 === 0;
+    }
     $quorum = max(0, (int)($e['quorum_transport'] ?? 0));
-    return gcv_excursion_platform_inscriptions_transport($e) >= $quorum;
+    return $inscritos >= $quorum;
 }
 
 /**
@@ -233,6 +238,9 @@ function gcv_excursion_transport_cancelled(array $e): bool
  */
 function gcv_excursion_quorum_met(array $e): bool
 {
+    if (!gcv_excursion_is_guide_submitted($e) && gcv_excursion_platform_inscriptions_transport($e) > 0) {
+        return gcv_excursion_transport_quorum_met($e);
+    }
     return gcv_excursion_walking_quorum_met($e) || gcv_excursion_transport_quorum_met($e);
 }
 

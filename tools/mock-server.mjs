@@ -1292,6 +1292,7 @@ function tarifasOficiais() {
           nome: tipo === "guia"
             ? nomeTarifaSemTranslado(row[1], 0, row[2], 0)
             : nomeTarifaTranslado(row[1], row[2]),
+          ...taxasDaLinha(tipo, null),
         });
       }
     }
@@ -1305,7 +1306,46 @@ function tarifaOficialUso(codigo) {
   return nAttr + nPass;
 }
 
-function tarifaOficialCriar(tipo, excursao, privativo, excursao5, privativo5) {
+function taxasGlobaisMock() {
+  if (!taxasGlobaisMock.live) {
+    taxasGlobaisMock.live = {
+      guia: { taxa_privativo_pct: 20, taxa_excursao_4_reais: 15, taxa_excursao_5_reais: 5 },
+      translado: { taxa_privativo_pct: 20, taxa_excursao_reais: 40 },
+    };
+  }
+  return taxasGlobaisMock.live;
+}
+
+function inteiroTaxa(v, fb) {
+  if (v == null || v === "") return fb;
+  const n = Math.round(Number(v));
+  return Number.isFinite(n) && n >= 0 ? n : fb;
+}
+
+function taxasDaLinha(tipo, raw) {
+  const globais = taxasGlobaisMock();
+  const base = tipo === "guia" ? globais.guia : globais.translado;
+  raw = raw || {};
+  return {
+    taxa_privativo_pct: Math.min(99, inteiroTaxa(raw.taxa_privativo_pct, base.taxa_privativo_pct ?? 20)),
+    taxa_excursao_4_reais: tipo === "guia" ? inteiroTaxa(raw.taxa_excursao_4_reais, base.taxa_excursao_4_reais ?? 15) : 0,
+    taxa_excursao_5_reais: tipo === "guia" ? inteiroTaxa(raw.taxa_excursao_5_reais, base.taxa_excursao_5_reais ?? 5) : 0,
+    taxa_excursao_reais: tipo === "translado" ? inteiroTaxa(raw.taxa_excursao_reais, base.taxa_excursao_reais ?? 40) : 0,
+  };
+}
+
+function validarTaxaMock(tipo, excursao, excursao5, taxas) {
+  if (taxas.taxa_privativo_pct >= 100) throw new Error("O percentual do privativo tem que ser menor que 100%.");
+  if (tipo === "guia") {
+    if (excursao > 0 && taxas.taxa_excursao_4_reais >= excursao) throw new Error("A taxa da excursão até 4 pessoas tem que ser menor que o preço do lugar.");
+    const preco5 = excursao5 > 0 ? excursao5 : excursao;
+    if (preco5 > 0 && taxas.taxa_excursao_5_reais >= preco5) throw new Error("A taxa da 5ª pessoa tem que ser menor que o preço dessa faixa.");
+    return;
+  }
+  if (excursao > 0 && taxas.taxa_excursao_reais >= excursao) throw new Error("A taxa da excursão com carro tem que ser menor que o preço do lugar.");
+}
+
+function tarifaOficialCriar(tipo, excursao, privativo, excursao5, privativo5, taxasRaw) {
   if (tipo !== "guia" && tipo !== "translado") throw new Error("Escolha Tarifa Guia ou Tarifa Translado.");
   excursao = parseInt(excursao, 10) || 0;
   privativo = parseInt(privativo, 10) || 0;
@@ -1313,11 +1353,13 @@ function tarifaOficialCriar(tipo, excursao, privativo, excursao5, privativo5) {
   privativo5 = tipo === "guia" ? Math.max(0, parseInt(privativo5, 10) || 0) : 0;
   if (excursao < 1 || privativo < 1 || excursao > 100000 || privativo > 100000) throw new Error("Informe a excursão e o privativo em reais.");
   if (excursao5 > 100000 || privativo5 > 100000) throw new Error("Informe o PAX 5+ em reais.");
+  const taxas = taxasDaLinha(tipo, taxasRaw);
   if (tipo === "guia") {
     validarGuiaValores(excursao, excursao5, privativo, privativo5, "");
-    validarDiariaValor(excursao, settingInt("passeio_quorum", 4), settingInt("diaria_minima_reais", 320), "");
+    validarTaxaMock("guia", excursao, excursao5, taxas);
   } else {
     validarTransladoValores(excursao, privativo, "");
+    validarTaxaMock("translado", excursao, 0, taxas);
   }
   const rows = tarifasOficiais();
   if (rows.some((row) => row.tipo === tipo && row.excursao === excursao && row.privativo === privativo && (row.excursao_5 || 0) === excursao5 && (row.privativo_5 || 0) === privativo5)) {
@@ -1344,6 +1386,7 @@ function tarifaOficialCriar(tipo, excursao, privativo, excursao5, privativo5) {
     nome: tipo === "guia"
       ? nomeTarifaSemTranslado(excursao, excursao5, privativo, privativo5)
       : nomeTarifaTranslado(excursao, privativo),
+    ...taxas,
   });
   return codigo;
 }
@@ -1356,7 +1399,7 @@ function tarifaOficialPax5(codigo, excursao5, privativo5) {
   privativo5 = Math.max(0, parseInt(privativo5, 10) || 0);
   if (excursao5 > 100000 || privativo5 > 100000) throw new Error("Informe o PAX 5+ em reais.");
   validarGuiaValores(row.excursao, excursao5, row.privativo, privativo5, row.nome);
-  validarDiariaValor(row.excursao, settingInt("passeio_quorum", 4), settingInt("diaria_minima_reais", 320), row.nome);
+  validarTaxaMock("guia", row.excursao, excursao5, taxasDaLinha("guia", row));
   row.excursao_5 = excursao5;
   row.privativo_5 = privativo5;
   row.excursao_5_cents = excursao5 * 100;
@@ -1455,7 +1498,7 @@ function tarifaOficialMontar(guiaCodigo, transladoCodigo) {
   };
 }
 
-function tarifaOficialEditar(codigo, excursao, privativo, excursao5, privativo5) {
+function tarifaOficialEditar(codigo, excursao, privativo, excursao5, privativo5, taxasRaw) {
   const row = tarifasOficiais().find((item) => item.codigo === String(codigo || "").trim());
   if (!row) throw new Error("Tarifa não encontrada.");
   excursao = parseInt(excursao, 10) || 0;
@@ -1470,8 +1513,9 @@ function tarifaOficialEditar(codigo, excursao, privativo, excursao5, privativo5)
     privativo5 = parseInt(privativo5, 10) || 0;
     if (excursao5 < 1 || privativo5 < 1) throw new Error("Preencha o PAX 5+ da excursão e do privativo.");
     validarGuiaValores(excursao, excursao5, privativo, privativo5, row.nome);
-    validarDiariaValor(excursao, settingInt("passeio_quorum", 4), settingInt("diaria_minima_reais", 320), row.nome);
   }
+  const taxas = taxasDaLinha(row.tipo, Object.assign({}, row, taxasRaw || {}));
+  validarTaxaMock(row.tipo, excursao, excursao5, taxas);
   if (tarifasOficiais().some((outra) => outra.codigo !== row.codigo && outra.tipo === row.tipo && outra.excursao === excursao && outra.privativo === privativo && (outra.excursao_5 || 0) === excursao5 && (outra.privativo_5 || 0) === privativo5)) {
     throw new Error("Essa tarifa já existe.");
   }
@@ -1486,6 +1530,7 @@ function tarifaOficialEditar(codigo, excursao, privativo, excursao5, privativo5)
   row.nome = row.tipo === "guia"
     ? nomeTarifaSemTranslado(excursao, excursao5, privativo, privativo5)
     : nomeTarifaTranslado(excursao, privativo);
+  Object.assign(row, taxas);
 }
 
 function saidasTarifasAtrativo(a) {
@@ -2310,7 +2355,7 @@ function tarifarioOverview(extra) {
       saidas_tarifas: saidasTarifasAtrativo(a),
       duracao_cidades: duracaoPublica(a, embarquesPublic(a)),
     }));
-  return { ok: true, data: { max_atrativos: maxAtrativos(), categorias: PASSEIO_CATEGORIAS, cidades: TARIFARIO_CIDADES, tarifas_oficiais: tarifasOficiais(), bilingue: bilingueUniversal(), regras: regrasTarifa(), tarifarios, atrativos, passeios: MOCK_RELATED.map(presentRelated), ...(extra || {}) } };
+  return { ok: true, data: { max_atrativos: maxAtrativos(), categorias: PASSEIO_CATEGORIAS, cidades: TARIFARIO_CIDADES, tarifas_oficiais: tarifasOficiais(), bilingue: bilingueUniversal(), regras: regrasTarifa(), taxas_globais: taxasGlobaisMock(), tarifarios, atrativos, passeios: MOCK_RELATED.map(presentRelated), ...(extra || {}) } };
 }
 
 function mockRelatedSave(rawIds) {
@@ -2607,8 +2652,17 @@ function handleTarifarioApi(urlPath, req, res) {
           aplicarParNasSaidas(alvo, guia, trans);
           return send(tarifarioOverview());
         }
+        if (req.method === "PUT" && body.action === "taxas_globais") {
+          const globais = taxasGlobaisMock();
+          globais.guia.taxa_privativo_pct = Math.min(99, inteiroTaxa(body.taxa_guia_privativo_pct, 20));
+          globais.guia.taxa_excursao_4_reais = inteiroTaxa(body.taxa_guia_excursao_4_reais, 15);
+          globais.guia.taxa_excursao_5_reais = inteiroTaxa(body.taxa_guia_excursao_5_reais, 5);
+          globais.translado.taxa_privativo_pct = Math.min(99, inteiroTaxa(body.taxa_translado_privativo_pct, 20));
+          globais.translado.taxa_excursao_reais = inteiroTaxa(body.taxa_translado_excursao_reais, 40);
+          return send(tarifarioOverview());
+        }
         if (req.method === "PUT" && body.action === "tarifa_editar") {
-          tarifaOficialEditar(body.codigo, body.excursao, body.privativo, body.excursao_5, body.privativo_5);
+          tarifaOficialEditar(body.codigo, body.excursao, body.privativo, body.excursao_5, body.privativo_5, body);
           return send(tarifarioOverview());
         }
         if (req.method === "PUT" && body.action === "tarifa_saida") {
@@ -2660,7 +2714,7 @@ function handleTarifarioApi(urlPath, req, res) {
           return send({ ok: false, error: "Informe a experiência ou o passeio." }, 400);
         }
         if (req.method === "PUT" && body.action === "tarifa_criar") {
-          tarifaOficialCriar(body.tipo, body.excursao, body.privativo, body.excursao_5, body.privativo_5);
+          tarifaOficialCriar(body.tipo, body.excursao, body.privativo, body.excursao_5, body.privativo_5, body);
           return send(tarifarioOverview());
         }
         if (req.method === "PUT" && body.action === "tarifa_pax5") {
@@ -3289,6 +3343,8 @@ let guideQueue = [
 const tourOwner = { 101: 2, 202: 2, 88: 2 };
 let substitutions = [];
 let substitutionSeq = 1;
+let queueOffers = [];
+let queueOfferSeq = 1;
 
 function mockDaysAhead(days) {
   const d = new Date();
@@ -3472,6 +3528,55 @@ function mockAvailableGuides(tour, fromId) {
   return mockQueuePublic().filter((g) => g.id !== fromId && !mockGuideBusy(g.id, tour));
 }
 
+function mockTodayIso() {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function mockTopGuides(tour, exceptId) {
+  const asked = new Set(
+    queueOffers
+      .filter((o) => o.excursion_id === tour.id && o.status !== "pending")
+      .map((o) => o.guide_user_id)
+  );
+  if (exceptId) asked.add(exceptId);
+  const out = [];
+  mockQueuePublic().forEach((g) => {
+    if (asked.has(g.id) || mockGuideBusy(g.id, tour)) return;
+    out.push(g);
+  });
+  return out.slice(0, 3);
+}
+
+function mockReleaseGuiagem(guideId, excursionId) {
+  const tour = mockAllAgendaTours().find((row) => row.id === excursionId);
+  const owner = tour ? (tourOwner[tour.id] || 0) : 0;
+  if (!tour || owner !== guideId) {
+    return { ok: false, code: 404, error: "Passeio não encontrado" };
+  }
+  if (String(tour.date_iso || "") < mockTodayIso()) {
+    return { ok: false, code: 409, error: "Esta guiagem já passou" };
+  }
+  const posicao = mockMoveGuideToEnd(guideId);
+  tourOwner[excursionId] = 0;
+  if (excursionId === 101) mockGuideDecision = "accepted";
+  if (excursionId === 202) mockValeDecision = "accepted";
+  substitutions.forEach((s) => {
+    if (s.excursion_id === excursionId && s.status === "pending") s.status = "cancelled";
+  });
+  queueOffers = queueOffers.filter((o) => o.excursion_id !== excursionId);
+  queueOffers.push({ id: queueOfferSeq++, excursion_id: excursionId, guide_user_id: guideId, status: "released" });
+  const top = mockTopGuides(tour, guideId);
+  top.forEach((g) => {
+    queueOffers.push({ id: queueOfferSeq++, excursion_id: excursionId, guide_user_id: g.id, status: "pending" });
+  });
+  const message = top.length
+    ? "Guiagem cancelada. Você foi para o fim da fila (" + posicao + "º). Os guias do topo foram avisados e podem aceitar, como em uma compra nova."
+    : "Guiagem cancelada. Você foi para o fim da fila (" + posicao + "º). Nenhum guia livre no topo para receber esta vaga agora.";
+  return { ok: true, data: { message, offered: top.length, posicao } };
+}
+
 function mockGuideExcursionsFor(guideId) {
   const all = mockAllAgendaTours();
   const mine = [];
@@ -3503,6 +3608,22 @@ function mockGuideExcursionsFor(guideId) {
       guide_id: guideId,
       substitution_offer_id: s.id,
       substitution_from_name: from ? from.nome : "Um guia",
+    });
+  });
+  queueOffers.filter((o) => o.status === "pending" && o.guide_user_id === guideId).forEach((o) => {
+    const row = all.find((t) => t.id === o.excursion_id);
+    if (!row || (tourOwner[row.id] || 0) > 0) return;
+    incoming.push({
+      ...row,
+      clients: [],
+      awaiting_guide: true,
+      guide_launched: false,
+      can_substitute: false,
+      can_cancel: false,
+      queue_offer: true,
+      guide_id: guideId,
+      confirm_deadline: mockConfirmDeadline(row.date_iso, row.departure_time),
+      decision_hours: 12,
     });
   });
   const posicao = mockQueuePublic().find((g) => g.id === guideId);
@@ -4521,6 +4642,26 @@ const server = http.createServer((req, res) => {
     if (handlePixApi(urlPath, req, res)) return;
     if (handleWaitlistApi(urlPath, req, res)) return;
 
+    if (urlPath === "/api/guides/excursions.php" && req.method === "PUT") {
+      readJsonBody(req)
+        .then((data) => {
+          const action = String((data && data.action) || "cancel");
+          if (action === "cancel") {
+            const out = mockReleaseGuiagem(mockCurrentGuide(req).id, parseInt((data && data.id) || "0", 10));
+            res.writeHead(out.ok ? 200 : (out.code || 400), { "Content-Type": "application/json; charset=utf-8" });
+            res.end(JSON.stringify(out.ok ? { ok: true, data: out.data } : { ok: false, error: out.error }));
+            return;
+          }
+          res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: true, data: { message: "Salvo (mock)" } }));
+        })
+        .catch(() => {
+          res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: false, error: "JSON inválido" }));
+        });
+      return;
+    }
+
     // Mutações de perfil / agenda (mock)
     if (
       (urlPath === "/api/guides/me-profile.php" ||
@@ -4743,7 +4884,50 @@ const server = http.createServer((req, res) => {
         readJsonBody(req)
           .then((body) => {
             const excursionId = parseInt(body.excursion_id || "0", 10);
+            const guide = mockCurrentGuide(req);
             if (excursionId > 0) {
+              const offer = queueOffers.find((o) => o.status === "pending" && o.excursion_id === excursionId && o.guide_user_id === guide.id);
+              if (offer) {
+                if (body.action === "decline") {
+                  offer.status = "declined";
+                  const still = queueOffers.some((o) => o.status === "pending" && o.excursion_id === excursionId);
+                  if (!still) {
+                    const tour = mockAllAgendaTours().find((row) => row.id === excursionId);
+                    if (tour && !(tourOwner[tour.id] || 0)) {
+                      mockTopGuides(tour, guide.id).forEach((g) => {
+                        queueOffers.push({ id: queueOfferSeq++, excursion_id: excursionId, guide_user_id: g.id, status: "pending" });
+                      });
+                    }
+                  }
+                  res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+                  res.end(JSON.stringify({ ok: true, data: { result: "declined", message: "Você recusou esta guiagem. Sua posição na fila não mudou." } }));
+                  return;
+                }
+                const tour = mockAllAgendaTours().find((row) => row.id === excursionId);
+                if (tour && mockGuideBusy(guide.id, tour)) {
+                  res.writeHead(409, { "Content-Type": "application/json; charset=utf-8" });
+                  res.end(JSON.stringify({ ok: false, error: "Você já tem uma saída neste horário" }));
+                  return;
+                }
+                offer.status = "accepted";
+                queueOffers.forEach((o) => {
+                  if (o.excursion_id === excursionId && o.status === "pending") o.status = "declined";
+                });
+                tourOwner[excursionId] = guide.id;
+                const posicao = mockMoveGuideToEnd(guide.id);
+                if (excursionId === 101) mockGuideDecision = "accepted";
+                if (excursionId === 202) mockValeDecision = "accepted";
+                const title = tour ? tour.attraction_title : "o passeio";
+                res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+                res.end(JSON.stringify({ ok: true, data: { result: "accepted", posicao, message: "Você assumiu " + title + " e foi para o fim da fila (" + posicao + "º)." } }));
+                return;
+              }
+              if (body.action === "decline" && (tourOwner[excursionId] || 0) === guide.id) {
+                const out = mockReleaseGuiagem(guide.id, excursionId);
+                res.writeHead(out.ok ? 200 : (out.code || 400), { "Content-Type": "application/json; charset=utf-8" });
+                res.end(JSON.stringify(out.ok ? { ok: true, data: out.data } : { ok: false, error: out.error }));
+                return;
+              }
               if (excursionId === 202) {
                 if (mockValeDecision !== "waiting") {
                   res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
