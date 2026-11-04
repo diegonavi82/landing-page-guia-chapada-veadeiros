@@ -34,7 +34,10 @@ const lines = [
   "set xfer:use-temp-file no",
   "open ftp://" + host,
   "user " + quote(user) + " " + quote(pass),
-  "mirror --reverse --continue --only-newer --parallel=1 --verbose --no-perms -x '(^|/)\\.env($|\\.)' -x '(^|/)config\\.local\\.php$' -x '(^|/)error_log$' -x '(^|/)assets/img/uploads/' Build_prod domains/guiachapadaveadeiros.com/public_html",
+  "cd /",
+  "mirror --reverse --continue --only-newer --parallel=1 --verbose --no-perms -x '(^|/)\\.env($|\\.)' -x '(^|/)config\\.local\\.php$' -x '(^|/)error_log$' -x '(^|/)assets/img/uploads/' Build_prod /domains/guiachapadaveadeiros.com/public_html",
+  "set cmd:fail-exit false",
+  "rm -r -f /public_html/domains",
   "bye",
   "",
 ];

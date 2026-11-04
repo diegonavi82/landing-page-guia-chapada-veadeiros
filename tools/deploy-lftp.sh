@@ -10,6 +10,7 @@ fi
 script="$(node tools/write-lftp-script.mjs)"
 trap 'rm -f "$script"' EXIT
 
+echo "Destino FTP: /domains/guiachapadaveadeiros.com/public_html"
 attempt=1
 while [ "$attempt" -le 4 ]; do
   echo "FTP tentativa ${attempt} de 4"
