@@ -33,6 +33,31 @@ function gcv_stripe_auth_capture(string $paymentIntent, int $amountMinor): bool
     return !empty($pi['ok']) && ($pi['data']['status'] ?? '') === 'succeeded';
 }
 
+function gcv_stripe_auth_refund(string $paymentIntent): bool
+{
+    $paymentIntent = trim($paymentIntent);
+    if ($paymentIntent === '') {
+        return false;
+    }
+    $r = gcv_stripe_request('POST', '/v1/refunds', [
+        'payment_intent' => $paymentIntent,
+    ]);
+    if (!empty($r['ok'])) {
+        return true;
+    }
+    $err = strtolower((string) ($r['error'] ?? ''));
+    if (str_contains($err, 'already been refunded') || str_contains($err, 'charge_already_refunded')) {
+        return true;
+    }
+    $pi = gcv_stripe_request('GET', '/v1/payment_intents/' . rawurlencode($paymentIntent));
+    if (empty($pi['ok']) || !is_array($pi['data'] ?? null)) {
+        return false;
+    }
+    $received = (int) ($pi['data']['amount_received'] ?? 0);
+    $refunded = (int) ($pi['data']['amount_refunded'] ?? 0);
+    return $received > 0 && $refunded >= $received;
+}
+
 function gcv_stripe_auth_cancel(string $paymentIntent): bool
 {
     $r = gcv_stripe_request('POST', '/v1/payment_intents/' . rawurlencode($paymentIntent) . '/cancel', [

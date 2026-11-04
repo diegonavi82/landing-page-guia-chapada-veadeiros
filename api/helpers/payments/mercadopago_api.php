@@ -264,6 +264,20 @@ function gcv_mp_capture(string $paymentId, int $amountMinor): bool
     return $p !== null && ($p['status'] ?? '') === 'approved';
 }
 
+/** Devolve um pagamento já capturado. */
+function gcv_mp_refund(string $paymentId): bool
+{
+    if (!preg_match('/^\d{3,20}$/', $paymentId)) {
+        return false;
+    }
+    $r = gcv_mp_request('POST', '/v1/payments/' . $paymentId . '/refunds', null, 'refund-' . $paymentId);
+    if (!empty($r['ok'])) {
+        return true;
+    }
+    $p = gcv_mp_get_payment($paymentId);
+    return $p !== null && in_array((string) ($p['status'] ?? ''), ['refunded', 'cancelled'], true);
+}
+
 /** Cancela a reserva no cartão (nada é cobrado). */
 function gcv_mp_cancel(string $paymentId): bool
 {

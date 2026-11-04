@@ -1957,47 +1957,303 @@ function gcv_ops_notify_client_guide_intro(array $sale, array $exc): void
     gcv_ops_wa_client_with_photo($sale, trim($text), $guideId, 'guide_intro');
 }
 
+function gcv_ops_guide_rating_label(string $loc, ?float $avg, int $count): string
+{
+    if ($count <= 0 || $avg === null) {
+        if ($loc === 'en') {
+            return 'no reviews yet';
+        }
+        if ($loc === 'es') {
+            return 'sin evaluaciones';
+        }
+        return 'sem avaliações';
+    }
+    $num = $loc === 'en'
+        ? number_format($avg, 1, '.', '')
+        : number_format($avg, 1, ',', '');
+    if ($loc === 'en') {
+        $word = $count === 1 ? 'review' : 'reviews';
+    } elseif ($loc === 'es') {
+        $word = $count === 1 ? 'evaluación' : 'evaluaciones';
+    } else {
+        $word = $count === 1 ? 'avaliação' : 'avaliações';
+    }
+    return $num . ' (' . $count . ' ' . $word . ')';
+}
+
 /**
- * Troca de guia depois que o cliente já tinha recebido a identificação.
- * Sem o motivo. WhatsApp, e-mail e foto do guia novo.
+ * Nome, telefone, e-mail, nota e descrição do guia. Sem motivo de troca.
+ *
+ * @return array{name:string,phone:string,email:string,bio:string,rating:string}
+ */
+function gcv_ops_guide_swap_profile(int $guideId, string $loc): array
+{
+    $contact = gcv_ops_guide_contact($guideId);
+    $name = trim((string)($contact['name'] ?? ''));
+    if ($name === '') {
+        $name = $loc === 'en' ? 'Guide' : ($loc === 'es' ? 'Guía' : 'Guia');
+    }
+    $bio = '';
+    try {
+        $st = db()->prepare(
+            'SELECT bio_pt, bio_en, bio_es FROM gcv_guides WHERE user_id = ? ORDER BY id DESC LIMIT 1'
+        );
+        $st->execute([$guideId]);
+        $row = $st->fetch(PDO::FETCH_ASSOC) ?: [];
+        if (!function_exists('gcv_guide_bio_i18n')) {
+            require_once __DIR__ . '/guide_languages.php';
+        }
+        $pack = gcv_guide_bio_i18n(
+            isset($row['bio_pt']) ? (string)$row['bio_pt'] : null,
+            isset($row['bio_en']) ? (string)$row['bio_en'] : null,
+            isset($row['bio_es']) ? (string)$row['bio_es'] : null
+        );
+        $parts = $pack[$loc] ?? ($pack['pt'] ?? []);
+        $bio = trim(implode(' ', is_array($parts) ? $parts : []));
+        if (function_exists('mb_strlen') && mb_strlen($bio) > 400) {
+            $bio = rtrim(mb_substr($bio, 0, 397)) . '…';
+        } elseif (strlen($bio) > 400) {
+            $bio = rtrim(substr($bio, 0, 397)) . '…';
+        }
+    } catch (Throwable $e) {
+        error_log('gcv_ops_guide_swap_profile bio: ' . $e->getMessage());
+    }
+    $avg = null;
+    $count = 0;
+    try {
+        $stats = gcv_review_guide_stats($guideId);
+        $count = (int)($stats['count'] ?? 0);
+        if (isset($stats['avg']) && $stats['avg'] !== null) {
+            $avg = (float)$stats['avg'];
+        }
+    } catch (Throwable $e) {
+        error_log('gcv_ops_guide_swap_profile rating: ' . $e->getMessage());
+    }
+    return [
+        'name' => $name,
+        'phone' => gcv_ops_format_phone_display((string)($contact['phone'] ?? '')),
+        'email' => trim((string)($contact['email'] ?? '')),
+        'bio' => $bio,
+        'rating' => gcv_ops_guide_rating_label($loc, $avg, $count),
+    ];
+}
+
+/**
+ * Texto da troca definitiva. O passeio segue. Não leva o motivo da saída do guia anterior.
+ *
+ * @param array{name:string,phone:string,email:string,bio:string,rating:string} $profile
+ * @return array{text:string,subject:string}
+ */
+function gcv_ops_guide_swap_message(string $loc, array $profile, string $title, string $when, string $code): array
+{
+    $lines = [];
+    if ($loc === 'en') {
+        $lines[] = 'Name: ' . $profile['name'];
+        if ($profile['phone'] !== '') {
+            $lines[] = 'Phone: ' . $profile['phone'];
+        }
+        if ($profile['email'] !== '') {
+            $lines[] = 'Email: ' . $profile['email'];
+        }
+        $lines[] = 'Rating: ' . $profile['rating'];
+        if ($profile['bio'] !== '') {
+            $lines[] = 'About: ' . $profile['bio'];
+        }
+        $text = "Your guide has changed.\n\n"
+            . "Your tour is still on. This is not a cancellation: there is no refund and the price stays the same.\n\n"
+            . "New guide\n"
+            . implode("\n", $lines) . "\n\n"
+            . 'Tour: ' . $title . "\n"
+            . ($when !== '' ? 'When: ' . $when . "\n" : '')
+            . ($code !== '' ? 'Code: ' . $code . "\n" : '');
+        $subject = 'Your guide has changed — ' . $title;
+    } elseif ($loc === 'es') {
+        $lines[] = 'Nombre: ' . $profile['name'];
+        if ($profile['phone'] !== '') {
+            $lines[] = 'Teléfono: ' . $profile['phone'];
+        }
+        if ($profile['email'] !== '') {
+            $lines[] = 'Correo: ' . $profile['email'];
+        }
+        $lines[] = 'Nota: ' . $profile['rating'];
+        if ($profile['bio'] !== '') {
+            $lines[] = 'Descripción: ' . $profile['bio'];
+        }
+        $text = "Tu guía cambió.\n\n"
+            . "El paseo sigue en pie. Esto no es una cancelación: no hay reembolso y el precio no cambia.\n\n"
+            . "Nuevo guía\n"
+            . implode("\n", $lines) . "\n\n"
+            . 'Paseo: ' . $title . "\n"
+            . ($when !== '' ? 'Cuándo: ' . $when . "\n" : '')
+            . ($code !== '' ? 'Código: ' . $code . "\n" : '');
+        $subject = 'Tu guía cambió — ' . $title;
+    } else {
+        $lines[] = 'Nome: ' . $profile['name'];
+        if ($profile['phone'] !== '') {
+            $lines[] = 'Telefone: ' . $profile['phone'];
+        }
+        if ($profile['email'] !== '') {
+            $lines[] = 'E-mail: ' . $profile['email'];
+        }
+        $lines[] = 'Nota: ' . $profile['rating'];
+        if ($profile['bio'] !== '') {
+            $lines[] = 'Descrição: ' . $profile['bio'];
+        }
+        $text = "Seu guia mudou.\n\n"
+            . "O passeio continua marcado. Isso não é cancelamento: não há estorno e o valor não muda.\n\n"
+            . "Novo guia\n"
+            . implode("\n", $lines) . "\n\n"
+            . 'Passeio: ' . $title . "\n"
+            . ($when !== '' ? 'Quando: ' . $when . "\n" : '')
+            . ($code !== '' ? 'Código: ' . $code . "\n" : '');
+        $subject = 'Seu guia mudou — ' . $title;
+    }
+    return ['text' => trim($text), 'subject' => $subject];
+}
+
+/**
+ * Troca definitiva: o cliente recebe o guia novo por WhatsApp (com foto) e por e-mail.
+ * Não dispara no cancelamento da guiagem, só quando outro guia já assumiu.
  */
 function gcv_ops_notify_client_guide_changed(array $sale, array $exc): void
 {
-    if (empty($sale['notify_guide_intro_sent_at'])) {
-        return;
-    }
-    $guideId = (int)($sale['guide_user_id'] ?? $exc['guide_user_id'] ?? 0);
+    $guideId = (int)($exc['guide_user_id'] ?? $sale['guide_user_id'] ?? 0);
     if ($guideId <= 0) {
         return;
     }
     $loc = gcv_ops_sale_locale($sale);
     $title = gcv_ops_excursion_title($exc);
     $when = trim(gcv_ops_date_br((string)($exc['date_iso'] ?? '')) . ' às ' . substr((string)($exc['departure_time'] ?? ''), 0, 5));
-    $guideBlock = gcv_ops_guide_public_block($sale, $exc, $loc, false);
-    if ($loc === 'en') {
-        $text = "Your guide has changed.\n\n"
-            . $guideBlock . "\n"
-            . 'Tour: ' . $title . "\n"
-            . ($when !== '' ? 'When: ' . $when . "\n" : '');
-        $subject = 'Your guide has changed — ' . $title;
-    } elseif ($loc === 'es') {
-        $text = "Tu guía cambió.\n\n"
-            . $guideBlock . "\n"
-            . 'Paseo: ' . $title . "\n"
-            . ($when !== '' ? 'Cuándo: ' . $when . "\n" : '');
-        $subject = 'Tu guía cambió — ' . $title;
-    } else {
-        $text = "Seu guia mudou.\n\n"
-            . $guideBlock . "\n"
-            . 'Passeio: ' . $title . "\n"
-            . ($when !== '' ? 'Quando: ' . $when . "\n" : '');
-        $subject = 'Seu guia mudou — ' . $title;
-    }
-    $text = trim($text);
-    gcv_ops_wa_client_with_photo($sale, $text, $guideId, 'guide_changed');
+    $code = strtoupper(trim((string)($sale['reservation_id'] ?? '')));
+    $built = gcv_ops_guide_swap_message($loc, gcv_ops_guide_swap_profile($guideId, $loc), $title, $when, $code);
+    gcv_ops_wa_client_with_photo($sale, $built['text'], $guideId, 'guide_changed');
     $email = trim((string)($sale['tourist_email'] ?? ''));
     if ($email !== '') {
-        gcv_ops_mail_plain($email, $subject, $text);
+        gcv_ops_mail_plain($email, $built['subject'], $built['text']);
+    }
+    $id = (int)($sale['id'] ?? 0);
+    if ($id > 0 && empty($sale['notify_guide_intro_sent_at'])) {
+        gcv_ops_mark_sale_col($id, 'notify_guide_intro_sent_at');
+    }
+}
+
+/**
+ * @return array{text:string,subject:string}
+ */
+function gcv_ops_no_guide_client_message(string $loc, string $title, string $when, string $code, string $money): array
+{
+    $moneyLine = match ($loc) {
+        'en' => match ($money) {
+            'pix_refunded' => 'Your Pix payment was refunded.',
+            'pix_pending' => 'The Pix refund is in progress.',
+            'card_clear' => 'Nothing was charged on your card.',
+            'card_refunded' => 'The card payment was refunded.',
+            'card_pending' => 'The card refund is in progress.',
+            'refund_pending' => 'The refund is in progress.',
+            default => 'Nothing was charged.',
+        },
+        'es' => match ($money) {
+            'pix_refunded' => 'El Pix pagado fue devuelto.',
+            'pix_pending' => 'La devolución del Pix está en curso.',
+            'card_clear' => 'No se cobró nada en la tarjeta.',
+            'card_refunded' => 'El pago de la tarjeta fue devuelto.',
+            'card_pending' => 'La devolución en la tarjeta está en curso.',
+            'refund_pending' => 'La devolución está en curso.',
+            default => 'No se cobró ningún valor.',
+        },
+        default => match ($money) {
+            'pix_refunded' => 'No Pix, o valor pago foi estornado.',
+            'pix_pending' => 'No Pix, o estorno do valor pago está em andamento.',
+            'card_clear' => 'No cartão, nada foi cobrado.',
+            'card_refunded' => 'No cartão, o valor pago foi estornado.',
+            'card_pending' => 'No cartão, o estorno do valor pago está em andamento.',
+            'refund_pending' => 'O estorno está em andamento.',
+            default => 'Nenhum valor foi cobrado.',
+        },
+    };
+    if ($loc === 'en') {
+        $text = "Your tour was cancelled because no guides are available.\n\n"
+            . 'Tour: ' . $title . "\n"
+            . ($when !== '' ? 'When: ' . $when . "\n" : '')
+            . ($code !== '' ? 'Code: ' . $code . "\n" : '')
+            . $moneyLine;
+        $subject = 'Tour cancelled — no guides available';
+    } elseif ($loc === 'es') {
+        $text = "Tu paseo se canceló porque no hay guías disponibles.\n\n"
+            . 'Paseo: ' . $title . "\n"
+            . ($when !== '' ? 'Cuándo: ' . $when . "\n" : '')
+            . ($code !== '' ? 'Código: ' . $code . "\n" : '')
+            . $moneyLine;
+        $subject = 'Paseo cancelado — no hay guías disponibles';
+    } else {
+        $text = "Seu passeio foi cancelado porque não há guias disponíveis.\n\n"
+            . 'Passeio: ' . $title . "\n"
+            . ($when !== '' ? 'Quando: ' . $when . "\n" : '')
+            . ($code !== '' ? 'Código: ' . $code . "\n" : '')
+            . $moneyLine;
+        $subject = 'Passeio cancelado — não há guias disponíveis';
+    }
+    return ['text' => trim($text), 'subject' => $subject];
+}
+
+function gcv_ops_notify_client_no_guide(array $sale, array $exc, string $money): void
+{
+    $loc = gcv_ops_sale_locale($sale);
+    $title = gcv_ops_excursion_title($exc);
+    $when = trim(gcv_ops_date_br((string)($exc['date_iso'] ?? '')) . ' às ' . substr((string)($exc['departure_time'] ?? ''), 0, 5));
+    $code = strtoupper(trim((string)($sale['reservation_id'] ?? '')));
+    $built = gcv_ops_no_guide_client_message($loc, $title, $when, $code, $money);
+    gcv_ops_wa_client($sale, $built['text'], ['kind' => 'no_guide']);
+    $email = trim((string)($sale['tourist_email'] ?? ''));
+    if ($email !== '') {
+        gcv_ops_mail_plain($email, $built['subject'], $built['text']);
+    }
+}
+
+/** @param list<int> $guideIds */
+function gcv_ops_notify_guides_no_guide(array $exc, array $guideIds): void
+{
+    $guideIds = array_values(array_unique(array_filter(array_map('intval', $guideIds), static fn ($id) => $id > 0)));
+    if (!$guideIds) {
+        return;
+    }
+    $title = gcv_ops_excursion_title($exc);
+    $when = trim(gcv_ops_date_br((string)($exc['date_iso'] ?? '')) . ' às ' . substr((string)($exc['departure_time'] ?? ''), 0, 5));
+    $text = "O passeio foi cancelado porque não há guias disponíveis.\n\n"
+        . 'Passeio: ' . $title . "\n"
+        . ($when !== '' ? 'Quando: ' . $when . "\n" : '')
+        . 'Nenhum guia recebe por este passeio.';
+    foreach ($guideIds as $gid) {
+        gcv_ops_wa_guide($gid, $text, [
+            'kind' => 'no_guide',
+            'excursion_id' => (int)($exc['id'] ?? 0),
+        ]);
+        $email = trim((string)(gcv_ops_guide_contact($gid)['email'] ?? ''));
+        if ($email !== '') {
+            gcv_ops_mail_plain($email, 'Passeio cancelado — não há guias disponíveis', $text);
+        }
+    }
+}
+
+function gcv_ops_notify_outgoing_guide_replaced(int $guideId, array $exc): void
+{
+    $newId = (int)($exc['guide_user_id'] ?? 0);
+    if ($guideId <= 0 || $guideId === $newId) {
+        return;
+    }
+    $title = gcv_ops_excursion_title($exc);
+    $when = trim(gcv_ops_date_br((string)($exc['date_iso'] ?? '')) . ' às ' . substr((string)($exc['departure_time'] ?? ''), 0, 5));
+    $text = "Outro guia assumiu esta saída.\n\n"
+        . 'Passeio: ' . $title . "\n"
+        . ($when !== '' ? 'Quando: ' . $when . "\n" : '')
+        . 'O passeio dos clientes continua. Eles foram avisados da troca.';
+    gcv_ops_wa_guide($guideId, $text, [
+        'kind' => 'guide_replaced',
+        'excursion_id' => (int)($exc['id'] ?? 0),
+    ]);
+    $email = trim((string)(gcv_ops_guide_contact($guideId)['email'] ?? ''));
+    if ($email !== '') {
+        gcv_ops_mail_plain($email, 'Outro guia assumiu — ' . $title, $text);
     }
 }
 
@@ -2806,6 +3062,14 @@ function gcv_ops_cron_tick(): array
         error_log('ops pix refund: ' . $e->getMessage());
     }
 
+    $noGuide = 0;
+    try {
+        require_once __DIR__ . '/guide_queue_offer.php';
+        $noGuide = gcv_guiagem_scan_no_substitute($now);
+    } catch (Throwable $e) {
+        error_log('ops no guide: ' . $e->getMessage());
+    }
+
     return [
         'reminders' => $reminders,
         'noshow' => $noshow,
@@ -2815,5 +3079,6 @@ function gcv_ops_cron_tick(): array
         'pix_checked' => (int)($pixRecover['checked'] ?? 0),
         'pix_refunded' => (int)($pixRefund['refunded'] ?? 0),
         'transfer' => $transfer,
+        'no_guide' => $noGuide,
     ];
 }

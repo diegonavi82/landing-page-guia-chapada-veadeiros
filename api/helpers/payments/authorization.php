@@ -617,7 +617,7 @@ function gcv_auth_void_gateway(array $rec): bool
 }
 
 /** Passeio não confirmou: libera o cartão, devolve as vagas, cancela a venda e avisa. */
-function gcv_auth_release(array $rec, string $reason): void
+function gcv_auth_release(array $rec, string $reason, bool $notifyCustomer = true): void
 {
     $rid = (string) $rec['reservation_id'];
     gcv_auth_void_gateway($rec);
@@ -647,7 +647,9 @@ function gcv_auth_release(array $rec, string $reason): void
     if (in_array($gw, ['mercadopago', 'stripe'], true)) {
         gcv_ledger_upsert(['reservation_id' => $rid, 'gateway' => $gw, 'status' => 'RELEASED']);
     }
-    gcv_auth_email_customer($rec, 'released');
+    if ($notifyCustomer) {
+        gcv_auth_email_customer($rec, 'released');
+    }
 }
 
 /**

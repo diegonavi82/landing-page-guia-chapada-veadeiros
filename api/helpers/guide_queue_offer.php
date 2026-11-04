@@ -5,6 +5,8 @@ declare(strict_types=1);
  * O guia cancela a própria guiagem sem cancelar o passeio dos clientes.
  * A vaga volta para os 3 primeiros da fila, com o mesmo aceite e os mesmos
  * avisos de uma compra nova. Quem aceita vai para o fim da fila.
+ * O cliente só é avisado quando a troca fecha. O passeio só é cancelado
+ * se não houver guia disponível.
  */
 
 require_once __DIR__ . '/db.php';
@@ -159,6 +161,7 @@ function gcv_guiagem_release(int $excursionId, array $user, bool $isAdmin = fals
         return ['ok' => false, 'error' => 'Esta guiagem já passou', 'status' => 409];
     }
 
+    $cancelNow = false;
     $pdo = db();
     $pdo->beginTransaction();
     try {
@@ -204,8 +207,12 @@ function gcv_guiagem_release(int $excursionId, array $user, bool $isAdmin = fals
         $posicao = gcv_substitution_move_to_end($owner);
         $tour['guide_user_id'] = null;
         $picked = gcv_guiagem_open_top($tour, $owner);
+        if (!$picked) {
+            $cancelNow = gcv_guiagem_mark_cancelled($excursionId);
+        }
         $pdo->commit();
     } catch (Throwable $e) {
+        $cancelNow = false;
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
@@ -214,15 +221,15 @@ function gcv_guiagem_release(int $excursionId, array $user, bool $isAdmin = fals
     }
 
     $ids = array_map(static fn ($g) => (int)$g['id'], $picked);
-    gcv_guiagem_notify_new_purchase($excursionId, $ids);
-    gcv_guiagem_notify_agency_released($tour, $owner, count($ids));
-
-    if (!$ids) {
-        $message = 'Guiagem cancelada. Você foi para o fim da fila (' . $posicao . 'º). Nenhum guia livre no topo para receber esta vaga agora.';
+    if ($cancelNow) {
+        gcv_guiagem_finish_no_guide($excursionId);
+        $message = 'Guiagem cancelada. Você foi para o fim da fila (' . $posicao . 'º). Não havia outro guia disponível, então o passeio foi cancelado.';
     } else {
-        $message = 'Guiagem cancelada. Você foi para o fim da fila (' . $posicao . 'º). Os guias do topo foram avisados e podem aceitar, como em uma compra nova.';
+        gcv_guiagem_notify_new_purchase($excursionId, $ids);
+        gcv_guiagem_notify_agency_released($tour, $owner, count($ids));
+        $message = 'Guiagem cancelada. Você foi para o fim da fila (' . $posicao . 'º). Os guias do topo foram avisados e podem aceitar, como em uma compra nova. Os clientes só são avisados quando outro guia assumir.';
     }
-    return ['ok' => true, 'message' => $message, 'offered' => count($ids), 'posicao' => $posicao];
+    return ['ok' => true, 'message' => $message, 'offered' => count($ids), 'posicao' => $posicao, 'tour_cancelled' => $cancelNow];
 }
 
 /**
@@ -259,7 +266,9 @@ function gcv_guiagem_accept(int $excursionId, array $user): array
             return ['ok' => false, 'error' => 'Esta vaga não está aguardando você', 'status' => 404];
         }
         $taken = $pdo->prepare(
-            'UPDATE gcv_excursions SET guide_user_id = ?, updated_by = ? WHERE id = ? AND (guide_user_id IS NULL OR guide_user_id = 0)'
+            "UPDATE gcv_excursions SET guide_user_id = ?, updated_by = ?
+             WHERE id = ? AND (guide_user_id IS NULL OR guide_user_id = 0)
+               AND status IN ('published','soldout')"
         );
         $taken->execute([$me, $me, $excursionId]);
         if ($taken->rowCount() < 1) {
@@ -331,7 +340,7 @@ function gcv_guiagem_accept(int $excursionId, array $user): array
     }
 
     gcv_guiagem_notify_taken($excursionId, $others);
-    gcv_guiagem_notify_clients_if_introduced($excursionId);
+    gcv_guiagem_notify_clients_swapped($excursionId);
 
     $title = (string)($tour['attraction_title'] ?? 'o passeio');
     return [
@@ -363,16 +372,19 @@ function gcv_guiagem_decline(int $excursionId, int $guideId): array
         $left->execute([$excursionId]);
         $pending = (int)$left->fetchColumn();
         $picked = [];
-        $exhausted = false;
+        $cancelNow = false;
         if ($pending < 1) {
             $tour = gcv_substitution_load_excursion($excursionId);
             if ($tour && (int)($tour['guide_user_id'] ?? 0) <= 0) {
                 $picked = gcv_guiagem_open_top($tour, $guideId);
-                $exhausted = !$picked;
+                if (!$picked) {
+                    $cancelNow = gcv_guiagem_mark_cancelled($excursionId);
+                }
             }
         }
         $pdo->commit();
     } catch (Throwable $e) {
+        $cancelNow = false;
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
@@ -380,10 +392,10 @@ function gcv_guiagem_decline(int $excursionId, int $guideId): array
         return ['ok' => false, 'error' => 'Não foi possível recusar', 'status' => 500];
     }
 
-    if ($picked) {
+    if ($cancelNow) {
+        gcv_guiagem_finish_no_guide($excursionId);
+    } elseif ($picked) {
         gcv_guiagem_notify_new_purchase($excursionId, array_map(static fn ($g) => (int)$g['id'], $picked));
-    } elseif (!empty($exhausted)) {
-        gcv_guiagem_notify_agency_exhausted($excursionId);
     }
     return [
         'ok' => true,
@@ -559,7 +571,8 @@ function gcv_guiagem_notify_taken(int $excursionId, array $guideIds): void
     }
 }
 
-function gcv_guiagem_notify_clients_if_introduced(int $excursionId): void
+/** Avisa os clientes só depois que o guia novo já está na saída. */
+function gcv_guiagem_notify_clients_swapped(int $excursionId, int $previousGuideId = 0): void
 {
     try {
         require_once __DIR__ . '/notify_ops.php';
@@ -567,19 +580,340 @@ function gcv_guiagem_notify_clients_if_introduced(int $excursionId): void
         if (!$exc || (int)($exc['guide_user_id'] ?? 0) <= 0) {
             return;
         }
+        if ($previousGuideId <= 0) {
+            gcv_guiagem_ensure_schema();
+            $prev = db()->prepare(
+                "SELECT guide_user_id FROM gcv_guide_queue_offers
+                 WHERE excursion_id = ? AND status = 'released'
+                 ORDER BY id DESC LIMIT 1"
+            );
+            $prev->execute([$excursionId]);
+            $previousGuideId = (int)($prev->fetchColumn() ?: 0);
+        }
         $st = db()->prepare(
             "SELECT * FROM gcv_sales
              WHERE excursion_id = ? AND deleted_at IS NULL
-               AND sale_status IN ('PAID','AUTHORIZED')"
+               AND sale_status IN ('PAID','AUTHORIZED','PENDING')"
         );
         $st->execute([$excursionId]);
         foreach ($st->fetchAll(PDO::FETCH_ASSOC) ?: [] as $sale) {
-            if (empty($sale['notify_guide_intro_sent_at'])) {
-                continue;
-            }
             gcv_ops_notify_client_guide_changed($sale, $exc);
         }
+        if ($previousGuideId > 0) {
+            gcv_ops_notify_outgoing_guide_replaced($previousGuideId, $exc);
+        }
     } catch (Throwable $e) {
-        error_log('gcv_guiagem_notify_clients_if_introduced: ' . $e->getMessage());
+        error_log('gcv_guiagem_notify_clients_swapped: ' . $e->getMessage());
     }
+}
+
+function gcv_guiagem_mark_cancelled(int $excursionId): bool
+{
+    if ($excursionId <= 0) {
+        return false;
+    }
+    try {
+        $st = db()->prepare(
+            "UPDATE gcv_excursions
+             SET status = 'cancelled'
+             WHERE id = ?
+               AND deleted_at IS NULL
+               AND status IN ('published','soldout')
+               AND (guide_user_id IS NULL OR guide_user_id = 0)"
+        );
+        $st->execute([$excursionId]);
+        return $st->rowCount() > 0;
+    } catch (Throwable $e) {
+        error_log('gcv_guiagem_mark_cancelled: ' . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Passeio sem guia: estorna o que foi pago, libera cartão ainda não cobrado
+ * e avisa cliente e guias. O motivo para o cliente é a falta de guia.
+ */
+function gcv_guiagem_finish_no_guide(int $excursionId): void
+{
+    try {
+        require_once __DIR__ . '/notify_ops.php';
+        require_once __DIR__ . '/payments/pix_refund.php';
+        require_once __DIR__ . '/payments/authorization.php';
+        $exc = gcv_ops_load_excursion($excursionId);
+        if (!$exc || (string)($exc['status'] ?? '') !== 'cancelled') {
+            return;
+        }
+        if ((int)($exc['guide_user_id'] ?? 0) > 0) {
+            return;
+        }
+        gcv_guiagem_ensure_schema();
+        $offerSt = db()->prepare('SELECT guide_user_id, status FROM gcv_guide_queue_offers WHERE excursion_id = ?');
+        $offerSt->execute([$excursionId]);
+        $guideIds = [];
+        foreach ($offerSt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+            $guideIds[] = (int)($row['guide_user_id'] ?? 0);
+        }
+        db()->prepare(
+            "UPDATE gcv_guide_queue_offers
+             SET status = 'declined', decided_at = NOW()
+             WHERE excursion_id = ? AND status = 'pending'"
+        )->execute([$excursionId]);
+
+        $salesSt = db()->prepare(
+            "SELECT * FROM gcv_sales
+             WHERE excursion_id = ? AND deleted_at IS NULL
+               AND sale_status IN ('PAID','AUTHORIZED','PENDING')"
+        );
+        $salesSt->execute([$excursionId]);
+        $sales = $salesSt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        $notes = [];
+        foreach ($sales as $sale) {
+            try {
+                $money = gcv_guiagem_settle_sale($excursionId, $sale);
+            } catch (Throwable $e) {
+                error_log('gcv_guiagem_finish_no_guide sale: ' . $e->getMessage());
+                $money = 'refund_pending';
+            }
+            gcv_ops_notify_client_no_guide($sale, $exc, $money);
+            $code = strtoupper(trim((string)($sale['reservation_id'] ?? '')));
+            $labels = [
+                'pix_refunded' => 'Pix estornado',
+                'pix_pending' => 'estorno do Pix em andamento',
+                'card_clear' => 'cartão liberado, nada cobrado',
+                'card_refunded' => 'cartão estornado',
+                'card_pending' => 'estorno do cartão em andamento',
+                'refund_pending' => 'estorno em andamento',
+                'none' => 'nada cobrado',
+            ];
+            $notes[] = ($code !== '' ? $code : ('venda ' . (int)($sale['id'] ?? 0))) . ': ' . ($labels[$money] ?? $money);
+        }
+        try {
+            db()->prepare(
+                "UPDATE gcv_booking_trips
+                 SET decision = 'CANCELLED', decided_at = NOW()
+                 WHERE excursion_id = ? AND decision NOT IN ('CANCELLED','RELEASED')"
+            )->execute([$excursionId]);
+        } catch (Throwable $e) {
+            error_log('gcv_guiagem_finish_no_guide trips: ' . $e->getMessage());
+        }
+        gcv_ops_notify_guides_no_guide($exc, $guideIds);
+        $title = gcv_ops_excursion_title($exc);
+        $when = trim(gcv_ops_date_br((string)($exc['date_iso'] ?? '')) . ' às ' . substr((string)($exc['departure_time'] ?? ''), 0, 5));
+        $agency = "Passeio cancelado porque não há guias disponíveis.\n\n"
+            . 'Passeio: ' . $title . "\n"
+            . ($when !== '' ? 'Quando: ' . $when . "\n" : '')
+            . 'Clientes avisados: ' . count($sales) . "\n"
+            . ($notes ? implode("\n", $notes) : 'Sem reservas abertas.');
+        gcv_ops_wa_agency($agency);
+    } catch (Throwable $e) {
+        error_log('gcv_guiagem_finish_no_guide: ' . $e->getMessage());
+    }
+}
+
+/** @param array<string,mixed> $sale */
+function gcv_guiagem_settle_sale(int $excursionId, array $sale): string
+{
+    $saleId = (int)($sale['id'] ?? 0);
+    $rid = strtoupper(trim((string)($sale['reservation_id'] ?? '')));
+    $status = strtoupper((string)($sale['sale_status'] ?? ''));
+    $rec = null;
+    if ($rid !== '' && function_exists('gcv_pix_read_reservation')) {
+        $rec = gcv_pix_read_reservation($rid);
+    }
+    $rows = [];
+    if ($rid !== '' && function_exists('gcv_auth_trip_rows')) {
+        try {
+            $rows = gcv_auth_trip_rows($rid);
+        } catch (Throwable $e) {
+            $rows = [];
+        }
+    }
+    $indexes = [];
+    $others = 0;
+    $kind = '';
+    foreach ($rows as $row) {
+        $dec = strtoupper((string)($row['decision'] ?? ''));
+        $same = (int)($row['excursion_id'] ?? 0) === $excursionId;
+        if ($same) {
+            $indexes[] = (int)($row['trip_index'] ?? 0);
+            if ($kind === '') {
+                $kind = strtolower((string)($row['payment_kind'] ?? ''));
+            }
+        } elseif (!in_array($dec, ['CANCELLED', 'RELEASED'], true)) {
+            $others++;
+        }
+    }
+    $gw = '';
+    if (is_array($rec)) {
+        $cardGw = is_array($rec['card_auth'] ?? null) ? (string)($rec['card_auth']['gateway'] ?? '') : '';
+        $gw = strtolower((string)($rec['gateway'] ?? $cardGw));
+    }
+    if ($kind === '' && in_array($gw, ['stripe', 'mercadopago'], true)) {
+        $kind = 'card';
+    }
+    if ($kind === '') {
+        $kind = 'pix';
+    }
+
+    if ($status === 'PAID' && $kind === 'pix' && $rid !== '') {
+        $trips = is_array($rec) && is_array($rec['trips'] ?? null) ? $rec['trips'] : [];
+        $tripCount = count(array_filter($trips, 'is_array'));
+        if (!$indexes && $tripCount > 1) {
+            if ($others === 0) {
+                gcv_guiagem_block_guide_pay($saleId, true);
+            }
+            return 'pix_pending';
+        }
+        try {
+            $result = gcv_pix_refund_reservation(
+                $rid,
+                (string)($sale['tourist_email'] ?? ''),
+                $indexes ?: null,
+                false,
+                false,
+                true
+            );
+            $cents = (int)($result['refunded_cents'] ?? 0);
+            if ($cents > 0 || (!empty($result['already']) && !empty($result['full']))) {
+                return 'pix_refunded';
+            }
+        } catch (Throwable $e) {
+            error_log('gcv_guiagem_settle_sale pix ' . $rid . ': ' . $e->getMessage());
+        }
+        if ($others === 0) {
+            gcv_guiagem_block_guide_pay($saleId, true);
+        }
+        return 'pix_pending';
+    }
+
+    if ($kind === 'card' && is_array($rec)) {
+        $authId = trim((string)($rec['card_auth']['id'] ?? ''));
+        if ($status === 'PAID') {
+            if ($others > 0 || $authId === '') {
+                if ($others === 0) {
+                    gcv_guiagem_block_guide_pay($saleId, true);
+                }
+                return 'card_pending';
+            }
+            $ok = false;
+            if ($gw === 'stripe') {
+                require_once __DIR__ . '/payments/stripe_auth.php';
+                $ok = gcv_stripe_auth_refund($authId);
+            } elseif ($gw === 'mercadopago' || $gw === '') {
+                require_once __DIR__ . '/payments/mercadopago_api.php';
+                $ok = gcv_mp_refund($authId);
+            }
+            if ($ok) {
+                gcv_guiagem_mark_sale_refunded($saleId);
+                return 'card_refunded';
+            }
+            gcv_guiagem_block_guide_pay($saleId, true);
+            return 'card_pending';
+        }
+        if ($others === 0) {
+            gcv_auth_release($rec, 'no_guides', false);
+            return 'card_clear';
+        }
+        return 'card_pending';
+    }
+
+    if (in_array($status, ['PENDING', 'AUTHORIZED'], true) && $others === 0) {
+        gcv_guiagem_mark_sale_refunded($saleId, 'CANCELLED');
+        return 'none';
+    }
+    if ($others === 0) {
+        gcv_guiagem_block_guide_pay($saleId, true);
+    }
+    return 'none';
+}
+
+function gcv_guiagem_block_guide_pay(int $saleId, bool $zeroPlatform): void
+{
+    if ($saleId <= 0) {
+        return;
+    }
+    try {
+        if ($zeroPlatform) {
+            db()->prepare(
+                "UPDATE gcv_sales
+                 SET payout_status = 'PAYOUT_BLOCKED', guide_amount_cents = 0,
+                     platform_revenue_cents = 0, updated_at = NOW()
+                 WHERE id = ? AND payout_status <> 'PAYOUT_PAID'"
+            )->execute([$saleId]);
+            return;
+        }
+        db()->prepare(
+            "UPDATE gcv_sales
+             SET payout_status = 'PAYOUT_BLOCKED', guide_amount_cents = 0, updated_at = NOW()
+             WHERE id = ? AND payout_status <> 'PAYOUT_PAID'"
+        )->execute([$saleId]);
+    } catch (Throwable $e) {
+        error_log('gcv_guiagem_block_guide_pay: ' . $e->getMessage());
+    }
+}
+
+function gcv_guiagem_mark_sale_refunded(int $saleId, string $status = 'REFUNDED'): void
+{
+    if ($saleId <= 0) {
+        return;
+    }
+    if (!in_array($status, ['REFUNDED', 'CANCELLED'], true)) {
+        $status = 'REFUNDED';
+    }
+    try {
+        db()->prepare(
+            "UPDATE gcv_sales
+             SET sale_status = ?, payout_status = 'PAYOUT_BLOCKED',
+                 guide_amount_cents = 0, platform_revenue_cents = 0, updated_at = NOW()
+             WHERE id = ? AND payout_status <> 'PAYOUT_PAID'
+               AND sale_status IN ('PENDING','AUTHORIZED','PAID')"
+        )->execute([$status, $saleId]);
+    } catch (Throwable $e) {
+        error_log('gcv_guiagem_mark_sale_refunded: ' . $e->getMessage());
+    }
+}
+
+/** Faltando 2 horas, sem substituto, o passeio cai. Não mexe em saída que nunca teve guia. */
+function gcv_guiagem_scan_no_substitute(DateTimeImmutable $now): int
+{
+    gcv_guiagem_ensure_schema();
+    try {
+        $st = db()->query(
+            "SELECT DISTINCT e.id
+             FROM gcv_excursions e
+             INNER JOIN gcv_guide_queue_offers o ON o.excursion_id = e.id AND o.status = 'released'
+             WHERE e.deleted_at IS NULL
+               AND e.status IN ('published','soldout')
+               AND (e.guide_user_id IS NULL OR e.guide_user_id = 0)"
+        );
+        $ids = $st ? array_map('intval', $st->fetchAll(PDO::FETCH_COLUMN) ?: []) : [];
+    } catch (Throwable $e) {
+        error_log('gcv_guiagem_scan_no_substitute: ' . $e->getMessage());
+        return 0;
+    }
+    require_once __DIR__ . '/notify_ops.php';
+    $n = 0;
+    foreach ($ids as $id) {
+        if ($id <= 0) {
+            continue;
+        }
+        $exc = gcv_ops_load_excursion($id);
+        if (!$exc) {
+            continue;
+        }
+        $start = gcv_ops_starts_at($exc);
+        if (!$start) {
+            continue;
+        }
+        $hours = ($start->getTimestamp() - $now->getTimestamp()) / 3600;
+        if ($hours > 2 || $hours < -6) {
+            continue;
+        }
+        if (!gcv_guiagem_mark_cancelled($id)) {
+            continue;
+        }
+        gcv_guiagem_finish_no_guide($id);
+        $n++;
+    }
+    return $n;
 }

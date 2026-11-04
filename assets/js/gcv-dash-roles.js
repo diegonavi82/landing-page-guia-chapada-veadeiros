@@ -2632,7 +2632,7 @@
   function bindAgendaCardActions(list) {
     list.querySelectorAll('[data-cancel-exc]').forEach(function (btn) {
       btn.onclick = function () {
-        if (!confirm('Cancelar esta guiagem? Você vai para o final da fila. Os clientes continuam no passeio e o topo da fila recebe o aceite, como em uma compra nova.')) return;
+        if (!confirm('Cancelar esta guiagem? Você vai para o final da fila. O passeio continua. Os clientes só são avisados quando outro guia assumir. Se não houver guia disponível, o passeio é cancelado.')) return;
         sendJson('PUT', '/api/guides/excursions.php', {
           id: parseInt(btn.getAttribute('data-cancel-exc'), 10),
           action: 'cancel',

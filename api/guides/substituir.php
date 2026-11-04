@@ -123,6 +123,27 @@ if ($action === 'accept' || $action === 'decline') {
         $pdo->prepare("UPDATE gcv_guide_substitutions SET status = 'declined', decided_at = NOW() WHERE excursion_id = ? AND status = 'pending'")
             ->execute([(int)$offer['excursion_id']]);
         $posicao = gcv_substitution_move_to_end($me);
+        try {
+            require_once __DIR__ . '/../helpers/marketplace/sale_service.php';
+            $tour['guide_user_id'] = $me;
+            $guide = gcv_sale_resolve_guide($tour);
+            $name = trim((string)($guide['name'] ?? ''));
+            $pdo->prepare(
+                "UPDATE gcv_sales
+                 SET guide_user_id = ?, guide_name = ?, guide_cpf = ?, guide_cnpj = ?, updated_at = NOW()
+                 WHERE excursion_id = ? AND deleted_at IS NULL
+                   AND payout_status <> 'PAYOUT_PAID'
+                   AND sale_status IN ('PENDING','AUTHORIZED','PAID')"
+            )->execute([
+                $me,
+                $name !== '' ? $name : null,
+                ($guide['cpf'] ?? '') !== '' ? $guide['cpf'] : null,
+                ($guide['cnpj'] ?? '') !== '' ? $guide['cnpj'] : null,
+                (int)$offer['excursion_id'],
+            ]);
+        } catch (Throwable $e) {
+            error_log('substituir sales: ' . $e->getMessage());
+        }
         $pdo->commit();
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) {
@@ -130,6 +151,8 @@ if ($action === 'accept' || $action === 'decline') {
         }
         json_response(false, null, 'Não foi possível concluir a substituição', 500);
     }
+    require_once __DIR__ . '/../helpers/guide_queue_offer.php';
+    gcv_guiagem_notify_clients_swapped((int)$offer['excursion_id'], (int)$offer['from_user_id']);
     $title = (string)($tour['attraction_title'] ?? 'o passeio');
     json_response(true, [
         'posicao' => $posicao,
