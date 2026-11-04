@@ -37,6 +37,7 @@ jobs:
           test -f Build_prod/api/admin/deploy-check.php
           test -f Build_prod/deploy-canary.txt
           echo "Build_prod API helpers OK"
+          node tools/restore-build-mtimes.mjs
 
       - name: Verificar secrets FTP
         env:
@@ -62,24 +63,14 @@ jobs:
           FTP_REMOTE_DIR: domains/guiachapadaveadeiros.com/public_html
         run: node tools/ftp-reset-sync-state.mjs
 
+      # O cliente antigo morria com ECONNRESET no soquete de dados e não retomava.
+      # lftp usa PASV, reconecta e continua o arquivo. Sem --delete: nada é apagado no servidor.
       - name: Deploy FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.4.0
-        with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftps
-          port: 21
-          security: loose
-          local-dir: ./Build_prod/
-          # Login cai em /public_html. O site no ar está em domains/.../public_html.
-          server-dir: domains/guiachapadaveadeiros.com/public_html/
-          dangerous-clean-slate: false
-          exclude: |
-            **/.env
-            **/.env.*
-            **/config.local.php
-            **/error_log
-            **/.gitkeep
-            **/assets/img/uploads/**
-          log-level: verbose
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq lftp
+          bash tools/deploy-lftp.sh
