@@ -1,13 +1,20 @@
 ---
-description: Deploy automático na Hostinger a cada push na main
+description: Ao terminar cada tarefa, commit e push na main publicam o site
 alwaysApply: true
 ---
 
 # Deploy automático
 
-O dono religou o deploy em 13 de outubro de 2026. Push na branch `main` publica o site na Hostinger pelo GitHub Actions (`.github/workflows/deploy-hostinger-ftp.yml`). Também dá para disparar à mão em Actions → Deploy Hostinger (FTP) → Run workflow.
+Push na branch `main` publica o site na Hostinger pelo GitHub Actions (`.github/workflows/deploy-hostinger-ftp.yml`).
+
+Ao terminar uma tarefa que alterou arquivo do site, sem esperar outro pedido:
+
+1. Commitar na `main` com uma mensagem curta do porquê.
+2. Dar `git push origin main`.
+3. Acompanhar o Actions até `success`.
+4. Dizer o que foi para o ar.
+
+Pergunta sem arquivo alterado não gera commit. Não commitar segredo (`.env`, `config.local.php`, `.env.deploy`).
 
 - O envio é incremental. `dangerous-clean-slate` continua `false`: não apagar nem limpar arquivos que já estão na Hostinger.
-- Segredos não entram no pacote (`.env`, `config.local.php`).
 - Não rodar migration no banco da Hostinger (`npm run db:migrate`) a menos que o dono peça essa migration.
-- Ao terminar uma tarefa que já está na `main` e foi enviada, dizer o que foi para o ar. Trabalho só local, fora da `main`, continua só no localhost até o push.
