@@ -159,30 +159,6 @@
     return '';
   }
 
-  function exemploQuatro(tipo, excReais, priReais, pct, taxaReais) {
-    excReais = parseInt(excReais, 10) || 0;
-    priReais = parseInt(priReais, 10) || 0;
-    pct = parseInt(pct, 10) || 0;
-    taxaReais = parseInt(taxaReais, 10) || 0;
-    if (tipo === 'translado') {
-      var pixExc = Math.round(excReais * 4 * 100);
-      var fee = Math.round(taxaReais * 4 * 100);
-      var pixPri = Math.round(priReais * 4 * 100);
-      var platPri = Math.round(pixPri * pct / 100);
-      return [
-        'Excursão com carro, 4 pessoas. Cliente ' + reais(pixExc) + '. Plataforma ' + reais(fee) + '. Guia ' + reais(Math.max(0, pixExc - fee)) + '.',
-        'Privativo com carro. Cliente ' + reais(pixPri) + '. Plataforma ' + reais(platPri) + '. Guia ' + reais(Math.max(0, pixPri - platPri)) + '.'
-      ];
-    }
-    var pix = Math.round(excReais * 4 * 100);
-    var feeGuia = Math.round(taxaReais * 4 * 100);
-    var plat = Math.round(pix * pct / 100);
-    return [
-      'Excursão sem carro, 4 pessoas. Cliente ' + reais(pix) + '. Plataforma ' + reais(feeGuia) + '. Guia ' + reais(Math.max(0, pix - feeGuia)) + '.',
-      'Privativo sem carro, 4 pessoas. Cliente ' + reais(pix) + '. Plataforma ' + reais(plat) + '. Guia ' + reais(Math.max(0, pix - plat)) + '.'
-    ];
-  }
-
   function diariaDoGuia(excCents) {
     var reg = regrasAtuais();
     var total = reg.quorum * (parseInt(excCents, 10) || 0);
@@ -717,14 +693,6 @@
         set('data-nova-exc', reais(VEICULO * exc), false);
         set('data-nova-pri', reais(VEICULO * pri), false);
       }
-      var exemplo = form.querySelector('[data-exemplo-nova]');
-      if (exemplo) {
-        var pct = inteiroCampo((form.querySelector('[data-nova-pct]') || {}).value) || 0;
-        var taxa = tipo === 'guia'
-          ? (inteiroCampo((form.querySelector('[data-nova-4]') || {}).value) || 0)
-          : (inteiroCampo((form.querySelector('[data-nova-carro]') || {}).value) || 0);
-        exemplo.innerHTML = exemploQuatro(tipo, exc / 100, pri / 100, pct, taxa).map(esc).join('<br>');
-      }
     }
     function campoTaxa(attr, label, valor, unit) {
       var info = label === 'Privativo %' ? 'taxa plataforma' : (label === 'Excursão até 4' || label === 'A partir da 5ª' ? 'taxa por pessoa' : '');
@@ -805,7 +773,6 @@
             '</button>' +
             '<b>' + esc(oficialLabel(row)) + '</b>' +
             '<div class="tf-card-edit">' + paxEdit + '</div>' +
-            '<p class="tf-exemplo" data-exemplo></p>' +
             experienciasHtml(tipo, row) +
             '</article>';
       }).join('');
@@ -817,7 +784,6 @@
               campoTaxa('data-nova-pct', 'Privativo %', globNova.guiaPct, '%') + campoTaxa('data-nova-4', 'Excursão até 4', globNova.guia4, 'R$') + campoTaxa('data-nova-5', 'A partir da 5ª', globNova.guia5, 'R$')
             : campoNova('data-nova-exc', 'Excursão', 'translado') + campoNova('data-nova-pri', 'Privativo', 'translado') +
               campoTaxa('data-nova-pct', 'Privativo %', globNova.transPct, '%') + campoTaxa('data-nova-carro', 'Excursão por pessoa', globNova.transReais, 'R$')) +
-          '<p class="tf-exemplo" data-exemplo-nova></p>' +
           '<button type="submit" class="gcv-dash-btn gcv-dash-btn--primary gcv-dash-btn--sm">Criar tarifa</button>' +
         '</form>' +
         '<div class="tf-oficial__list' + (guia ? ' tf-oficial__list--guia' : '') + '">' +
@@ -956,8 +922,6 @@
         if (val) val.textContent = texto;
         side.classList.toggle('is-baixo', !!baixo);
       }
-      var pct = inteiroCampo((box.querySelector('[data-taxa-pct]') || {}).value) || 0;
-      var exemplo = box.querySelector('[data-exemplo]');
       if (tipo === 'guia') {
         var diaExcCard = diariaDoGuia(exc);
         var diaPriCard = diariaDoGuia(pri);
@@ -965,13 +929,11 @@
         pintarTotal('data-pri', reais(diaPriCard.total), false);
         var nome = nomeTarifaGuia(exc / 100, exc5 / 100, pri / 100, pri5 / 100);
         if (titulo && nome) titulo.textContent = nome;
-        if (exemplo) exemplo.innerHTML = exemploQuatro('guia', exc / 100, pri / 100, pct, inteiroCampo((box.querySelector('[data-taxa-4]') || {}).value) || 0).map(esc).join('<br>');
       } else {
         pintarTotal('data-exc', reais(VEICULO * exc), false);
         pintarTotal('data-pri', reais(VEICULO * pri), false);
         var nomeTrans = nomeTarifaTranslado(exc / 100, pri / 100);
         if (titulo && nomeTrans) titulo.textContent = nomeTrans;
-        if (exemplo) exemplo.innerHTML = exemploQuatro('translado', exc / 100, pri / 100, pct, inteiroCampo((box.querySelector('[data-taxa-carro]') || {}).value) || 0).map(esc).join('<br>');
       }
     }
     function focoTarifa() {

@@ -37,7 +37,6 @@
 .tf-oficial--diaria { flex: 1 1 42rem; }
 .tf-oficial--diaria .tf-bi { flex-wrap: wrap; }
 .tf-oficial--diaria .tf-bi > .tf-field { flex: 0 1 11.5rem; }
-.tf-exemplo { margin: .15rem 0 .35rem; width: 100%; flex: 1 1 100%; color: #334155; font-size: .75rem; line-height: 1.35; }
 .tf-oficial--diaria .tf-bi > .tf-field .tf-money { width: 7.2rem; }
 .tf-oficial--bi .tf-bi { align-items: flex-end; max-width: none; }
 .tf-bi > .tf-field select { width: 100%; flex: none; height: auto; min-height: 0; box-sizing: border-box; }

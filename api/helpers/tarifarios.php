@@ -577,7 +577,6 @@ function gcv_tarifa_oficial_linha(string $tipo, string $codigo, int $excursao, i
             ? gcv_tarifa_nome_sem_translado($excursao, $excursao5, $privativo, $privativo5)
             : gcv_tarifa_nome_translado($excursao, $privativo),
     ];
-    $linha['exemplo_4'] = gcv_tarifa_exemplo_4($linha);
     return $linha;
 }
 

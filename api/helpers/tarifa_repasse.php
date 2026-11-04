@@ -203,34 +203,6 @@ function gcv_tarifa_repasse_cents(array $in): array
     ];
 }
 
-/** @param array<string,mixed> $row */
-function gcv_tarifa_exemplo_4(array $row): array
-{
-    $tipo = (string)($row['tipo'] ?? '');
-    $moeda = static function (int $cents): string {
-        return 'R$ ' . number_format($cents / 100, 2, ',', '.');
-    };
-    if ($tipo === 'translado') {
-        $pixExc = (int)($row['excursao'] ?? 0) * 4 * 100;
-        $fee = (int)($row['taxa_excursao_reais'] ?? 0) * 4 * 100;
-        $pixPri = (int)($row['privativo'] ?? 0) * 4 * 100;
-        $pct = (int)($row['taxa_privativo_pct'] ?? 0);
-        $platPri = (int)round($pixPri * $pct / 100);
-        return [
-            'Excursão com carro, 4 pessoas. Cliente ' . $moeda($pixExc) . '. Plataforma ' . $moeda($fee) . '. Guia ' . $moeda(max(0, $pixExc - $fee)) . '.',
-            'Privativo com carro. Cliente ' . $moeda($pixPri) . '. Plataforma ' . $moeda($platPri) . '. Guia ' . $moeda(max(0, $pixPri - $platPri)) . '.',
-        ];
-    }
-    $pix = (int)($row['excursao'] ?? 0) * 4 * 100;
-    $fee = (int)($row['taxa_excursao_4_reais'] ?? 0) * 4 * 100;
-    $pct = (int)($row['taxa_privativo_pct'] ?? 0);
-    $platPri = (int)round($pix * $pct / 100);
-    return [
-        'Excursão sem carro, 4 pessoas. Cliente ' . $moeda($pix) . '. Plataforma ' . $moeda($fee) . '. Guia ' . $moeda(max(0, $pix - $fee)) . '.',
-        'Privativo sem carro, 4 pessoas. Cliente ' . $moeda($pix) . '. Plataforma ' . $moeda($platPri) . '. Guia ' . $moeda(max(0, $pix - $platPri)) . '.',
-    ];
-}
-
 function gcv_tarifa_transporte_carros_cheios(int $pessoas, int $porCarro = 4): bool
 {
     $porCarro = max(1, $porCarro);
