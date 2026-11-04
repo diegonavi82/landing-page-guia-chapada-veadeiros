@@ -727,7 +727,9 @@
       }
     }
     function campoTaxa(attr, label, valor, unit) {
-      return '<label class="tf-field tf-field--taxa"><span>' + label + '</span><span class="tf-money"><em>' + unit + '</em><input inputmode="decimal" ' + attr + ' value="' + esc(String(valor)) + '" aria-label="' + label + '" /></span></label>';
+      var info = label === 'Privativo %' ? 'taxa plataforma' : (label === 'Excursão até 4' || label === 'A partir da 5ª' ? 'taxa por pessoa' : '');
+      var nota = info ? '<small class="tf-taxa-info">' + info + '</small>' : '';
+      return '<label class="tf-field tf-field--taxa"><span>' + label + nota + '</span><span class="tf-money"><em>' + unit + '</em><input inputmode="decimal" ' + attr + ' value="' + esc(String(valor)) + '" aria-label="' + label + '" /></span></label>';
     }
     function cardCombina(tipo, row) {
       if (!st.q) return true;

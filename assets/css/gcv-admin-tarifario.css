@@ -28,6 +28,7 @@
 .tf-grid2 > .tf-field { flex: 1 1 15rem; }
 .tf-saida-nome { flex: 1 1 100%; margin: 0.15rem 0 0; }
 .tf-field { display: flex; flex-direction: column; gap: .3rem; margin: 0 0 .6rem; font-size: .78rem; font-weight: 600; color: var(--tf-muted); }
+.tf-taxa-info { display: block; margin: -2px 0 0; color: #dc2626; font-size: calc(1em - 2px); font-weight: 600; line-height: 1.15; }
 .tf-field--sm { flex: 0 1 12rem !important; }
 .tf-oficial { margin: 0 0 1.1rem; }
 .tf-oficial h3, .tf-legado { margin: .2rem 0 .35rem; color: var(--tf-green); font-size: 1.05rem; }
