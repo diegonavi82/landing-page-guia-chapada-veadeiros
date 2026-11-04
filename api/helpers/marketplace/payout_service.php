@@ -238,6 +238,71 @@ function gcv_guide_pix_is_verified(int $guideUserId, ?array $fin = null): bool
 }
 
 /**
+ * Cartão (Mercado Pago ou Stripe) do mesmo guia, no dia do passeio, que ainda não caiu no Sicoob.
+ * Pix do guia nesse dia também espera. Pix sozinho paga no horário.
+ *
+ * @param array<string,mixed> $sale
+ * @return list<int>|null null quando o dia do passeio não dá para identificar
+ */
+function gcv_payout_same_day_card_pending(array $sale): ?array
+{
+    $guideId = (int) ($sale['guide_user_id'] ?? 0);
+    $day = substr((string) ($sale['excursion_starts_at'] ?? ''), 0, 10);
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $day) && !empty($sale['excursion_id'])) {
+        $ex = db()->prepare('SELECT date_iso FROM gcv_excursions WHERE id = ? LIMIT 1');
+        $ex->execute([(int) $sale['excursion_id']]);
+        $day = (string) ($ex->fetchColumn() ?: '');
+    }
+    if ($guideId <= 0 || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $day)) {
+        return null;
+    }
+    $stmt = db()->prepare(
+        "SELECT s.id, s.sale_status, t.gateway, t.method, t.settlement_status
+         FROM gcv_sales s
+         LEFT JOIN gcv_payment_transactions t ON t.reservation_id = s.reservation_id
+         WHERE s.deleted_at IS NULL
+           AND s.guide_user_id = ?
+           AND s.sale_status NOT IN ('CANCELLED','REFUNDED')
+           AND (
+             LEFT(s.excursion_starts_at, 10) = ?
+             OR s.excursion_id IN (SELECT id FROM gcv_excursions WHERE date_iso = ?)
+           )"
+    );
+    $stmt->execute([$guideId, $day, $day]);
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    $bySale = [];
+    foreach ($rows as $row) {
+        $id = (int) $row['id'];
+        if (!isset($bySale[$id])) {
+            $bySale[$id] = ['card' => false, 'settled' => false, 'open' => false, 'disputed' => false];
+        }
+        if (strtoupper((string) ($row['sale_status'] ?? '')) === 'DISPUTED') {
+            $bySale[$id]['disputed'] = true;
+        }
+        $gw = strtolower((string) ($row['gateway'] ?? ''));
+        $method = strtolower((string) ($row['method'] ?? ''));
+        $isCard = in_array($gw, ['mercadopago', 'stripe'], true)
+            || in_array($method, ['card', 'card_br', 'card_intl'], true);
+        if (!$isCard) {
+            continue;
+        }
+        $bySale[$id]['card'] = true;
+        if (strtoupper((string) ($row['settlement_status'] ?? '')) === 'IN_SICOOB') {
+            $bySale[$id]['settled'] = true;
+        } else {
+            $bySale[$id]['open'] = true;
+        }
+    }
+    $pending = [];
+    foreach ($bySale as $id => $info) {
+        if ($info['card'] && ($info['open'] || $info['disputed'] || !$info['settled'])) {
+            $pending[] = (int) $id;
+        }
+    }
+    return $pending;
+}
+
+/**
  * Validações para futuro repasse automático Sicoob (NÃO executa PIX).
  *
  * @return array{ok:bool,reasons:list<string>,scheduled_payout_at:?string}
@@ -262,7 +327,8 @@ function gcv_payout_auto_eligibility(int $saleId): array
     if (($sale['payout_status'] ?? '') === GcvPayoutStatus::PAID) {
         $reasons[] = 'payout_already_done';
     }
-    if (($sale['payout_status'] ?? '') === GcvPayoutStatus::BLOCKED) {
+    if (($sale['payout_status'] ?? '') === GcvPayoutStatus::BLOCKED
+        && ($sale['sale_status'] ?? '') !== GcvSaleStatus::PAID) {
         $reasons[] = 'payout_blocked';
     }
 
@@ -321,6 +387,20 @@ function gcv_payout_auto_eligibility(int $saleId): array
         $reasons[] = 'payout_before_time';
     }
 
+    try {
+        $cardPending = gcv_payout_same_day_card_pending($sale);
+        if ($cardPending === null) {
+            $reasons[] = 'settlement_unknown';
+        } elseif (in_array((int) $sale['id'], $cardPending, true)) {
+            $reasons[] = 'card_not_in_sicoob';
+        } elseif ($cardPending) {
+            $reasons[] = 'same_day_card_pending';
+        }
+    } catch (Throwable $e) {
+        error_log('payout settlement gate: ' . $e->getMessage());
+        $reasons[] = 'settlement_unknown';
+    }
+
     // Reserva ativa (não cancelada/reembolsada)
     if (($sale['sale_status'] ?? '') === GcvSaleStatus::CANCELLED) {
         $reasons[] = 'reservation_inactive';
@@ -370,26 +450,9 @@ function gcv_payout_auto_execute(int $saleId): array
         return ['ok' => false, 'executed' => false, 'sale_id' => $saleId, 'error' => 'sale_not_found'];
     }
 
-    $att = strtolower(trim((string)($sale['attendance_status'] ?? 'pending')));
-    if ($att !== 'checked_in') {
-        try {
-            require_once dirname(__DIR__) . '/notify_ops.php';
-            gcv_ops_apply_noshow($sale);
-        } catch (Throwable $e) {
-            error_log('payout noshow mark: ' . $e->getMessage());
-        }
-        return [
-            'ok' => false,
-            'executed' => false,
-            'sale_id' => $saleId,
-            'reasons' => ['qr_not_scanned'],
-            'message' => 'Sem leitura do QR o repasse automático não é feito',
-        ];
-    }
-
-    $guideUserId = (int)($sale['checked_in_by'] ?? 0);
+    $guideUserId = (int)($sale['guide_user_id'] ?? 0);
     if ($guideUserId <= 0) {
-        $guideUserId = (int)($sale['guide_user_id'] ?? 0);
+        $guideUserId = (int)($sale['checked_in_by'] ?? 0);
     }
     $fin = gcv_payout_load_guide_financial($guideUserId);
     if (!$fin) {
@@ -635,7 +698,7 @@ function gcv_payout_process_due(?int $guideUserId = null, int $limit = 15): arra
         "SELECT id FROM gcv_sales
          WHERE deleted_at IS NULL
            AND sale_status = 'PAID'
-           AND payout_status = 'PAYOUT_PENDING'";
+           AND payout_status IN ('PAYOUT_PENDING', 'PAYOUT_BLOCKED')";
     $params = [];
     if ($guideUserId !== null && $guideUserId > 0) {
         $sql .= ' AND guide_user_id = ?';

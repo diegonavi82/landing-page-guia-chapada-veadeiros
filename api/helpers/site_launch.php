@@ -4,6 +4,8 @@ declare(strict_types=1);
 /**
  * Interruptores do site público. Ausente ou diferente de 1 = desligado.
  * PASSEIOS_PUBLICOS=1  mostra compra, lista e menu de passeios.
+ * PAGAMENTO_CARTAO=1   mostra cartão nacional e internacional para todo mundo.
+ * Sem a flag, o público fica só no Pix. O admin da lista, logado, ainda paga nos dois cartões.
  */
 
 function gcv_passeios_flag_ligado(): bool
@@ -48,7 +50,11 @@ function gcv_passeios_preview_do_admin(): bool
             return false;
         }
         $roles = $user['roles'] ?? [];
-        if (!in_array('admin', $roles, true)) {
+        $isAdmin = in_array('admin', $roles, true)
+            || (string) ($user['role'] ?? '') === 'admin'
+            || (string) ($user['active_role'] ?? '') === 'admin'
+            || (string) ($user['primary_role'] ?? '') === 'admin';
+        if (!$isAdmin) {
             return false;
         }
         if (!gcv_is_admin_allowlisted((string) ($user['email'] ?? ''))) {
@@ -59,4 +65,19 @@ function gcv_passeios_preview_do_admin(): bool
     } catch (Throwable $e) {
         return false;
     }
+}
+
+function gcv_cartao_flag_ligado(): bool
+{
+    $v = strtolower(trim((string) ($_ENV['PAGAMENTO_CARTAO'] ?? getenv('PAGAMENTO_CARTAO') ?: '0')));
+    return in_array($v, ['1', 'true', 'on', 'sim'], true);
+}
+
+/** Público paga no cartão só com a flag. Sem ela, só o admin logado. */
+function gcv_cartao_visivel(): bool
+{
+    if (gcv_cartao_flag_ligado()) {
+        return true;
+    }
+    return gcv_passeios_preview_do_admin();
 }

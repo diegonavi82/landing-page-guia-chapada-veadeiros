@@ -75,6 +75,10 @@ function gcv_seed_attractions_from_json(?string $jsonPath = null): array
             continue;
         }
         $title = trim((string)($page['title_pt'] ?? $slug));
+        if (str_contains($title, ' + ')) {
+            $skipped++;
+            continue;
+        }
         if ($title !== '') {
             $titleStmt->execute([$title]);
             if ($titleStmt->fetch()) {

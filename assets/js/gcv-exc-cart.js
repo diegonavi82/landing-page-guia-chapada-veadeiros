@@ -6,8 +6,9 @@
 
   var STORAGE_KEY = "gcv-excursao-cart";
   var OPEN_CART_FLAG = "gcv-exc-cart-open";
-  /** Mesmo corte do carrossel: reserva só com mais de 2 h até o embarque. */
-  var BOOKING_CUTOFF_MS = 2 * 60 * 60 * 1000;
+  /** Excursão: até 1 h antes da saída. Passeio avulso: corte das 4h20 em Brasília. */
+  var BOOKING_CUTOFF_MS = 60 * 60 * 1000;
+  var PASSEIO_CORTE_MIN = 4 * 60 + 20;
   var _strings = {};
   var _locale = "pt";
   var _onPay = null;
@@ -22,7 +23,7 @@
     pt: {
       cartTitle: "Carrinho",
       cartEmpty: "Seu carrinho está vazio",
-      cartCheckout: "Pagar com PIX",
+      cartCheckout: "Pagamento",
       cartPixFail: "Não foi possível abrir o Pix. Tente de novo.",
       cartBack: "Voltar",
       cartRemove: "Remover",
@@ -33,6 +34,14 @@
       cartGapOne: "Você tem 1 dia de intervalo entre o passeio anterior.",
       cartGapMany: "Você tem {n} dias de intervalo entre o passeio anterior.",
       bookTotal: "Total",
+      cartCouponLabel: "Cupom",
+      cartCouponApply: "Aplicar",
+      cartCouponRemove: "Remover",
+      cartCouponPh: "Código",
+      cartCouponSub: "Subtotal",
+      cartCouponOff: "Desconto",
+      cartCouponHint: "Um cupom por compra. O desconto sai do valor do Pix, antes do cartão.",
+      cartCouponChecking: "Conferindo cupom…",
       bookQtyMinus: "Menos uma pessoa",
       bookQtyPlus: "Mais uma pessoa",
       pixModalClose: "Fechar",
@@ -41,7 +50,7 @@
     en: {
       cartTitle: "Cart",
       cartEmpty: "Your cart is empty",
-      cartCheckout: "Pay with PIX",
+      cartCheckout: "Payment",
       cartPixFail: "Could not open Pix. Try again.",
       cartBack: "Back",
       cartRemove: "Remove",
@@ -52,6 +61,14 @@
       cartGapOne: "You have a 1-day gap since the previous tour.",
       cartGapMany: "You have a {n}-day gap since the previous tour.",
       bookTotal: "Total",
+      cartCouponLabel: "Coupon",
+      cartCouponApply: "Apply",
+      cartCouponRemove: "Remove",
+      cartCouponPh: "Code",
+      cartCouponSub: "Subtotal",
+      cartCouponOff: "Discount",
+      cartCouponHint: "One coupon per purchase. The discount comes off the Pix amount, before the card.",
+      cartCouponChecking: "Checking coupon…",
       bookQtyMinus: "Remove one person",
       bookQtyPlus: "Add one person",
       pixModalClose: "Close",
@@ -60,7 +77,7 @@
     es: {
       cartTitle: "Carrito",
       cartEmpty: "Tu carrito está vacío",
-      cartCheckout: "Pagar con PIX",
+      cartCheckout: "Pago",
       cartPixFail: "No se pudo abrir el Pix. Inténtalo de nuevo.",
       cartBack: "Volver",
       cartRemove: "Quitar",
@@ -71,6 +88,14 @@
       cartGapOne: "Tienes 1 día de intervalo entre el paseo anterior.",
       cartGapMany: "Tienes {n} días de intervalo entre el paseo anterior.",
       bookTotal: "Total",
+      cartCouponLabel: "Cupón",
+      cartCouponApply: "Aplicar",
+      cartCouponRemove: "Quitar",
+      cartCouponPh: "Código",
+      cartCouponSub: "Subtotal",
+      cartCouponOff: "Descuento",
+      cartCouponHint: "Un cupón por compra. El descuento sale del valor del Pix, antes de la tarjeta.",
+      cartCouponChecking: "Comprobando cupón…",
       bookQtyMinus: "Quitar una persona",
       bookQtyPlus: "Añadir una persona",
       pixModalClose: "Cerrar",
@@ -129,8 +154,8 @@
       return;
     }
     _pixLoadWait = [done];
-    loadStylesheet("/assets/css/excursoes.css?v=1.1.31");
-    loadStylesheet("/assets/css/gcv-detail.css?v=1.1.36");
+    loadStylesheet("/assets/css/excursoes.css?v=1.1.46");
+    loadStylesheet("/assets/css/gcv-detail.css?v=1.1.40");
     var scripts = [
       "/assets/js/qrcode.min.js?v=1.1.31",
       "/assets/js/gcv-pix.js?v=1.1.31",
@@ -138,7 +163,7 @@
       "/assets/js/gcv-pix-polling.js?v=1.1.31",
       "/assets/js/gcv-confirm.js?v=1.1.31",
       "/assets/js/gcv-exc-bookings.js?v=1.1.31",
-      "/assets/js/excursoes-carousel.js?v=1.1.36",
+      "/assets/js/excursoes-carousel.js?v=1.1.72",
     ];
     var i = 0;
     function next(err) {
@@ -397,7 +422,7 @@
         if (!id) return;
         var dep = departureMsFromCatalogRow(e);
         // Mesma regra da home: só permanece se ainda há tempo para reservar
-        if (Number.isFinite(dep) && dep <= now + BOOKING_CUTOFF_MS) return;
+        if (Number.isFinite(dep) && dep < now + BOOKING_CUTOFF_MS) return;
         ids[id] = Number.isFinite(dep) ? dep : 1;
       };
       if (Array.isArray(data)) {
@@ -455,8 +480,58 @@
     return departureMsFromItemFields(it);
   }
 
+  function chapadaAgoraPartes(nowMs) {
+    var fmt = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Sao_Paulo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    });
+    var map = {};
+    fmt.formatToParts(new Date(nowMs != null ? nowMs : Date.now())).forEach(function (p) {
+      if (p.type !== "literal") map[p.type] = p.value;
+    });
+    var hour = parseInt(map.hour, 10) || 0;
+    if (hour === 24) hour = 0;
+    return {
+      iso: map.year + "-" + map.month + "-" + map.day,
+      minutes: hour * 60 + (parseInt(map.minute, 10) || 0),
+    };
+  }
+
+  function isoMaisDias(iso, days) {
+    var d = new Date(iso + "T12:00:00Z");
+    if (isNaN(d.getTime())) return "";
+    d.setUTCDate(d.getUTCDate() + days);
+    var m = String(d.getUTCMonth() + 1).padStart(2, "0");
+    var day = String(d.getUTCDate()).padStart(2, "0");
+    return d.getUTCFullYear() + "-" + m + "-" + day;
+  }
+
+  /** Antes das 4h20 o passeio avulso pode ser hoje. Depois, só amanhã em diante. */
+  function roteiroMinIso(nowMs) {
+    var agora = chapadaAgoraPartes(nowMs);
+    if (!agora.iso || agora.iso.indexOf("undefined") >= 0) return "";
+    if (agora.minutes < PASSEIO_CORTE_MIN) return agora.iso;
+    return isoMaisDias(agora.iso, 1);
+  }
+
+  function isRoteiroCartItem(it) {
+    if (!it) return false;
+    if (it.passeioKey) return true;
+    return String(it.id || "").indexOf("roteiro-") === 0;
+  }
+
   function isCartItemBookable(it, nowMs) {
     var now = nowMs != null ? nowMs : Date.now();
+    if (isRoteiroCartItem(it)) {
+      var iso = String((it && it.dateIso) || "").slice(0, 10);
+      var min = roteiroMinIso(now);
+      return /^\d{4}-\d{2}-\d{2}$/.test(iso) && !!min && iso >= min;
+    }
     var catalog = readLiveCatalog(now);
     var id = normalizeCartItemId(it && it.id);
     // Catálogo vazio (seed sem saídas) ≠ “passeio inválido”: a API live pode ter preenchido o card.
@@ -473,7 +548,7 @@
       // Sem data e sem catálogo: manter. Com catálogo já validado acima.
       return !catalog || !!(catalog.ids && catalog.ids[id]);
     }
-    return dep > now + BOOKING_CUTOFF_MS;
+    return dep >= now + BOOKING_CUTOFF_MS;
   }
 
   function purgeExpiredItems(items, nowMs) {
@@ -546,8 +621,72 @@
   function cartCount(items) {
     items = items || loadItems();
     return items.reduce(function (n, it) {
+      if (it && it.faixa) return n + (parseInt(String(it.pessoas), 10) || 1);
       return n + (parseInt(String(it.qty), 10) || 0);
     }, 0);
+  }
+
+  /** Sem translado. Privativo até o quórum = quórum × excursão. Devolve reais, já com o guia bilíngue. */
+  function faixaBaseCents(faixa, pessoas) {
+    pessoas = Math.max(1, parseInt(pessoas, 10) || 1);
+    var quorum = parseInt(faixa.quorum, 10) || 4;
+    var temExcursao = faixa.excursao4Cents != null && faixa.excursao4Cents !== "";
+    if (!temExcursao) {
+      var antigo4 = Math.max(0, parseInt(faixa.pax4Cents, 10) || 0);
+      var antigo5 = parseInt(faixa.pax5Cents, 10) || 0;
+      if (antigo5 <= 0) antigo5 = antigo4;
+      if (faixa.modalidade === "exclusivo" && pessoas <= quorum) return antigo4 * quorum;
+      return pessoas <= 4 ? antigo4 * pessoas : 4 * antigo4 + (pessoas - 4) * antigo5;
+    }
+    var exc4 = Math.max(0, parseInt(faixa.excursao4Cents, 10) || 0);
+    var exc5 = parseInt(faixa.excursao5Cents, 10) || 0;
+    if (exc5 <= 0) exc5 = exc4;
+    var pri5 = parseInt(faixa.privativo5Cents, 10) || 0;
+    if (pri5 <= 0) pri5 = parseInt(faixa.privativo4Cents, 10) || exc4;
+    if (faixa.modalidade === "exclusivo") {
+      if (pessoas <= quorum) return exc4 * quorum;
+      return exc4 * quorum + (pessoas - quorum) * pri5;
+    }
+    return pessoas <= 4 ? exc4 * pessoas : 4 * exc4 + (pessoas - 4) * exc5;
+  }
+
+  function faixaTotalReais(faixa, pessoas) {
+    var base = faixaBaseCents(faixa, pessoas);
+    var extra = 0;
+    if (faixa.bilingueOn) {
+      if (faixa.bilingueTipo === "percentual") {
+        var pct = Math.max(0, Math.min(100, parseInt(faixa.bilingueValor, 10) || 0));
+        extra = Math.round((base * pct) / 100);
+      } else {
+        extra = Math.max(0, parseInt(faixa.bilingueValor, 10) || 0);
+      }
+    }
+    return Math.round((base + extra) / 100);
+  }
+
+  function faixaPartesReais(faixa, pessoas) {
+    pessoas = Math.max(1, parseInt(pessoas, 10) || 1);
+    var quorum = parseInt(faixa.quorum, 10) || 4;
+    var temExcursao = faixa.excursao4Cents != null && faixa.excursao4Cents !== "";
+    if (!temExcursao) {
+      var antigo4 = Math.round((parseInt(faixa.pax4Cents, 10) || 0) / 100);
+      var antigo5raw = parseInt(faixa.pax5Cents, 10) || 0;
+      var antigo5 = antigo5raw > 0 ? Math.round(antigo5raw / 100) : antigo4;
+      if (faixa.modalidade === "exclusivo" && pessoas <= quorum) return [{ q: quorum, u: antigo4 }];
+      if (pessoas <= 4) return [{ q: pessoas, u: antigo4 }];
+      return [{ q: 4, u: antigo4 }, { q: pessoas - 4, u: antigo5 }];
+    }
+    var exc4 = Math.round((parseInt(faixa.excursao4Cents, 10) || 0) / 100);
+    var exc5raw = parseInt(faixa.excursao5Cents, 10) || 0;
+    var exc5 = exc5raw > 0 ? Math.round(exc5raw / 100) : exc4;
+    var pri5raw = parseInt(faixa.privativo5Cents, 10) || 0;
+    var pri5 = pri5raw > 0 ? Math.round(pri5raw / 100) : Math.round((parseInt(faixa.privativo4Cents, 10) || 0) / 100);
+    if (faixa.modalidade === "exclusivo") {
+      if (pessoas <= quorum) return [{ q: quorum, u: exc4 }];
+      return [{ q: quorum, u: exc4 }, { q: pessoas - quorum, u: pri5 }];
+    }
+    if (pessoas <= 4) return [{ q: pessoas, u: exc4 }];
+    return [{ q: 4, u: exc4 }, { q: pessoas - 4, u: exc5 }];
   }
 
   var MONTH_SLUG = {
@@ -691,6 +830,237 @@
     return "R$\u00a0" + (parseInt(String(n), 10) || 0);
   }
 
+  var CUPOM_KEY = "gcv-exc-cupom-code";
+  var _cupom = null;
+  var _cupomReq = 0;
+
+  function cartPeople(items) {
+    items = items || loadItems();
+    return items.reduce(function (n, it) {
+      return n + (parseInt(String(it.pessoas), 10) || parseInt(String(it.qty), 10) || 1);
+    }, 0);
+  }
+
+  function cartGrossCents(items) {
+    return cartTotal(items) * 100;
+  }
+
+  function cartCupomSig(items) {
+    return String(cartGrossCents(items)) + ":" + String(cartPeople(items));
+  }
+
+  function cupomCode() {
+    try {
+      return String(sessionStorage.getItem(CUPOM_KEY) || "").trim().toUpperCase();
+    } catch (e) {
+      return "";
+    }
+  }
+
+  function setCupomCode(code) {
+    try {
+      if (!code) sessionStorage.removeItem(CUPOM_KEY);
+      else sessionStorage.setItem(CUPOM_KEY, String(code).trim().toUpperCase());
+    } catch (e) {}
+  }
+
+  function cupomOffCents(items) {
+    if (!_cupom || !_cupom.ok || _cupom.sig !== cartCupomSig(items)) return 0;
+    return parseInt(String(_cupom.desconto_cents), 10) || 0;
+  }
+
+  function formatBrlCents(cents) {
+    var n = (parseInt(String(cents), 10) || 0) / 100;
+    return "R$\u00a0" + n.toFixed(2).replace(".", ",");
+  }
+
+  function couponRuleText(c) {
+    if (!c) return "";
+    var valor = c.modo === "percentual"
+      ? (parseInt(String(c.valor), 10) || 0) + "%"
+      : formatBrlCents(c.valor);
+    var porPessoa = c.tipo === "pessoa" || (c.tipo === "grupo" && c.alcance === "pessoa");
+    var loc = _locale === "en" || _locale === "es" ? _locale : "pt";
+    if (loc === "en") {
+      var en = porPessoa ? valor + " per person" : valor + " off the total";
+      if (c.tipo === "grupo") en += ", with more than " + c.minimo_pessoas + " people";
+      return en;
+    }
+    if (loc === "es") {
+      var es = porPessoa ? valor + " por persona" : valor + " sobre el total";
+      if (c.tipo === "grupo") es += ", con más de " + c.minimo_pessoas + " personas";
+      return es;
+    }
+    var pt = porPessoa ? valor + " por pessoa" : valor + " no total";
+    if (c.tipo === "grupo") pt += ", com mais de " + c.minimo_pessoas + " pessoas";
+    return pt;
+  }
+
+  function injectCouponCss() {
+    if (document.getElementById("gcv-cart-cupom-css")) return;
+    var style = document.createElement("style");
+    style.id = "gcv-cart-cupom-css";
+    style.textContent =
+      ".gcv-cart-cupom{margin:0 0 .75rem;padding:.75rem;border:1px solid #d1fae5;border-radius:12px;background:#fff}" +
+      ".gcv-cart-cupom__label{display:block;margin:0 0 .4rem;font-size:.78rem;font-weight:800;color:#065f46}" +
+      ".gcv-cart-cupom__row{display:flex;gap:.4rem}" +
+      ".gcv-cart-cupom__row input{flex:1;min-width:0;padding:.55rem .7rem;border:1px solid #cbd5e1;border-radius:10px;font:inherit;font-weight:700;text-transform:uppercase}" +
+      ".gcv-cart-cupom__row button{flex:0 0 auto;padding:.55rem .8rem;border:none;border-radius:10px;background:#065f46;color:#fff;font:inherit;font-weight:800;cursor:pointer}" +
+      ".gcv-cart-cupom__hint,.gcv-cart-cupom__msg{margin:.45rem 0 0;font-size:.78rem;line-height:1.35;color:#64748b}" +
+      ".gcv-cart-cupom__msg.is-err{color:#b91c1c;font-weight:700}" +
+      ".gcv-cart-cupom__msg.is-ok{color:#065f46;font-weight:700}" +
+      ".gcv-cart-cupom__lines{margin:.55rem 0 0;display:grid;gap:.2rem}" +
+      ".gcv-cart-cupom__lines p{display:flex;justify-content:space-between;gap:.75rem;margin:0;font-size:.84rem;color:#334155}" +
+      ".gcv-cart-cupom__lines strong{font-weight:800}" +
+      ".gcv-cart-cupom__lines .is-off{color:#047857}";
+    document.head.appendChild(style);
+  }
+
+  function couponBoxHtml() {
+    return (
+      '<div class="gcv-cart-cupom" data-gcv-cart-cupom>' +
+      '<span class="gcv-cart-cupom__label" data-gcv-cart-cupom-label></span>' +
+      '<div class="gcv-cart-cupom__row">' +
+      '<input type="text" maxlength="24" autocomplete="off" data-gcv-cart-cupom-code />' +
+      '<button type="button" data-gcv-cart-cupom-apply></button>' +
+      "</div>" +
+      '<p class="gcv-cart-cupom__hint" data-gcv-cart-cupom-hint></p>' +
+      '<p class="gcv-cart-cupom__msg" data-gcv-cart-cupom-msg hidden></p>' +
+      '<div class="gcv-cart-cupom__lines" data-gcv-cart-cupom-lines hidden></div>' +
+      "</div>"
+    );
+  }
+
+  function ensureCouponBlock(foot) {
+    injectCouponCss();
+    if (foot.querySelector("[data-gcv-cart-cupom]")) return;
+    var wrap = document.createElement("div");
+    wrap.innerHTML = couponBoxHtml();
+    var node = wrap.firstChild;
+    var total = foot.querySelector(".gcv-exc-cart-panel__total");
+    if (total) foot.insertBefore(node, total);
+    else foot.insertBefore(node, foot.firstChild);
+  }
+
+  function paintCoupon(items) {
+    var foot = document.getElementById("gcv-exc-cart-foot");
+    if (!foot) return;
+    ensureCouponBlock(foot);
+    var label = foot.querySelector("[data-gcv-cart-cupom-label]");
+    var input = foot.querySelector("[data-gcv-cart-cupom-code]");
+    var btn = foot.querySelector("[data-gcv-cart-cupom-apply]");
+    var hint = foot.querySelector("[data-gcv-cart-cupom-hint]");
+    var msg = foot.querySelector("[data-gcv-cart-cupom-msg]");
+    var lines = foot.querySelector("[data-gcv-cart-cupom-lines]");
+    var totalVal = foot.querySelector("[data-gcv-cart-total-val]");
+    if (label) label.textContent = s("cartCouponLabel");
+    if (hint) hint.textContent = s("cartCouponHint");
+    if (input && document.activeElement !== input) {
+      input.placeholder = s("cartCouponPh");
+      if (!input.value) input.value = cupomCode();
+    }
+    var sig = cartCupomSig(items);
+    var applied = !!(_cupom && _cupom.ok && _cupom.sig === sig);
+    if (btn) {
+      btn.textContent = applied ? s("cartCouponRemove") : s("cartCouponApply");
+      btn.setAttribute("data-gcv-cart-cupom-mode", applied ? "remove" : "apply");
+    }
+    var gross = cartGrossCents(items);
+    var off = cupomOffCents(items);
+    if (msg) {
+      if (_cupom && _cupom.pending && _cupom.sig === sig) {
+        msg.hidden = false;
+        msg.className = "gcv-cart-cupom__msg";
+        msg.textContent = s("cartCouponChecking");
+      } else if (_cupom && !_cupom.ok && _cupom.message && _cupom.sig === sig) {
+        msg.hidden = false;
+        msg.className = "gcv-cart-cupom__msg is-err";
+        msg.textContent = _cupom.message;
+      } else if (applied) {
+        msg.hidden = false;
+        msg.className = "gcv-cart-cupom__msg is-ok";
+        msg.textContent = couponRuleText(_cupom);
+      } else {
+        msg.hidden = true;
+        msg.textContent = "";
+      }
+    }
+    if (lines) {
+      if (off > 0) {
+        lines.hidden = false;
+        lines.innerHTML =
+          "<p><span>" + escapeHtml(s("cartCouponSub")) + "</span><strong>" + escapeHtml(formatBrlCents(gross)) + "</strong></p>" +
+          '<p class="is-off"><span>' + escapeHtml(s("cartCouponOff")) + " " + escapeHtml(_cupom.codigo || "") + "</span><strong>− " + escapeHtml(formatBrlCents(off)) + "</strong></p>";
+      } else {
+        lines.hidden = true;
+        lines.innerHTML = "";
+      }
+    }
+    if (totalVal) {
+      var due = Math.max(0, gross - off);
+      totalVal.textContent = (off > 0 ? formatBrlCents(due) : formatBrl(cartTotal(items))) + " BRL";
+    }
+  }
+
+  function revalidateCupom(items) {
+    var code = cupomCode();
+    var sig = cartCupomSig(items);
+    if (!code) {
+      _cupom = null;
+      paintCoupon(items);
+      return;
+    }
+    if (_cupom && _cupom.codigo === code && _cupom.sig === sig) {
+      paintCoupon(items);
+      return;
+    }
+    var req = ++_cupomReq;
+    _cupom = { pending: true, codigo: code, sig: sig };
+    paintCoupon(items);
+    fetch("/api/cupom.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        codigo: code,
+        pessoas: cartPeople(items),
+        total_cents: cartGrossCents(items),
+        locale: _locale === "en" || _locale === "es" ? _locale : "pt",
+      }),
+    })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (data) {
+        if (req !== _cupomReq) return;
+        if (!data || !data.ok) {
+          _cupom = {
+            ok: false,
+            codigo: code,
+            sig: sig,
+            message: (data && data.message) || s("cartCouponChecking"),
+          };
+        } else {
+          _cupom = {
+            ok: true,
+            codigo: data.codigo,
+            sig: sig,
+            desconto_cents: data.desconto_cents,
+            tipo: data.tipo,
+            modo: data.modo,
+            valor: data.valor,
+            minimo_pessoas: data.minimo_pessoas,
+            alcance: data.alcance,
+          };
+        }
+        paintCoupon(loadItems());
+      })
+      .catch(function () {
+        if (req !== _cupomReq) return;
+        _cupom = { ok: false, codigo: code, sig: sig, message: s("cartCouponChecking") };
+        paintCoupon(loadItems());
+      });
+  }
+
   function escapeHtml(str) {
     return String(str)
       .replace(/&/g, "&amp;")
@@ -807,34 +1177,40 @@
     );
   }
 
-  function cartItemPrice(it) {
+  function cartMoneyText(it) {
+    var suffix = s("cartLineTotal") || "(total)";
+    if (it && it.faixa) {
+      var pessoas = parseInt(String(it.pessoas), 10) || 1;
+      var partes = faixaPartesReais(it.faixa, pessoas);
+      var base = 0;
+      var pedacos = partes.map(function (p) {
+        base += p.q * p.u;
+        var word = p.q === 1 ? s("cartSeatOne") || "Pessoa" : s("cartSeatsMany") || "Pessoas";
+        return String(p.q) + " " + word + " × " + formatBrl(p.u);
+      });
+      var total = parseInt(String(it.valorUnit), 10) || faixaTotalReais(it.faixa, pessoas);
+      var extra = total - base;
+      if (extra > 0) pedacos.push(formatBrl(extra));
+      return pedacos.join(" + ") + " = " + formatBrl(total) + " BRL " + suffix;
+    }
     var qty = parseInt(String(it.qty), 10) || 0;
     var unit = parseInt(String(it.valorUnit), 10) || 0;
     var seatsWord = qty === 1 ? s("cartSeatOne") || "Pessoa" : s("cartSeatsMany") || "Pessoas";
-    var suffix = s("cartLineTotal") || "(total)";
-    return (
-      String(qty) +
-      " " +
-      seatsWord +
-      " × " +
-      formatBrl(unit) +
-      " = " +
-      formatBrl(unit * qty) +
-      " " +
-      suffix
-    );
+    return String(qty) + " " + seatsWord + " × " + formatBrl(unit) + " = " + formatBrl(unit * qty) + " BRL " + suffix;
+  }
+
+  function cartItemPrice(it) {
+    return cartMoneyText(it);
   }
 
   function cartItemPriceHtml(it) {
-    var qty = parseInt(String(it.qty), 10) || 0;
-    var unit = parseInt(String(it.valorUnit), 10) || 0;
-    var seatsWord = qty === 1 ? s("cartSeatOne") || "Pessoa" : s("cartSeatsMany") || "Pessoas";
-    var suffix = s("cartLineTotal") || "(total)";
-    var totalPart = formatBrl(unit * qty) + " " + suffix;
+    var text = cartMoneyText(it);
+    var eq = text.lastIndexOf(" = ");
+    if (eq < 0) return escapeHtml(text);
     return (
-      escapeHtml(String(qty) + " " + seatsWord + " × " + formatBrl(unit) + " = ") +
+      escapeHtml(text.slice(0, eq + 3)) +
       '<strong class="gcv-exc-cart-item__total">' +
-      escapeHtml(totalPart) +
+      escapeHtml(text.slice(eq + 3)) +
       "</strong>"
     );
   }
@@ -1020,6 +1396,7 @@
       "</div>" +
       '<div class="gcv-exc-cart-panel__body" id="gcv-exc-cart-body"></div>' +
       '<div class="gcv-exc-cart-panel__foot" id="gcv-exc-cart-foot" hidden>' +
+      couponBoxHtml() +
       '<p class="gcv-exc-cart-panel__total"><span data-gcv-cart-total-label></span> <strong data-gcv-cart-total-val></strong></p>' +
       '<div class="gcv-exc-cart-panel__policies" id="gcv-exc-cart-policies">' +
       '<label class="gcv-exc-cart-policy">' +
@@ -1209,7 +1586,7 @@
           escapeHtml(s("bookQtyMinus")) +
           '">−</button>' +
           '<span class="gcv-excursoes-card__qty-val">' +
-          escapeHtml(String(it.qty)) +
+          escapeHtml(String(it.faixa ? (parseInt(String(it.pessoas), 10) || 1) : it.qty)) +
           "</span>" +
           '<button type="button" class="gcv-excursoes-card__qty-btn" data-gcv-cart-qty-plus data-cart-id="' +
           id +
@@ -1243,7 +1620,8 @@
       var cancelLabel = foot.querySelector('[data-gcv-cart-policy-label="cancel"]');
       var securityLabel = foot.querySelector('[data-gcv-cart-policy-label="security"]');
       if (totalLabel) totalLabel.textContent = s("bookTotal");
-      if (totalVal) totalVal.textContent = formatBrl(cartTotal(items));
+      if (totalVal) totalVal.textContent = formatBrl(cartTotal(items)) + " BRL";
+      revalidateCupom(items);
       if (checkoutBtn) checkoutBtn.textContent = s("cartCheckout");
       if (backBtn) backBtn.textContent = s("cartBack");
       if (cancelLabel) cancelLabel.innerHTML = renderPolicyCheckboxLabel("cancel");
@@ -1291,6 +1669,13 @@
       if (item.departureMs) existing.departureMs = item.departureMs;
       if (item.passeioKey) existing.passeioKey = item.passeioKey;
       if (item.pessoas) existing.pessoas = item.pessoas;
+      if (item.faixa) {
+        existing.faixa = item.faixa;
+        existing.qty = 1;
+        existing.valorUnit = item.valorUnit;
+      } else {
+        existing.faixa = null;
+      }
       if (item.comTransporte != null) existing.comTransporte = item.comTransporte === true;
       if (item.guiaIdioma) existing.guiaIdioma = item.guiaIdioma;
       if (item.modalidade) existing.modalidade = item.modalidade;
@@ -1322,6 +1707,7 @@
         guiaTelefone: item.guiaTelefone || "",
         passeioKey: item.passeioKey || "",
         pessoas: item.pessoas || qty,
+        faixa: item.faixa || null,
         comTransporte: item.comTransporte === true,
         guiaIdioma: item.guiaIdioma || "",
         modalidade: item.modalidade || "",
@@ -1354,7 +1740,13 @@
     if (!it) return;
     var max = parseInt(String(it.maxQty), 10) || 10;
     qty = Math.max(1, Math.min(max, qty));
-    it.qty = qty;
+    if (it.faixa) {
+      it.pessoas = qty;
+      it.qty = 1;
+      it.valorUnit = faixaTotalReais(it.faixa, qty);
+    } else {
+      it.qty = qty;
+    }
     saveItems(items);
   }
 
@@ -1383,9 +1775,36 @@
       }
     });
 
+    root.addEventListener("keydown", function (e) {
+      var field = e.target.closest("[data-gcv-cart-cupom-code]");
+      if (!field || e.key !== "Enter") return;
+      e.preventDefault();
+      var apply = root.querySelector("[data-gcv-cart-cupom-apply]");
+      if (apply) apply.click();
+    });
+
     root.addEventListener("click", function (e) {
       if (e.target.closest("[data-gcv-cart-close]")) {
         closeCartPanel();
+        return;
+      }
+      var cupomBtn = e.target.closest("[data-gcv-cart-cupom-apply]");
+      if (cupomBtn) {
+        e.preventDefault();
+        if (cupomBtn.getAttribute("data-gcv-cart-cupom-mode") === "remove") {
+          setCupomCode("");
+          _cupom = null;
+          var clearInput = root.querySelector("[data-gcv-cart-cupom-code]");
+          if (clearInput) clearInput.value = "";
+          paintCoupon(loadItems());
+          return;
+        }
+        var codeInput = root.querySelector("[data-gcv-cart-cupom-code]");
+        var typed = String((codeInput && codeInput.value) || "").trim().toUpperCase();
+        if (codeInput) codeInput.value = typed;
+        setCupomCode(typed);
+        _cupom = null;
+        revalidateCupom(loadItems());
         return;
       }
       var policyOpen = e.target.closest("[data-gcv-cart-policy-open]");
@@ -1425,8 +1844,14 @@
             gapNote.hidden = true;
             gapNote.textContent = "";
           }
-          var total = cartTotal(fresh);
+          var off = cupomOffCents(fresh);
+          var total = Math.max(0, (cartGrossCents(fresh) - off) / 100);
           var detail = cartPayDetail(fresh);
+          if (off > 0 && _cupom && _cupom.codigo) {
+            detail.cupom = _cupom.codigo;
+            detail.descontoCents = off;
+            detail.lines = (detail.lines || []).concat([s("cartCouponOff") + " " + _cupom.codigo]);
+          }
           var payFn = _onPay;
           closeCartPanel();
           payFn(total, detail, checkout);
@@ -1455,7 +1880,7 @@
         var itM = loadItems().find(function (x) {
           return x.id === idM;
         });
-        if (itM) updateItemQty(idM, (parseInt(String(itM.qty), 10) || 1) - 1);
+        if (itM) updateItemQty(idM, (itM.faixa ? (parseInt(String(itM.pessoas), 10) || 1) : (parseInt(String(itM.qty), 10) || 1)) - 1);
         return;
       }
       var plusBtn = e.target.closest("[data-gcv-cart-qty-plus]");
@@ -1464,7 +1889,7 @@
         var itP = loadItems().find(function (x) {
           return x.id === idP;
         });
-        if (itP) updateItemQty(idP, (parseInt(String(itP.qty), 10) || 1) + 1);
+        if (itP) updateItemQty(idP, (itP.faixa ? (parseInt(String(itP.pessoas), 10) || 1) : (parseInt(String(itP.qty), 10) || 1)) + 1);
       }
     });
 
@@ -1676,5 +2101,6 @@
     occupiedDates: cartOccupiedDates,
     itemDateIso: itemDateIso,
     warnSameDay: showSameDayToast,
+    openPolicy: openPolicyModal,
   };
 })(typeof window !== "undefined" ? window : globalThis);

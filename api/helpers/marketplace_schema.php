@@ -113,7 +113,7 @@ function gcv_marketplace_ensure_tables(PDO $pdo): void
           commission_rule_id INT UNSIGNED NULL,
           business_mode ENUM('ADMINISTRATIVE','GUIDE_MARKETPLACE') NOT NULL,
           created_by_origin ENUM('ADMIN','GUIDE','CURSOR','IMPORT','API','AI') NOT NULL DEFAULT 'ADMIN',
-          sale_status ENUM('PENDING','PAID','CANCELLED','REFUNDED','DISPUTED') NOT NULL DEFAULT 'PENDING',
+          sale_status ENUM('PENDING','AUTHORIZED','PAID','CANCELLED','REFUNDED','DISPUTED') NOT NULL DEFAULT 'PENDING',
           payout_status ENUM('PAYOUT_PENDING','PAYOUT_PAID','PAYOUT_REVIEW','PAYOUT_BLOCKED') NOT NULL DEFAULT 'PAYOUT_PENDING',
           excursion_starts_at DATETIME NULL,
           scheduled_payout_at DATETIME NULL,
@@ -323,7 +323,7 @@ function gcv_marketplace_retract_unapproved_guide_excursions(PDO $pdo): void
                 SELECT 1 FROM gcv_sales s
                 WHERE s.excursion_id = e.id
                   AND s.deleted_at IS NULL
-                  AND s.sale_status = 'PAID'
+                  AND s.sale_status IN ('PAID','AUTHORIZED')
             )";
         }
         $pdo->exec($sql);
@@ -505,6 +505,7 @@ function gcv_marketplace_ensure_checkin_columns(PDO $pdo): void
             'notify_h2_sent_at' => 'ALTER TABLE gcv_sales ADD COLUMN notify_h2_sent_at DATETIME NULL',
             'notify_m15_sent_at' => 'ALTER TABLE gcv_sales ADD COLUMN notify_m15_sent_at DATETIME NULL',
             'notify_review_sent_at' => 'ALTER TABLE gcv_sales ADD COLUMN notify_review_sent_at DATETIME NULL',
+            'notify_guide_intro_sent_at' => 'ALTER TABLE gcv_sales ADD COLUMN notify_guide_intro_sent_at DATETIME NULL',
             'review_token' => 'ALTER TABLE gcv_sales ADD COLUMN review_token CHAR(64) NULL',
             'guide_amount_original_cents' => 'ALTER TABLE gcv_sales ADD COLUMN guide_amount_original_cents INT NULL',
             'platform_revenue_original_cents' => 'ALTER TABLE gcv_sales ADD COLUMN platform_revenue_original_cents INT NULL',
@@ -626,6 +627,7 @@ function gcv_marketplace_ensure_settings(PDO $pdo): void
         ['notify_arrive_minutes', '15', 'Chegada: minutos de antecedência (0 = não enviar)', 'integer'],
         ['notify_late_tolerance_minutes', '15', 'Excursão: tolerância de atraso em minutos (0 = sem frase de tolerância)', 'integer'],
         ['transfer_offer_hours', '48', 'Troca: horas antes da saída para oferecer a lista (só em formação → passeio confirmado do mesmo dia)', 'integer'],
+        ['passeio_quorum', '4', 'Quórum do passeio (pessoas no pacote mínimo do privativo sem translado)', 'integer'],
         ['diaria_minima_reais', '320', 'Diária mínima do cliente no exclusivo e no fechamento da excursão (R$)', 'integer'],
         ['pg_minimo_guia_reais', '280', 'Pagamento mínimo do guia sem transporte, no fechamento da diária ou do quórum (R$)', 'integer'],
         ['oportunidade_top3_horas', '2', 'TOP 3: horas exclusivas antes de chamar o restante da fila', 'integer'],
@@ -649,6 +651,8 @@ function gcv_marketplace_ensure_settings(PDO $pdo): void
         }
     }
     try {
+        $pdo->exec("UPDATE gcv_settings SET label = 'Diária mínima de guiagem (R$)' WHERE key_name = 'diaria_minima_reais'");
+        $pdo->exec("UPDATE gcv_settings SET label = 'Pagamento mínimo de guiagem (R$). Tem que ser menor que a diária mínima.' WHERE key_name = 'pg_minimo_guia_reais'");
         $pdo->exec(
             "UPDATE gcv_settings
              SET label = 'Comissão da plataforma (%) aplicada em todos os passeios'

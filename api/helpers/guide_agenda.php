@@ -13,6 +13,41 @@ require_once __DIR__ . '/excursion_attractions.php';
  * @param array<string,mixed> $e
  * @return array<string,mixed>
  */
+/** Horas antes da saída em que a reserva cai se o guia não confirmar (PAY_DECISION_HOURS). */
+function gcv_guide_decision_hours(): int
+{
+    if (function_exists('gcv_auth_decision_hours')) {
+        return gcv_auth_decision_hours();
+    }
+    $v = $_ENV['PAY_DECISION_HOURS'] ?? getenv('PAY_DECISION_HOURS');
+    $n = is_string($v) && ctype_digit(trim($v)) ? (int) trim($v) : 12;
+    return max(1, $n);
+}
+
+/** Prazo para o guia aceitar a saída: horário de saída menos as horas de decisão. ISO 8601. */
+function gcv_guide_confirm_deadline(array $e): ?string
+{
+    $date = (string)($e['date_iso'] ?? '');
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+        return null;
+    }
+    $time = trim((string)($e['departure_time'] ?? ''));
+    if (!preg_match('/^\d{2}:\d{2}/', $time)) {
+        $time = '08:00:00';
+    }
+    $time = substr($time, 0, 8);
+    if (strlen($time) === 5) {
+        $time .= ':00';
+    }
+    try {
+        $tz = new DateTimeZone('America/Sao_Paulo');
+        $start = new DateTimeImmutable($date . ' ' . $time, $tz);
+        return $start->modify('-' . gcv_guide_decision_hours() . ' hours')->format('c');
+    } catch (Throwable $err) {
+        return null;
+    }
+}
+
 function gcv_guide_tour_is_archived(array $e, ?string $today = null): bool
 {
     $life = (string)($e['lifecycle'] ?? (function_exists('gcv_resolve_excursion_lifecycle')
@@ -174,11 +209,17 @@ function gcv_guide_update_excursion(array $ex, array $data, int $userId, bool $a
 
     if (array_key_exists('max_people', $data) && !empty($flags['can_change_max'])) {
         $maxPeople = (int)$data['max_people'];
-        if ($maxPeople < 1) {
-            $maxPeople = 1;
+        $ids = [];
+        if (!empty($ex['id']) && function_exists('gcv_excursion_load_attractions')) {
+            $ids = array_map(static fn($a) => (int)($a['id'] ?? 0), gcv_excursion_load_attractions((int)$ex['id']));
         }
-        if ($maxPeople > 12) {
-            $maxPeople = 12;
+        if (!$ids && !empty($ex['attraction_id'])) {
+            $ids = [(int)$ex['attraction_id']];
+        }
+        require_once __DIR__ . '/tarifarios.php';
+        $erroMax = gcv_max_people_excursao_erro(db(), $ids, $maxPeople);
+        if ($erroMax !== null) {
+            throw new InvalidArgumentException($erroMax);
         }
         if ($maxPeople < $occupied) {
             throw new InvalidArgumentException('Vagas não podem ser menores que o grupo atual');

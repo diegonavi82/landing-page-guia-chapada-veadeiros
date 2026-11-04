@@ -69,6 +69,7 @@
           heading: "1. Aceite da Contratação",
           paragraphs: [
             "Ao concluir a compra, o CONTRATANTE declara ter lido, compreendido e aceitado integralmente esta Política de Cancelamento e os Termos de Prestação de Serviços da Guia Chapada Veadeiros.",
+            "O CONTRATANTE contrata um passeio por data. A data que já tiver um passeio no carrinho fica bloqueada para outro passeio.",
             "No cartão de crédito o cartão fica apenas salvo e é verificado nessa hora: a operadora confirma que o cartão existe e aceita cobrança futura. Não há sinal e não há cobrança do passeio nessa hora. Essa verificação não reserva o valor do passeio.",
             "O CONTRATANTE autoriza a cobrança automática de 100% somente na confirmação. A confirmação exige guia associado e, se houver translado, veículo. Na Excursão, a cobrança ainda exige que o cartão de todos os inscritos necessários ao quórum seja aceito no mesmo teste. Enquanto um desses cartões não passar, ninguém é cobrado.",
             "A contratação refere-se à prestação do serviço pela Guia Chapada Veadeiros. O CONTRATANTE não contrata um guia específico. No passeio exclusivo e na excursão, com transporte ou sem transporte, entra o primeiro guia do TOP 3 que aceitar pelo link.",
@@ -82,14 +83,14 @@
             "No cartão, nada é cobrado durante a formação e nada é cobrado antes de um guia aceitar. Enquanto nenhum guia foi chamado, o CONTRATANTE pode cancelar a qualquer momento, inclusive nas últimas 48 horas. Não há cobrança nem estorno, porque o passeio ainda não foi cobrado. Quando o quórum é atingido, a oportunidade vai ao TOP 3 da fila, por WhatsApp e por e-mail, e o aviso passa a ser \"Aguardando confirmação do guia\". O cancelamento pelo CONTRATANTE deixa de ser oferecido enquanto essa chamada corre. O primeiro guia que aceitar pelo link entra. Se ninguém aceitar, o passeio é cancelado porque não há guias disponíveis: no Pix o valor é estornado; no cartão nada chega a ser cobrado. Com translado, cada carro exige o próprio guia: 5 clientes exigem 2 guias. Enquanto faltar um, o aviso continua e ninguém cancela. A cobrança só sai quando os guias necessários aceitaram e os cartões dos inscritos passam no mesmo teste.",
             "No Pix já pago, o cancelamento durante a formação devolve 100% do valor pago.",
             "A CONTRATADA poderá cancelar o passeio a qualquer momento por motivos operacionais ou por inviabilidade de sua realização.",
-            "Caso o quórum mínimo não seja atingido até às 23h59 do dia anterior à data prevista para o passeio, este será cancelado automaticamente, não sendo a CONTRATADA obrigada a realizar a atividade.",
-            "Nessa hipótese, o CONTRATANTE poderá optar pelo reembolso integral (100%) dos valores pagos ou pela utilização do valor pago como crédito para reagendamento de outro passeio disponível, realizando-se o pagamento da diferença ou a restituição do saldo, conforme o valor do novo passeio escolhido.",
+            "Caso o número mínimo de inscrições não seja atingido até às 23h59 do dia anterior à data prevista para o passeio, este será cancelado automaticamente, não sendo a CONTRATADA obrigada a realizar a atividade.",
+            "Nessa hipótese, devolvemos 100%. No cartão, nada foi cobrado. No Pix já pago, a devolução é integral.",
           ],
         },
         {
           heading: "3. Passeios Confirmados",
           paragraphs: [
-            'A Excursão só fica "Confirmada" quando, ao mesmo tempo, o quórum de pessoas foi atingido, um guia aceitou, o veículo está garantido se houver translado, e o cartão de todos os inscritos necessários ao quórum foi aceito no mesmo teste.',
+            'A Excursão fica confirmada quando atinge o número mínimo de inscrições. O aviso ao CONTRATANTE é: "Excursão confirmada com esse número de inscrições". A partir daí o CONTRATANTE não cancela e não há devolução. O botão de cancelamento não é oferecido.',
             "Antes de cobrar qualquer participante, a CONTRATADA testa o valor no cartão de todos. A cobrança de 100% só ocorre se todos passarem nesse teste. Quem já tem cartão válido não é cobrado sozinho.",
             'Se um cartão não passar, ninguém é cobrado. O passeio fica em espera. O aviso é: "Aguardando X pagamento(s) para confirmar a saída, o quórum já foi atingido", em que X é a quantidade de cartões que ainda não passaram. Quem teve o cartão recusado é avisado para trocá-lo.',
             "Nessa espera o CONTRATANTE pode cancelar ou aguardar. Não há cobrança. Não há prazo fixo para a troca do cartão. A saída não confirma enquanto faltar o pagamento de alguém necessário ao quórum. A CONTRATADA não confirma o passeio retirando esse inscrito se, sem ele, o quórum deixar de ser atingido.",
@@ -110,6 +111,7 @@
         {
           heading: "3.2 Privativo",
           paragraphs: [
+            "O Privativo é exclusivo para o grupo do CONTRATANTE. Não é uma excursão compartilhada e não depende de outras inscrições.",
             "No Privativo o cartão fica apenas salvo. Não há sinal. O passeio não está confirmado enquanto não houver um guia associado.",
             "A venda confirmada do passeio exclusivo, com transporte ou sem transporte, é enviada ao TOP 3 da fila. O cliente não escolhe o guia: entra quem aceitar primeiro pelo link.",
             "Com translado, a confirmação exige também o veículo: um carro e um guia a cada grupo de até 4 clientes. Sem translado, o veículo é o do CONTRATANTE e a confirmação ocorre quando o guia aceita.",
@@ -123,6 +125,13 @@
           paragraphs: [
             "Enquanto o Em grupo estiver em formação e ainda não houver guia definido, o CONTRATANTE pode trocar uma vez, no mesmo dia, para uma saída já confirmada ou que fique confirmada com a entrada dele.",
             "A troca não vale para o Privativo e não vale depois da confirmação.",
+          ],
+        },
+        {
+          heading: "3.4 Check-in e contato do guia",
+          paragraphs: [
+            "Quando a Excursão está confirmada e o cancelamento pelo CONTRATANTE já não é possível, a CONTRATADA envia a identificação do guia: foto, nome e WhatsApp.",
+            "No dia do passeio, o guia confirma o check-in pela leitura do QR. A confirmação é imediata, sem um botão extra de aceite. O CONTRATANTE recebe a mensagem de boas-vindas com a foto, o nome e o WhatsApp do guia, e o link para avaliar o passeio ao final.",
           ],
         },
         {
@@ -176,8 +185,8 @@
           heading: "4.4 Guia em outro idioma",
           paragraphs: [
             "Guia em português não tem acréscimo.",
-            "Se o CONTRATANTE escolher guia em outro idioma, o acréscimo daquele passeio pode ser um percentual ou um valor fixo. O número fica na cópia da tarifa do atrativo e da cidade, e não no catálogo geral.",
-            "O acréscimo incide uma vez sobre o total da compra, depois dos descontos de idade, e não por pessoa. Por exemplo: 2 adultos a R$ 90 e 2 crianças com 50% somam R$ 270. Um acréscimo de 100% leva esse total a R$ 540. Um acréscimo fixo de R$ 40 leva esse total a R$ 310.",
+            "Se o CONTRATANTE escolher guia em outro idioma, entra o acréscimo em reais definido na tarifa daquele passeio. O valor é o mesmo para qualquer compra e não muda conforme a cidade de saída.",
+            "O acréscimo incide uma vez sobre o total da compra, depois dos descontos de idade, e não por pessoa. Por exemplo: 2 adultos a R$ 90 e 2 crianças com 50% somam R$ 270. Um acréscimo de R$ 40 leva esse total a R$ 310.",
             "O desconto do Pix não entra nessa conta.",
           ],
         },
@@ -306,7 +315,7 @@
           heading: "12. Declaração de Ciência",
           paragraphs: [
             "Ao contratar o passeio, o CONTRATANTE declara que: compreende os riscos inerentes ao ecoturismo; assume responsabilidade por suas próprias ações e decisões; compromete-se a seguir integralmente as orientações do guia; autoriza o guia a adotar todas as medidas necessárias para preservar a segurança do grupo; reconhece que alterações de roteiro, horários, duração da atividade ou encerramento antecipado poderão ocorrer sempre que exigidos por questões de segurança.",
-            "No cartão de crédito, o CONTRATANTE autoriza a verificação do cartão ao salvá-lo e a cobrança automática de 100% do valor somente quando o passeio confirmar. Na Excursão, autoriza que essa cobrança ocorra junto com a dos demais inscritos, depois que todos os cartões necessários ao quórum forem aceitos no mesmo teste. Compromete-se a manter o cartão válido e a substituí-lo se for recusado. Enquanto um cartão necessário não passar, o passeio permanece em espera e ninguém é cobrado. Nessa espera o CONTRATANTE pode cancelar; se cancelar, a Excursão volta a Em Formação.",
+            "No cartão de crédito, o CONTRATANTE autoriza a verificação do cartão ao salvá-lo e a cobrança automática de 100% do valor somente quando o passeio confirmar. Na Excursão, a confirmação para o cliente é o número mínimo de inscrições. Até lá, ele cancela quando quiser. Se a saída não confirmar, devolvemos 100%. A partir desse mínimo, ele não cancela. Autoriza que a cobrança ocorra junto com a dos demais inscritos, depois que todos os cartões necessários ao mínimo forem aceitos no mesmo teste. Compromete-se a manter o cartão válido e a substituí-lo se for recusado. Enquanto um cartão necessário não passar, ninguém é cobrado.",
           ],
         },
       ],

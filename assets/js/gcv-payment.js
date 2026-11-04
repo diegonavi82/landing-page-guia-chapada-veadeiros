@@ -18,9 +18,6 @@
     document.getElementById('gcv-pay-method-pix').addEventListener('click', function () {
       selectMethod('pix', bookingId, tour);
     });
-    document.getElementById('gcv-pay-method-card').addEventListener('click', function () {
-      selectMethod('card', bookingId, tour);
-    });
 
     var closeBtn = document.getElementById('gcv-pay-modal-close');
     if (closeBtn) {
@@ -41,11 +38,6 @@
       + '<div class="gcv-pay-method__icon">🔑</div>'
       + '<div class="gcv-pay-method__name">Pix</div>'
       + '<div class="gcv-pay-method__desc">Instantâneo e gratuito</div>'
-      + '</div>'
-      + '<div class="gcv-pay-method" id="gcv-pay-method-card">'
-      + '<div class="gcv-pay-method__icon">💳</div>'
-      + '<div class="gcv-pay-method__name">Cartão</div>'
-      + '<div class="gcv-pay-method__desc">Crédito ou débito</div>'
       + '</div>'
       + '</div>'
       + '</div>';

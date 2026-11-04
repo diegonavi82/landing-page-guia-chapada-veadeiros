@@ -35,10 +35,20 @@
       embarque: "Saída",
       statusCANCELLED: "Reserva cancelada",
       cancelBtn: "Cancelar reserva",
-      cancelConfirmForming: "Cancelar esta reserva? O guia será avisado e o valor será reembolsado conforme a política (em formação).",
-      cancelConfirmPaid: "Cancelar esta reserva? O guia será avisado.",
-      cancelOk: "Reserva cancelada. O guia foi notificado.",
+      cancelDayBtn: "Cancelar este dia",
+      cancelDayConfirm: "Cancelar só este passeio? O Pix devolve só o valor deste dia. Os passeios já confirmados desta reserva continuam valendo.",
+      confirmedLock: "Confirmado — não cancela e não estorna",
+      refundedLock: "Cancelado — Pix estornado",
+      cancelConfirmForming: "Cancelar só os passeios que ainda não confirmaram? O estorno do Pix é parcial, só desses dias.",
+      cancelConfirmPaid: "Cancelar só este passeio? O estorno não inclui dia já confirmado.",
+      cancelOk: "Reserva cancelada. O Pix foi devolvido.",
+      cancelOkPartial: "Este dia foi cancelado. O estorno parcial do Pix foi feito. Os passeios confirmados continuam valendo.",
+      cancelOkFull: "Reserva cancelada. O Pix foi devolvido para a conta de origem.",
       cancelErr: "Não foi possível cancelar agora.",
+      err_trip_confirmed: "Passeio confirmado não pode ser cancelado.",
+      err_bank: "O banco não concluiu o estorno. Tente de novo.",
+      err_nothing: "Não há passeio em formação para estornar.",
+      err_not_pix: "Este pagamento não é Pix.",
     },
     en: {
       statusPENDING: "Awaiting payment",
@@ -67,10 +77,20 @@
       embarque: "Departure",
       statusCANCELLED: "Reservation cancelled",
       cancelBtn: "Cancel reservation",
-      cancelConfirmForming: "Cancel this reservation? The guide will be notified. Full refund applies while the tour is forming.",
-      cancelConfirmPaid: "Cancel this reservation? The guide will be notified.",
-      cancelOk: "Reservation cancelled. The guide was notified.",
+      cancelDayBtn: "Cancel this day",
+      cancelDayConfirm: "Cancel only this tour? The Pix refund covers just this day. Confirmed tours on this booking stay as they are.",
+      confirmedLock: "Confirmed — cannot be cancelled or refunded",
+      refundedLock: "Cancelled — Pix refunded",
+      cancelConfirmForming: "Cancel only the tours that are not confirmed yet? The Pix refund is partial and covers just those days.",
+      cancelConfirmPaid: "Cancel only this tour? A confirmed day is not included.",
+      cancelOk: "Reservation cancelled. The Pix was refunded.",
+      cancelOkPartial: "This day was cancelled. The partial Pix refund was sent. Confirmed tours stay active.",
+      cancelOkFull: "Reservation cancelled. The Pix was returned to the original account.",
       cancelErr: "Could not cancel right now.",
+      err_trip_confirmed: "A confirmed tour cannot be cancelled.",
+      err_bank: "The bank did not finish the refund. Please try again.",
+      err_nothing: "There is no tour still forming to refund.",
+      err_not_pix: "This payment is not Pix.",
     },
     es: {
       statusPENDING: "Esperando pago",
@@ -99,10 +119,20 @@
       embarque: "Salida",
       statusCANCELLED: "Reserva cancelada",
       cancelBtn: "Cancelar reserva",
-      cancelConfirmForming: "¿Cancelar esta reserva? Se avisará al guía. Reembolso integral mientras el paseo esté en formación.",
-      cancelConfirmPaid: "¿Cancelar esta reserva? Se avisará al guía.",
-      cancelOk: "Reserva cancelada. El guía fue notificado.",
+      cancelDayBtn: "Cancelar este día",
+      cancelDayConfirm: "¿Cancelar solo este paseo? El Pix devuelve solo el valor de este día. Los paseos ya confirmados de esta reserva siguen valiendo.",
+      confirmedLock: "Confirmado — no se cancela ni se reembolsa",
+      refundedLock: "Cancelado — Pix devuelto",
+      cancelConfirmForming: "¿Cancelar solo los paseos que aún no confirmaron? El reembolso del Pix es parcial, solo de esos días.",
+      cancelConfirmPaid: "¿Cancelar solo este paseo? El día ya confirmado no entra.",
+      cancelOk: "Reserva cancelada. El Pix fue devuelto.",
+      cancelOkPartial: "Este día fue cancelado. El reembolso parcial del Pix quedó hecho. Los paseos confirmados siguen valiendo.",
+      cancelOkFull: "Reserva cancelada. El Pix volvió a la cuenta de origen.",
       cancelErr: "No se pudo cancelar ahora.",
+      err_trip_confirmed: "Un paseo confirmado no se puede cancelar.",
+      err_bank: "El banco no completó el reembolso. Inténtelo de nuevo.",
+      err_nothing: "No hay un paseo en formación para reembolsar.",
+      err_not_pix: "Este pago no es Pix.",
     },
   };
 
@@ -154,47 +184,114 @@
     return apiBase() + "excursao-reserva/cancel.php";
   }
 
-  function bindCancelButton(resultEl, data, loc, email) {
-    if (!resultEl || !data || !data.can_cancel) return;
+  function cancelErrorText(loc, body) {
+    var code = body && body.error_code;
+    if (code === "trip_confirmed") return s(loc, "err_trip_confirmed");
+    if (code === "bank") return s(loc, "err_bank");
+    if (code === "nothing") return s(loc, "err_nothing");
+    if (code === "not_pix") return s(loc, "err_not_pix");
+    return (body && body.message) || s(loc, "cancelErr");
+  }
+
+  function postCancel(code, email, tripIndexes) {
+    var payload = { reservation_id: code, email: email };
+    if (tripIndexes) payload.trip_indexes = tripIndexes;
+    return fetch(cancelApiUrl(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(payload),
+    }).then(function (res) {
+      return res.json().then(function (body) {
+        return { ok: res.ok, body: body };
+      });
+    });
+  }
+
+  function bindCancelButton(resultEl, data, loc, email, refresh) {
+    if (!resultEl || !data) return;
     var code = data.reservation_id || "";
     if (!code) return;
-    var wrap = document.createElement("p");
+    var trips = Array.isArray(data.trips) ? data.trips : [];
+    var annotated = trips.some(function (t) {
+      return t && (typeof t.can_cancel === "boolean" || t.confirmed || t.refunded);
+    });
+    if (!annotated) {
+      if (!data.can_cancel) return;
+      var wrapLegacy = document.createElement("p");
+      wrapLegacy.className = "gcv-reserva-result__actions";
+      wrapLegacy.style.marginTop = "0.75rem";
+      var legacyBtn = document.createElement("button");
+      legacyBtn.type = "button";
+      legacyBtn.className = "gcv-reserva-btn";
+      legacyBtn.textContent = s(loc, "cancelBtn");
+      legacyBtn.addEventListener("click", function () {
+        if (!window.confirm(s(loc, "cancelConfirmForming"))) return;
+        legacyBtn.disabled = true;
+        postCancel(code, email, null)
+          .then(function (pack) {
+            if (pack.ok && pack.body && pack.body.ok) {
+              if (typeof refresh === "function") refresh();
+              else wrapLegacy.textContent = pack.body.partial ? s(loc, "cancelOkPartial") : s(loc, "cancelOkFull");
+              return;
+            }
+            legacyBtn.disabled = false;
+            alert(cancelErrorText(loc, pack.body));
+          })
+          .catch(function () {
+            legacyBtn.disabled = false;
+            alert(s(loc, "cancelErr"));
+          });
+      });
+      wrapLegacy.appendChild(legacyBtn);
+      resultEl.appendChild(wrapLegacy);
+      return;
+    }
+    var wrap = document.createElement("div");
     wrap.className = "gcv-reserva-result__actions";
     wrap.style.marginTop = "0.75rem";
-    var btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "gcv-reserva-btn";
-    btn.textContent = s(loc, "cancelBtn");
-    btn.addEventListener("click", function () {
-      var forming = data.lifecycle === "em_formacao";
-      var msg = forming ? s(loc, "cancelConfirmForming") : s(loc, "cancelConfirmPaid");
-      if (!window.confirm(msg)) return;
-      btn.disabled = true;
-      fetch(cancelApiUrl(), {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ reservation_id: code, email: email }),
-      })
-        .then(function (res) {
-          return res.json().then(function (body) {
-            return { ok: res.ok, body: body };
+    trips.forEach(function (t) {
+      if (!t) return;
+      var label = [t.dateLabel || t.date_label || t.dateShort, t.destino || t.title].filter(Boolean).join(" · ");
+      if (t.refunded) {
+        var done = document.createElement("p");
+        done.textContent = (label ? label + " — " : "") + s(loc, "refundedLock");
+        wrap.appendChild(done);
+        return;
+      }
+      if (t.confirmed) {
+        var locked = document.createElement("p");
+        locked.textContent = (label ? label + " — " : "") + s(loc, "confirmedLock");
+        wrap.appendChild(locked);
+        return;
+      }
+      if (!t.can_cancel) return;
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "gcv-reserva-btn";
+      btn.style.display = "block";
+      btn.style.margin = "0.4rem 0";
+      btn.textContent = (label ? label + " — " : "") + s(loc, "cancelDayBtn");
+      btn.addEventListener("click", function () {
+        if (!window.confirm(s(loc, "cancelDayConfirm"))) return;
+        btn.disabled = true;
+        postCancel(code, email, [t.trip_index])
+          .then(function (pack) {
+            if (pack.ok && pack.body && pack.body.ok) {
+              if (typeof refresh === "function") refresh();
+              else wrap.textContent = pack.body.partial ? s(loc, "cancelOkPartial") : s(loc, "cancelOkFull");
+              return;
+            }
+            btn.disabled = false;
+            alert(cancelErrorText(loc, pack.body));
+          })
+          .catch(function () {
+            btn.disabled = false;
+            alert(s(loc, "cancelErr"));
           });
-        })
-        .then(function (pack) {
-          if (pack.ok && pack.body && pack.body.ok) {
-            wrap.textContent = s(loc, "cancelOk");
-            return;
-          }
-          btn.disabled = false;
-          alert((pack.body && pack.body.message) || s(loc, "cancelErr"));
-        })
-        .catch(function () {
-          btn.disabled = false;
-          alert(s(loc, "cancelErr"));
-        });
+      });
+      wrap.appendChild(btn);
     });
-    wrap.appendChild(btn);
-    resultEl.appendChild(wrap);
+    if (wrap.childNodes.length) resultEl.appendChild(wrap);
   }
 
   function confirmUrl(id, loc) {
@@ -441,7 +538,9 @@
             } else {
               result.innerHTML = renderResult(body, loc);
             }
-            bindCancelButton(result, body, loc, email);
+            bindCancelButton(result, body, loc, email, function () {
+              performLookup(root, lookupForm, loc, code, email);
+            });
           }
           openVoucherPopup(body, loc);
           return;

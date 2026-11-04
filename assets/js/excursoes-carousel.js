@@ -220,8 +220,8 @@
   }
 
   var SAIDA_HORA_PADRAO = "8:45";
-  /** Reserva só com mais de 2 h até o embarque (horário Chapada). */
-  var BOOKING_CUTOFF_MS = 2 * 60 * 60 * 1000;
+  /** Excursão fica no site e pode ser comprada até 1 h antes da saída (horário Chapada). */
+  var BOOKING_CUTOFF_MS = 60 * 60 * 1000;
   /** Janela para concluir pagamento Pix após abrir o QR. */
   var PIX_PAY_WINDOW_MS = 8 * 60 * 1000;
 
@@ -275,11 +275,15 @@
       statusOk: "✅ Confirmado",
       statusSoldOut: "Lotado",
       statusWait: "⏳ Em formação",
+      joinTripTitle: "Inscrever-me na Excursão",
+      joinTripMissing: "Essa saída não está mais disponível.",
+      close: "Fechar",
       meetingPointLabel: "Ponto de encontro",
       guidePhoneLabel: "Telefone do guia",
       guiaPending: "A definir",
       pixBtnAria: "Pagar {{valor}} com Pix",
       pixModalTitle: "Pagamento",
+      pixOpenFail: "Não foi possível abrir o pagamento. Tente de novo.",
       pixModalScan: "Escaneie o QR Code no app do banco",
       pixModalCopy: "Copiar código Pix",
       pixModalCopied: "Código copiado!",
@@ -289,11 +293,28 @@
       pixModalCancelPolicy:
         "Cancelamento: O pagamento reserva a disponibilidade do guia. Em caso de cancelamento pelo cliente, não haverá reembolso.",
       pixModalRefLabel: "Código de reserva",
-      pixModalEmailContinue: "Pagar com PIX",
+      pixModalEmailContinue: "PIX",
+      payPixMeta: "Menor preço",
       payChoice: "Como você quer pagar?",
       stripePayCard: "Pagar com cartão",
       stripePayCardBusy: "Abrindo pagamento seguro…",
       stripePayCardFail: "Não foi possível abrir o pagamento com cartão. Tente de novo.",
+      mpPayCard: "Cartão de crédito",
+      mpPayBadge: "Brasil",
+      mpPayMeta: "até {n}x sem juros",
+      mpPayCardPrice: "{n}x de {inst}",
+      mpPayCardBusy: "Abrindo pagamento seguro…",
+      intlPayCard: "Cartão internacional",
+      intlPayMeta: "Cobrado em dólar",
+      intlPayCardPrice: "{total}",
+      intlPayCardHint: "Para cartões emitidos fora do Brasil",
+      pixPayPrice: "{total}",
+      cardHoldNote: "No cartão, nada é cobrado agora: o valor fica reservado e só é cobrado quando o passeio confirmar (grupo mínimo + guia). Se não confirmar, a reserva é liberada.",
+      mpFormTitle: "Dados do cartão",
+      mpSavedCardNote: "Encontramos um cartão salvo neste e-mail. Ele já vem preenchido: confirme e informe só o código de segurança. Dá para escolher outro cartão no formulário.",
+      mpFormBack: "← Escolher outra forma",
+      mpDevSimulate: "Simular cartão aprovado (só desenvolvimento)",
+      mpFormUnavailable: "Pagamento com cartão indisponível no momento. Use o Pix ou tente mais tarde.",
       pixModalEmailClear: "Excluir dados",
       pixModalEmailClearHint: "Exclui e-mail e telefone, cancela este Pix e permite informar outros dados.",
       pixPostpayLocked: "Disponível após confirmação do pagamento",
@@ -311,6 +332,7 @@
       pixModalExpiredLead: "O Pix expirou. Gere um novo Pix para continuar.",
       pixModalRegenBtn: "Gerar novo Pix",
       pixModalEmbarque: "Saída",
+      pixModalWithRide: "Com translado",
       pixModalTime: "Horário",
       pixModalPeople: "Pessoas",
       pixModalPerson: "Pessoa",
@@ -319,7 +341,7 @@
       cartItemsExpired: "Passeios fora do prazo foram removidos do carrinho.",
       bookPeople: "Pessoas",
       bookTotal: "Total",
-      bookPay: "Pagar com Pix",
+      bookPay: "Pagamento",
       bookAddCart: "Adicionar ao carrinho",
       bookAddedCart: "Adicionado",
       bookQtyMinus: "Menos uma pessoa",
@@ -340,7 +362,7 @@
       guideSeatWaiting: "Aguardando outro grupo para vaga do guia",
       cartTitle: "Carrinho",
       cartEmpty: "Seu carrinho está vazio",
-      cartCheckout: "Pagar com PIX",
+      cartCheckout: "Pagamento",
       cartBack: "Voltar",
       cartRemove: "Remover",
       cartAdded: "Adicionado ao carrinho!",
@@ -381,6 +403,7 @@
       exclLunch: "Almoço",
       cta: "Quero participar",
       guiaAbout: "Sobre {{nome}}",
+      guiaAboutSecret: "Sobre o guia",
       guiaModalClose: "Fechar",
       guiaModalBack: "Voltar",
       guiaBioEmpty: "Este guia ainda não adicionou uma descrição.",
@@ -451,11 +474,15 @@
       statusOk: "✅ Confirmed",
       statusSoldOut: "Sold out",
       statusWait: "⏳ Forming",
+      joinTripTitle: "Join this departure",
+      joinTripMissing: "This departure is no longer available.",
+      close: "Close",
       meetingPointLabel: "Meeting point",
       guidePhoneLabel: "Guide phone",
-      guiaPending: "To be announced",
+      guiaPending: "To be confirmed",
       pixBtnAria: "Pay {{valor}} with Pix",
       pixModalTitle: "Payment",
+      pixOpenFail: "Could not open checkout. Please try again.",
       pixModalScan: "Scan the QR code in your banking app",
       pixModalCopy: "Copy Pix code",
       pixModalCopied: "Code copied!",
@@ -465,11 +492,28 @@
       pixModalCancelPolicy:
         "Cancellation: Payment reserves the guide's availability. If the client cancels, no refund will be issued.",
       pixModalRefLabel: "Reservation code",
-      pixModalEmailContinue: "Pay with PIX",
+      pixModalEmailContinue: "PIX",
+      payPixMeta: "Lowest price",
       payChoice: "How do you want to pay?",
       stripePayCard: "Pay with card",
       stripePayCardBusy: "Opening secure checkout…",
       stripePayCardFail: "Could not open card checkout. Please try again.",
+      mpPayCard: "Credit card",
+      mpPayBadge: "Brazil",
+      mpPayMeta: "up to {n}x interest-free",
+      mpPayCardPrice: "{n}x of {inst}",
+      mpPayCardBusy: "Opening secure checkout…",
+      intlPayCard: "International card",
+      intlPayMeta: "Charged in US dollars",
+      intlPayCardPrice: "{total}",
+      intlPayCardHint: "For cards issued outside Brazil",
+      pixPayPrice: "{total}",
+      cardHoldNote: "Nothing is charged now: the amount is held on your card and only charged once the tour is confirmed (minimum group + guide). If it is not confirmed, the hold is released.",
+      mpFormTitle: "Card details",
+      mpSavedCardNote: "We found a card saved for this email. It is already filled in: confirm it and enter only the security code. You can pick another card in the form.",
+      mpFormBack: "← Choose another method",
+      mpDevSimulate: "Simulate approved card (development only)",
+      mpFormUnavailable: "Card payment is unavailable right now. Please use Pix or try again later.",
       pixModalEmailClear: "Remove details",
       pixModalEmailClearHint: "Removes email and phone, cancels this Pix, and lets you enter new details.",
       pixPostpayLocked: "Available after payment is confirmed",
@@ -487,6 +531,7 @@
       pixModalExpiredLead: "The Pix payment window expired. Generate a new Pix to continue.",
       pixModalRegenBtn: "Generate new Pix",
       pixModalEmbarque: "Departure",
+      pixModalWithRide: "With transfer",
       pixModalTime: "Time",
       pixModalPeople: "People",
       pixModalPerson: "person",
@@ -495,7 +540,7 @@
       cartItemsExpired: "Expired tours were removed from your cart.",
       bookPeople: "People",
       bookTotal: "Total",
-      bookPay: "Pay with Pix",
+      bookPay: "Payment",
       bookAddCart: "Add to cart",
       bookAddedCart: "Added",
       bookQtyMinus: "Remove one person",
@@ -516,7 +561,7 @@
       guideSeatWaiting: "Waiting for another group so the guide has a seat",
       cartTitle: "Cart",
       cartEmpty: "Your cart is empty",
-      cartCheckout: "Pay with PIX",
+      cartCheckout: "Payment",
       cartBack: "Back",
       cartRemove: "Remove",
       cartAdded: "Added to cart!",
@@ -557,6 +602,7 @@
       exclLunch: "Lunch",
       cta: "I want to join",
       guiaAbout: "About {{nome}}",
+      guiaAboutSecret: "About the guide",
       guiaModalClose: "Close",
       guiaModalBack: "Back",
       guiaBioEmpty: "This guide has not added a description yet.",
@@ -627,11 +673,15 @@
       statusOk: "✅ Confirmado",
       statusSoldOut: "Agotado",
       statusWait: "⏳ Formando",
+      joinTripTitle: "Inscribirme en la excursión",
+      joinTripMissing: "Esta salida ya no está disponible.",
+      close: "Cerrar",
       meetingPointLabel: "Punto de encuentro",
       guidePhoneLabel: "Teléfono del guía",
       guiaPending: "Por definir",
       pixBtnAria: "Pagar {{valor}} con Pix",
       pixModalTitle: "Pago",
+      pixOpenFail: "No se pudo abrir el pago. Inténtalo de nuevo.",
       pixModalScan: "Escanea el código QR en la app del banco",
       pixModalCopy: "Copiar código Pix",
       pixModalCopied: "¡Código copiado!",
@@ -641,11 +691,28 @@
       pixModalCancelPolicy:
         "Cancelación: El pago reserva la disponibilidad del guía. En caso de cancelación por parte del cliente, no habrá reembolso.",
       pixModalRefLabel: "Código de reserva",
-      pixModalEmailContinue: "Pagar con PIX",
+      pixModalEmailContinue: "PIX",
+      payPixMeta: "Menor precio",
       payChoice: "¿Cómo quieres pagar?",
       stripePayCard: "Pagar con tarjeta",
       stripePayCardBusy: "Abriendo el pago seguro…",
       stripePayCardFail: "No se pudo abrir el pago con tarjeta. Inténtalo de nuevo.",
+      mpPayCard: "Tarjeta de crédito",
+      mpPayBadge: "Brasil",
+      mpPayMeta: "hasta {n} cuotas sin interés",
+      mpPayCardPrice: "{n}x de {inst}",
+      mpPayCardBusy: "Abriendo el pago seguro…",
+      intlPayCard: "Tarjeta internacional",
+      intlPayMeta: "Cobrado en dólares",
+      intlPayCardPrice: "{total}",
+      intlPayCardHint: "Para tarjetas emitidas fuera de Brasil",
+      pixPayPrice: "{total}",
+      cardHoldNote: "Con tarjeta no se cobra nada ahora: el monto queda reservado y solo se cobra cuando el paseo se confirme (grupo mínimo + guía). Si no se confirma, la reserva se libera.",
+      mpFormTitle: "Datos de la tarjeta",
+      mpSavedCardNote: "Encontramos una tarjeta guardada en este correo. Ya viene completada: confírmala e ingresa solo el código de seguridad. Puedes elegir otra tarjeta en el formulario.",
+      mpFormBack: "← Elegir otra forma",
+      mpDevSimulate: "Simular tarjeta aprobada (solo desarrollo)",
+      mpFormUnavailable: "El pago con tarjeta no está disponible ahora. Usa Pix o inténtalo más tarde.",
       pixModalEmailClear: "Eliminar datos",
       pixModalEmailClearHint: "Elimina correo y teléfono, cancela este Pix y permite informar otros datos.",
       pixPostpayLocked: "Disponible tras confirmar el pago",
@@ -663,6 +730,7 @@
       pixModalExpiredLead: "El Pix expiró. Genera un nuevo Pix para continuar.",
       pixModalRegenBtn: "Generar nuevo Pix",
       pixModalEmbarque: "Salida",
+      pixModalWithRide: "Con traslado",
       pixModalTime: "Horario",
       pixModalPeople: "Personas",
       pixModalPerson: "persona",
@@ -671,7 +739,7 @@
       cartItemsExpired: "Salidas fuera de plazo fueron quitadas del carrito.",
       bookPeople: "Personas",
       bookTotal: "Total",
-      bookPay: "Pagar con Pix",
+      bookPay: "Pago",
       bookAddCart: "Añadir al carrito",
       bookAddedCart: "Añadido",
       bookQtyMinus: "Quitar una persona",
@@ -692,7 +760,7 @@
       guideSeatWaiting: "Esperando otro grupo para la plaza del guía",
       cartTitle: "Carrito",
       cartEmpty: "Tu carrito está vacío",
-      cartCheckout: "Pagar con PIX",
+      cartCheckout: "Pago",
       cartBack: "Volver",
       cartRemove: "Quitar",
       cartAdded: "¡Añadido al carrito!",
@@ -733,6 +801,7 @@
       exclLunch: "Almuerzo",
       cta: "Quiero participar",
       guiaAbout: "Acerca de {{nome}}",
+      guiaAboutSecret: "Acerca del guía",
       guiaModalClose: "Cerrar",
       guiaModalBack: "Volver",
       guiaBioEmpty: "Este guía aún no agregó una descripción.",
@@ -991,21 +1060,18 @@
     );
   }
 
-  function cardSpotRowHtml(d, locale, transportBadge) {
-    var href = destHasPage(d) ? atrativoHrefFrom(d.atrativoPath || d.path, locale) : "";
+  function withSaida(href, cartId) {
+    if (!href || !cartId) return href;
+    return href + (href.indexOf("?") >= 0 ? "&" : "?") + "saida=" + encodeURIComponent(cartId);
+  }
+
+  function cardSpotRowHtml(d, locale, transportBadge, cartId) {
+    var href = destHasPage(d) ? withSaida(atrativoHrefFrom(d.atrativoPath || d.path, locale), cartId) : "";
     var label = escapeHtml(String(d.destino || "").trim());
     var sub = d.destinoSub
       ? '<span class="gcv-excursoes-card__dest-sub">' + escapeHtml(String(d.destinoSub)) + "</span>"
       : "";
     var destMod = sub ? " gcv-excursoes-card__spot-dest--has-sub" : "";
-    var title = label
-      ? '<span class="gcv-excursoes-card__dest gcv-excursoes-card__spot-dest' +
-        destMod +
-        '">' +
-        label +
-        sub +
-        "</span>"
-      : "";
     if (destIsTitleOnly(d)) {
       var names = titleOnlyLineNamesFromDest(d);
       if (!names.length && label) names = [String(d.destino || "").trim()];
@@ -1035,14 +1101,12 @@
       '<div class="gcv-excursoes-card__img-wrap gcv-excursoes-card__spot-img-wrap">' +
       cardPictureHtml(d.cardImg, d.cardImgAlt || d.destino) +
       "</div>";
-    // Título dentro da foto (mesmo stacking) — evita overlay sumir em alguns browsers
     var photo =
       '<div class="gcv-excursoes-card__spot-photo">' +
       '<div class="gcv-excursoes-card__atrativo-link--img">' +
       imgInner +
       "</div>" +
       (transportBadge || "") +
-      title +
       "</div>";
     // Imagem + título = um único link para a página do atrativo
     if (href) {
@@ -1083,20 +1147,106 @@
     return Math.max(0, q - site);
   }
 
-  function cardBandFlagsHtml(e, s, isLotado) {
-    var statusSpan = isLotado
-      ? '<span class="gcv-excursoes-card__status gcv-excursoes-card__status--full">' +
+  function cardStatusHtml(e, s, isLotado) {
+    if (isLotado) {
+      return (
+        '<span class="gcv-excursoes-card__status gcv-excursoes-card__status--full">' +
         escapeHtml(s.statusSoldOut) +
         "</span>"
-      : e.confirmada
-        ? '<span class="gcv-excursoes-card__status gcv-excursoes-card__status--ok">' +
-          escapeHtml(s.statusOk) +
-          "</span>"
-        : '<span class="gcv-excursoes-card__status gcv-excursoes-card__status--wait">' +
-          escapeHtml(s.statusWait) +
-          "</span>";
+      );
+    }
+    if (e.confirmada) {
+      return (
+        '<span class="gcv-excursoes-card__status gcv-excursoes-card__status--ok">' +
+        escapeHtml(s.statusOk) +
+        "</span>"
+      );
+    }
     return (
-      '<div class="gcv-excursoes-card__band-flags">' + statusSpan + capGrupoHtml(e, s) + "</div>"
+      '<span class="gcv-excursoes-card__status gcv-excursoes-card__status--wait">' +
+      escapeHtml(s.statusWait) +
+      "</span>"
+    );
+  }
+
+  var EXC_QUORUM = 4;
+  var EXC_LOW_STOCK = 3;
+  var EXC_STATUS_COPY = {
+    pt: {
+      esgotada: "Esgotada",
+      falta1: "⏳ Falta 1 para confirmar",
+      faltam: "⏳ Faltam {x} para confirmar",
+      ultima: "🔥 Última vaga",
+      ultimas: "🔥 Últimas {x} vagas",
+      confirmada: "✓ Confirmada · {x} vagas",
+    },
+    en: {
+      esgotada: "Sold out",
+      falta1: "⏳ 1 more to confirm",
+      faltam: "⏳ {x} more to confirm",
+      ultima: "🔥 Last spot",
+      ultimas: "🔥 Last {x} spots",
+      confirmada: "✓ Confirmed · {x} spots",
+    },
+    es: {
+      esgotada: "Agotada",
+      falta1: "⏳ Falta 1 para confirmar",
+      faltam: "⏳ Faltan {x} para confirmar",
+      ultima: "🔥 Última plaza",
+      ultimas: "🔥 Últimas {x} plazas",
+      confirmada: "✓ Confirmada · {x} plazas",
+    },
+  };
+
+  function getExcursionStatus(n, max, lang) {
+    var enrolled = Number.isFinite(Number(n)) ? Math.trunc(Number(n)) : 0;
+    var capacity = Number.isFinite(Number(max)) ? Math.trunc(Number(max)) : 0;
+    var code = lang === "en" || lang === "es" ? lang : "pt";
+    var t = EXC_STATUS_COPY[code];
+    function fill(template, x) {
+      return template.replace("{x}", String(x));
+    }
+    if (enrolled >= capacity) return { key: "esgotada", text: t.esgotada, variant: "neutral" };
+    if (enrolled < EXC_QUORUM) {
+      var faltam = EXC_QUORUM - enrolled;
+      if (faltam === 1) return { key: "faltam", text: t.falta1, variant: "warning" };
+      return { key: "faltam", text: fill(t.faltam, faltam), variant: "warning" };
+    }
+    var restantes = capacity - enrolled;
+    if (restantes <= EXC_LOW_STOCK) {
+      if (restantes === 1) return { key: "ultimas", text: t.ultima, variant: "urgent" };
+      return { key: "ultimas", text: fill(t.ultimas, restantes), variant: "urgent" };
+    }
+    return { key: "confirmada", text: fill(t.confirmada, restantes), variant: "success" };
+  }
+
+  function cardStatusBarHtml(e, s, locale) {
+    var status = getExcursionStatus(inscritosNoGrupo(e), grupoMaximoValor(e), locale);
+    return (
+      '<div class="gcv-excursoes-card__status-bar is-' + status.variant + '" data-status="' + status.key + '">' +
+      '<span class="gcv-excursoes-card__status-bar-label">' + escapeHtml(status.text) + "</span>" +
+      capGrupoHtml(e, s) +
+      "</div>"
+    );
+  }
+
+  function cardDateSideHtml(e, s, isLotado) {
+    return (
+      '<div class="gcv-excursoes-card__date-side">' +
+      '<div class="gcv-excursoes-card__date-side-row">' +
+      cardStatusHtml(e, s, isLotado) +
+      capGrupoHtml(e, s) +
+      "</div></div>"
+    );
+  }
+
+  function cardFaltaHtml(e, s, isLotado) {
+    var msg = cardBandNoticeText(e, s, isLotado);
+    if (!msg) return "";
+    return (
+      '<p class="gcv-excursoes-card__falta gcv-excursoes-card__falta--band">' +
+      escapeHtml(msg) +
+      "</p>"
     );
   }
 
@@ -1156,7 +1306,7 @@
       '">' +
       dests
         .map(function (d) {
-          return cardSpotRowHtml(d, locale, badge);
+          return cardSpotRowHtml(d, locale, badge, excursaoCartId(e));
         })
         .join("") +
       "</div>";
@@ -1329,7 +1479,7 @@
     var dep = excursaoDepartureEpochMs(e);
     var now = nowMs != null ? nowMs : Date.now();
     if (!Number.isFinite(dep)) return true;
-    return dep > now + BOOKING_CUTOFF_MS;
+    return dep >= now + BOOKING_CUTOFF_MS;
   }
 
   function isExcursaoFuture(e, nowMs) {
@@ -2101,16 +2251,19 @@
     );
 
     var panel = document.createElement("div");
-    panel.className = "gcv-excursoes-filters";
+    panel.className = "gcv-excursoes-filters is-min";
     panel.setAttribute("role", "search");
     panel.setAttribute("aria-label", s.filterTitle);
 
     var head = document.createElement("div");
     head.className = "gcv-excursoes-filters__head";
     head.innerHTML =
-      '<h3 class="gcv-excursoes-filters__title">' +
+      '<button type="button" class="gcv-excursoes-filters__toggle" data-gcv-filter-toggle aria-expanded="false" aria-controls="gcv-excursoes-filters-panel">' +
+      '<i class="ti ti-adjustments-horizontal" aria-hidden="true"></i>' +
+      '<span class="gcv-excursoes-filters__title">' +
       escapeHtml(s.filterTitle) +
-      '</h3><div class="gcv-excursoes-filters__head-actions">' +
+      '</span><i class="ti ti-chevron-down" aria-hidden="true"></i></button>' +
+      '<div class="gcv-excursoes-filters__head-actions">' +
       '<p class="gcv-excursoes-filters__results" data-gcv-filter-results></p>' +
       '<button type="button" class="gcv-excursoes-filters__clear" data-gcv-filter-clear>' +
       escapeHtml(s.filterClear) +
@@ -2118,6 +2271,8 @@
 
     var grid = document.createElement("div");
     grid.className = "gcv-excursoes-filters__grid";
+    grid.id = "gcv-excursoes-filters-panel";
+    grid.hidden = true;
 
     var periodField = document.createElement("div");
     var embarqueField = document.createElement("div");
@@ -2172,43 +2327,8 @@
       escapeHtml(s.filterTransportWith) +
       "</span></span></label></div>";
 
-    var priceField = document.createElement("div");
-    priceField.className = "gcv-excursoes-filters__field gcv-excursoes-filters__field--range";
-    priceField.innerHTML =
-      '<div class="gcv-excursoes-filters__range-head"><span class="gcv-excursoes-filters__label">' +
-      escapeHtml(s.filterPrice) +
-      '</span><span class="gcv-excursoes-filters__range-value" data-gcv-price-label></span></div>' +
-      '<div class="gcv-excursoes-filters__range-track"><span class="gcv-excursoes-filters__range-fill" data-gcv-price-fill></span>' +
-      '<input class="gcv-excursoes-filters__range" type="range" data-gcv-filter="priceMin" aria-label="' +
-      escapeHtml(s.filterPrice) +
-      ' min" />' +
-      '<input class="gcv-excursoes-filters__range" type="range" data-gcv-filter="priceMax" aria-label="' +
-      escapeHtml(s.filterPrice) +
-      ' max" /></div>';
-
-    var spotsField = document.createElement("div");
-    spotsField.className = "gcv-excursoes-filters__field gcv-excursoes-filters__field--range";
-    spotsField.innerHTML =
-      '<div class="gcv-excursoes-filters__range-head"><span class="gcv-excursoes-filters__label">' +
-      escapeHtml(s.filterSpots) +
-      '</span><span class="gcv-excursoes-filters__range-value" data-gcv-spots-label></span></div>' +
-      '<div class="gcv-excursoes-filters__range-track"><span class="gcv-excursoes-filters__range-fill" data-gcv-spots-fill></span>' +
-      '<input class="gcv-excursoes-filters__range" type="range" data-gcv-filter="spotsMin" min="0" max="' +
-      escapeHtml(String(bounds.spotsMax)) +
-      '" aria-label="' +
-      escapeHtml(s.filterSpots) +
-      ' min" />' +
-      '<input class="gcv-excursoes-filters__range" type="range" data-gcv-filter="spotsMax" min="0" max="' +
-      escapeHtml(String(bounds.spotsMax)) +
-      '" aria-label="' +
-      escapeHtml(s.filterSpots) +
-      ' max" /></div>';
-
     var rowPrimary = document.createElement("div");
     rowPrimary.className = "gcv-excursoes-filters__row gcv-excursoes-filters__row--primary";
-
-    var rowSecondary = document.createElement("div");
-    rowSecondary.className = "gcv-excursoes-filters__row gcv-excursoes-filters__row--secondary";
 
     rowPrimary.appendChild(periodField);
     rowPrimary.appendChild(embarqueField);
@@ -2218,12 +2338,8 @@
     rowTransport.className = "gcv-excursoes-filters__row gcv-excursoes-filters__row--transport";
     rowTransport.appendChild(transportField);
 
-    rowSecondary.appendChild(priceField);
-    rowSecondary.appendChild(spotsField);
-
     grid.appendChild(rowTransport);
     grid.appendChild(rowPrimary);
-    grid.appendChild(rowSecondary);
 
     panel.appendChild(head);
     panel.appendChild(grid);
@@ -2240,21 +2356,23 @@
         emit();
       },
     );
+    var defaultRange = datePicker.getRange();
 
     var embarqueEl = panel.querySelector('[data-gcv-filter="embarque"]');
-    var priceMinEl = panel.querySelector('[data-gcv-filter="priceMin"]');
-    var priceMaxEl = panel.querySelector('[data-gcv-filter="priceMax"]');
-    var priceLabelEl = panel.querySelector("[data-gcv-price-label]");
-    var priceFillEl = panel.querySelector("[data-gcv-price-fill]");
     var transportComEl = panel.querySelector("[data-gcv-transport-com]");
     var transportSemEl = panel.querySelector("[data-gcv-transport-sem]");
     var statusEl = panel.querySelector('[data-gcv-filter="status"]');
-    var spotsMinEl = panel.querySelector('[data-gcv-filter="spotsMin"]');
-    var spotsMaxEl = panel.querySelector('[data-gcv-filter="spotsMax"]');
-    var spotsLabelEl = panel.querySelector("[data-gcv-spots-label]");
-    var spotsFillEl = panel.querySelector("[data-gcv-spots-fill]");
     var resultsEl = panel.querySelector("[data-gcv-filter-results]");
     var clearBtn = panel.querySelector("[data-gcv-filter-clear]");
+    var toggleBtn = panel.querySelector("[data-gcv-filter-toggle]");
+    if (toggleBtn) {
+      toggleBtn.addEventListener("click", function () {
+        var open = panel.classList.contains("is-min");
+        panel.classList.toggle("is-min", !open);
+        grid.hidden = !open;
+        toggleBtn.setAttribute("aria-expanded", open ? "true" : "false");
+      });
+    }
 
     if (embarqueEl) {
       var optAll = document.createElement("option");
@@ -2269,43 +2387,6 @@
       });
     }
 
-    if (priceMinEl && priceMaxEl) {
-      priceMinEl.min = String(bounds.priceMin);
-      priceMinEl.max = String(bounds.priceMax);
-      priceMinEl.step = "1";
-      priceMinEl.value = String(bounds.priceMin);
-      priceMaxEl.min = String(bounds.priceMin);
-      priceMaxEl.max = String(bounds.priceMax);
-      priceMaxEl.step = "1";
-      priceMaxEl.value = String(bounds.priceMax);
-    }
-
-    if (spotsMinEl && spotsMaxEl) {
-      spotsMinEl.min = "0";
-      spotsMinEl.max = String(bounds.spotsMax);
-      spotsMinEl.value = "0";
-      spotsMaxEl.min = "0";
-      spotsMaxEl.max = String(bounds.spotsMax);
-      spotsMaxEl.value = String(bounds.spotsMax);
-    }
-
-    function updateRangeLabels() {
-      if (priceLabelEl && priceMinEl && priceMaxEl) {
-        priceLabelEl.textContent = tpl(s.filterPriceValue, {
-          min: priceMinEl.value,
-          max: priceMaxEl.value,
-        });
-        syncDualRangeFill(priceMinEl, priceMaxEl, priceFillEl);
-      }
-      if (spotsLabelEl && spotsMinEl && spotsMaxEl) {
-        spotsLabelEl.textContent = tpl(s.filterSpotsValue, {
-          min: spotsMinEl.value,
-          max: spotsMaxEl.value,
-        });
-        syncDualRangeFill(spotsMinEl, spotsMaxEl, spotsFillEl);
-      }
-    }
-
     function readFilters() {
       var range = datePicker.getRange();
       var clamped = clampIsoRangeToFloor(range.dateFrom, range.dateTo, bounds.dateMax);
@@ -2314,31 +2395,39 @@
         dateTo: clamped.dateTo,
         dateMax: bounds.dateMax,
         embarque: embarqueEl ? embarqueEl.value : "",
-        priceMin: priceMinEl ? parseInt(String(priceMinEl.value), 10) : bounds.priceMin,
-        priceMax: priceMaxEl ? parseInt(String(priceMaxEl.value), 10) : bounds.priceMax,
+        priceMin: bounds.priceMin,
+        priceMax: bounds.priceMax,
         transportCom: transportComEl ? transportComEl.checked : false,
         transportSem: transportSemEl ? transportSemEl.checked : true,
         status: statusEl ? statusEl.value : "",
-        spotsMin: spotsMinEl ? parseInt(String(spotsMinEl.value), 10) : 0,
-        spotsMax: spotsMaxEl ? parseInt(String(spotsMaxEl.value), 10) : bounds.spotsMax,
+        spotsMin: 0,
+        spotsMax: bounds.spotsMax,
       };
     }
 
+    function filtersAreDefault() {
+      var f = readFilters();
+      return (
+        f.dateFrom === defaultRange.dateFrom &&
+        f.dateTo === defaultRange.dateTo &&
+        !f.embarque &&
+        !f.status &&
+        f.transportSem &&
+        !f.transportCom
+      );
+    }
+
     function emit() {
-      updateRangeLabels();
+      if (clearBtn) clearBtn.hidden = filtersAreDefault();
       onChange(readFilters(), resultsEl);
     }
 
     function reset() {
       datePicker.reset();
       if (embarqueEl) embarqueEl.value = "";
-      if (priceMinEl) priceMinEl.value = String(bounds.priceMin);
-      if (priceMaxEl) priceMaxEl.value = String(bounds.priceMax);
       if (transportComEl) transportComEl.checked = false;
       if (transportSemEl) transportSemEl.checked = true;
       if (statusEl) statusEl.value = "";
-      if (spotsMinEl) spotsMinEl.value = "0";
-      if (spotsMaxEl) spotsMaxEl.value = String(bounds.spotsMax);
       emit();
     }
 
@@ -2359,7 +2448,6 @@
     });
     if (clearBtn) clearBtn.addEventListener("click", reset);
 
-    updateRangeLabels();
     emit();
     return { reset: reset, read: readFilters };
   }
@@ -2500,7 +2588,7 @@
     var day = e && e.dayNum != null ? String(e.dayNum) : "";
     var monthRaw = String((e && e.monthName) || "").trim();
     var month = monthRaw
-      ? monthRaw.charAt(0).toUpperCase() + monthRaw.slice(1)
+      ? (monthRaw.charAt(0).toUpperCase() + monthRaw.slice(1)).slice(0, 3)
       : "";
     var iso = String((e && e.dateISO) || "").slice(0, 10);
     var year = /^\d{4}/.test(iso) ? iso.slice(0, 4) : "";
@@ -2576,7 +2664,9 @@
       '<button type="button" class="gcv-excursoes-card__qty-btn" data-gcv-exc-qty-min aria-label="' +
       escapeHtml(s.bookQtyMinus) +
       '">−</button>' +
-      '<input type="number" class="gcv-excursoes-card__qty-input" value="1" min="1" max="' +
+      '<input type="number" class="gcv-excursoes-card__qty-input" value="' +
+      excursaoPessoasPrefill(maxQty) +
+      '" min="1" max="' +
       maxQty +
       '" aria-label="' +
       escapeHtml(s.bookQtyAria) +
@@ -2672,8 +2762,8 @@
       item.hora = horaExcursao(e);
       item.departureMs = excursaoDepartureEpochMs(e);
       item.dateIso = excursaoDateIso(e);
-      if (e.guiaNome) item.guiaNome = String(e.guiaNome);
-      if (e.guiaTelefone) item.guiaTelefone = String(e.guiaTelefone);
+      if (e.confirmada && e.guiaNome) item.guiaNome = String(e.guiaNome);
+      if (e.confirmada && e.guiaTelefone) item.guiaTelefone = String(e.guiaTelefone);
       item.comTransporte = e.comTransporte === true;
       item.walkGuideSeatOk = e.walkGuideSeatOk === true;
       if (e.meetingPoint) item.meetingPoint = String(e.meetingPoint);
@@ -2697,7 +2787,7 @@
     if (e && e.comTransporte === true) return true;
     if (trip && trip.comTransporte === true) return true;
     var id = String((trip && trip.cartId) || (trip && trip.id) || "");
-    return id.slice(-2) === "-t";
+    return /(?:^|-)t(?:-bi-(?:en|es))?$/.test(id);
   }
 
   function walkHasGuideSeat(e, trip) {
@@ -2755,13 +2845,60 @@
     done(window.confirm(msg));
   }
 
+  function excursaoPessoasPrefill(maxQty) {
+    var bag = window.GcvAddPeople;
+    var n = bag && parseInt(bag.n, 10);
+    if (!n || n < 1) n = 1;
+    var cap = parseInt(maxQty, 10);
+    if (!cap || cap < 1) cap = 15;
+    return Math.max(1, Math.min(cap, n));
+  }
+
+  function applyExcursaoPessoasPrefill() {
+    var root = document.getElementById("excursoes-junho");
+    if (!root) return;
+    var inCart = {};
+    if (window.GcvExcCart && typeof window.GcvExcCart.items === "function") {
+      window.GcvExcCart.items().forEach(function (it) {
+        if (it && it.id) inCart[it.id] = true;
+      });
+    }
+    root.querySelectorAll(".gcv-excursoes-card__book").forEach(function (block) {
+      if (block.classList.contains("gcv-excursoes-card__book--soldout")) return;
+      var cartId = block.getAttribute("data-cart-id") || "";
+      if (cartId && inCart[cartId]) return;
+      var input = block.querySelector(".gcv-excursoes-card__qty-input");
+      if (!input) return;
+      var max = parseInt(block.getAttribute("data-pix-max"), 10) || 10;
+      input.value = String(excursaoPessoasPrefill(max));
+      updateBookTotal(block);
+    });
+  }
+
+  function excursaoPessoasPrefillCommit(n) {
+    n = Math.max(1, Math.min(15, parseInt(n, 10) || 1));
+    var bag = window.GcvAddPeople || {};
+    var before = parseInt(bag.n, 10);
+    if (!before || before < 1) before = 1;
+    window.GcvAddPeople = {
+      n: n,
+      city: String(bag.city || ""),
+      mode: bag.mode === "exclusivo" ? "exclusivo" : "excursao",
+      transport: bag.transport === "1" ? "1" : "0",
+    };
+    if (n !== before) applyExcursaoPessoasPrefill();
+  }
+
+  window.GcvApplyPeoplePrefill = applyExcursaoPessoasPrefill;
+
   function addExcursaoToCartWithGuideSeat(block, strings) {
     if (!window.GcvExcCart || typeof window.GcvExcCart.add !== "function") return;
     var e = excursaoFromBookBlock(block);
     var data = readBookBlock(block);
     confirmGuideSeatIfNeeded({ qty: data.qty, excursao: e, strings: strings }, function (ok) {
       if (!ok) return;
-      window.GcvExcCart.add(cartItemFromBook(block));
+      var added = window.GcvExcCart.add(cartItemFromBook(block));
+      if (added) excursaoPessoasPrefillCommit(data.qty);
     });
   }
 
@@ -2924,17 +3061,89 @@
     );
   }
 
+  function guiaAvatarHtml() {
+    return (
+      '<span class="gcv-excursoes-card__guide-photo-wrap">' +
+      '<span class="gcv-excursoes-card__guide-avatar" aria-hidden="true">' +
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+      '<circle cx="12" cy="8" r="5"></circle>' +
+      '<path d="M20 21a8 8 0 0 0-16 0"></path>' +
+      "</svg></span></span>"
+    );
+  }
+
+  var GUIA_NAME_PARTICLES = {
+    de: 1, da: 1, do: 1, dos: 1, das: 1, e: 1, di: 1, du: 1, del: 1, van: 1, von: 1, y: 1,
+  };
+
+  /** Primeira letra do nome + primeira letra do primeiro sobrenome + "." */
+  function guiaIniciaisTexto(raw) {
+    var parts = String(raw || "").trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return "";
+    var first = parts[0];
+    var surname = "";
+    for (var i = 1; i < parts.length; i++) {
+      if (GUIA_NAME_PARTICLES[parts[i].toLocaleLowerCase()]) continue;
+      surname = parts[i];
+      break;
+    }
+    var letters = first.charAt(0).toLocaleUpperCase() + (surname ? surname.charAt(0).toLocaleUpperCase() : "");
+    return letters ? letters + "." : "";
+  }
+
+  function guiaFotoHtml(foto) {
+    if (!foto) return guiaAvatarHtml();
+    return (
+      '<span class="gcv-excursoes-card__guide-photo-wrap">' +
+      '<img class="gcv-excursoes-card__guide-photo" src="' +
+      escapeHtml(foto) +
+      '" alt="" loading="lazy" decoding="async"></span>'
+    );
+  }
+
+  function guiaChipPendenteHtml(label, locale, idiomas, foto, ariaLabel) {
+    var inner =
+      guiaFotoHtml(foto) +
+      '<div class="gcv-excursoes-card__guide-info">' +
+      '<span class="gcv-excursoes-card__guide-label">Guia</span>' +
+      '<span class="gcv-excursoes-card__guide-name">' +
+      escapeHtml(label) +
+      "</span>" +
+      guiaLangsHtmlFromCodes(idiomas || ["pt"], locale) +
+      "</div>";
+    if (!ariaLabel) {
+      return '<div class="gcv-excursoes-card__guide gcv-excursoes-card__guide--pending">' + inner + "</div>";
+    }
+    return (
+      '<button type="button" class="gcv-excursoes-card__guide gcv-excursoes-card__guide--btn gcv-excursoes-card__guide--pending" data-guia-sigilo="1" aria-label="' +
+      escapeHtml(ariaLabel) +
+      '">' +
+      inner +
+      "</button>"
+    );
+  }
+
   function guiaChipHtml(e, locale, s) {
-    var pending = !!(e && (e.guiaPendente === true || e.guiaPending === true));
-    var nome = e && e.guiaNome ? String(e.guiaNome) : null;
-    if (!nome && pending) {
-      return (
-        '<div class="gcv-excursoes-card__guide gcv-excursoes-card__guide--pending">' +
-        guiaChipInnerHtml(s.guiaPending || "A definir", null, locale, "", ["pt"]) +
-        "</div>"
+    if (!hasGuiaDefinido(e)) {
+      return guiaChipPendenteHtml(s.guiaPending || "A definir", locale, ["pt"]);
+    }
+    if (!e.confirmada) {
+      var ini =
+        (e.guiaIniciais && String(e.guiaIniciais).trim()) ||
+        guiaIniciaisTexto(e.guiaNomeCompleto || e.guiaNome || "");
+      var langs = e && Array.isArray(e.guiaIdiomas) && e.guiaIdiomas.length ? e.guiaIdiomas : ["pt"];
+      return guiaChipPendenteHtml(
+        ini || s.guiaPending || "A definir",
+        locale,
+        langs,
+        e.guiaFoto ? String(e.guiaFoto) : "",
+        s.guiaAboutSecret || "Sobre o guia"
       );
     }
-    if (!nome) return "";
+    var nome = String(e.guiaNome || e.guiaNomeCompleto || "").trim();
+    if (!nome) {
+      return guiaChipPendenteHtml(s.guiaPending || "A definir", locale, ["pt"]);
+    }
     var foto = e.guiaFoto ? String(e.guiaFoto) : null;
     var slug = resolveGuiaSlug(e, nome);
     var idiomas = resolveGuiaIdiomas(e, nome);
@@ -3141,8 +3350,8 @@
       dateIso: dateIso,
       dayNum: e && e.dayNum != null ? String(e.dayNum) : "",
       monthName: e && e.monthName ? String(e.monthName) : "",
-      guiaNome: e && e.guiaNome ? String(e.guiaNome) : "",
-      guiaTelefone: e && e.guiaTelefone ? String(e.guiaTelefone) : "",
+      guiaNome: e && e.confirmada && e.guiaNome ? String(e.guiaNome) : "",
+      guiaTelefone: e && e.confirmada && e.guiaTelefone ? String(e.guiaTelefone) : "",
     };
   }
 
@@ -3190,8 +3399,8 @@
         if (!out.dateIso) out.dateIso = excursaoDateIso(rows[i]);
         if (!out.dayNum && rows[i].dayNum != null) out.dayNum = String(rows[i].dayNum);
         if (!out.monthName && rows[i].monthName) out.monthName = String(rows[i].monthName);
-        if (!out.guiaNome && rows[i].guiaNome) out.guiaNome = String(rows[i].guiaNome);
-        if (!out.guiaTelefone && rows[i].guiaTelefone) out.guiaTelefone = String(rows[i].guiaTelefone);
+        if (!out.guiaNome && rows[i].confirmada && rows[i].guiaNome) out.guiaNome = String(rows[i].guiaNome);
+        if (!out.guiaTelefone && rows[i].confirmada && rows[i].guiaTelefone) out.guiaTelefone = String(rows[i].guiaTelefone);
         if (!out.meetingPoint && rows[i].meetingPoint) out.meetingPoint = String(rows[i].meetingPoint);
         if ((out.meetingLat == null || out.meetingLat === "") && rows[i].meetingLat != null) {
           out.meetingLat = rows[i].meetingLat;
@@ -3304,6 +3513,9 @@
     if (trip.embarque) {
       parts.push((s.pixModalEmbarque || "Saída") + ": " + trip.embarque);
     }
+    if (isTransportTrip(trip)) {
+      parts.push(s.pixModalWithRide || "Com translado");
+    }
     if (trip.hora) {
       parts.push(String(trip.hora).replace(":", "h"));
     }
@@ -3311,7 +3523,9 @@
     var unit = parseInt(String(trip.valorUnit), 10) || 0;
     var qty = Math.max(1, parseInt(String(trip.qty), 10) || 1);
     if (unit > 0) {
-      parts.push("R$ " + (unit * qty));
+      var tripTotal = unit * qty;
+      var tripShown = tripTotal.toFixed(2).replace(".", ",");
+      parts.push("R$ " + tripShown + " BRL");
     }
     return parts.join(" · ");
   }
@@ -3421,6 +3635,7 @@
             "</li>");
     }
     return (
+      '<div class="gcv-excursoes-card__coverage">' +
       '<div class="gcv-excursoes-card__block gcv-excursoes-card__block--in">' +
       '<span class="gcv-excursoes-card__label gcv-excursoes-card__label--in">' +
       escapeHtml(s.inclLabel) +
@@ -3434,7 +3649,7 @@
       "</span>" +
       '<ul class="gcv-excursoes-card__list">' +
       exclItems +
-      "</ul></div>"
+      "</ul></div></div>"
     );
   }
 
@@ -3458,7 +3673,6 @@
     var timeLabel = escapeHtml(s.departureTimeLabel || "Saída");
     var embarqueLabel = escapeHtml(s.embarqueLabel || "Saída");
     var cityName = escapeHtml(excursaoEmbarque(e, s));
-    var toggleAddAria = escapeHtml(s.cardToggleAddAria || "Adicionar ao carrinho");
 
     var dateHeadline = escapeHtml(excursaoCardDateHeadline(e));
     var destHeadline = excursaoDestinoHeadline(e);
@@ -3470,12 +3684,18 @@
         "</div>"
       : "";
 
-    /* Faixa data + atrativo + hora + status; foto só com o nome do atrativo */
+    /* Status no topo; data + vagas na mesma linha; aviso em bloco próprio */
     var selectBand =
-      '<div class="gcv-excursoes-card__select-band" data-gcv-exc-card-toggle>' +
+      '<div class="gcv-excursoes-card__select-band">' +
+      '<div class="gcv-excursoes-card__select-band-status">' +
+      cardStatusBarHtml(e, s, locale) +
+      "</div>" +
       '<div class="gcv-excursoes-card__select-band-main">' +
       '<div class="gcv-excursoes-card__card-date">' +
+      '<span class="gcv-excursoes-card__card-date-text">' +
       dateHeadline +
+      "</span>" +
+      capGrupoHtml(e, s) +
       "</div>" +
       destHeadlineHtml +
       '<div class="gcv-excursoes-card__datestrip gcv-excursoes-card__datestrip--time-only">' +
@@ -3496,17 +3716,11 @@
       '">' +
       cityName +
       "</span></div>" +
-      "</div></div>" +
-      cardBandFlagsHtml(e, s, isLotado) +
-      cardBandGroupHtml(e, s, isLotado) +
-      "</div>" +
-      '<button type="button" class="gcv-excursoes-card__quick-add" data-gcv-exc-card-toggle aria-label="' +
-      toggleAddAria +
-      '" aria-pressed="false" title="' +
-      toggleAddAria +
-      '">' +
-      '<i class="ti ti-plus" aria-hidden="true"></i>' +
-      "</button></div>";
+      "</div></div></div>" +
+      '<div class="gcv-excursoes-card__select-band-guide">' +
+      guiaChipHtml(e, locale, s) +
+      '<div class="gcv-excursoes-card__guide-spacer" aria-hidden="true"></div>' +
+      "</div></div>";
 
     var cardImgBlock = cardSpotsBlockHtml(e, locale, s);
 
@@ -3531,7 +3745,6 @@
       cardImgBlock +
       "</div>" +
       '<div class="gcv-excursoes-card__body">' +
-      guiaChipHtml(e, locale, s) +
       inclExclBlocksHtml(e, s, locale) +
       bookingBlockHtml(e, s, locale) +
       "</div></article>"
@@ -4235,6 +4448,10 @@
     if (continueBtn) continueBtn.hidden = true;
     var cardPayBtn = modal.querySelector("[data-gcv-stripe-card]");
     if (cardPayBtn) cardPayBtn.hidden = true;
+    var mpPayBtn = modal.querySelector("[data-gcv-mp-card]");
+    if (mpPayBtn) mpPayBtn.hidden = true;
+    var cardNoteEl = modal.querySelector(".gcv-pix-modal__card-note");
+    if (cardNoteEl) cardNoteEl.hidden = true;
     var payChoice = modal.querySelector(".gcv-pix-modal__pay-choice");
     if (payChoice) payChoice.hidden = true;
     modal.querySelectorAll("[data-gcv-pix-email-clear], [data-gcv-pix-phone-clear]").forEach(function (btn) {
@@ -4270,10 +4487,15 @@
     closePixDdiDropdown(modal);
     var continueBtn = modal.querySelector("[data-gcv-pix-email-continue]");
     if (continueBtn) continueBtn.hidden = false;
+    var cardsOn = !!(modal._gcvPayQuotes && modal._gcvPayQuotes.cardsEnabled === true);
     var cardPayBtn = modal.querySelector("[data-gcv-stripe-card]");
-    if (cardPayBtn) cardPayBtn.hidden = false;
+    if (cardPayBtn) cardPayBtn.hidden = !cardsOn;
+    var mpPayBtn = modal.querySelector("[data-gcv-mp-card]");
+    if (mpPayBtn) mpPayBtn.hidden = !cardsOn;
+    var cardNoteEl = modal.querySelector(".gcv-pix-modal__card-note");
+    if (cardNoteEl) cardNoteEl.hidden = !cardsOn;
     var payChoice = modal.querySelector(".gcv-pix-modal__pay-choice");
-    if (payChoice) payChoice.hidden = false;
+    if (payChoice) payChoice.hidden = !cardsOn;
     modal.querySelectorAll("[data-gcv-pix-email-clear], [data-gcv-pix-phone-clear]").forEach(function (btn) {
       btn.hidden = true;
       btn.disabled = true;
@@ -4327,11 +4549,13 @@
     modal.classList.remove("gcv-pix-modal--checkout-active", "gcv-pix-modal--expired", "gcv-pix-modal--paid");
     modal.classList.add("gcv-pix-modal--await-email");
 
+    var cupom = (pending && pending.cupom) || "";
     modal._gcvPixPendingCheckout = {
       valor: valor,
       loc: loc,
       receiptData: receiptData,
       pixDesc: pixDesc,
+      cupom: cupom,
     };
 
     hidePixWaitingBlock(modal);
@@ -4383,7 +4607,7 @@
 
     var focusEl =
       focusField === "phone" ? phoneInput || emailInput : emailInput || phoneInput;
-    if (focusEl && typeof focusEl.focus === "function") {
+    if (focusField !== "none" && focusEl && typeof focusEl.focus === "function") {
       window.setTimeout(function () {
         focusEl.focus();
       }, 40);
@@ -4539,7 +4763,8 @@
         '<p class="gcv-pix-modal__field-error" id="gcv-pix-modal-phone-error" role="alert" hidden></p>' +
         '<p class="gcv-pix-modal__pay-choice"></p>' +
         '<button type="button" class="gcv-pix-modal__email-continue" data-gcv-pix-email-continue></button>' +
-        '<button type="button" class="gcv-pix-modal__card-pay" data-gcv-stripe-card></button>' +
+        '<button type="button" class="gcv-pix-modal__card-pay gcv-pix-modal__card-pay--br" data-gcv-mp-card hidden></button>' +
+        '<button type="button" class="gcv-pix-modal__card-pay gcv-pix-modal__card-pay--intl" data-gcv-stripe-card hidden></button>' +
         '<p class="gcv-pix-modal__email-status" id="gcv-pix-modal-email-status" hidden></p>';
       if (payZone && payZone.parentNode) {
         payZone.parentNode.insertBefore(block, payZone);
@@ -4688,6 +4913,7 @@
       cardEl.type = "button";
       cardEl.className = "gcv-pix-modal__card-pay";
       cardEl.setAttribute("data-gcv-stripe-card", "");
+      cardEl.hidden = true;
       if (continueBtn && continueBtn.parentNode) {
         continueBtn.parentNode.insertBefore(choiceEl, continueBtn);
         continueBtn.insertAdjacentElement("afterend", cardEl);
@@ -4696,13 +4922,21 @@
         block.appendChild(cardEl);
       }
     }
-    var payChoiceEl = block.querySelector(".gcv-pix-modal__pay-choice");
-    var cardPayBtn = block.querySelector("[data-gcv-stripe-card]");
-    if (payChoiceEl) payChoiceEl.textContent = locStrings.payChoice || "Como você quer pagar?";
-    if (continueBtn) continueBtn.textContent = locStrings.pixModalEmailContinue || "Pagar com PIX";
-    if (cardPayBtn && !modal._gcvStripeBusy) {
-      cardPayBtn.textContent = locStrings.stripePayCard || "Pagar com cartão";
+    if (!block.querySelector("[data-gcv-mp-card]")) {
+      var mpEl = document.createElement("button");
+      mpEl.type = "button";
+      mpEl.className = "gcv-pix-modal__card-pay gcv-pix-modal__card-pay--br";
+      mpEl.setAttribute("data-gcv-mp-card", "");
+      mpEl.hidden = true;
+      var stripeEl = block.querySelector("[data-gcv-stripe-card]");
+      if (stripeEl && stripeEl.parentNode) stripeEl.parentNode.insertBefore(mpEl, stripeEl);
+      else block.appendChild(mpEl);
     }
+    var payChoiceEl = block.querySelector(".gcv-pix-modal__pay-choice");
+    if (payChoiceEl) payChoiceEl.textContent = locStrings.payChoice || "Como você quer pagar?";
+    orderPayButtons(block, loc);
+    renderPayButtonLabels(modal, loc);
+    loadPayQuotes(modal, loc);
     var phoneClearBtn = block.querySelector("[data-gcv-pix-phone-clear]");
     [clearBtn, phoneClearBtn].forEach(function (btn) {
       if (!btn) return;
@@ -4717,14 +4951,191 @@
     syncPixContinueButton(modal);
   }
 
+  /* ---------- Formas de pagamento: Pix, cartão nacional (Mercado Pago), internacional (Stripe) ---------- */
+
+  var PAY_DEFAULTS = { cardBrPct: 15, maxInstallments: 4 };
+
+  function payMoneyBrl(cents) {
+    var v = (Number(cents) || 0) / 100;
+    return "R$ " + v.toFixed(2).replace(".", ",").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  }
+
+  function payMoneyUsd(cents) {
+    return "US$ " + ((Number(cents) || 0) / 100).toFixed(2);
+  }
+
+  function payFill(tpl, map) {
+    return String(tpl || "").replace(/\{(\w+)\}/g, function (_, k) {
+      return map[k] != null ? map[k] : "";
+    });
+  }
+
+  function payMarkSvg(kind) {
+    if (kind === "pix") {
+      return '<svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><path fill="#fff" d="M16 1.6 18.7 4.3 16 7 13.3 4.3zm0 23.4 2.7 2.7L16 30.4l-2.7-2.7zM1.6 16 4.3 13.3 7 16 4.3 18.7zm23.4-2.7L27.7 16l-2.7 2.7L22 16zM16 11.2 20.8 16 16 20.8 11.2 16z"/></svg>';
+    }
+    if (kind === "br") {
+      return '<svg viewBox="0 0 42 42" width="42" height="42" aria-hidden="true"><rect width="42" height="42" fill="#009c3b"/><polygon points="21,5.5 37,21 21,36.5 5,21" fill="#ffdf00"/><circle cx="21" cy="21" r="7.2" fill="#002776"/><path d="M14.2 22.2c2.4-1.5 6.4-2.6 13.2-.2" fill="none" stroke="#fff" stroke-width="1.15" stroke-linecap="round"/></svg>';
+    }
+    return '<svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="#1d4ed8"/><circle cx="16" cy="16" r="9.2" fill="none" stroke="#fff" stroke-width="1.45"/><ellipse cx="16" cy="16" rx="4.3" ry="9.2" fill="none" stroke="#fff" stroke-width="1.3"/><path d="M6.8 16h18.4M8.4 12.3h15.2M8.4 19.7h15.2" fill="none" stroke="#fff" stroke-width="1.25" stroke-linecap="round"/></svg>';
+  }
+
+  function payOptHtml(opts) {
+    var badge = opts.badge
+      ? '<span class="gcv-pay-opt__badge">' + escapeHtml(opts.badge) + "</span>"
+      : "";
+    var meta = badge || opts.meta
+      ? '<span class="gcv-pay-opt__meta">' + badge + (opts.meta ? "<span>" + escapeHtml(opts.meta) + "</span>" : "") + "</span>"
+      : "";
+    var inst = opts.inst
+      ? '<span class="gcv-pay-opt__inst">' + escapeHtml(opts.inst) + "</span>"
+      : "";
+    var sum = opts.amount
+      ? '<span class="gcv-pay-opt__sum"><span class="gcv-pay-opt__total"><span class="gcv-pay-opt__amount">' + escapeHtml(opts.amount) + "</span>" +
+        '<span class="gcv-pay-opt__ccy gcv-pay-opt__ccy--' + opts.ccy.toLowerCase() + '">' + opts.ccy + "</span></span>" +
+        inst + "</span>"
+      : "";
+    return (
+      '<span class="gcv-pay-opt__mark gcv-pay-opt__mark--' + opts.kind + '">' + payMarkSvg(opts.kind) + "</span>" +
+      '<span class="gcv-pay-opt__body"><span class="gcv-pay-opt__name">' + escapeHtml(opts.title) + "</span>" + meta + "</span>" +
+      sum
+    );
+  }
+
+  /** Ordem dos botões: português → Pix, nacional, internacional; inglês/espanhol → internacional primeiro. */
+  function orderPayButtons(block, loc) {
+    if (!block) return;
+    var pix = block.querySelector("[data-gcv-pix-email-continue]");
+    var br = block.querySelector("[data-gcv-mp-card]");
+    var intl = block.querySelector("[data-gcv-stripe-card]");
+    if (!pix || !br || !intl || !pix.parentNode) return;
+    var parent = pix.parentNode;
+    var status = block.querySelector("#gcv-pix-modal-email-status");
+    var before = status && status.parentNode === parent ? status : null;
+    var order = loc === "pt" ? [pix, br, intl] : [intl, pix, br];
+    order.forEach(function (btn) {
+      parent.insertBefore(btn, before);
+    });
+    var note = block.querySelector(".gcv-pix-modal__card-note:not(.gcv-pix-modal__card-note--inline)");
+    if (!note) {
+      note = document.createElement("p");
+      note.className = "gcv-pix-modal__card-note";
+    }
+    parent.insertBefore(note, before);
+    note.textContent = (STRINGS[loc] || STRINGS.pt).cardHoldNote || "";
+  }
+
+  function payBaseCents(modal) {
+    var pending = modal && modal._gcvPixPendingCheckout;
+    var v = pending && pending.valor != null ? Number(pending.valor) : NaN;
+    return isFinite(v) && v > 0 ? Math.round(v * 100) : 0;
+  }
+
+  function renderPayButtonLabels(modal, loc) {
+    if (!modal) return;
+    var L = STRINGS[loc] || STRINGS.pt;
+    var base = payBaseCents(modal);
+    var q = modal._gcvPayQuotes && modal._gcvPayQuotes.base === base ? modal._gcvPayQuotes.quotes : null;
+
+    var pix = modal.querySelector("[data-gcv-pix-email-continue]");
+    if (pix && !modal._gcvPixCheckoutActive) {
+      pix.classList.add("gcv-pay-opt", "gcv-pay-opt--pix");
+      var pixTitle = L.pixModalEmailContinue || "PIX";
+      pix.setAttribute("aria-label", base ? pixTitle + " " + payMoneyBrl(base) + " BRL" : pixTitle);
+      pix.innerHTML = payOptHtml({
+        kind: "pix",
+        title: pixTitle,
+        meta: L.payPixMeta || "",
+        amount: base ? payMoneyBrl(base) : "",
+        ccy: "BRL",
+      });
+    }
+
+    var cardsOn = !!(modal._gcvPayQuotes && modal._gcvPayQuotes.cardsEnabled === true);
+    modal.querySelectorAll(".gcv-pix-modal__card-note, .gcv-pix-modal__pay-choice").forEach(function (el) {
+      el.hidden = !cardsOn;
+    });
+    var br = modal.querySelector("[data-gcv-mp-card]");
+    if (br) br.hidden = !cardsOn;
+    if (br && cardsOn && !modal._gcvStripeBusy) {
+      br.classList.add("gcv-pay-opt", "gcv-pay-opt--br");
+      var qb = q && q.card_br && q.card_br.ok ? q.card_br : null;
+      var n = qb ? qb.max_installments : PAY_DEFAULTS.maxInstallments;
+      var total = qb ? qb.total_brl_cents : (base ? Math.ceil(base * (100 + PAY_DEFAULTS.cardBrPct) / 100) : 0);
+      var instCents = qb && qb.installment_cents ? qb.installment_cents : (n > 0 ? Math.ceil(total / n) : total);
+      var brTitle = L.mpPayCard || "Cartão de crédito";
+      var brBadge = L.mpPayBadge || "Brasil";
+      br.setAttribute("aria-label", brTitle + " (" + brBadge + ")" + (total ? " " + payMoneyBrl(total) + " BRL" : ""));
+      br.innerHTML = payOptHtml({
+        kind: "br",
+        title: brTitle,
+        badge: brBadge,
+        meta: payFill(L.mpPayMeta, { n: n }),
+        amount: total ? payMoneyBrl(total) : "",
+        ccy: "BRL",
+        inst: total ? payFill(L.mpPayCardPrice, { n: n, inst: payMoneyBrl(instCents) }) : "",
+      });
+    }
+
+    var intl = modal.querySelector("[data-gcv-stripe-card]");
+    if (intl) intl.hidden = !cardsOn;
+    if (intl && cardsOn && !modal._gcvStripeBusy) {
+      intl.classList.add("gcv-pay-opt", "gcv-pay-opt--intl");
+      var qi = q && q.card_intl && q.card_intl.ok ? q.card_intl : null;
+      var usd = qi && String(qi.currency).toLowerCase() === "usd";
+      var price = qi ? (usd ? payMoneyUsd(qi.charge_minor) : payMoneyBrl(qi.charge_minor)) : "";
+      var ccy = usd || !qi ? "USD" : "BRL";
+      var intlTitle = L.intlPayCard || "Cartão internacional";
+      intl.title = L.intlPayCardHint || "";
+      intl.setAttribute("aria-label", intlTitle + (price ? " " + price + " " + ccy : ""));
+      intl.innerHTML = payOptHtml({
+        kind: "intl",
+        title: intlTitle,
+        meta: price ? (L.intlPayMeta || "") : (L.intlPayCardHint || ""),
+        amount: price,
+        ccy: ccy,
+      });
+    }
+  }
+
+  /** Busca no servidor o preço de cada forma de pagamento (o valor cobrado é sempre recalculado lá). */
+  function loadPayQuotes(modal, loc) {
+    var base = payBaseCents(modal);
+    if (!modal || !base) return;
+    if (modal._gcvPayQuotes && modal._gcvPayQuotes.base === base) return;
+    if (modal._gcvPayQuotesLoading === base) return;
+    modal._gcvPayQuotesLoading = base;
+    fetch("/api/payment_quote.php?amount=" + encodeURIComponent((base / 100).toFixed(2)), {
+      credentials: "same-origin",
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        if (res && res.success && res.quotes) {
+          modal._gcvPayQuotes = {
+            base: base,
+            quotes: res.quotes,
+            mpPublicKey: res.mp_public_key || "",
+            cardsEnabled: res.cards_enabled === true,
+          };
+          renderPayButtonLabels(modal, modal._gcvPixLocale || loc || "pt");
+        }
+      })
+      .catch(function () { /* mantém os rótulos sem valor exato */ })
+      .then(function () { modal._gcvPayQuotesLoading = 0; });
+  }
+
   function syncPixContinueButton(modal) {
     if (!modal) return;
     var continueBtn = modal.querySelector("[data-gcv-pix-email-continue]");
     var cardBtn = modal.querySelector("[data-gcv-stripe-card]");
+    var mpBtn = modal.querySelector("[data-gcv-mp-card]");
     if (!continueBtn && !cardBtn) return;
-    if (modal._gcvPixCheckoutActive || modal._gcvPixConfirmed || modal._gcvStripeBusy) {
+    if (modal._gcvPixCheckoutActive || modal._gcvPixConfirmed) {
       if (continueBtn) continueBtn.disabled = true;
       if (cardBtn) cardBtn.disabled = true;
+      if (mpBtn) mpBtn.disabled = true;
       return;
     }
     var name = getModalReceiptName(modal);
@@ -4749,6 +5160,7 @@
     var ready = !!(nameOk && emailOk && phoneOk);
     if (continueBtn) continueBtn.disabled = !ready;
     if (cardBtn) cardBtn.disabled = !ready;
+    if (mpBtn) mpBtn.disabled = !ready;
   }
 
   function pixPostpayIsPaid(modal) {
@@ -4790,7 +5202,133 @@
   }
 
   function startStripeCardCheckout(modal) {
-    if (!modal || modal._gcvStripeBusy || modal._gcvPixCheckoutActive || modal._gcvPixConfirmed) return;
+    startCardCheckout(modal, "stripe");
+  }
+
+  function ensurePayBack(modal) {
+    var block = modal.querySelector(".gcv-pix-modal__email-block");
+    if (!block) return null;
+    var btn = block.querySelector("[data-gcv-pay-back]");
+    if (!btn) {
+      btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "gcv-pay-back";
+      btn.setAttribute("data-gcv-pay-back", "");
+      btn.hidden = true;
+      var choice = block.querySelector(".gcv-pix-modal__pay-choice");
+      if (choice && choice.parentNode) choice.parentNode.insertBefore(btn, choice.nextSibling);
+      else block.appendChild(btn);
+    }
+    return btn;
+  }
+
+  function ensurePayStatus(modal) {
+    var block = modal.querySelector(".gcv-pix-modal__email-block");
+    if (!block) return null;
+    var el = block.querySelector("[data-gcv-pay-status]");
+    if (!el) {
+      el = document.createElement("p");
+      el.className = "gcv-pay-status";
+      el.setAttribute("data-gcv-pay-status", "");
+      el.hidden = true;
+      var back = ensurePayBack(modal);
+      if (back && back.parentNode) back.parentNode.insertBefore(el, back);
+      else block.appendChild(el);
+    }
+    return el;
+  }
+
+  function readPayContact(modal) {
+    var nameEl = modal.querySelector("#gcv-pix-modal-name");
+    var emailEl = modal.querySelector("#gcv-pix-modal-email");
+    var phoneEl = modal.querySelector("#gcv-pix-modal-phone");
+    return {
+      name: nameEl ? nameEl.value : "",
+      email: emailEl ? emailEl.value : "",
+      phone: phoneEl ? phoneEl.value : "",
+    };
+  }
+
+  function writePayContact(modal, contact) {
+    if (!contact) return;
+    var nameEl = modal.querySelector("#gcv-pix-modal-name");
+    var emailEl = modal.querySelector("#gcv-pix-modal-email");
+    var phoneEl = modal.querySelector("#gcv-pix-modal-phone");
+    if (nameEl) nameEl.value = contact.name;
+    if (emailEl) emailEl.value = contact.email;
+    if (phoneEl) phoneEl.value = contact.phone;
+  }
+
+  function placePayBack(modal, btn) {
+    var step = modal.querySelector("#gcv-mp-card-wrap") ||
+      (modal._gcvPixCheckoutActive ? modal.querySelector(".gcv-pix-modal__pay-zone") : null);
+    if (step) {
+      if (btn.parentNode !== step) step.insertBefore(btn, step.firstChild);
+      return;
+    }
+    var choice = modal.querySelector(".gcv-pix-modal__email-block .gcv-pix-modal__pay-choice");
+    if (choice && choice.parentNode && btn.parentNode !== choice.parentNode) {
+      choice.parentNode.insertBefore(btn, choice.nextSibling);
+    }
+  }
+
+  function showPayBack(modal, statusText) {
+    if (!modal) return;
+    var L = STRINGS[modal._gcvPixLocale || "pt"] || STRINGS.pt;
+    var btn = ensurePayBack(modal);
+    if (btn) {
+      placePayBack(modal, btn);
+      btn.hidden = false;
+      btn.disabled = false;
+      btn.textContent = L.mpFormBack || "← Escolher outra forma";
+    }
+    var status = ensurePayStatus(modal);
+    if (status) {
+      status.hidden = !statusText;
+      status.textContent = statusText || "";
+    }
+  }
+
+  function hidePayBack(modal) {
+    if (!modal) return;
+    var btn = modal.querySelector("[data-gcv-pay-back]");
+    if (btn) btn.hidden = true;
+    var status = modal.querySelector("[data-gcv-pay-status]");
+    if (status) {
+      status.hidden = true;
+      status.textContent = "";
+    }
+  }
+
+  /** Volta à lista PIX / cartão Brasil / cartão internacional. */
+  function returnToPayChoice(modal) {
+    if (!modal || modal._gcvPixConfirmed) return;
+    var contact = readPayContact(modal);
+    if (modal._gcvStripeAbort) {
+      try { modal._gcvStripeAbort.abort(); } catch (e) { /* noop */ }
+      modal._gcvStripeAbort = null;
+    }
+    if (modal.querySelector("#gcv-mp-card-wrap")) closeMpCardForm(modal);
+    else modal._gcvStripeBusy = false;
+    if (modal._gcvPixCheckoutActive || modal._gcvPixReservationId) {
+      cancelActivePixCheckout(modal, { clearEmail: false, clearPhone: false, focusField: "none" });
+    }
+    writePayContact(modal, contact);
+    unlockPixEmailBlock(modal);
+    hidePayBack(modal);
+    var back = modal.querySelector("[data-gcv-pay-back]");
+    var choice = modal.querySelector(".gcv-pix-modal__email-block .gcv-pix-modal__pay-choice");
+    if (back && choice && choice.parentNode) choice.parentNode.insertBefore(back, choice.nextSibling);
+    setPayChoiceHidden(modal, false);
+    renderPayButtonLabels(modal, modal._gcvPixLocale || "pt");
+    syncPixContinueButton(modal);
+  }
+
+  /** Cartão: gateway "mp" (nacional, até 4x) ou "stripe" (internacional, em dólar). */
+  function startCardCheckout(modal, gateway) {
+    var isMp = gateway === "mp";
+    if (!modal || modal._gcvPixCheckoutActive || modal._gcvPixConfirmed) return;
+    if (modal._gcvStripeBusy) returnToPayChoice(modal);
     var loc = modal._gcvPixLocale || "pt";
     var locStrings = STRINGS[loc] || STRINGS.pt;
     var statusEl = modal.querySelector("#gcv-pix-modal-email-status");
@@ -4819,8 +5357,7 @@
     var receiptData = pending.receiptData || modal._gcvReceiptData || {};
     modal._gcvStripeBusy = true;
     syncPixContinueButton(modal);
-    var cardBtn = modal.querySelector("[data-gcv-stripe-card]");
-    if (cardBtn) cardBtn.textContent = locStrings.stripePayCardBusy || "Abrindo pagamento seguro…";
+    showPayBack(modal, (isMp ? locStrings.mpPayCardBusy : locStrings.stripePayCardBusy) || "Abrindo pagamento seguro…");
     if (statusEl) {
       statusEl.hidden = true;
       statusEl.textContent = "";
@@ -4839,12 +5376,23 @@
       phone: phoneStored,
       description: (reservationCode + " " + (pending.pixDesc || "")).trim(),
       return_path: (window.location.pathname || "/") + (window.location.search || ""),
+      cupom: pending.cupom || "",
     };
 
+    if (isMp) {
+      // Cartão nacional: formulário do Mercado Pago embutido (reserva no cartão, sem redirecionar).
+      openMpCardForm(modal, payload, loc);
+      return;
+    }
+
+    var ac = new AbortController();
+    modal._gcvStripeAbort = ac;
     fetch("/api/stripe_checkout.php", {
       method: "POST",
+      credentials: "same-origin",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify(payload),
+      signal: ac.signal,
     })
       .then(function (r) {
         return r.json().then(function (data) {
@@ -4854,21 +5402,344 @@
       .then(function (res) {
         var url = res && res.data && res.data.url;
         if (!res.ok || !url) {
-          throw new Error((res && res.data && res.data.message) || "stripe");
+          var e = new Error((res && res.data && res.data.message) || "card");
+          // preço mudou → mostra a mensagem do servidor (pede para atualizar a página)
+          if (res && res.data && (res.data.error === "price_changed" || res.data.error === "amount_mismatch" || res.data.error === "fx_unavailable")) {
+            e.gcvServerMessage = res.data.message;
+          }
+          throw e;
         }
         window.location.href = url;
       })
-      .catch(function () {
+      .catch(function (err) {
+        if (err && err.name === "AbortError") return;
+        if (modal._gcvStripeAbort !== ac) return;
+        modal._gcvStripeAbort = null;
         modal._gcvStripeBusy = false;
+        hidePayBack(modal);
         syncPixContinueButton(modal);
-        if (cardBtn) cardBtn.textContent = locStrings.stripePayCard || "Pagar com cartão";
+        renderPayButtonLabels(modal, loc);
+        var serverMsg = err && err.gcvServerMessage;
         if (statusEl) {
           statusEl.hidden = false;
-          statusEl.textContent = locStrings.stripePayCardFail || "Não foi possível abrir o pagamento com cartão.";
+          statusEl.textContent = serverMsg || locStrings.stripePayCardFail || "Não foi possível abrir o pagamento com cartão.";
           statusEl.classList.add("gcv-pix-modal__email-status--err");
           statusEl.classList.remove("gcv-pix-modal__email-status--ok");
         }
       });
+  }
+
+  /* ---------- Mercado Pago: Card Payment Brick embutido no modal ---------- */
+
+  var MP_SDK_URL = "https://sdk.mercadopago.com/js/v2";
+
+  function mpBrickForm(raw) {
+    if (raw && raw.formData && typeof raw.formData === "object") return raw.formData;
+    return raw || {};
+  }
+
+  /** Cartões já salvos neste e-mail no Mercado Pago. Sem cartão, o formulário segue em branco. */
+  function fetchMpSavedCards(email, cb) {
+    if (!email) { cb(null); return; }
+    try {
+      var xhr = new XMLHttpRequest();
+      xhr.open("GET", "/api/mp_saved_cards.php?email=" + encodeURIComponent(email));
+      xhr.timeout = 8000;
+      xhr.onload = function () {
+        try {
+          var res = JSON.parse(xhr.responseText || "{}");
+          var ids = res && Array.isArray(res.card_ids) ? res.card_ids.filter(Boolean) : [];
+          if (res && res.success && res.customer_id && ids.length) {
+            cb({ customer_id: String(res.customer_id), card_ids: ids.map(String), methods: res.methods || {} });
+            return;
+          }
+        } catch (e) { /* segue sem cartão salvo */ }
+        cb(null);
+      };
+      xhr.onerror = function () { cb(null); };
+      xhr.ontimeout = function () { cb(null); };
+      xhr.send();
+    } catch (e) {
+      cb(null);
+    }
+  }
+
+  function loadMpSdk(cb) {
+    if (window.MercadoPago) return cb(null);
+    var existing = document.querySelector('script[data-gcv-mp-sdk]');
+    if (existing) {
+      existing.addEventListener("load", function () { cb(null); });
+      existing.addEventListener("error", function () { cb(new Error("sdk")); });
+      return;
+    }
+    var sc = document.createElement("script");
+    sc.src = MP_SDK_URL;
+    sc.async = true;
+    sc.setAttribute("data-gcv-mp-sdk", "");
+    sc.onload = function () { cb(null); };
+    sc.onerror = function () { cb(new Error("sdk")); };
+    document.head.appendChild(sc);
+  }
+
+  function setPayChoiceHidden(modal, hidden) {
+    var cardsOn = !!(modal._gcvPayQuotes && modal._gcvPayQuotes.cardsEnabled === true);
+    ["[data-gcv-pix-email-continue]", "[data-gcv-mp-card]", "[data-gcv-stripe-card]", ".gcv-pix-modal__pay-choice", ".gcv-pix-modal__card-note"].forEach(function (sel) {
+      var el = modal.querySelector(sel);
+      if (!el) return;
+      if (!hidden && !cardsOn && sel !== "[data-gcv-pix-email-continue]") {
+        el.hidden = true;
+        return;
+      }
+      el.hidden = hidden;
+    });
+  }
+
+  /** O Brick do Mercado Pago escreve "Sem acréscimo" e não aceita esse texto na customização. */
+  function mpInterestFreeLabel(value) {
+    return String(value || "").replace(/sem\s+acr[eé]scimos?/gi, function (m) {
+      return m.charAt(0) === "S" ? "Sem juros" : "sem juros";
+    });
+  }
+
+  function rewriteMpInterestFree(node) {
+    if (!node) return;
+    if (node.nodeType === 3) {
+      if (node.nodeValue && /acr[eé]scimo/i.test(node.nodeValue)) {
+        var next = mpInterestFreeLabel(node.nodeValue);
+        if (next !== node.nodeValue) node.nodeValue = next;
+      }
+      return;
+    }
+    if (node.nodeType !== 1 && node.nodeType !== 11) return;
+    var walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+    var text;
+    while ((text = walker.nextNode())) {
+      if (!text.nodeValue || !/acr[eé]scimo/i.test(text.nodeValue)) continue;
+      var updated = mpInterestFreeLabel(text.nodeValue);
+      if (updated !== text.nodeValue) text.nodeValue = updated;
+    }
+    if (!node.querySelectorAll) return;
+    var hosts = node.querySelectorAll("*");
+    for (var i = 0; i < hosts.length; i++) {
+      if (hosts[i].shadowRoot) rewriteMpInterestFree(hosts[i].shadowRoot);
+    }
+  }
+
+  function watchMpInterestFree(root) {
+    if (!root || typeof MutationObserver !== "function") return function () {};
+    var seen = typeof WeakSet === "function" ? new WeakSet() : null;
+    var obs = new MutationObserver(function () { run(); });
+    function arm(node) {
+      if (!node || (seen && seen.has(node))) return;
+      if (seen) seen.add(node);
+      try {
+        obs.observe(node, { subtree: true, childList: true, characterData: true });
+      } catch (e) { /* noop */ }
+    }
+    function armShadows(node) {
+      if (!node || !node.querySelectorAll) return;
+      var hosts = node.querySelectorAll("*");
+      for (var i = 0; i < hosts.length; i++) {
+        if (!hosts[i].shadowRoot) continue;
+        arm(hosts[i].shadowRoot);
+        armShadows(hosts[i].shadowRoot);
+      }
+    }
+    function run() {
+      rewriteMpInterestFree(root);
+      armShadows(root);
+    }
+    arm(root);
+    run();
+    return function () { obs.disconnect(); };
+  }
+
+  function stopMpInterestFree(modal) {
+    if (modal && modal._gcvMpInterestStop) {
+      try { modal._gcvMpInterestStop(); } catch (e) { /* noop */ }
+      modal._gcvMpInterestStop = null;
+    }
+  }
+
+  function closeMpCardForm(modal) {
+    stopMpInterestFree(modal);
+    modal._gcvMpSeq = (modal._gcvMpSeq || 0) + 1;
+    if (modal._gcvMpBrick && typeof modal._gcvMpBrick.unmount === "function") {
+      try { modal._gcvMpBrick.unmount(); } catch (e) { /* noop */ }
+    }
+    modal._gcvMpBrick = null;
+    var wrap = modal.querySelector("#gcv-mp-card-wrap");
+    if (wrap && wrap.parentNode) wrap.parentNode.removeChild(wrap);
+    modal._gcvStripeBusy = false;
+    setPayChoiceHidden(modal, false);
+    syncPixContinueButton(modal);
+    renderPayButtonLabels(modal, modal._gcvPixLocale || "pt");
+  }
+
+  function mpSubmitCard(modal, payload, card, loc) {
+    var L = STRINGS[loc] || STRINGS.pt;
+    var body = {};
+    Object.keys(payload).forEach(function (k) { body[k] = payload[k]; });
+    body.card = card;
+    return fetch("/api/mp_card.php", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(body),
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+      .then(function (res) {
+        if (res.ok && res.data && res.data.success && res.data.redirect) {
+          window.location.href = res.data.redirect;
+          return;
+        }
+        var msg = (res.data && res.data.message) || L.stripePayCardFail;
+        var err = modal.querySelector("#gcv-mp-card-error");
+        if (err) { err.hidden = false; err.textContent = msg; }
+        throw new Error(msg);
+      });
+  }
+
+  function openMpCardForm(modal, payload, loc) {
+    var L = STRINGS[loc] || STRINGS.pt;
+    var base = payBaseCents(modal);
+    var q = modal._gcvPayQuotes && modal._gcvPayQuotes.base === base ? modal._gcvPayQuotes : null;
+    var quote = q && q.quotes && q.quotes.card_br;
+    var publicKey = q && q.mpPublicKey;
+    var status = modal.querySelector("#gcv-pix-modal-email-status");
+    setPayChoiceHidden(modal, true);
+    var wrap = document.createElement("div");
+    wrap.id = "gcv-mp-card-wrap";
+    wrap.className = "gcv-pix-modal__mp-wrap";
+    wrap.innerHTML =
+      '<p class="gcv-pix-modal__pay-choice gcv-pix-modal__mp-title">' + escapeHtml(L.mpFormTitle) + "</p>" +
+      '<p class="gcv-pix-modal__card-note gcv-pix-modal__card-note--inline">' + escapeHtml(L.cardHoldNote) + "</p>" +
+      '<div id="gcv-mp-brick"></div>' +
+      '<p class="gcv-pix-modal__email-status gcv-pix-modal__email-status--err" id="gcv-mp-card-error" hidden></p>';
+    if (status && status.parentNode) status.parentNode.insertBefore(wrap, status);
+    else modal.querySelector(".gcv-pix-modal__panel").appendChild(wrap);
+    stopMpInterestFree(modal);
+    modal._gcvMpInterestStop = watchMpInterestFree(wrap.querySelector("#gcv-mp-brick"));
+    showPayBack(modal, "");
+
+    if (!quote || !quote.ok) {
+      wrap.querySelector("#gcv-mp-brick").innerHTML = '<p class="gcv-pix-modal__email-status gcv-pix-modal__email-status--err">' + escapeHtml(L.mpFormUnavailable) + "</p>";
+      return;
+    }
+
+    // Desenvolvimento sem chave do Mercado Pago: simula um cartão aprovado.
+    if (!publicKey) {
+      var isLocal = /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname);
+      var holder = wrap.querySelector("#gcv-mp-brick");
+      if (!isLocal) {
+        holder.innerHTML = '<p class="gcv-pix-modal__email-status gcv-pix-modal__email-status--err">' + escapeHtml(L.mpFormUnavailable) + "</p>";
+        return;
+      }
+      holder.innerHTML = '<button type="button" class="gcv-pix-modal__email-continue" style="display:block" data-gcv-mp-dev>' + escapeHtml(L.mpDevSimulate) + "</button>";
+      holder.querySelector("[data-gcv-mp-dev]").addEventListener("click", function () {
+        this.disabled = true;
+        mpSubmitCard(modal, payload, { token: "dev-test-token", payment_method_id: "master", installments: quote.max_installments, payer: { identification: { type: "CPF", number: "12345678909" } } }, loc)
+          .catch(function () { /* mensagem já exibida */ })
+          .then(function () { var b = holder.querySelector("[data-gcv-mp-dev]"); if (b) b.disabled = false; });
+      });
+      return;
+    }
+
+    function failBrick() {
+      var holder = wrap.querySelector("#gcv-mp-brick");
+      if (holder) holder.innerHTML = '<p class="gcv-pix-modal__email-status gcv-pix-modal__email-status--err">' + escapeHtml(L.mpFormUnavailable) + "</p>";
+    }
+    function mountBrick(saved) {
+      loadMpSdk(function (err) {
+        if (err || !window.MercadoPago) {
+          failBrick();
+          return;
+        }
+        var mpLocale = loc === "en" ? "en-US" : loc === "es" ? "es-AR" : "pt-BR";
+        var mp = new window.MercadoPago(publicKey, { locale: mpLocale });
+        var amount = quote.total_brl_cents / 100;
+        var parts = String(payload.name || "").trim().split(/\s+/).filter(Boolean);
+        var payer = { email: payload.email };
+        if (parts.length) {
+          payer.firstName = parts[0];
+          payer.lastName = parts.slice(1).join(" ");
+        }
+        var useSaved = !!(saved && saved.customer_id && saved.card_ids && saved.card_ids.length);
+        var savedMode = useSaved;
+        var settings;
+        if (useSaved) {
+          payer.customerId = saved.customer_id;
+          payer.cardsIds = saved.card_ids;
+          var note = wrap.querySelector(".gcv-pix-modal__card-note--inline");
+          if (note && L.mpSavedCardNote) note.textContent = L.mpSavedCardNote + " " + (L.cardHoldNote || "");
+          var preferred = saved.card_ids[saved.card_ids.length - 1];
+          settings = {
+            initialization: { amount: amount, payer: payer },
+            customization: {
+              paymentMethods: {
+                maxInstallments: quote.max_installments,
+                minInstallments: 1,
+                creditCard: "all",
+                debitCard: "all",
+                prepaidCard: "all",
+              },
+              visual: {
+                style: { theme: "default" },
+                hideFormTitle: true,
+                defaultPaymentOption: { savedCardForm: preferred },
+              },
+            },
+          };
+        } else {
+          settings = {
+            initialization: { amount: amount, payer: { email: payload.email } },
+            customization: {
+              paymentMethods: { maxInstallments: quote.max_installments, minInstallments: 1 },
+              visual: { style: { theme: "default" } },
+            },
+          };
+        }
+        settings.callbacks = {
+          onReady: function () { /* pronto */ },
+          onSubmit: function (raw) {
+            var formData = mpBrickForm(raw);
+            if (savedMode && !formData.payment_method_id && saved.card_ids.length === 1) {
+              formData.payment_method_id = (saved.methods && saved.methods[saved.card_ids[0]]) || "";
+            }
+            return mpSubmitCard(modal, payload, formData, loc);
+          },
+          onError: function (e) {
+            if (window.console) console.warn("[mp brick]", e);
+          },
+        };
+        function mount(kind, cfg) {
+          return mp.bricks().create(kind, "gcv-mp-brick", cfg).then(function (controller) {
+            modal._gcvMpBrick = controller;
+          });
+        }
+        mount(useSaved ? "payment" : "cardPayment", settings).catch(function () {
+          if (!useSaved) { failBrick(); return; }
+          savedMode = false;
+          var holder = wrap.querySelector("#gcv-mp-brick");
+          if (holder) holder.innerHTML = "";
+          var note = wrap.querySelector(".gcv-pix-modal__card-note--inline");
+          if (note) note.textContent = L.cardHoldNote || "";
+          mount("cardPayment", {
+            initialization: { amount: amount, payer: { email: payload.email } },
+            customization: {
+              paymentMethods: { maxInstallments: quote.max_installments, minInstallments: 1 },
+              visual: { style: { theme: "default" } },
+            },
+            callbacks: settings.callbacks,
+          }).catch(failBrick);
+        });
+      });
+    }
+    var seq = (modal._gcvMpSeq = (modal._gcvMpSeq || 0) + 1);
+    fetchMpSavedCards(payload.email, function (saved) {
+      if (modal._gcvMpSeq !== seq || !document.getElementById("gcv-mp-brick")) return;
+      mountBrick(saved);
+    });
   }
 
   function activatePixCheckout(modal, s) {
@@ -4956,6 +5827,7 @@
     }
     syncPostpayActions(modal);
     ensureDevPixSimulateBtn(modal, s || STRINGS[loc] || STRINGS.pt);
+    showPayBack(modal, "");
     return true;
   }
 
@@ -5150,6 +6022,7 @@
         getModalReceiptPhone(modal) ||
         undefined,
       description: (pending && pending.pixDescWithCode) || reservationCode + " Guia Chapada Veadeiros",
+      cupom: (pending && pending.cupom) || "",
     };
     function startPollingIfReady(reg) {
       if (!reg || !reg.success) {
@@ -5333,7 +6206,8 @@
       '<p class="gcv-pix-modal__field-error" id="gcv-pix-modal-phone-error" role="alert" hidden></p>' +
       '<p class="gcv-pix-modal__pay-choice"></p>' +
       '<button type="button" class="gcv-pix-modal__email-continue" data-gcv-pix-email-continue></button>' +
-      '<button type="button" class="gcv-pix-modal__card-pay" data-gcv-stripe-card></button>' +
+      '<button type="button" class="gcv-pix-modal__card-pay gcv-pix-modal__card-pay--br" data-gcv-mp-card hidden></button>' +
+      '<button type="button" class="gcv-pix-modal__card-pay gcv-pix-modal__card-pay--intl" data-gcv-stripe-card hidden></button>' +
       '<p class="gcv-pix-modal__email-status" id="gcv-pix-modal-email-status" hidden></p></div>' +
       '<div class="gcv-pix-modal__pay-zone">' +
       '<p class="gcv-pix-modal__amount"></p>' +
@@ -5468,8 +6342,59 @@
     });
   }
 
+  function pixCheckoutReady() {
+    return !!(window.GcvPix && typeof window.GcvPix.buildPayload === "function");
+  }
+
+  function ensurePixCheckoutLibs(done) {
+    if (pixCheckoutReady()) {
+      done();
+      return;
+    }
+    var srcs = [
+      "/assets/js/qrcode.min.js?v=1.1.31",
+      "/assets/js/gcv-pix.js?v=1.1.31",
+      "/assets/js/gcv-pix-receipt.js?v=1.1.31",
+      "/assets/js/gcv-pix-polling.js?v=1.1.31",
+    ];
+    var i = 0;
+    function next(err) {
+      if (err) {
+        done(err);
+        return;
+      }
+      if (i >= srcs.length) {
+        done(pixCheckoutReady() ? null : new Error("pix"));
+        return;
+      }
+      var src = srcs[i++];
+      if (document.querySelector('script[src="' + src + '"]')) {
+        next();
+        return;
+      }
+      var script = document.createElement("script");
+      script.src = src;
+      script.onload = function () { next(); };
+      script.onerror = function () { next(new Error("script")); };
+      document.head.appendChild(script);
+    }
+    next();
+  }
+
   function openPixModal(valor, detail, trigger, locale, s, qty) {
-    if (!window.GcvPix || typeof window.GcvPix.buildPayload !== "function") return;
+    if (!pixCheckoutReady()) {
+      if (openPixModal._loading) return;
+      openPixModal._loading = true;
+      ensurePixCheckoutLibs(function (err) {
+        openPixModal._loading = false;
+        if (err || !pixCheckoutReady()) {
+          showExcToast((s && s.pixOpenFail) || "Não foi possível abrir o pagamento. Tente de novo.", "warning");
+          return;
+        }
+        openPixModal(valor, detail, trigger, locale, s, qty);
+      });
+      return;
+    }
     var modal = ensurePixModal();
     var lines;
     var pixDesc;
@@ -5538,7 +6463,11 @@
       cancelEl.hidden = true;
     }
     var amountEl = modal.querySelector(".gcv-pix-modal__amount");
-    if (amountEl) amountEl.textContent = "R$ " + Number(valor).toFixed(2).replace(".", ",");
+    if (amountEl) {
+      amountEl.innerHTML =
+        '<span class="gcv-pix-modal__amount-num">R$ ' + Number(valor).toFixed(2).replace(".", ",") + '</span>' +
+        '<span class="gcv-pix-modal__amount-ccy">BRL</span>';
+    }
     var emailStatus = modal.querySelector("#gcv-pix-modal-email-status");
     if (emailStatus) {
       emailStatus.hidden = true;
@@ -5564,9 +6493,13 @@
       loc: loc,
       receiptData: modal._gcvReceiptData,
       pixDesc: pixDesc,
+      cupom: (detailObj && detailObj.cupom) || "",
     };
     modal.classList.add("gcv-pix-modal--await-email");
     ensurePixEmailBlock(modal, loc);
+    hidePayBack(modal);
+    if (modal.querySelector("#gcv-mp-card-wrap")) closeMpCardForm(modal);
+    modal._gcvStripeBusy = false;
     unlockPixEmailBlock(modal);
     var nameInputOpen = modal.querySelector("#gcv-pix-modal-name");
     if (nameInputOpen) {
@@ -5669,19 +6602,35 @@
       ) {
         closePixDdiDropdown(modal);
       }
+      var payBackBtn = e.target.closest("[data-gcv-pay-back], [data-gcv-mp-back]");
+      if (payBackBtn) {
+        e.preventDefault();
+        returnToPayChoice(modal);
+        return;
+      }
       var continueBtn = e.target.closest("[data-gcv-pix-email-continue]");
       if (continueBtn) {
         e.preventDefault();
         if (continueBtn.disabled) return;
+        if (modal._gcvStripeBusy) returnToPayChoice(modal);
         var locContinue = modal._gcvPixLocale || "pt";
         activatePixCheckout(modal, STRINGS[locContinue] || STRINGS.pt);
+        return;
+      }
+      var mpCardBtn = e.target.closest("[data-gcv-mp-card]");
+      if (mpCardBtn) {
+        e.preventDefault();
+        if (mpCardBtn.hidden || mpCardBtn.disabled) return;
+        if (!(modal._gcvPayQuotes && modal._gcvPayQuotes.cardsEnabled === true)) return;
+        startCardCheckout(modal, "mp");
         return;
       }
       var cardPayBtn = e.target.closest("[data-gcv-stripe-card]");
       if (cardPayBtn) {
         e.preventDefault();
-        if (cardPayBtn.disabled) return;
-        startStripeCardCheckout(modal);
+        if (cardPayBtn.hidden || cardPayBtn.disabled) return;
+        if (!(modal._gcvPayQuotes && modal._gcvPayQuotes.cardsEnabled === true)) return;
+        startCardCheckout(modal, "stripe");
         return;
       }
       var clearEmailBtn = e.target.closest("[data-gcv-pix-email-clear]");
@@ -6166,24 +7115,7 @@
       e.stopPropagation();
       return true;
     }
-    if (e.target.closest(".gcv-excursoes-card__book")) return false;
-    if (e.target.closest(".gcv-excursoes-card__cart-mark")) return false;
-    if (e.target.closest("a[href]")) return false;
-    if (e.target.closest("[data-guia-profile]")) return false;
-    if (e.target.closest("[data-gcv-exc-cart-add]")) return false;
-    if (e.target.closest("[data-gcv-exc-qty-min], [data-gcv-exc-qty-plus], .gcv-excursoes-card__qty-input")) {
-      return false;
-    }
-    var toggleZone = e.target.closest("[data-gcv-exc-card-toggle], .gcv-excursoes-card__datestrip--time-only, .gcv-excursoes-card__head");
-    if (!toggleZone) return false;
-    var card = toggleZone.closest(".gcv-excursoes-card");
-    if (!card) return false;
-    if (card.classList.contains("gcv-excursoes-card--day-blocked")) {
-      e.preventDefault();
-      return true;
-    }
-    e.preventDefault();
-    return toggleExcursaoCardInCart(card);
+    return false;
   }
 
   /** Alinha com o breakpoint do carrossel por dia (CSS ≤1023px). */
@@ -6223,6 +7155,43 @@
     map[iso] = order;
   }
 
+  /** Ordem aleatória estável do dia quando há mais de 3 saídas. */
+  function stableShuffleDayRows(root, iso, rows) {
+    var map = root._gcvDayCardOrderByIso || (root._gcvDayCardOrderByIso = {});
+    var saved = iso && map[iso];
+    if (saved && saved.length) {
+      var byId = {};
+      rows.forEach(function (e) {
+        byId[excursaoCartId(e)] = e;
+      });
+      var ordered = [];
+      saved.forEach(function (id) {
+        if (byId[id]) {
+          ordered.push(byId[id]);
+          delete byId[id];
+        }
+      });
+      rows.forEach(function (e) {
+        var id = excursaoCartId(e);
+        if (byId[id]) ordered.push(e);
+      });
+      return ordered;
+    }
+    var arr = rows.slice();
+    for (var i = arr.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = arr[i];
+      arr[i] = arr[j];
+      arr[j] = tmp;
+    }
+    if (iso) {
+      map[iso] = arr.map(function (e) {
+        return excursaoCartId(e);
+      });
+    }
+    return arr;
+  }
+
   /**
    * Move o selecionado para a 1ª posição à esquerda.
    * @param {boolean} [force] true = troca de data (todos os viewports); false = só mobile
@@ -6252,6 +7221,10 @@
     }
     // Desktop/notebook: seleção no mesmo dia não muda a posição
     if (!force && !isExcursaoMobileViewport()) {
+      captureDayCardOrder(root);
+      return;
+    }
+    if (cards.length > 3) {
       captureDayCardOrder(root);
       return;
     }
@@ -6499,7 +7472,9 @@
     if (window.GcvExcCart && typeof window.GcvExcCart.remove === "function") {
       var orphanIds = cartItems
         .filter(function (it) {
-          return it && it.id && !validIds[it.id];
+          if (!it || !it.id) return false;
+          if (it.passeioKey || String(it.id).indexOf("roteiro-") === 0) return false;
+          return !validIds[it.id];
         })
         .map(function (it) {
           return it.id;
@@ -6685,6 +7660,23 @@
       .catch(function () {});
   }
 
+  function profileGuiaSigilo(row, s) {
+    var ini = row && row.guiaIniciais ? String(row.guiaIniciais).trim() : "";
+    var idiomas =
+      row && Array.isArray(row.guiaIdiomas) && row.guiaIdiomas.length
+        ? normalizeGuiaIdiomas(row.guiaIdiomas)
+        : ["pt"];
+    return {
+      nome: ini || (s && s.guiaPending) || "Guia",
+      nomeCompleto: "",
+      foto: row && row.guiaFoto ? String(row.guiaFoto) : "",
+      idiomas: idiomas,
+      bio: row && row.guiaBio ? row.guiaBio : {},
+      guideUserId: parseInt(String((row && (row.guideUserId || row.guiaId)) || 0), 10) || 0,
+      sigilo: true,
+    };
+  }
+
   function openGuiaModal(slug, trigger, locale, s, profiles) {
     var card = trigger && trigger.closest ? trigger.closest(".gcv-excursoes-card") : null;
     var row = null;
@@ -6698,7 +7690,8 @@
         if (rows && Number.isFinite(idx) && rows[idx]) row = rows[idx];
       }
     }
-    var profile = resolveGuiaProfile(slug, row, profiles);
+    var sigilo = trigger && trigger.getAttribute && trigger.getAttribute("data-guia-sigilo") === "1";
+    var profile = sigilo ? profileGuiaSigilo(row, s) : resolveGuiaProfile(slug, row, profiles);
     if (!profile || !profile.nome) return;
     var modal = ensureGuiaModal();
     var loc = locale === "en" || locale === "es" ? locale : "pt";
@@ -6713,12 +7706,15 @@
     var photo = modal.querySelector(".gcv-guia-modal__photo");
     if (photo) {
       photo.src = profile.foto || "";
-      photo.alt = profile.nome || "";
+      photo.alt = profile.sigilo ? "" : profile.nome || "";
     }
     var title = modal.querySelector(".gcv-guia-modal__name");
     if (title) title.textContent = profile.nome || "";
     var full = modal.querySelector(".gcv-guia-modal__fullname");
-    if (full) full.textContent = profile.nomeCompleto || "";
+    if (full) {
+      full.textContent = profile.sigilo ? "" : profile.nomeCompleto || "";
+      full.hidden = !!profile.sigilo || !String(full.textContent || "").trim();
+    }
     var langs = modal.querySelector(".gcv-guia-modal__langs");
     if (langs) {
       langs.innerHTML =
@@ -6771,13 +7767,14 @@
         }
       });
       document.addEventListener("click", function (e) {
-        var btn = e.target.closest("[data-guia-profile]");
+        var btn = e.target.closest("[data-guia-profile], [data-guia-sigilo]");
         if (!btn) return;
         var sec = btn.closest("#excursoes-junho");
         var loc = sec ? detectLocale(sec) : locale;
         var strings = STRINGS[loc] || STRINGS.pt;
-        var slug = btn.getAttribute("data-guia-profile");
-        if (!slug) return;
+        var sigilo = btn.getAttribute("data-guia-sigilo") === "1";
+        var slug = btn.getAttribute("data-guia-profile") || "";
+        if (!sigilo && !slug) return;
         e.preventDefault();
         e.stopPropagation();
         openGuiaModal(slug, btn, loc, strings, profiles);
@@ -7033,6 +8030,8 @@
         }
       }
 
+      if (rows.length > 3) return stableShuffleDayRows(root, iso, rows);
+
       var putLeadFirst = !!(forceLeadFirst || isExcursaoMobileViewport());
       if (putLeadFirst && leadId) {
         var lead = [];
@@ -7078,15 +8077,6 @@
       dateTabsEl.innerHTML = dates
         .map(function (d) {
           var selected = d.iso === selectedDateIso;
-          var dayRows = (carouselExcursoes || []).filter(function (e) {
-            return excursaoDateIso(e) === d.iso;
-          });
-          var singleDest = dayRows.length === 1 ? excursaoDestinoHeadline(dayRows[0]) : "";
-          var countLabel =
-            singleDest ||
-            (d.count === 1
-              ? s.dateTabCountOne || "1 passeio"
-              : tpl(s.dateTabCountMany || "{{n}} passeios", { n: d.count }));
           return (
             '<button type="button" class="gcv-excursoes__date-tab' +
             (selected ? " is-active" : "") +
@@ -7094,8 +8084,6 @@
             (selected ? "true" : "false") +
             '" data-date-iso="' +
             escapeHtml(d.iso) +
-            '" data-count-label="' +
-            escapeHtml(countLabel) +
             '"' +
             (selected ? ' aria-controls="gcv-excursoes-day-panel"' : "") +
             ">" +
@@ -7111,9 +8099,6 @@
             "</span>" +
             '<span class="gcv-excursoes__date-tab-weekday">' +
             escapeHtml(String(d.weekday || "")) +
-            "</span>" +
-            '<span class="gcv-excursoes__date-tab-count">' +
-            escapeHtml(countLabel) +
             "</span>" +
             "</span></button>"
           );
@@ -7227,6 +8212,10 @@
     }
 
     function scrollStepPx() {
+      if (!isExcursaoMobileViewport()) {
+        var page = viewport.clientWidth;
+        if (page > 8) return page;
+      }
       var cards = track.querySelectorAll(".gcv-excursoes-card");
       if (cards.length >= 2) {
         var delta = cards[1].getBoundingClientRect().left - cards[0].getBoundingClientRect().left;
@@ -7582,6 +8571,75 @@
       }
     });
   }
+
+  function ensureSaidaModal() {
+    var modal = document.getElementById("gcv-saida-modal");
+    if (modal) return modal;
+    modal = document.createElement("div");
+    modal.id = "gcv-saida-modal";
+    modal.className = "gcv-saida-modal";
+    modal.hidden = true;
+    modal.innerHTML =
+      '<div class="gcv-saida-modal__panel" role="dialog" aria-modal="true" aria-labelledby="gcv-saida-title">' +
+      '<button type="button" class="gcv-saida-modal__x" data-saida-close>×</button>' +
+      '<h2 id="gcv-saida-title" class="gcv-saida-modal__title"></h2>' +
+      '<div data-saida-body></div></div>';
+    modal.addEventListener("click", function (e) {
+      if (e.target === modal || (e.target.closest && e.target.closest("[data-saida-close]"))) modal.hidden = true;
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && modal && !modal.hidden) modal.hidden = true;
+    });
+    document.body.appendChild(modal);
+    return modal;
+  }
+
+  function paintSaidaCard(cartId, rows, locale) {
+    var s = STRINGS[locale] || STRINGS.pt;
+    var modal = ensureSaidaModal();
+    var title = modal.querySelector(".gcv-saida-modal__title");
+    var body = modal.querySelector("[data-saida-body]");
+    var closeBtn = modal.querySelector("[data-saida-close]");
+    if (title) title.textContent = s.joinTripTitle || "Inscrever-me na Excursão";
+    if (closeBtn) closeBtn.setAttribute("aria-label", s.close || "Fechar");
+    var found = null;
+    var idx = 0;
+    (rows || []).some(function (row, i) {
+      if (String(excursaoCartId(row)) === String(cartId)) {
+        found = row;
+        idx = i;
+        return true;
+      }
+      return false;
+    });
+    if (!found || !body) {
+      if (body) body.innerHTML = '<p class="gcv-saida-modal__empty">' + escapeHtml(s.joinTripMissing || "Essa saída não está mais disponível.") + "</p>";
+      modal.hidden = false;
+      return;
+    }
+    body.innerHTML =
+      '<div class="gcv-excursoes__track gcv-excursoes__track--day-list">' +
+      buildCard(found, idx, locale, s) +
+      "</div>";
+    modal.hidden = false;
+  }
+
+  window.GcvSaidaPopup = {
+    open: function (cartId) {
+      if (!cartId) return;
+      var locale = detectLocale(document.documentElement);
+      var modal = ensureSaidaModal();
+      modal.hidden = false;
+      fetchLiveExcursaoRows(locale, function (live) {
+        var rows = live && live.length ? filterFutureExcursoes(applyBookingOverlays(live)) : [];
+        if (!rows.length) {
+          var fallback = EXCURSOES[locale] || EXCURSOES.pt;
+          rows = filterFutureExcursoes(applyBookingOverlays(fallback || []));
+        }
+        paintSaidaCard(cartId, rows, locale);
+      });
+    },
+  };
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", init);

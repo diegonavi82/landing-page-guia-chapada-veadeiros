@@ -125,7 +125,16 @@ function loadEnv() {
 loadEnv();
 
 const cmsPath = join(__dirname, "cms-generated.json");
+const pageEditsPath = join(__dirname, "attraction-page-edits.json");
 let CMS = null;
+let PAGE_EDITS = {};
+if (existsSync(pageEditsPath)) {
+  try {
+    PAGE_EDITS = JSON.parse(readFileSync(pageEditsPath, "utf8"));
+  } catch (e) {
+    console.warn("[build] attraction-page-edits.json:", e.message);
+  }
+}
 if (existsSync(cmsPath)) {
   try {
     CMS = JSON.parse(readFileSync(cmsPath, "utf8"));
@@ -381,7 +390,18 @@ function attractionGuideWaUrl(pageTitle) {
 function getCmsAttraction(locale, baseSlug) {
   const pages = CMS?.locales?.[locale]?.attractionPages;
   if (!pages) return null;
-  return pages.find((p) => p.baseSlug === baseSlug) ?? null;
+  const page = pages.find((p) => p.baseSlug === baseSlug) ?? null;
+  if (!page) return null;
+  const edit = PAGE_EDITS?.[baseSlug]?.[locale];
+  if (!edit || typeof edit !== "object") return page;
+  return {
+    ...page,
+    ...(edit.title ? { title: String(edit.title) } : {}),
+    ...(edit.bodyHtml != null ? { bodyHtml: String(edit.bodyHtml) } : {}),
+    ...(edit.sidebarHtml != null ? { sidebarHtml: String(edit.sidebarHtml) } : {}),
+    ...(edit.excerpt ? { excerpt: String(edit.excerpt) } : {}),
+    ...(Object.prototype.hasOwnProperty.call(edit, "subtitle") ? { subtitle: String(edit.subtitle || "") } : {}),
+  };
 }
 
 /** Nome do atrativo sempre em português (títulos exibidos e SEO de página). */
@@ -1524,7 +1544,7 @@ function homeExcursionsSection(locale) {
   const copy = {
     pt: {
       badge: "Excursões",
-      title: "Excursões",
+      title: "Próximas saídas",
       prev: "Excursão anterior",
       next: "Próxima excursão",
       dots: "Navegação do carrossel de excursões",
@@ -1554,7 +1574,7 @@ function homeExcursionsSection(locale) {
   const shellHiddenAttrs = hasStaticRows
     ? ""
     : ' hidden aria-hidden="true" style="display:none"';
-  return `    <div id="excursoes"></div>
+  return `${homePasseiosDestaqueSection(locale)}    <div id="excursoes"></div>
     <section id="excursoes-junho" class="gcv-excursoes" data-locale="${esc(locale)}" aria-labelledby="gcv-excursoes-heading"${shellHiddenAttrs}>
       <script type="application/json" id="gcv-excursoes-payload">${safeJsonLd(excursaoPayloadForSite())}</script>
       <script type="application/json" id="gcv-guia-profiles">${safeJsonLd(guiaProfilesForSite())}</script>
@@ -1578,6 +1598,56 @@ function homeExcursionsSection(locale) {
       </div>
     </section>
 
+`;
+}
+
+function homePasseiosDestaqueSection(locale) {
+  const copy = {
+    pt: {
+      chip: "Passeios",
+      title: "Em destaque",
+      seeAll: "Ver todos os passeios",
+      from: "A partir de",
+      person: "por pessoa",
+      one: "1 atração",
+      many: "atrações",
+      destaque: "Destaque",
+      classicos: "Clássicos",
+    },
+    en: {
+      chip: "Tours",
+      title: "Featured",
+      seeAll: "See all tours",
+      from: "From",
+      person: "per person",
+      one: "1 place",
+      many: "places",
+      destaque: "Featured",
+      classicos: "Classics",
+    },
+    es: {
+      chip: "Paseos",
+      title: "Destacados",
+      seeAll: "Ver todos los paseos",
+      from: "Desde",
+      person: "por persona",
+      one: "1 atractivo",
+      many: "atractivos",
+      destaque: "Destacado",
+      classicos: "Clásicos",
+    },
+  }[locale];
+  if (!copy) return "";
+  return `    <section id="gcv-home-passeios" class="gcv-home-card gcv-home-passeios" hidden aria-labelledby="gcv-home-passeios-title" data-from="${esc(copy.from)}" data-person="${esc(copy.person)}" data-one="${esc(copy.one)}" data-many="${esc(copy.many)}" data-destaque="${esc(copy.destaque)}" data-classicos="${esc(copy.classicos)}">
+      <div class="gcv-home-card__head">
+        <div>
+          <span class="gcv-chip-orange">${esc(copy.chip)}</span>
+          <h2 id="gcv-home-passeios-title" class="gcv-home-featured-title">${esc(copy.title)}</h2>
+        </div>
+        <a class="gcv-link-cerrado" href="passeios.html">${esc(copy.seeAll)}</a>
+      </div>
+      <div class="gcv-home-passeios__grid" data-home-passeios-grid></div>
+    </section>
 `;
 }
 
@@ -2448,6 +2518,26 @@ function atrativoDetailMain(locale, localeSlug, ap, pathKey) {
 
   if (isBlank) {
     mainColumnHtml = "";
+  } else if (String(cms?.bodyHtml || "").trim() || String(cms?.sidebarHtml || "").trim()) {
+    let mainHtml = rewriteHtmlMediaUrls(String(cms.bodyHtml || ""));
+    if (hasManifestGallery) {
+      mainHtml = stripLegacyFusionGalleryFromHtml(mainHtml);
+    }
+    mainHtml = fixAttractionActionHrefs(mainHtml, contatoHref);
+    mainHtml = htmlWithStaticAssetPrefix(mainHtml, ap);
+    const waGuideUrl = esc(attractionGuideWaUrl(title));
+    mainHtml = rewriteGuideLocalCtaToWhatsApp(mainHtml, waGuideUrl);
+    const sidebarHtml = htmlWithStaticAssetPrefix(rewriteHtmlMediaUrls(String(cms.sidebarHtml || "")), ap);
+    const excerptText = (cms?.excerpt && String(cms.excerpt).trim()) || "";
+    mainColumnHtml = `<section class="gcv-detail-layout">
+  <aside class="gcv-detail-sidebar">
+    ${detailImgHref ? `<img src="${esc(detailImgHref)}" alt="${esc(detailImgAlt)}" class="gcv-detail-main-image" loading="eager" />` : ""}
+    <div class="gcv-detail-cta"><a href="${waGuideUrl}" class="button" target="_blank" rel="noopener noreferrer">Contrate um guia local!</a></div>
+    ${sidebarHtml ? `<div class="gcv-detail-info">${sidebarHtml}</div>` : ""}
+    ${excerptText ? `<p class="gcv-detail-excerpt">${esc(excerptText)}</p>` : ""}
+  </aside>
+  <div class="gcv-detail-content">${mainHtml}</div>
+</section>`;
   } else if (rawContent.trim()) {
     const detailBody = prepareDetailContent(rawContent, firstImage?.tag);
     const detailParts = splitDetailContent(detailBody);
@@ -2554,7 +2644,7 @@ function atrativoDetailMain(locale, localeSlug, ap, pathKey) {
     ${bc.html}
     ${pillarLink}
     <header class="gcv-detail-title">
-      <h1>${esc(title)}</h1>
+      <h1>${esc(title)}</h1>${String(cms?.subtitle || "").trim() ? `\n      <p class="gcv-detail-subtitle">${esc(String(cms.subtitle).trim())}</p>` : ""}
     </header>
     ${mainColumnHtml}
     ${gal}
@@ -3007,7 +3097,8 @@ for (const locale of LOCALES) {
       ? {
           extraCss: [
             `assets/css/gcv-hero-slider.css?v=1.1.32`,
-            `assets/css/excursoes.css${BUILD_ASSET_QUERY}`,
+            `assets/css/excursoes.css?v=1.1.34`,
+            `assets/css/gcv-home-passeios.css${BUILD_ASSET_QUERY}`,
           ],
           extraHead: `${heroPreloadLinks(homeAp, locale)}
     <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&display=swap" rel="stylesheet" />
@@ -3015,7 +3106,7 @@ for (const locale of LOCALES) {
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" crossorigin="anonymous" />`,
           extraFooterScripts:
             homeExcursionsHideScript +
-            `  <script src="${esc(publicJsSrc("gcv-hero-slider.js", outPk).replace(BUILD_ASSET_QUERY, "?v=1.1.31"))}" defer></script>\n  <script src="${esc(publicJsSrc("qrcode.min.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix-receipt.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix-polling.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-confirm.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-bookings.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-waitlist.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-cart-policies.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-cart.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("excursoes-carousel.js", outPk).replace(BUILD_ASSET_QUERY, "?v=1.1.37"))}" defer></script>\n`,
+            `  <script src="${esc(publicJsSrc("gcv-hero-slider.js", outPk).replace(BUILD_ASSET_QUERY, "?v=1.1.31"))}" defer></script>\n  <script src="${esc(publicJsSrc("qrcode.min.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix-receipt.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix-polling.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-confirm.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-bookings.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-waitlist.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-cart-policies.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-cart.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("excursoes-carousel.js", outPk).replace(BUILD_ASSET_QUERY, "?v=1.1.64"))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-home-passeios.js", outPk).replace(BUILD_ASSET_QUERY, "?v=1.1.37"))}" defer></script>\n`,
         }
       : {};
     const homeConsultarScript = "";

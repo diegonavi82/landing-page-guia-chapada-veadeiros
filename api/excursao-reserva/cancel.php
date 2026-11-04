@@ -5,6 +5,7 @@ header('Content-Type: application/json; charset=utf-8');
 
 require_once dirname(__DIR__) . '/helpers/pix_reservation_store.php';
 require_once dirname(__DIR__) . '/helpers/marketplace/sale_service.php';
+require_once dirname(__DIR__) . '/helpers/payments/pix_refund.php';
 require_once dirname(__DIR__) . '/helpers/excursion_status.php';
 
 gcv_pix_cors_headers();
@@ -34,14 +35,48 @@ if (!preg_match('/^GCV-[A-Z0-9]{6}$/', $code) || !filter_var($email, FILTER_VALI
     exit;
 }
 
+$indexes = null;
+if (array_key_exists('trip_indexes', $raw)) {
+    if (!is_array($raw['trip_indexes'])) {
+        http_response_code(422);
+        echo json_encode(['ok' => false, 'message' => 'Dados inválidos']);
+        exit;
+    }
+    $indexes = [];
+    foreach ($raw['trip_indexes'] as $n) {
+        if (is_int($n) || (is_string($n) && preg_match('/^\d+$/', (string)$n))) {
+            $indexes[] = (int)$n;
+        }
+    }
+    $indexes = array_values(array_unique($indexes));
+}
+
 try {
-    $out = gcv_sale_cancel_reservation($code, $email);
+    $out = gcv_sale_cancel_reservation($code, $email, true, $indexes);
     echo json_encode([
         'ok' => true,
         'reservation_id' => $code,
-        'status' => 'CANCELLED',
+        'status' => $out['status'] ?? 'PAID',
+        'partial' => !empty($out['partial']),
+        'full' => !empty($out['full']),
+        'refunded_cents' => (int)($out['refunded_cents'] ?? 0),
+        'refunded_trips' => $out['refunded_trips'] ?? [],
+        'kept' => $out['kept'] ?? [],
         'lifecycle' => $out['lifecycle'] ?? '',
-        'message' => 'Reserva cancelada. O guia foi notificado.',
+        'message' => (string)($out['message'] ?? ''),
+    ], JSON_UNESCAPED_UNICODE);
+} catch (GcvPixRefundException $e) {
+    $codeHttp = match ($e->errorCode) {
+        'email' => 403,
+        'not_found' => 404,
+        'bank' => 502,
+        default => 409,
+    };
+    http_response_code($codeHttp);
+    echo json_encode([
+        'ok' => false,
+        'message' => $e->getMessage(),
+        'error_code' => $e->errorCode,
     ], JSON_UNESCAPED_UNICODE);
 } catch (Throwable $e) {
     $msg = $e->getMessage();

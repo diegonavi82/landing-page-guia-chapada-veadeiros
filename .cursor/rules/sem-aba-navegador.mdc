@@ -1,0 +1,14 @@
+---
+description: Não abrir aba de navegação ao executar tarefas
+alwaysApply: true
+---
+
+# Sem aba de navegação
+
+Ao executar qualquer tarefa neste projeto:
+
+- Não abrir o site, o painel nem localhost em aba do Cursor, Simple Browser, Chrome ou outro navegador.
+- Não usar ferramentas de browser (`browser_navigate`, `browser_tabs`, snapshot, screenshot, clique) para verificar a interface.
+- Não deixar uma pré-visualização ao lado dos agentes.
+
+Conferir o resultado no código, nos arquivos gerados ou no que o usuário já tiver aberto. Só abrir uma página se ele pedir nesta mensagem, com o endereço explícito.

@@ -13,5 +13,6 @@ $limit = (int)($_GET['limit'] ?? 80);
 
 json_response(true, [
     'unread' => gcv_inbox_unread_count($uid),
+    'agenda_unread' => gcv_inbox_unread_count($uid, 'new_booking'),
     'items' => gcv_inbox_list($uid, $limit),
 ]);

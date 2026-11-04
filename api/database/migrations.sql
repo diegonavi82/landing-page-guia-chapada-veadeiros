@@ -111,7 +111,7 @@ CREATE TABLE gcv_sessions (
 CREATE TABLE gcv_settings (
   id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   key_name    VARCHAR(100) NOT NULL UNIQUE,
-  value       VARCHAR(500) NOT NULL,
+  value       MEDIUMTEXT NOT NULL,
   label       VARCHAR(200) NOT NULL,
   type        ENUM('percent','integer','text','boolean') NOT NULL DEFAULT 'text',
   updated_by  INT UNSIGNED NULL,

@@ -27,7 +27,9 @@
       one: "1 atração",
       many: "atrações",
       open: "Ver atração",
-      leave: "De {city}",
+      pick: "Escolha a atração para maiores informações",
+      close: "Fechar",
+      leave: "{city}",
     },
     en: {
       kicker: "Chapada dos Veadeiros",
@@ -46,7 +48,9 @@
       one: "1 place",
       many: "places",
       open: "See place",
-      leave: "From {city}",
+      pick: "Choose a place for more details",
+      close: "Close",
+      leave: "{city}",
     },
     es: {
       kicker: "Chapada dos Veadeiros",
@@ -65,15 +69,43 @@
       one: "1 atractivo",
       many: "atractivos",
       open: "Ver atractivo",
-      leave: "De {city}",
+      pick: "Elige el atractivo para más información",
+      close: "Cerrar",
+      leave: "{city}",
     },
   }[lang] || {};
+
+  function subtituloDe(tour) {
+    var sub = tour && tour.subtitle;
+    var texto = "";
+    if (sub && typeof sub === "object") texto = sub[lang] || "";
+    else texto = sub || "";
+    texto = String(texto).trim();
+    if (!texto || texto === String((tour && tour.title) || "").trim()) return "";
+    return texto;
+  }
 
   function esc(str) {
     return String(str || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
   function reais(cents) {
     return "R$ " + String(Math.round((parseInt(cents, 10) || 0) / 100));
+  }
+
+  function precoVitrine(tarifa) {
+    var cents = parseInt(tarifa && tarifa.excursao_pessoa_cents, 10) || 0;
+    if (lang !== "en" && lang !== "es") return cents;
+    var tipo = tarifa && tarifa.bilingue_tipo;
+    var valor = tarifa && tarifa.bilingue_valor;
+    if (tipo === "percentual") {
+      var pct = Math.max(0, Math.min(100, parseInt(valor, 10) || 0));
+      return cents + Math.round((cents * pct) / 100);
+    }
+    var extra = valor;
+    if (extra == null || extra === "") extra = tarifa && tarifa.bilingue_cents;
+    if (extra == null || extra === "") extra = 4000;
+    var quorum = Math.max(1, parseInt(tarifa && tarifa.quorum, 10) || 4);
+    return cents + Math.round((parseInt(extra, 10) || 0) / quorum);
   }
   function catName(key) {
     var row = labels[key];
@@ -110,9 +142,11 @@
     return tour._show;
   }
   var clock = '<svg class="gcv-shop-card__ico" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 4.6V8.2l2.3 1.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
+  var pin = '<svg class="gcv-shop-card__ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 14.5S3.4 9.7 3.4 6.7a4.6 4.6 0 1 1 9.2 0c0 3-4.6 7.8-4.6 7.8z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><circle cx="8" cy="6.65" r="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>';
   var check = '<svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.17 12.17 2.4 8.4l1.13-1.13 2.64 2.64 6.3-6.3 1.13 1.13z"/></svg>';
   var filter = "all";
   var tours = [];
+  var maxAtrativos = 3;
 
   function productKey(tour) {
     if (!tour) return "";
@@ -134,6 +168,57 @@
   function inCart(tour) {
     return cartMatches(tour).length > 0;
   }
+  function tourHref(href) {
+    var path = String(href || "").trim();
+    if (!path) return "passeios.html";
+    if (path.charAt(0) !== "/") path = "/" + path.replace(/^\/+/, "");
+    if (lang !== "pt" && path.indexOf("/" + lang + "/") !== 0) path = "/" + lang + path;
+    return path;
+  }
+  function partsOf(tour) {
+    return (tour.parts || []).filter(function (part) {
+      return part && part.href && (part.title || part.image);
+    }).slice(0, 3);
+  }
+  function pickHref(part, parts) {
+    var href = tourHref(part.href);
+    var others = parts.filter(function (item) {
+      return item && item !== part && item.id;
+    }).map(function (item) { return String(item.id); });
+    if (!others.length) return href;
+    return href + (href.indexOf("?") >= 0 ? "&" : "?") + "junto=" + encodeURIComponent(others.join(","));
+  }
+
+  function openPick(parts) {
+    var box = document.getElementById("gcv-pick");
+    if (!box) {
+      box = document.createElement("div");
+      box.id = "gcv-pick";
+      box.className = "gcv-pick";
+      box.hidden = true;
+      box.innerHTML =
+        '<div class="gcv-pick__sheet" role="dialog" aria-modal="true" aria-labelledby="gcv-pick-title">' +
+        '<button type="button" class="gcv-pick__close" data-pick-close>' + esc(copy.close) + "</button>" +
+        '<h2 id="gcv-pick-title"></h2>' +
+        '<div class="gcv-pick__grid"></div></div>';
+      document.body.appendChild(box);
+      box.addEventListener("click", function (ev) {
+        if (ev.target === box || (ev.target.closest && ev.target.closest("[data-pick-close]"))) box.hidden = true;
+      });
+      document.addEventListener("keydown", function (ev) {
+        if (ev.key === "Escape") box.hidden = true;
+      });
+    }
+    box.querySelector("#gcv-pick-title").textContent = copy.pick;
+    var gridBox = box.querySelector(".gcv-pick__grid");
+    gridBox.className = "gcv-pick__grid gcv-pick__grid--" + parts.length;
+    gridBox.innerHTML = parts.map(function (part) {
+      return '<a class="gcv-pick__item" href="' + esc(pickHref(part, parts)) + '">' +
+        '<span class="gcv-pick__photo"><img src="' + esc(part.image) + '" alt="" /></span>' +
+        "<span>" + esc(part.title) + "</span></a>";
+    }).join("");
+    box.hidden = false;
+  }
 
   function paint() {
     var list = tours.filter(function (tour) {
@@ -149,23 +234,29 @@
       var mine = inCart(tour);
       var show = showcase(tour);
       var time = horas(show.minutes);
-      var cents = tour.tarifa && tour.tarifa.excursao_pessoa_cents;
+      var cents = precoVitrine(tour.tarifa);
       var tags = (tour.categories || []).map(function (key) { return "<span>" + esc(catName(key)) + "</span>"; }).join("");
       var count = tour.count === 1 ? copy.one : tour.count + " " + copy.many;
-      var photo = tour.image
-        ? '<img src="' + esc(tour.image) + '" alt="" />'
-        : "";
+      var parts = partsOf(tour);
+      var places = subtituloDe(tour);
+      places = places ? '<p class="gcv-shop-card__places">' + esc(places) + "</p>" : "";
+      var photo = parts.length >= 2
+        ? '<span class="gcv-shop-card__mosaic gcv-shop-card__mosaic--' + parts.length + '">' +
+          parts.map(function (part) {
+            return '<img src="' + esc(part.image) + '" alt="' + esc(part.title) + '" />';
+          }).join("") + "</span>"
+        : (tour.image ? '<img src="' + esc(tour.image) + '" alt="" />' : "");
       return '<article class="gcv-shop-card' + (mine ? " is-in-cart" : "") + '">' +
         (mine ? '<span class="gcv-shop-card__badge">' + check + "</span>" : "") +
-        '<a class="gcv-shop-card__media" href="' + esc(tour.href) + '">' + photo +
+        '<a class="gcv-shop-card__media" href="' + esc(tourHref(tour.href)) + '" data-tour="' + esc(tour.id) + '">' + photo +
         '<p class="gcv-shop-card__count">' + esc(count) + "</p></a>" +
         '<div class="gcv-shop-card__body">' +
         '<p class="gcv-shop-card__tags">' + tags + "</p>" +
-        "<h2><a href=\"" + esc(tour.href) + "\">" + esc(tour.title) + "</a></h2>" +
-        '<p class="gcv-shop-card__places">' + esc((tour.attractions || []).join(" · ")) + "</p>" +
+        "<h2><a href=\"" + esc(tourHref(tour.href)) + "\" data-tour=\"" + esc(tour.id) + "\">" + esc(tour.title) + "</a></h2>" +
+        places +
         '<p class="gcv-shop-card__meta">' +
         (time ? "<span>" + clock + esc(time) + "</span>" : "") +
-        "<span>" + esc(copy.leave.replace("{city}", show.city)) + "</span></p>" +
+        "<span>" + pin + esc(copy.leave.replace("{city}", show.city)) + "</span></p>" +
         '<div class="gcv-shop-card__foot">' +
         '<p class="gcv-shop-card__price">' + esc(copy.from) + "<strong>" + reais(cents) + "</strong>" + esc(copy.person) + "</p>" +
         '<button type="button" class="gcv-shop-card__add' + (mine ? " is-added" : "") + '" data-add="' + esc(tour.id) + '">' +
@@ -196,6 +287,16 @@
       });
     });
     root.addEventListener("click", function (e) {
+      var link = e.target.closest && e.target.closest("[data-tour]");
+      if (link && !(e.target.closest && e.target.closest("[data-add]"))) {
+        var linked = tours.filter(function (t) { return t.id === link.getAttribute("data-tour"); })[0];
+        var parts = linked ? partsOf(linked) : [];
+        if (parts.length > 1) {
+          e.preventDefault();
+          openPick(parts);
+          return;
+        }
+      }
       var btn = e.target.closest && e.target.closest("[data-add]");
       if (!btn || btn.disabled) return;
       var tour = tours.filter(function (t) { return t.id === btn.getAttribute("data-add"); })[0];
@@ -209,39 +310,32 @@
         return;
       }
       if (!window.GcvPasseioDialog) return;
-      function openWith(data) {
-        window.GcvPasseioDialog.open(data, paint);
-      }
-      if (tour.kind === "combo") {
-        openWith({
-          slug: tour.slug,
-          title: tour.title,
-          duration_minutes: tour.duration_minutes,
-          duracao_cidades: tour.duracao_cidades,
-          tarifa: tour.tarifa,
-          max_atrativos: 1,
-          related_tours: [],
-          passeioKey: productKey(tour),
-        });
-        return;
-      }
-      fetch("/api/passeios.php?slug=" + encodeURIComponent(tour.slug || ""))
-        .then(function (res) { return res.json(); })
-        .then(function (payload) {
-          if (payload && payload.ok && payload.data) openWith(payload.data);
-        })
-        .catch(function () {});
+      window.GcvPasseioDialog.open({
+        slug: tour.slug,
+        title: tour.title,
+        duration_minutes: tour.duration_minutes,
+        duracao_cidades: tour.duracao_cidades,
+        tarifa: tour.tarifa,
+        embarques: tour.embarques,
+        saidas: tour.saidas,
+        somente_4x4: !!tour.somente_4x4,
+        max_participantes: tour.max_participantes,
+        max_atrativos: tour.kind === "combo" ? 1 : maxAtrativos,
+        related_tours: tour.kind === "combo" ? [] : (tour.related_tours || []),
+        passeioKey: tour.kind === "combo" ? productKey(tour) : "",
+      }, paint);
     });
     document.addEventListener("click", function (e) {
       if (e.target && e.target.closest && e.target.closest("[data-gcv-cart-remove]")) setTimeout(paint, 0);
     });
   }
 
-  fetch("/api/passeios.php")
+  fetch("/api/passeios.php", { credentials: "same-origin", cache: "no-store", headers: { Accept: "application/json" } })
     .then(function (res) { return res.json(); })
     .then(function (payload) {
       var data = (payload && payload.data) || {};
       tours = data.tours || [];
+      maxAtrativos = parseInt(data.max_atrativos, 10) || maxAtrativos;
       var cats = Object.keys(data.categories || labels);
       shell(cats);
       if (!tours.length) {

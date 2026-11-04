@@ -73,6 +73,8 @@ final class GcvPayoutStatus
 final class GcvSaleStatus
 {
     public const PENDING = 'PENDING';
+    /** Cartão pré-autorizado: conta no quórum, ainda não cobrado (sem repasse ao guia). */
+    public const AUTHORIZED = 'AUTHORIZED';
     public const PAID = 'PAID';
     public const CANCELLED = 'CANCELLED';
     public const REFUNDED = 'REFUNDED';

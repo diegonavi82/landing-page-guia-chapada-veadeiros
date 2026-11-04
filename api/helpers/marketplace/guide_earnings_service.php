@@ -117,6 +117,8 @@ function gcv_guide_earnings_dashboard(int $guideUserId): array
             }
             if ($confirmed) {
                 $guiagem += $row['people'];
+            }
+            if ($row['sale_status'] === 'PAID' && (int)($sale['guide_user_id'] ?? 0) === $guideUserId) {
                 $billed += $row['sold_price_cents'];
                 $guide += $row['guide_amount_cents'];
                 if ($row['payout_status'] === GcvPayoutStatus::PAID) {
@@ -195,6 +197,8 @@ function gcv_guide_earnings_dashboard(int $guideUserId): array
             }
             if ($confirmed) {
                 $guiagem += $row['people'];
+            }
+            if ($row['sale_status'] === 'PAID' && (int)($sale['guide_user_id'] ?? 0) === $guideUserId) {
                 $billed += $row['sold_price_cents'];
                 $guide += $row['guide_amount_cents'];
                 if ($row['payout_status'] === GcvPayoutStatus::PAID) {

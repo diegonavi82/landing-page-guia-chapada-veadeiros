@@ -2,9 +2,18 @@
 (function (global) {
   'use strict';
 
+  function withPorta(url) {
+    var as = '';
+    try {
+      as = new URLSearchParams(location.search).get('as') || sessionStorage.getItem('gcv_porta') || '';
+    } catch (e) {}
+    if (!as || String(url).indexOf('as=') >= 0) return url;
+    return url + (String(url).indexOf('?') >= 0 ? '&' : '?') + 'as=' + encodeURIComponent(as);
+  }
+
   function get(url, cb) {
     var xhr = new XMLHttpRequest();
-    xhr.open('GET', url);
+    xhr.open('GET', withPorta(url));
     xhr.withCredentials = true;
     xhr.onload = function () {
       try { cb(null, JSON.parse(xhr.responseText)); }
@@ -16,7 +25,7 @@
 
   function sendJson(method, url, data, cb) {
     var xhr = new XMLHttpRequest();
-    xhr.open(method, url);
+    xhr.open(method, withPorta(url));
     xhr.withCredentials = true;
     xhr.setRequestHeader('Content-Type', 'application/json');
     xhr.onload = function () {
@@ -163,7 +172,8 @@
   var MIN_QUORUM = 0;
   var MAX_QUORUM = 4;
   var MAX_PRECONFIRMED = 5;
-  var MAX_PEOPLE_CAP = 12;
+  var MAX_PEOPLE_CAP = 15;
+  var PEOPLE_FLOOR = 4;
   var DEFAULT_QUORUM = 4;
   var DEFAULT_MAX_PEOPLE = 10;
   var DEFAULT_PRECONFIRMED = 0;
@@ -173,6 +183,59 @@
   var GUIDE_NET_MAX_TRANSPORT = 550;
   var MAX_TRANSPORT_PEOPLE = 4;
   var DEFAULT_MAX_TRANSPORT = 4;
+
+  function maxParticipantesAtrativo(a) {
+    if (!a) return 0;
+    var n = parseInt(a.max_participantes, 10);
+    if (n >= PEOPLE_FLOOR && n <= MAX_PEOPLE_CAP) return n;
+    var log = a.experiencia && a.experiencia.logistica;
+    n = parseInt(log && log.max, 10);
+    return n >= PEOPLE_FLOOR && n <= MAX_PEOPLE_CAP ? n : 0;
+  }
+
+  function tetoPessoasAtrativos(lista) {
+    var nums = [];
+    (lista || []).forEach(function (a) {
+      var n = maxParticipantesAtrativo(a);
+      if (n) nums.push(n);
+    });
+    return nums.length ? Math.min.apply(null, nums) : MAX_PEOPLE_CAP;
+  }
+
+  function aplicarVagasCampo(el, teto, carregar) {
+    if (!el) return;
+    var cap = teto >= PEOPLE_FLOOR && teto <= MAX_PEOPLE_CAP ? teto : MAX_PEOPLE_CAP;
+    el.min = String(PEOPLE_FLOOR);
+    el.max = String(cap);
+    var atual = parseInt(el.value, 10);
+    var next = carregar ? cap : (Number.isFinite(atual) ? atual : cap);
+    if (next > cap) next = cap;
+    if (next < PEOPLE_FLOOR) next = PEOPLE_FLOOR;
+    el.value = String(next);
+  }
+
+  function vigiarVagas(el) {
+    if (!el || el.getAttribute('data-vagas-cap') === '1') return;
+    el.setAttribute('data-vagas-cap', '1');
+    function apply() {
+      aplicarVagasCampo(el, parseInt(el.max, 10) || MAX_PEOPLE_CAP, false);
+    }
+    el.addEventListener('change', apply);
+    el.addEventListener('blur', apply);
+  }
+
+  function aplicarVagasDoAtrativo(prefix, item, carregar) {
+    var el = document.getElementById(prefix + 'max');
+    var n = maxParticipantesAtrativo(item);
+    aplicarVagasCampo(el, n || MAX_PEOPLE_CAP, !!(carregar && n));
+    var hint = document.getElementById(prefix + 'max-hint');
+    if (hint) {
+      hint.textContent = n
+        ? 'Máximo deste passeio: ' + n + '. Pode reduzir até 4.'
+        : 'Sem máximo na experiência. As vagas ficam entre 4 e 15.';
+    }
+    syncWalkQuorumFromVagas(prefix);
+  }
 
   function attractionLooksLikeDragao(a) {
     if (!a) return false;
@@ -625,52 +688,181 @@
     return m[3] + '/' + m[2] + '/' + m[1];
   }
 
-  function renderGuideClients(clients) {
+  var GUIDE_WEEKDAYS = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+
+  function guideWeekday(iso) {
+    var m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) return '';
+    var d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    if (isNaN(d.getTime())) return '';
+    return GUIDE_WEEKDAYS[d.getDay()] || '';
+  }
+
+  function addCalendarDays(iso, days) {
+    var m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) return '';
+    var d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    d.setDate(d.getDate() + days);
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  }
+
+  function addBusinessDays(iso, days) {
+    var m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) return '';
+    var d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    var left = Math.max(0, days);
+    while (left > 0) {
+      d.setDate(d.getDate() + 1);
+      var wd = d.getDay();
+      if (wd !== 0 && wd !== 6) left--;
+    }
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  }
+
+  /**
+   * Data em que o Pix do guia sai.
+   * Pix: no dia do passeio (16h20, depois do QR) — o valor já está no Sicoob.
+   * Cartão Mercado Pago: libera 1 dia depois da saída; o repasse espera essa data.
+   * Cartão Stripe: libera 2 dias úteis depois da cobrança (estimada na saída) e o repasse diário cai no Sicoob.
+   * O guia recebe na data mais tarde entre o dia do passeio e a liberação da plataforma.
+   */
+  function guideReceiptDate(kind, iso) {
+    var tour = String(iso || '').slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(tour)) return '';
+    var release = tour;
+    if (kind === 'stripe') release = addBusinessDays(tour, 2);
+    else if (kind === 'card' || kind === 'mercadopago') release = addCalendarDays(tour, 1);
+    return release > tour ? release : tour;
+  }
+
+  function guideReceiptHint(kind) {
+    if (kind === 'pix') return 'Pix: repasse no dia do passeio, às 16h20, com ou sem a leitura do QR.';
+    if (kind === 'stripe') return 'Cartão internacional (Stripe): cobra na confirmação, libera em 2 dias úteis e o repasse diário cai no Sicoob.';
+    return 'Cartão (Mercado Pago): cobra na confirmação e libera o saldo 1 dia depois da saída.';
+  }
+
+  function clientPayKind(c) {
+    var kind = String((c && (c.payment_gateway || c.payment_kind)) || '').toLowerCase();
+    if (kind === 'stripe' || kind === 'card_intl') return 'stripe';
+    if (kind === 'card' || kind === 'mercadopago' || kind === 'card_br') return 'card';
+    if (kind === 'pix') return 'pix';
+    return '';
+  }
+
+  function clientPayLabel(kind) {
+    if (kind === 'pix') return 'Pix';
+    if (kind === 'stripe') return 'Cartão internacional';
+    if (kind === 'card') return 'Cartão nacional';
+    return '';
+  }
+
+  function clientReserveCents(c, tour) {
+    var people = parseInt(c && (c.people != null ? c.people : c.spots), 10) || 1;
+    if (c && c.total_cents != null && c.total_cents !== '' && Number(c.total_cents) > 0) {
+      return Number(c.total_cents);
+    }
+    var unit = tour && tour.price_cents != null ? Number(tour.price_cents) || 0 : 0;
+    return unit * people;
+  }
+
+  function clientPayForecast(c, tour) {
+    var kind = clientPayKind(c);
+    var label = clientPayLabel(kind);
+    if (!label || !tour) return '';
+    var iso = guideReceiptDate(kind, tour.date_iso);
+    if (!iso) return '';
+    var cents = clientReserveCents(c, tour);
+    return label + ' — Pagamento previsto para ' + formatGuideDate(iso) + ' — ' + money(cents);
+  }
+
+  function isSiteDirectPurchase(e) {
+    if (!e || e.guide_launched) return false;
+    if (e.awaiting_guide) return true;
+    return (e.clients || []).some(function (c) {
+      return !!(c && (c.reservation_id || c.trip_id));
+    });
+  }
+
+  function guidePhoneWa(phone, whatsapp) {
+    var digits = digitsOnly(phone);
+    if (!digits) {
+      var match = String(whatsapp || '').match(/wa\.me\/(\d+)/i);
+      digits = match ? match[1] : '';
+    }
+    if (!digits) return null;
+    if (digits.length >= 10 && digits.length <= 11) digits = '55' + digits;
+    return { text: '+' + digits, href: 'https://wa.me/' + digits };
+  }
+
+  function clientFirstName(name) {
+    var n = String(name || '').trim();
+    if (!n) return 'Cliente';
+    return n.split(/\s+/)[0];
+  }
+
+  function renderGuideClients(clients, tour, mode) {
     var list = clients || [];
+    if (mode === 'walk') {
+      list = list.filter(function (c) { return !(c && c.with_transport); });
+    } else if (mode === 'van') {
+      list = list.filter(function (c) { return !!(c && c.with_transport); });
+    }
     if (!list.length) {
+      if (mode) return '<p class="gcv-agenda-tabpanel__empty">Nenhuma reserva nesta opção.</p>';
       return '';
     }
-    var totalSpots = 0;
-    list.forEach(function (c) {
-      totalSpots += parseInt(c.people != null ? c.people : c.spots, 10) || 1;
+    var waitingTour = !!(tour && tour.awaiting_guide);
+    list = list.slice().sort(function (a, b) {
+      return String(a.name || '').localeCompare(String(b.name || ''), 'pt');
+    });
+    var tabs = '';
+    var panels = '';
+    list.forEach(function (c, i) {
+      var people = parseInt(c.people != null ? c.people : c.spots, 10) || 1;
+      var st = String(c.status || '').toUpperCase();
+      var paid = st === 'PAID';
+      var phoneWa = guidePhoneWa(c.phone, c.whatsapp);
+      var name = (c.name && String(c.name).trim()) ? String(c.name).trim() : 'Cliente';
+      var withT = !!c.with_transport;
+      var kind = String(c.payment_kind || '').toLowerCase();
+      var cardHold = kind === 'card' || st === 'AUTHORIZED' || st === 'CARD_SAVED';
+      var payText = 'Aguardando pagamento';
+      var payCls = 'gcv-dash-client__pending';
+      if (paid) {
+        payText = 'Pago';
+        payCls = 'gcv-dash-client__paid';
+      } else if (cardHold) {
+        payText = 'Cartão reservado';
+      }
+      var on = i === 0;
+      tabs += '<button type="button" class="gcv-agenda-tabs__btn' + (on ? ' is-active' : '') + '" role="tab" aria-selected="' + (on ? 'true' : 'false') + '" data-res-tab="' + i + '">' +
+        esc(clientFirstName(name)) + ' <span class="gcv-res-tab__pax">' + people + ' PAX</span></button>';
+      var forecast = clientPayForecast(c, tour);
+      panels += '<div class="gcv-agenda-tabpanel" data-res-panel="' + i + '"' + (on ? '' : ' hidden') + '>' +
+        '<ul class="gcv-dash-clients"><li class="gcv-dash-client">' +
+        '<div class="gcv-dash-client__line"><span class="gcv-dash-client__k">Nome</span> <strong>' + esc(name) + '</strong>' +
+        (mode ? '' : '<span class="gcv-agenda-mode ' + (withT ? 'gcv-agenda-mode--van' : 'gcv-agenda-mode--walk') + '">' +
+        (withT ? 'Com translado' : 'Sem translado') + '</span>') + '</div>' +
+        '<div class="gcv-dash-client__line"><span class="gcv-dash-client__k">Pessoas</span> ' + people + ' PAX</div>' +
+        (c.email ? '<div class="gcv-dash-client__line"><span class="gcv-dash-client__k">E-mail</span> <a href="mailto:' + esc(c.email) + '">' + esc(c.email) + '</a></div>' : '') +
+        (phoneWa
+          ? '<div class="gcv-dash-client__line"><span class="gcv-dash-client__k">Telefone</span> <a href="' +
+            esc(phoneWa.href) + '" target="_blank" rel="noopener">' + esc(phoneWa.text) + '</a></div>'
+          : '') +
+        (forecast
+          ? '<p class="gcv-dash-client__forecast" title="' + esc(guideReceiptHint(clientPayKind(c))) + '">' + esc(forecast) + '</p>'
+          : '') +
+        '<div class="gcv-dash-client__meta">' +
+        (c.reservation_id ? '<code>' + esc(c.reservation_id) + '</code> · ' : '') +
+        '<span class="' + payCls + '">' + payText + '</span>' +
+        (waitingTour ? '' : attBadge(c)) +
+        '</div></li></ul></div>';
     });
     return (
       '<div class="gcv-dash-clients-wrap">' +
-      '<h4 class="gcv-dash-clients-title">Clientes · ' + list.length + (list.length === 1 ? ' reserva' : ' reservas') +
-      ' · ' + totalSpots + (totalSpots === 1 ? ' pessoa' : ' pessoas') + '</h4>' +
-      '<ul class="gcv-dash-clients">' +
-      list.map(function (c) {
-        var people = parseInt(c.people != null ? c.people : c.spots, 10) || 1;
-        var paid = String(c.status || '').toUpperCase() === 'PAID';
-        var wa = c.whatsapp || '';
-        var name = (c.name && String(c.name).trim()) ? String(c.name).trim() : 'Cliente';
-        var withT = !!c.with_transport;
-        return (
-          '<li class="gcv-dash-client">' +
-          '<div class="gcv-dash-client__line"><span class="gcv-dash-client__k">Nome</span> <strong>' + esc(name) + '</strong>' +
-          '<span class="gcv-agenda-mode ' + (withT ? 'gcv-agenda-mode--van' : 'gcv-agenda-mode--walk') + '">' +
-          (withT ? 'Com transporte' : 'Sem transporte') + '</span></div>' +
-          '<div class="gcv-dash-client__line"><span class="gcv-dash-client__k">Pessoas</span> ' + people + (people === 1 ? ' pessoa' : ' pessoas') + '</div>' +
-          (c.email ? '<div class="gcv-dash-client__line"><span class="gcv-dash-client__k">E-mail</span> <a href="mailto:' + esc(c.email) + '">' + esc(c.email) + '</a></div>' : '') +
-          (c.phone
-            ? '<div class="gcv-dash-client__line"><span class="gcv-dash-client__k">Telefone</span> ' + esc(c.phone) +
-              (wa ? ' · <a href="' + esc(wa) + '" target="_blank" rel="noopener">WhatsApp</a>' : '') +
-              '</div>'
-            : '') +
-          '<div class="gcv-dash-client__meta">' +
-          (c.reservation_id ? '<code>' + esc(c.reservation_id) + '</code> · ' : '') +
-          '<span class="' + (paid ? 'gcv-dash-client__paid' : 'gcv-dash-client__pending') + '">' +
-          (paid ? 'Pago' : 'Aguardando pagamento') + '</span>' +
-          (attBadge(c)) +
-          '</div>' +
-          (paid && c.reservation_id && String(c.attendance_status || '') !== 'checked_in'
-            ? '<button type="button" class="gcv-dash-btn gcv-dash-btn--sm gcv-dash-btn--primary" data-checkin-code="' +
-              esc(c.reservation_id) + '">Confirmar presença</button>'
-            : '') +
-          '</li>'
-        );
-      }).join('') +
-      '</ul></div>'
+      '<div class="gcv-agenda-tabs gcv-agenda-tabs--res" role="tablist" aria-label="Reservas">' + tabs + '</div>' +
+      panels +
+      '</div>'
     );
   }
 
@@ -1368,7 +1560,7 @@
 
         '<div class="gcv-dash-profile-finance">' +
           '<h2 class="gcv-dash-section-title gcv-dash-section-title--sub">Dados financeiros</h2>' +
-          '<p class="gcv-dash-hint">Chave PIX do repasse automático. O depósito sai só para os clientes cujo QR você leu no dia do passeio.' +
+          '<p class="gcv-dash-hint">Chave PIX do repasse automático. O depósito do dia sai mesmo sem a leitura do QR.' +
           (String(p.user_status || '') === 'active'
             ? ' <a href="#financeiro" id="gp-goto-earnings">Ver painel de recebimentos</a>.'
             : '') +
@@ -1684,32 +1876,146 @@
   function postCheckin(code, fromScan) {
     code = extractReservationCode(code);
     if (!code) {
-      paintCheckinResult(false, 'Código da reserva inválido.');
-      if (!fromScan && !checkinModalOpen()) alert('Código da reserva inválido.');
+      if (!fromScan) {
+        paintCheckinResult(false, 'Código da reserva inválido.');
+        if (!checkinModalOpen()) alert('Código da reserva inválido.');
+      }
       return;
     }
-    if (fromScan && code === lastScanCode && (Date.now() - lastScanAt) < 8000) {
+    if (checkinBusy) return;
+    if (code === lastScanCode && (Date.now() - lastScanAt) < 8000) {
       return;
     }
     lastScanCode = code;
     lastScanAt = Date.now();
-    if (checkinBusy) return;
     checkinBusy = true;
+    hideCheckinVideo();
+    showCheckinFlash('Lendo ' + code + '…', false);
     sendJson('POST', '/api/guides/check-in.php', { reservation_id: code }, function (e, r) {
       checkinBusy = false;
       var d = (r && r.data) || {};
       if (r && r.ok) {
-        var msg = (d.already ? 'Presença já confirmada' : 'Presença confirmada')
-          + (d.tourist_name ? '\n' + d.tourist_name : '')
-          + (d.reservation_id ? '\n' + d.reservation_id : '');
+        var headline = d.message || (d.already
+          ? 'Check-in já estava confirmado. Bom passeio!'
+          : 'Passeio confirmado. Bom passeio!');
+        var extra = [];
+        if (d.tourist_name) extra.push(String(d.tourist_name));
+        if (d.reservation_id) extra.push(String(d.reservation_id));
+        if (d.spots) extra.push(Number(d.spots) === 1 ? '1 pessoa' : (d.spots + ' pessoas'));
+        if (d.guide_whatsapp) extra.push('Confirmação enviada no seu WhatsApp.');
+        var msg = headline + (extra.length ? '\n\n' + extra.join('\n') : '');
         paintCheckinResult(true, msg);
-        if (!fromScan && !checkinModalOpen()) alert(msg);
+        showCheckinFlash(headline + (d.guide_whatsapp ? '\n\nConfirmação enviada no seu WhatsApp.' : ''), false);
         loadGuideAgenda();
+        setTimeout(hideCheckinFlash, 1600);
         return;
       }
+      lastScanCode = '';
       var err = (r && r.error) || 'Não foi possível confirmar a presença.';
       paintCheckinResult(false, err);
-      if (!fromScan && !checkinModalOpen()) alert(err);
+      showCheckinFlash(err, true);
+    });
+  }
+
+  function hideCheckinVideo() {
+    var reader = document.getElementById('gcv-checkin-reader');
+    if (!reader) return;
+    var video = reader.querySelector('video');
+    if (video) video.style.visibility = 'hidden';
+    pauseCheckinScanner();
+  }
+
+  function showCheckinVideo() {
+    var reader = document.getElementById('gcv-checkin-reader');
+    if (!reader) return;
+    var video = reader.querySelector('video');
+    if (video) video.style.visibility = '';
+  }
+
+  function showCheckinFlash(text, withOk) {
+    var flash = document.getElementById('gcv-checkin-flash');
+    var msg = document.getElementById('gcv-checkin-flash-msg');
+    var ok = document.getElementById('gcv-checkin-flash-ok');
+    if (!flash || !msg) return;
+    msg.textContent = text || '';
+    if (ok) ok.hidden = !withOk;
+    flash.hidden = false;
+  }
+
+  function hideCheckinFlash() {
+    var flash = document.getElementById('gcv-checkin-flash');
+    if (flash) flash.hidden = true;
+    showCheckinVideo();
+    resumeCheckinScanner();
+  }
+
+  function pauseCheckinScanner() {
+    if (checkinScanner && typeof checkinScanner.pause === 'function') {
+      try { checkinScanner.pause(true); } catch (err) {}
+    }
+  }
+
+  function resumeCheckinScanner() {
+    if (!checkinModalOpen()) return;
+    if (checkinScanner && typeof checkinScanner.resume === 'function') {
+      try { checkinScanner.resume(); } catch (err) {}
+    }
+  }
+
+  function checkinScanBox(viewfinderWidth, viewfinderHeight) {
+    var edge = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.72);
+    edge = Math.max(180, edge);
+    return { width: edge, height: edge };
+  }
+
+  function startCheckinCamera() {
+    var reader = document.getElementById('gcv-checkin-reader');
+    if (!reader) return;
+    if (!window.Html5Qrcode) {
+      reader.innerHTML = '<p class="gcv-dash-hint">A câmera não carregou. Digite o código abaixo.</p>';
+      return;
+    }
+    if (checkinScanner) {
+      try { checkinScanner.stop(); } catch (err) {}
+      checkinScanner = null;
+    }
+    reader.innerHTML = '';
+    checkinScanner = new window.Html5Qrcode('gcv-checkin-reader', { verbose: false });
+    var config = { fps: 12, qrbox: checkinScanBox, aspectRatio: 1 };
+    var onRead = function (decoded) { postCheckin(decoded, true); };
+    var showCameraError = function () {
+      if (reader) reader.innerHTML = '<p class="gcv-dash-hint">Não foi possível abrir a câmera de trás. Permita a câmera do celular ou digite o código abaixo.</p>';
+      checkinScanner = null;
+    };
+    checkinScanner.start(
+      { facingMode: 'environment' },
+      config,
+      onRead,
+      function () {}
+    ).catch(function () {
+      var failed = checkinScanner;
+      checkinScanner = null;
+      var retry = function () {
+        if (typeof window.Html5Qrcode.getCameras !== 'function') {
+          showCameraError();
+          return;
+        }
+        window.Html5Qrcode.getCameras().then(function (cameras) {
+          if (!cameras || !cameras.length) throw new Error('no-camera');
+          var id = cameras[cameras.length - 1].id;
+          cameras.forEach(function (cam) {
+            var label = String(cam.label || '').toLowerCase();
+            if (/back|rear|traseir|environment|traseira/.test(label)) id = cam.id;
+          });
+          checkinScanner = new window.Html5Qrcode('gcv-checkin-reader', { verbose: false });
+          return checkinScanner.start(id, config, onRead, function () {});
+        }).catch(showCameraError);
+      };
+      if (failed && typeof failed.clear === 'function') {
+        failed.clear().then(retry).catch(retry);
+      } else {
+        retry();
+      }
     });
   }
 
@@ -1740,10 +2046,11 @@
   }
 
   function onCheckinEsc(ev) {
-    if (ev.key === 'Escape') {
-      ev.preventDefault();
-      closeCheckinScanner();
-    }
+    if (ev.key !== 'Escape') return;
+    var notice = document.querySelector('.gcv-confirm:not([hidden])');
+    if (notice) return;
+    ev.preventDefault();
+    closeCheckinScanner();
   }
 
   function openCheckinScanner() {
@@ -1755,19 +2062,25 @@
     }
     modal.hidden = false;
     clearCheckinResult();
-    var reader = document.getElementById('gcv-checkin-reader');
+    hideCheckinFlash();
     var manual = document.getElementById('gcv-checkin-manual');
     if (manual) {
       manual.value = '';
+      manual.oninput = function () {
+        var code = extractReservationCode(manual.value);
+        if (code) postCheckin(code, true);
+      };
       manual.onkeydown = function (ev) {
         if (ev.key === 'Enter') {
           ev.preventDefault();
-          postCheckin(manual.value);
+          postCheckin(manual.value, true);
         }
       };
     }
     var sendBtn = document.getElementById('gcv-checkin-manual-btn');
-    if (sendBtn) sendBtn.onclick = function () { postCheckin(manual ? manual.value : ''); };
+    if (sendBtn) sendBtn.onclick = function () { postCheckin(manual ? manual.value : '', true); };
+    var flashOk = document.getElementById('gcv-checkin-flash-ok');
+    if (flashOk) flashOk.onclick = function () { hideCheckinFlash(); };
     var closeBtn = document.getElementById('gcv-checkin-close');
     if (closeBtn) closeBtn.onclick = function (ev) {
       ev.preventDefault();
@@ -1778,21 +2091,7 @@
       if (ev.target === modal) closeCheckinScanner();
     };
     document.addEventListener('keydown', onCheckinEsc, true);
-
-    if (window.Html5Qrcode && reader) {
-      if (checkinScanner) {
-        try { checkinScanner.stop(); } catch (err) {}
-      }
-      checkinScanner = new window.Html5Qrcode('gcv-checkin-reader');
-      checkinScanner.start(
-        { facingMode: 'environment' },
-        { fps: 8, qrbox: { width: 240, height: 240 } },
-        function (decoded) { postCheckin(decoded, true); },
-        function () {}
-      ).catch(function () {
-        if (reader) reader.innerHTML = '<p class="gcv-dash-hint">Não foi possível abrir a câmera. Digite o código abaixo.</p>';
-      });
-    }
+    startCheckinCamera();
   }
 
   function consumeCheckinHash() {
@@ -1823,11 +2122,16 @@
     return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3.5" width="18" height="4.5" rx="1"/><path d="M5 8v11a1.5 1.5 0 001.5 1.5h11A1.5 1.5 0 0019 19V8"/><path d="M10 12h4"/></svg>';
   }
 
+  function agendaSwapIcon() {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7h11"/><path d="M15 4l3 3-3 3"/><path d="M17 17H6"/><path d="M9 14l-3 3 3 3"/></svg>';
+  }
+
   function agendaEditIcon() {
     return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>';
   }
 
-  var guideAgendaState = { view: 'upcoming', upcoming: [], archived: [] };
+  var guideAgendaState = { view: 'upcoming', upcoming: [], archived: [], fila: 0, filaTotal: 0, loaded: false };
+  var askCountdownTimer = null;
   var pendingEditExcursion = null;
 
   function isArchivedTour(e) {
@@ -1875,29 +2179,27 @@
     return '<span class="gcv-agenda-seat gcv-agenda-seat--person is-' + tone + '">' + agendaSeatIcon() + '</span>';
   }
 
-  function agendaTransportMark(confirmed) {
-    var tone = confirmed ? 'ok' : 'hot';
+  function agendaTransportMark(tone) {
     return '<span class="gcv-agenda-seat gcv-agenda-seat--stack is-' + tone + '">' +
       '<span class="gcv-agenda-seat__car">' + agendaSeatCarIcon() + '</span>' +
       '<span class="gcv-agenda-seat__person">' + agendaSeatIcon() + '</span>' +
       '</span>';
   }
 
-  function occupancyGroupMarksHtml(st, confirmed) {
+  function occupancyGroupMarksHtml(st) {
     var total = Math.max(1, parseFiniteInt(st.total, 1));
-    if (total > 12) total = 12;
+    if (total > 15) total = 15;
     var outside = Math.max(0, parseFiniteInt(st.outside, 0));
     var walk = Math.max(0, parseFiniteInt(st.walk, 0));
     var van = Math.max(0, parseFiniteInt(st.transport, 0));
     if (outside > total) outside = total;
     if (outside + walk > total) walk = Math.max(0, total - outside);
     if (outside + walk + van > total) van = Math.max(0, total - outside - walk);
-    var tone = confirmed ? 'ok' : 'hot';
     var html = '';
     var i;
-    for (i = 0; i < outside; i++) html += agendaPersonMark(tone);
-    for (i = 0; i < walk; i++) html += agendaPersonMark(tone);
-    for (i = 0; i < van; i++) html += agendaTransportMark(confirmed);
+    for (i = 0; i < outside; i++) html += agendaPersonMark('out');
+    for (i = 0; i < walk; i++) html += agendaPersonMark('walk');
+    for (i = 0; i < van; i++) html += agendaTransportMark('van');
     var empty = total - outside - walk - van;
     for (i = 0; i < empty; i++) html += agendaPersonMark('empty');
     return html;
@@ -1937,6 +2239,8 @@
       formed = false;
     }
     var note = quorumLineHtml(opts);
+    var max = Math.max(0, parseFiniteInt(opts.total, 0));
+    var countHtml = '<b>' + filled + '</b>' + (max > 0 ? '<span>/' + max + '</span>' : '');
     return (
       '<div class="gcv-agenda-lot__row gcv-agenda-lot__row--' + opts.kind +
       (locked ? ' is-locked' : '') + (cancelled ? ' is-cancelled' : '') + (formed ? ' is-formed' : '') + '">' +
@@ -1945,7 +2249,7 @@
       '<span class="gcv-agenda-lot__ico" aria-hidden="true">' + opts.icon + '</span>' +
       '<strong>' + esc(opts.title) + '</strong>' +
       '</div>' +
-      '<div class="gcv-agenda-lot__count"><b>' + filled + '</b></div>' +
+      '<div class="gcv-agenda-lot__count">' + countHtml + '</div>' +
       '</div>' +
       (note ? '<div class="gcv-agenda-lot__note">' + note + '</div>' : '') +
       '</div>'
@@ -1995,45 +2299,55 @@
 
   function renderAgendaGroupLine(e) {
     var st = agendaOccupancyState(e);
-    var confirmed = agendaGroupConfirmed(e);
+    var label = st.occupied + ' de ' + st.total + ' vagas';
     return (
-      '<div class="gcv-agenda-groupline">' +
-      '<strong>Grupo</strong>' +
-      '<span class="gcv-agenda-groupline__count">' + st.occupied + '/' + st.total + '</span>' +
-      '<div class="gcv-agenda-lot__seats gcv-agenda-lot__seats--group" role="img" aria-label="' +
-      st.occupied + ' de ' + st.total + ' vagas do grupo">' +
-      occupancyGroupMarksHtml(st, confirmed) +
+      '<div class="gcv-agenda-group">' +
+      '<div class="gcv-agenda-group__top">' +
+      lifeBadge(e.lifecycle, e.lifecycle_label) +
+      '<span class="gcv-agenda-card__sep" aria-hidden="true">|</span>' +
+      '<span class="gcv-agenda-group__label">Grupo ' + st.occupied + '/' + st.total + '</span>' +
+      '</div>' +
+      '<div class="gcv-agenda-lot__seats gcv-agenda-lot__seats--group" role="img" aria-label="' + label + '">' +
+      occupancyGroupMarksHtml(st) +
       '</div></div>'
     );
   }
 
-  function renderAgendaOccupancy(e) {
+  function renderAgendaOccupancy(e, mode) {
     var st = agendaOccupancyState(e);
     var qT = parseFiniteInt(e.quorum_transport, 0);
     var vanFormed = !!(st.offer && !st.cancelled && (qT <= 0 || st.transport >= qT));
-    var html = occupancyRowHtml({
-      kind: 'out',
-      icon: agendaOutsideIcon(),
-      title: 'Fechados por fora',
-      filled: st.outside
-    });
-    html += occupancyRowHtml({
-      kind: 'walk',
-      icon: agendaWalkIcon(),
-      title: 'Sem transporte',
-      filled: st.walk,
-      quorumCount: st.walk,
-      total: st.walkSlots,
-      quorum: e.quorum,
-      locked: st.offer && st.walkSlots < 1 && st.walk < 1,
-      guideSeatOk: e.walk_guide_seat_ok === true || e.walkGuideSeatOk === true,
-      transportFormed: vanFormed
-    });
-    if (st.offer) {
+    var showWalk = mode !== 'van';
+    var showVan = mode === 'van' || (!mode && st.offer);
+    var showOut = showWalk && !isSiteDirectPurchase(e);
+    var html = '';
+    if (showOut) {
+      html += occupancyRowHtml({
+        kind: 'out',
+        icon: agendaOutsideIcon(),
+        title: 'Fechados por fora',
+        filled: st.outside
+      });
+    }
+    if (showWalk) {
+      html += occupancyRowHtml({
+        kind: 'walk',
+        icon: agendaWalkIcon(),
+        title: mode ? 'Sem translado' : 'Sem transporte',
+        filled: st.walk,
+        quorumCount: st.walk,
+        total: st.walkSlots,
+        quorum: e.quorum,
+        locked: st.offer && st.walkSlots < 1 && st.walk < 1,
+        guideSeatOk: e.walk_guide_seat_ok === true || e.walkGuideSeatOk === true,
+        transportFormed: vanFormed
+      });
+    }
+    if (showVan) {
       html += occupancyRowHtml({
         kind: 'van',
         icon: agendaCarIcon(),
-        title: 'Com transporte',
+        title: mode ? 'Com translado' : 'Com transporte',
         filled: st.transport,
         quorumCount: st.transport,
         total: st.transportSlots,
@@ -2042,7 +2356,96 @@
         cancelled: st.cancelled
       });
     }
-    return '<div class="gcv-agenda-lot' + (st.offer ? ' gcv-agenda-lot--trio' : '') + '">' + html + '</div>';
+    var trio = !mode && st.offer && showOut;
+    return '<div class="gcv-agenda-lot' + (trio ? ' gcv-agenda-lot--trio' : '') + '">' + html + '</div>';
+  }
+
+  function agendaModePriceCents(e, mode) {
+    if (mode === 'van') {
+      var transport = Number(e.price_transport_cents);
+      if (isFinite(transport) && transport > 0) return transport;
+    }
+    return e.guide_receive_cents != null ? e.guide_receive_cents : e.price_cents;
+  }
+
+  function agendaModeMeta(e, mode, st) {
+    var life = String(e.lifecycle || 'na');
+    if (life === 'em_espera') life = 'em_formacao';
+    var label = e.lifecycle_label === 'Em espera' ? 'Em formação' : e.lifecycle_label;
+    if (life === 'cancelada' || life === 'rejeitada' || life === 'concluida' || life === 'aguardando_aprovacao') {
+      return { life: life, label: label };
+    }
+    var qT = parseFiniteInt(e.quorum_transport, 0);
+    var vanFormed = !!(st.offer && !st.cancelled && st.transport >= qT);
+    if (mode === 'van') {
+      if (st.cancelled) return { life: 'cancelada', label: 'Cancelado' };
+      return vanFormed
+        ? { life: 'confirmada', label: 'Confirmada' }
+        : { life: 'em_formacao', label: 'Em formação' };
+    }
+    var quorum = parseFiniteInt(e.quorum, 0);
+    var guideOk = e.walk_guide_seat_ok === true || e.walkGuideSeatOk === true;
+    var walkFormed = st.walk >= quorum && (quorum === 0 || guideOk || vanFormed);
+    if (st.walk >= 1 && !guideOk && !vanFormed) walkFormed = false;
+    if (vanFormed || walkFormed) return { life: 'confirmada', label: 'Confirmada' };
+    return { life: 'em_formacao', label: 'Em formação' };
+  }
+
+  function occupancyModeMarksHtml(st, mode) {
+    var html = '';
+    var i;
+    if (mode === 'van') {
+      var cap = Math.max(0, parseFiniteInt(st.transportSlots, 0));
+      var filled = Math.max(0, parseFiniteInt(st.transport, 0));
+      if (cap < filled) cap = filled;
+      for (i = 0; i < filled; i++) html += agendaTransportMark('van');
+      for (i = 0; i < cap - filled; i++) html += agendaTransportMark('empty');
+      return html;
+    }
+    var total = Math.max(1, parseFiniteInt(st.walkSlots, st.total));
+    var outside = Math.min(Math.max(0, st.outside), total);
+    var walk = Math.min(Math.max(0, st.walk), Math.max(0, total - outside));
+    for (i = 0; i < outside; i++) html += agendaPersonMark('out');
+    for (i = 0; i < walk; i++) html += agendaPersonMark('walk');
+    for (i = 0; i < total - outside - walk; i++) html += agendaPersonMark('empty');
+    return html;
+  }
+
+  function renderAgendaModeBody(e, mode) {
+    var st = agendaOccupancyState(e);
+    var meta = agendaModeMeta(e, mode, st);
+    var occupied = mode === 'van' ? st.transport : st.outside + st.walk;
+    var total = mode === 'van'
+      ? Math.max(1, Math.max(st.transportSlots, st.transport))
+      : Math.max(1, st.walkSlots);
+    var seatsLabel = occupied + ' de ' + total + ' vagas';
+    return (
+      '<div class="gcv-guide-upcoming__status">' +
+      '<div class="gcv-agenda-group">' +
+      '<div class="gcv-agenda-group__top">' +
+      lifeBadge(meta.life, meta.label) +
+      '<span class="gcv-agenda-card__sep" aria-hidden="true">|</span>' +
+      '<span class="gcv-agenda-group__label">Grupo ' + occupied + '/' + total + '</span>' +
+      '</div>' +
+      '<div class="gcv-agenda-lot__seats gcv-agenda-lot__seats--group" role="img" aria-label="' + seatsLabel + '">' +
+      occupancyModeMarksHtml(st, mode) +
+      '</div></div></div>' +
+      renderAgendaOccupancy(e, mode) +
+      (e.awaiting_guide ? '' : renderGuideClients(e.clients, e, mode))
+    );
+  }
+
+  function renderAgendaTabs(e) {
+    var walkPrice = money(agendaModePriceCents(e, 'walk'));
+    var vanPrice = money(agendaModePriceCents(e, 'van'));
+    return (
+      '<div class="gcv-agenda-tabs" role="tablist" aria-label="Opção do passeio">' +
+      '<button type="button" class="gcv-agenda-tabs__btn is-active" role="tab" aria-selected="true" data-agenda-tab="walk" data-price-label="' + esc(walkPrice) + '">Sem translado</button>' +
+      '<button type="button" class="gcv-agenda-tabs__btn" role="tab" aria-selected="false" data-agenda-tab="van" data-price-label="' + esc(vanPrice) + '">Com translado</button>' +
+      '</div>' +
+      '<div class="gcv-agenda-tabpanel" data-agenda-panel="walk">' + renderAgendaModeBody(e, 'walk') + '</div>' +
+      '<div class="gcv-agenda-tabpanel" data-agenda-panel="van" hidden>' + renderAgendaModeBody(e, 'van') + '</div>'
+    );
   }
 
   function renderAgendaCard(e) {
@@ -2051,33 +2454,51 @@
     if (canEditTour(e)) {
       actions += '<button type="button" class="gcv-guide-upcoming__edit" data-edit-exc="' + e.id + '" aria-label="Editar passeio">' + agendaEditIcon() + '</button>';
     }
-    if (e.can_cancel) {
+    if (e.can_substitute) {
+      actions += '<button type="button" class="gcv-guide-upcoming__swap" data-sub-exc="' + e.id + '" aria-label="Substituir guia">' + agendaSwapIcon() + '</button>';
+    }
+    if (e.can_cancel && !e.substitution_offer_id) {
       actions += '<button type="button" class="gcv-guide-upcoming__trash" data-cancel-exc="' + e.id + '" aria-label="Cancelar passeio">' + agendaTrashIcon() + '</button>';
     }
     var pendingNote = pending
       ? '<p class="gcv-dash-alert gcv-dash-alert--warning" style="margin:0.7rem 0 0;">Aguardando aprovação do administrador. Ainda não aparece no site.</p>'
       : '';
+    var waiting = !!e.awaiting_guide;
     var life = String(e.lifecycle || 'na');
+    if (life === 'em_espera') life = 'em_formacao';
+    var lifeLabel = e.lifecycle_label === 'Em espera' ? 'Em formação' : e.lifecycle_label;
     var time = String(e.departure_time || '').slice(0, 5);
+    var weekday = guideWeekday(e.date_iso);
+    var when = esc(formatGuideDate(e.date_iso)) + (weekday ? ' (' + esc(weekday) + ')' : '') + (time ? ' · ' + esc(time) : '');
+    var dual = offersAgendaTransport(e);
+    var receive = agendaModePriceCents(e, 'walk');
+    var details = dual
+      ? renderAgendaTabs(e)
+      : (
+        '<div class="gcv-guide-upcoming__status">' + renderAgendaGroupLine(Object.assign({}, e, { lifecycle: life, lifecycle_label: lifeLabel })) + '</div>' +
+        renderAgendaOccupancy(e) +
+        (waiting ? '' : renderGuideClients(e.clients, e))
+      );
     return (
-      '<article class="gcv-agenda-card gcv-guide-upcoming gcv-agenda-card--' + esc(life) + '">' +
-      '<div class="gcv-guide-upcoming__head">' +
-      '<div class="gcv-guide-upcoming__main">' +
-      '<div class="gcv-guide-upcoming__top">' +
-      '<div class="gcv-guide-upcoming__status">' + lifeBadge(e.lifecycle, e.lifecycle_label) + renderAgendaGroupLine(e) + '</div>' +
+      '<article class="gcv-agenda-card gcv-guide-upcoming gcv-agenda-card--' + esc(life) + (dual ? ' gcv-agenda-card--dual' : '') + '">' +
+      '<div class="gcv-agenda-card__when">' +
+      '<div class="gcv-agenda-card__when-main">' +
+      '<p class="gcv-agenda-card__date">' + when + '</p>' +
+      '<p class="gcv-agenda-card__place">' +
+      (e.departure_city_name ? '<span>' + esc(e.departure_city_name) + '</span><span class="gcv-agenda-card__sep" aria-hidden="true">|</span>' : '') +
+      '<span class="gcv-agenda-card__price" title="Valor do passeio"' + (dual ? ' data-agenda-price="1"' : '') + '>' + money(receive) + '</span>' +
+      '</p>' +
+      '</div>' +
       (actions ? '<div class="gcv-guide-upcoming__actions">' + actions + '</div>' : '') +
       '</div>' +
-      '<h3 class="gcv-agenda-card__title">' + esc(e.attraction_title || 'Passeio') + '</h3>' +
-      '<div class="gcv-agenda-card__meta">' +
-      '<span class="gcv-agenda-chip">' + esc(formatGuideDate(e.date_iso)) + (time ? ' · ' + esc(time) : '') + '</span>' +
-      (e.departure_city_name ? '<span class="gcv-agenda-chip">' + esc(e.departure_city_name) + '</span>' : '') +
-      '<span class="gcv-agenda-chip gcv-agenda-chip--price">' + money(e.price_cents) + '</span>' +
-      '</div>' +
-      renderAgendaOccupancy(e) +
-      '</div></div>' +
+      '<div class="gcv-agenda-card__body">' +
+      '<h3 class="gcv-agenda-card__title">' +
+      (waiting ? '<span class="gcv-agenda-novo">NOVO</span>' : '') +
+      esc(e.attraction_title || 'Passeio') + '</h3>' +
+      (e.substitution_to_name ? '<p class="gcv-agenda-subnote">Aguardando aceite de ' + esc(e.substitution_to_name) + '. Se aceitar, vai para o fim da fila.</p>' : '') +
+      details +
       pendingNote +
-      renderGuideClients(e.clients) +
-      '</article>'
+      '</div></article>'
     );
   }
 
@@ -2098,13 +2519,114 @@
     );
   }
 
+  function showGuidePublish(open) {
+    var box = document.getElementById('guide-publish-box');
+    if (!box) return;
+    box.hidden = !open;
+    if (open && box.scrollIntoView) box.scrollIntoView({ block: 'nearest' });
+  }
+
   function openGuideEdit(e) {
     pendingEditExcursion = e;
-    gotoDashSection('section-guide-create-tour');
+    gotoDashSection('section-guide-tours');
+    showGuidePublish(true);
     var form = document.getElementById('gcv-guide-create-tour-form');
     if (form && typeof form._gcvApplyPendingEdit === 'function') {
       form._gcvApplyPendingEdit();
     }
+  }
+
+  function substituteModal() {
+    var modal = document.getElementById('gcv-sub-modal');
+    if (modal) return modal;
+    modal = document.createElement('div');
+    modal.id = 'gcv-sub-modal';
+    modal.className = 'gcv-sub-modal';
+    modal.hidden = true;
+    modal.innerHTML =
+      '<div class="gcv-sub-modal__card" role="dialog" aria-modal="true" aria-labelledby="gcv-sub-title">' +
+      '<h3 id="gcv-sub-title">Passar este passeio</h3>' +
+      '<p class="gcv-sub-modal__note">Escolha um guia disponível. Ele precisa aceitar. Quem aceitar assume a saída e vai para o fim da fila.</p>' +
+      '<div id="gcv-sub-list"></div>' +
+      '<button type="button" class="gcv-dash-btn gcv-dash-btn--secondary" id="gcv-sub-close">Fechar</button>' +
+      '</div>';
+    document.body.appendChild(modal);
+    modal.addEventListener('click', function (ev) {
+      if (ev.target === modal) modal.hidden = true;
+    });
+    modal.querySelector('#gcv-sub-close').onclick = function () { modal.hidden = true; };
+    return modal;
+  }
+
+  function paintSubstituteList(tour, data) {
+    var box = document.getElementById('gcv-sub-list');
+    if (!box) return;
+    var pending = data && data.pending;
+    var html = '';
+    if (pending) {
+      html += '<p class="gcv-agenda-subnote">Aguardando aceite de ' + esc(pending.to_nome) + '.</p>' +
+        '<button type="button" class="gcv-dash-btn gcv-dash-btn--secondary" data-sub-cancel="' + pending.id + '">Cancelar pedido</button>';
+    }
+    var guias = (data && data.guias) || [];
+    if (!guias.length && !pending) {
+      html += '<p class="gcv-dash-alert gcv-dash-alert--info">Nenhum outro guia está livre neste horário.</p>';
+    }
+    html += guias.map(function (g) {
+      var foto = g.foto
+        ? '<img src="' + esc(g.foto) + '" alt="Foto de ' + esc(g.nome) + '" />'
+        : '<span class="gcv-sub-guia__foto" aria-hidden="true">' + esc(String(g.nome || '?').slice(0, 1)) + '</span>';
+      var disabled = pending ? ' disabled' : '';
+      return '<article class="gcv-sub-guia">' + foto +
+        '<div><strong>' + esc(g.nome) + '</strong><p>' + g.posicao + 'º na fila' + (g.cidade ? ' · ' + esc(g.cidade) : '') + '</p></div>' +
+        '<button type="button" class="gcv-dash-btn gcv-dash-btn--sm gcv-dash-btn--primary" data-sub-pick="' + g.id + '"' + disabled + '>Pedir</button></article>';
+    }).join('');
+    box.innerHTML = html;
+    box.querySelectorAll('[data-sub-pick]').forEach(function (btn) {
+      btn.onclick = function () {
+        btn.disabled = true;
+        sendJson('POST', '/api/guides/substituir.php', {
+          action: 'offer',
+          excursion_id: tour.id,
+          to_user_id: parseInt(btn.getAttribute('data-sub-pick'), 10)
+        }, function (e, r) {
+          alert((r && r.data && r.data.message) || (r && r.error) || 'Não foi possível pedir.');
+          if (r && r.ok) {
+            document.getElementById('gcv-sub-modal').hidden = true;
+            loadGuideAgenda();
+          } else {
+            btn.disabled = false;
+          }
+        });
+      };
+    });
+    var cancel = box.querySelector('[data-sub-cancel]');
+    if (cancel) {
+      cancel.onclick = function () {
+        sendJson('POST', '/api/guides/substituir.php', { action: 'cancel', id: parseInt(cancel.getAttribute('data-sub-cancel'), 10) }, function (e, r) {
+          alert((r && r.data && r.data.message) || (r && r.error) || 'Não foi possível cancelar.');
+          if (r && r.ok) {
+            document.getElementById('gcv-sub-modal').hidden = true;
+            loadGuideAgenda();
+          }
+        });
+      };
+    }
+  }
+
+  function openSubstituteModal(tour) {
+    var modal = substituteModal();
+    var title = modal.querySelector('#gcv-sub-title');
+    if (title) title.textContent = 'Passar ' + (tour.attraction_title || 'este passeio');
+    var box = document.getElementById('gcv-sub-list');
+    if (box) box.innerHTML = '<p>Carregando guias…</p>';
+    modal.hidden = false;
+    get('/api/guides/substituir.php?excursion_id=' + encodeURIComponent(tour.id), function (e, r) {
+      if (!r || !r.ok) {
+        if (box) box.innerHTML = '<p class="gcv-dash-alert">' + esc((r && r.error) || 'Não foi possível listar os guias.') + '</p>';
+        return;
+      }
+      paintSubstituteList(tour, r.data || {});
+    });
   }
 
   function bindAgendaCardActions(list) {
@@ -2117,6 +2639,86 @@
         }, function (e, r) {
           alert((r && r.data && r.data.message) || (r && r.error) || 'Erro');
           if (r && r.ok) loadGuideAgenda();
+        });
+      };
+    });
+    list.querySelectorAll('[data-guide-yes]').forEach(function (btn) {
+      btn.onclick = function () {
+        var id = parseInt(btn.getAttribute('data-guide-yes'), 10);
+        btn.disabled = true;
+        btn.textContent = 'Confirmando…';
+        sendJson('POST', '/api/guides/booking-confirmations.php', {
+          excursion_id: id,
+          action: 'confirm'
+        }, function (e, r) {
+          if (!r || !r.ok) {
+            btn.disabled = false;
+            btn.textContent = 'Confirmar';
+            alert((r && r.error) || 'Não foi possível confirmar.');
+            return;
+          }
+          loadGuideAgenda();
+        });
+      };
+    });
+    list.querySelectorAll('[data-guide-no]').forEach(function (btn) {
+      btn.onclick = function () {
+        var id = parseInt(btn.getAttribute('data-guide-no'), 10);
+        var sendNo = function () {
+          btn.disabled = true;
+          sendJson('POST', '/api/guides/booking-confirmations.php', {
+            excursion_id: id,
+            action: 'decline'
+          }, function (e, r) {
+            if (!r || !r.ok) {
+              btn.disabled = false;
+              alert((r && r.error) || 'Não foi possível recusar.');
+              return;
+            }
+            loadGuideAgenda();
+          });
+        };
+        if (typeof global.gcvConfirm === 'function') {
+          global.gcvConfirm('Não guiar este passeio? As reservas do site nesta saída serão liberadas.', {
+            okText: 'Não guiar',
+            cancelText: 'Voltar',
+            danger: true
+          }).then(function (ok) { if (ok) sendNo(); });
+          return;
+        }
+        if (confirm('Não guiar este passeio?')) sendNo();
+      };
+    });
+    list.querySelectorAll('[data-agenda-tab]').forEach(function (btn) {
+      btn.onclick = function () {
+        var card = btn.closest('.gcv-agenda-card');
+        if (!card) return;
+        var mode = btn.getAttribute('data-agenda-tab');
+        card.querySelectorAll('[data-agenda-tab]').forEach(function (tab) {
+          var on = tab === btn;
+          tab.classList.toggle('is-active', on);
+          tab.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
+        card.querySelectorAll('[data-agenda-panel]').forEach(function (panel) {
+          panel.hidden = panel.getAttribute('data-agenda-panel') !== mode;
+        });
+        var price = card.querySelector('[data-agenda-price]');
+        var label = btn.getAttribute('data-price-label');
+        if (price && label) price.textContent = label;
+      };
+    });
+    list.querySelectorAll('[data-res-tab]').forEach(function (btn) {
+      btn.onclick = function () {
+        var wrap = btn.closest('.gcv-dash-clients-wrap');
+        if (!wrap) return;
+        var id = btn.getAttribute('data-res-tab');
+        wrap.querySelectorAll('[data-res-tab]').forEach(function (tab) {
+          var on = tab === btn;
+          tab.classList.toggle('is-active', on);
+          tab.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
+        wrap.querySelectorAll('[data-res-panel]').forEach(function (panel) {
+          panel.hidden = panel.getAttribute('data-res-panel') !== id;
         });
       };
     });
@@ -2133,6 +2735,42 @@
     });
     var scanQr = document.getElementById('gcv-agenda-scan-qr');
     if (scanQr) scanQr.onclick = function () { openCheckinScanner(); };
+    list.querySelectorAll('[data-sub-exc]').forEach(function (btn) {
+      btn.onclick = function () {
+        var id = parseInt(btn.getAttribute('data-sub-exc'), 10);
+        var all = guideAgendaState.upcoming.concat(guideAgendaState.archived);
+        var found = null;
+        all.forEach(function (row) { if (Number(row.id) === id) found = row; });
+        if (found) openSubstituteModal(found);
+      };
+    });
+    list.querySelectorAll('[data-sub-yes]').forEach(function (btn) {
+      btn.onclick = function () {
+        btn.disabled = true;
+        sendJson('POST', '/api/guides/substituir.php', { action: 'accept', id: parseInt(btn.getAttribute('data-sub-yes'), 10) }, function (e, r) {
+          alert((r && r.data && r.data.message) || (r && r.error) || 'Não foi possível aceitar.');
+          if (r && r.ok) loadGuideAgenda();
+          else btn.disabled = false;
+        });
+      };
+    });
+    list.querySelectorAll('[data-sub-no]').forEach(function (btn) {
+      btn.onclick = function () {
+        btn.disabled = true;
+        sendJson('POST', '/api/guides/substituir.php', { action: 'decline', id: parseInt(btn.getAttribute('data-sub-no'), 10) }, function (e, r) {
+          alert((r && r.data && r.data.message) || (r && r.error) || 'Não foi possível recusar.');
+          if (r && r.ok) loadGuideAgenda();
+          else btn.disabled = false;
+        });
+      };
+    });
+    var openPublish = document.getElementById('gcv-agenda-open-publish');
+    if (openPublish) {
+      openPublish.onclick = function () {
+        var box = document.getElementById('guide-publish-box');
+        showGuidePublish(!(box && !box.hidden));
+      };
+    }
     list.querySelectorAll('[data-checkin-code]').forEach(function (btn) {
       btn.onclick = function () {
         postCheckin(btn.getAttribute('data-checkin-code') || '');
@@ -2154,16 +2792,174 @@
     }
   }
 
+  function stopAskCountdown() {
+    if (askCountdownTimer) {
+      clearInterval(askCountdownTimer);
+      askCountdownTimer = null;
+    }
+  }
+
+  function guideConfirmDeadlineMs(e) {
+    if (e && e.confirm_deadline) {
+      var parsed = Date.parse(String(e.confirm_deadline));
+      if (!isNaN(parsed)) return parsed;
+    }
+    var date = String((e && e.date_iso) || '');
+    var time = String((e && e.departure_time) || '').slice(0, 5);
+    var dm = date.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    var tm = time.match(/^(\d{2}):(\d{2})/);
+    if (!dm || !tm) return NaN;
+    var start = new Date(Number(dm[1]), Number(dm[2]) - 1, Number(dm[3]), Number(tm[1]), Number(tm[2]), 0, 0);
+    var hours = e && e.decision_hours != null ? Number(e.decision_hours) : 12;
+    if (!isFinite(hours) || hours < 1) hours = 12;
+    return start.getTime() - hours * 3600000;
+  }
+
+  function guideAskOpen(row) {
+    if (!row || !row.awaiting_guide || row.substitution_offer_id) return false;
+    var end = guideConfirmDeadlineMs(row);
+    return !isFinite(end) || end > Date.now();
+  }
+
+  function syncAgendaAskBadge(rows) {
+    var n = (rows || []).filter(guideAskOpen).length;
+    if (window.GcvInbox && typeof window.GcvInbox.setAgendaBadge === 'function') {
+      window.GcvInbox.setAgendaBadge(n);
+    }
+  }
+
+  function syncAgendaAsks() {
+    get('/api/guides/excursions.php', function (err, res) {
+      if (err || !res || !res.ok || guideAgendaState.loaded) return;
+      var upcoming = ((res.data && res.data.upcoming) || []).filter(function (e) {
+        return !isArchivedTour(e);
+      });
+      syncAgendaAskBadge(upcoming);
+    });
+  }
+
+  function formatAskLeft(ms) {
+    if (ms <= 0) return 'Prazo encerrado';
+    var total = Math.floor(ms / 1000);
+    var days = Math.floor(total / 86400);
+    var hours = Math.floor((total % 86400) / 3600);
+    var mins = Math.floor((total % 3600) / 60);
+    var secs = total % 60;
+    function pad(n) { return n < 10 ? '0' + n : String(n); }
+    var clock = pad(hours) + ':' + pad(mins) + ':' + pad(secs);
+    if (days === 1) return '1 dia ' + clock;
+    if (days > 1) return days + ' dias ' + clock;
+    return clock;
+  }
+
+  function paintAskCountdowns(root) {
+    stopAskCountdown();
+    if (!root) return;
+    var nodes = root.querySelectorAll('[data-ask-deadline]');
+    if (!nodes.length) return;
+    function tick() {
+      var now = Date.now();
+      var gone = [];
+      nodes.forEach(function (el) {
+        var end = Number(el.getAttribute('data-ask-deadline'));
+        var left = end - now;
+        var value = el.querySelector('[data-ask-left]');
+        var kicker = el.querySelector('.gcv-agenda-ask__timer-kicker');
+        if (value) value.textContent = formatAskLeft(left);
+        if (kicker) kicker.hidden = left <= 0;
+        el.classList.toggle('is-urgent', left > 0 && left <= 2 * 3600000);
+        el.classList.toggle('is-expired', left <= 0);
+        var item = el.closest('.gcv-agenda-ask__item');
+        if (item && left <= 0) {
+          var yes = item.querySelector('[data-guide-yes]');
+          if (yes) gone.push(String(yes.getAttribute('data-guide-yes') || ''));
+        }
+      });
+      if (gone.length) {
+        stopAskCountdown();
+        guideAgendaState.upcoming = (guideAgendaState.upcoming || []).filter(function (row) {
+          return !(row && row.awaiting_guide && gone.indexOf(String(row.id)) >= 0);
+        });
+        paintGuideAgenda();
+      }
+    }
+    tick();
+    askCountdownTimer = setInterval(tick, 1000);
+  }
+
+  function renderSubstitutionAsk(tours) {
+    if (!tours.length) return '';
+    var items = tours.map(function (e) {
+      var time = String(e.departure_time || '').slice(0, 5);
+      var when = formatGuideDate(e.date_iso) + (time ? ' · ' + time : '');
+      return (
+        '<li class="gcv-agenda-ask__item">' +
+        '<span class="gcv-agenda-novo">TROCA</span>' +
+        '<span class="gcv-agenda-ask__name">' + esc(e.attraction_title || 'Passeio') + '</span>' +
+        '<span class="gcv-agenda-ask__when">' + esc(when) + '</span>' +
+        '<span class="gcv-agenda-ask__actions">' +
+        '<button type="button" class="gcv-dash-btn gcv-dash-btn--sm gcv-dash-btn--primary" data-sub-yes="' + esc(e.substitution_offer_id) + '">Aceitar</button>' +
+        '<button type="button" class="gcv-dash-btn gcv-dash-btn--sm gcv-dash-btn--secondary" data-sub-no="' + esc(e.substitution_offer_id) + '">Não</button>' +
+        '</span></li>'
+      );
+    }).join('');
+    return (
+      '<section class="gcv-agenda-ask">' +
+      '<p class="gcv-agenda-ask__q">' + esc(tours[0].substitution_from_name || 'Um guia') + ' quer passar ' + (tours.length > 1 ? 'estes passeios' : 'este passeio') + ' para você.</p>' +
+      '<p class="gcv-agenda-ask__hint">Se você aceitar, assume a saída e vai para o fim da fila.</p>' +
+      '<ul class="gcv-agenda-ask__list">' + items + '</ul>' +
+      '</section>'
+    );
+  }
+
+  function renderGuideAsk(tours) {
+    if (!tours.length) return '';
+    var many = tours.length > 1;
+    var question = many ? 'Você quer guiar esses Passeios?' : 'Você quer guiar esse Passeio?';
+    var hours = 12;
+    tours.forEach(function (e) {
+      var n = Number(e && e.decision_hours);
+      if (isFinite(n) && n >= 1) hours = n;
+    });
+    var items = tours.map(function (e) {
+      var time = String(e.departure_time || '').slice(0, 5);
+      var when = formatGuideDate(e.date_iso) + (time ? ' · ' + time : '');
+      var deadline = guideConfirmDeadlineMs(e);
+      var timer = isFinite(deadline)
+        ? '<span class="gcv-agenda-ask__timer" role="timer" data-ask-deadline="' + deadline + '">' +
+          '<span class="gcv-agenda-ask__timer-kicker">Confirme em</span>' +
+          '<strong data-ask-left>—</strong></span>'
+        : '';
+      return (
+        '<li class="gcv-agenda-ask__item">' +
+        '<span class="gcv-agenda-novo">NOVO</span>' +
+        '<span class="gcv-agenda-ask__name">' + esc(e.attraction_title || 'Passeio') + '</span>' +
+        '<span class="gcv-agenda-ask__when">' + esc(when) + '</span>' +
+        timer +
+        '<span class="gcv-agenda-ask__actions">' +
+        '<button type="button" class="gcv-dash-btn gcv-dash-btn--sm gcv-dash-btn--primary" data-guide-yes="' + esc(e.id) + '">Confirmar</button>' +
+        '<button type="button" class="gcv-dash-btn gcv-dash-btn--sm gcv-dash-btn--secondary" data-guide-no="' + esc(e.id) + '">Não</button>' +
+        '</span></li>'
+      );
+    }).join('');
+    return (
+      '<section class="gcv-agenda-ask">' +
+      '<p class="gcv-agenda-ask__q">' + question + '</p>' +
+      '<p class="gcv-agenda-ask__hint">Sem a sua confirmação até ' + hours + ' horas antes da saída, a reserva do cliente é liberada.</p>' +
+      '<ul class="gcv-agenda-ask__list">' + items + '</ul>' +
+      '</section>'
+    );
+  }
+
   function paintGuideAgenda() {
     var list = document.getElementById('guide-tours-list');
     if (!list) return;
     var upcoming = guideAgendaState.upcoming || [];
     var archived = guideAgendaState.archived || [];
-    var html =
-      '<div class="gcv-guide-agenda-scan">' +
-      '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary gcv-agenda-scan-btn" id="gcv-agenda-scan-qr">' +
-      agendaQrIcon() + '<span>Ler QR Code da Reserva</span></button>' +
-      '</div>';
+    var fila = guideAgendaState.fila > 0
+      ? '<p class="gcv-agenda-fila">Você está em ' + guideAgendaState.fila + 'º na fila de guias.</p>'
+      : '';
+    var html = fila;
     if (guideAgendaState.view === 'archived') {
       html += agendaHeadBlock('Arquivados', archivedLinkHtml('gcv-agenda-back-upcoming', 'Próximas saídas', false));
       if (!archived.length) {
@@ -2176,20 +2972,33 @@
         'Próximas saídas',
         archivedLinkHtml('gcv-agenda-archived-toggle', 'Arquivados', true)
       );
-      if (!upcoming.length) {
+      var visible = upcoming.filter(function (row) {
+        if (row && row.awaiting_guide && !row.substitution_offer_id && !guideAskOpen(row)) return false;
+        return true;
+      });
+      var pending = visible.filter(guideAskOpen);
+      var swaps = visible.filter(function (row) { return !!row.substitution_offer_id; });
+      var rest = visible.filter(function (row) { return !row.awaiting_guide && !row.substitution_offer_id; });
+      html += renderSubstitutionAsk(swaps);
+      html += renderGuideAsk(pending);
+      if (!visible.length) {
         html += '<div class="gcv-dash-alert gcv-dash-alert--info">Nenhuma saída próxima.</div>';
       } else {
-        html += upcoming.map(renderAgendaCard).join('');
+        html += swaps.concat(pending).concat(rest).map(renderAgendaCard).join('');
       }
     }
     list.innerHTML = html;
     bindAgendaCardActions(list);
+    paintAskCountdowns(list);
+    syncAgendaAskBadge(guideAgendaState.upcoming);
   }
 
   function loadGuideAgenda() {
     var list = document.getElementById('guide-tours-list');
     if (!list) return;
+    stopAskCountdown();
     list.innerHTML = 'Carregando…';
+    loadGuidePublish();
 
     get('/api/guides/excursions.php', function (err, res) {
       if (!res || !res.ok) {
@@ -2205,7 +3014,11 @@
       }
       guideAgendaState.upcoming = upcoming;
       guideAgendaState.archived = archived;
+      guideAgendaState.fila = Number(res.data && res.data.fila_posicao) || 0;
+      guideAgendaState.filaTotal = Number(res.data && res.data.fila_total) || 0;
+      guideAgendaState.loaded = true;
       paintGuideAgenda();
+      if (typeof window.gcvRefreshGuideMarks === 'function') window.gcvRefreshGuideMarks();
     });
   }
 
@@ -2613,7 +3426,8 @@
           '<div class="gcv-dash-field"><label class="gcv-dash-label">Pessoas confirmadas por fora (0 a 5)</label>' +
           '<input class="gcv-dash-input" id="' + p + 'preconfirmed" type="number" min="0" max="' + MAX_PRECONFIRMED + '" value="' + DEFAULT_PRECONFIRMED + '" /></div>' +
           '<div class="gcv-dash-field"><label class="gcv-dash-label">Vagas *</label>' +
-          '<input class="gcv-dash-input" id="' + p + 'max" type="number" min="1" max="' + maxCap + '" value="' + DEFAULT_MAX_PEOPLE + '" /></div>' +
+          '<input class="gcv-dash-input" id="' + p + 'max" type="number" min="' + PEOPLE_FLOOR + '" max="' + MAX_PEOPLE_CAP + '" value="' + DEFAULT_MAX_PEOPLE + '" />' +
+          '<p class="gcv-cms-muted" id="' + p + 'max-hint">Escolha o atrativo para carregar o máximo de pessoas.</p></div>' +
           '</div>' +
           '<p class="gcv-guide-net-limit">Limite a receber por pessoa <strong>R$' + netMax + '</strong> / Dragão <strong>R$' + netMaxDragao + '</strong></p>' +
           '<div class="gcv-guide-net-pair">' +
@@ -2987,14 +3801,15 @@
             });
             return ids;
           },
-          onChange: function () {
+          onChange: function (item) {
             refreshTourTabs();
             applyBlockNetMax();
+            aplicarVagasDoAtrativo(p, item, true);
           }
         });
         var attrQ = document.getElementById(p + 'attr-q');
         if (attrQ) attrQ.addEventListener('input', function () { refreshTourTabs(); });
-        clampField(document.getElementById(p + 'max'), 1, maxCap, DEFAULT_MAX_PEOPLE);
+        vigiarVagas(document.getElementById(p + 'max'));
         clampField(document.getElementById(p + 'preconfirmed'), 0, MAX_PRECONFIRMED, DEFAULT_PRECONFIRMED);
         bindMeetingPlaces(idx);
         bindConfirmedYesNo(p);
@@ -3077,7 +3892,11 @@
         }
         var meetingLat = (el('meeting-lat').value || '').trim();
         var meetingLng = (el('meeting-lng').value || '').trim();
-        var maxPeople = clampRange(parseFiniteInt(el('max').value, DEFAULT_MAX_PEOPLE), 1, maxCap);
+        var teto = tetoPessoasAtrativos([attractionById(attrId)]);
+        var pedido = parseFiniteInt(el('max').value, teto);
+        if (pedido < PEOPLE_FLOOR) return { error: label + ': as vagas não podem ser menos que 4.' };
+        if (pedido > teto) return { error: label + ': este passeio permite no máximo ' + teto + ' pessoas.' };
+        var maxPeople = pedido;
         var preconfirmed = clampRange(parseFiniteInt(el('preconfirmed').value, DEFAULT_PRECONFIRMED), 0, MAX_PRECONFIRMED);
         var confirmed = isTourConfirmed(p);
         var quorum = confirmed ? 0 : clampRange(parseFiniteInt(el('quorum').value, DEFAULT_QUORUM), 1, maxPeople);
@@ -3175,7 +3994,11 @@
           if (!net || !isFinite(net) || net < netMin || net > maxNet) {
             return issue(el('net'), 'Valor a receber deve ser entre R$ ' + netMin + ' e R$ ' + maxNet + '.');
           }
-          var maxPeople = clampRange(parseFiniteInt(el('max') && el('max').value, DEFAULT_MAX_PEOPLE), 1, maxCap);
+          var teto = tetoPessoasAtrativos([attractionById(attrId)]);
+          var pedido = parseFiniteInt(el('max') && el('max').value, teto);
+          if (pedido < PEOPLE_FLOOR) return issue(el('max'), 'As vagas não podem ser menos que 4.');
+          if (pedido > teto) return issue(el('max'), 'Este passeio permite no máximo ' + teto + ' pessoas.');
+          var maxPeople = pedido;
           var preconfirmed = clampRange(parseFiniteInt(el('preconfirmed') && el('preconfirmed').value, DEFAULT_PRECONFIRMED), 0, MAX_PRECONFIRMED);
           var confirmed = isTourConfirmed(p);
           var quorum = confirmed ? 0 : clampRange(parseFiniteInt(el('quorum') && el('quorum').value, DEFAULT_QUORUM), 1, maxPeople);
@@ -3561,7 +4384,7 @@
         }
         if (el('max')) {
           el('max').value = String(parseFiniteInt(e.max_people, DEFAULT_MAX_PEOPLE));
-          el('max').dispatchEvent(new Event('change', { bubbles: true }));
+          aplicarVagasDoAtrativo(p, picked, false);
         }
         if (el('preconfirmed')) el('preconfirmed').value = String(parseFiniteInt(e.preconfirmed_people, 0));
         var yes = el('confirmed-yes');
@@ -3772,7 +4595,7 @@
       root.innerHTML =
         '<div class="gcv-dash-alert ' + (pixReady && pixVerified && autoPix ? 'gcv-dash-alert--success' : 'gcv-dash-alert--info') + '">' +
         (autoPix
-          ? 'O PIX é <strong>enviado automaticamente</strong> para a chave cadastrada em Meu perfil, <strong>após as ' + afterLabel + ' do dia do passeio</strong>, somente dos clientes cujo QR você leu. Sem a leitura, essas pessoas não entram na guiagem e o depósito não é feito.'
+          ? 'O PIX é <strong>enviado automaticamente</strong> para a chave cadastrada em Meu perfil, <strong>após as ' + afterLabel + ' do dia do passeio</strong>, mesmo sem a leitura do QR. A leitura conta na guiagem.'
           : 'O envio automático de PIX ainda não está ativo no banco. O admin pode pagar manualmente; a chave continua em Meu perfil.') +
         (pixReady ? '' : ' Cadastre CPF/CNPJ e PIX em <a href="#perfil" id="ge-goto-profile">Meu perfil</a>.') +
         (pixReady && !pixVerified ? ' A chave ainda <strong>aguarda verificação do admin</strong> antes do primeiro envio automático.' : '') +
@@ -3888,9 +4711,18 @@
       tbody.innerHTML = sales.map(function (b) {
         var when = (typeof formatGuideDate === 'function' ? formatGuideDate(b.date_iso) : (b.date_iso || '')) +
           (b.departure_time ? ' · ' + b.departure_time : '');
-        var refundBtn = b.can_refund_full
-          ? '<button type="button" class="gcv-dash-btn gcv-dash-btn--danger gcv-dash-btn--sm" data-refund="' + b.id + '">Cancelar 100%</button>'
-          : '—';
+        var tripsRefund = b.refund_trips || [];
+        var refundBtn = '—';
+        if (tripsRefund.length) {
+          refundBtn = tripsRefund.map(function (t) {
+            var label = [t.date_label, t.title].filter(Boolean).join(' · ') || 'Passeio';
+            if (t.refunded) return '<div class="gcv-cms-muted">' + esc(label) + ' — estornado</div>';
+            if (t.confirmed || !t.can_cancel) return '<div class="gcv-cms-muted">' + esc(label) + ' — confirmado</div>';
+            return '<button type="button" class="gcv-dash-btn gcv-dash-btn--danger gcv-dash-btn--sm" data-refund="' + b.id + '" data-trip="' + t.trip_index + '">Cancelar este dia</button>';
+          }).join('');
+        } else if (b.can_refund_full) {
+          refundBtn = '<button type="button" class="gcv-dash-btn gcv-dash-btn--danger gcv-dash-btn--sm" data-refund="' + b.id + '">Cancelar em formação</button>';
+        }
         var offers = (b.can_transfer && (b.transfer_offers || []).length)
           ? '<div class="gcv-transfer-offers"><p>Passeios confirmados no mesmo dia, mesma cidade — você pode trocar enquanto o seu ainda está em formação:</p>' +
             b.transfer_offers.map(function (o) {
@@ -3915,12 +4747,20 @@
 
       tbody.querySelectorAll('[data-refund]').forEach(function (btn) {
         btn.onclick = function () {
-          if (!confirm('Cancelar com ressarcimento de 100% pelo PIX original?')) return;
-          sendJson('POST', '/api/client/transfer.php', {
+          var tripAttr = btn.getAttribute('data-trip');
+          var body = {
             action: 'refund',
             sale_id: parseInt(btn.getAttribute('data-refund'), 10),
-          }, function (e, r) {
-            alert((r && r.ok) ? 'Cancelada. O valor volta pelo PIX original.' : ((r && r.error) || 'Erro'));
+          };
+          if (tripAttr !== null && tripAttr !== '') body.trip_indexes = [parseInt(tripAttr, 10)];
+          if (!confirm(tripAttr !== null && tripAttr !== ''
+            ? 'Cancelar só este passeio? O estorno do Pix é só deste valor. Passeio já confirmado nesta reserva não é cancelado.'
+            : 'Cancelar os passeios que ainda não confirmaram? O estorno do Pix é só desses dias.')) return;
+          sendJson('POST', '/api/client/transfer.php', body, function (e, r) {
+            var d = (r && r.data) || {};
+            alert((r && r.ok)
+              ? (d.partial ? 'Estorno parcial feito. Os passeios confirmados continuam valendo.' : 'Pix devolvido para a conta de origem.')
+              : ((r && r.error) || 'Erro'));
             if (r && r.ok) {
               loadClientBookingsEnhanced();
               loadClientUpcoming();
@@ -4131,6 +4971,7 @@
     loadGuideProfile: loadGuideProfile,
     loadGuideAgenda: loadGuideAgenda,
     loadGuidePublish: loadGuidePublish,
+    syncAgendaAsks: syncAgendaAsks,
     loadGuideFinancial: loadGuideFinancial,
     loadGuideEarnings: loadGuideEarnings,
     loadClientUpcoming: loadClientUpcoming,

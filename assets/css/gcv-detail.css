@@ -363,6 +363,19 @@
   overflow-wrap: anywhere;
 }
 
+.gcv-detail-subtitle {
+  margin: 0.55rem 0 0;
+  max-width: 42rem;
+  color: #fff;
+  font-family: inherit;
+  font-size: clamp(1rem, 2.1vw, 1.22rem);
+  font-weight: 400;
+  font-style: normal;
+  letter-spacing: 0;
+  line-height: 1.45;
+  text-shadow: none;
+}
+
 .gcv-detail-layout {
   display: grid;
   grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
@@ -482,15 +495,7 @@
 
 @media (min-width: 901px) {
   .gcv-detail-page:has(.gcv-detail-cta.is-ready) {
-    padding-bottom: 2rem;
-  }
-
-  .gcv-detail-cta.is-ready {
-    top: 50%;
-    bottom: auto;
-    left: auto;
-    right: calc(1rem + 3.35rem + 0.85rem);
-    transform: translateY(-50%);
+    padding-bottom: 6.5rem;
   }
 }
 
@@ -694,6 +699,11 @@
     font-size: clamp(1.45rem, 6.2vw, 1.75rem);
     overflow-wrap: anywhere;
     hyphens: auto;
+  }
+
+  .gcv-detail-subtitle {
+    font-size: 1rem;
+    font-weight: 400;
   }
 
   .gcv-detail-info {
@@ -1203,20 +1213,10 @@
 
 .gcv-pix-modal__email-continue {
   display: none;
-  width: 100%;
-  margin-top: 0.65rem;
-  padding: 0.72rem 1rem;
-  border: none;
-  border-radius: 0.6rem;
-  background: #064e3b;
-  color: #fff;
-  font: inherit;
-  font-weight: 800;
-  cursor: pointer;
 }
 
 .gcv-pix-modal--await-email .gcv-pix-modal__email-continue {
-  display: block;
+  display: flex;
 }
 
 /* Comprovante de reserva — modal pop-up mobile-first */

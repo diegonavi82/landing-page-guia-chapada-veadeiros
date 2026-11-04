@@ -71,8 +71,12 @@ function gcv_pix_effective_status(array $reservation): string
     if ($status === 'PAID') {
         return 'PAID';
     }
-    if ($status === 'CANCELLED' || $status === 'CANCELED' || $status === 'REFUNDED') {
+    if ($status === 'CANCELLED' || $status === 'CANCELED' || $status === 'REFUNDED' || $status === 'RELEASED') {
         return 'CANCELLED';
+    }
+    // Cartão: vaga garantida, cobrança só quando o passeio confirmar (não expira como o Pix).
+    if ($status === 'AUTHORIZED' || $status === 'CARD_SAVED') {
+        return $status;
     }
     $expires = (string)($reservation['expires_at'] ?? '');
     if ($expires !== '') {
@@ -121,6 +125,20 @@ function gcv_pix_mark_paid(string $reservationId, string $source = 'manual'): ?a
             gcv_sale_capture_from_pix_reservation($res, $source);
         } catch (Throwable $e) {
             error_log('sale_capture_from_pix: ' . $e->getMessage());
+        }
+
+        // Registro de transações: Pix entra aqui; cartão (MP/Stripe) é gravado pelo
+        // retorno/webhook da plataforma, com a taxa real da API.
+        if (!in_array(strtolower($source), ['stripe', 'mercadopago'], true)) {
+            try {
+                require_once __DIR__ . '/payments/ledger.php';
+                gcv_ledger_record_pix($res, $source);
+                // Lista do guia ("reservas para confirmar") também mostra as pagas no Pix.
+                require_once __DIR__ . '/payments/authorization.php';
+                gcv_auth_register_trips($res, 'pix');
+            } catch (Throwable $e) {
+                error_log('ledger_record_pix: ' . $e->getMessage());
+            }
         }
     }
 

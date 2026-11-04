@@ -106,6 +106,11 @@ if ($method === 'POST') {
     if (!$a->fetch()) {
         json_response(false, null, 'Atrativo inválido', 422);
     }
+    require_once __DIR__ . '/../helpers/anfitrioes.php';
+    $bloq = gcv_anfitriao_recusa_passeio(db(), [$attrId], 0, $date);
+    if ($bloq) {
+        json_response(false, null, $bloq, 422);
+    }
 
     // Sem guia: fica draft até o admin atribuir guia e publicar
     $stmt = db()->prepare(

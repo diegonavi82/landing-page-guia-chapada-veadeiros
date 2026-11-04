@@ -95,6 +95,7 @@
       var max = maxIso();
       if (min && iso < min) return true;
       if (max && iso > max) return true;
+      if (typeof opts.isDisabled === 'function' && opts.isDisabled(iso)) return true;
       return false;
     }
 
@@ -185,9 +186,13 @@
 
     function open() {
       if (isLocked()) return;
+      if (typeof opts.beforeOpen === "function") opts.beforeOpen();
       closeAll(wrap);
+      var monthFrom = typeof opts.monthIso === 'function' ? opts.monthIso() : '';
+      var prefer = parseIso(monthFrom);
       var cur = parseIso(input.value);
-      view = cur ? new Date(cur.getFullYear(), cur.getMonth(), 1) : new Date();
+      var base = prefer || cur;
+      view = base ? new Date(base.getFullYear(), base.getMonth(), 1) : new Date();
       if (pop.parentNode !== document.body) document.body.appendChild(pop);
       render();
       wrap.classList.add('is-open');

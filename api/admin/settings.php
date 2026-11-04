@@ -40,10 +40,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
         }
     }
 
+    if (in_array($keyName, ['diaria_minima_reais', 'pg_minimo_guia_reais', 'passeio_quorum'], true)) {
+        require_once __DIR__ . '/../helpers/tarifarios.php';
+        $n = (int)round((float)$value);
+        if ($keyName === 'passeio_quorum' && ($n < 1 || $n > 20)) {
+            json_response(false, null, 'O quórum fica entre 1 e 20 pessoas', 422);
+        }
+        if ($keyName !== 'passeio_quorum' && ($n < 1 || $n > 100000)) {
+            json_response(false, null, 'Informe um valor em reais entre 1 e 100000', 422);
+        }
+        $diaria = $keyName === 'diaria_minima_reais' ? $n : gcv_tarifario_setting_int(db(), 'diaria_minima_reais', 320);
+        $pg = $keyName === 'pg_minimo_guia_reais' ? $n : gcv_tarifario_setting_int(db(), 'pg_minimo_guia_reais', 280);
+        $quorum = $keyName === 'passeio_quorum' ? $n : gcv_tarifario_setting_int(db(), 'passeio_quorum', 4);
+        try {
+            gcv_tarifario_checar_piso(db(), $diaria, $pg, $quorum);
+        } catch (InvalidArgumentException $e) {
+            json_response(false, null, $e->getMessage(), 422);
+        }
+        $value = (string)$n;
+    }
+
     if ($keyName === 'passeio_max_atrativos') {
         $n = (int)round((float)$value);
-        if ($n < 1 || $n > 5) {
-            json_response(false, null, 'Informe de 1 a 5 atrativos no mesmo passeio', 422);
+        if ($n < 1 || $n > 3) {
+            json_response(false, null, 'Informe de 1 a 3 experiências no mesmo passeio', 422);
         }
         $value = (string)$n;
     }

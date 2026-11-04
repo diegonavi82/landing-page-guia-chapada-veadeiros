@@ -1,12 +1,12 @@
 /**
- * Saídas só ficam reserváveis com mais de 2 h até o embarque (America/Sao_Paulo, UTC-3).
- * Após esse prazo — ou após a hora de saída — somem de "Próximas saídas" e do carrinho.
+ * Excursão confirmada com vaga fica no site até 1 h antes da saída (America/Sao_Paulo).
+ * Com menos de 1 h, some de "Próximas saídas" e do carrinho.
  */
 
 const CHAPADA_TZ_OFFSET = "-03:00";
 const SAIDA_HORA_PADRAO = "8:45";
-/** Reserva permitida apenas se faltarem MAIS de 2 horas para o embarque. */
-export const BOOKING_CUTOFF_MS = 2 * 60 * 60 * 1000;
+/** Reserva da excursão permitida enquanto faltarem pelo menos 1 hora para o embarque. */
+export const BOOKING_CUTOFF_MS = 60 * 60 * 1000;
 
 const MONTH_NUM = {
   janeiro: 1,
@@ -75,10 +75,10 @@ export function excursaoDepartureEpochMs(e) {
 export function isExcursaoBookable(e, nowMs = Date.now()) {
   const dep = excursaoDepartureEpochMs(e);
   if (!Number.isFinite(dep)) return true;
-  return dep > nowMs + BOOKING_CUTOFF_MS;
+  return dep >= nowMs + BOOKING_CUTOFF_MS;
 }
 
-/** @deprecated alias — usa o corte de 2 h antes do embarque */
+/** @deprecated alias — usa o corte de 1 h antes do embarque */
 export function isExcursaoFuture(e, nowMs = Date.now()) {
   return isExcursaoBookable(e, nowMs);
 }
