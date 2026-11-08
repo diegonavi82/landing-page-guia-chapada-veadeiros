@@ -16,43 +16,43 @@
   var UI = {
     pt: {
       agreePrefix: "Li e concordo com a",
-      policyCancel: "Política Guia Chapada Veadeiros",
-      policySecurity: "Política Guia Chapada Veadeiros",
+      policyCancel: "Política de Cancelamento",
+      policySecurity: "Política de Segurança",
       policyGuide: "Termos do Guia",
       modalClose: "Fechar",
       agreeRequired:
-        "Para pagar com Pix, leia e aceite a Política Guia Chapada Veadeiros.",
+        "Para pagar, leia e aceite a Política de Cancelamento e a Política de Segurança.",
     },
     en: {
       agreePrefix: "I have read and agree to the",
-      policyCancel: "Guia Chapada Veadeiros Policy",
-      policySecurity: "Guia Chapada Veadeiros Policy",
+      policyCancel: "Cancellation Policy",
+      policySecurity: "Safety Policy",
       policyGuide: "Guide Terms",
       modalClose: "Close",
       agreeRequired:
-        "To pay with Pix, please read and accept the Guia Chapada Veadeiros Policy.",
+        "To pay, please read and accept the Cancellation Policy and the Safety Policy.",
     },
     es: {
       agreePrefix: "He leído y acepto la",
-      policyCancel: "Política Guia Chapada Veadeiros",
-      policySecurity: "Política Guia Chapada Veadeiros",
+      policyCancel: "Política de cancelación",
+      policySecurity: "Política de seguridad",
       policyGuide: "Términos del Guía",
       modalClose: "Cerrar",
       agreeRequired:
-        "Para pagar con Pix, lea y acepte la Política Guia Chapada Veadeiros.",
+        "Para pagar, lea y acepte la Política de cancelación y la Política de seguridad.",
     },
   };
 
   var TITLES = {
     cancel: {
-      pt: "Política Guia Chapada Veadeiros",
-      en: "Guia Chapada Veadeiros Policy",
-      es: "Política Guia Chapada Veadeiros",
+      pt: "Política de Cancelamento",
+      en: "Cancellation Policy",
+      es: "Política de cancelación",
     },
     security: {
-      pt: "Política Guia Chapada Veadeiros",
-      en: "Guia Chapada Veadeiros Policy",
-      es: "Política Guia Chapada Veadeiros",
+      pt: "Política de Segurança",
+      en: "Safety Policy",
+      es: "Política de seguridad",
     },
     guide: {
       pt: "Termos do Guia",
