@@ -44,7 +44,8 @@
     sortKey: 'passeio',
     sortDir: 1,
     filters: { passeio: '', tarifa_guia: '', tarifa_translado: '' },
-    tarifaSaveSeq: {}
+    tarifaSaveSeq: {},
+    tarifaAba: 'guia'
   };
 
   var PASSEIO_COLS = [
@@ -749,7 +750,7 @@
         (opcoesPasseios ? '<optgroup label="Passeios relacionados">' + opcoesPasseios + '</optgroup>' : '') +
         '</select></div>';
     }
-    function lista(tipo, titulo) {
+    function lista(tipo) {
       var guia = tipo === 'guia';
       var todas = oficiaisDo(tipo);
       var visiveis = todas.filter(function (row) { return cardCombina(tipo, row); });
@@ -777,18 +778,24 @@
             '</article>';
       }).join('');
       var globNova = taxasGlobais();
-      return '<section class="tf-oficial"><h3>' + titulo + '</h3>' +
+      var nomeNova = guia ? 'Nova Tarifa Guia' : 'Nova Tarifa Translado';
+      return '<div class="tf-nova">' +
+        '<div class="tf-nova__head">' +
+          '<div><p class="tf-nova__kicker">Criar tarifa nova</p><h3>' + nomeNova + '</h3></div>' +
+          '<p class="tf-nova__lead">Preencha os valores e crie a tarifa. As taxas começam no modelo global do topo, e esta tarifa guarda a própria.</p>' +
+        '</div>' +
         '<form class="tf-oficial__new" data-nova="' + tipo + '">' +
           (guia
             ? campoNova('data-nova-exc', 'PAX 4 Excursão', 'diaria') + campoNova('data-nova-pri', 'PAX 4 Privativo', 'diaria') + campoNova('data-nova-exc5', 'PAX 5+ Excursão') + campoNova('data-nova-pri5', 'PAX 5+ Privativo') +
               campoTaxa('data-nova-pct', 'Privativo %', globNova.guiaPct, '%') + campoTaxa('data-nova-4', 'Excursão até 4', globNova.guia4, 'R$') + campoTaxa('data-nova-5', 'A partir da 5ª', globNova.guia5, 'R$')
             : campoNova('data-nova-exc', 'Excursão', 'translado') + campoNova('data-nova-pri', 'Privativo', 'translado') +
               campoTaxa('data-nova-pct', 'Privativo %', globNova.transPct, '%') + campoTaxa('data-nova-carro', 'Excursão por pessoa', globNova.transReais, 'R$')) +
-          '<button type="submit" class="gcv-dash-btn gcv-dash-btn--primary gcv-dash-btn--sm">Criar tarifa</button>' +
-        '</form>' +
+          '<button type="submit" class="gcv-dash-btn tf-nova__btn">Criar tarifa</button>' +
+        '</form></div>' +
+        '<h3 class="tf-lista-titulo">Tarifas salvas</h3>' +
         '<div class="tf-oficial__list' + (guia ? ' tf-oficial__list--guia' : '') + '">' +
-        (cards || (todas.length ? '<p class="gcv-cms-muted tf-small">Nenhuma tarifa com esse filtro.</p>' : '')) +
-        '</div></section>';
+        (cards || (todas.length ? '<p class="gcv-cms-muted tf-small">Nenhuma tarifa com esse filtro.</p>' : '<p class="gcv-cms-muted tf-small">Nenhuma tarifa criada ainda.</p>')) +
+        '</div>';
     }
     function campoCard(attr, label, cents, total) {
       var side = '';
@@ -796,7 +803,12 @@
       if (total === 'translado') side = '<span class="tf-side tf-side--abaixo" data-side="translado">Veículo <b class="tf-side__val">' + esc(reais(VEICULO * cents)) + '</b></span>';
       return '<label class="tf-field"><span>' + label + '</span><span class="tf-money"><em>R$</em><input inputmode="decimal" ' + attr + ' value="' + esc(moneyInput(cents)) + '" aria-label="' + label + '" /></span>' + side + '</label>';
     }
+    var nGuia = oficiaisDo('guia').length;
+    var nTrans = oficiaisDo('translado').length;
+    var abaInicial = st.tarifaAba === 'translado' ? 'translado' : 'guia';
     body.innerHTML =
+      '<div class="tf-pin">' +
+      '<p class="tf-pin__label">Valores globais</p>' +
       '<div class="tf-regras-row">' +
       '<section class="tf-oficial tf-oficial--bi">' +
         '<h3>Guia em outro idioma</h3>' +
@@ -820,8 +832,11 @@
           '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary gcv-dash-btn--sm" id="tf-regras-save">Salvar modelo</button>' +
         '</div>' +
       '</section></div>' +
-      lista('guia', 'Tarifa Guia') +
-      lista('translado', 'Tarifa Translado');
+      '<div class="tf-abas" role="tablist" aria-label="Tipo de tarifa">' +
+        '<button type="button" class="tf-aba' + (abaInicial === 'guia' ? ' is-on' : '') + '" role="tab" id="tf-aba-guia" data-tf-aba="guia" aria-selected="' + (abaInicial === 'guia' ? 'true' : 'false') + '" aria-controls="tf-aba-panel">Tarifa GUIA<span class="tf-count">' + nGuia + '</span></button>' +
+        '<button type="button" class="tf-aba' + (abaInicial === 'translado' ? ' is-on' : '') + '" role="tab" id="tf-aba-translado" data-tf-aba="translado" aria-selected="' + (abaInicial === 'translado' ? 'true' : 'false') + '" aria-controls="tf-aba-panel">Tarifa Translado<span class="tf-count">' + nTrans + '</span></button>' +
+      '</div></div>' +
+      '<div id="tf-aba-panel" role="tabpanel" aria-labelledby="' + (abaInicial === 'guia' ? 'tf-aba-guia' : 'tf-aba-translado') + '"></div>';
     $('tf-bi-tipo').onchange = function () {
       var unit = $('tf-bi-unit');
       if (unit) unit.textContent = this.value === 'percentual' ? '%' : 'R$';
@@ -861,7 +876,8 @@
         apply(res, 'Guia em outro idioma salvo para todas as tarifas');
       });
     };
-    body.querySelectorAll('[data-nova]').forEach(function (form) {
+    function ligarAba(panel) {
+    panel.querySelectorAll('[data-nova]').forEach(function (form) {
       form.oninput = function () { refreshNova(form); };
       refreshNova(form);
       form.onsubmit = function (ev) {
@@ -1016,8 +1032,8 @@
         restaurarFoco(foco);
       });
     }
-    body.querySelectorAll('[data-edit-tarifa]').forEach(function (box) { atualizarCard(box); });
-    body.querySelectorAll('[data-edit-tarifa] input').forEach(function (input) {
+    panel.querySelectorAll('[data-edit-tarifa]').forEach(function (box) { atualizarCard(box); });
+    panel.querySelectorAll('[data-edit-tarifa] input').forEach(function (input) {
       input.addEventListener('input', function () {
         var box = input.closest('[data-edit-tarifa]');
         if (box) atualizarCard(box);
@@ -1037,7 +1053,7 @@
         apply(res, okMsg);
       });
     }
-    body.querySelectorAll('[data-tirar-exp]').forEach(function (btn) {
+    panel.querySelectorAll('[data-tirar-exp]').forEach(function (btn) {
       btn.onclick = function () {
         var tipo = btn.getAttribute('data-tipo');
         var nome = btn.getAttribute('data-nome') || 'esta experiência';
@@ -1048,7 +1064,7 @@
         });
       };
     });
-    body.querySelectorAll('[data-add-exp]').forEach(function (sel) {
+    panel.querySelectorAll('[data-add-exp]').forEach(function (sel) {
       sel.onchange = function () {
         if (!sel.value) return;
         var parts = sel.value.split(':');
@@ -1068,7 +1084,7 @@
         go();
       };
     });
-    body.querySelectorAll('[data-del-oficial]').forEach(function (btn) {
+    panel.querySelectorAll('[data-del-oficial]').forEach(function (btn) {
       btn.onclick = function () {
         var codigo = btn.getAttribute('data-del-oficial');
         var row = ((st.data && st.data.tarifas_oficiais) || []).filter(function (r) { return r.codigo === codigo; })[0];
@@ -1093,6 +1109,30 @@
         });
       };
     });
+    }
+    function pintarAba() {
+      var aba = st.tarifaAba === 'translado' ? 'translado' : 'guia';
+      st.tarifaAba = aba;
+      body.querySelectorAll('[data-tf-aba]').forEach(function (btn) {
+        var on = btn.getAttribute('data-tf-aba') === aba;
+        btn.classList.toggle('is-on', on);
+        btn.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      var panel = $('tf-aba-panel');
+      if (!panel) return;
+      panel.setAttribute('aria-labelledby', aba === 'guia' ? 'tf-aba-guia' : 'tf-aba-translado');
+      panel.innerHTML = lista(aba);
+      ligarAba(panel);
+    }
+    body.querySelectorAll('[data-tf-aba]').forEach(function (btn) {
+      btn.onclick = function () {
+        var aba = btn.getAttribute('data-tf-aba');
+        if (!aba || aba === st.tarifaAba) return;
+        st.tarifaAba = aba;
+        pintarAba();
+      };
+    });
+    pintarAba();
   }
 
   /* ---------- editor ---------- */

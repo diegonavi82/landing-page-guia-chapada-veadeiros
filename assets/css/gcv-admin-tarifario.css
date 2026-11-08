@@ -31,6 +31,75 @@
 .tf-taxa-info { display: block; margin: -2px 0 0; color: #dc2626; font-size: calc(1em - 2px); font-weight: 600; line-height: 1.15; }
 .tf-field--sm { flex: 0 1 12rem !important; }
 .tf-oficial { margin: 0 0 1.1rem; }
+.tf-pin {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  margin: 0 0 1rem;
+  padding: .9rem 1rem 1rem;
+  border-radius: 16px;
+  background: #f4faf6;
+  border: 1px solid #b7d7c6;
+  box-shadow: 0 10px 28px rgba(15, 61, 46, .1);
+}
+.tf-pin__label {
+  margin: 0 0 .65rem;
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--tf-green);
+}
+.tf-pin .tf-regras-row { margin: 0 0 .85rem; }
+.tf-pin .tf-oficial { margin: 0; }
+.tf-abas { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; margin: 0; }
+.tf-aba {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .35rem;
+  border: 1px solid #c5ddd0;
+  background: #fff;
+  border-radius: 12px;
+  padding: .8rem 1rem;
+  font: inherit;
+  font-size: .92rem;
+  font-weight: 800;
+  letter-spacing: .02em;
+  color: #64748b;
+  cursor: pointer;
+}
+.tf-aba:hover { border-color: #0f3d2e; color: var(--tf-green); }
+.tf-aba.is-on { background: #0f3d2e; border-color: #0f3d2e; color: #fff; box-shadow: 0 8px 18px rgba(15, 61, 46, .18); }
+.tf-aba .tf-count { background: #e7f3ec; }
+.tf-aba.is-on .tf-count { background: rgba(255,255,255,.18); color: #fff; }
+.tf-nova {
+  margin: 0 0 1.15rem;
+  padding: 1rem 1.05rem .95rem;
+  border-radius: 16px;
+  background: linear-gradient(165deg, #1a7a4c 0%, #0f3d2e 58%, #0b2e22 100%);
+  box-shadow: 0 14px 32px rgba(15, 61, 46, .22);
+}
+.tf-nova__head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: .35rem .9rem; margin-bottom: .85rem; }
+.tf-nova__kicker { margin: 0 0 .15rem; font-size: .72rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #bbf7d0; }
+.tf-nova__head h3 { margin: 0; color: #fff; font-size: 1.2rem; }
+.tf-nova__lead { margin: 0; max-width: 36rem; color: rgba(255,255,255,.82); font-size: .82rem; line-height: 1.4; }
+.tf-nova .tf-oficial__new { margin: 0; }
+.tf-nova .tf-field { color: rgba(255,255,255,.92); }
+.tf-nova .tf-taxa-info { color: #fecaca; }
+.tf-nova .tf-side { color: #bbf7d0; }
+.tf-nova .tf-side.is-baixo { color: #fecaca; }
+.tf-nova .tf-oficial__new > .tf-nova__btn {
+  margin-top: 1.35rem;
+  padding: .7rem 1.15rem;
+  border-radius: 10px;
+  background: #fff;
+  color: #0f3d2e;
+  font-weight: 800;
+  box-shadow: 0 6px 16px rgba(0,0,0,.16);
+}
+.tf-nova__btn:hover { background: #ecfdf5; opacity: 1; }
+.tf-lista-titulo { margin: .2rem 0 .55rem; color: var(--tf-green); font-size: 1.02rem; }
 .tf-oficial h3, .tf-legado { margin: .2rem 0 .35rem; color: var(--tf-green); font-size: 1.05rem; }
 .tf-regras-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1rem 2rem; margin: 0 0 1.1rem; }
 .tf-regras-row > .tf-oficial { margin: 0; }
@@ -178,6 +247,8 @@
 .ps-empty { padding: 1.4rem .8rem !important; color: var(--tf-muted); text-align: center; }
 
 @media (max-width: 860px) {
+  .tf-pin { top: calc(64px + env(safe-area-inset-top, 0px)); }
+  .tf-nova__head { align-items: flex-start; }
   .tf-attr__body { grid-template-columns: 1fr; gap: 0; }
   .tf-search { max-width: none; flex: 1 1 100%; }
   .tf-attr__head { flex-wrap: wrap; }
