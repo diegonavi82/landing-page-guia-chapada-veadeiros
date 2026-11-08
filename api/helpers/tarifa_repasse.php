@@ -114,7 +114,7 @@ function gcv_tarifa_taxas_globais_save(PDO $pdo, array $body): void
     $fixas = gcv_tarifa_taxas_fixas();
     $map = [
         'taxa_guia_privativo_pct' => gcv_tarifa_taxa_int($body['taxa_guia_privativo_pct'] ?? null, 0, 99, $fixas['taxa_privativo_pct']),
-        'taxa_guia_excursao_4_reais' => gcv_tarifa_taxa_int($body['taxa_guia_excursao_4_reais'] ?? null, 0, 100000, $fixas['taxa_guia_excursao_4_reais']),
+        'taxa_guia_excursao_4_reais' => gcv_tarifa_taxa_int($body['taxa_guia_excursao_4_reais'] ?? null, 0, 100000, $fixas['taxa_excursao_4_reais']),
         'taxa_guia_excursao_5_reais' => gcv_tarifa_taxa_int($body['taxa_guia_excursao_5_reais'] ?? null, 0, 100000, $fixas['taxa_excursao_5_reais']),
         'taxa_translado_privativo_pct' => gcv_tarifa_taxa_int($body['taxa_translado_privativo_pct'] ?? null, 0, 99, $fixas['taxa_privativo_pct']),
         'taxa_translado_excursao_reais' => gcv_tarifa_taxa_int($body['taxa_translado_excursao_reais'] ?? null, 0, 100000, $fixas['taxa_excursao_reais']),
