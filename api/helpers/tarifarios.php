@@ -1549,6 +1549,42 @@ function gcv_passeio_piso_excursao_pax4(PDO $pdo, int $passeioId, ?int $trocaId 
     return $maior;
 }
 
+/** PAX 4 (excursão) da experiência nessa cidade. Cidade vazia usa a maior de todas. */
+function gcv_atrativo_excursao_pax4_na_cidade(PDO $pdo, array $row, string $cidade): int
+{
+    if ($cidade === '') {
+        return gcv_atrativo_maior_excursao_pax4($pdo, $row);
+    }
+    foreach (gcv_saidas_tarifas_atrativo($row, gcv_cidades_saida_mapa($pdo)) as $saida) {
+        if ((string)($saida['key'] ?? '') !== $cidade) {
+            continue;
+        }
+        return gcv_tarifa_guia_excursao_pax4((string)($saida['guia'] ?? ''));
+    }
+    return 0;
+}
+
+/** Maior PAX 4 das experiências do passeio na mesma cidade de embarque. */
+function gcv_passeio_piso_excursao_pax4_cidade(PDO $pdo, int $passeioId, string $cidade, ?int $trocaId = null, ?array $trocaRow = null): int
+{
+    $maior = 0;
+    foreach (gcv_passeio_atrativo_ids($pdo, $passeioId) as $id) {
+        if ($trocaId !== null && $id === $trocaId && $trocaRow) {
+            $row = $trocaRow;
+        } else {
+            $row = gcv_atrativo_row_min($pdo, $id);
+        }
+        if (!$row) {
+            continue;
+        }
+        $n = gcv_atrativo_excursao_pax4_na_cidade($pdo, $row, $cidade);
+        if ($n > $maior) {
+            $maior = $n;
+        }
+    }
+    return $maior;
+}
+
 function gcv_passeio_nome_curto(PDO $pdo, int $passeioId): string
 {
     $nomes = [];
@@ -1562,16 +1598,24 @@ function gcv_passeio_nome_curto(PDO $pdo, int $passeioId): string
     return $nomes ? implode(' + ', $nomes) : 'relacionado';
 }
 
-function gcv_passeio_erro_tarifa_abaixo_cidades(PDO $pdo, int $passeioId, string $guiaCodigo): ?string
+function gcv_passeio_erro_tarifa_abaixo_cidades(PDO $pdo, int $passeioId, string $guiaCodigo, string $cidade = ''): ?string
 {
     $guiaCodigo = trim($guiaCodigo);
+    $cidade = trim($cidade);
     if ($guiaCodigo === '' || $passeioId <= 0) {
         return null;
     }
     $exc = gcv_tarifa_guia_excursao_pax4($guiaCodigo);
-    $piso = gcv_passeio_piso_excursao_pax4($pdo, $passeioId);
+    $piso = $cidade !== ''
+        ? gcv_passeio_piso_excursao_pax4_cidade($pdo, $passeioId, $cidade)
+        : gcv_passeio_piso_excursao_pax4($pdo, $passeioId);
     if ($piso < 1 || $exc > $piso) {
         return null;
+    }
+    if ($cidade !== '') {
+        $nomes = gcv_cidades_saida_mapa($pdo);
+        $cidadeNome = (string)($nomes[$cidade] ?? $cidade);
+        return 'Saindo de ' . $cidadeNome . ', a Tarifa Guia do passeio precisa ter PAX 4 (excursão) maior que R$ ' . $piso . ', que é a maior das experiências nessa cidade.';
     }
     return 'A Tarifa Guia do passeio relacionado precisa ter PAX 4 (excursão) maior que R$ ' . $piso . ', que é a maior das cidades de embarque.';
 }
@@ -1615,14 +1659,14 @@ function gcv_atrativo_erro_embarques_vs_relacionados(PDO $pdo, int $attractionId
         $head = $pdo->prepare('SELECT tarifas_saida_json FROM gcv_passeio_relacionado WHERE id = ? LIMIT 1');
         $head->execute([$passeioId]);
         $mapaSaida = gcv_passeio_tarifas_saida_map(['tarifas_saida_json' => $head->fetchColumn()]);
-        $piso = gcv_passeio_piso_excursao_pax4($pdo, $passeioId, $attractionId, $base);
-        if ($piso < 1) {
-            continue;
-        }
         $nomesCidade = gcv_cidades_saida_mapa($pdo);
         foreach ($mapaSaida as $cidadeKey => $par) {
             $guia = $par['guia'];
             if ($guia === '') {
+                continue;
+            }
+            $piso = gcv_passeio_piso_excursao_pax4_cidade($pdo, $passeioId, (string)$cidadeKey, $attractionId, $base);
+            if ($piso < 1) {
                 continue;
             }
             $exc = gcv_tarifa_guia_excursao_pax4($guia);
@@ -1631,7 +1675,7 @@ function gcv_atrativo_erro_embarques_vs_relacionados(PDO $pdo, int $attractionId
             }
             $nome = gcv_passeio_nome_curto($pdo, $passeioId);
             $cidadeNome = (string)($nomesCidade[$cidadeKey] ?? $cidadeKey);
-            return 'A maior PAX 4 (excursão) das experiências ficaria em R$ ' . $piso . '. O passeio ' . $nome . ' saindo de ' . $cidadeNome . ' está em R$ ' . $exc . ' e precisa ser maior que isso.';
+            return 'Saindo de ' . $cidadeNome . ', a maior PAX 4 (excursão) das experiências ficaria em R$ ' . $piso . '. O passeio ' . $nome . ' está em R$ ' . $exc . ' e precisa ser maior que isso.';
         }
     }
     return null;
@@ -1959,12 +2003,12 @@ function gcv_saidas_tarifas_gravar_passeio(PDO $pdo, int $id, array $lista): voi
             'translado' => $transSalvo,
         ];
     }
-    foreach ($map as $par) {
+    foreach ($map as $cidadeKey => $par) {
         $guiaItem = trim((string)($par['guia'] ?? ''));
         if ($guiaItem === '') {
             continue;
         }
-        $erroRel = gcv_passeio_erro_tarifa_abaixo_cidades($pdo, $id, $guiaItem);
+        $erroRel = gcv_passeio_erro_tarifa_abaixo_cidades($pdo, $id, $guiaItem, (string)$cidadeKey);
         if ($erroRel !== null) {
             throw new InvalidArgumentException($erroRel);
         }
