@@ -918,10 +918,13 @@ function gcv_guiagem_release(int $excursionId, array $user, bool $isAdmin = fals
         $pdo->prepare(
             "INSERT INTO gcv_guide_queue_offers (excursion_id, guide_user_id, status) VALUES (?, ?, 'released')"
         )->execute([$excursionId, $owner]);
+        $pdo->prepare(
+            'DELETE FROM gcv_excursion_guide_seats WHERE excursion_id = ? AND guide_user_id = ?'
+        )->execute([$excursionId, $owner]);
         $posicao = gcv_substitution_move_to_end($owner);
         $tour['guide_user_id'] = null;
         $picked = gcv_guiagem_open_next($tour, $owner);
-        if (!$picked) {
+        if (!$picked && count(gcv_guiagem_seat_ids($excursionId)) < 1) {
             $cancelNow = gcv_guiagem_mark_cancelled($excursionId);
         }
         $pdo->commit();
@@ -938,10 +941,12 @@ function gcv_guiagem_release(int $excursionId, array $user, bool $isAdmin = fals
     if ($cancelNow) {
         gcv_guiagem_finish_no_guide($excursionId);
         $message = 'Guiagem cancelada. Você foi para o fim da fila (' . $posicao . 'º). Não havia outro guia disponível, então o passeio foi cancelado.';
-    } else {
+    } elseif ($ids) {
         gcv_guiagem_notify_new_purchase($excursionId, $ids);
         gcv_guiagem_notify_agency_released($tour, $owner, count($ids));
         $message = 'Guiagem cancelada. Você foi para o fim da fila (' . $posicao . 'º). Os guias do topo foram avisados e podem aceitar, como em uma compra nova. Os clientes só são avisados quando outro guia assumir.';
+    } else {
+        $message = 'Guiagem cancelada. Você foi para o fim da fila (' . $posicao . 'º). A vaga segue aberta até 24 horas antes do passeio.';
     }
     return ['ok' => true, 'message' => $message, 'offered' => count($ids), 'posicao' => $posicao, 'tour_cancelled' => $cancelNow];
 }
@@ -1124,9 +1129,9 @@ function gcv_guiagem_decline(int $excursionId, int $guideId): array
         $cancelNow = false;
         if ($pending < 1) {
             $tour = gcv_substitution_load_excursion($excursionId);
-            if ($tour && (int)($tour['guide_user_id'] ?? 0) <= 0) {
-                $picked = gcv_guiagem_open_next($tour, $guideId);
-                if (!$picked) {
+            if ($tour && !gcv_guiagem_staffing_ready($tour)) {
+                $picked = gcv_guiagem_open_top($tour, $guideId);
+                if (!$picked && count(gcv_guiagem_filled_ids($tour)) < 1) {
                     $cancelNow = gcv_guiagem_mark_cancelled($excursionId);
                 }
             }
