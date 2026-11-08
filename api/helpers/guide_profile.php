@@ -142,7 +142,17 @@ function gcv_guide_profile_is_complete(int $userId): bool
     if (!$p) {
         return false;
     }
-    $fin = function_exists('gcv_guide_financial_get') ? gcv_guide_financial_get($userId) : null;
+    $fin = null;
+    try {
+        $st = db()->prepare(
+            'SELECT * FROM gcv_guide_financial WHERE guide_user_id = ? AND deleted_at IS NULL LIMIT 1'
+        );
+        $st->execute([$userId]);
+        $row = $st->fetch(PDO::FETCH_ASSOC);
+        $fin = $row ?: null;
+    } catch (Throwable $e) {
+        $fin = function_exists('gcv_guide_financial_get') ? gcv_guide_financial_get($userId) : null;
+    }
     $merged = gcv_guide_profile_merge_financial($p, $fin);
     return gcv_guide_profile_missing($merged) === [];
 }

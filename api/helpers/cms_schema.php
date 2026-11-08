@@ -77,6 +77,27 @@ function gcv_cms_ensure_schema(): void
     }
 }
 
+/**
+ * Schema mínimo da tela de guias. Não reescreve atrativos, passeios nem vendas.
+ */
+function gcv_cms_ensure_guide_admin(): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+    $pdo = db();
+    gcv_cms_ensure_guide_columns($pdo);
+    gcv_cms_ensure_user_status_enum($pdo);
+    try {
+        require_once __DIR__ . '/guide_registration.php';
+        gcv_blocked_guide_emails_ensure($pdo);
+    } catch (Throwable $e) {
+        error_log('cms guide admin schema: ' . $e->getMessage());
+    }
+}
+
 function gcv_cms_ensure_experiencia(PDO $pdo): void
 {
     try {
@@ -447,18 +468,29 @@ function gcv_cms_ensure_guide_columns(PDO $pdo): void
         }
     }
     try {
-        $pdo->exec(
-            "UPDATE gcv_guides SET languages_json = '[\"pt\"]' WHERE languages_json IS NULL OR TRIM(languages_json) IN ('', '[]', 'null')"
-        );
+        $needLang = (int)$pdo->query(
+            "SELECT COUNT(*) FROM gcv_guides WHERE languages_json IS NULL OR TRIM(languages_json) IN ('', '[]', 'null')"
+        )->fetchColumn();
+        if ($needLang > 0) {
+            $pdo->exec(
+                "UPDATE gcv_guides SET languages_json = '[\"pt\"]' WHERE languages_json IS NULL OR TRIM(languages_json) IN ('', '[]', 'null')"
+            );
+        }
     } catch (Throwable $e) {
         // ignore
     }
     try {
-        $pdo->exec(
-            "UPDATE gcv_guides
-             SET pix_verified_at = COALESCE(pix_verified_at, NOW())
+        $needPix = (int)$pdo->query(
+            "SELECT COUNT(*) FROM gcv_guides
              WHERE pix_key IS NOT NULL AND TRIM(pix_key) <> '' AND pix_verified_at IS NULL"
-        );
+        )->fetchColumn();
+        if ($needPix > 0) {
+            $pdo->exec(
+                "UPDATE gcv_guides
+                 SET pix_verified_at = COALESCE(pix_verified_at, NOW())
+                 WHERE pix_key IS NOT NULL AND TRIM(pix_key) <> '' AND pix_verified_at IS NULL"
+            );
+        }
     } catch (Throwable $e) {
         // ignore
     }

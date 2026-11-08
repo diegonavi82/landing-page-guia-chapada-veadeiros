@@ -60,7 +60,10 @@ function gcv_related_tours_ensure(PDO $pdo): void
     );
 
     try {
-        $pdo->exec('ALTER TABLE gcv_passeio_relacionado ADD COLUMN duracao_manual TINYINT(1) NOT NULL DEFAULT 0');
+        $col = $pdo->query("SHOW COLUMNS FROM gcv_passeio_relacionado LIKE 'duracao_manual'")->fetch();
+        if (!$col) {
+            $pdo->exec('ALTER TABLE gcv_passeio_relacionado ADD COLUMN duracao_manual TINYINT(1) NOT NULL DEFAULT 0');
+        }
     } catch (Throwable $e) {
         // a coluna já existe
     }
@@ -95,6 +98,16 @@ function gcv_related_tours_seed(PDO $pdo): void
     $path = dirname(__DIR__) . '/data/related-tours-seed.json';
     if (!is_file($path)) {
         return;
+    }
+    $mtime = (string)@filemtime($path);
+    try {
+        $flag = $pdo->prepare('SELECT value FROM gcv_settings WHERE key_name = ? LIMIT 1');
+        $flag->execute(['related_tours_seed_mtime']);
+        if ($mtime !== '' && (string)$flag->fetchColumn() === $mtime) {
+            return;
+        }
+    } catch (Throwable $e) {
+        // segue a carga se a tabela de settings ainda não existe
     }
     $data = json_decode((string)file_get_contents($path), true);
     if (!is_array($data)) {
@@ -153,7 +166,33 @@ function gcv_related_tours_seed(PDO $pdo): void
         if (gcv_related_tour_foi_apagado($pdo, implode('-', $sorted))) {
             continue;
         }
-        gcv_related_tour_save($pdo, $ids);
+        try {
+            gcv_related_tour_save($pdo, $ids);
+        } catch (Throwable $e) {
+            error_log('related seed: ' . $e->getMessage());
+        }
+    }
+    if ($mtime === '') {
+        return;
+    }
+    try {
+        $check = $pdo->prepare('SELECT id FROM gcv_settings WHERE key_name = ? LIMIT 1');
+        $check->execute(['related_tours_seed_mtime']);
+        if ($check->fetch()) {
+            $pdo->prepare('UPDATE gcv_settings SET value = ? WHERE key_name = ?')->execute([
+                $mtime,
+                'related_tours_seed_mtime',
+            ]);
+        } else {
+            $pdo->prepare('INSERT INTO gcv_settings (key_name, value, label, type) VALUES (?,?,?,?)')->execute([
+                'related_tours_seed_mtime',
+                $mtime,
+                'Carga dos passeios relacionados já aplicada',
+                'string',
+            ]);
+        }
+    } catch (Throwable $e) {
+        error_log('related seed stamp: ' . $e->getMessage());
     }
 }
 

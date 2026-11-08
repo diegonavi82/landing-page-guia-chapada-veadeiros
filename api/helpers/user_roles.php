@@ -27,15 +27,18 @@ function gcv_auth_ensure_role_schema(): void
         // ignore
     }
 
-    // Migrar role legado → gcv_user_roles
-    try {
-        $pdo->exec(
-            "INSERT IGNORE INTO gcv_user_roles (user_id, role)
-             SELECT id, role FROM gcv_users
-             WHERE role IN ('admin','guide','client')"
-        );
-    } catch (Throwable $e) {
-        // ignore
+    // Migrar role legado → gcv_user_roles. Uma vez por dia: em todo request isso
+    // disputava o mesmo lock da lista de guias.
+    if (!function_exists('gcv_job_due') || gcv_job_due('user-roles-backfill', 86400)) {
+        try {
+            $pdo->exec(
+                "INSERT IGNORE INTO gcv_user_roles (user_id, role)
+                 SELECT id, role FROM gcv_users
+                 WHERE role IN ('admin','guide','client')"
+            );
+        } catch (Throwable $e) {
+            // ignore
+        }
     }
 
     // active_role na sessão

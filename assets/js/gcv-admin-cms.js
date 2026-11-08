@@ -17,14 +17,20 @@
     confirmOpen: false
   };
 
-  function get(url, cb) {
+  var guideListXhr = null;
+  var guideListSeq = 0;
+
+  function get(url, cb, timeoutMs) {
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url);
+    if (timeoutMs) xhr.timeout = timeoutMs;
     xhr.onload = function () {
       try { cb(null, JSON.parse(xhr.responseText)); } catch (e) { cb(e, {}); }
     };
     xhr.onerror = function () { cb(new Error('network'), {}); };
+    xhr.ontimeout = function () { cb(new Error('timeout'), {}); };
     xhr.send();
+    return xhr;
   }
 
   function sendJson(method, url, data, cb) {
@@ -1492,6 +1498,10 @@
     if (hint) hint.hidden = false;
     var newBtn = document.getElementById('cms-guide-new');
     if (newBtn) newBtn.onclick = function () { openGuideForm(null); };
+    if (guideListXhr) {
+      try { guideListXhr.abort(); } catch (e) {}
+      guideListXhr = null;
+    }
     box.innerHTML =
       '<div class="gcv-exc-sheet-toolbar" id="cms-guide-toolbar">' +
       '<div class="gcv-exc-sheet-filters">' +
@@ -1518,12 +1528,20 @@
       '<h3 class="gcv-guide-sheet-sub">E-mails bloqueados</h3>' +
       '<div id="cms-blocked-emails">Carregando…</div></div>';
     bindGuideSheetFilters();
-    get('/api/admin/cms-guides.php', function (err, res) {
+    var guideLoadSeq = ++guideListSeq;
+    guideListXhr = get('/api/admin/cms-guides.php', function (err, res) {
+      if (guideLoadSeq !== guideListSeq) return;
+      guideListXhr = null;
       var list = root('cms-guide-list');
       if (!list) return;
       if (err || !res || !res.ok) {
         var gMsg = (res && res.error) ? String(res.error) : 'Erro ao carregar guias.';
+        if (err && err.message === 'timeout') gMsg = 'A lista demorou demais para responder. Atualize a página.';
         list.innerHTML = '<p class="gcv-dash-alert">' + esc(gMsg) + '</p>';
+        var blocked = root('cms-blocked-emails');
+        if (blocked && /Carregando/.test(blocked.textContent || '')) {
+          blocked.innerHTML = '<p class="gcv-cms-muted">Não foi possível carregar os e-mails bloqueados.</p>';
+        }
         return;
       }
       if (res.data && res.data.reject_reasons) {
@@ -1532,7 +1550,7 @@
       paintGuidesList((res.data && res.data.guides) || []);
       paintCmsBlockedEmails((res.data && res.data.blocked_emails) || []);
       refreshGuideBadges();
-    });
+    }, 20000);
   }
 
   function paintCmsBlockedEmails(rows) {

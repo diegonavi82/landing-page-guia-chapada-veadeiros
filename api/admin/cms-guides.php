@@ -15,7 +15,7 @@ require_once __DIR__ . '/../helpers/guide_registration.php';
 
 header('Content-Type: application/json; charset=utf-8');
 $admin = require_admin();
-gcv_cms_ensure_schema();
+gcv_cms_ensure_guide_admin();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 function gcv_cms_guide_hydrate(array $row): array

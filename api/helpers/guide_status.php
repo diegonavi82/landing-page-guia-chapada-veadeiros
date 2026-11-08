@@ -57,6 +57,9 @@ function gcv_guides_apply_inactivity(?PDO $pdo = null): void
         return;
     }
     $done = true;
+    if (function_exists('gcv_job_due') && !gcv_job_due('guide-inactivity-90d', 900)) {
+        return;
+    }
     try {
         $pdo = $pdo ?: db();
         $pdo->exec(

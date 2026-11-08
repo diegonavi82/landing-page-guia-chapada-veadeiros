@@ -85,5 +85,27 @@ function db(): PDO
     // Hostinger: charset utf8mb4 no DSN usa collation general_ci; as tabelas são unicode_ci.
     // Sem isto, NULLIF/comparações quebram o cadastro do guia (SQLSTATE 1267).
     $pdo->exec('SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci');
+    try {
+        // DDL em andamento segurava o painel por minutos (padrão do MySQL: 1 ano).
+        $pdo->exec('SET SESSION lock_wait_timeout = 12');
+    } catch (Throwable $e) {
+        // hospedagem sem permissão para mudar a sessão
+    }
     return $pdo;
+}
+
+/** Trabalho pesado e idempotente: no máximo uma vez por intervalo, por servidor. */
+function gcv_job_due(string $key, int $seconds): bool
+{
+    $safe = preg_replace('/[^a-z0-9_-]/i', '', $key) ?: 'job';
+    $path = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'gcv-job-' . $safe . '.stamp';
+    $now = time();
+    if (is_file($path)) {
+        $age = $now - (int)@filemtime($path);
+        if ($age >= 0 && $age < $seconds) {
+            return false;
+        }
+    }
+    @touch($path);
+    return true;
 }

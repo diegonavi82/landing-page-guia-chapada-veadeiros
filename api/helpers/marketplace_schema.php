@@ -271,13 +271,21 @@ function gcv_marketplace_ensure_excursion_finance_columns(PDO $pdo): void
         }
     }
 
-    // Amplia ENUM de status com pending_approval / rejected
+    // Amplia ENUM de status com pending_approval / rejected. Sem esta checagem o ALTER
+    // reescrevia a tabela em todo request do painel e a lista de guias ficava em Carregando.
     try {
-        $pdo->exec(
-            "ALTER TABLE gcv_excursions MODIFY COLUMN status
-             ENUM('draft','pending_approval','published','cancelled','soldout','rejected')
-             NOT NULL DEFAULT 'draft'"
-        );
+        $col = $pdo->query("SHOW COLUMNS FROM gcv_excursions LIKE 'status'")->fetch();
+        $type = strtolower((string)($col['Type'] ?? ''));
+        $need = $type === ''
+            || !str_contains($type, 'pending_approval')
+            || !str_contains($type, 'rejected');
+        if ($need) {
+            $pdo->exec(
+                "ALTER TABLE gcv_excursions MODIFY COLUMN status
+                 ENUM('draft','pending_approval','published','cancelled','soldout','rejected')
+                 NOT NULL DEFAULT 'draft'"
+            );
+        }
     } catch (Throwable $e) {
         // ignore se não suportado
     }
@@ -294,6 +302,9 @@ function gcv_marketplace_retract_unapproved_guide_excursions(PDO $pdo): void
         return;
     }
     $done = true;
+    if (function_exists('gcv_job_due') && !gcv_job_due('retract-unapproved-excursions', 900)) {
+        return;
+    }
     try {
         $hasSales = false;
         try {
@@ -469,6 +480,9 @@ function gcv_marketplace_reschedule_payouts_to_17h(PDO $pdo): void
         return;
     }
     $done = true;
+    if (function_exists('gcv_job_due') && !gcv_job_due('reschedule-payouts-1620', 900)) {
+        return;
+    }
     try {
         $time = '16:20:00';
         try {

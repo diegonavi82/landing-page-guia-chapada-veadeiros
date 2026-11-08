@@ -11,7 +11,7 @@ header('Content-Type: application/json; charset=utf-8');
 
 require_admin();
 gcv_auth_ensure_role_schema();
-gcv_cms_ensure_schema();
+gcv_cms_ensure_guide_admin();
 gcv_blocked_guide_emails_ensure();
 
 $payload = [

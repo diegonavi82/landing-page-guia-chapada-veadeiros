@@ -16,7 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 $admin = require_admin();
-gcv_cms_ensure_schema();
+gcv_cms_ensure_guide_admin();
 $data = body_json();
 $userId = (int)($data['user_id'] ?? 0);
 

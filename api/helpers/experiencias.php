@@ -26,12 +26,47 @@ function gcv_experiencias_ensure(PDO $pdo): array
     $running = true;
     try {
         gcv_experiencias_schema($pdo);
-        $stats = gcv_experiencias_backfill($pdo);
+        $stats = gcv_experiencias_backfill_faltantes($pdo);
         $done = true;
         return $stats;
     } finally {
         $running = false;
     }
+}
+
+/**
+ * Só cria a experiência que ainda não existe. Não reescreve o catálogo inteiro a cada abertura do painel.
+ *
+ * @return array{experiencias_novas:int}
+ */
+function gcv_experiencias_backfill_faltantes(PDO $pdo): array
+{
+    $stats = ['experiencias_novas' => 0];
+    try {
+        $rows = $pdo->query(
+            "SELECT a.id
+             FROM gcv_attractions a
+             WHERE a.title_pt NOT LIKE '% + %'
+               AND NOT EXISTS (
+                 SELECT 1 FROM gcv_experiencias e
+                 WHERE e.attraction_id = a.id AND e.tipo = 'atrativo'
+               )
+             ORDER BY a.id ASC
+             LIMIT 3"
+        )->fetchAll();
+    } catch (Throwable $e) {
+        return $stats;
+    }
+    foreach ($rows as $row) {
+        try {
+            if (gcv_experiencia_sync_atrativo($pdo, (int)$row['id']) > 0) {
+                $stats['experiencias_novas']++;
+            }
+        } catch (Throwable $e) {
+            error_log('backfill experiencia faltante ' . (int)$row['id'] . ': ' . $e->getMessage());
+        }
+    }
+    return $stats;
 }
 
 function gcv_experiencias_schema(PDO $pdo): void
