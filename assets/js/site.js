@@ -2897,13 +2897,20 @@
       var atual = select.value;
       var nomes = saidas.map(function (c) { return c.nome; });
       if (nomes.indexOf(atual) < 0) atual = nomes[0] || "";
-      group.innerHTML = saidas.map(function (c) {
-        var on = c.nome === atual;
-        return '<button type="button" role="radio" aria-checked="' + (on ? "true" : "false") + '" class="' + (on ? "is-on" : "") + '" data-value="' + passeioEsc(c.nome) + '">' + passeioEsc(c.curta || passeioCidadeCurta(c.nome)) + "</button>";
-      }).join("");
+      var botoes = group.querySelectorAll("button");
+      var mesmaLista = botoes.length === saidas.length && saidas.every(function (c, i) {
+        return botoes[i].getAttribute("data-value") === c.nome;
+      });
       group.hidden = !saidas.length;
-      select.innerHTML = nomes.map(function (c) { return "<option>" + passeioEsc(c) + "</option>"; }).join("");
+      if (!mesmaLista) {
+        group.innerHTML = saidas.map(function (c) {
+          var on = c.nome === atual;
+          return '<button type="button" role="radio" aria-checked="' + (on ? "true" : "false") + '" class="' + (on ? "is-on" : "") + '" data-value="' + passeioEsc(c.nome) + '">' + passeioEsc(c.curta || passeioCidadeCurta(c.nome)) + "</button>";
+        }).join("");
+        select.innerHTML = nomes.map(function (c) { return "<option>" + passeioEsc(c) + "</option>"; }).join("");
+      }
       if (atual) select.value = atual;
+      setSeg("city", atual);
       if (vazio) {
         vazio.hidden = !!saidas.length;
         vazio.textContent = saidas.length ? "" : copy.noCity;
@@ -3221,6 +3228,9 @@
       modal.addEventListener("click", function (e) {
         var t = e.target;
         if (!t || !t.closest) return;
+        // Trocar a cidade redesenha os botões no meio do clique. O alvo sai do
+        // documento e, sem isso, o modal lia o clique como se fosse fora e fechava.
+        if (!t.isConnected) return;
         if (t.closest(".gcv-passeio-modal__panel")) {
           if (t.closest("[data-passeio-modal-close]")) closePasseioModal();
           return;
