@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="/assets/css/site.css?v=1.0.8" />
-<link rel="stylesheet" href="/assets/css/gcv-auth.css?v=1.0.0" />
+<link rel="stylesheet" href="/assets/css/gcv-auth.css?v=1.0.3" />
 </head>
 <body>
 <div class="gcv-auth-page">
@@ -62,12 +62,20 @@
         <label class="gcv-auth-label" for="register-cadastur">Número Cadastur (opcional)</label>
         <input class="gcv-auth-input" id="register-cadastur" name="cadastur" type="text" />
       </div>
+      <div class="gcv-auth-field" id="kalunga-field" hidden>
+        <span class="gcv-auth-label">Guía Kalunga</span>
+        <div class="gcv-kalunga-toggle" role="group" aria-label="Guía Kalunga">
+          <button type="button" class="gcv-kalunga-opt is-off" data-kalunga="1" aria-pressed="false">Sí</button>
+          <button type="button" class="gcv-kalunga-opt is-on" data-kalunga="0" aria-pressed="true">No</button>
+        </div>
+        <input type="hidden" name="is_kalunga" value="0" />
+      </div>
       <div class="gcv-auth-note" id="guide-note" hidden>Los guías pasan por aprobación antes de publicar excursiones</div>
       <button class="gcv-auth-btn gcv-auth-btn--primary" type="submit">Crear cuenta</button>
     </form>
     <div class="gcv-auth-links">¿Ya tienes cuenta? <a href="/es/login.html">Iniciar sesión</a></div>
   </div>
 </div>
-<script src="/assets/js/gcv-auth.js?v=1.0.49" defer></script>
+<script src="/assets/js/gcv-auth.js?v=1.0.52" defer></script>
 </body>
 </html>

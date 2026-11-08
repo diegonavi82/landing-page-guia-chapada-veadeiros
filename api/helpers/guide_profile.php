@@ -26,6 +26,19 @@ function gcv_normalize_sexo($value): string
     return '';
 }
 
+/** 1 = guia Kalunga, 0 = não. Ausente ou inválido vira não. */
+function gcv_normalize_kalunga($value): int
+{
+    if (is_bool($value)) {
+        return $value ? 1 : 0;
+    }
+    if (is_int($value) || is_float($value)) {
+        return (int)$value === 1 ? 1 : 0;
+    }
+    $s = strtolower(trim((string)$value));
+    return in_array($s, ['1', 'true', 'sim', 'yes', 'sí', 'si', 's', 'y'], true) ? 1 : 0;
+}
+
 /**
  * @param array<string,mixed> $p  Linha de gcv_guides + email + legal_name/pix
  * @return list<string>

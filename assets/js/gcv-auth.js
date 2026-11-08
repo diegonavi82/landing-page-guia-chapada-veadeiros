@@ -327,7 +327,35 @@
     var roleInput = document.getElementById('register-role');
     var roleBtns  = document.querySelectorAll('.gcv-auth-role-btn');
     var cadasturField = document.getElementById('cadastur-field');
+    var kalungaField  = document.getElementById('kalunga-field');
     var guideNote     = document.getElementById('guide-note');
+
+    function syncGuideFields(role) {
+      var isGuide = role === 'guide';
+      if (cadasturField) cadasturField.hidden = !isGuide;
+      if (kalungaField) kalungaField.hidden = !isGuide;
+      if (guideNote) guideNote.hidden = !isGuide;
+    }
+
+    function bindKalungaToggle() {
+      var hidden = form.querySelector('[name=is_kalunga]');
+      if (!hidden || !kalungaField) return;
+      kalungaField.querySelectorAll('[data-kalunga]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var val = btn.getAttribute('data-kalunga') === '1' ? '1' : '0';
+          hidden.value = val;
+          kalungaField.querySelectorAll('[data-kalunga]').forEach(function (b) {
+            var selected = b.getAttribute('data-kalunga') === val;
+            b.classList.toggle('is-on', selected);
+            b.classList.toggle('is-off', !selected);
+            b.setAttribute('aria-pressed', selected ? 'true' : 'false');
+          });
+        });
+      });
+    }
+
+    bindKalungaToggle();
+    syncGuideFields((roleInput && roleInput.value) || 'client');
 
     roleBtns.forEach(function (btn) {
       btn.addEventListener('click', function () {
@@ -335,8 +363,7 @@
         btn.classList.add('active');
         var role = btn.getAttribute('data-role');
         if (roleInput) roleInput.value = role;
-        if (cadasturField) cadasturField.hidden = role !== 'guide';
-        if (guideNote) guideNote.hidden = role !== 'guide';
+        syncGuideFields(role);
       });
     });
 
@@ -351,6 +378,8 @@
       var confirm  = form.querySelector('[name=password_confirm]').value;
       var role     = (roleInput && roleInput.value) || 'client';
       var cadastur = (form.querySelector('[name=cadastur]') && form.querySelector('[name=cadastur]').value) || '';
+      var kalungaEl = form.querySelector('[name=is_kalunga]');
+      var isKalunga = role === 'guide' && kalungaEl && String(kalungaEl.value) === '1' ? 1 : 0;
 
       if (pass !== confirm) {
         showError(err, t('register', 'error_mismatch'));
@@ -363,7 +392,7 @@
 
       if (btn) btn.disabled = true;
 
-      post(BASE + '/register.php', { name: name, email: email, password: pass, role: role, lang: lang, cadastur: cadastur }, function (error, res) {
+      post(BASE + '/register.php', { name: name, email: email, password: pass, role: role, lang: lang, cadastur: cadastur, is_kalunga: isKalunga }, function (error, res) {
         if (btn) btn.disabled = false;
         if (error || !res.ok) {
           showError(err, (res && res.error) || 'Erro ao criar conta');

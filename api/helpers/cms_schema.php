@@ -442,6 +442,7 @@ function gcv_cms_ensure_guide_columns(PDO $pdo): void
         'phone_iso' => "CHAR(2) NULL DEFAULT 'br'",
         'birth_date' => "DATE NULL",
         'sexo' => "ENUM('M','F') NULL",
+        'is_kalunga' => "TINYINT(1) NOT NULL DEFAULT 0",
         'base_city_id' => "INT UNSIGNED NULL",
         'cpf' => "VARCHAR(14) NULL",
         'id_document_url' => "VARCHAR(500) NULL",

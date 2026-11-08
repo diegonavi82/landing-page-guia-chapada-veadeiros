@@ -22,6 +22,11 @@ $user = require_held_role('guide');
 require_once __DIR__ . '/../helpers/email_verify.php';
 gcv_require_guide_email_verified($user);
 gcv_cms_ensure_schema();
+try {
+    gcv_cms_ensure_guide_columns(db());
+} catch (Throwable $e) {
+    error_log('me-profile is_kalunga: ' . $e->getMessage());
+}
 
 $BIO_MAX = 800;
 $BIO_RECOMMENDED = 600;
@@ -49,6 +54,7 @@ function gcv_guide_profile_payload(int $userId): array
         return ['profile' => null, 'financial' => null, 'missing' => ['full_name'], 'complete' => false];
     }
     $profile['languages'] = gcv_guide_languages_normalize($profile['languages_json'] ?? null);
+    $profile['is_kalunga'] = gcv_normalize_kalunga($profile['is_kalunga'] ?? 0);
     $profile['needs_resubmit'] = (int)($profile['needs_resubmit'] ?? 0) === 1;
     $financial = gcv_guide_financial_get($userId);
     $merged = gcv_guide_profile_merge_financial($profile, $financial);
@@ -141,6 +147,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
     $phoneIso = $phoneCheck['iso'];
     $birth = trim((string)($data['birth_date'] ?? ''));
     $sexo = gcv_normalize_sexo($data['sexo'] ?? '');
+    $isKalunga = array_key_exists('is_kalunga', $data)
+        ? gcv_normalize_kalunga($data['is_kalunga'])
+        : gcv_normalize_kalunga($before['profile']['is_kalunga'] ?? 0);
     $baseCityId = (int)($data['base_city_id'] ?? 0);
     $idDoc = sanitize_text((string)($data['id_document_url'] ?? ''), 500);
     $photo34 = sanitize_text((string)($data['photo_3x4_url'] ?? ''), 500);
@@ -215,26 +224,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
             $pdo->prepare(
                 'UPDATE gcv_guides SET
                     full_name = ?, nickname = ?,
-                    phone = ?, phone_ddi = ?, phone_iso = ?, birth_date = ?, sexo = ?, base_city_id = ?,
+                    phone = ?, phone_ddi = ?, phone_iso = ?, birth_date = ?, sexo = ?, is_kalunga = ?, base_city_id = ?,
                     id_document_url = ?, photo_3x4_url = ?, photo_url = ?, bio_pt = ?,
                     languages_json = ?
                  WHERE user_id = ?'
             )->execute([
                 $fullName, $nickname,
-                $phone, $phoneDdi, $phoneIso, $birth, $sexo, $baseCityId,
+                $phone, $phoneDdi, $phoneIso, $birth, $sexo, $isKalunga, $baseCityId,
                 $idDoc, $photo34, $photo34, $bio, $langJson, $userId,
             ]);
         } catch (Throwable $e) {
             $pdo->prepare(
                 'UPDATE gcv_guides SET
                     full_name = ?, nickname = ?,
-                    phone = ?, phone_ddi = ?, birth_date = ?, sexo = ?, base_city_id = ?,
+                    phone = ?, phone_ddi = ?, birth_date = ?, sexo = ?, is_kalunga = ?, base_city_id = ?,
                     id_document_url = ?, photo_3x4_url = ?, photo_url = ?, bio_pt = ?,
                     languages_json = ?
                  WHERE user_id = ?'
             )->execute([
                 $fullName, $nickname,
-                $phone, $phoneDdi, $birth, $sexo, $baseCityId,
+                $phone, $phoneDdi, $birth, $sexo, $isKalunga, $baseCityId,
                 $idDoc, $photo34, $photo34, $bio, $langJson, $userId,
             ]);
         }

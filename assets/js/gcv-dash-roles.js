@@ -1165,6 +1165,51 @@
     return (lang === 'en' || lang === 'es') ? lang : 'pt';
   }
 
+  function isKalungaFlag(v) {
+    return v === 1 || v === true || v === '1';
+  }
+
+  function kalungaUi() {
+    var all = {
+      pt: { label: 'Guia Kalunga', yes: 'Sim', no: 'Não' },
+      en: { label: 'Kalunga guide', yes: 'Yes', no: 'No' },
+      es: { label: 'Guía Kalunga', yes: 'Sí', no: 'No' }
+    };
+    return all[profileUiLang()] || all.pt;
+  }
+
+  function kalungaToggleHtml(hiddenId, on) {
+    var t = kalungaUi();
+    return (
+      '<div class="gcv-dash-field">' +
+      '<span class="gcv-dash-label">' + esc(t.label) + '</span>' +
+      '<div class="gcv-cms-row__decide" role="group" aria-label="' + esc(t.label) + '">' +
+      '<button type="button" class="gcv-exc-status gcv-exc-status--ok' + (on ? ' is-on' : ' is-off') + '" data-kalunga="1" aria-pressed="' + (on ? 'true' : 'false') + '">' + esc(t.yes) + '</button>' +
+      '<button type="button" class="gcv-exc-status gcv-exc-status--muted' + (!on ? ' is-on' : ' is-off') + '" data-kalunga="0" aria-pressed="' + (!on ? 'true' : 'false') + '">' + esc(t.no) + '</button>' +
+      '</div>' +
+      '<input type="hidden" id="' + hiddenId + '" value="' + (on ? '1' : '0') + '" />' +
+      '</div>'
+    );
+  }
+
+  function bindKalungaToggle(scope, hiddenId) {
+    if (!scope) return;
+    var hidden = scope.querySelector('#' + hiddenId);
+    if (!hidden) return;
+    scope.querySelectorAll('[data-kalunga]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var val = btn.getAttribute('data-kalunga') === '1' ? '1' : '0';
+        hidden.value = val;
+        scope.querySelectorAll('[data-kalunga]').forEach(function (b) {
+          var selected = b.getAttribute('data-kalunga') === val;
+          b.classList.toggle('is-on', selected);
+          b.classList.toggle('is-off', !selected);
+          b.setAttribute('aria-pressed', selected ? 'true' : 'false');
+        });
+      });
+    });
+  }
+
   function sexoUi() {
     var all = {
       pt: { label: 'Sexo *', m: 'Masculino', f: 'Feminino', ph: 'Selecione…', err: 'Selecione o sexo.', missing: 'Sexo' },
@@ -1512,6 +1557,7 @@
           '<option value="M"' + (String(p.sexo || '').toUpperCase() === 'M' ? ' selected' : '') + '>' + esc(sexoUi().m) + '</option>' +
           '<option value="F"' + (String(p.sexo || '').toUpperCase() === 'F' ? ' selected' : '') + '>' + esc(sexoUi().f) + '</option>' +
           '</select><p class="gcv-dash-field-error" hidden></p></div>' +
+          kalungaToggleHtml('gp-kalunga', isKalungaFlag(p.is_kalunga)) +
           '<div class="gcv-dash-field" style="margin-bottom:0;"><label class="gcv-dash-label">Cidade onde mora *</label>' +
           '<select class="gcv-dash-select" id="gp-city" required><option value="">Selecione…</option>' +
           cities.map(function (c) {
@@ -1699,6 +1745,8 @@
       root.appendChild(reviewsBox);
       loadGuidePublicReviews(reviewsBox, parseInt(p.user_id, 10) || 0);
 
+      bindKalungaToggle(document.getElementById('guide-profile-form'), 'gp-kalunga');
+
       document.getElementById('guide-profile-form').onsubmit = function (ev) {
         ev.preventDefault();
         var form = document.getElementById('guide-profile-form');
@@ -1782,6 +1830,7 @@
           phone: gpPhone.getPhoneDigits(),
           birth_date: document.getElementById('gp-birth').value,
           sexo: (document.getElementById('gp-sexo') && document.getElementById('gp-sexo').value) || '',
+          is_kalunga: (document.getElementById('gp-kalunga') && document.getElementById('gp-kalunga').value === '1') ? 1 : 0,
           base_city_id: parseInt(document.getElementById('gp-city').value, 10) || 0,
           bio_pt: document.getElementById('gp-bio').value.trim(),
           languages: readLanguagesPicker(document.getElementById('guide-profile-form')),

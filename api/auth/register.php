@@ -8,6 +8,8 @@ require_once __DIR__ . '/../helpers/mailer.php';
 require_once __DIR__ . '/../helpers/user_roles.php';
 require_once __DIR__ . '/../helpers/access_policy.php';
 require_once __DIR__ . '/../helpers/diego_navi_stash.php';
+require_once __DIR__ . '/../helpers/cms_schema.php';
+require_once __DIR__ . '/../helpers/guide_profile.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -59,6 +61,13 @@ $hash   = password_hash($pass, PASSWORD_BCRYPT, ['cost' => 12]);
 $status = $role === 'guide' ? 'pending' : 'active';
 
 $pdo = db();
+if ($role === 'guide') {
+    try {
+        gcv_cms_ensure_guide_columns($pdo);
+    } catch (Throwable $e) {
+        error_log('register is_kalunga: ' . $e->getMessage());
+    }
+}
 $pdo->beginTransaction();
 try {
     $pdo->prepare(
@@ -68,9 +77,10 @@ try {
     $userId = (int)$pdo->lastInsertId();
 
     if ($role === 'guide') {
+        $isKalunga = gcv_normalize_kalunga($data['is_kalunga'] ?? 0);
         $pdo->prepare(
-            'INSERT INTO gcv_guides (user_id, cadastur) VALUES (?,?)'
-        )->execute([$userId, $cadastur ?: null]);
+            'INSERT INTO gcv_guides (user_id, cadastur, is_kalunga) VALUES (?,?,?)'
+        )->execute([$userId, $cadastur ?: null, $isKalunga]);
         try {
             gcv_diego_navi_stash_apply_if_needed($userId, $email);
         } catch (Throwable $e) {

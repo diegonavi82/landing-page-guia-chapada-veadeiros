@@ -1412,6 +1412,41 @@
     });
   }
 
+  function isKalungaFlag(v) {
+    return v === 1 || v === true || v === '1';
+  }
+
+  function guideKalungaBoxHtml(on) {
+    return (
+      '<div class="gcv-cms-guide-status-box">' +
+      '<div class="gcv-cms-guide-status-box__head"><h4>Guia Kalunga</h4></div>' +
+      '<div class="gcv-cms-row__decide" style="margin-top:0.55rem;" role="group" aria-label="Guia Kalunga">' +
+      '<button type="button" class="gcv-exc-status gcv-exc-status--ok' + (on ? ' is-on' : ' is-off') + '" data-kalunga="1" aria-pressed="' + (on ? 'true' : 'false') + '">Sim</button>' +
+      '<button type="button" class="gcv-exc-status gcv-exc-status--muted' + (!on ? ' is-on' : ' is-off') + '" data-kalunga="0" aria-pressed="' + (!on ? 'true' : 'false') + '">Não</button>' +
+      '</div>' +
+      '<input type="hidden" id="g-kalunga" value="' + (on ? '1' : '0') + '" />' +
+      '</div>'
+    );
+  }
+
+  function bindKalungaToggle(scope, hiddenId) {
+    if (!scope) return;
+    var hidden = scope.querySelector('#' + hiddenId);
+    if (!hidden) return;
+    scope.querySelectorAll('[data-kalunga]').forEach(function (btn) {
+      btn.onclick = function () {
+        var val = btn.getAttribute('data-kalunga') === '1' ? '1' : '0';
+        hidden.value = val;
+        scope.querySelectorAll('[data-kalunga]').forEach(function (b) {
+          var selected = b.getAttribute('data-kalunga') === val;
+          b.classList.toggle('is-on', selected);
+          b.classList.toggle('is-off', !selected);
+          b.setAttribute('aria-pressed', selected ? 'true' : 'false');
+        });
+      };
+    });
+  }
+
   function guideStatusChip(value, current, uid, label, kind) {
     var on = current === value;
     var cls = 'gcv-exc-status gcv-exc-status--' + kind + (on ? ' is-on' : ' is-off');
@@ -1689,6 +1724,7 @@
           '<td class="gcv-guide-sheet__status">' + guideAccountBadge(g) + decide + '</td>' +
           '<td class="gcv-guide-sheet__name-cell">' +
           '<strong class="gcv-guide-sheet__name">' + esc(name) + '</strong>' +
+          (isKalungaFlag(g.is_kalunga) ? '<span class="gcv-exc-status gcv-exc-status--ok is-on" style="margin-top:0.28rem;">Kalunga</span>' : '') +
           (email ? '<span class="gcv-guide-sheet__email">' + esc(email) + '</span>' : '') +
           '</td>' +
           '<td class="gcv-guide-sheet__city-cell"><strong class="gcv-guide-sheet__city">' + esc(city) + '</strong></td>' +
@@ -2078,6 +2114,7 @@
         (g ? 'Perfil do guia — edite os dados e o PIX neste formulário.' : 'Cadastro em branco. Nada é copiado de outro perfil.') +
         '</p>' +
         guideEditStatusHtml(g) +
+        guideKalungaBoxHtml(isKalungaFlag(g && g.is_kalunga)) +
         '<div class="gcv-dash-field-row">' +
         '<div class="gcv-dash-field"><label class="gcv-dash-label">Nome completo *</label><input class="gcv-dash-input" id="g-full" value="' + esc(g && g.full_name || '') + '" /></div>' +
         '<div class="gcv-dash-field"><label class="gcv-dash-label">Apelido *</label><input class="gcv-dash-input" id="g-nick" value="' + esc(g && g.nickname || '') + '" /></div>' +
@@ -2130,6 +2167,7 @@
 
       var phoneCtl = mountGuidePhoneField(root('g-phone-wrap'), phoneIso, phoneVal);
       bindGuideEditStatus(form, g);
+      bindKalungaToggle(form, 'g-kalunga');
 
       function showPhoto(url) {
         var img = root('g-photo-preview');
@@ -2216,6 +2254,7 @@
           email: root('g-email').value.trim(),
           birth_date: root('g-birth').value,
           sexo: root('g-sexo').value,
+          is_kalunga: root('g-kalunga') && root('g-kalunga').value === '1' ? 1 : 0,
           phone_ddi: phoneCtl.getDial(),
           phone_iso: phoneCtl.getIso(),
           phone: phoneDigits,

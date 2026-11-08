@@ -16,11 +16,17 @@ require_once __DIR__ . '/../helpers/guide_registration.php';
 header('Content-Type: application/json; charset=utf-8');
 $admin = require_admin();
 gcv_cms_ensure_guide_admin();
+try {
+    gcv_cms_ensure_guide_columns(db());
+} catch (Throwable $e) {
+    error_log('cms-guides is_kalunga: ' . $e->getMessage());
+}
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 function gcv_cms_guide_hydrate(array $row, bool $repair = true): array
 {
     $row['languages'] = gcv_guide_languages_normalize($row['languages_json'] ?? null);
+    $row['is_kalunga'] = gcv_normalize_kalunga($row['is_kalunga'] ?? 0);
     $row['pix_ready'] = trim((string)($row['pix_key'] ?? '')) !== '';
     $row['was_approved'] = gcv_guide_was_approved($row);
     $row['profile_complete'] = (int)($row['profile_complete'] ?? 0) === 1;
@@ -72,7 +78,7 @@ function gcv_cms_guide_select_sql(): string
 {
     return 'SELECT u.id AS user_id, u.name, u.email, u.role, u.status, u.avatar_url,
                 g.id AS guide_id, g.nickname, g.full_name, g.phone, g.phone_ddi, g.phone_iso,
-                g.birth_date, g.sexo, g.base_city_id, g.cadastur, g.pix_key, g.pix_key_type, g.pix_holder_name,
+                g.birth_date, g.sexo, g.is_kalunga, g.base_city_id, g.cadastur, g.pix_key, g.pix_key_type, g.pix_holder_name,
                 g.pix_verified_at, g.pix_verified_by,
                 g.photo_url, g.diploma_url, g.association_doc_url, g.photo_3x4_url,
                 g.bio_pt, g.bio_en, g.bio_es, g.languages_json, g.cpf, g.profile_complete, g.needs_resubmit, g.approved_at, g.approved_by,
@@ -110,14 +116,14 @@ function gcv_cms_guides_list(): array
     $order = ' ORDER BY CASE WHEN u.status = \'pending\' THEN 0 WHEN u.status = \'suspended\' THEN 1 ELSE 2 END, COALESCE(g.full_name, u.name) ASC';
     $select = 'SELECT u.id AS user_id, u.name, u.email, u.status, u.avatar_url, g.nickname, g.full_name, g.phone, g.phone_ddi,
                 g.cadastur, g.pix_key, g.pix_key_type, g.pix_holder_name, g.pix_verified_at, g.approved_at,
-                g.rejected_at, g.rejected_reason, g.sexo,
+                g.rejected_at, g.rejected_reason, g.sexo, g.is_kalunga,
                 g.photo_3x4_url, g.photo_url, g.languages_json, g.profile_complete, g.needs_resubmit, c.name AS base_city_name
          FROM gcv_users u
          LEFT JOIN gcv_guides g ON g.user_id = u.id
          LEFT JOIN gcv_cities c ON c.id = g.base_city_id';
     $selectLegacy = 'SELECT u.id AS user_id, u.name, u.email, u.status, u.avatar_url, g.nickname, g.full_name, g.phone, g.phone_ddi,
                 g.cadastur, g.pix_key, g.pix_key_type, g.pix_holder_name, g.pix_verified_at, g.approved_at,
-                g.rejected_at, g.rejected_reason, g.sexo,
+                g.rejected_at, g.rejected_reason, g.sexo, g.is_kalunga,
                 g.photo_3x4_url, g.photo_url, g.languages_json, g.profile_complete, c.name AS base_city_name
          FROM gcv_users u
          LEFT JOIN gcv_guides g ON g.user_id = u.id
@@ -503,6 +509,7 @@ if ($method === 'POST') {
     $diploma = trim((string)($body['diploma_url'] ?? ''));
     $birth = trim((string)($body['birth_date'] ?? ''));
     $sexo = gcv_normalize_sexo($body['sexo'] ?? '');
+    $isKalunga = gcv_normalize_kalunga($body['is_kalunga'] ?? 0);
     $cityId = isset($body['base_city_id']) ? (int)$body['base_city_id'] : 0;
 
     $missing = [];
@@ -551,11 +558,11 @@ if ($method === 'POST') {
 
         $stmt = db()->prepare(
             'INSERT INTO gcv_guides (
-              user_id, nickname, full_name, phone, phone_ddi, phone_iso, birth_date, sexo, base_city_id,
+              user_id, nickname, full_name, phone, phone_ddi, phone_iso, birth_date, sexo, is_kalunga, base_city_id,
               cadastur, pix_key, pix_key_type, pix_holder_name, photo_url, diploma_url,
               association_doc_url, photo_3x4_url, bio_pt, bio_en, bio_es, languages_json,
               profile_complete, approved_at, approved_by
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?)'
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?)'
         );
         $stmt->execute([
             $userId,
@@ -566,6 +573,7 @@ if ($method === 'POST') {
             strtolower(substr(trim((string)($body['phone_iso'] ?? 'br')), 0, 2)) ?: 'br',
             $birth,
             $sexo,
+            $isKalunga,
             $cityId,
             $cadastur,
             $pixKey,
@@ -627,6 +635,9 @@ if ($method === 'PUT') {
     $diploma = trim((string)($body['diploma_url'] ?? $current['diploma_url'] ?? '')) ?: null;
     $birth = trim((string)($body['birth_date'] ?? $current['birth_date'] ?? ''));
     $sexo = gcv_normalize_sexo($body['sexo'] ?? $current['sexo'] ?? '');
+    $isKalunga = array_key_exists('is_kalunga', $body)
+        ? gcv_normalize_kalunga($body['is_kalunga'])
+        : gcv_normalize_kalunga($current['is_kalunga'] ?? 0);
     $cityId = (int)($body['base_city_id'] ?? $current['base_city_id'] ?? 0);
 
     $missing = [];
@@ -661,7 +672,7 @@ if ($method === 'PUT') {
         if (!empty($current['guide_id'])) {
             db()->prepare(
                 'UPDATE gcv_guides SET nickname=?, full_name=?, phone=?, phone_ddi=?, phone_iso=?, birth_date=?, sexo=?,
-                 base_city_id=?, cadastur=?, pix_key=?, pix_key_type=?, pix_holder_name=?, photo_url=?,
+                 is_kalunga=?, base_city_id=?, cadastur=?, pix_key=?, pix_key_type=?, pix_holder_name=?, photo_url=?,
                  diploma_url=?, association_doc_url=?, photo_3x4_url=?, bio_pt=?, bio_en=?, bio_es=?,
                  languages_json=?, profile_complete=1,
                  pix_verified_at=?, pix_verified_by=? WHERE user_id=?'
@@ -673,6 +684,7 @@ if ($method === 'PUT') {
                 strtolower(substr(trim((string)($body['phone_iso'] ?? $current['phone_iso'] ?? 'br')), 0, 2)) ?: 'br',
                 $birth,
                 $sexo,
+                $isKalunga,
                 $cityId,
                 array_key_exists('cadastur', $body)
                     ? (trim((string)$body['cadastur']) ?: null)
@@ -699,14 +711,14 @@ if ($method === 'PUT') {
         } else {
             db()->prepare(
                 'INSERT INTO gcv_guides (
-                  user_id, nickname, full_name, phone, phone_ddi, phone_iso, birth_date, sexo, base_city_id,
+                  user_id, nickname, full_name, phone, phone_ddi, phone_iso, birth_date, sexo, is_kalunga, base_city_id,
                   pix_key, pix_key_type, pix_holder_name, photo_url, photo_3x4_url, bio_pt, profile_complete
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1)'
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1)'
             )->execute([
                 $userId, $nickname, $fullName, $phone,
                 trim((string)($body['phone_ddi'] ?? '+55')) ?: '+55',
                 strtolower(substr(trim((string)($body['phone_iso'] ?? 'br')), 0, 2)) ?: 'br',
-                $birth, $sexo, $cityId,
+                $birth, $sexo, $isKalunga, $cityId,
                 $pixKey, $pixType, $pixHolder, $photoUrl ?: $photo34, $photo34 ?: $photoUrl,
                 ($body['bio_pt'] ?? null),
             ]);
