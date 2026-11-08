@@ -2107,7 +2107,7 @@
 
   /**
    * O tarifário (já com o idioma) é o PIX.
-   * Cartão brasileiro: +15%, em até 4x. Internacional: +25%; o dólar com spread vem da cotação do servidor.
+   * Cartão brasileiro: +15%, em até 4x sem juros. Internacional: +25%; o dólar com spread vem da cotação do servidor.
    */
   function passeioPagamento(grossCents) {
     var pix = Math.max(0, parseInt(grossCents, 10) || 0);
