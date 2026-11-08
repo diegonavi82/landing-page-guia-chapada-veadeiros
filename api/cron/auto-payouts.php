@@ -31,6 +31,13 @@ try {
     error_log('ops cron: ' . $e->getMessage());
 }
 $out = gcv_payout_process_due(null, 25);
+$fiscal = ['sent' => 0, 'skipped' => 0, 'failed' => 0];
+try {
+    require_once __DIR__ . '/../helpers/fiscal_ir.php';
+    $fiscal = gcv_fiscal_send_year_notices();
+} catch (Throwable $e) {
+    error_log('fiscal notices: ' . $e->getMessage());
+}
 echo json_encode([
     'success' => true,
     'processed' => $out['processed'],
@@ -38,4 +45,5 @@ echo json_encode([
     'skipped' => $out['skipped'],
     'failed' => $out['failed'],
     'ops' => $ops,
+    'fiscal_notices' => $fiscal,
 ], JSON_UNESCAPED_UNICODE);

@@ -5442,6 +5442,37 @@ body.gcv-spot-open { overflow: hidden; }
   text-align: center;
 }
 
+.gcv-ir-card {
+  margin: 0 0 1.25rem;
+  padding: 1rem;
+  border: 1px solid #d7e4dc;
+  border-radius: 12px;
+  background: #f7fbf8;
+}
+.gcv-ir-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: flex-end;
+  margin-bottom: 0.75rem;
+}
+.gcv-ir-note {
+  color: #64748b;
+  font-size: 0.9rem;
+  margin: 0 0 0.85rem;
+}
+.gcv-ir-row { cursor: pointer; }
+.gcv-ir-row.is-open td { background: #f3faf6; }
+.gcv-ir-zero td { color: #64748b; }
+.gcv-ir-neg { color: #9a3412; }
+.gcv-dash-table td.right { text-align: right; white-space: nowrap; }
+.gcv-ir-fix {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 11rem;
+}
+
+
 
 
 

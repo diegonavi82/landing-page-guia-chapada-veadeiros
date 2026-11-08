@@ -27,6 +27,7 @@
     'section-admin-bookings': 'reservas',
     'section-admin-settings': 'configuracoes',
     'section-admin-financial': 'financeiro',
+    'section-admin-ir': 'imposto',
     'section-guide-profile': 'perfil',
     'section-guide-create-tour': 'publicar',
     'section-guide-tours': 'agenda',
@@ -488,13 +489,14 @@
         } else {
           hist.innerHTML =
             '<div class="gcv-dash-table-wrap"><table class="gcv-dash-table"><thead><tr>' +
-            '<th>Origem</th><th>Guia</th><th>Valor</th><th>PIX</th><th>Status</th><th>Quando</th><th>Obs.</th></tr></thead><tbody>' +
+            '<th>Origem</th><th>Guia</th><th>CPF/CNPJ</th><th>Valor</th><th>PIX</th><th>Status</th><th>Quando</th><th>Obs.</th></tr></thead><tbody>' +
             history.map(function (p) {
               var st = p.status_label || p.status || '';
               var badgeClass = String(p.status || '').toLowerCase().indexOf('paid') >= 0 ? 'paid'
                 : (String(p.status || '').toLowerCase().indexOf('fail') >= 0 ? 'failed' : (p.status || 'pending'));
               return '<tr><td>' + escapeHtml(p.origin_label || '') +
                 '</td><td>' + escapeHtml(p.guide_name || '') +
+                '</td><td>' + escapeHtml(p.document || '—') +
                 '</td><td>' + fmtMoney(p.amount_cents) +
                 '</td><td style="font-size:0.8rem;">' + escapeHtml(p.pix_key || '') +
                 '</td><td><span class="gcv-badge gcv-badge--' + escapeAttr(badgeClass) + '">' + escapeHtml(st) + '</span>' +
@@ -1710,6 +1712,7 @@
     var toDefault = today.toISOString().substr(0, 10);
 
     content.innerHTML =
+      '<p class="gcv-dash-hint" style="margin:0 0 1rem;">A separação para o imposto de renda, por CPF de cada Pix ao guia, está no menu <a href="#imposto">Imposto de renda</a>.</p>' +
       '<div class="gcv-dash-field-row" style="margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">' +
       '<div class="gcv-dash-field"><label class="gcv-dash-label">De</label><input class="gcv-dash-input" id="fin-from" type="date" value="' + fromDefault + '" /></div>' +
       '<div class="gcv-dash-field"><label class="gcv-dash-label">Até</label><input class="gcv-dash-input" id="fin-to" type="date" value="' + toDefault + '" /></div>' +
@@ -2200,6 +2203,7 @@
         { id: 'section-admin-payouts',     icon: '💸', label: 'Pagamentos',        load: loadAdminPayouts   },
         { id: 'section-admin-bookings',    icon: '📋', label: 'Todas as reservas', load: loadAdminBookings  },
         { id: 'section-admin-financial',   icon: '💰', label: 'Financeiro',        load: loadFinancial      },
+        { id: 'section-admin-ir',          icon: '🧾', label: 'Imposto de renda',  load: function () { if (window.GcvFiscalIr) window.GcvFiscalIr.mountAdmin(); } },
         { id: 'section-admin-settings',    icon: '⚙️', label: 'Configurações',     load: loadSettings       },
       ];
       footerItems = [profileItem];

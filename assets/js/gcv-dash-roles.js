@@ -4573,10 +4573,13 @@
   function loadGuideEarnings() {
     var root = document.getElementById('guide-earnings-root');
     if (!root) return;
-    root.innerHTML = 'Carregando financeiro…';
+    root.innerHTML = '<div id="guide-ir-root"></div><div id="guide-earn-body">Carregando financeiro…</div>';
+    if (window.GcvFiscalIr) window.GcvFiscalIr.mountGuide(document.getElementById('guide-ir-root'));
     get('/api/guides/earnings.php', function (err, res) {
+      var body = document.getElementById('guide-earn-body');
+      if (!body) return;
       if (!res || !res.ok) {
-        root.innerHTML = '<p class="gcv-dash-alert">Erro ao carregar o financeiro.</p>';
+        body.innerHTML = '<p class="gcv-dash-alert">Erro ao carregar o financeiro.</p>';
         return;
       }
       var d = res.data || {};
@@ -4649,7 +4652,7 @@
         );
       }
 
-      root.innerHTML =
+      body.innerHTML =
         '<div class="gcv-dash-alert ' + (pixReady && pixVerified && autoPix ? 'gcv-dash-alert--success' : 'gcv-dash-alert--info') + '">' +
         (autoPix
           ? 'O PIX é <strong>enviado automaticamente</strong> para a chave cadastrada em Meu perfil, <strong>após as ' + afterLabel + ' do dia do passeio</strong>, mesmo sem a leitura do QR. A leitura conta na guiagem.'

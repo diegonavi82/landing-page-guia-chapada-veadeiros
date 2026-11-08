@@ -9,6 +9,7 @@ require_once __DIR__ . '/audit_service.php';
 require_once __DIR__ . '/../sicoob_pix_pay.php';
 require_once __DIR__ . '/../mailer.php';
 require_once __DIR__ . '/../purchase_notify.php';
+require_once __DIR__ . '/../fiscal_ir.php';
 
 /**
  * Repasse ao guia: manual (admin) + automático via PIX Sicoob
@@ -22,6 +23,7 @@ require_once __DIR__ . '/../purchase_notify.php';
 function gcv_payout_register_manual(array $data, int $adminId): array
 {
     gcv_marketplace_ensure_schema();
+    gcv_fiscal_ensure_schema();
     $saleId = (int)($data['sale_id'] ?? 0);
     if ($saleId <= 0) {
         throw new InvalidArgumentException('sale_id obrigatório');
@@ -142,6 +144,22 @@ function gcv_payout_register_manual(array $data, int $adminId): array
         $pdo->prepare(
             'UPDATE gcv_sales SET payout_status = ?, updated_at = NOW() WHERE id = ?'
         )->execute([$status, $saleId]);
+
+        if ($status === GcvPayoutStatus::PAID) {
+            try {
+                gcv_fiscal_stamp_sale_payout(
+                    $pdo,
+                    $payoutId,
+                    $saleId,
+                    $pixKey,
+                    $pixType,
+                    $fin,
+                    $paidDt->format('Y-m-d H:i:s')
+                );
+            } catch (Throwable $e) {
+                error_log('fiscal stamp manual: ' . $e->getMessage());
+            }
+        }
 
         $pdo->commit();
     } catch (Throwable $e) {
@@ -431,6 +449,7 @@ function gcv_payout_system_actor_id(): int
 function gcv_payout_auto_execute(int $saleId): array
 {
     gcv_marketplace_ensure_schema();
+    gcv_fiscal_ensure_schema();
     $elig = gcv_payout_auto_eligibility($saleId);
     if (!$elig['ok']) {
         return [
@@ -476,6 +495,19 @@ function gcv_payout_auto_execute(int $saleId): array
         if (($existing['status'] ?? '') === GcvPayoutStatus::PAID) {
             $pdo->prepare('UPDATE gcv_sales SET payout_status = ?, updated_at = NOW() WHERE id = ?')
                 ->execute([GcvPayoutStatus::PAID, $saleId]);
+            try {
+                gcv_fiscal_stamp_sale_payout(
+                    $pdo,
+                    (int)$existing['id'],
+                    $saleId,
+                    (string)($existing['pix_key'] ?? ''),
+                    (string)($existing['pix_key_type'] ?? ''),
+                    $fin,
+                    (string)($existing['paid_at'] ?? '')
+                );
+            } catch (Throwable $e) {
+                error_log('fiscal stamp existing: ' . $e->getMessage());
+            }
             return [
                 'ok' => true,
                 'executed' => false,
@@ -561,6 +593,19 @@ function gcv_payout_auto_execute(int $saleId): array
         $payoutId = (int)$pdo->lastInsertId();
         $pdo->prepare('UPDATE gcv_sales SET payout_status = ?, updated_at = NOW() WHERE id = ?')
             ->execute([GcvPayoutStatus::PAID, $saleId]);
+        try {
+            gcv_fiscal_stamp_sale_payout(
+                $pdo,
+                $payoutId,
+                $saleId,
+                $pixKey,
+                $pixType,
+                $fin,
+                $now->format('Y-m-d H:i:s')
+            );
+        } catch (Throwable $e) {
+            error_log('fiscal stamp auto: ' . $e->getMessage());
+        }
         $pdo->commit();
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) {

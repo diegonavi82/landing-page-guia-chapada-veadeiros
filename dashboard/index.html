@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="/assets/css/site.css?v=1.0.39" />
-  <link rel="stylesheet" href="/assets/css/gcv-dashboard.css?v=1.1.83" />
+  <link rel="stylesheet" href="/assets/css/gcv-dashboard.css?v=1.1.84" />
 <link rel="stylesheet" href="/assets/css/gcv-confirm.css?v=1.0.6" />
 <link rel="stylesheet" href="/assets/css/gcv-tours.css?v=1.0.1" />
 <link rel="stylesheet" href="/assets/css/gcv-payment.css?v=1.0.1" />
@@ -295,6 +295,14 @@
           <div id="admin-financial-content"></div>
         </section>
 
+        <section class="gcv-dash-section" id="section-admin-ir">
+          <h2 class="gcv-dash-section-title">Imposto de renda</h2>
+          <p class="gcv-dash-hint" style="margin:0 0 1rem;color:#64748b;font-size:0.9rem;">
+            Cada Pix pago ao guia fica no CPF ou CNPJ de quem recebeu. Aqui você vê, por ano, o que ficou com a plataforma e o que foi de cada prestador. Em janeiro o informe do ano anterior segue para todos os guias.
+          </p>
+          <div id="admin-ir-root"></div>
+        </section>
+
         <section class="gcv-dash-section" id="section-admin-guides">
           <h2 class="gcv-dash-section-title">Guias cadastrados</h2>
           <p class="gcv-dash-hint" style="margin:0 0 1rem;color:#64748b;font-size:0.9rem;">
@@ -370,7 +378,7 @@
         <section class="gcv-dash-section" id="section-guide-financial">
           <h2 class="gcv-dash-section-title">Financeiro</h2>
           <p class="gcv-dash-hint" style="margin:0 0 1rem;color:#64748b;font-size:0.9rem;">
-            Resumo dos passeios, pessoas e recebimentos. Passeios sem compra aparecem zerados. O PIX é enviado automaticamente após a saída.
+            Resumo dos passeios, pessoas e recebimentos. O informe de rendimentos de cada ano fica no topo, mesmo quando não houve depósito. O PIX é enviado automaticamente após a saída.
           </p>
           <div id="guide-earnings-root"></div>
         </section>
@@ -483,11 +491,12 @@
   <script src="/assets/js/gcv-admin-terapia.js?v=1.0.2" defer></script>
   <script src="/assets/js/gcv-admin-cupons.js?v=1.0.0" defer></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
-  <script src="/assets/js/gcv-dash-roles.js?v=1.1.75" defer></script>
+  <script src="/assets/js/gcv-fiscal-ir.js?v=1.0.0" defer></script>
+  <script src="/assets/js/gcv-dash-roles.js?v=1.1.76" defer></script>
   <script src="/assets/js/gcv-inbox.js?v=1.0.8" defer></script>
   <script src="/assets/js/gcv-payment-ledger.js?v=1.0.0" defer></script>
   <script src="/assets/js/gcv-booking-confirm.js?v=1.0.0" defer></script>
-  <script src="/assets/js/gcv-dashboard.js?v=1.1.26" defer></script>
+  <script src="/assets/js/gcv-dashboard.js?v=1.1.27" defer></script>
   <script src="/assets/js/gcv-payment.js?v=1.0.40" defer></script>
   <script src="/assets/js/site.js?v=1.0.42" defer></script>
 </body>

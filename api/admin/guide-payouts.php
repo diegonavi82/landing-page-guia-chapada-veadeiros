@@ -24,16 +24,19 @@ require_once __DIR__ . '/../helpers/sicoob_pix_pay.php';
 require_once __DIR__ . '/../helpers/marketplace/guide_financial_service.php';
 require_once __DIR__ . '/../helpers/marketplace_schema.php';
 require_once __DIR__ . '/../helpers/notify_ops.php';
+require_once __DIR__ . '/../helpers/fiscal_ir.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
 $admin = require_admin();
 gcv_ensure_guide_payout_schema();
 gcv_marketplace_ensure_schema();
+gcv_fiscal_ensure_schema();
 
 const GCV_PAYOUT_MAX_CENTS = 5000000; // R$ 50.000,00
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    gcv_fiscal_backfill();
     $status = trim((string)($_GET['status'] ?? ''));
     $sql =
         'SELECT p.*, u.name AS guide_name, u.email AS guide_email,
@@ -253,6 +256,11 @@ if ($action === 'confirm') {
             $payoutId,
         ]);
         gcv_payout_audit($payoutId, (int)$admin['id'], 'payout_paid', $e2e);
+        try {
+            gcv_fiscal_stamp_manual_payout($payoutId, $guide);
+        } catch (Throwable $e) {
+            error_log('fiscal stamp guide payout: ' . $e->getMessage());
+        }
         $waSent = false;
         try {
             $payout['id'] = $payoutId;
@@ -374,6 +382,7 @@ function gcv_admin_payout_history(): array
         $manual = db()->query(
             'SELECT p.id, p.amount_cents, p.pix_key_snapshot AS pix_key, p.status,
                     p.paid_at, p.created_at, p.description, p.error_message,
+                    p.payee_cpf, p.payee_cnpj, p.payee_person_type,
                     COALESCE(NULLIF(g.full_name, \'\'), u.name) AS guide_name
              FROM gcv_guide_payouts p
              JOIN gcv_users u ON u.id = p.guide_user_id
@@ -393,6 +402,7 @@ function gcv_admin_payout_history(): array
         $plat = db()->query(
             'SELECT sp.id, sp.amount_cents, sp.pix_key, sp.status,
                     sp.paid_at, sp.created_at, sp.sale_id, sp.notes AS error_message,
+                    sp.payee_cpf, sp.payee_cnpj, sp.payee_person_type,
                     COALESCE(NULLIF(g.full_name, \'\'), u.name) AS guide_name
              FROM gcv_sale_payouts sp
              JOIN gcv_users u ON u.id = sp.guide_user_id
@@ -441,6 +451,7 @@ function gcv_admin_payout_history_row(array $row, string $origin, string $origin
         'status' => $status,
         'status_label' => gcv_admin_payout_status_label($status),
         'when' => (string)($row['paid_at'] ?: $row['created_at'] ?: ''),
+        'document' => gcv_fiscal_doc_label($row['payee_cpf'] ?? '', $row['payee_cnpj'] ?? '', $row['payee_person_type'] ?? ''),
         'note' => $note,
         'error' => $error,
     ];
