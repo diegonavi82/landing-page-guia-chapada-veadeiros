@@ -23,6 +23,7 @@
       taken: "Esse dia já tem passeio",
       empty: "Nenhum passeio nessa categoria.",
       closed: "Nenhum passeio disponível.",
+      loading: "Carregando passeios…",
       fail: "Não foi possível carregar os passeios.",
       one: "1 atração",
       many: "atrações",
@@ -44,6 +45,7 @@
       taken: "That day already has a tour",
       empty: "No tours in this category.",
       closed: "No tours available.",
+      loading: "Loading tours…",
       fail: "Could not load the tours.",
       one: "1 place",
       many: "places",
@@ -65,6 +67,7 @@
       taken: "Ese día ya tiene un paseo",
       empty: "No hay paseos en esta categoría.",
       closed: "No hay paseos disponibles.",
+      loading: "Cargando paseos…",
       fail: "No se pudieron cargar los paseos.",
       one: "1 atractivo",
       many: "atractivos",
@@ -88,6 +91,38 @@
   function esc(str) {
     return String(str || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
+  var eagerLeft = 6;
+  function imageTag(url, alt) {
+    var raw = String(url || "");
+    if (!raw) return "";
+    var path = raw;
+    var q = "";
+    var cut = path.indexOf("?");
+    if (cut >= 0) {
+      q = path.slice(cut);
+      path = path.slice(0, cut);
+    }
+    var file = path.split("/").pop() || "";
+    var stem = file.replace(/\.(jpe?g|png|webp)$/i, "");
+    var card = stem ? "/assets/img/card/" + stem + ".webp" + q : raw;
+    var webp = /\.jpe?g$/i.test(path) ? path.replace(/\.jpe?g$/i, ".webp") + q : raw;
+    var eager = eagerLeft > 0;
+    if (eager) eagerLeft -= 1;
+    return '<img src="' + esc(card) + '" data-full="' + esc(webp) + '" data-raw="' + esc(raw) + '" data-step="0" alt="' + esc(alt || "") + '" width="640" height="480" decoding="async"' +
+      (eager ? ' fetchpriority="high"' : ' loading="lazy"') + " />";
+  }
+  document.addEventListener("error", function (ev) {
+    var img = ev.target;
+    if (!img || img.tagName !== "IMG" || !img.getAttribute("data-raw")) return;
+    var step = img.getAttribute("data-step") || "0";
+    var next = step === "0" ? (img.getAttribute("data-full") || "") : (step === "1" ? (img.getAttribute("data-raw") || "") : "");
+    if (!next || next === img.getAttribute("src")) {
+      img.setAttribute("data-step", "2");
+      return;
+    }
+    img.setAttribute("data-step", step === "0" ? "1" : "2");
+    img.src = next;
+  }, true);
   function reais(cents) {
     return "R$ " + String(Math.round((parseInt(cents, 10) || 0) / 100));
   }
@@ -214,13 +249,14 @@
     gridBox.className = "gcv-pick__grid gcv-pick__grid--" + parts.length;
     gridBox.innerHTML = parts.map(function (part) {
       return '<a class="gcv-pick__item" href="' + esc(pickHref(part, parts)) + '">' +
-        '<span class="gcv-pick__photo"><img src="' + esc(part.image) + '" alt="" /></span>' +
+        '<span class="gcv-pick__photo">' + imageTag(part.image, part.title) + "</span>" +
         "<span>" + esc(part.title) + "</span></a>";
     }).join("");
     box.hidden = false;
   }
 
   function paint() {
+    eagerLeft = 6;
     var list = tours.filter(function (tour) {
       if (filter === "all") return true;
       return (tour.categories || []).indexOf(filter) >= 0;
@@ -243,9 +279,9 @@
       var photo = parts.length >= 2
         ? '<span class="gcv-shop-card__mosaic gcv-shop-card__mosaic--' + parts.length + '">' +
           parts.map(function (part) {
-            return '<img src="' + esc(part.image) + '" alt="' + esc(part.title) + '" />';
+            return imageTag(part.image, part.title);
           }).join("") + "</span>"
-        : (tour.image ? '<img src="' + esc(tour.image) + '" alt="" />' : "");
+        : (tour.image ? imageTag(tour.image, tour.title) : "");
       return '<article class="gcv-shop-card' + (mine ? " is-in-cart" : "") + '">' +
         (mine ? '<span class="gcv-shop-card__badge">' + check + "</span>" : "") +
         '<a class="gcv-shop-card__media" href="' + esc(tourHref(tour.href)) + '" data-tour="' + esc(tour.id) + '">' + photo +
@@ -330,23 +366,40 @@
     });
   }
 
-  fetch("/api/passeios.php", { credentials: "same-origin", cache: "no-store", headers: { Accept: "application/json" } })
-    .then(function (res) { return res.json(); })
+  var booted = false;
+  function boot() {
+    if (booted) return;
+    booted = true;
+    shell(Object.keys(labels));
+  }
+  boot();
+  var gridNow = root.querySelector("[data-shop-grid]");
+  if (gridNow) gridNow.innerHTML = '<p class="gcv-shop__empty">' + esc(copy.loading || "") + "</p>";
+
+  if (!window.__gcvPasseiosPromise) {
+    window.__gcvPasseiosPromise = fetch("/api/passeios.php", { credentials: "same-origin", cache: "no-store", headers: { Accept: "application/json" } })
+      .then(function (res) { return res.json(); });
+  }
+  window.__gcvPasseiosPromise
     .then(function (payload) {
       var data = (payload && payload.data) || {};
       tours = data.tours || [];
       maxAtrativos = parseInt(data.max_atrativos, 10) || maxAtrativos;
-      var cats = Object.keys(data.categories || labels);
-      shell(cats);
+      boot();
+      var grid = root.querySelector("[data-shop-grid]");
       if (!tours.length) {
         var vazio = payload && payload.ok ? (copy.closed || copy.empty) : copy.fail;
-        root.querySelector("[data-shop-grid]").innerHTML = '<p class="gcv-shop__empty">' + esc(vazio) + "</p>";
+        if (grid) grid.innerHTML = '<p class="gcv-shop__empty">' + esc(vazio) + "</p>";
+        root.setAttribute("aria-busy", "false");
         return;
       }
       paint();
+      root.setAttribute("aria-busy", "false");
     })
     .catch(function () {
-      shell(Object.keys(labels));
-      root.querySelector("[data-shop-grid]").innerHTML = '<p class="gcv-shop__empty">' + esc(copy.fail) + "</p>";
+      boot();
+      var grid = root.querySelector("[data-shop-grid]");
+      if (grid) grid.innerHTML = '<p class="gcv-shop__empty">' + esc(copy.fail) + "</p>";
+      root.setAttribute("aria-busy", "false");
     });
 })();

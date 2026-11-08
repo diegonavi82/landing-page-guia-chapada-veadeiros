@@ -414,10 +414,14 @@ function gcv_related_tour_one(PDO $pdo, int $passeioId): array
     if (!$passeio) {
         return [];
     }
-    $cols = [];
-    foreach ($pdo->query('SHOW COLUMNS FROM gcv_attractions')->fetchAll() as $col) {
-        $cols[strtolower((string)($col['Field'] ?? ''))] = true;
+    static $attrCols = null;
+    if ($attrCols === null) {
+        $attrCols = [];
+        foreach ($pdo->query('SHOW COLUMNS FROM gcv_attractions')->fetchAll() as $col) {
+            $attrCols[strtolower((string)($col['Field'] ?? ''))] = true;
+        }
     }
+    $cols = $attrCols;
     $partes = ['id', 'title_pt', 'slug', 'duration_minutes', 'duracao_json', 'cover_url', 'experiencia_json', 'saidas_json', 'tarifa_guia', 'tarifa_translado', 'tarifario_id', 'categorias'];
     $select = [];
     foreach ($partes as $nome) {

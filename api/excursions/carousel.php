@@ -10,9 +10,7 @@ declare(strict_types=1);
  */
 require_once __DIR__ . '/../helpers/db.php';
 require_once __DIR__ . '/../helpers/auth.php';
-require_once __DIR__ . '/../helpers/cms_schema.php';
 require_once __DIR__ . '/../helpers/excursion_status.php';
-require_once __DIR__ . '/../helpers/marketplace_schema.php';
 require_once __DIR__ . '/../helpers/excursion_attractions.php';
 require_once __DIR__ . '/../helpers/google_places.php';
 require_once __DIR__ . '/../helpers/guide_languages.php';
@@ -22,15 +20,6 @@ header('Cache-Control: public, max-age=60');
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') {
     json_response(false, null, 'Método não permitido', 405);
-}
-
-try {
-    gcv_cms_ensure_schema();
-    if (function_exists('gcv_marketplace_ensure_schema')) {
-        gcv_marketplace_ensure_schema();
-    }
-} catch (Throwable $e) {
-    json_response(true, ['pt' => [], 'en' => [], 'es' => []]);
 }
 
 $months = [

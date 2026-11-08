@@ -316,6 +316,10 @@ function gcv_cidade_curta(string $nome): string
 /** Cidades cadastradas que podem ser saída de passeio. A cidade do atrativo não entra sozinha. */
 function gcv_cidades_saida_mapa(PDO $pdo): array
 {
+    static $memo = null;
+    if ($memo !== null) {
+        return $memo;
+    }
     $map = GCV_TARIFARIO_CIDADES;
     try {
         $rows = $pdo->query("SELECT name FROM gcv_cities WHERE status = 'active' ORDER BY name ASC")->fetchAll();
@@ -329,7 +333,8 @@ function gcv_cidades_saida_mapa(PDO $pdo): array
     } catch (Throwable $e) {
         // sem tabela de cidades, ficam as três saídas clássicas
     }
-    return $map;
+    $memo = $map;
+    return $memo;
 }
 
 /**
@@ -509,6 +514,10 @@ function gcv_saidas_save(PDO $pdo, string $kind, int $id, array $chaves): void
 
 function gcv_passeio_max_atrativos(PDO $pdo): int
 {
+    static $memo = null;
+    if ($memo !== null) {
+        return $memo;
+    }
     $max = 3;
     try {
         $stmt = $pdo->prepare('SELECT value FROM gcv_settings WHERE key_name = ? LIMIT 1');
@@ -520,7 +529,8 @@ function gcv_passeio_max_atrativos(PDO $pdo): int
     } catch (Throwable $e) {
         // usa o padrão
     }
-    return max(1, min(3, $max));
+    $memo = max(1, min(3, $max));
+    return $memo;
 }
 
 /** @return list<array{codigo:string,tipo:string,excursao:int,privativo:int,excursao_cents:int,privativo_cents:int,nome:string}> */
@@ -986,15 +996,21 @@ function gcv_bilingue_universal_ensure(PDO $pdo): void
 /** @return array{tipo:string,valor:int,cents:int} */
 function gcv_bilingue_universal_get(PDO $pdo): array
 {
+    static $memo = null;
+    if ($memo !== null) {
+        return $memo;
+    }
     $fallback = ['tipo' => 'fixo', 'valor' => 4000, 'cents' => 4000];
     try {
         $stmt = $pdo->prepare('SELECT value FROM gcv_settings WHERE key_name = ? LIMIT 1');
         $stmt->execute(['passeio_bilingue']);
         $raw = json_decode((string)$stmt->fetchColumn(), true);
     } catch (Throwable $e) {
-        return $fallback;
+        $memo = $fallback;
+        return $memo;
     }
-    return gcv_bilingue_universal_norm(is_array($raw) ? $raw : []);
+    $memo = gcv_bilingue_universal_norm(is_array($raw) ? $raw : []);
+    return $memo;
 }
 
 /** @param array<string,mixed> $raw @return array{tipo:string,valor:int,cents:int} */
@@ -2197,15 +2213,22 @@ function gcv_tarifario_public(array $row): array
 
 function gcv_tarifario_setting_int(PDO $pdo, string $key, int $default): int
 {
+    static $memo = [];
+    if (array_key_exists($key, $memo)) {
+        return $memo[$key];
+    }
     try {
         $stmt = $pdo->prepare('SELECT value FROM gcv_settings WHERE key_name = ? LIMIT 1');
         $stmt->execute([$key]);
         $v = $stmt->fetchColumn();
         if ($v === false || $v === null || $v === '') {
+            $memo[$key] = $default;
             return $default;
         }
-        return (int)$v;
+        $memo[$key] = (int)$v;
+        return $memo[$key];
     } catch (Throwable $e) {
+        $memo[$key] = $default;
         return $default;
     }
 }
@@ -2404,8 +2427,13 @@ function gcv_tarifario_public_by_id(PDO $pdo, ?int $id): ?array
     if (!$id) {
         return null;
     }
+    static $memo = [];
+    if (array_key_exists($id, $memo)) {
+        return $memo[$id];
+    }
     $row = gcv_tarifario_get($pdo, $id);
-    return $row ? gcv_tarifario_public($row) : null;
+    $memo[$id] = $row ? gcv_tarifario_public($row) : null;
+    return $memo[$id];
 }
 
 /**
@@ -2923,8 +2951,6 @@ function gcv_tarifario_public_catalog(PDO $pdo): array
             $relacionadosPorAtrativo[(int)$parteRel['id']][] = $tour;
         }
         $first = $tour['attractions'][0];
-        $cover = $pdo->prepare('SELECT cover_url FROM gcv_attractions WHERE id = ?');
-        $cover->execute([$first['id']]);
         $out[] = [
             'id' => 'r-' . $tour['id'],
             'kind' => 'combo',
@@ -2937,7 +2963,7 @@ function gcv_tarifario_public_catalog(PDO $pdo): array
             'duracao_cidades' => $tour['duracao_cidades'],
             'tarifa' => $tour['tarifa'],
             'saidas' => $tour['saidas'] ?? [],
-            'image' => gcv_normalize_media_url((string)($cover->fetchColumn() ?: '')),
+            'image' => gcv_normalize_media_url((string)($first['cover_url'] ?? '')),
             'somente_4x4' => !empty($tour['somente_4x4']),
             'max_participantes' => (int)($tour['max_participantes'] ?? 0),
             'href' => $first['page'] !== '' ? '/' . ltrim($first['page'], '/') : '/passeios.html',

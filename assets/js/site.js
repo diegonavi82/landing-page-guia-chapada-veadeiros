@@ -1197,6 +1197,17 @@
     return /passeios\.html(?:$|[?#])/.test(a.getAttribute("href") || "");
   }
 
+  function loadPasseiosCatalog() {
+    if (!window.__gcvPasseiosPromise) {
+      window.__gcvPasseiosPromise = fetch("/api/passeios.php", {
+        headers: { Accept: "application/json" },
+        credentials: "same-origin",
+        cache: "no-store",
+      }).then(function (r) { return r.json(); });
+    }
+    return window.__gcvPasseiosPromise;
+  }
+
   function initMenuPasseios() {
     document.querySelectorAll(".nav-main a").forEach(function (a) {
       if (isPasseioMenuLink(a)) a.remove();
@@ -1205,8 +1216,7 @@
       var el = document.getElementById(id);
       if (el) el.hidden = true;
     });
-    fetch("/api/passeios.php", { headers: { Accept: "application/json" }, credentials: "same-origin", cache: "no-store" })
-      .then(function (r) { return r.json(); })
+    loadPasseiosCatalog()
       .then(function (res) {
         if (!res || !res.ok || !res.data || res.data.oculto) return;
         var nav = document.querySelector(".nav-main");

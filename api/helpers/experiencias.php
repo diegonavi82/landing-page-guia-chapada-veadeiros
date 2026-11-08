@@ -91,14 +91,22 @@ function gcv_experiencias_schema(PDO $pdo): void
 
 function gcv_tabela_existe(PDO $pdo, string $table): bool
 {
+    static $yes = [];
     if (!preg_match('/^[a-z0-9_]+$/', $table)) {
         return false;
     }
+    if (isset($yes[$table])) {
+        return true;
+    }
     try {
-        return (bool)$pdo->query("SHOW TABLES LIKE " . $pdo->quote($table))->fetchColumn();
+        $ok = (bool)$pdo->query("SHOW TABLES LIKE " . $pdo->quote($table))->fetchColumn();
     } catch (Throwable $e) {
         return false;
     }
+    if ($ok) {
+        $yes[$table] = true;
+    }
+    return $ok;
 }
 
 /** @return array{experiencias_novas:int,passeios_novos:int,excursoes_ligadas:int,experiencias_total:int,passeios_total:int,terapias_total:int} */
