@@ -1961,7 +1961,7 @@
       var n = (res && res.ok && res.data && res.data.pending) ? res.data.pending.length : 0;
       var link = document.querySelector('#gcv-dash-nav-list [data-section="section-cms-excursions"]');
       if (!link) return;
-      link.innerHTML = '🚌 Excursões' + (n ? ' <span class="gcv-dash-nav-badge">' + n + '</span>' : '');
+      link.innerHTML = '🚌 Excursões ou Privativos' + (n ? ' <span class="gcv-dash-nav-badge">' + n + '</span>' : '');
     });
   }
 
@@ -2276,9 +2276,9 @@
         { id: 'section-admin-broadcast',   icon: '📣', label: 'Broadcast',         load: loadBroadcast      },
         { id: 'section-admin-messages',    icon: '💬', label: 'Mensagens',         load: loadMessages       },
         { id: 'section-cms-cities',        icon: '📍', label: 'Cidades',           load: function () { if (window.GcvAdminCms) window.GcvAdminCms.open('cities'); } },
-        { id: 'section-cms-excursions',    icon: '🚌', label: 'Excursões',         load: function () { if (window.GcvAdminCms) window.GcvAdminCms.open('excursions'); } },
+        { id: 'section-cms-excursions',    icon: '🚌', label: 'Excursões ou Privativos', load: function () { if (window.GcvAdminCms) window.GcvAdminCms.open('excursions'); } },
         { id: 'section-admin-payouts',     icon: '💸', label: 'Pagamentos',        load: loadAdminPayouts   },
-        { id: 'section-admin-bookings',    icon: '📋', label: 'Todas as reservas', load: loadAdminBookings  },
+        { id: 'section-admin-bookings',    icon: '📋', label: 'Reservas',          load: loadAdminBookings  },
         { id: 'section-admin-financial',   icon: '💰', label: 'Financeiro',        load: loadFinancial      },
         { id: 'section-admin-ir',          icon: '🧾', label: 'Imposto de renda',  load: function () { if (window.GcvFiscalIr) window.GcvFiscalIr.mountAdmin(); } },
         { id: 'section-admin-settings',    icon: '⚙️', label: 'Configurações',     load: loadSettings       },
