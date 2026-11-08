@@ -92,6 +92,10 @@ const GCV_PASSEIO_CATEGORIAS = [
 
 function gcv_tarifario_column_exists(PDO $pdo, string $table, string $column): bool
 {
+    if (function_exists('gcv_table_columns')) {
+        $cols = gcv_table_columns($pdo, $table);
+        return !empty($cols[strtolower($column)]);
+    }
     try {
         $stmt = $pdo->query('SHOW COLUMNS FROM `' . $table . '`');
         foreach ($stmt->fetchAll() as $col) {
@@ -107,6 +111,9 @@ function gcv_tarifario_column_exists(PDO $pdo, string $table, string $column): b
 
 function gcv_tarifarios_ensure(PDO $pdo): void
 {
+    if (function_exists('gcv_schema_should_run') && !gcv_schema_should_run('tarifarios-ensure')) {
+        return;
+    }
     $pdo->exec(
         "CREATE TABLE IF NOT EXISTS gcv_tarifario (
           id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

@@ -33,6 +33,10 @@ function gcv_blocked_guide_emails_ensure(?PDO $pdo = null): void
     if ($done) {
         return;
     }
+    if (function_exists('gcv_schema_should_run') && !gcv_schema_should_run('blocked-guide-emails')) {
+        $done = true;
+        return;
+    }
     $done = true;
     $pdo = $pdo ?: db();
     try {

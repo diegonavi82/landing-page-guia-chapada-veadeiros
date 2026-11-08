@@ -19,6 +19,9 @@ function gcv_guiagem_ensure_schema(): void
         return;
     }
     $done = true;
+    if (function_exists('gcv_schema_should_run') && !gcv_schema_should_run('guiagem-ensure')) {
+        return;
+    }
     try {
         db()->exec(
             "CREATE TABLE IF NOT EXISTS gcv_guide_queue_offers (

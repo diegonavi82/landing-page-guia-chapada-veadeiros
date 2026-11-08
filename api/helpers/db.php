@@ -94,11 +94,86 @@ function db(): PDO
     return $pdo;
 }
 
+function gcv_job_stamp_path(string $key): string
+{
+    $safe = preg_replace('/[^a-z0-9_-]/i', '', $key) ?: 'job';
+    $dir = dirname(__DIR__) . '/storage/jobs';
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0775, true);
+    }
+    if (is_dir($dir) && is_writable($dir)) {
+        return $dir . DIRECTORY_SEPARATOR . $safe . '.stamp';
+    }
+    return sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'gcv-job-' . $safe . '.stamp';
+}
+
+/** Leitura do painel: abrir o menu não pode migrar o banco. */
+function gcv_admin_is_read(): bool
+{
+    $method = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+    if ($method !== 'GET' && $method !== 'HEAD') {
+        return false;
+    }
+    $uri = (string)($_SERVER['REQUEST_URI'] ?? '');
+    return str_contains($uri, '/api/admin/') || str_contains($uri, '/api/anfitriao/');
+}
+
+/**
+ * Migração idempotente. A leitura do painel nunca roda.
+ * Nos outros acessos, no máximo uma vez por intervalo.
+ */
+function gcv_schema_should_run(string $key, int $seconds = 21600): bool
+{
+    if (gcv_admin_is_read()) {
+        return false;
+    }
+    return gcv_job_due($key, $seconds);
+}
+
+/**
+ * Colunas da tabela, com memória desta requisição e arquivo por um dia.
+ *
+ * @return array<string,bool>
+ */
+function gcv_table_columns(PDO $pdo, string $table): array
+{
+    static $mem = [];
+    $table = strtolower((string)preg_replace('/[^a-z0-9_]/i', '', $table));
+    if ($table === '') {
+        return [];
+    }
+    if (isset($mem[$table])) {
+        return $mem[$table];
+    }
+    $path = dirname(gcv_job_stamp_path('cols')) . DIRECTORY_SEPARATOR . 'cols-' . $table . '.json';
+    if (is_file($path)) {
+        $age = time() - (int)@filemtime($path);
+        if ($age >= 0 && $age < 86400) {
+            $cached = json_decode((string)@file_get_contents($path), true);
+            if (is_array($cached)) {
+                $mem[$table] = $cached;
+                return $cached;
+            }
+        }
+    }
+    try {
+        $rows = $pdo->query('SHOW COLUMNS FROM `' . $table . '`')->fetchAll();
+    } catch (Throwable $e) {
+        return [];
+    }
+    $existing = [];
+    foreach ($rows as $r) {
+        $existing[strtolower((string)($r['Field'] ?? ''))] = true;
+    }
+    $mem[$table] = $existing;
+    @file_put_contents($path, json_encode($existing));
+    return $existing;
+}
+
 /** Trabalho pesado e idempotente: no máximo uma vez por intervalo, por servidor. */
 function gcv_job_due(string $key, int $seconds): bool
 {
-    $safe = preg_replace('/[^a-z0-9_-]/i', '', $key) ?: 'job';
-    $path = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'gcv-job-' . $safe . '.stamp';
+    $path = gcv_job_stamp_path($key);
     $now = time();
     if (is_file($path)) {
         $age = $now - (int)@filemtime($path);

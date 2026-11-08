@@ -93,7 +93,9 @@ function gcv_tarifa_setting_int(PDO $pdo, string $key, int $fallback): int
 /** Modelo usado só para preencher tarifa nova. Não recalcula tarifa já gravada. */
 function gcv_tarifa_taxas_globais_get(PDO $pdo): array
 {
-    gcv_tarifa_taxas_globais_ensure($pdo);
+    if (!(function_exists('gcv_admin_is_read') && gcv_admin_is_read())) {
+        gcv_tarifa_taxas_globais_ensure($pdo);
+    }
     $fixas = gcv_tarifa_taxas_fixas();
     return [
         'guia' => [

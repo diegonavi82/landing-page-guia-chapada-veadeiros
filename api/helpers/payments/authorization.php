@@ -78,6 +78,9 @@ function gcv_auth_ensure_schema(): void
         return;
     }
     $done = true;
+    if (function_exists('gcv_schema_should_run') && !gcv_schema_should_run('auth-payment-schema')) {
+        return;
+    }
     gcv_ledger_ensure_schema();
     // Bancos já criados: status novos no registro de transações e na venda.
     try {

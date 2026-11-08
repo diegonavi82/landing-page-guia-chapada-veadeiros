@@ -78,6 +78,64 @@ function gcv_excursion_load_attractions(int $excursionId): array
     return $one ? [gcv_excursion_map_attraction_row($one)] : [];
 }
 
+/**
+ * Atrativos de várias saídas numa consulta só.
+ *
+ * @param list<int> $excursionIds
+ * @return array<int,list<array<string,mixed>>>
+ */
+function gcv_excursion_load_attractions_map(array $excursionIds): array
+{
+    $ids = [];
+    foreach ($excursionIds as $raw) {
+        $id = (int)$raw;
+        if ($id > 0) {
+            $ids[$id] = $id;
+        }
+    }
+    $ids = array_values($ids);
+    $map = [];
+    if (!$ids) {
+        return $map;
+    }
+    $in = implode(',', $ids);
+    $rows = db()->query(
+        'SELECT x.excursion_id, a.id, a.title_pt, a.title_en, a.title_es, a.slug, a.cover_url, a.entry_price_cents, x.sort_order
+         FROM gcv_excursion_attractions x
+         INNER JOIN gcv_attractions a ON a.id = x.attraction_id
+         WHERE x.excursion_id IN (' . $in . ')
+         ORDER BY x.excursion_id ASC, x.sort_order ASC, a.title_pt ASC'
+    )->fetchAll();
+    foreach ($rows as $row) {
+        $eid = (int)$row['excursion_id'];
+        unset($row['excursion_id']);
+        $map[$eid][] = gcv_excursion_map_attraction_row($row);
+    }
+    $missing = [];
+    foreach ($ids as $id) {
+        if (empty($map[$id])) {
+            $missing[] = $id;
+        }
+    }
+    if ($missing) {
+        $legacy = db()->query(
+            'SELECT e.id AS excursion_id, a.id, a.title_pt, a.title_en, a.title_es, a.slug, a.cover_url, a.entry_price_cents, 0 AS sort_order
+             FROM gcv_excursions e
+             INNER JOIN gcv_attractions a ON a.id = e.attraction_id
+             WHERE e.id IN (' . implode(',', $missing) . ')'
+        )->fetchAll();
+        foreach ($legacy as $row) {
+            $eid = (int)$row['excursion_id'];
+            if (!empty($map[$eid])) {
+                continue;
+            }
+            unset($row['excursion_id']);
+            $map[$eid] = [gcv_excursion_map_attraction_row($row)];
+        }
+    }
+    return $map;
+}
+
 /** @param array<string,mixed> $row */
 function gcv_excursion_map_attraction_row(array $row): array
 {

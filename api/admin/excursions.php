@@ -225,10 +225,12 @@ function gcv_admin_apply_forming(array $body, int $quorum, int $maxPeople): int
     return $quorum;
 }
 
-function gcv_excursion_enrich(array $row): array
+function gcv_excursion_enrich(array $row, ?array $attrs = null, ?int $inviteId = null): array
 {
     $id = (int)$row['id'];
-    $attrs = gcv_excursion_load_attractions($id);
+    if ($attrs === null) {
+        $attrs = gcv_excursion_load_attractions($id);
+    }
     $row['attractions'] = $attrs;
     $row['attraction_ids'] = array_map(static fn($a) => (int)$a['id'], $attrs);
     $row['attraction_title'] = gcv_excursion_titles_joined($attrs, 'pt');
@@ -252,14 +254,18 @@ function gcv_excursion_enrich(array $row): array
     $row['occupancy'] = $occ;
     $row['lifecycle'] = $life;
     $row['guide_invite_user_id'] = 0;
-    try {
-        require_once __DIR__ . '/../helpers/guide_queue_offer.php';
-        if ((int)($row['guide_user_id'] ?? 0) <= 0) {
-            $pending = gcv_guiagem_pending_guide_ids($id);
-            $row['guide_invite_user_id'] = (int)($pending[0] ?? 0);
+    if ($inviteId !== null) {
+        $row['guide_invite_user_id'] = (int)($row['guide_user_id'] ?? 0) > 0 ? 0 : $inviteId;
+    } else {
+        try {
+            require_once __DIR__ . '/../helpers/guide_queue_offer.php';
+            if ((int)($row['guide_user_id'] ?? 0) <= 0) {
+                $pending = gcv_guiagem_pending_guide_ids($id);
+                $row['guide_invite_user_id'] = (int)($pending[0] ?? 0);
+            }
+        } catch (Throwable $e) {
+            $row['guide_invite_user_id'] = 0;
         }
-    } catch (Throwable $e) {
-        $row['guide_invite_user_id'] = 0;
     }
     $row['lifecycle_label'] = gcv_excursion_lifecycle_label($life);
     $row['tour_type'] = gcv_excursion_tour_type($row);
@@ -688,12 +694,6 @@ if ($method === 'GET') {
         echo json_encode(['ok' => true, 'data' => gcv_excursion_enrich($row)]);
         exit;
     }
-    try {
-        require_once __DIR__ . '/../helpers/private_departure.php';
-        gcv_private_departure_backfill();
-    } catch (Throwable $e) {
-        error_log('private departure backfill: ' . $e->getMessage());
-    }
     $rows = db()->query(
         'SELECT e.*, c.name AS departure_city_name, u.name AS guide_name
          FROM gcv_excursions e
@@ -702,9 +702,38 @@ if ($method === 'GET') {
          WHERE e.deleted_at IS NULL
          ORDER BY e.date_iso DESC, e.departure_time DESC, e.id DESC'
     )->fetchAll();
+    $ids = [];
+    $open = [];
+    foreach ($rows as $row) {
+        $eid = (int)$row['id'];
+        $ids[] = $eid;
+        if ((int)($row['guide_user_id'] ?? 0) <= 0) {
+            $open[] = $eid;
+        }
+    }
+    $attrMap = gcv_excursion_load_attractions_map($ids);
+    $invites = [];
+    if ($open) {
+        try {
+            $pending = db()->query(
+                'SELECT excursion_id, guide_user_id FROM gcv_guide_queue_offers
+                 WHERE status = \'pending\' AND excursion_id IN (' . implode(',', $open) . ')
+                 ORDER BY id ASC'
+            )->fetchAll();
+            foreach ($pending as $p) {
+                $eid = (int)$p['excursion_id'];
+                if (!isset($invites[$eid])) {
+                    $invites[$eid] = (int)$p['guide_user_id'];
+                }
+            }
+        } catch (Throwable $e) {
+            $invites = [];
+        }
+    }
     $out = [];
     foreach ($rows as $row) {
-        $out[] = gcv_excursion_enrich($row);
+        $eid = (int)$row['id'];
+        $out[] = gcv_excursion_enrich($row, $attrMap[$eid] ?? [], $invites[$eid] ?? 0);
     }
     echo json_encode(['ok' => true, 'data' => ['excursions' => $out]]);
     exit;

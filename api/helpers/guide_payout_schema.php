@@ -13,9 +13,13 @@ function gcv_ensure_guide_payout_schema(): void
     if ($done) {
         return;
     }
+    if (function_exists('gcv_schema_should_run') && !gcv_schema_should_run('guide-payout-schema')) {
+        $done = true;
+        return;
+    }
     $pdo = db();
 
-    $cols = $pdo->query('SHOW COLUMNS FROM gcv_guides')->fetchAll(PDO::FETCH_COLUMN);
+    $cols = array_keys(function_exists('gcv_table_columns') ? gcv_table_columns($pdo, 'gcv_guides') : []);
     $add = [
         'pix_key' => "ALTER TABLE gcv_guides ADD COLUMN pix_key VARCHAR(120) NULL AFTER phone",
         'pix_key_type' => "ALTER TABLE gcv_guides ADD COLUMN pix_key_type ENUM('cpf','cnpj','email','phone','random') NULL AFTER pix_key",

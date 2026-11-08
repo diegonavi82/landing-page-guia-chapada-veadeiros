@@ -23,6 +23,9 @@ function gcv_ledger_ensure_schema(): void
         return;
     }
     $done = true;
+    if (function_exists('gcv_schema_should_run') && !gcv_schema_should_run('ledger-ensure')) {
+        return;
+    }
     $file = dirname(__DIR__, 2) . '/database/migration_payment_ledger.sql';
     $raw = is_file($file) ? (string) file_get_contents($file) : '';
     foreach (preg_split('/;\s*\n/', $raw) ?: [] as $stmt) {

@@ -19,6 +19,10 @@ function gcv_transfer_ensure_schema(): void
     if ($done) {
         return;
     }
+    if (function_exists('gcv_schema_should_run') && !gcv_schema_should_run('transfer-ensure')) {
+        $done = true;
+        return;
+    }
     $done = true;
     try {
         db()->exec(

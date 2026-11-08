@@ -83,6 +83,9 @@ function gcv_related_tour_principal_ensure(PDO $pdo): void
         return;
     }
     $ok = true;
+    if (function_exists('gcv_admin_is_read') && gcv_admin_is_read()) {
+        return;
+    }
     try {
         $col = $pdo->query("SHOW COLUMNS FROM gcv_passeio_relacionado LIKE 'principal_atrativo_id'")->fetch();
         if (!$col) {
@@ -455,9 +458,11 @@ function gcv_related_tour_one(PDO $pdo, int $passeioId): array
     }
     static $attrCols = null;
     if ($attrCols === null) {
-        $attrCols = [];
-        foreach ($pdo->query('SHOW COLUMNS FROM gcv_attractions')->fetchAll() as $col) {
-            $attrCols[strtolower((string)($col['Field'] ?? ''))] = true;
+        $attrCols = function_exists('gcv_table_columns') ? gcv_table_columns($pdo, 'gcv_attractions') : [];
+        if ($attrCols === []) {
+            foreach ($pdo->query('SHOW COLUMNS FROM gcv_attractions')->fetchAll() as $col) {
+                $attrCols[strtolower((string)($col['Field'] ?? ''))] = true;
+            }
         }
     }
     $cols = $attrCols;

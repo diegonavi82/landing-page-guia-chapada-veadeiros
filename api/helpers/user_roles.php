@@ -10,6 +10,10 @@ function gcv_auth_ensure_role_schema(): void
 {
     static $done = false;
     if ($done) return;
+    if (function_exists('gcv_schema_should_run') && !gcv_schema_should_run('user-roles-schema')) {
+        $done = true;
+        return;
+    }
     $done = true;
     $pdo = db();
 

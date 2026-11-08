@@ -10,8 +10,8 @@ function gcv_cms_ensure_schema(): void
     static $done = false;
     if ($done) return;
     $done = true;
-    // A migração completa não pode rodar em todo clique. O schema de produção já está aplicado.
-    if (function_exists('gcv_job_due') && !gcv_job_due('cms-ensure-full', 900)) {
+    // Abrir o menu não migra. Fora do painel, no máximo a cada 6 horas.
+    if (function_exists('gcv_schema_should_run') && !gcv_schema_should_run('cms-ensure-full')) {
         return;
     }
 
@@ -91,6 +91,9 @@ function gcv_cms_ensure_guide_admin(): void
         return;
     }
     $done = true;
+    if (function_exists('gcv_schema_should_run') && !gcv_schema_should_run('cms-guide-admin')) {
+        return;
+    }
     $pdo = db();
     gcv_cms_ensure_guide_columns($pdo);
     gcv_cms_ensure_user_status_enum($pdo);

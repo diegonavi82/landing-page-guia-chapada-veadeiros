@@ -13,7 +13,7 @@ function gcv_marketplace_ensure_schema(): void
         return;
     }
     $done = true;
-    if (function_exists('gcv_job_due') && !gcv_job_due('marketplace-ensure-full', 900)) {
+    if (function_exists('gcv_schema_should_run') && !gcv_schema_should_run('marketplace-ensure-full')) {
         return;
     }
 
@@ -743,6 +743,10 @@ function gcv_marketplace_ensure_settings(PDO $pdo): void
 /** @return array<string,bool>|null */
 function gcv_marketplace_column_map(PDO $pdo, string $table): ?array
 {
+    if (function_exists('gcv_table_columns')) {
+        $existing = gcv_table_columns($pdo, $table);
+        return $existing === [] ? null : $existing;
+    }
     try {
         $rows = $pdo->query('SHOW COLUMNS FROM `' . str_replace('`', '', $table) . '`')->fetchAll();
     } catch (Throwable $e) {

@@ -23,6 +23,10 @@ function gcv_experiencias_ensure(PDO $pdo): array
     if ($running) {
         return [];
     }
+    if (function_exists('gcv_schema_should_run') && !gcv_schema_should_run('experiencias-ensure')) {
+        $done = true;
+        return $stats;
+    }
     $running = true;
     try {
         gcv_experiencias_schema($pdo);

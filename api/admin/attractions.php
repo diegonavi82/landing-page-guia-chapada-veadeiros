@@ -383,9 +383,13 @@ if ($method === 'GET') {
             exit;
         }
         $pdo = db();
-        $fields = [];
-        foreach ($pdo->query('SHOW COLUMNS FROM gcv_attractions')->fetchAll() as $col) {
-            $fields[(string)($col['Field'] ?? '')] = true;
+        $fields = function_exists('gcv_table_columns')
+            ? gcv_table_columns($pdo, 'gcv_attractions')
+            : [];
+        if ($fields === [] && !function_exists('gcv_table_columns')) {
+            foreach ($pdo->query('SHOW COLUMNS FROM gcv_attractions')->fetchAll() as $col) {
+                $fields[(string)($col['Field'] ?? '')] = true;
+            }
         }
         $select = 'a.id, a.slug, a.status, a.title_pt, a.cover_url, a.difficulty, a.duration_minutes, a.tarifario_id, a.entry_price_cents, a.entry_price_label, a.city_id, a.updated_at';
         foreach (['tarifa_guia', 'tarifa_translado', 'experiencia_json', 'duracao_json', 'saidas_json'] as $col) {

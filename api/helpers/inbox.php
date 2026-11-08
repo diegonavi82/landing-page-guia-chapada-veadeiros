@@ -12,6 +12,10 @@ function gcv_inbox_ensure_schema(): void
     if ($done) {
         return;
     }
+    if (function_exists('gcv_schema_should_run') && !gcv_schema_should_run('inbox-ensure')) {
+        $done = true;
+        return;
+    }
     $done = true;
     try {
         db()->exec(

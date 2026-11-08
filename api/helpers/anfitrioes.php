@@ -12,6 +12,10 @@ function gcv_anfitriao_ensure(PDO $pdo): void
     if ($done) {
         return;
     }
+    if (function_exists('gcv_schema_should_run') && !gcv_schema_should_run('anfitriao-ensure')) {
+        $done = true;
+        return;
+    }
     $done = true;
     $pdo->exec(
         "CREATE TABLE IF NOT EXISTS gcv_anfitrioes (

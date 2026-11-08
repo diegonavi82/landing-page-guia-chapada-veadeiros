@@ -141,6 +141,10 @@ function gcv_fiscal_ensure_schema(): void
     if ($done) {
         return;
     }
+    if (function_exists('gcv_schema_should_run') && !gcv_schema_should_run('fiscal-ensure')) {
+        $done = true;
+        return;
+    }
     gcv_marketplace_ensure_schema();
     $pdo = db();
 

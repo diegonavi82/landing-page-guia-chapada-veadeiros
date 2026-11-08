@@ -18,7 +18,7 @@ $admin = require_admin();
 gcv_cms_ensure_guide_admin();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
-function gcv_cms_guide_hydrate(array $row): array
+function gcv_cms_guide_hydrate(array $row, bool $repair = true): array
 {
     $row['languages'] = gcv_guide_languages_normalize($row['languages_json'] ?? null);
     $row['pix_ready'] = trim((string)($row['pix_key'] ?? '')) !== '';
@@ -26,7 +26,7 @@ function gcv_cms_guide_hydrate(array $row): array
     $row['profile_complete'] = (int)($row['profile_complete'] ?? 0) === 1;
     $row['needs_resubmit'] = (int)($row['needs_resubmit'] ?? 0) === 1;
     $uid = (int)($row['user_id'] ?? 0);
-    if (($row['status'] ?? '') === 'pending' && !$row['profile_complete'] && !$row['needs_resubmit'] && $uid > 0
+    if ($repair && ($row['status'] ?? '') === 'pending' && !$row['profile_complete'] && !$row['needs_resubmit'] && $uid > 0
         && function_exists('gcv_guide_profile_is_complete')
         && gcv_guide_profile_is_complete($uid)
     ) {
@@ -133,7 +133,7 @@ function gcv_cms_guides_list(): array
         try {
             $rows = db()->query($sql)->fetchAll();
             foreach ($rows as &$r) {
-                $r = gcv_cms_guide_hydrate($r);
+                $r = gcv_cms_guide_hydrate($r, false);
             }
             unset($r);
             usort($rows, static function ($a, $b) {

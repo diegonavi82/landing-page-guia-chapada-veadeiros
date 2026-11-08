@@ -1,3 +1,4 @@
 pix_seats.json
 dev-outbox/*
+jobs/
 !dev-outbox/.gitkeep

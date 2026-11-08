@@ -410,7 +410,9 @@ function gcv_private_departure_backfill(): void
         return;
     }
     $done = true;
-    gcv_marketplace_ensure_excursion_finance_columns(db());
+    if (function_exists('gcv_job_due') && !gcv_job_due('private-departure-backfill', 21600)) {
+        return;
+    }
     try {
         $rows = db()->query(
             "SELECT t.reservation_id, t.trip_index, t.cart_id, t.title, t.starts_at, t.people, t.base_cents
