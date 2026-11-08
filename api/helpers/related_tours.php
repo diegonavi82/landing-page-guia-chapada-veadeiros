@@ -379,10 +379,11 @@ function gcv_related_tour_aplicar_ficha(PDO $pdo, int $passeioId, array $body): 
             throw new InvalidArgumentException($erroHoras);
         }
     }
-    if (array_key_exists('tarifa_guia', $body) || array_key_exists('tarifa_translado', $body)) {
+    if (trim((string)($body['cidade'] ?? '')) !== '' && (array_key_exists('tarifa_guia', $body) || array_key_exists('tarifa_translado', $body))) {
         require_once __DIR__ . '/tarifarios.php';
         gcv_tarifa_oficial_vincular($pdo, [
             'passeio_id' => $passeioId,
+            'cidade' => (string)$body['cidade'],
             'tarifa_guia' => (string)($body['tarifa_guia'] ?? ''),
             'tarifa_translado' => (string)($body['tarifa_translado'] ?? ''),
         ]);
@@ -543,9 +544,6 @@ function gcv_related_tour_one(PDO $pdo, int $passeioId): array
     $tarifaPublica = $pares
         ? gcv_tarifa_aplicar_bilingue(gcv_tarifa_de_pares($pares, gcv_tarifario_setting_int($pdo, 'passeio_quorum', 4)), gcv_bilingue_universal_get($pdo))
         : null;
-    if (!$tarifaPublica) {
-        $tarifaPublica = gcv_tarifa_relacao_plana(gcv_tarifa_resolver($pdo, $tarifaGuia, $tarifaTranslado, $tarifarioId));
-    }
     $chavesDuracao = $inter ?: array_keys(GCV_TARIFARIO_CIDADES);
     $minutosGuardados = (int)($passeio['duration_minutes'] ?? 0);
     $manual = (int)($passeio['duracao_manual'] ?? 0) === 1 && $minutosGuardados > 0;

@@ -282,7 +282,6 @@
 
   function experienciasDa(tipo, codigo) {
     var campo = tipo === 'guia' ? 'guia' : 'translado';
-    var col = tipo === 'guia' ? 'tarifa_guia' : 'tarifa_translado';
     var out = [];
     (st.data.atrativos || []).forEach(function (a) {
       if (String(a.title_pt || '').indexOf(' + ') >= 0) return;
@@ -299,8 +298,10 @@
     });
     (st.data.passeios || []).forEach(function (p) {
       if ((p.attractions || []).length < 2) return;
-      if ((p[col] || '') !== codigo) return;
-      out.push({ kind: 'passeio', id: p.id, nome: passeioNome(p), cidade: '', cidadeNome: '' });
+      saidasDe(p).forEach(function (s) {
+        if (!s.key || (s[campo] || '') !== codigo) return;
+        out.push({ kind: 'passeio', id: p.id, nome: passeioNome(p), cidade: s.key, cidadeNome: s.nome || '' });
+      });
     });
     return out;
   }
@@ -509,32 +510,50 @@
     return '';
   }
 
-  function linhaPasseio(item, kind) {
+  function linhaPasseio(item, kind, saida) {
     var n = kind === 'relacao' ? (item.attractions || []).length : 1;
-    var guiaCodigo = codigoAtual(item, 'guia');
-    var transCodigo = codigoAtual(item, 'translado');
+    var guiaCodigo = saida ? String(saida.guia || '').trim() : codigoAtual(item, 'guia');
+    var transCodigo = saida ? String(saida.translado || '').trim() : codigoAtual(item, 'translado');
     var guiaOf = oficialItem('guia', guiaCodigo);
     var transOf = oficialItem('translado', transCodigo);
+    var nome = kind === 'relacao' ? passeioNome(item) : (item.title_pt || '');
     return {
       id: item.id,
       kind: kind,
+      cidade: saida ? (saida.key || '') : '',
+      cidadeNome: saida ? (saida.nome || saida.key || '') : '',
+      semCidade: kind === 'relacao' && !saida,
       atrativos: n,
-      passeio: kind === 'relacao' ? passeioNome(item) : (item.title_pt || ''),
-      tarifa_guia: guiaOf ? oficialLabel(guiaOf) : tarifaSemTranslado(item),
-      tarifa_translado: transOf ? oficialLabel(transOf) : tarifaComTranslado(item),
+      passeio: nome,
+      tarifa_guia: guiaOf ? oficialLabel(guiaOf) : (saida ? '' : tarifaSemTranslado(item)),
+      tarifa_translado: transOf ? oficialLabel(transOf) : (saida ? '' : tarifaComTranslado(item)),
       guiaCodigo: guiaOf ? guiaCodigo : '',
       transCodigo: transOf ? transCodigo : '',
       piso: kind === 'relacao' ? pisoExcursaoPasseio(item) : 0
     };
   }
 
+  function linhasDoItem(item, kind) {
+    var saidas = saidasDe(item).filter(function (s) { return s && s.key; });
+    if (kind === 'relacao') {
+      if (!saidas.length) return [linhaPasseio(item, kind, null)];
+      return saidas.map(function (s) { return linhaPasseio(item, kind, s); });
+    }
+    if (saidas.length) return saidas.map(function (s) { return linhaPasseio(item, kind, s); });
+    return [linhaPasseio(item, kind, null)];
+  }
+
   function listRows() {
-    var unit = (st.data.atrativos || []).filter(function (a) {
-      return String(a.title_pt || '').indexOf(' + ') < 0;
-    }).map(function (a) { return linhaPasseio(a, 'atrativo'); });
-    var combos = (st.data.passeios || []).filter(function (p) {
-      return (p.attractions || []).length > 1;
-    }).map(function (p) { return linhaPasseio(p, 'relacao'); });
+    var unit = [];
+    (st.data.atrativos || []).forEach(function (a) {
+      if (String(a.title_pt || '').indexOf(' + ') >= 0) return;
+      linhasDoItem(a, 'atrativo').forEach(function (row) { unit.push(row); });
+    });
+    var combos = [];
+    (st.data.passeios || []).forEach(function (p) {
+      if ((p.attractions || []).length < 2) return;
+      linhasDoItem(p, 'relacao').forEach(function (row) { combos.push(row); });
+    });
     return unit.concat(combos);
   }
 
@@ -612,9 +631,17 @@
     if (!tbody) return;
     var all = listRows();
     var rows = all.filter(rowVisible).sort(compareRows);
-    var combos = all.filter(function (r) { return r.atrativos > 1; }).length;
+    var vistos = {};
+    var combos = 0;
+    all.forEach(function (r) {
+      var chave = r.kind + ':' + r.id;
+      if (vistos[chave]) return;
+      vistos[chave] = true;
+      if (r.atrativos > 1) combos += 1;
+    });
+    var total = Object.keys(vistos).length;
     if (count) {
-      var base = all.length + (all.length === 1 ? ' passeio' : ' passeios');
+      var base = total + (total === 1 ? ' passeio' : ' passeios');
       if (combos) base += ' · ' + combos + ' com mais de um atrativo';
       count.textContent = rows.length === all.length ? base : (rows.length + ' de ' + all.length);
     }
@@ -624,10 +651,13 @@
     }
     tbody.innerHTML = rows.map(function (r) {
       var chip = r.atrativos > 1 ? '<span class="ps-multi">' + r.atrativos + ' atrativos</span>' : '';
-      return '<tr class="' + (r.atrativos > 1 ? 'ps-row--multi' : '') + '" data-kind="' + r.kind + '" data-id="' + r.id + '">' +
-        '<td class="ps-passeio"><span class="ps-name">' + esc(r.passeio) + '</span>' + chip + '</td>' +
-        '<td>' + tarifaDashSelect('guia', r.guiaCodigo, r.piso) + '</td>' +
-        '<td>' + tarifaDashSelect('translado', r.transCodigo, 0) + '</td>' +
+      var cidade = r.cidadeNome ? '<span class="ps-city">' + esc(r.cidadeNome) + '</span>' : '';
+      var guiaCell = r.semCidade ? '<span class="gcv-cms-muted">Sem cidade de embarque em comum</span>' : tarifaDashSelect('guia', r.guiaCodigo, r.piso);
+      var transCell = r.semCidade ? '' : tarifaDashSelect('translado', r.transCodigo, 0);
+      return '<tr class="' + (r.atrativos > 1 ? 'ps-row--multi' : '') + '" data-kind="' + r.kind + '" data-id="' + r.id + '" data-cidade="' + esc(r.cidade || '') + '">' +
+        '<td class="ps-passeio"><span class="ps-name">' + esc(r.passeio) + '</span>' + chip + cidade + '</td>' +
+        '<td>' + guiaCell + '</td>' +
+        '<td>' + transCell + '</td>' +
       '</tr>';
     }).join('');
     tbody.querySelectorAll('[data-tarifa-tipo]').forEach(function (sel) {
@@ -647,6 +677,8 @@
     };
     if (tr.getAttribute('data-kind') === 'relacao') payload.passeio_id = parseInt(tr.getAttribute('data-id'), 10);
     else payload.attraction_id = parseInt(tr.getAttribute('data-id'), 10);
+    var cidade = tr.getAttribute('data-cidade') || '';
+    if (cidade) payload.cidade = cidade;
     var anterior = sel.getAttribute('data-atual') || '';
     var escolhida = sel.value;
     sel.disabled = true;
@@ -736,12 +768,12 @@
       });
       (st.data.passeios || []).forEach(function (p) {
         if ((p.attractions || []).length < 2) return;
-        var saidas = saidasDe(p).filter(function (s) { return s && s.key; });
-        var ocupado = !livre(p[col]) || saidas.some(function (s) { return !livre(s[campo]); });
-        if (ocupado) return;
-        var rotulo = passeioNome(p);
-        if (st.q && !matches(rotulo) && !matches(oficialLabel(row))) return;
-        opcoesPasseios += '<option value="passeio:' + p.id + ':">' + esc(rotulo) + '</option>';
+        saidasDe(p).filter(function (s) { return s && s.key; }).forEach(function (s) {
+          if (!livre(s[campo])) return;
+          var rotulo = passeioNome(p) + ' - ' + (s.nome || s.key);
+          if (st.q && !matches(rotulo) && !matches(oficialLabel(row))) return;
+          opcoesPasseios += '<option value="passeio:' + p.id + ':' + esc(s.key) + '">' + esc(rotulo) + '</option>';
+        });
       });
       return '<div class="tf-exps"><span>Onde vale</span><div class="tf-card__use">' +
         (chips || '<span class="gcv-cms-muted tf-small">Nenhuma experiência nem passeio relacionado.</span>') +

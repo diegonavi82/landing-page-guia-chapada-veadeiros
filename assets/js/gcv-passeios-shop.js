@@ -127,8 +127,22 @@
     return "R$ " + String(Math.round((parseInt(cents, 10) || 0) / 100));
   }
 
+  function menorExcursao(tarifa) {
+    var cidades = (tarifa && tarifa.cidades) || {};
+    var menor = 0;
+    var key = "";
+    Object.keys(cidades).forEach(function (k) {
+      var n = parseInt((cidades[k] || {}).excursao_pessoa_cents, 10) || 0;
+      if (n > 0 && (!menor || n < menor)) {
+        menor = n;
+        key = k;
+      }
+    });
+    if (!menor) menor = parseInt(tarifa && tarifa.excursao_pessoa_cents, 10) || 0;
+    return { cents: menor, key: key };
+  }
   function precoVitrine(tarifa) {
-    var cents = parseInt(tarifa && tarifa.excursao_pessoa_cents, 10) || 0;
+    var cents = menorExcursao(tarifa).cents;
     if (lang !== "en" && lang !== "es") return cents;
     var tipo = tarifa && tarifa.bilingue_tipo;
     var valor = tarifa && tarifa.bilingue_valor;
@@ -163,15 +177,8 @@
   }
   function showcase(tour) {
     if (tour._show) return tour._show;
-    var cidades = (tour.tarifa && tour.tarifa.cidades) || {};
-    var keys = Object.keys(cidades).filter(function (key) {
-      var row = cidades[key] || {};
-      return ["excursao_pessoa_cents", "excursao_transporte_cents", "exclusivo_pessoa_cents", "exclusivo_transporte_cents"].some(function (campo) {
-        return (parseInt(row[campo], 10) || 0) > 0;
-      });
-    });
-    if (!keys.length) keys = Object.keys(tour.duracao_cidades || {});
-    var key = keys.length ? keys[Math.floor(Math.random() * keys.length)] : "alto-paraiso";
+    var barato = menorExcursao(tour.tarifa);
+    var key = barato.key || "alto-paraiso";
     var minutes = (tour.duracao_cidades && parseInt(tour.duracao_cidades[key], 10)) || parseInt(tour.duration_minutes, 10) || 0;
     tour._show = { key: key, minutes: minutes, city: cityNames[key] || key };
     return tour._show;

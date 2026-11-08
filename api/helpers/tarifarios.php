@@ -408,9 +408,6 @@ function gcv_saidas_public(array $chaves, ?array $tarifa, $duracaoJson, int $fal
                 break;
             }
         }
-        if (!$temPreco && is_array($cidadesTarifa['alto-paraiso'] ?? null)) {
-            $row = $cidadesTarifa['alto-paraiso'];
-        }
         $item = [
             'key' => $key,
             'nome' => (string)($mapa[$key] ?? $key),
@@ -460,7 +457,7 @@ function gcv_embarques_publicos(?string $experienciaJson, $saidasJson, ?array $t
     return gcv_saidas_chaves(null, $tarifa, $mapa);
 }
 
-/** A tarifa do conjunto vale igual em qualquer cidade da interseção. */
+/** Copia uma tarifa única para todas as cidades. O passeio público não usa mais isto. */
 function gcv_tarifa_relacao_plana(?array $tarifa): ?array
 {
     if (!$tarifa) {
@@ -1127,25 +1124,59 @@ function gcv_passeio_tarifa_vende(?array $tarifa): bool
     return false;
 }
 
-/** O passeio pode existir sem tarifa. Sem preço, não entra no site. */
+/**
+ * Tarifa gravada em cada cidade de embarque do passeio. A coluna do passeio inteiro não entra.
+ *
+ * @param array<string,mixed> $passeio
+ * @return array<string,array{guia:string,translado:string}>
+ */
+function gcv_passeio_tarifas_saida_map(array $passeio): array
+{
+    $raw = gcv_experiencia_decode_json($passeio['tarifas_saida_json'] ?? null);
+    $out = [];
+    foreach ($raw as $key => $item) {
+        if (!is_array($item)) {
+            continue;
+        }
+        $key = (string)$key;
+        if ($key === '') {
+            continue;
+        }
+        $out[$key] = [
+            'guia' => trim((string)($item['guia'] ?? '')),
+            'translado' => trim((string)($item['translado'] ?? '')),
+        ];
+    }
+    return $out;
+}
+
+/** O passeio pode existir sem tarifa. Sem preço em alguma cidade de embarque, não entra no site. */
 function gcv_passeio_tem_preco_publico(PDO $pdo, int $passeioId): bool
 {
     if ($passeioId <= 0) {
         return false;
     }
-    $stmt = $pdo->prepare('SELECT tarifa_guia, tarifa_translado, tarifario_id FROM gcv_passeio_relacionado WHERE id = ? LIMIT 1');
+    $stmt = $pdo->prepare('SELECT tarifas_saida_json FROM gcv_passeio_relacionado WHERE id = ? LIMIT 1');
     $stmt->execute([$passeioId]);
     $row = $stmt->fetch();
     if (!$row) {
         return false;
     }
-    $tid = isset($row['tarifario_id']) && $row['tarifario_id'] !== null && $row['tarifario_id'] !== '' ? (int)$row['tarifario_id'] : null;
-    return gcv_passeio_tarifa_vende(gcv_tarifa_resolver(
-        $pdo,
-        (string)($row['tarifa_guia'] ?? ''),
-        (string)($row['tarifa_translado'] ?? ''),
-        $tid
-    ));
+    $pares = [];
+    foreach (gcv_passeio_tarifas_saida_map($row) as $key => $par) {
+        if ($par['guia'] === '' && $par['translado'] === '') {
+            continue;
+        }
+        $pares[$key] = $par;
+    }
+    if (!$pares) {
+        return false;
+    }
+    $tarifa = gcv_tarifa_aplicar_bilingue(
+        gcv_tarifa_de_pares($pares, gcv_tarifario_setting_int($pdo, 'passeio_quorum', 4)),
+        gcv_bilingue_universal_get($pdo)
+    );
+    return gcv_passeio_tarifa_vende($tarifa);
 }
 
 /** Experiência ativada, com página e com preço. Sem isso, o passeio dela e os relacionados ficam fora do site. */
@@ -1181,7 +1212,7 @@ function gcv_atrativo_vende_no_site(PDO $pdo, array $row): bool
     return gcv_passeio_tarifa_vende($tarifa);
 }
 
-/** Cada experiência do relacionado precisa estar ativada. A tarifa do conjunto é a do passeio, não a de cada uma. */
+/** Cada experiência do relacionado precisa estar ativada. O preço do conjunto é o da cidade de embarque. */
 function gcv_passeio_experiencias_vendem(PDO $pdo, int $passeioId): bool
 {
     if ($passeioId <= 0) {
@@ -1228,11 +1259,42 @@ function gcv_tarifa_oficial_vincular(PDO $pdo, array $body): void
     $trans = $trans !== '' ? $trans : null;
     if (!empty($body['attraction_id'])) {
         $id = (int)$body['attraction_id'];
+        $cidadeAttr = trim((string)($body['cidade'] ?? ''));
         $stmt = $pdo->prepare('SELECT id, tarifa_guia, tarifa_translado, experiencia_json, saidas_json FROM gcv_attractions WHERE id = ? LIMIT 1');
         $stmt->execute([$id]);
         $row = $stmt->fetch();
         if (!$row) {
             throw new InvalidArgumentException('Experiência não encontrada.');
+        }
+        if ($cidadeAttr !== '') {
+            $mapaAttr = gcv_cidades_saida_mapa($pdo);
+            if (!isset($mapaAttr[$cidadeAttr])) {
+                throw new InvalidArgumentException('Cidade de saída inválida.');
+            }
+            $listaCidade = gcv_saidas_tarifas_atrativo($row, $mapaAttr);
+            $achouCidade = false;
+            foreach ($listaCidade as $i => $item) {
+                if ((string)($item['key'] ?? '') !== $cidadeAttr) {
+                    continue;
+                }
+                $listaCidade[$i]['guia'] = $guia ?? '';
+                $listaCidade[$i]['translado'] = $trans ?? '';
+                $achouCidade = true;
+                break;
+            }
+            if (!$achouCidade) {
+                $listaCidade[] = [
+                    'key' => $cidadeAttr,
+                    'nome' => (string)$mapaAttr[$cidadeAttr],
+                    'guia' => $guia ?? '',
+                    'translado' => $trans ?? '',
+                ];
+            }
+            $listaCidade = array_values(array_filter($listaCidade, static function (array $item): bool {
+                return (string)($item['key'] ?? '') !== '';
+            }));
+            gcv_saidas_tarifas_gravar_atrativo($pdo, $row, $listaCidade);
+            return;
         }
         $lista = gcv_saidas_tarifas_atrativo($row, gcv_cidades_saida_mapa($pdo));
         if (!$lista) {
@@ -1256,19 +1318,17 @@ function gcv_tarifa_oficial_vincular(PDO $pdo, array $body): void
     }
     if (!empty($body['passeio_id'])) {
         $id = (int)$body['passeio_id'];
+        $cidade = trim((string)($body['cidade'] ?? ''));
+        $mapa = gcv_cidades_saida_mapa($pdo);
+        if ($cidade === '' || !isset($mapa[$cidade])) {
+            throw new InvalidArgumentException('Escolha a cidade de embarque do passeio.');
+        }
         $stmt = $pdo->prepare('SELECT * FROM gcv_passeio_relacionado WHERE id = ? LIMIT 1');
         $stmt->execute([$id]);
         $passeio = $stmt->fetch();
         if (!$passeio) {
             throw new InvalidArgumentException('Passeio não encontrado.');
         }
-        if ($guia !== null && $guia !== '') {
-            $erroRel = gcv_passeio_erro_tarifa_abaixo_cidades($pdo, $id, $guia);
-            if ($erroRel !== null) {
-                throw new InvalidArgumentException($erroRel);
-            }
-        }
-        $mapa = gcv_cidades_saida_mapa($pdo);
         if (!function_exists('gcv_related_tour_one')) {
             require_once __DIR__ . '/related_tours.php';
         }
@@ -1279,12 +1339,14 @@ function gcv_tarifa_oficial_vincular(PDO $pdo, array $body): void
                 $chaves[] = (string)$saida['key'];
             }
         }
-        $lista = gcv_saidas_tarifas_passeio($passeio, $chaves, $mapa);
-        if (!$lista) {
-            $pdo->prepare('UPDATE gcv_passeio_relacionado SET tarifa_guia = ?, tarifa_translado = ? WHERE id = ?')->execute([$guia, $trans, $id]);
-            return;
+        if (!in_array($cidade, $chaves, true)) {
+            throw new InvalidArgumentException('Essa cidade de embarque não faz parte do passeio.');
         }
+        $lista = gcv_saidas_tarifas_passeio($passeio, $chaves, $mapa);
         foreach ($lista as $i => $item) {
+            if ((string)$item['key'] !== $cidade) {
+                continue;
+            }
             $lista[$i]['guia'] = $guia ?? '';
             $lista[$i]['translado'] = $trans ?? '';
         }
@@ -1550,19 +1612,27 @@ function gcv_atrativo_erro_embarques_vs_relacionados(PDO $pdo, int $attractionId
         if (count(gcv_passeio_atrativo_ids($pdo, $passeioId)) < 2) {
             continue;
         }
-        $head = $pdo->prepare('SELECT tarifa_guia FROM gcv_passeio_relacionado WHERE id = ? LIMIT 1');
+        $head = $pdo->prepare('SELECT tarifas_saida_json FROM gcv_passeio_relacionado WHERE id = ? LIMIT 1');
         $head->execute([$passeioId]);
-        $guia = trim((string)$head->fetchColumn());
-        if ($guia === '') {
-            continue;
-        }
-        $exc = gcv_tarifa_guia_excursao_pax4($guia);
+        $mapaSaida = gcv_passeio_tarifas_saida_map(['tarifas_saida_json' => $head->fetchColumn()]);
         $piso = gcv_passeio_piso_excursao_pax4($pdo, $passeioId, $attractionId, $base);
-        if ($piso < 1 || $exc > $piso) {
+        if ($piso < 1) {
             continue;
         }
-        $nome = gcv_passeio_nome_curto($pdo, $passeioId);
-        return 'A maior PAX 4 (excursão) das cidades de embarque ficaria em R$ ' . $piso . '. O passeio ' . $nome . ' está em R$ ' . $exc . ' e precisa ser maior que isso.';
+        $nomesCidade = gcv_cidades_saida_mapa($pdo);
+        foreach ($mapaSaida as $cidadeKey => $par) {
+            $guia = $par['guia'];
+            if ($guia === '') {
+                continue;
+            }
+            $exc = gcv_tarifa_guia_excursao_pax4($guia);
+            if ($exc > $piso) {
+                continue;
+            }
+            $nome = gcv_passeio_nome_curto($pdo, $passeioId);
+            $cidadeNome = (string)($nomesCidade[$cidadeKey] ?? $cidadeKey);
+            return 'A maior PAX 4 (excursão) das experiências ficaria em R$ ' . $piso . '. O passeio ' . $nome . ' saindo de ' . $cidadeNome . ' está em R$ ' . $exc . ' e precisa ser maior que isso.';
+        }
     }
     return null;
 }
@@ -1690,22 +1760,19 @@ function gcv_atrativo_erro_horas_vs_relacionados(PDO $pdo, int $attractionId, ar
  */
 function gcv_saidas_tarifas_passeio(array $passeio, array $chaves, array $mapa): array
 {
-    $raw = gcv_experiencia_decode_json($passeio['tarifas_saida_json'] ?? null);
-    $fallbackGuia = trim((string)($passeio['tarifa_guia'] ?? ''));
-    $fallbackTrans = trim((string)($passeio['tarifa_translado'] ?? ''));
+    $salvas = gcv_passeio_tarifas_saida_map($passeio);
     $out = [];
     foreach ($chaves as $key) {
         $key = (string)$key;
         if ($key === '' || !isset($mapa[$key])) {
             continue;
         }
-        $salvo = is_array($raw[$key] ?? null) ? $raw[$key] : null;
-        $temCampo = is_array($salvo) && (array_key_exists('guia', $salvo) || array_key_exists('translado', $salvo));
+        $salvo = $salvas[$key] ?? ['guia' => '', 'translado' => ''];
         $out[] = [
             'key' => $key,
             'nome' => (string)($mapa[$key] ?? $key),
-            'guia' => $temCampo ? trim((string)($salvo['guia'] ?? '')) : $fallbackGuia,
-            'translado' => $temCampo ? trim((string)($salvo['translado'] ?? '')) : $fallbackTrans,
+            'guia' => $salvo['guia'],
+            'translado' => $salvo['translado'],
         ];
     }
     return $out;
@@ -1721,6 +1788,7 @@ function gcv_tarifa_de_pares(array $pares, int $quorum = 4): ?array
 {
     $cidades = [];
     $base = null;
+    $melhorExc = null;
     $guiaCodigo = '';
     $transCodigo = '';
     $nome = '';
@@ -1740,8 +1808,14 @@ function gcv_tarifa_de_pares(array $pares, int $quorum = 4): ?array
             'exclusivo_transporte_cents' => (int)($trans['privativo_cents'] ?? 0),
         ];
         $cidades[$key] = $row;
-        if ($base === null && $guia) {
+        if (!$guia) {
+            continue;
+        }
+        $exc = (int)$row['excursao_pessoa_cents'];
+        $escolhe = $base === null || ($exc > 0 && ($melhorExc === null || $melhorExc === 0 || $exc < $melhorExc));
+        if ($escolhe) {
             $base = $row;
+            $melhorExc = $exc;
             $guiaCodigo = (string)$guia['codigo'];
             $transCodigo = $trans ? (string)$trans['codigo'] : '';
             $nome = (string)$guia['nome'] . ($trans ? ' + ' . $trans['nome'] : '');
@@ -1840,21 +1914,27 @@ function gcv_saidas_tarifas_gravar_passeio(PDO $pdo, int $id, array $lista): voi
         if ($key === '') {
             continue;
         }
+        $guiaSalvo = trim((string)($item['guia'] ?? ''));
+        $transSalvo = trim((string)($item['translado'] ?? ''));
+        if ($guiaSalvo === '' && $transSalvo === '') {
+            continue;
+        }
         $map[$key] = [
-            'guia' => (string)($item['guia'] ?? ''),
-            'translado' => (string)($item['translado'] ?? ''),
+            'guia' => $guiaSalvo,
+            'translado' => $transSalvo,
         ];
     }
-    [$guia, $trans] = gcv_tarifa_colunas_da_lista($lista);
-    if ($guia !== null && $guia !== '') {
-        $erroRel = gcv_passeio_erro_tarifa_abaixo_cidades($pdo, $id, $guia);
+    foreach ($map as $par) {
+        $guiaItem = trim((string)($par['guia'] ?? ''));
+        if ($guiaItem === '') {
+            continue;
+        }
+        $erroRel = gcv_passeio_erro_tarifa_abaixo_cidades($pdo, $id, $guiaItem);
         if ($erroRel !== null) {
             throw new InvalidArgumentException($erroRel);
         }
     }
-    $pdo->prepare('UPDATE gcv_passeio_relacionado SET tarifa_guia = ?, tarifa_translado = ?, tarifas_saida_json = ? WHERE id = ?')->execute([
-        $guia,
-        $trans,
+    $pdo->prepare('UPDATE gcv_passeio_relacionado SET tarifa_guia = NULL, tarifa_translado = NULL, tarifas_saida_json = ? WHERE id = ?')->execute([
         $map ? json_encode($map, JSON_UNESCAPED_UNICODE) : null,
         $id,
     ]);
@@ -1947,14 +2027,7 @@ function gcv_tarifa_saida_salvar(PDO $pdo, array $body): void
             throw new InvalidArgumentException('Passeio não encontrado.');
         }
         if ($cidade === '') {
-            $guia = $campo === 'guia' ? $codigo : trim((string)($passeio['tarifa_guia'] ?? ''));
-            $trans = $campo === 'translado' ? $codigo : trim((string)($passeio['tarifa_translado'] ?? ''));
-            gcv_tarifa_oficial_vincular($pdo, [
-                'passeio_id' => $id,
-                'tarifa_guia' => $guia,
-                'tarifa_translado' => $trans,
-            ]);
-            return;
+            throw new InvalidArgumentException('Escolha a cidade de embarque do passeio.');
         }
         if (!function_exists('gcv_related_tour_one')) {
             require_once __DIR__ . '/related_tours.php';
@@ -2803,8 +2876,6 @@ function gcv_tarifario_admin_overview(PDO $pdo): array
         if (!$tour || count($tour['attractions'] ?? []) < 2) {
             continue;
         }
-        $tidTour = isset($tour['tarifario_id']) && $tour['tarifario_id'] !== null ? (int)$tour['tarifario_id'] : 0;
-        $tour = gcv_admin_ligar_tarifa_legada($tour, $tidTour && isset($tarifarios[$tidTour]) ? $tarifarios[$tidTour] : null);
         $passeios[] = $tour;
         $tid = $tour['tarifario_id'] ?? null;
         if ($tid && isset($tarifarios[$tid])) {

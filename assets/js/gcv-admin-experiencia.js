@@ -1464,8 +1464,6 @@
       var exp1 = outros[0] ? outros[0].id : '';
       var exp2 = outros[1] ? outros[1].id : '';
       var id = tour && tour.id ? tour.id : '';
-      var guia = tour && tour.tarifa_guia ? tour.tarifa_guia : '';
-      var trans = tour && tour.tarifa_translado ? tour.tarifa_translado : '';
       var principal = estaEhPrincipal(tour) ? '1' : '0';
       return '<article class="xp-rel" data-rel="' + esc(id) + '">' +
         '<div class="xp-rel__grid' + (qtd > 1 ? ' is-2' : '') + '">' +
@@ -1477,8 +1475,7 @@
         '<label><span>Atividade principal</span><select class="gcv-dash-select" data-rel-principal aria-label="Atividade principal">' +
         '<option value="1"' + (principal === '1' ? ' selected' : '') + '>Sim</option>' +
         '<option value="0"' + (principal === '0' ? ' selected' : '') + '>Não</option></select></label>' +
-        '<label><span>Tarifa Guia</span><select class="gcv-dash-select" data-kind="guia" data-rel-guia data-atual="' + esc(guia) + '" aria-label="Tarifa Guia"><option value="">— escolher —</option></select></label>' +
-        '<label><span>Tarifa Translado</span><select class="gcv-dash-select" data-kind="trans" data-rel-trans data-atual="' + esc(trans) + '" aria-label="Tarifa Translado"><option value="">— sem translado —</option></select></label>' +
+        '<p class="gcv-cms-muted" style="grid-column:1 / -1;margin:0">Cada cidade de embarque tem a própria tarifa, no menu Passeios.</p>' +
         '<label><span>Duração do passeio</span><span class="xp-dur"><input class="gcv-dash-input" data-rel-horas inputmode="numeric" data-atual="' + esc(tour ? horasDoPasseio(tour) : '') + '" value="' + esc(tour ? horasDoPasseio(tour) : '') + '" aria-label="Duração do passeio em horas" /> h</span></label>' +
         '<button type="button" class="xp-rel__del" data-rel-del aria-label="Excluir relacionamento">' + lixoRel + '</button>' +
         '</div></article>';
@@ -1550,28 +1547,17 @@
         mostrarErro('Esse passeio já está na lista.');
         return;
       }
-      var guiaSel = row.querySelector('[data-rel-guia]');
-      var guiaCodigo = (guiaSel || {}).value || '';
-      var piso = maiorExcursaoCidades();
-      if (guiaCodigo && piso > 0 && excursaoPax4(guiaCodigo) <= piso) {
-        mostrarErro('A Tarifa Guia de ' + nomeLinha(row) + ' precisa ter PAX 4 (excursão) maior que R$ ' + piso + ', que é a maior das cidades de embarque.');
-        if (guiaSel) guiaSel.value = guiaSel.getAttribute('data-atual') || '';
-        return;
-      }
       var horasCampo = row.querySelector('[data-rel-horas]');
       var horasNum = horasDoCampo(horasCampo);
       var pisoHoras = pisoHorasLinha(row);
       if (horasNum > 0 && pisoHoras > 0 && horasNum <= pisoHoras) {
         mostrarErro('A duração de ' + nomeLinha(row) + ' precisa ser maior que ' + pisoHoras + ' h, que é a maior das cidades de embarque.');
         if (horasCampo) horasCampo.value = horasCampo.getAttribute('data-atual') || '';
-        if (guiaSel) guiaSel.value = guiaSel.getAttribute('data-atual') || '';
         return;
       }
       var payload = {
         attraction_ids: ids,
-        principal: ((row.querySelector('[data-rel-principal]') || {}).value || '1') === '1',
-        tarifa_guia: guiaCodigo,
-        tarifa_translado: (row.querySelector('[data-rel-trans]') || {}).value || ''
+        principal: ((row.querySelector('[data-rel-principal]') || {}).value || '1') === '1'
       };
       var horas = row.querySelector('[data-rel-horas]');
       if (horas && horas.hasAttribute('data-touched')) payload.horas = horas.value.trim();
@@ -1588,7 +1574,6 @@
         }
         var novo = String(res.data.id || '');
         row.setAttribute('data-rel', novo);
-        if (guiaSel) guiaSel.setAttribute('data-atual', guiaCodigo);
         if (horas && res.data.duration_minutes) {
           horas.value = horasDoPasseio(res.data);
           horas.setAttribute('data-atual', horas.value);

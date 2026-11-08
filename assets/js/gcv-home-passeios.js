@@ -91,7 +91,13 @@
   }
 
   function precoVitrine(tarifa) {
-    var cents = parseInt(tarifa && tarifa.excursao_pessoa_cents, 10) || 0;
+    var cidades = (tarifa && tarifa.cidades) || {};
+    var menor = 0;
+    Object.keys(cidades).forEach(function (k) {
+      var n = parseInt((cidades[k] || {}).excursao_pessoa_cents, 10) || 0;
+      if (n > 0 && (!menor || n < menor)) menor = n;
+    });
+    var cents = menor || parseInt(tarifa && tarifa.excursao_pessoa_cents, 10) || 0;
     if (lang !== "en" && lang !== "es") return cents;
     var tipo = tarifa && tarifa.bilingue_tipo;
     var valor = tarifa && tarifa.bilingue_valor;

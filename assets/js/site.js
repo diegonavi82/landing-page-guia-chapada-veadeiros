@@ -1802,10 +1802,6 @@
       var n = parseInt(row[campo], 10);
       if (isFinite(n)) return n;
     }
-    if (tarifa && tarifa[campo] != null && tarifa[campo] !== "") {
-      var base = parseInt(tarifa[campo], 10);
-      if (isFinite(base)) return base;
-    }
     if (fallback) return passeioPrecoCidade(tarifa, cidade, fallback);
     return 0;
   }
@@ -1882,11 +1878,6 @@
         if (passeioCidadeVende(tour.tarifa, PASSEIO_CIDADE_ROTULO[key][0])) add(key);
       });
     }
-    var plana = tour.tarifa && (
-      (parseInt(tour.tarifa.excursao_pessoa_cents, 10) || 0) > 0 ||
-      (parseInt(tour.tarifa.exclusivo_pessoa_cents, 10) || 0) > 0
-    );
-    if (!out.length && plana) PASSEIO_CIDADE_ORDEM.forEach(add);
     return out;
   }
 
@@ -2803,11 +2794,19 @@
       var citySel = box.querySelector("[data-passeio-city]");
       if (cityGroup && citySel) {
         var firstCity = "";
+        var visiveis = 0;
         Array.prototype.forEach.call(cityGroup.querySelectorAll("button"), function (b) {
           var ok = passeioCidadeVende(tarifa, b.getAttribute("data-value"));
           b.hidden = !ok;
+          if (ok) visiveis += 1;
           if (ok && !firstCity) firstCity = b.getAttribute("data-value");
         });
+        cityGroup.hidden = visiveis < 1;
+        var vazioCidade = box.querySelector("[data-passeio-city-empty]");
+        if (vazioCidade) {
+          vazioCidade.hidden = visiveis > 0;
+          if (!visiveis) vazioCidade.textContent = copy.noCity;
+        }
         var atual = cityGroup.querySelector('button[data-value="' + citySel.value + '"]');
         if (!atual || atual.hidden) setSeg("city", firstCity);
       }
@@ -2941,8 +2940,8 @@
 
     function paint() {
       syncDateFloor();
-      syncTarifaOpcoes();
       paintCidades();
+      syncTarifaOpcoes();
       var sel = passeioSelecao(box, data);
       aplicarLimitePessoas(sel);
       var modalidade = box.querySelector("[data-passeio-mode]").value;
