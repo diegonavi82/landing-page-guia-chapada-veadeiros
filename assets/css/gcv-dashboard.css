@@ -1655,6 +1655,94 @@ body.gcv-dash-page main.gcv-dash-main {
 .gcv-dash-btn--sm        { padding: 5px 12px; font-size: 0.8125rem; }
 
 /* Settings */
+.gcv-dash-special-guide {
+  background: #fffbeb;
+  border: 2px solid #d97706;
+  border-radius: 14px;
+  padding: 18px 18px 16px;
+  margin: 0 0 18px;
+  box-shadow: 0 8px 24px rgba(217, 119, 6, 0.12);
+}
+.gcv-dash-special-guide.is-off {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  box-shadow: none;
+}
+.gcv-dash-special-guide__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.gcv-dash-special-guide__kicker {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #b45309;
+}
+.gcv-dash-special-guide.is-off .gcv-dash-special-guide__kicker { color: #64748b; }
+.gcv-dash-special-guide__badge {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #d97706;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+.gcv-dash-special-guide.is-off .gcv-dash-special-guide__badge {
+  background: #64748b;
+}
+.gcv-dash-special-guide__name {
+  margin: 8px 0 6px;
+  font-size: 1.25rem;
+  color: #0f3d2e;
+}
+.gcv-dash-special-guide__text {
+  margin: 0 0 14px;
+  color: #44403c;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+.gcv-dash-special-guide__switch {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.gcv-dash-special-guide__btn {
+  min-width: 140px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 2px solid #d6d3d1;
+  background: #fff;
+  color: #44403c;
+  font: inherit;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+.gcv-dash-special-guide__btn.is-current[data-priority="1"] {
+  background: #0f3d2e;
+  border-color: #0f3d2e;
+  color: #fff;
+}
+.gcv-dash-special-guide__btn.is-current[data-priority="0"] {
+  background: #9f1239;
+  border-color: #9f1239;
+  color: #fff;
+}
+.gcv-dash-special-guide__status {
+  min-height: 1.2em;
+  margin: 10px 0 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #047857;
+}
+.gcv-dash-special-guide__status.is-error { color: #b91c1c; }
+
 .gcv-dash-settings-group {
   background: #fff;
   border: 1px solid #e2e8f0;
@@ -2032,6 +2120,7 @@ body.gcv-dash-page main.gcv-dash-main {
   .gcv-guide-upcoming__head { flex-direction: column; }
   .gcv-cms-toolbar { flex-direction: column; align-items: stretch; }
   .gcv-dash-settings-row { flex-direction: column; align-items: stretch; gap: 8px; }
+  .gcv-dash-special-guide__btn { flex: 1 1 140px; }
   .gcv-dash-settings-input { width: 100%; }
   .gcv-dash-input,
   .gcv-dash-select,

@@ -28,6 +28,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
     $stmt->execute([$keyName]);
     $setting = $stmt->fetch();
 
+    if (!$setting && $keyName === 'guia_especial_ativa') {
+        require_once __DIR__ . '/../helpers/guide_queue_offer.php';
+        gcv_guiagem_priority_ensure_setting();
+        $stmt->execute([$keyName]);
+        $setting = $stmt->fetch();
+    }
+
     if (!$setting) json_response(false, null, 'Configuração não encontrada', 404);
 
     // Validar por tipo
@@ -76,6 +83,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
         $value = (string)$n;
     }
 
+    if ($keyName === 'guia_especial_ativa' || ($setting['type'] ?? '') === 'boolean') {
+        $raw = strtolower(trim($value));
+        if (!in_array($raw, ['0', '1', 'false', 'true', 'off', 'on', 'nao', 'não', 'sim'], true)) {
+            json_response(false, null, 'Use ATIVAR ou DESATIVAR', 422);
+        }
+        $value = in_array($raw, ['0', 'false', 'off', 'nao', 'não'], true) ? '0' : '1';
+    }
+
     if (in_array($keyName, ['transfer_offer_hours', 'transfer_cancel_hours'], true)) {
         $n = (int)round((float)$value);
         if ($n < 0 || $n > 96) {
@@ -101,7 +116,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
         gcv_commission_sync_global_from_settings((float)$value);
     }
 
-    json_response(true, ['message' => 'Configuração salva']);
+    $released = 0;
+    if ($keyName === 'guia_especial_ativa' && $value === '0') {
+        require_once __DIR__ . '/../helpers/guide_queue_offer.php';
+        $released = gcv_guiagem_drop_priority_holds();
+    }
+
+    json_response(true, [
+        'message' => 'Configuração salva',
+        'value' => $value,
+        'released' => $released,
+    ]);
 }
 
 json_response(false, null, 'Método não permitido', 405);

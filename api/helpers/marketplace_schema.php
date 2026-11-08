@@ -633,6 +633,7 @@ function gcv_marketplace_ensure_settings(PDO $pdo): void
         ['oportunidade_top3_horas', '2', 'TOP 3: horas exclusivas antes de chamar o restante da fila', 'integer'],
         ['oportunidade_aceite_minutos', '260', 'Tempo para aceitar a oportunidade, em minutos (260 = 4h20)', 'integer'],
         ['oportunidade_urgente_horas', '24', 'Faltando menos horas que isto para o passeio, todos os guias são chamados juntos', 'integer'],
+        ['guia_especial_ativa', '1', 'Guia especial: prioridade acima de R$ 500 ou em outro idioma', 'integer'],
         ['tarifa_ia_ativa', '0', 'Tarifa inteligência artificial progressiva: 0 inativa, 1 ativa. Não vale para passeio publicado pelo guia', 'integer'],
         ['tarifa_ia_passo_pct', '2', 'Passo da tarifa progressiva (%) sobre o último preço vendido', 'percent'],
     ];

@@ -135,6 +135,50 @@ function gcv_guiagem_priority_min_cents(): int
     return 50000;
 }
 
+function gcv_guiagem_priority_ensure_setting(): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+    try {
+        $pdo = db();
+        $st = $pdo->prepare('SELECT id FROM gcv_settings WHERE key_name = ? LIMIT 1');
+        $st->execute(['guia_especial_ativa']);
+        if (!$st->fetchColumn()) {
+            $pdo->prepare(
+                'INSERT INTO gcv_settings (key_name, value, label, type) VALUES (?,?,?,?)'
+            )->execute([
+                'guia_especial_ativa',
+                '1',
+                'Guia especial: prioridade acima de R$ 500 ou em outro idioma',
+                'integer',
+            ]);
+        }
+    } catch (Throwable $e) {
+        error_log('gcv_guiagem_priority_ensure_setting: ' . $e->getMessage());
+    }
+}
+
+/** Ligada por padrão. Só desliga quando o admin grava 0. */
+function gcv_guiagem_priority_enabled(): bool
+{
+    gcv_guiagem_priority_ensure_setting();
+    try {
+        $st = db()->prepare('SELECT value FROM gcv_settings WHERE key_name = ? LIMIT 1');
+        $st->execute(['guia_especial_ativa']);
+        $v = $st->fetchColumn();
+        if ($v === false || $v === null || $v === '') {
+            return true;
+        }
+        return !in_array(strtolower(trim((string)$v)), ['0', 'false', 'off', 'nao', 'não'], true);
+    } catch (Throwable $e) {
+        error_log('gcv_guiagem_priority_enabled: ' . $e->getMessage());
+        return true;
+    }
+}
+
 function gcv_guiagem_priority_hours(): int
 {
     return 24;
@@ -385,6 +429,9 @@ function gcv_guiagem_priority_note(string $expiresAt): string
 function gcv_guiagem_offer_priority(array $tour, int $exceptId): array
 {
     gcv_guiagem_ensure_schema();
+    if (!gcv_guiagem_priority_enabled()) {
+        return [];
+    }
     $tourId = (int)($tour['id'] ?? 0);
     $diego = gcv_guiagem_priority_guide_id();
     if ($tourId <= 0 || $diego <= 0 || $diego === $exceptId) {
@@ -484,27 +531,30 @@ function gcv_guiagem_after_unassigned_sale(int $excursionId): void
     gcv_guiagem_notify_new_purchase($excursionId, array_map(static fn ($g) => (int)($g['id'] ?? 0), $picked));
 }
 
-/** 24 h sem resposta: tira da agenda e abre a fila normal. */
-function gcv_guiagem_expire_priority(?DateTimeImmutable $now = null): int
+/**
+ * Encerra ofertas prioritárias pendentes e manda a saída para a fila normal.
+ * $expiresBy null encerra todas. Com data, só as que já passaram do prazo.
+ */
+function gcv_guiagem_close_priority_offers(?string $expiresBy): int
 {
     gcv_guiagem_ensure_schema();
-    if (!gcv_guiagem_column_exists('expires_at')) {
+    if (!gcv_guiagem_column_exists('expires_at') || !gcv_guiagem_column_exists('kind')) {
         return 0;
     }
-    $tz = new DateTimeZone('America/Sao_Paulo');
-    $now = $now ? $now->setTimezone($tz) : new DateTimeImmutable('now', $tz);
-    $stamp = $now->format('Y-m-d H:i:s');
+    $where = "status = 'pending' AND kind = 'priority'";
+    $params = [];
+    if ($expiresBy !== null) {
+        $where .= ' AND expires_at IS NOT NULL AND expires_at <= ?';
+        $params[] = $expiresBy;
+    }
     try {
         $st = db()->prepare(
-            "SELECT DISTINCT excursion_id
-             FROM gcv_guide_queue_offers
-             WHERE status = 'pending' AND kind = 'priority'
-               AND expires_at IS NOT NULL AND expires_at <= ?"
+            'SELECT DISTINCT excursion_id FROM gcv_guide_queue_offers WHERE ' . $where
         );
-        $st->execute([$stamp]);
+        $st->execute($params);
         $ids = array_map('intval', $st->fetchAll(PDO::FETCH_COLUMN) ?: []);
     } catch (Throwable $e) {
-        error_log('gcv_guiagem_expire_priority: ' . $e->getMessage());
+        error_log('gcv_guiagem_close_priority_offers: ' . $e->getMessage());
         return 0;
     }
     $n = 0;
@@ -513,14 +563,14 @@ function gcv_guiagem_expire_priority(?DateTimeImmutable $now = null): int
             continue;
         }
         try {
-            db()->prepare(
+            $upd = db()->prepare(
                 "UPDATE gcv_guide_queue_offers
                  SET status = 'expired', decided_at = NOW()
-                 WHERE excursion_id = ? AND status = 'pending' AND kind = 'priority'
-                   AND expires_at IS NOT NULL AND expires_at <= ?"
-            )->execute([$excursionId, $stamp]);
+                 WHERE excursion_id = ? AND " . $where
+            );
+            $upd->execute(array_merge([$excursionId], $params));
         } catch (Throwable $e) {
-            error_log('gcv_guiagem_expire_priority update: ' . $e->getMessage());
+            error_log('gcv_guiagem_close_priority_offers update: ' . $e->getMessage());
             continue;
         }
         $tour = gcv_substitution_load_excursion($excursionId);
@@ -537,6 +587,20 @@ function gcv_guiagem_expire_priority(?DateTimeImmutable $now = null): int
         $n++;
     }
     return $n;
+}
+
+/** 24 h sem resposta: tira da agenda e abre a fila normal. */
+function gcv_guiagem_expire_priority(?DateTimeImmutable $now = null): int
+{
+    $tz = new DateTimeZone('America/Sao_Paulo');
+    $now = $now ? $now->setTimezone($tz) : new DateTimeImmutable('now', $tz);
+    return gcv_guiagem_close_priority_offers($now->format('Y-m-d H:i:s'));
+}
+
+/** Admin desligou a regra: tira da agenda o que ainda espera aceite. */
+function gcv_guiagem_drop_priority_holds(): int
+{
+    return gcv_guiagem_close_priority_offers(null);
 }
 
 /**

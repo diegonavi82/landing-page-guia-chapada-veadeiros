@@ -1599,6 +1599,77 @@
     startWaInboxPoll();
   }
 
+  function specialGuideOn(value) {
+    return !/^(0|false|off|nao|não)$/i.test(String(value == null ? '1' : value).trim());
+  }
+
+  function renderSpecialGuideCard(setting) {
+    var card = el('article', 'gcv-dash-special-guide');
+    var on = specialGuideOn(setting && setting.value);
+    card.innerHTML =
+      '<div class="gcv-dash-special-guide__head">' +
+        '<p class="gcv-dash-special-guide__kicker">Regra do guia especial</p>' +
+        '<span class="gcv-dash-special-guide__badge"></span>' +
+      '</div>' +
+      '<h3 class="gcv-dash-special-guide__name">Diego Navi Marques Carvalho</h3>' +
+      '<p class="gcv-dash-special-guide__text">Guiagem em que o guia recebe mais de R$ 500, ou guiagem em outro idioma, é oferecida primeiro a você. São 24 horas para aceitar ou recusar, e o dia entra na sua agenda. Se você recusar, não responder ou já estiver ocupado, a venda segue a fila. Desligada, a venda vai direto para a fila, e o que ainda estiver esperando o seu aceite sai da agenda.</p>' +
+      '<div class="gcv-dash-special-guide__switch" role="group" aria-label="Ativar ou desativar a regra do guia especial">' +
+        '<button type="button" class="gcv-dash-special-guide__btn" data-priority="1">ATIVAR</button>' +
+        '<button type="button" class="gcv-dash-special-guide__btn" data-priority="0">DESATIVAR</button>' +
+      '</div>' +
+      '<p class="gcv-dash-special-guide__status" aria-live="polite"></p>';
+
+    function paint(active) {
+      on = active;
+      card.classList.toggle('is-on', active);
+      card.classList.toggle('is-off', !active);
+      var badge = card.querySelector('.gcv-dash-special-guide__badge');
+      if (badge) badge.textContent = active ? 'ATIVA' : 'DESATIVADA';
+      card.querySelectorAll('.gcv-dash-special-guide__btn').forEach(function (btn) {
+        var mine = btn.getAttribute('data-priority') === (active ? '1' : '0');
+        btn.classList.toggle('is-current', mine);
+        btn.setAttribute('aria-pressed', mine ? 'true' : 'false');
+      });
+    }
+
+    function say(text, ok) {
+      var status = card.querySelector('.gcv-dash-special-guide__status');
+      if (!status) return;
+      status.textContent = text || '';
+      status.classList.toggle('is-error', !ok);
+    }
+
+    paint(on);
+    card.querySelectorAll('.gcv-dash-special-guide__btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var next = btn.getAttribute('data-priority') === '1';
+        if (next === on) return;
+        if (!next && !window.confirm('Desativar tira da agenda de Diego Navi Marques Carvalho as guiagens que ainda estão esperando o aceite. Essas vendas seguem a fila normal. Continuar?')) {
+          return;
+        }
+        say('Salvando…', true);
+        put('/api/admin/settings.php', { key_name: 'guia_especial_ativa', value: next ? '1' : '0' }, function (e, r) {
+          if (!r || !r.ok) {
+            say((r && r.error) || 'Não foi possível salvar', false);
+            return;
+          }
+          paint(specialGuideOn(r.data && r.data.value != null ? r.data.value : (next ? '1' : '0')));
+          if (next) {
+            say('Prioridade ativada. A próxima guiagem acima de R$ 500 ou em outro idioma passa primeiro por você, se o dia estiver livre.', true);
+            return;
+          }
+          var n = r.data && r.data.released ? Number(r.data.released) : 0;
+          say(n === 1
+            ? 'Prioridade desativada. 1 saída saiu da agenda e foi para a fila.'
+            : (n > 1
+              ? 'Prioridade desativada. ' + n + ' saídas saíram da agenda e foram para a fila.'
+              : 'Prioridade desativada. A agenda não tinha guiagem esperando aceite.'), true);
+        });
+      });
+    });
+    return card;
+  }
+
   function loadSettings() {
     var form = document.getElementById('admin-settings-form');
     if (!form) return;
@@ -1657,12 +1728,18 @@
     get('/api/admin/settings.php', function (err, res) {
       if (!res || !res.ok) return;
       var buckets = { passeios: [], notify: [], transfer: [], finance: [], regras: [], other: [] };
+      var special = null;
       (res.data.settings || []).forEach(function (s) {
         if (s.key_name === 'pausa_convite_inicio_hora' || s.key_name === 'pausa_convite_fim_hora') return;
+        if (s.key_name === 'guia_especial_ativa') {
+          special = s;
+          return;
+        }
         var g = groupOf[s.key_name] || 'other';
         buckets[g].push(s);
       });
       form.innerHTML = '';
+      form.appendChild(renderSpecialGuideCard(special));
       ['passeios', 'notify', 'transfer', 'finance', 'regras', 'other'].forEach(function (gid) {
         var list = buckets[gid];
         if (!list.length) return;
