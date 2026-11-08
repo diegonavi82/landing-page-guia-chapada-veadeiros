@@ -1737,18 +1737,53 @@ function gcv_atrativo_erro_horas_vs_relacionados(PDO $pdo, int $attractionId, ar
         if (count(gcv_passeio_atrativo_ids($pdo, $passeioId)) < 2) {
             continue;
         }
-        $head = $pdo->prepare('SELECT duration_minutes FROM gcv_passeio_relacionado WHERE id = ? LIMIT 1');
+        $head = $pdo->prepare('SELECT duracao_json FROM gcv_passeio_relacionado WHERE id = ? LIMIT 1');
         $head->execute([$passeioId]);
-        $horas = gcv_horas_de_minutos((int)$head->fetchColumn());
-        if ($horas < 1) {
+        $rawTour = $head->fetchColumn();
+        $mapaTour = [];
+        if (is_string($rawTour) && $rawTour !== '') {
+            $decoded = json_decode($rawTour, true);
+            if (is_array($decoded)) {
+                $mapaTour = $decoded;
+            }
+        }
+        if (!$mapaTour) {
             continue;
         }
-        $piso = gcv_passeio_piso_horas($pdo, $passeioId, $attractionId, $base);
-        if ($piso < 1 || $horas > $piso) {
-            continue;
+        $nomesCidade = gcv_cidades_saida_mapa($pdo);
+        $expJson = isset($body['experiencia']) && is_array($body['experiencia'])
+            ? json_encode($body['experiencia'], JSON_UNESCAPED_UNICODE)
+            : (is_string($base['experiencia_json'] ?? null) ? $base['experiencia_json'] : null);
+        $duracaoBody = $body['duracao'] ?? ($base['duracao_json'] ?? null);
+        $fallback = array_key_exists('duration_minutes', $body) && $body['duration_minutes'] !== ''
+            ? (int)$body['duration_minutes']
+            : (int)($base['duration_minutes'] ?? 0);
+        $chaves = [];
+        $embarquesBody = is_array($body['experiencia']['embarques'] ?? null) ? $body['experiencia']['embarques'] : [];
+        foreach ($embarquesBody as $cidadeKey => $rowCidade) {
+            if (is_array($rowCidade)) {
+                $chaves[] = (string)$cidadeKey;
+            }
         }
-        $nome = gcv_passeio_nome_curto($pdo, $passeioId);
-        return 'A maior duração das cidades de embarque ficaria em ' . $piso . ' h. O passeio ' . $nome . ' está em ' . $horas . ' h e precisa ser maior que isso.';
+        foreach ($chaves as $cidadeKey) {
+            $minutosTour = (int)($mapaTour[$cidadeKey] ?? 0);
+            if ($minutosTour < 1) {
+                continue;
+            }
+            $horasCidade = gcv_horas_de_minutos(gcv_minutos_da_ficha(
+                is_string($expJson) ? $expJson : null,
+                $duracaoBody,
+                $fallback,
+                $cidadeKey
+            ));
+            $horasTour = gcv_horas_de_minutos($minutosTour);
+            if ($horasCidade < 1 || $horasTour < 1 || $horasTour > $horasCidade) {
+                continue;
+            }
+            $nome = gcv_passeio_nome_curto($pdo, $passeioId);
+            $cidadeNome = (string)($nomesCidade[$cidadeKey] ?? $cidadeKey);
+            return 'O passeio ' . $nome . ' saindo de ' . $cidadeNome . ' está em ' . $horasTour . ' h. A duração dessa cidade precisa ser menor que isso.';
+        }
     }
     return null;
 }
@@ -2518,33 +2553,68 @@ function gcv_tarifario_public_by_id(PDO $pdo, ?int $id): ?array
 
 /**
  * Duração do passeio por cidade de saída, em minutos.
- * Cidade sem valor usa a duração geral (duration_minutes).
+ * Se alguma cidade tem a própria duração, as outras ficam em zero.
+ * A duração geral só entra quando nenhuma cidade tem valor próprio.
  * @return array<string,int>
  */
 function gcv_duracao_cidades($json, int $fallbackMinutes): array
 {
     $raw = is_string($json) && $json !== '' ? json_decode($json, true) : (is_array($json) ? $json : []);
-    $out = [];
-    foreach (array_keys(GCV_TARIFARIO_CIDADES) as $key) {
-        $v = is_array($raw) && isset($raw[$key]) && $raw[$key] !== '' ? (int)$raw[$key] : 0;
-        $out[$key] = $v > 0 ? min($v, 1440) : max(0, $fallbackMinutes);
-    }
+    $proprio = [];
     if (is_array($raw)) {
         foreach ($raw as $key => $val) {
             $key = (string)$key;
-            if (isset($out[$key])) {
-                continue;
-            }
             $v = (int)$val;
             if ($v > 0) {
-                $out[$key] = min($v, 1440);
+                $proprio[$key] = min($v, 1440);
             }
+        }
+    }
+    $temProprio = $proprio !== [];
+    $out = [];
+    foreach (array_keys(GCV_TARIFARIO_CIDADES) as $key) {
+        if (isset($proprio[$key])) {
+            $out[$key] = $proprio[$key];
+        } else {
+            $out[$key] = $temProprio ? 0 : max(0, $fallbackMinutes);
+        }
+    }
+    foreach ($proprio as $key => $val) {
+        if (!isset($out[$key])) {
+            $out[$key] = $val;
         }
     }
     return $out;
 }
 
-/** Minutos do campo Duração do passeio da cidade. Sem campo, Alto Paraíso usa a duração geral. */
+/** Alguma cidade já tem minutos próprios na ficha ou no mapa de duração. */
+function gcv_ficha_tem_minutos_de_cidade(?string $experienciaJson, $duracaoJson): bool
+{
+    $exp = [];
+    if (is_string($experienciaJson) && $experienciaJson !== '') {
+        $decoded = json_decode($experienciaJson, true);
+        if (is_array($decoded)) {
+            $exp = $decoded;
+        }
+    }
+    $embarques = is_array($exp['embarques'] ?? null) ? $exp['embarques'] : [];
+    foreach ($embarques as $row) {
+        if (is_array($row) && (int)($row['minutos'] ?? 0) > 0) {
+            return true;
+        }
+    }
+    $dur = is_string($duracaoJson) && $duracaoJson !== '' ? json_decode($duracaoJson, true) : (is_array($duracaoJson) ? $duracaoJson : []);
+    if (is_array($dur)) {
+        foreach ($dur as $val) {
+            if ((int)$val > 0) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+/** Minutos do campo Duração do passeio da cidade. A duração geral não passa de uma cidade para outra. */
 function gcv_minutos_da_ficha(?string $experienciaJson, $duracaoJson, int $fallbackMinutes, string $key): int
 {
     $exp = [];
@@ -2565,7 +2635,7 @@ function gcv_minutos_da_ficha(?string $experienciaJson, $duracaoJson, int $fallb
     if ($doMapa > 0) {
         return min($doMapa, 1440);
     }
-    if ($key === 'alto-paraiso' && $fallbackMinutes > 0) {
+    if ($key === 'alto-paraiso' && $fallbackMinutes > 0 && !gcv_ficha_tem_minutos_de_cidade($experienciaJson, $duracaoJson)) {
         return min($fallbackMinutes, 1440);
     }
     return 0;

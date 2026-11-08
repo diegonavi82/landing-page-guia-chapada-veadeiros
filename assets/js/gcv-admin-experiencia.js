@@ -182,11 +182,26 @@
       return '<' + tag + ' class="gcv-dash-input" id="' + prefix + '-pt" value="' + valor + '" />';
     }
 
-    function minutosIniciais(key) {
+    function minutosProprios(key) {
       var salvo = embarques[key] || {};
-      if (salvo.minutos) return salvo.minutos;
-      if (duracao[key]) return duracao[key];
-      if (key === 'alto-paraiso' && a.duration_minutes) return a.duration_minutes;
+      var doCampo = parseInt(salvo.minutos, 10) || 0;
+      if (doCampo > 0) return doCampo;
+      var doMapa = parseInt(duracao[key], 10) || 0;
+      return doMapa > 0 ? doMapa : 0;
+    }
+
+    function algumaCidadeComDuracao() {
+      var vistas = {};
+      Object.keys(embarques).forEach(function (key) { vistas[key] = true; });
+      Object.keys(duracao).forEach(function (key) { vistas[key] = true; });
+      return Object.keys(vistas).some(function (key) { return minutosProprios(key) > 0; });
+    }
+
+    function minutosIniciais(key) {
+      var proprio = minutosProprios(key);
+      if (proprio > 0) return proprio;
+      if (algumaCidadeComDuracao()) return '';
+      if (key === (principal || 'alto-paraiso') && a.duration_minutes) return a.duration_minutes;
       return '';
     }
 
@@ -860,8 +875,6 @@
       if (erroDist) return { erro: erroDist };
       var erroRel = erroRelacionadoAbaixo();
       if (erroRel) return { erro: erroRel };
-      var erroHoras = erroHorasRelacionado();
-      if (erroHoras) return { erro: erroHoras };
 
       var principalKey = (x.principal && saidas[x.principal]) ? x.principal : (Object.keys(saidas)[0] || '');
       var baseSaida = principalKey ? saidas[principalKey] : { km: '', guia: '', trans: '', minutos: '' };
@@ -1301,29 +1314,8 @@
       return maior;
     }
 
-    function erroHorasRelacionado() {
-      var msg = '';
-      form.querySelectorAll('.xp-rel').forEach(function (row) {
-        if (msg || !linhaRelPronta(row)) return;
-        var input = row.querySelector('[data-rel-horas]');
-        var n = horasDoCampo(input);
-        if (n < 1) return;
-        var piso = pisoHorasLinha(row);
-        if (piso < 1 || n > piso) return;
-        msg = 'A maior duração das cidades de embarque ficaria em ' + piso + ' h. O passeio ' + nomeLinha(row) + ' está em ' + n + ' h e precisa ser maior que isso.';
-      });
-      return msg;
-    }
-
     function aoMudarHorasCidade(input) {
-      var erro = erroHorasRelacionado();
-      if (erro) {
-        input.value = input.getAttribute('data-atual') || '';
-        mostrarErro(erro);
-        return;
-      }
       input.setAttribute('data-atual', String(input.value || '').trim());
-      mostrarErro('');
     }
 
     function aoMudarTarifaCidade(select) {
