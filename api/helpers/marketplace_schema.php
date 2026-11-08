@@ -256,6 +256,8 @@ function gcv_marketplace_ensure_excursion_finance_columns(PDO $pdo): void
         'quorum_transport' => 'TINYINT UNSIGNED NOT NULL DEFAULT 0',
         'max_people_transport' => 'TINYINT UNSIGNED NOT NULL DEFAULT 0',
         'booked_people_transport' => 'TINYINT UNSIGNED NOT NULL DEFAULT 0',
+        'tour_type' => "ENUM('excursao','privativo') NOT NULL DEFAULT 'excursao'",
+        'status_lock' => "ENUM('concluida') NULL",
     ];
 
     $existing = gcv_marketplace_column_map($pdo, 'gcv_excursions');

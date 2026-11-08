@@ -14,6 +14,13 @@ require_once __DIR__ . '/../helpers/excursion_status.php';
 require_once __DIR__ . '/../helpers/excursion_attractions.php';
 require_once __DIR__ . '/../helpers/google_places.php';
 require_once __DIR__ . '/../helpers/guide_languages.php';
+require_once __DIR__ . '/../helpers/marketplace_schema.php';
+
+try {
+    gcv_marketplace_ensure_excursion_finance_columns(db());
+} catch (Throwable $e) {
+    error_log('carousel tour_type: ' . $e->getMessage());
+}
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: public, max-age=60');

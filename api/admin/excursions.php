@@ -262,6 +262,8 @@ function gcv_excursion_enrich(array $row): array
         $row['guide_invite_user_id'] = 0;
     }
     $row['lifecycle_label'] = gcv_excursion_lifecycle_label($life);
+    $row['tour_type'] = gcv_excursion_tour_type($row);
+    $row['tour_type_label'] = $row['tour_type'] === 'privativo' ? 'Privativo' : 'Excursão';
     $row['forming'] = $life === 'em_formacao';
     $row['offer_transport'] = !empty($row['offer_transport'])
         || (int)($row['price_transport_cents'] ?? 0) > 0
@@ -476,6 +478,14 @@ function gcv_admin_apply_sheet_patch(array $body, array $ex, int $adminId): arra
         }
     }
 
+    if (array_key_exists('status_lock', $body)) {
+        $lock = strtolower(trim((string)$body['status_lock']));
+        if ($lock !== '' && $lock !== 'concluida') {
+            throw new InvalidArgumentException('Trava de status inválida');
+        }
+        $sets[] = 'status_lock = ?';
+        $params[] = $lock === '' ? null : 'concluida';
+    }
     if (array_key_exists('status', $body)) {
         $nextStatus = (string)$body['status'];
         $allowedStatus = ['draft', 'pending_approval', 'published', 'cancelled', 'soldout', 'rejected'];
@@ -484,10 +494,21 @@ function gcv_admin_apply_sheet_patch(array $body, array $ex, int $adminId): arra
         }
         $sets[] = 'status = ?';
         $params[] = $nextStatus;
-        if (in_array($nextStatus, ['published', 'soldout'], true) && empty($ex['approved_at'])) {
-            $sets[] = 'approved_at = NOW()';
-            $sets[] = 'approved_by = ?';
-            $params[] = $adminId;
+        if (in_array($nextStatus, ['published', 'soldout'], true)) {
+            $sets[] = 'rejection_reason = NULL';
+            if (empty($ex['approved_at'])) {
+                $sets[] = 'approved_at = NOW()';
+                $sets[] = 'approved_by = ?';
+                $params[] = $adminId;
+            }
+        }
+        if ($nextStatus === 'rejected' && (string)($ex['status'] ?? '') !== 'rejected') {
+            $reason = trim((string)($body['rejection_reason'] ?? ''));
+            if ($reason === '') {
+                $reason = 'Cancelado no painel';
+            }
+            $sets[] = 'rejection_reason = ?';
+            $params[] = $reason;
         }
     }
 
@@ -666,6 +687,12 @@ if ($method === 'GET') {
         }
         echo json_encode(['ok' => true, 'data' => gcv_excursion_enrich($row)]);
         exit;
+    }
+    try {
+        require_once __DIR__ . '/../helpers/private_departure.php';
+        gcv_private_departure_backfill();
+    } catch (Throwable $e) {
+        error_log('private departure backfill: ' . $e->getMessage());
     }
     $rows = db()->query(
         'SELECT e.*, c.name AS departure_city_name, u.name AS guide_name

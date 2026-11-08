@@ -28,6 +28,9 @@ function gcv_excursion_is_publicly_bookable(array $e): bool
     if (!empty($e['deleted_at'])) {
         return false;
     }
+    if (gcv_excursion_is_private($e)) {
+        return false;
+    }
     $status = (string)($e['status'] ?? '');
     if (!in_array($status, ['published', 'soldout'], true)) {
         return false;
@@ -46,6 +49,7 @@ function gcv_excursion_sql_public_live(string $alias = 'e'): string
     $a = preg_replace('/[^a-zA-Z0-9_]/', '', $alias) ?: 'e';
     return "{$a}.status IN ('published','soldout')
       AND {$a}.deleted_at IS NULL
+      AND COALESCE({$a}.tour_type, 'excursao') <> 'privativo'
       AND NOT (
         ({$a}.created_by_origin = 'GUIDE' OR {$a}.business_mode = 'GUIDE_MARKETPLACE')
         AND {$a}.approved_at IS NULL
@@ -248,6 +252,17 @@ function gcv_excursion_quorum_met(array $e): bool
  * Status dinâmico da excursão (espelha Navi-Experience).
  * @param array<string,mixed> $e
  */
+function gcv_excursion_tour_type(array $e): string
+{
+    $type = strtolower(trim((string)($e['tour_type'] ?? 'excursao')));
+    return in_array($type, ['privativo', 'exclusivo'], true) ? 'privativo' : 'excursao';
+}
+
+function gcv_excursion_is_private(array $e): bool
+{
+    return gcv_excursion_tour_type($e) === 'privativo';
+}
+
 function gcv_resolve_excursion_lifecycle(array $e): string
 {
     $status = (string)($e['status'] ?? 'draft');
@@ -263,12 +278,30 @@ function gcv_resolve_excursion_lifecycle(array $e): string
     if ($status === 'draft') {
         return 'rascunho';
     }
-    if ($status === 'soldout') {
-        return 'confirmada';
+
+    $lock = strtolower(trim((string)($e['status_lock'] ?? '')));
+    if ($lock === 'concluida') {
+        return 'concluida';
     }
 
     $date = (string)($e['date_iso'] ?? '');
     $today = (new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo')))->format('Y-m-d');
+
+    if (gcv_excursion_is_private($e)) {
+        $booked = gcv_excursion_occupied_people($e);
+        // Quórum 0 é a confirmação manual da planilha (o mesmo mecanismo da excursão).
+        $forced = (int)($e['quorum'] ?? 1) <= 0;
+        $going = $booked > 0 || $forced || $status === 'soldout';
+        if ($date !== '' && $date < $today) {
+            return $going ? 'concluida' : 'cancelada';
+        }
+        return $going ? 'confirmada' : 'em_formacao';
+    }
+
+    if ($status === 'soldout') {
+        return 'confirmada';
+    }
+
     $quorumMet = gcv_excursion_quorum_met($e);
 
     if ($date !== '' && $date < $today) {

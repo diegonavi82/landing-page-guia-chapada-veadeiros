@@ -8,7 +8,7 @@
     rows: [],
     guides: [],
     attractions: [],
-    filters: { q: '', guide: '', attraction: '', approvedFrom: '', approvedTo: '', status: '' },
+    filters: { q: '', guide: '', attraction: '', approvedFrom: '', approvedTo: '', status: '', tipo: '' },
     timers: {},
     saving: {},
     drafts: {},
@@ -2304,18 +2304,22 @@
         '<input class="gcv-dash-input" id="cms-exc-f-ap-from" type="date" /></div>' +
         '<div class="gcv-exc-sheet-filter gcv-exc-sheet-filter--date"><label for="cms-exc-f-ap-to">Aprovação até</label>' +
         '<input class="gcv-dash-input" id="cms-exc-f-ap-to" type="date" /></div>' +
+        '<div class="gcv-exc-sheet-filter"><label for="cms-exc-f-tipo">Tipo</label>' +
+        '<select class="gcv-dash-select" id="cms-exc-f-tipo">' +
+        '<option value="">Todos</option>' +
+        '<option value="excursao">Excursão</option>' +
+        '<option value="privativo">Privativo</option>' +
+        '</select></div>' +
         '<div class="gcv-exc-sheet-filter"><label for="cms-exc-f-status">Status</label>' +
         '<select class="gcv-dash-select" id="cms-exc-f-status">' +
         '<option value="">Todos</option>' +
+        '<option value="pending_approval">Aguardando aprovação</option>' +
         '<option value="em_formacao">Em formação</option>' +
         '<option value="confirmada">Confirmada</option>' +
-        '<option value="pending_approval">Aguardando aprovação</option>' +
-        '<option value="approved">Aprovada</option>' +
+        '<option value="concluida">Concluída</option>' +
         '<option value="rejected">Recusada</option>' +
         '<option value="draft">Rascunho</option>' +
         '<option value="soldout">Esgotada</option>' +
-        '<option value="cancelled">Cancelada</option>' +
-        '<option value="concluida">Concluída</option>' +
         '</select></div>' +
         '</div></div>' +
         '<p class="gcv-exc-sheet-meta" id="cms-exc-meta">Edite as células e clique em Salvar para validar.</p>' +
@@ -2339,7 +2343,7 @@
     if (saveBtn) saveBtn.onclick = function () { promptSaveChanges(false); };
     var cancelBtn = root('cms-exc-cancel');
     if (cancelBtn) cancelBtn.onclick = function () { revertSheetDrafts(); };
-    ['cms-exc-q', 'cms-exc-f-guide', 'cms-exc-f-attr', 'cms-exc-f-ap-from', 'cms-exc-f-ap-to', 'cms-exc-f-status'].forEach(function (id) {
+    ['cms-exc-q', 'cms-exc-f-guide', 'cms-exc-f-attr', 'cms-exc-f-ap-from', 'cms-exc-f-ap-to', 'cms-exc-f-tipo', 'cms-exc-f-status'].forEach(function (id) {
       var el = root(id);
       if (!el) return;
       var ev = el.tagName === 'SELECT' || el.type === 'date' ? 'change' : 'input';
@@ -2357,6 +2361,7 @@
     f.attraction = (root('cms-exc-f-attr') && root('cms-exc-f-attr').value) || '';
     f.approvedFrom = (root('cms-exc-f-ap-from') && root('cms-exc-f-ap-from').value) || '';
     f.approvedTo = (root('cms-exc-f-ap-to') && root('cms-exc-f-ap-to').value) || '';
+    f.tipo = (root('cms-exc-f-tipo') && root('cms-exc-f-tipo').value) || '';
     f.status = (root('cms-exc-f-status') && root('cms-exc-f-status').value) || '';
   }
 
@@ -2384,6 +2389,7 @@
       'cms-exc-q': f.q,
       'cms-exc-f-ap-from': f.approvedFrom,
       'cms-exc-f-ap-to': f.approvedTo,
+      'cms-exc-f-tipo': f.tipo,
       'cms-exc-f-status': f.status
     };
     Object.keys(map).forEach(function (id) {
@@ -2448,13 +2454,16 @@
       var approvedDay = String(e.approved_at || '').slice(0, 10);
       if (f.approvedFrom && (!approvedDay || approvedDay < f.approvedFrom)) return false;
       if (f.approvedTo && (!approvedDay || approvedDay > f.approvedTo)) return false;
+      if (f.tipo && tourTypeOf(e) !== f.tipo) return false;
       if (f.status) {
         var st = String(e.status || '');
         var life = String(e.lifecycle || '');
         if (f.status === 'approved') {
           if (st !== 'published' && st !== 'soldout') return false;
+        } else if (f.status === 'rejected') {
+          if (st !== 'rejected' && st !== 'cancelled' && life !== 'rejeitada' && life !== 'cancelada') return false;
         } else if (f.status === 'em_formacao' || f.status === 'confirmada' || f.status === 'concluida') {
-          if (life !== f.status) return false;
+          if (life !== f.status && sheetStatusValue(e) !== f.status) return false;
         } else if (st !== f.status && life !== f.status) {
           return false;
         }
@@ -2462,7 +2471,7 @@
       if (q) {
         var hay = [
           e.attraction_title, e.guide_name, e.departure_city_name, e.date_iso, e.status,
-          e.lifecycle_label, e.lifecycle
+          e.lifecycle_label, e.lifecycle, tourTypeLabel(e)
         ].join(' ').toLowerCase();
         if (hay.indexOf(q) === -1) return false;
       }
@@ -2589,7 +2598,7 @@
         '<span class="gcv-exc-appr gcv-exc-appr--wait" title="' + esc(tip) + '">' + icoHourglass() + '</span>' +
         '<span class="gcv-exc-appr-btns">' +
         '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary gcv-dash-btn--sm" data-approve-exc="' + e.id + '">Aprovar</button>' +
-        '<button type="button" class="gcv-dash-btn gcv-dash-btn--danger gcv-dash-btn--sm" data-reject-exc="' + e.id + '">Recusar</button>' +
+        '<button type="button" class="gcv-dash-btn gcv-dash-btn--danger gcv-dash-btn--sm" data-reject-exc="' + e.id + '">Reprovar</button>' +
         '</span>'
       );
     }
@@ -2608,15 +2617,31 @@
     return '<span class="gcv-exc-appr gcv-exc-appr--muted" title="' + esc(e.status || '') + '">—</span>';
   }
 
+  function tourTypeOf(e) {
+    var t = String((e && (e.tour_type || e.tipo)) || 'excursao');
+    return t === 'privativo' || t === 'exclusivo' ? 'privativo' : 'excursao';
+  }
+
+  function tourTypeLabel(e) {
+    return tourTypeOf(e) === 'privativo' ? 'Privativo' : 'Excursão';
+  }
+
+  function tipoCellHtml(e) {
+    var t = tourTypeOf(e);
+    var cls = t === 'privativo' ? 'gcv-exc-tipo gcv-exc-tipo--priv' : 'gcv-exc-tipo gcv-exc-tipo--exc';
+    return '<span class="' + cls + '">' + tourTypeLabel(e) + '</span>';
+  }
+
   function sheetStatusValue(e) {
-    if (e && e._sheet_status) return e._sheet_status;
+    var drafted = e && e._sheet_status ? String(e._sheet_status) : '';
+    if (drafted === 'cancelar' || drafted === 'recusada') return 'recusada';
+    if (drafted && drafted !== 'aprovar') return drafted;
     var st = String((e && e.status) || '');
     var life = String((e && e.lifecycle) || '');
-    if (st === 'rejected' || life === 'rejeitada') return 'recusada';
-    if (st === 'cancelled' || life === 'cancelada') return 'cancelada';
+    if (st === 'rejected' || st === 'cancelled' || life === 'rejeitada' || life === 'cancelada') return 'recusada';
     if (st === 'pending_approval' || life === 'aguardando_aprovacao') return 'aguardando';
     if (st === 'draft' || life === 'rascunho') return 'rascunho';
-    if (life === 'concluida') return 'concluida';
+    if (life === 'concluida' || String((e && e.status_lock) || '') === 'concluida') return 'concluida';
     if (life === 'confirmada' || walkQuorumMet(e)) return 'confirmada';
     return 'em_formacao';
   }
@@ -2626,9 +2651,11 @@
       em_formacao: 'Em formação',
       confirmada: 'Confirmada',
       recusada: 'Recusada',
-      cancelada: 'Cancelada',
+      cancelada: 'Recusada',
+      cancelar: 'Cancelar',
       concluida: 'Concluída',
       aguardando: 'Aguardando aprovação',
+      aprovar: 'Aprovar',
       rascunho: 'Rascunho'
     };
     return map[val] || val || '—';
@@ -2645,20 +2672,35 @@
   function statusSelectHtml(e) {
     var cur = sheetStatusValue(e);
     var pending = e.status === 'pending_approval' || cur === 'aguardando';
+    if (pending) {
+      return (
+        '<div class="gcv-exc-status-actions" title="Aguardando aprovação">' +
+        '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary gcv-dash-btn--sm" data-approve-exc="' + e.id + '">Aprovar</button>' +
+        '<button type="button" class="gcv-dash-btn gcv-dash-btn--danger gcv-dash-btn--sm" data-reject-exc="' + e.id + '">Reprovar</button>' +
+        '</div>'
+      );
+    }
+    if (cur === 'recusada') {
+      return (
+        '<div class="gcv-exc-status-wrap">' +
+        '<select class="gcv-exc-sheet__in gcv-exc-status-sel gcv-exc-status-sel--no" data-field="sheet_status" data-exc-id="' + e.id + '" title="Recusada. Pode aprovar de novo.">' +
+        '<option value="recusada" selected>Recusada</option>' +
+        '<option value="aprovar">Aprovar</option>' +
+        '</select></div>'
+      );
+    }
     var vanPending = isTransportPendingOnConfirmed(e);
     var opts = [
       ['em_formacao', 'Em formação'],
       ['confirmada', 'Confirmada'],
-      ['recusada', 'Recusada']
+      ['concluida', 'Concluída'],
+      ['cancelar', 'Cancelar']
     ];
-    if (cur === 'cancelada') opts.push(['cancelada', 'Cancelada']);
-    if (cur === 'concluida') opts.push(['concluida', 'Concluída']);
-    if (cur === 'aguardando') opts.unshift(['aguardando', 'Aguardando aprovação']);
     if (cur === 'rascunho') opts.unshift(['rascunho', 'Rascunho']);
+    else if (cur !== 'em_formacao' && cur !== 'confirmada' && cur !== 'concluida') cur = 'em_formacao';
     var html = '<div class="gcv-exc-status-wrap' + (vanPending ? ' is-van-pending' : '') + '">' +
       '<select class="gcv-exc-sheet__in gcv-exc-status-sel ' + sheetStatusClass(cur) + '" data-field="sheet_status" data-exc-id="' + e.id + '" title="' +
-      (vanPending ? 'Confirmada. O quórum com transporte ainda não foi atingido.' : 'Status') + '"' +
-      (pending ? ' disabled' : '') + '>';
+      (vanPending ? 'Confirmada. O quórum com transporte ainda não foi atingido.' : 'Status do passeio') + '">';
     opts.forEach(function (o) {
       html += '<option value="' + o[0] + '"' + (cur === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
     });
@@ -2815,7 +2857,7 @@
     if (dirty) rowClass.push('is-dirty');
     return (
       '<tr data-exc-row="' + e.id + '"' + (rowClass.length ? ' class="' + rowClass.join(' ') + '"' : '') + '>' +
-      '<td class="gcv-exc-sheet__appr" data-col="approval">' + approvalCellHtml(e) + '</td>' +
+      '<td class="gcv-exc-sheet__tipo" data-col="tipo">' + tipoCellHtml(e) + '</td>' +
       '<td class="gcv-exc-sheet__status" data-col="status">' + statusSelectHtml(e) + '</td>' +
       '<td class="gcv-exc-sheet__datecell"><input class="gcv-exc-sheet__in gcv-exc-sheet__date" data-field="date_iso" data-exc-id="' + e.id + '" type="date" value="' + esc(e.date_iso || '') + '" /></td>' +
       '<td class="gcv-exc-sheet__timecell"><input class="gcv-exc-sheet__in gcv-exc-sheet__time" data-field="departure_time" data-exc-id="' + e.id + '" type="time" step="600" value="' + esc(timeVal) + '" /></td>' +
@@ -2852,7 +2894,7 @@
         ' saídas · edite as células e clique em <strong>Salvar</strong> para validar';
     }
     if (!excSheet.rows.length) {
-      wrap.innerHTML = '<p class="gcv-exc-sheet-empty">Nenhuma excursão. Clique em <strong>+ Criar passeio</strong> para publicar.</p>';
+      wrap.innerHTML = '<p class="gcv-exc-sheet-empty">Nenhum passeio. Clique em <strong>+ Criar passeio</strong> para publicar.</p>';
       return;
     }
     if (!rows.length) {
@@ -2862,7 +2904,7 @@
     wrap.innerHTML =
       '<table class="gcv-exc-sheet">' +
       '<thead><tr>' +
-      '<th>Aprovação</th><th>Status</th>' +
+      '<th>Tipo</th><th>Status</th>' +
       '<th>Data</th><th>Hora</th><th class="gcv-exc-sheet__name">Atrativo</th><th class="gcv-exc-sheet__name">Guia</th>' +
       '<th>Inscrições</th><th>Máx.</th>' +
       '<th>' + thIco(icoPerson(), 'Quórum', 'Quórum sem translado') + '</th>' +
@@ -2960,13 +3002,20 @@
       if (value === 'em_formacao') {
         payload.forming = true;
         payload.lifecycle = 'em_formacao';
+        payload.status_lock = '';
       } else if (value === 'confirmada') {
         payload.forming = false;
         payload.lifecycle = 'confirmada';
-      } else if (value === 'recusada') {
+        payload.status_lock = '';
+      } else if (value === 'concluida') {
+        payload.status_lock = 'concluida';
+        payload.status = 'published';
+      } else if (value === 'cancelar' || value === 'recusada') {
         payload.status = 'rejected';
-      } else if (value === 'cancelada') {
-        payload.status = 'cancelled';
+        payload.status_lock = '';
+      } else if (value === 'aprovar') {
+        payload.status = 'published';
+        payload.status_lock = '';
       }
     }
     if (field === 'offer_transport') {
@@ -3067,19 +3116,32 @@
       }
       copy[k] = d[k];
     });
-    if (d.sheet_status === 'recusada') {
+    if (d.sheet_status === 'recusada' || d.sheet_status === 'cancelar') {
       copy.status = 'rejected';
       copy.lifecycle = 'rejeitada';
-    } else if (d.sheet_status === 'cancelada') {
-      copy.status = 'cancelled';
-      copy.lifecycle = 'cancelada';
+      copy.status_lock = '';
+    } else if (d.sheet_status === 'aprovar') {
+      copy.status = 'published';
+      copy.status_lock = '';
+      if (copy.lifecycle === 'rejeitada' || copy.lifecycle === 'cancelada' || copy.lifecycle === 'aguardando_aprovacao' || copy.lifecycle === 'rascunho') {
+        var bookedPriv = (parseInt(copy.booked_people, 10) || 0) + (parseInt(copy.booked_people_transport, 10) || 0);
+        copy.lifecycle = (tourTypeOf(copy) === 'privativo' ? bookedPriv > 0 : walkQuorumMet(copy)) ? 'confirmada' : 'em_formacao';
+      }
+    } else if (d.sheet_status === 'concluida') {
+      if (copy.status === 'rejected' || copy.status === 'cancelled' || copy.status === 'draft' || copy.status === 'pending_approval') {
+        copy.status = 'published';
+      }
+      copy.lifecycle = 'concluida';
+      copy.status_lock = 'concluida';
     } else if (d.sheet_status === 'confirmada') {
       if (copy.status !== 'pending_approval') copy.status = 'published';
       copy.lifecycle = 'confirmada';
+      copy.status_lock = '';
       copy.forming = false;
     } else if (d.sheet_status === 'em_formacao') {
       if (copy.status !== 'pending_approval') copy.status = 'published';
       copy.lifecycle = 'em_formacao';
+      copy.status_lock = '';
       copy.forming = true;
     }
     if (d.attraction_id) {
@@ -3249,7 +3311,7 @@
           payload[k] = part[k];
         });
       });
-      if (d.sheet_status === 'em_formacao' || d.sheet_status === 'confirmada') {
+      if (d.sheet_status === 'em_formacao' || d.sheet_status === 'confirmada' || d.sheet_status === 'concluida' || d.sheet_status === 'aprovar') {
         var idxSt = findExcRow(id);
         var curSt = idxSt >= 0 ? String(excSheet.rows[idxSt].status || '') : '';
         if (curSt === 'rejected' || curSt === 'cancelled' || curSt === 'draft') {
@@ -3487,7 +3549,7 @@
             alert((r && r.error) || 'Erro ao rejeitar');
             return;
           }
-          alert('Passeio recusado. O guia foi avisado no WhatsApp' + (reason ? ' com a justificativa.' : '.'));
+          alert('Passeio reprovado. O guia foi avisado no WhatsApp' + (reason ? ' com a justificativa.' : '.'));
           renderExcursions();
           if (window.GcvDashboard && typeof window.GcvDashboard.refreshApprovalBadge === 'function') {
             window.GcvDashboard.refreshApprovalBadge();

@@ -185,7 +185,16 @@ function gcv_auth_register_trips(array $rec, string $kind): void
            base_cents = VALUES(base_cents), payment_kind = VALUES(payment_kind)'
     );
     foreach ($trips as $i => $trip) {
-        $exc = $trip ? gcv_auth_trip_excursion($trip) : null;
+        $exc = null;
+        if (is_array($trip) && $trip) {
+            require_once __DIR__ . '/../private_departure.php';
+            if (gcv_private_trip_mode($trip) === 'privativo') {
+                $exc = gcv_private_departure_ensure($rid, (int)$i, $trip, false);
+            }
+        }
+        if (!$exc) {
+            $exc = $trip ? gcv_auth_trip_excursion($trip) : null;
+        }
         $title = trim((string) ($trip['destino'] ?? $exc['attraction_title'] ?? $exc['title_pt'] ?? ''));
         $stmt->execute([
             $rid, $i,

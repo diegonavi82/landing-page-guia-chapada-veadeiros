@@ -76,7 +76,11 @@ function gcv_sale_capture_from_pix_reservation(array $reservation, string $sourc
     if ($pessoasTrip > $spots) {
         $spots = $pessoasTrip;
     }
-    $excursion = gcv_sale_resolve_excursion($reservation);
+    require_once __DIR__ . '/../private_departure.php';
+    $linkedPrivate = gcv_private_departure_sync($reservation, false);
+    $excursion = gcv_private_trip_mode($trip) === 'privativo'
+        ? $linkedPrivate
+        : gcv_sale_resolve_excursion($reservation);
     $guide = gcv_sale_resolve_guide($excursion);
 
     $unitCents = $excursion
@@ -466,6 +470,20 @@ function gcv_sale_refresh_booked_people(int $excursionId): bool
         return false;
     }
     try {
+        $meta = db()->prepare('SELECT tour_type, offer_transport FROM gcv_excursions WHERE id = ? LIMIT 1');
+        $meta->execute([$excursionId]);
+        $kind = $meta->fetch(PDO::FETCH_ASSOC) ?: [];
+        if (strtolower((string)($kind['tour_type'] ?? '')) === 'privativo' && !empty($kind['offer_transport'])) {
+            db()->prepare(
+                'UPDATE gcv_excursions
+                 SET booked_people_transport = booked_people, booked_people = 0
+                 WHERE id = ?'
+            )->execute([$excursionId]);
+        }
+    } catch (Throwable $e) {
+        error_log('gcv_sale_refresh_booked_people private: ' . $e->getMessage());
+    }
+    try {
         $row = db()->prepare('SELECT * FROM gcv_excursions WHERE id = ? LIMIT 1');
         $row->execute([$excursionId]);
         $after = $row->fetch(PDO::FETCH_ASSOC) ?: [];
@@ -695,7 +713,7 @@ function gcv_sale_resolve_excursion(array $reservation): ?array
         $maybeId = ctype_digit($needle) ? (int)$needle : 0;
         $stmt->execute([$needle, $maybeId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        if ($row) {
+        if ($row && !gcv_excursion_is_private($row)) {
             return $row;
         }
     }
@@ -720,6 +738,9 @@ function gcv_sale_resolve_excursion(array $reservation): ?array
         $best = null;
         $bestScore = -1;
         foreach ($rows as $row) {
+            if (gcv_excursion_is_private($row)) {
+                continue;
+            }
             $st = strtolower((string)($row['status'] ?? ''));
             if (in_array($st, ['cancelled', 'rejected'], true)) {
                 continue;
