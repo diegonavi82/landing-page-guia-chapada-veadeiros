@@ -3127,11 +3127,13 @@
       if (typeof form._gcvApplyPendingEdit === 'function') form._gcvApplyPendingEdit();
       return;
     }
-    form.innerHTML = 'Carregando…';
     var optionsUrl = isAdmin
       ? '/api/admin/excursions.php?publish_options=1'
       : '/api/guides/excursions.php';
-    get(optionsUrl, function (err, res) {
+    var cachedPack = isAdmin ? (opts.ready || global.__gcvAdminPublishPack) : null;
+    if (!(cachedPack && cachedPack.ok)) form.innerHTML = 'Abrindo…';
+    function onPublishOptions(err, res) {
+      if (isAdmin && res && res.ok) global.__gcvAdminPublishPack = res;
       if (!res || !res.ok) {
         form.innerHTML = '<p class="gcv-dash-alert">Erro ao carregar opções.</p>';
         return;
@@ -4548,7 +4550,9 @@
           if (isAdmin && okCount && typeof form._gcvAdminOnDone === 'function') form._gcvAdminOnDone();
         });
       };
-    });
+    }
+    if (cachedPack && cachedPack.ok) onPublishOptions(null, cachedPack);
+    else get(optionsUrl, onPublishOptions);
   }
 
   /* ---------- GUIA: DADOS FINANCEIROS (embutidos em Meu perfil) ---------- */

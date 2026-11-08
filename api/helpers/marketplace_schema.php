@@ -13,6 +13,9 @@ function gcv_marketplace_ensure_schema(): void
         return;
     }
     $done = true;
+    if (function_exists('gcv_job_due') && !gcv_job_due('marketplace-ensure-full', 900)) {
+        return;
+    }
 
     $pdo = db();
     $sqlFile = dirname(__DIR__) . '/database/migration_marketplace_financeiro.sql';

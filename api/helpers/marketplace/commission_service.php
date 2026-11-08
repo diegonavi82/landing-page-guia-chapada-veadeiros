@@ -18,8 +18,12 @@ function gcv_commission_resolve(
     ?int $cityId = null
 ): array {
     unset($excursionId, $guideUserId, $categoryKey, $cityId);
-    gcv_marketplace_ensure_schema();
-    $pct = (float)setting('platform_commission_pct', '10');
+    $pct = 10.0;
+    try {
+        $pct = (float)setting('platform_commission_pct', '10');
+    } catch (Throwable $e) {
+        $pct = 10.0;
+    }
     if ($pct < 0 || $pct > 100) {
         $pct = 10.0;
     }

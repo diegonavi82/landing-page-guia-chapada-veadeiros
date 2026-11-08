@@ -10,6 +10,10 @@ function gcv_cms_ensure_schema(): void
     static $done = false;
     if ($done) return;
     $done = true;
+    // A migração completa não pode rodar em todo clique. O schema de produção já está aplicado.
+    if (function_exists('gcv_job_due') && !gcv_job_due('cms-ensure-full', 900)) {
+        return;
+    }
 
     $pdo = db();
     $sqlFile = dirname(__DIR__) . '/database/migration_cms.sql';

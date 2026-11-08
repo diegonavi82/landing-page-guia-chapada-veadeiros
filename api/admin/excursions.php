@@ -17,9 +17,13 @@ require_once __DIR__ . '/../helpers/tarifarios.php';
 
 header('Content-Type: application/json; charset=utf-8');
 $admin = require_admin();
-gcv_cms_ensure_schema();
-gcv_marketplace_ensure_schema();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+// A leitura (lista, abrir edição, opções do formulário) não pode migrar o banco.
+// Isso segurava o lápis em "Abrindo…" enquanto o ALTER/backfill rodava de novo.
+if ($method !== 'GET') {
+    gcv_cms_ensure_schema();
+    gcv_marketplace_ensure_schema();
+}
 
 function gcv_excursion_validate(array $body, bool $creating): ?string
 {

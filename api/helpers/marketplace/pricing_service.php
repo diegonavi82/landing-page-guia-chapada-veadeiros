@@ -70,6 +70,10 @@ function gcv_attraction_is_dragao(?int $attractionId = null, ?string $slug = nul
     if ($blob !== '' && str_contains($blob, 'dragao')) {
         return true;
     }
+    // Nome já veio na linha: não buscar o atrativo de novo (a edição fazia isso para cada item).
+    if ($slug !== null || $title !== null) {
+        return false;
+    }
     if ($attractionId && $attractionId > 0) {
         try {
             if (!function_exists('db')) {

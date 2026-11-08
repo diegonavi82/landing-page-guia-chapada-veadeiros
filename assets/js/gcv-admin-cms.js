@@ -3497,9 +3497,48 @@
     });
     wrap.querySelectorAll('[data-edit-exc]').forEach(function (btn) {
       btn.onclick = function () {
-        get('/api/admin/excursions.php?id=' + btn.getAttribute('data-edit-exc'), function (e, r) {
-          if (r && r.ok) openExcursionForm(r.data);
-        });
+        if (btn.getAttribute('data-busy') === '1') return;
+        btn.setAttribute('data-busy', '1');
+        var id = btn.getAttribute('data-edit-exc');
+        showExcursionEditor('Editar passeio');
+        var pending = {
+          ex: null,
+          pack: window.__gcvAdminPublishPack || null,
+          failed: false,
+          error: ''
+        };
+        var left = pending.pack ? 1 : 2;
+        function finish() {
+          left -= 1;
+          if (left > 0) return;
+          btn.removeAttribute('data-busy');
+          if (pending.failed || !pending.ex) {
+            alert(pending.error || 'Não foi possível abrir o passeio.');
+            closeAdminPublishForm();
+            return;
+          }
+          openExcursionForm(pending.ex, pending.pack);
+        }
+        get('/api/admin/excursions.php?id=' + id, function (e, r) {
+          if (e && e.message === 'timeout') pending.error = 'A edição demorou demais. Tente de novo.';
+          if (!r || !r.ok) {
+            pending.failed = true;
+            if (r && r.error) pending.error = String(r.error);
+          } else pending.ex = r.data;
+          finish();
+        }, 20000);
+        if (!pending.pack) {
+          get('/api/admin/excursions.php?publish_options=1', function (e, r) {
+            if (r && r.ok) {
+              pending.pack = r;
+              window.__gcvAdminPublishPack = r;
+            } else {
+              pending.failed = true;
+              if (e && e.message === 'timeout') pending.error = 'A edição demorou demais. Tente de novo.';
+            }
+            finish();
+          }, 20000);
+        }
       };
     });
     wrap.querySelectorAll('[data-del-exc]').forEach(function (btn) {
@@ -3552,13 +3591,9 @@
     if (title) title.textContent = 'Excursões (próximas saídas)';
   }
 
-  function openExcursionForm(ex) {
+  function showExcursionEditor(title) {
     var host = root('cms-exc-form');
-    if (!host) return;
-    if (!window.GcvDashRoles || typeof window.GcvDashRoles.loadGuidePublish !== 'function') {
-      alert('Formulário de passeio indisponível. Recarregue a página.');
-      return;
-    }
+    if (!host) return null;
     ['cms-exc-toolbar', 'cms-exc-sheet-wrap', 'cms-exc-meta'].forEach(function (id) {
       var el = root(id);
       if (el) el.hidden = true;
@@ -3569,10 +3604,31 @@
     host.classList.add('gcv-cms-card--publish');
     host.innerHTML =
       '<div class="gcv-dash-section-head">' +
-      '<h3 class="gcv-dash-section-title" style="margin:0;padding:0;border:0">' + (ex ? 'Editar passeio' : 'Criar passeio') + '</h3>' +
+      '<h3 class="gcv-dash-section-title" style="margin:0;padding:0;border:0">' + title + '</h3>' +
       '<div style="display:flex;gap:0.5rem;flex-wrap:wrap">' +
       '<button type="button" class="gcv-dash-btn gcv-dash-btn--sm" id="cms-exc-form-back">Voltar</button>' +
-      '<button type="button" class="gcv-dash-btn gcv-dash-btn--blue gcv-dash-btn--sm" id="ge-clear-publish">' + (ex ? 'Cancelar' : 'Limpar') + '</button>' +
+      '</div></div>' +
+      '<form class="gcv-dash-form gcv-dash-form--publish" id="gcv-admin-create-tour-form" novalidate>Abrindo…</form>';
+    var back = root('cms-exc-form-back');
+    if (back) back.onclick = function () { closeAdminPublishForm(); };
+    try { host.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (err) {}
+    return host;
+  }
+
+  function openExcursionForm(ex, pack) {
+    var host = showExcursionEditor(ex ? 'Editar passeio' : 'Criar passeio');
+    if (!host) return;
+    if (!window.GcvDashRoles || typeof window.GcvDashRoles.loadGuidePublish !== 'function') {
+      alert('Formulário de passeio indisponível. Recarregue a página.');
+      return;
+    }
+    var editing = !!ex;
+    host.innerHTML =
+      '<div class="gcv-dash-section-head">' +
+      '<h3 class="gcv-dash-section-title" style="margin:0;padding:0;border:0">' + (editing ? 'Editar passeio' : 'Criar passeio') + '</h3>' +
+      '<div style="display:flex;gap:0.5rem;flex-wrap:wrap">' +
+      '<button type="button" class="gcv-dash-btn gcv-dash-btn--sm" id="cms-exc-form-back">Voltar</button>' +
+      '<button type="button" class="gcv-dash-btn gcv-dash-btn--blue gcv-dash-btn--sm" id="ge-clear-publish">' + (editing ? 'Cancelar' : 'Limpar') + '</button>' +
       '</div></div>' +
       '<form class="gcv-dash-form gcv-dash-form--publish" id="gcv-admin-create-tour-form" novalidate></form>';
     var back = root('cms-exc-form-back');
@@ -3581,12 +3637,12 @@
       admin: true,
       form: document.getElementById('gcv-admin-create-tour-form'),
       edit: ex || null,
+      ready: pack || null,
       onDone: function () {
         closeAdminPublishForm();
         renderExcursions();
       }
     });
-    try { host.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (err) {}
   }
 
   function open(module) {
