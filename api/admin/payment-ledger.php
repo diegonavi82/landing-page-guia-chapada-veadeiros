@@ -15,6 +15,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../helpers/db.php';
 require_once __DIR__ . '/../helpers/auth.php';
 require_once __DIR__ . '/../helpers/payments/ledger.php';
+require_once __DIR__ . '/../helpers/payments/mp_sweep.php';
 
 $admin = require_admin();
 gcv_ledger_ensure_schema();
@@ -75,6 +76,7 @@ if ($method === 'GET') {
     json_response(true, [
         'summary' => gcv_ledger_summary($filters),
         'mp_available' => gcv_ledger_mp_available(),
+        'mp_sweep' => gcv_mp_sweep_admin(),
         'rows' => gcv_ledger_list($filters, $limit, $offset),
         'settlements' => $settlements,
     ]);

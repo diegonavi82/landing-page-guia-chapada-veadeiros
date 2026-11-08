@@ -30,7 +30,7 @@ function gcv_mp_is_test(): bool
  * @param array<string,mixed>|null $body
  * @return array{ok:bool, data?:array<string,mixed>, error?:string, http?:int}
  */
-function gcv_mp_request(string $method, string $path, ?array $body = null, string $idempotencyKey = ''): array
+function gcv_mp_request(string $method, string $path, ?array $body = null, string $idempotencyKey = '', array $extraHeaders = []): array
 {
     $token = gcv_mp_token();
     if ($token === '') {
@@ -52,6 +52,11 @@ function gcv_mp_request(string $method, string $path, ?array $body = null, strin
     }
     if ($idempotencyKey !== '') {
         $headers[] = 'X-Idempotency-Key: ' . $idempotencyKey;
+    }
+    foreach ($extraHeaders as $header) {
+        if (is_string($header) && $header !== '') {
+            $headers[] = $header;
+        }
     }
     $opts[CURLOPT_HTTPHEADER] = $headers;
     curl_setopt_array($ch, $opts);

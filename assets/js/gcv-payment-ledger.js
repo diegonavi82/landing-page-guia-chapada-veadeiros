@@ -91,15 +91,31 @@
         (hint ? '<div style="font-size:0.75rem;color:#64748b;margin-top:2px;">' + esc(hint) + "</div>" : "") + "</div>";
     }
 
-    function renderMp(mp) {
+    function renderMp(mp, sweep) {
       var box = document.getElementById("ptx-mp");
       var cents = (mp && mp.cents) || 0;
-      if (!cents) { box.innerHTML = ""; return; }
+      var transit = (sweep && sweep.in_transit_cents) || 0;
+      if (!cents && !transit) { box.innerHTML = ""; return; }
+      var note = "";
+      if (cents) {
+        note += "<strong>" + brl(cents) + "</strong> liberado no Mercado Pago (" + (mp.count || 0) + " venda(s)). ";
+      }
+      if (transit) {
+        note += "<strong>" + brl(transit) + "</strong> já saiu do Mercado Pago e está a caminho do Sicoob. ";
+      }
+      if (sweep && sweep.ready) {
+        note += cents
+          ? "O cron envia esse líquido por Pix para o Sicoob. "
+          : "Quando esse Pix aparecer no Sicoob, as vendas ficam prontas para o repasse. ";
+        note += "O valor do guia sai do Sicoob no dia do passeio, às 16:20.";
+      } else {
+        note += ((sweep && sweep.reason) ? esc(sweep.reason) + " " : "") +
+          "Enquanto isso, transfira pelo app do Mercado Pago. Quando chegar no Sicoob o sistema reconhece sozinho; se não reconhecer, registre aqui.";
+      }
       box.innerHTML =
         '<div class="gcv-dash-alert gcv-dash-alert--info" style="display:flex;flex-wrap:wrap;gap:0.75rem;align-items:center;">' +
-        "<span><strong>" + brl(cents) + "</strong> liberado no Mercado Pago (" + (mp.count || 0) + " venda(s)) aguardando ir para o Sicoob. " +
-        "Quando a transferência chega no Sicoob o sistema reconhece sozinho; se não reconhecer, registre aqui.</span>" +
-        '<button type="button" class="gcv-dash-btn gcv-dash-btn--sm" id="ptx-mp-register">Registrar transferência</button>' +
+        "<span>" + note + "</span>" +
+        (cents ? '<button type="button" class="gcv-dash-btn gcv-dash-btn--sm" id="ptx-mp-register">Registrar transferência</button>' : "") +
         "</div>" +
         '<div id="ptx-mp-form" hidden style="margin-top:0.75rem;padding:1rem;border:1px solid #e2e8f0;border-radius:8px;">' +
         '<div class="gcv-dash-field-row">' +
@@ -109,9 +125,12 @@
         "</div>" +
         '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary" id="ptx-mp-save">Salvar</button>' +
         '<span id="ptx-mp-msg" style="margin-left:0.75rem;"></span></div>';
-      document.getElementById("ptx-mp-register").onclick = function () {
-        document.getElementById("ptx-mp-form").hidden = false;
-      };
+      var registerBtn = document.getElementById("ptx-mp-register");
+      if (registerBtn) {
+        registerBtn.onclick = function () {
+          document.getElementById("ptx-mp-form").hidden = false;
+        };
+      }
       document.getElementById("ptx-mp-save").onclick = function () {
         var msg = document.getElementById("ptx-mp-msg");
         msg.textContent = "Salvando…";
@@ -204,7 +223,7 @@
           stat("Guias — já repassado", brl(gp.paid_cents || 0), "") +
           stat("Guias — a repassar", brl(gp.pending_cents || 0), "") +
           "</div>";
-        renderMp(d.mp_available);
+        renderMp(d.mp_available, d.mp_sweep);
         renderTable(d.rows || []);
         renderSettlements(d.settlements || []);
       });

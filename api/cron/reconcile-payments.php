@@ -12,7 +12,8 @@ declare(strict_types=1);
  * 1. Mercado Pago: confere pagamentos sem retorno/webhook e atualiza taxas reais.
  * 1b. Pré-autorização: reserva no cartão na janela, cobra com quórum + guia, libera se não confirmar.
  * 2. Stripe: idem + repasses recentes Stripe → Sicoob.
- * 3. Marca o saldo MP liberado e procura no extrato Pix do Sicoob a transferência do MP.
+ * 3. Cartão nacional liberado no Mercado Pago: envia o líquido por Pix ao Sicoob
+ *    e confirma no extrato quando o Pix chega.
  * 4. Uma vez por dia: resumo por e-mail (saldo a transferir, a caminho, contestações).
  */
 
@@ -22,6 +23,7 @@ require_once __DIR__ . '/../helpers/db.php';
 require_once __DIR__ . '/../helpers/payments/ledger.php';
 require_once __DIR__ . '/../helpers/payments/mercadopago_api.php';
 require_once __DIR__ . '/../helpers/payments/stripe_ledger.php';
+require_once __DIR__ . '/../helpers/payments/mp_sweep.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -101,9 +103,13 @@ foreach (gcv_auth_open_reservations(80) as $rid) {
 }
 $out['guide_alerts'] = gcv_auth_guide_alerts();
 
-// 3) Saldo MP liberado → procura a transferência no extrato Pix do Sicoob (últimos 3 dias)
+// 3) Cartão nacional liberado → Pix de tudo isso para o Sicoob, depois confere o extrato
+$out['mp_sweep'] = gcv_mp_sweep_to_sicoob();
 $mpAvail = gcv_ledger_mp_available();
-if ($mpAvail['cents'] > 0) {
+$mpInTransit = (int) db()->query(
+    "SELECT COUNT(*) FROM gcv_gateway_settlements WHERE gateway = 'mercadopago' AND status = 'IN_TRANSIT'"
+)->fetchColumn();
+if ($mpAvail['cents'] > 0 || $mpInTransit > 0) {
     try {
         require_once __DIR__ . '/../helpers/sicoob_api.php';
         if (gcv_sicoob_is_configured()) {
@@ -144,8 +150,8 @@ if ((int) $now->format('G') >= 9 && ($state['digest_on'] ?? '') !== $today) {
 
     if ($mpAvail['cents'] > 0 || $inTransit > 0 || $disputes > 0 || $review > 0) {
         $html = '<p>Resumo financeiro de ' . $now->format('d/m/Y') . ':</p><ul>'
-            . '<li><strong>Mercado Pago liberado, aguardando ir para o Sicoob:</strong> ' . $brl($mpAvail['cents'])
-            . ' (' . $mpAvail['count'] . ' venda(s)).' . ($mpAvail['cents'] > 0 ? ' Se a transferência automática não estiver ligada, transfira pelo app do Mercado Pago para a conta Sicoob — o sistema reconhece quando chegar.' : '') . '</li>'
+            . '<li><strong>Mercado Pago liberado, ainda não enviado ao Sicoob:</strong> ' . $brl($mpAvail['cents'])
+            . ' (' . $mpAvail['count'] . ' venda(s)).' . ($mpAvail['cents'] > 0 ? ' O cron envia esse líquido por Pix ao Sicoob. Se o Payouts não estiver ativo, transfira pelo app do Mercado Pago — o sistema reconhece quando chegar.' : '') . '</li>'
             . '<li><strong>Stripe a caminho do Sicoob:</strong> ' . $brl($inTransit) . '</li>'
             . '<li><strong>Contestações (30 dias):</strong> ' . $disputes . '</li>'
             . '<li><strong>Vendas de ontem com preço não conferido:</strong> ' . $review . '</li>'

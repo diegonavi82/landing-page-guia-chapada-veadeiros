@@ -49,8 +49,8 @@ Código: `api/helpers/payments/authorization.php` (regras), `stripe_auth.php`, `
 ## Dinheiro: plataformas → Sicoob → guias
 
 1. **Stripe → Sicoob**: repasse automático (painel Stripe → Configurações → Repasses: diário, conta Sicoob). O webhook `payout.*` liga cada cobrança ao repasse.
-2. **Mercado Pago → Sicoob**: não há API pública de saque para contas comuns. O cron marca o saldo liberado, procura a transferência no extrato Pix do Sicoob (Pix vindo do próprio CNPJ, `PAY_OWN_CNPJ`) e concilia sozinho. Se não reconhecer, o admin registra em Financeiro → Transações. Resumo diário por e-mail com o saldo a transferir.
-3. **Sicoob → guia**: já existente (`payout_service.php`): Pix automático no dia do passeio (após o check-in por QR). Só sai para venda **PAID** — cartão só depois de capturado; estorno/contestação seguram o repasse.
+2. **Mercado Pago → Sicoob**: o cron (`mp_sweep.php`, a cada 15 min) envia por Pix o líquido das vendas de cartão nacional já liberadas, pela API de Payouts. Exige o produto Payouts ativo e `MP_PAYOUT_PRIVATE_KEY` (Ed25519). Quando o Pix aparece no Sicoob, as vendas passam a "no Sicoob". Se o Payouts não estiver ativo, o admin transfere pelo app e o extrato (CNPJ `PAY_OWN_CNPJ` ou nome Mercado Pago) concilia sozinho. Resumo diário por e-mail se ainda restar saldo.
+3. **Sicoob → guia**: Pix automático no dia do passeio, às 16:20, só da parte do guia. O restante fica no Sicoob. Cartão só depois de capturado e com o dinheiro já no Sicoob. Estorno ou contestação seguram o repasse.
 
 ## Registro de transações
 

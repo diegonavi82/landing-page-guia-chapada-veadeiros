@@ -475,6 +475,42 @@ function gcv_ledger_register_mp_transfer(int $amountCents, ?string $arrivedAt, s
     return ['ok' => true, 'settlement_id' => $sid, 'attached' => count($ids), 'attached_cents' => $sum, 'leftover_cents' => $amountCents - $sum];
 }
 
+/**
+ * Pix do Mercado Pago chegou no Sicoob: fecha o repasse que o cron já tinha enviado.
+ * Só casa com um envio em trânsito do mesmo valor (tolerância de R$ 1).
+ */
+function gcv_ledger_complete_mp_transit(int $amountCents, string $e2e, ?string $arrivedAt): bool
+{
+    gcv_ledger_ensure_schema();
+    if ($amountCents <= 0) {
+        return false;
+    }
+    $arrivedAt = $arrivedAt ?: (new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo')))->format('Y-m-d H:i:s');
+    $rows = db()->query(
+        "SELECT id, amount_cents FROM gcv_gateway_settlements
+         WHERE gateway = 'mercadopago' AND status = 'IN_TRANSIT'
+         ORDER BY id ASC"
+    )->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    foreach ($rows as $row) {
+        if (abs((int) $row['amount_cents'] - $amountCents) > 100) {
+            continue;
+        }
+        $sid = (int) $row['id'];
+        db()->prepare(
+            "UPDATE gcv_gateway_settlements
+             SET status = 'PAID', arrived_at = ?, sicoob_confirmed = 1, sicoob_ref = ?
+             WHERE id = ? AND status = 'IN_TRANSIT'"
+        )->execute([$arrivedAt, $e2e !== '' ? substr($e2e, 0, 80) : null, $sid]);
+        db()->prepare(
+            "UPDATE gcv_payment_transactions
+             SET settlement_status = 'IN_SICOOB', settled_at = ?
+             WHERE settlement_id = ? AND settlement_status = 'IN_TRANSIT'"
+        )->execute([$arrivedAt, $sid]);
+        return true;
+    }
+    return false;
+}
+
 /** Saldo do Mercado Pago já liberado e ainda não transferido ao Sicoob. */
 function gcv_ledger_mp_available(): array
 {
@@ -514,22 +550,29 @@ function gcv_ledger_match_incoming_transfer(array $data): bool
         if (!$fromOwn && !$fromMp) {
             continue;
         }
-        if (gcv_ledger_mp_available()['cents'] <= 0) {
-            continue; // nada do MP esperando — não é repasse do MP
-        }
         $cents = (int) round(((float) str_replace(',', '.', (string) ($it['valor'] ?? '0'))) * 100);
         if ($cents <= 0) {
             continue;
         }
         $e2e = trim((string) ($it['endToEndId'] ?? ''));
         if ($e2e !== '') {
-            $dup = db()->prepare("SELECT id FROM gcv_gateway_settlements WHERE gateway = 'mercadopago' AND external_id = ? LIMIT 1");
-            $dup->execute([substr($e2e, 0, 80)]);
+            $dup = db()->prepare(
+                "SELECT id FROM gcv_gateway_settlements
+                 WHERE gateway = 'mercadopago' AND (external_id = ? OR sicoob_ref = ?) LIMIT 1"
+            );
+            $dup->execute([substr($e2e, 0, 80), substr($e2e, 0, 80)]);
             if ($dup->fetchColumn()) {
                 continue; // já registrado (webhook + conciliação podem ver o mesmo Pix)
             }
         }
         $at = gcv_ledger_dt($it['horario'] ?? null);
+        if (gcv_ledger_complete_mp_transit($cents, $e2e, $at)) {
+            $matched = true;
+            continue;
+        }
+        if (gcv_ledger_mp_available()['cents'] <= 0) {
+            continue;
+        }
         $out = gcv_ledger_register_mp_transfer($cents, $at, $e2e, 'Detectado automaticamente no Pix Sicoob');
         $matched = $matched || !empty($out['ok']);
     }
