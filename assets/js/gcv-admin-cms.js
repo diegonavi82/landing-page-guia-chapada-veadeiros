@@ -2470,13 +2470,16 @@
   }
 
   function excGuideSelectHtml(e) {
+    var selected = e.guide_user_id || e.guide_invite_user_id || "";
+    var waiting = !e.guide_user_id && e.guide_invite_user_id;
     var html = '<select class="gcv-exc-sheet__in gcv-exc-sheet__guide" data-field="guide_user_id" data-exc-id="' + e.id + '"><option value="">Sem guia</option>';
     (excSheet.guides || []).forEach(function (g) {
       var id = g.user_id || g.id;
-      var label = g.full_name || g.nickname || g.name || ('#' + id);
-      html += '<option value="' + id + '"' + (String(e.guide_user_id) === String(id) ? ' selected' : '') + '>' + esc(label) + '</option>';
+      var label = g.full_name || g.nickname || g.name || ("#" + id);
+      if (waiting && String(id) === String(selected)) label += " (aguardando WhatsApp)";
+      html += '<option value="' + id + '"' + (String(selected) === String(id) ? " selected" : "") + ">" + esc(label) + "</option>";
     });
-    return html + '</select>';
+    return html + "</select>";
   }
 
   function excHasTransport(e) {

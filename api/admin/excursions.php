@@ -247,6 +247,16 @@ function gcv_excursion_enrich(array $row): array
     $life = gcv_resolve_excursion_lifecycle($row);
     $row['occupancy'] = $occ;
     $row['lifecycle'] = $life;
+    $row['guide_invite_user_id'] = 0;
+    try {
+        require_once __DIR__ . '/../helpers/guide_queue_offer.php';
+        if ((int)($row['guide_user_id'] ?? 0) <= 0) {
+            $pending = gcv_guiagem_pending_guide_ids($id);
+            $row['guide_invite_user_id'] = (int)($pending[0] ?? 0);
+        }
+    } catch (Throwable $e) {
+        $row['guide_invite_user_id'] = 0;
+    }
     $row['lifecycle_label'] = gcv_excursion_lifecycle_label($life);
     $row['forming'] = $life === 'em_formacao';
     $row['offer_transport'] = !empty($row['offer_transport'])
@@ -306,6 +316,7 @@ function gcv_admin_guide_date_conflict(int $guideId, string $dateIso, int $excep
 function gcv_admin_apply_sheet_patch(array $body, array $ex, int $adminId): array
 {
     $id = (int)$ex['id'];
+    $inviteGuide = 0;
     $sets = ['updated_by = ?'];
     $params = [$adminId];
     $maxPeople = min(12, max(1, (int)($body['max_people'] ?? $ex['max_people'] ?? 10)));
@@ -333,9 +344,16 @@ function gcv_admin_apply_sheet_patch(array $body, array $ex, int $adminId): arra
         $sets[] = 'departure_time = ?';
         $params[] = $time;
     }
+    $inviteGuide = 0;
     if (array_key_exists('guide_user_id', $body)) {
-        $sets[] = 'guide_user_id = ?';
-        $params[] = !empty($body['guide_user_id']) ? (int)$body['guide_user_id'] : null;
+        $newGuide = !empty($body['guide_user_id']) ? (int)$body['guide_user_id'] : 0;
+        $current = (int)($ex['guide_user_id'] ?? 0);
+        if ($newGuide <= 0) {
+            $sets[] = 'guide_user_id = ?';
+            $params[] = null;
+        } elseif ($newGuide !== $current) {
+            $inviteGuide = $newGuide;
+        }
     }
     if (array_key_exists('max_people', $body)) {
         $sets[] = 'max_people = ?';
@@ -501,6 +519,13 @@ function gcv_admin_apply_sheet_patch(array $body, array $ex, int $adminId): arra
         throw new RuntimeException('Excursão não encontrada após salvar');
     }
     gcv_audit_diff('excursion', $id, $ex, $after, $adminId, GcvCreatedBy::ADMIN);
+    if ($inviteGuide > 0) {
+        require_once __DIR__ . '/../helpers/guide_queue_offer.php';
+        $invited = gcv_guiagem_designate($id, $inviteGuide);
+        if (empty($invited['ok'])) {
+            throw new InvalidArgumentException((string)($invited['error'] ?? 'Não foi possível chamar o guia'));
+        }
+    }
     try {
         gcv_ops_maybe_notify_confirmed($ex, $after);
     } catch (Throwable $e) {
@@ -869,24 +894,18 @@ if ($method === 'PUT' || $method === 'PATCH') {
             $row = gcv_guide_update_excursion($ex, $body, (int)$admin['id'], true);
             $newGuide = (int)($body['guide_user_id'] ?? 0);
             if ($newGuide > 0 && $newGuide !== (int)($ex['guide_user_id'] ?? 0)) {
-                $ok = db()->prepare(
-                    "SELECT u.id FROM gcv_users u INNER JOIN gcv_guides g ON g.user_id = u.id
-                     WHERE u.id = ? AND u.status = 'active' LIMIT 1"
-                );
-                $ok->execute([$newGuide]);
-                if (!$ok->fetch()) {
-                    throw new InvalidArgumentException('Guia inválido');
+                require_once __DIR__ . '/../helpers/guide_queue_offer.php';
+                $invited = gcv_guiagem_designate($id, $newGuide);
+                if (empty($invited['ok'])) {
+                    throw new InvalidArgumentException((string)($invited['error'] ?? 'Não foi possível chamar o guia'));
                 }
-                db()->prepare('UPDATE gcv_excursions SET guide_user_id = ?, updated_by = ? WHERE id = ?')
-                    ->execute([$newGuide, (int)$admin['id'], $id]);
-                $st = db()->prepare('SELECT * FROM gcv_excursions WHERE id = ?');
-                $st->execute([$id]);
-                $row = $st->fetch() ?: $row;
             }
             echo json_encode([
                 'ok' => true,
                 'data' => [
-                    'message' => 'Passeio atualizado.',
+                    'message' => $newGuide > 0 && $newGuide !== (int)($ex['guide_user_id'] ?? 0)
+                        ? 'Convite enviado. O guia confirma pelo link do WhatsApp.'
+                        : 'Passeio atualizado.',
                     'excursion' => gcv_excursion_enrich($row),
                 ],
             ]);
@@ -967,9 +986,11 @@ if ($method === 'PUT' || $method === 'PATCH') {
         $body['departure_time'] ?? $ex['departure_time'],
         (int)($body['departure_city_id'] ?? $ex['departure_city_id']),
         $attrIds[0],
-        array_key_exists('guide_user_id', $body)
-            ? (!empty($body['guide_user_id']) ? (int)$body['guide_user_id'] : null)
-            : $ex['guide_user_id'],
+        (array_key_exists('guide_user_id', $body) && (int)($body['guide_user_id'] ?? 0) > 0 && (int)$body['guide_user_id'] !== (int)($ex['guide_user_id'] ?? 0))
+            ? $ex['guide_user_id']
+            : (array_key_exists('guide_user_id', $body)
+                ? (!empty($body['guide_user_id']) ? (int)$body['guide_user_id'] : null)
+                : $ex['guide_user_id']),
         $priceCents,
         $quorum,
         $maxPeople,
@@ -996,6 +1017,18 @@ if ($method === 'PUT' || $method === 'PATCH') {
         $approvedBy,
         $id,
     ]);
+    if (array_key_exists('guide_user_id', $body)) {
+        $postedGuide = !empty($body['guide_user_id']) ? (int)$body['guide_user_id'] : 0;
+        if ($postedGuide > 0 && $postedGuide !== (int)($ex['guide_user_id'] ?? 0)) {
+            require_once __DIR__ . '/../helpers/guide_queue_offer.php';
+            $invited = gcv_guiagem_designate($id, $postedGuide);
+            if (empty($invited['ok'])) {
+                http_response_code(400);
+                echo json_encode(['ok' => false, 'error' => (string)($invited['error'] ?? 'Não foi possível chamar o guia')]);
+                exit;
+            }
+        }
+    }
     if (array_key_exists('meeting_point', $body)) {
         $mp = gcv_meeting_point_from_body($body, true);
         if (isset($mp['error'])) {

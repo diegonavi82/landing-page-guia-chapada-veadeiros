@@ -11,12 +11,11 @@ declare(strict_types=1);
  *   PAID        capturado (cobrado) — passeio confirmado
  *   RELEASED    reserva no cartão liberada — passeio não confirmou / cancelado
  *
- * Janelas (a reserva no cartão expira): Stripe 7 dias, Mercado Pago 5 dias.
- *   PAY_STRIPE_AUTH_DAYS=6, PAY_MP_AUTH_DAYS=4  → antes disso, só cartão salvo.
+ * O cartão fica só salvo até a cobrança. Não há reserva de limite dias antes.
  * Confirmação de cada passeio (gcv_booking_trips):
- *   CONFIRMED = passeio com quórum (lifecycle "confirmada") E guia confirmou a reserva
- *               (passeio sem excursão/quórum, ex. privativo: basta o guia/admin confirmar)
- *   CANCELLED = excursão cancelada OU chegou a PAY_DECISION_HOURS (12h) antes sem confirmar
+ *   CONFIRMED = quórum fechado (ou privativo) E todos os guias necessários aceitaram.
+ *               Com translado, 1 guia com veículo a cada 4 clientes.
+ *   CANCELLED = excursão cancelada OU faltam 24h para a saída e ainda falta quórum ou guia.
  * Quando todos os passeios da reserva estão decididos → captura a parte confirmada e libera o resto.
  */
 
@@ -46,7 +45,13 @@ function gcv_auth_validity_hours(string $gateway): int
 
 function gcv_auth_decision_hours(): int
 {
-    return max(1, gcv_auth_env_int('PAY_DECISION_HOURS', 12));
+    return max(1, gcv_auth_env_int('PAY_DECISION_HOURS', 24));
+}
+
+/** Horas antes da saída em que uma reserva ainda indecisa pode ocupar limite no cartão. */
+function gcv_auth_hold_hours(): int
+{
+    return 24;
 }
 
 /** Prazo para o cliente confirmar o cartão quando precisa (link CVV / banco pediu). */
@@ -228,7 +233,7 @@ function gcv_auth_can_authorize_now(array $rec, string $gateway): bool
     if ($start === null) {
         return true;
     }
-    $limit = gcv_auth_now()->modify('+' . gcv_auth_window_days($gateway) . ' days')->format('Y-m-d H:i:s');
+    $limit = gcv_auth_now()->modify('+' . gcv_auth_hold_hours() . ' hours')->format('Y-m-d H:i:s');
     return $start <= $limit;
 }
 
@@ -329,16 +334,22 @@ function gcv_auth_evaluate(string $reservationId): array
                 }
             }
             $guideOk = !empty($r['guide_confirmed_at']);
-            if (!$guideOk && $exc && (int)($exc['guide_user_id'] ?? 0) > 0 && gcv_excursion_is_guide_submitted($exc)
-                && in_array((string)($exc['status'] ?? ''), ['published', 'soldout'], true)) {
-                // Saída que o guia já lançou: ele já aceitou guiar. Não pede de novo, por cliente.
-                $guideOk = true;
-                db()->prepare(
-                    'UPDATE gcv_booking_trips SET guide_confirmed_at = NOW(), guide_confirmed_by = ? WHERE id = ? AND guide_confirmed_at IS NULL'
-                )->execute([(int)($exc['guide_user_id'] ?? 0), (int)$r['id']]);
-                $r['guide_confirmed_at'] = $nowStr;
-            }
             $quorumOk = $life === null || in_array($life, ['confirmada', 'concluida'], true);
+            if ($exc) {
+                require_once __DIR__ . '/../guide_queue_offer.php';
+                if (gcv_guiagem_staffing_ready($exc)) {
+                    $guideOk = true;
+                    if (empty($r['guide_confirmed_at'])) {
+                        $by = (int)($exc['guide_user_id'] ?? 0);
+                        db()->prepare(
+                            'UPDATE gcv_booking_trips SET guide_confirmed_at = NOW(), guide_confirmed_by = ? WHERE id = ? AND guide_confirmed_at IS NULL'
+                        )->execute([$by > 0 ? $by : null, (int)$r['id']]);
+                        $r['guide_confirmed_at'] = $nowStr;
+                    }
+                } elseif ($quorumOk && (empty($r['starts_at']) || (string)$r['starts_at'] > $cut)) {
+                    gcv_guiagem_ensure_invites($exc);
+                }
+            }
             if ($life === 'cancelada') {
                 $decision = 'CANCELLED';
             } elseif ($guideOk && $quorumOk) {
