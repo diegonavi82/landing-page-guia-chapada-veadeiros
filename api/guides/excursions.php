@@ -498,6 +498,7 @@ function gcv_guide_attach_booking_requests(array $rows, int $guideUserId): array
 }
 
 if ($method === 'GET') {
+    gcv_guiagem_expire_priority();
     $stmt = db()->prepare(
         'SELECT e.*, a.title_pt AS attraction_title, a.slug AS attraction_slug,
                 c.name AS departure_city_name
@@ -605,6 +606,9 @@ if ($method === 'POST') {
     $today = (new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo')))->format('Y-m-d');
     if ($date < $today) {
         json_response(false, null, 'Data deve ser futura', 422);
+    }
+    if (gcv_guiagem_priority_holds_day((int)$user['id'], $date, 0)) {
+        json_response(false, null, 'Você já tem uma guiagem prioritária neste dia, aguardando o seu aceite.', 409);
     }
     $time = gcv_normalize_departure_time($time);
     if ($time === '') {

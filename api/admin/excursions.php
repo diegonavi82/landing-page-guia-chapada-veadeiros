@@ -283,6 +283,13 @@ function gcv_admin_guide_date_conflict(int $guideId, string $dateIso, int $excep
     $st->execute([$guideId, $dateIso, $exceptId]);
     $hit = $st->fetch(PDO::FETCH_ASSOC);
     if (!$hit) {
+        if (!function_exists('gcv_guiagem_priority_holds_day')) {
+            require_once __DIR__ . '/../helpers/guide_queue_offer.php';
+        }
+        if (function_exists('gcv_guiagem_priority_holds_day') && gcv_guiagem_priority_holds_day($guideId, $dateIso, $exceptId)) {
+            $br = substr($dateIso, 8, 2) . '/' . substr($dateIso, 5, 2) . '/' . substr($dateIso, 0, 4);
+            return 'Este guia já tem uma guiagem prioritária aguardando aceite em ' . $br . '.';
+        }
         return null;
     }
     $br = substr($dateIso, 8, 2) . '/' . substr($dateIso, 5, 2) . '/' . substr($dateIso, 0, 4);

@@ -2876,6 +2876,13 @@
         }
       });
       if (gone.length) {
+        var nowMs = Date.now();
+        if (!guideAgendaState.expireReloadAt || nowMs - guideAgendaState.expireReloadAt > 20000) {
+          guideAgendaState.expireReloadAt = nowMs;
+          stopAskCountdown();
+          loadGuideAgenda();
+          return;
+        }
         stopAskCountdown();
         guideAgendaState.upcoming = (guideAgendaState.upcoming || []).filter(function (row) {
           return !(row && row.awaiting_guide && gone.indexOf(String(row.id)) >= 0);
@@ -2912,40 +2919,90 @@
     );
   }
 
+  function askUi() {
+    var all = {
+      pt: {
+        one: 'Você quer guiar esse Passeio?',
+        many: 'Você quer guiar esses Passeios?',
+        confirm: 'Confirmar',
+        no: 'Não',
+        fresh: 'NOVO',
+        priority: 'PRIORIDADE',
+        confirmIn: 'Confirme em',
+        acceptIn: 'Aceite em',
+        normalHint: 'Sem a sua confirmação até {hours} horas antes da saída, a reserva do cliente é liberada.',
+        priorityHint: 'Você tem até o prazo abaixo para aceitar ou recusar. Esse dia já está na sua agenda. Se recusar ou o prazo acabar, a vaga segue para os outros guias.'
+      },
+      en: {
+        one: 'Do you want to guide this tour?',
+        many: 'Do you want to guide these tours?',
+        confirm: 'Confirm',
+        no: 'No',
+        fresh: 'NEW',
+        priority: 'PRIORITY',
+        confirmIn: 'Confirm within',
+        acceptIn: 'Accept within',
+        normalHint: 'If you do not confirm by {hours} hours before departure, the guest’s booking is released.',
+        priorityHint: 'You have until the deadline below to accept or decline. This day is already on your schedule. If you decline or the time runs out, the job goes to the other guides.'
+      },
+      es: {
+        one: '¿Quieres guiar este paseo?',
+        many: '¿Quieres guiar estos paseos?',
+        confirm: 'Confirmar',
+        no: 'No',
+        fresh: 'NUEVO',
+        priority: 'PRIORIDAD',
+        confirmIn: 'Confirma en',
+        acceptIn: 'Acepta en',
+        normalHint: 'Si no confirmas hasta {hours} horas antes de la salida, la reserva del cliente se libera.',
+        priorityHint: 'Tienes hasta el plazo de abajo para aceptar o rechazar. Ese día ya está en tu agenda. Si rechazas o se acaba el plazo, la plaza sigue con los otros guías.'
+      }
+    };
+    return all[profileUiLang()] || all.pt;
+  }
+
   function renderGuideAsk(tours) {
     if (!tours.length) return '';
+    var ui = askUi();
     var many = tours.length > 1;
-    var question = many ? 'Você quer guiar esses Passeios?' : 'Você quer guiar esse Passeio?';
+    var question = many ? ui.many : ui.one;
     var hours = 12;
+    var hasPriority = false;
+    var hasNormal = false;
     tours.forEach(function (e) {
       var n = Number(e && e.decision_hours);
       if (isFinite(n) && n >= 1) hours = n;
+      if (e && e.priority_offer) hasPriority = true;
+      else hasNormal = true;
     });
+    var hint = ui.normalHint.replace('{hours}', String(hours));
+    if (hasPriority && !hasNormal) hint = ui.priorityHint;
+    else if (hasPriority) hint = hint + ' ' + ui.priorityHint;
     var items = tours.map(function (e) {
       var time = String(e.departure_time || '').slice(0, 5);
       var when = formatGuideDate(e.date_iso) + (time ? ' · ' + time : '');
       var deadline = guideConfirmDeadlineMs(e);
       var timer = isFinite(deadline)
         ? '<span class="gcv-agenda-ask__timer" role="timer" data-ask-deadline="' + deadline + '">' +
-          '<span class="gcv-agenda-ask__timer-kicker">Confirme em</span>' +
+          '<span class="gcv-agenda-ask__timer-kicker">' + esc(e && e.priority_offer ? ui.acceptIn : ui.confirmIn) + '</span>' +
           '<strong data-ask-left>—</strong></span>'
         : '';
       return (
         '<li class="gcv-agenda-ask__item">' +
-        '<span class="gcv-agenda-novo">NOVO</span>' +
+        '<span class="gcv-agenda-novo">' + esc(e && e.priority_offer ? ui.priority : ui.fresh) + '</span>' +
         '<span class="gcv-agenda-ask__name">' + esc(e.attraction_title || 'Passeio') + '</span>' +
         '<span class="gcv-agenda-ask__when">' + esc(when) + '</span>' +
         timer +
         '<span class="gcv-agenda-ask__actions">' +
-        '<button type="button" class="gcv-dash-btn gcv-dash-btn--sm gcv-dash-btn--primary" data-guide-yes="' + esc(e.id) + '">Confirmar</button>' +
-        '<button type="button" class="gcv-dash-btn gcv-dash-btn--sm gcv-dash-btn--secondary" data-guide-no="' + esc(e.id) + '">Não</button>' +
+        '<button type="button" class="gcv-dash-btn gcv-dash-btn--sm gcv-dash-btn--primary" data-guide-yes="' + esc(e.id) + '">' + esc(ui.confirm) + '</button>' +
+        '<button type="button" class="gcv-dash-btn gcv-dash-btn--sm gcv-dash-btn--secondary" data-guide-no="' + esc(e.id) + '">' + esc(ui.no) + '</button>' +
         '</span></li>'
       );
     }).join('');
     return (
       '<section class="gcv-agenda-ask">' +
       '<p class="gcv-agenda-ask__q">' + question + '</p>' +
-      '<p class="gcv-agenda-ask__hint">Sem a sua confirmação até ' + hours + ' horas antes da saída, a reserva do cliente é liberada.</p>' +
+      '<p class="gcv-agenda-ask__hint">' + esc(hint) + '</p>' +
       '<ul class="gcv-agenda-ask__list">' + items + '</ul>' +
       '</section>'
     );

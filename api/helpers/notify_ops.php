@@ -1157,7 +1157,7 @@ function gcv_ops_client_contact_block(array $sale): string
     return $out;
 }
 
-function gcv_ops_notify_guide_new_booking(array $sale, ?array $exc, int $spots, bool $agency = true): void
+function gcv_ops_notify_guide_new_booking(array $sale, ?array $exc, int $spots, bool $agency = true, string $note = ''): void
 {
     $guideId = (int)($sale['guide_user_id'] ?? ($exc['guide_user_id'] ?? 0));
     $exc = is_array($exc) ? $exc : [];
@@ -1191,7 +1191,7 @@ function gcv_ops_notify_guide_new_booking(array $sale, ?array $exc, int $spots, 
         : '';
     $confirmed = in_array($life, ['confirmada', 'soldout'], true);
 
-    if (!gcv_excursion_is_guide_submitted($exc) && !$comTransporte && $guideId > 0) {
+    if ($note === '' && !gcv_excursion_is_guide_submitted($exc) && !$comTransporte && $guideId > 0) {
         $g = gcv_ops_group_counts($excId, $exc);
         $mais = (int)($sale['guide_amount_cents'] ?? 0);
         $verbo = $people === 1 ? 'Entrou mais 1 pessoa.' : ('Entraram mais ' . $people . ' pessoas.');
@@ -1218,6 +1218,9 @@ function gcv_ops_notify_guide_new_booking(array $sale, ?array $exc, int $spots, 
             . gcv_ops_faltam_text($faltam) . "\n\n"
             . "A reserva está na sua Agenda do painel.\n"
             . 'Nome, telefone e e-mail dos clientes são liberados quando o passeio for confirmado.';
+    }
+    if ($note !== '') {
+        $textGuide .= "\n\n" . $note;
     }
 
     $targets = [];
@@ -3063,8 +3066,10 @@ function gcv_ops_cron_tick(): array
     }
 
     $noGuide = 0;
+    $priorityExpired = 0;
     try {
         require_once __DIR__ . '/guide_queue_offer.php';
+        $priorityExpired = gcv_guiagem_expire_priority($now);
         $noGuide = gcv_guiagem_scan_no_substitute($now);
     } catch (Throwable $e) {
         error_log('ops no guide: ' . $e->getMessage());
@@ -3080,5 +3085,6 @@ function gcv_ops_cron_tick(): array
         'pix_refunded' => (int)($pixRefund['refunded'] ?? 0),
         'transfer' => $transfer,
         'no_guide' => $noGuide,
+        'priority_expired' => $priorityExpired,
     ];
 }

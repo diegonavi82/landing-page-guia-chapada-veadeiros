@@ -415,6 +415,21 @@ function gcv_sale_capture_from_pix_reservation(array $reservation, string $sourc
         }
     }
 
+    if (in_array($status, [GcvSaleStatus::PAID, GcvSaleStatus::AUTHORIZED], true)) {
+        $offerExcId = is_array($excursion) ? (int)($excursion['id'] ?? 0) : 0;
+        if ($offerExcId <= 0 && is_array($sale)) {
+            $offerExcId = (int)($sale['excursion_id'] ?? 0);
+        }
+        if ($offerExcId > 0) {
+            try {
+                require_once dirname(__DIR__) . '/guide_queue_offer.php';
+                gcv_guiagem_after_unassigned_sale($offerExcId);
+            } catch (Throwable $e) {
+                error_log('priority guiagem: ' . $e->getMessage());
+            }
+        }
+    }
+
     return $sale;
 }
 

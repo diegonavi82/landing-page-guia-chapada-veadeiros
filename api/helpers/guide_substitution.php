@@ -146,7 +146,23 @@ function gcv_substitution_busy(int $guideId, array $tour): bool
         (string)($tour['date_iso'] ?? ''),
         (string)($tour['departure_time'] ?? ''),
     ]);
-    return (bool)$st->fetchColumn();
+    if ($st->fetchColumn()) {
+        return true;
+    }
+    if (!function_exists('gcv_guiagem_priority_holds_day')) {
+        $queueFile = __DIR__ . '/guide_queue_offer.php';
+        if (is_file($queueFile)) {
+            require_once $queueFile;
+        }
+    }
+    if (function_exists('gcv_guiagem_priority_holds_day')) {
+        return gcv_guiagem_priority_holds_day(
+            $guideId,
+            (string)($tour['date_iso'] ?? ''),
+            (int)($tour['id'] ?? 0)
+        );
+    }
+    return false;
 }
 
 /** @return list<array<string,mixed>> */

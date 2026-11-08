@@ -255,6 +255,13 @@ function gcv_guide_update_excursion(array $ex, array $data, int $userId, bool $a
         if ($date < $today) {
             throw new InvalidArgumentException('Data deve ser futura');
         }
+        $ownerId = (int)($ex['guide_user_id'] ?? $userId);
+        if (!function_exists('gcv_guiagem_priority_holds_day')) {
+            require_once __DIR__ . '/guide_queue_offer.php';
+        }
+        if ($ownerId > 0 && gcv_guiagem_priority_holds_day($ownerId, $date, (int)($ex['id'] ?? 0))) {
+            throw new InvalidArgumentException('Este guia já tem uma guiagem prioritária neste dia, aguardando o aceite.');
+        }
         $sets[] = 'date_iso = ?';
         $params[] = $date;
     }
