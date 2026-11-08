@@ -2771,7 +2771,7 @@ function gcv_tarifario_admin_overview(PDO $pdo): array
     $mapaSaidas = gcv_cidades_saida_mapa($pdo);
     $rows = $pdo->query(
         "SELECT id, title_pt, slug, status, duration_minutes, duracao_json, tarifario_id, tarifa_guia, tarifa_translado, tem_passeio, categorias, saidas_json, experiencia_json FROM gcv_attractions
-         WHERE title_pt NOT LIKE '% + %' ORDER BY title_pt ASC"
+         WHERE title_pt NOT LIKE '% + %' AND status <> 'archived' ORDER BY title_pt ASC"
     )->fetchAll();
     foreach ($rows as $row) {
         $slug = (string)$row['slug'];

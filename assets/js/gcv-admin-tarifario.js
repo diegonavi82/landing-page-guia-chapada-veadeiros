@@ -718,6 +718,7 @@
       var opcoesCidades = '';
       var opcoesPasseios = '';
       (st.data.atrativos || []).forEach(function (a) {
+        if (a.status === 'archived') return;
         if (String(a.title_pt || '').indexOf(' + ') >= 0) return;
         var cidades = saidasDe(a).filter(function (s) { return s && s.key; });
         if (!cidades.length) {
