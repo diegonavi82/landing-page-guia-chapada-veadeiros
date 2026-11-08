@@ -698,7 +698,7 @@
     function campoTaxa(attr, label, valor, unit) {
       var info = label === 'Privativo %' ? 'taxa plataforma' : (label === 'Excursão até 4' || label === 'A partir da 5ª' ? 'taxa por pessoa' : '');
       var nota = info ? '<small class="tf-taxa-info">' + info + '</small>' : '';
-      return '<label class="tf-field tf-field--taxa"><span>' + label + nota + '</span><span class="tf-money"><em>' + unit + '</em><input inputmode="decimal" ' + attr + ' value="' + esc(String(valor)) + '" aria-label="' + label + '" /></span></label>';
+      return '<label class="tf-field tf-field--taxa"><span>' + label + '</span><span class="tf-money"><em>' + unit + '</em><input inputmode="decimal" ' + attr + ' value="' + esc(String(valor)) + '" aria-label="' + label + '" /></span>' + nota + '</label>';
     }
     function cardCombina(tipo, row) {
       if (!st.q) return true;
@@ -773,7 +773,7 @@
               '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>' +
             '</button>' +
             '<b>' + esc(oficialLabel(row)) + '</b>' +
-            '<div class="tf-card-edit">' + paxEdit + '</div>' +
+            '<div class="tf-card-edit tf-line ' + (guia ? 'tf-line--7' : 'tf-line--4') + '">' + paxEdit + '</div>' +
             experienciasHtml(tipo, row) +
             '</article>';
       }).join('');
@@ -784,7 +784,7 @@
           '<div><p class="tf-nova__kicker">Criar tarifa nova</p><h3>' + nomeNova + '</h3></div>' +
           '<p class="tf-nova__lead">Preencha os valores e crie a tarifa. As taxas começam no modelo global do topo, e esta tarifa guarda a própria.</p>' +
         '</div>' +
-        '<form class="tf-oficial__new" data-nova="' + tipo + '">' +
+        '<form class="tf-oficial__new tf-line ' + (guia ? 'tf-line--7btn' : 'tf-line--4btn') + '" data-nova="' + tipo + '">' +
           (guia
             ? campoNova('data-nova-exc', 'PAX 4 Excursão', 'diaria') + campoNova('data-nova-pri', 'PAX 4 Privativo', 'diaria') + campoNova('data-nova-exc5', 'PAX 5+ Excursão') + campoNova('data-nova-pri5', 'PAX 5+ Privativo') +
               campoTaxa('data-nova-pct', 'Privativo %', globNova.guiaPct, '%') + campoTaxa('data-nova-4', 'Excursão até 4', globNova.guia4, 'R$') + campoTaxa('data-nova-5', 'A partir da 5ª', globNova.guia5, 'R$')
