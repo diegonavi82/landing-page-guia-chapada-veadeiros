@@ -418,6 +418,18 @@ function gcv_guide_update_excursion(array $ex, array $data, int $userId, bool $a
     $params[] = $userId;
 
     $toGuide = isset($data['transfer_to_user_id']) ? (int)$data['transfer_to_user_id'] : 0;
+    $atrativoMudou = array_key_exists('attraction_id', $data)
+        && (int)$data['attraction_id'] !== (int)($ex['attraction_id'] ?? 0);
+    if ($toGuide > 0 || $atrativoMudou) {
+        require_once __DIR__ . '/guide_substitution.php';
+        $guiaRegra = $toGuide > 0 ? $toGuide : (int)($ex['guide_user_id'] ?? $userId);
+        $erroKalunga = $atrativoMudou
+            ? gcv_guia_erro_kalunga_ids([$attrId], $guiaRegra)
+            : gcv_guia_erro_kalunga_excursao($ex, $guiaRegra);
+        if ($erroKalunga !== null) {
+            throw new InvalidArgumentException($erroKalunga);
+        }
+    }
     if ($toGuide > 0 && !empty($flags['can_transfer'])) {
         if ($toGuide === $userId) {
             throw new InvalidArgumentException('Escolha outro guia para o repasse');

@@ -226,6 +226,10 @@ function gcv_guiagem_designate(int $excursionId, int $guideId): array
     if (!$tour) {
         return ['ok' => false, 'error' => 'Passeio não encontrado'];
     }
+    $kalungaErro = gcv_guia_erro_kalunga_excursao($tour, $guideId);
+    if ($kalungaErro !== null) {
+        return ['ok' => false, 'error' => $kalungaErro];
+    }
     $guideOk = db()->prepare(
         "SELECT u.id FROM gcv_users u INNER JOIN gcv_guides g ON g.user_id = u.id
          WHERE u.id = ? AND u.status = 'active' LIMIT 1"
@@ -642,6 +646,9 @@ function gcv_guiagem_offer_priority(array $tour, int $exceptId): array
     if ($tourId <= 0 || $diego <= 0 || $diego === $exceptId) {
         return [];
     }
+    if (gcv_excursao_exige_guia_kalunga($tour) && !gcv_guia_e_kalunga($diego)) {
+        return [];
+    }
     if (!gcv_guiagem_qualifies_priority($tour)) {
         return [];
     }
@@ -823,10 +830,14 @@ function gcv_guiagem_open_top(array $tour, int $exceptId): array
     if ($exceptId > 0) {
         $skip[$exceptId] = true;
     }
+    $soKalunga = gcv_excursao_exige_guia_kalunga($tour);
     $picked = [];
     foreach (gcv_substitution_queue() as $g) {
         $id = (int)($g['id'] ?? 0);
         if ($id <= 0 || isset($skip[$id])) {
+            continue;
+        }
+        if ($soKalunga && empty($g['kalunga'])) {
             continue;
         }
         if (gcv_substitution_busy($id, $tour)) {
@@ -974,6 +985,10 @@ function gcv_guiagem_accept(int $excursionId, array $user): array
     }
     if (gcv_guiagem_day_busy($me, (string)($tour['date_iso'] ?? ''), $excursionId) || gcv_substitution_busy($me, $tour)) {
         return ['ok' => false, 'error' => 'Você já tem uma saída neste dia', 'status' => 409];
+    }
+    $kalungaErro = gcv_guia_erro_kalunga_excursao($tour, $me);
+    if ($kalungaErro !== null) {
+        return ['ok' => false, 'error' => $kalungaErro, 'status' => 422];
     }
 
     $pdo = db();

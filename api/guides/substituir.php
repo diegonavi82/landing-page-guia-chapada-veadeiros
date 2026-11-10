@@ -39,6 +39,7 @@ if ($method === 'GET') {
             'to_id' => (int)$pending['to_user_id'],
             'to_nome' => (string)$pending['to_nome'],
         ] : null,
+        'so_kalunga' => gcv_excursao_exige_guia_kalunga($tour),
         'guias' => gcv_substitution_available($tour, $me),
     ]);
 }
@@ -113,6 +114,10 @@ if ($action === 'accept' || $action === 'decline') {
     }
     if (gcv_substitution_busy($me, $tour)) {
         json_response(false, null, 'Você já tem uma saída neste horário', 409);
+    }
+    $kalungaErro = gcv_guia_erro_kalunga_excursao($tour, $me);
+    if ($kalungaErro !== null) {
+        json_response(false, null, $kalungaErro, 422);
     }
     $pdo = db();
     $pdo->beginTransaction();

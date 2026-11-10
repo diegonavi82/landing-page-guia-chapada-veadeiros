@@ -2618,7 +2618,11 @@
     }
     var guias = (data && data.guias) || [];
     if (!guias.length && !pending) {
-      html += '<p class="gcv-dash-alert gcv-dash-alert--info">Nenhum outro guia está livre neste horário.</p>';
+      html += '<p class="gcv-dash-alert gcv-dash-alert--info">' +
+        (data && data.so_kalunga
+          ? 'Nenhum guia Kalunga está livre neste horário.'
+          : 'Nenhum outro guia está livre neste horário.') +
+        '</p>';
     }
     html += guias.map(function (g) {
       var foto = g.foto
@@ -2666,6 +2670,10 @@
     var modal = substituteModal();
     var title = modal.querySelector('#gcv-sub-title');
     if (title) title.textContent = 'Passar ' + (tour.attraction_title || 'este passeio');
+    var note = modal.querySelector('.gcv-sub-modal__note');
+    if (note) {
+      note.textContent = 'Escolha um guia disponível. Ele precisa aceitar. Quem aceitar assume a saída e vai para o fim da fila.';
+    }
     var box = document.getElementById('gcv-sub-list');
     if (box) box.innerHTML = '<p>Carregando guias…</p>';
     modal.hidden = false;
@@ -2674,7 +2682,11 @@
         if (box) box.innerHTML = '<p class="gcv-dash-alert">' + esc((r && r.error) || 'Não foi possível listar os guias.') + '</p>';
         return;
       }
-      paintSubstituteList(tour, r.data || {});
+      var dados = r.data || {};
+      if (note && dados.so_kalunga) {
+        note.textContent = 'Neste passeio só entram guias Kalunga. O escolhido precisa aceitar. Quem aceitar assume a saída e vai para o fim da fila.';
+      }
+      paintSubstituteList(tour, dados);
     });
   }
 
@@ -3913,6 +3925,7 @@
             refreshTourTabs();
             applyBlockNetMax();
             aplicarVagasDoAtrativo(p, item, true);
+            if (typeof pintarGuiaAdmin === 'function') pintarGuiaAdmin();
           }
         });
         var attrQ = document.getElementById(p + 'attr-q');
@@ -4130,6 +4143,16 @@
             }
           }
         }
+        if (isAdmin && passeiosExigemKalunga()) {
+          var selG = document.getElementById('ge-admin-guide');
+          var gidKalunga = selG ? (parseInt(selG.value, 10) || 0) : 0;
+          var escolhido = (guides || []).filter(function (g) {
+            return String(g.user_id || g.id) === String(gidKalunga);
+          })[0];
+          if (gidKalunga && escolhido && !guiaEhKalunga(escolhido)) {
+            return issue(selG, 'Santa Bárbara, Capivara e Candaru só podem ser guiados por guia Kalunga.');
+          }
+        }
         return null;
       }
 
@@ -4152,6 +4175,54 @@
           else errors.push('Passeio ' + (i + 1) + ': ' + ((r && r.error) || 'erro ao enviar'));
           sendAll(payloads, i + 1, okCount, errors, done);
         });
+      }
+
+      function textoExigeKalunga(s) {
+        var t = String(s || '').toLowerCase();
+        if (typeof t.normalize === 'function') t = t.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        t = t.replace(/[-_+]/g, ' ');
+        return /\b(santa barbara|capivara|candaru)\b/.test(t);
+      }
+
+      function guiaEhKalunga(g) {
+        var v = g && g.is_kalunga;
+        return v === 1 || v === '1' || v === true || v === 'true';
+      }
+
+      function passeiosExigemKalunga() {
+        var blocks = tourBlocks();
+        var i;
+        for (i = 0; i < blocks.length; i++) {
+          var idx = blocks[i].getAttribute('data-tour-idx');
+          var hid = document.getElementById('ge-' + idx + '-attr');
+          var item = hid ? attractionById(parseInt(hid.value, 10) || 0) : null;
+          if (item && textoExigeKalunga((item.title_pt || '') + ' ' + (item.slug || ''))) return true;
+        }
+        return false;
+      }
+
+      function pintarGuiaAdmin() {
+        var sel = document.getElementById('ge-admin-guide');
+        if (!sel || !isAdmin) return;
+        var exige = passeiosExigemKalunga();
+        var atual = sel.value;
+        var html = '<option value="">Sem guia</option>';
+        (guides || []).forEach(function (g) {
+          var gid = g.user_id || g.id;
+          var kalunga = guiaEhKalunga(g);
+          if (exige && !kalunga && String(gid) !== String(atual)) return;
+          var label = (g.full_name || g.nickname || g.name || '') + (g.nickname && g.full_name ? ' (' + g.nickname + ')' : '');
+          if (exige && kalunga) label += ' · Kalunga';
+          html += '<option value="' + gid + '"' + (String(atual) === String(gid) ? ' selected' : '') + '>' + esc(label) + '</option>';
+        });
+        sel.innerHTML = html;
+        var ainda = false;
+        var oi;
+        for (oi = 0; oi < sel.options.length; oi++) {
+          if (sel.options[oi].value === String(atual)) ainda = true;
+        }
+        if (ainda) sel.value = String(atual);
+        sel.title = exige ? 'Só guia Kalunga neste passeio' : '';
       }
 
       var adminGuideHtml = '';
@@ -4527,6 +4598,7 @@
         }
         fillBlockFromExcursion(pendingEditExcursion);
         setPublishEditMode(true);
+        if (typeof pintarGuiaAdmin === 'function') pintarGuiaAdmin();
       }
       form._gcvApplyPendingEdit = applyPendingEdit;
       form._gcvSetPublishEditMode = setPublishEditMode;

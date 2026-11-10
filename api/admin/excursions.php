@@ -529,6 +529,22 @@ function gcv_admin_apply_sheet_patch(array $body, array $ex, int $adminId): arra
         $params[] = $attrIds[0];
     }
 
+    if ($hasAttr || array_key_exists('guide_user_id', $body)) {
+        require_once __DIR__ . '/../helpers/guide_substitution.php';
+        $idsRegra = $hasAttr
+            ? $attrIds
+            : array_map(static fn($a) => (int)($a['id'] ?? 0), gcv_excursion_load_attractions($id));
+        if ($idsRegra === [] && (int)($ex['attraction_id'] ?? 0) > 0) {
+            $idsRegra = [(int)$ex['attraction_id']];
+        }
+        $erroKalunga = $inviteGuide > 0
+            ? gcv_guia_erro_kalunga_ids($idsRegra, $inviteGuide)
+            : gcv_guia_erro_kalunga_ids($idsRegra, $nextGuide);
+        if ($erroKalunga !== null) {
+            throw new InvalidArgumentException($erroKalunga);
+        }
+    }
+
     if (count($sets) > 1) {
         $params[] = $id;
         db()->prepare('UPDATE gcv_excursions SET ' . implode(', ', $sets) . ' WHERE id = ?')->execute($params);
@@ -577,6 +593,12 @@ function gcv_admin_publish_as_guide(array $body, array $admin): array
     require_once __DIR__ . '/../helpers/marketplace/publish_service.php';
     $guideId = (int)($body['guide_user_id'] ?? 0);
     if ($guideId > 0) {
+        require_once __DIR__ . '/../helpers/guide_substitution.php';
+        $idsPublicar = gcv_excursion_normalize_attraction_ids($body);
+        $erroKalunga = gcv_guia_erro_kalunga_ids($idsPublicar, $guideId);
+        if ($erroKalunga !== null) {
+            throw new InvalidArgumentException($erroKalunga);
+        }
         $st = db()->prepare(
             "SELECT u.id FROM gcv_users u
              LEFT JOIN gcv_guides g ON g.user_id = u.id
@@ -627,7 +649,7 @@ if ($method === 'GET' && !empty($_GET['publish_options'])) {
         $guides = db()->query(
             "SELECT u.id AS user_id,
                     COALESCE(NULLIF(g.full_name,''), NULLIF(g.nickname,''), u.name) AS full_name,
-                    g.nickname, u.status
+                    g.nickname, g.is_kalunga, u.status
              FROM gcv_users u
              LEFT JOIN gcv_guides g ON g.user_id = u.id
              WHERE u.status = 'active'
@@ -643,7 +665,7 @@ if ($method === 'GET' && !empty($_GET['publish_options'])) {
             $guides = db()->query(
                 "SELECT u.id AS user_id,
                         COALESCE(NULLIF(g.full_name,''), NULLIF(g.nickname,''), u.name) AS full_name,
-                        g.nickname, u.status
+                        g.nickname, g.is_kalunga, u.status
                  FROM gcv_users u
                  LEFT JOIN gcv_guides g ON g.user_id = u.id
                  WHERE u.status = 'active' AND u.role = 'guide'
@@ -779,6 +801,13 @@ if ($method === 'POST') {
     if ($guideErr) {
         http_response_code(400);
         echo json_encode(['ok' => false, 'error' => $guideErr]);
+        exit;
+    }
+    require_once __DIR__ . '/../helpers/guide_substitution.php';
+    $erroKalunga = gcv_guia_erro_kalunga_ids($attrIds, (int)($body['guide_user_id'] ?? 0));
+    if ($erroKalunga !== null) {
+        http_response_code(400);
+        echo json_encode(['ok' => false, 'error' => $erroKalunga]);
         exit;
     }
 
@@ -995,6 +1024,30 @@ if ($method === 'PUT' || $method === 'PATCH') {
         : array_map(static fn($a) => (int)$a['id'], gcv_excursion_load_attractions($id));
     if ($attrIds === []) {
         $attrIds = [(int)$ex['attraction_id']];
+    }
+    require_once __DIR__ . '/../helpers/guide_substitution.php';
+    $idsAtuais = array_map(static fn($a) => (int)($a['id'] ?? 0), gcv_excursion_load_attractions($id));
+    sort($idsAtuais);
+    $idsNovos = $attrIds;
+    sort($idsNovos);
+    $atrativoMudou = $idsNovos !== $idsAtuais;
+    $postedGuide = array_key_exists('guide_user_id', $body)
+        ? (!empty($body['guide_user_id']) ? (int)$body['guide_user_id'] : 0)
+        : (int)($ex['guide_user_id'] ?? 0);
+    $trocandoGuia = array_key_exists('guide_user_id', $body) && $postedGuide !== (int)($ex['guide_user_id'] ?? 0);
+    if ($atrativoMudou || $trocandoGuia) {
+        $erroKalunga = null;
+        if ($trocandoGuia && $postedGuide > 0) {
+            $erroKalunga = gcv_guia_erro_kalunga_ids($attrIds, $postedGuide);
+        }
+        if ($erroKalunga === null && $atrativoMudou && !$trocandoGuia) {
+            $erroKalunga = gcv_guia_erro_kalunga_ids($attrIds, $postedGuide);
+        }
+        if ($erroKalunga !== null) {
+            http_response_code(400);
+            echo json_encode(['ok' => false, 'error' => $erroKalunga]);
+            exit;
+        }
     }
 
     $priceCents = (int)($body['price_cents'] ?? $ex['price_cents']);

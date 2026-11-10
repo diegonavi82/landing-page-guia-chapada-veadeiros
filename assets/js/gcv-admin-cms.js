@@ -2699,13 +2699,52 @@
     return html + '</select>';
   }
 
+  var KALUNGA_GUIA_MSG = "Santa Bárbara, Capivara e Candaru só podem ser guiados por guia Kalunga.";
+
+  function textoExigeKalunga(s) {
+    var t = String(s || "").toLowerCase();
+    if (typeof t.normalize === "function") t = t.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    t = t.replace(/[-_+]/g, " ");
+    return /\b(santa barbara|capivara|candaru)\b/.test(t);
+  }
+
+  function excExigeKalunga(e) {
+    if (!e) return false;
+    if (textoExigeKalunga(e.attraction_title) || textoExigeKalunga(e.attraction_slug)) return true;
+    var ids = {};
+    (e.attraction_ids || []).forEach(function (id) { ids[String(id)] = 1; });
+    if (e.attraction_id) ids[String(e.attraction_id)] = 1;
+    var i;
+    for (i = 0; i < (excSheet.attractions || []).length; i++) {
+      var a = excSheet.attractions[i];
+      if (!ids[String(a.id)]) continue;
+      if (textoExigeKalunga((a.title_pt || "") + " " + (a.slug || ""))) return true;
+    }
+    return false;
+  }
+
+  function guiaDaPlanilha(id) {
+    var i;
+    for (i = 0; i < (excSheet.guides || []).length; i++) {
+      var g = excSheet.guides[i];
+      if (String(g.user_id || g.id) === String(id)) return g;
+    }
+    return null;
+  }
+
   function excGuideSelectHtml(e) {
     var selected = e.guide_user_id || e.guide_invite_user_id || "";
     var waiting = !e.guide_user_id && e.guide_invite_user_id;
-    var html = '<select class="gcv-exc-sheet__in gcv-exc-sheet__guide" data-field="guide_user_id" data-exc-id="' + e.id + '"><option value="">Sem guia</option>';
+    var exige = excExigeKalunga(e);
+    var html = '<select class="gcv-exc-sheet__in gcv-exc-sheet__guide" data-field="guide_user_id" data-exc-id="' + e.id + '"' +
+      (exige ? ' title="Só guia Kalunga neste passeio"' : "") +
+      '><option value="">Sem guia</option>';
     (excSheet.guides || []).forEach(function (g) {
       var id = g.user_id || g.id;
+      var kalunga = isKalungaFlag(g.is_kalunga);
+      if (exige && !kalunga && String(id) !== String(selected)) return;
       var label = g.full_name || g.nickname || g.name || ("#" + id);
+      if (exige && kalunga) label += " · Kalunga";
       if (waiting && String(id) === String(selected)) label += " (aguardando WhatsApp)";
       html += '<option value="' + id + '"' + (String(selected) === String(id) ? " selected" : "") + ">" + esc(label) + "</option>";
     });
@@ -3684,10 +3723,30 @@
         return;
       }
     }
+    if (field === 'guide_user_id' && next) {
+      var guiaEscolhido = guiaDaPlanilha(next);
+      if (excExigeKalunga(rowWithDraft(e)) && guiaEscolhido && !isKalungaFlag(guiaEscolhido.is_kalunga)) {
+        if (typeof window.gcvAlert === 'function') window.gcvAlert(KALUNGA_GUIA_MSG);
+        else window.alert(KALUNGA_GUIA_MSG);
+        revertInputToCurrent(el, e, field);
+        return;
+      }
+    }
+    if (field === 'attraction_id' && next) {
+      var atrativo = (excSheet.attractions || []).filter(function (a) { return String(a.id) === String(next); })[0];
+      var guiaAtualId = effectiveSheetField(rowWithDraft(e), 'guide_user_id');
+      var guiaAtual = guiaDaPlanilha(guiaAtualId);
+      if (atrativo && textoExigeKalunga((atrativo.title_pt || '') + ' ' + (atrativo.slug || '')) && guiaAtualId && guiaAtual && !isKalungaFlag(guiaAtual.is_kalunga)) {
+        if (typeof window.gcvAlert === 'function') window.gcvAlert(KALUNGA_GUIA_MSG);
+        else window.alert(KALUNGA_GUIA_MSG);
+        revertInputToCurrent(el, e, field);
+        return;
+      }
+    }
     var hadT = excHasTransport(rowWithDraft(e));
     var willDropT = field === 'max_people_transport' && !(parseInt(next, 10) > 0);
     var willAddT = field === 'max_people_transport' && (parseInt(next, 10) > 0) && !hadT;
-    queueExcSheetChange(id, field, next, { replaceRow: willDropT || willAddT || field === 'sheet_status' });
+    queueExcSheetChange(id, field, next, { replaceRow: willDropT || willAddT || field === 'sheet_status' || field === 'attraction_id' });
   }
 
   function bindExcSheetTable(wrap) {

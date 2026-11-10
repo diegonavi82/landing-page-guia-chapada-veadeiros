@@ -66,11 +66,13 @@ function gcv_substitution_queue(): array
 {
     gcv_substitution_seed_queue();
     try {
+        $kalungaSql = gcv_guides_tem_coluna_kalunga() ? 'COALESCE(g.is_kalunga, 0)' : '0';
         $st = db()->query(
             "SELECT u.id, u.name,
                     COALESCE(NULLIF(g.full_name, ''), NULLIF(g.nickname, ''), u.name) AS nome,
                     COALESCE(g.photo_url, g.photo_3x4_url, '') AS foto,
                     COALESCE(c.name, '') AS cidade,
+                    {$kalungaSql} AS is_kalunga,
                     q.posicao
              FROM gcv_guide_queue q
              INNER JOIN gcv_users u ON u.id = q.user_id AND u.role = 'guide' AND u.status = 'active'
@@ -87,6 +89,7 @@ function gcv_substitution_queue(): array
                 'nome' => (string)$row['nome'],
                 'foto' => (string)$row['foto'],
                 'cidade' => (string)$row['cidade'],
+                'kalunga' => (int)($row['is_kalunga'] ?? 0) === 1,
                 'posicao' => $n,
             ];
         }
@@ -168,9 +171,13 @@ function gcv_substitution_busy(int $guideId, array $tour): bool
 /** @return list<array<string,mixed>> */
 function gcv_substitution_available(array $tour, int $fromId): array
 {
+    $soKalunga = gcv_excursao_exige_guia_kalunga($tour);
     $out = [];
     foreach (gcv_substitution_queue() as $g) {
         if ((int)$g['id'] === $fromId) {
+            continue;
+        }
+        if ($soKalunga && empty($g['kalunga'])) {
             continue;
         }
         if (gcv_substitution_busy((int)$g['id'], $tour)) {
@@ -256,4 +263,143 @@ function gcv_substitution_fila_posicao(int $userId): int
         }
     }
     return 0;
+}
+
+function gcv_guia_kalunga_erro_msg(): string
+{
+    return 'Santa Bárbara, Capivara e Candaru só podem ser guiados por guia Kalunga.';
+}
+
+function gcv_guides_tem_coluna_kalunga(): bool
+{
+    static $ok = null;
+    if ($ok !== null) {
+        return $ok;
+    }
+    try {
+        db()->query('SELECT is_kalunga FROM gcv_guides LIMIT 0');
+        $ok = true;
+    } catch (Throwable $e) {
+        $ok = false;
+    }
+    return $ok;
+}
+
+function gcv_texto_sem_acento(string $s): string
+{
+    $s = function_exists('mb_strtolower') ? mb_strtolower($s, 'UTF-8') : strtolower($s);
+    return str_replace(
+        ['á', 'à', 'ã', 'â', 'ä', 'é', 'ê', 'ë', 'í', 'ï', 'ó', 'ô', 'õ', 'ö', 'ú', 'ü', 'ç', 'ñ'],
+        ['a', 'a', 'a', 'a', 'a', 'e', 'e', 'e', 'i', 'i', 'o', 'o', 'o', 'o', 'u', 'u', 'c', 'n'],
+        $s
+    );
+}
+
+/** Santa Bárbara, Capivara ou Candaru, inclusive nos combinados. */
+function gcv_texto_exige_guia_kalunga(string $texto): bool
+{
+    $t = gcv_texto_sem_acento($texto);
+    $t = str_replace(['-', '_', '+'], ' ', $t);
+    return (bool)preg_match('/\b(santa barbara|capivara|candaru)\b/', $t);
+}
+
+/** @param list<array<string,mixed>> $rows */
+function gcv_atrativos_exigem_guia_kalunga(array $rows): bool
+{
+    foreach ($rows as $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+        $blob = implode(' ', [
+            (string)($row['title_pt'] ?? ''),
+            (string)($row['title_en'] ?? ''),
+            (string)($row['title_es'] ?? ''),
+            (string)($row['slug'] ?? ''),
+            (string)($row['title'] ?? ''),
+        ]);
+        if (gcv_texto_exige_guia_kalunga($blob)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/** @param list<int> $ids */
+function gcv_ids_exigem_guia_kalunga(array $ids): bool
+{
+    $clean = [];
+    foreach ($ids as $id) {
+        $id = (int)$id;
+        if ($id > 0) {
+            $clean[$id] = $id;
+        }
+    }
+    if (!$clean) {
+        return false;
+    }
+    $rows = db()->query(
+        'SELECT title_pt, title_en, title_es, slug FROM gcv_attractions WHERE id IN (' . implode(',', $clean) . ')'
+    )->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    return gcv_atrativos_exigem_guia_kalunga($rows);
+}
+
+/** @param array<string,mixed> $tour */
+function gcv_excursao_exige_guia_kalunga(array $tour): bool
+{
+    $id = (int)($tour['id'] ?? 0);
+    if ($id > 0) {
+        if (!function_exists('gcv_excursion_load_attractions')) {
+            require_once __DIR__ . '/excursion_attractions.php';
+        }
+        $attrs = gcv_excursion_load_attractions($id);
+        if ($attrs) {
+            return gcv_atrativos_exigem_guia_kalunga($attrs);
+        }
+    }
+    return gcv_texto_exige_guia_kalunga(
+        (string)($tour['attraction_title'] ?? '') . ' ' . (string)($tour['attraction_slug'] ?? '') . ' ' . (string)($tour['slug'] ?? '')
+    );
+}
+
+function gcv_guia_e_kalunga(int $userId): bool
+{
+    if ($userId <= 0 || !gcv_guides_tem_coluna_kalunga()) {
+        return false;
+    }
+    static $cache = [];
+    if (array_key_exists($userId, $cache)) {
+        return $cache[$userId];
+    }
+    try {
+        $st = db()->prepare('SELECT is_kalunga FROM gcv_guides WHERE user_id = ? LIMIT 1');
+        $st->execute([$userId]);
+        $cache[$userId] = (int)$st->fetchColumn() === 1;
+    } catch (Throwable $e) {
+        $cache[$userId] = false;
+    }
+    return $cache[$userId];
+}
+
+/** @param array<string,mixed> $tour */
+function gcv_guia_erro_kalunga_excursao(array $tour, int $guideId): ?string
+{
+    if ($guideId <= 0 || !gcv_excursao_exige_guia_kalunga($tour)) {
+        return null;
+    }
+    if (gcv_guia_e_kalunga($guideId)) {
+        return null;
+    }
+    return gcv_guia_kalunga_erro_msg();
+}
+
+/** @param list<int> $ids */
+function gcv_guia_erro_kalunga_ids(array $ids, int $guideId): ?string
+{
+    if ($guideId <= 0 || !gcv_ids_exigem_guia_kalunga($ids)) {
+        return null;
+    }
+    if (gcv_guia_e_kalunga($guideId)) {
+        return null;
+    }
+    return gcv_guia_kalunga_erro_msg();
 }

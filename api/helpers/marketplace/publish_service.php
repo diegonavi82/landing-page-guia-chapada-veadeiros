@@ -279,6 +279,19 @@ function gcv_publish_guide_marketplace(array $payload, int $guideUserId, array $
         : (int)round(((float)($payload['guide_net'] ?? 0)) * 100);
 
     $attrId = (int)($payload['attraction_id'] ?? 0);
+    if ($guideUserId > 0) {
+        require_once __DIR__ . '/../guide_substitution.php';
+        $idsPublicar = function_exists('gcv_excursion_normalize_attraction_ids')
+            ? gcv_excursion_normalize_attraction_ids($payload)
+            : [];
+        if ($idsPublicar === [] && $attrId > 0) {
+            $idsPublicar = [$attrId];
+        }
+        $erroKalunga = gcv_guia_erro_kalunga_ids($idsPublicar, $guideUserId);
+        if ($erroKalunga !== null) {
+            throw new InvalidArgumentException($erroKalunga);
+        }
+    }
     $includeTransport = !empty($payload['include_transport']) && empty($payload['offer_transport']);
     $rangeErr = gcv_guide_net_range_error($guideNet, $attrId, null, $includeTransport);
     if ($rangeErr !== null) {
