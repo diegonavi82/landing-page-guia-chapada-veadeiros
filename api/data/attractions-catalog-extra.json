@@ -8,7 +8,8 @@
       "title_es": "Chapada Alta",
       "excerpt_pt": "Roteiro em Alto Paraíso de Goiás.",
       "excerpt_en": "Tour in Alto Paraíso de Goiás.",
-      "excerpt_es": "Ruta en Alto Paraíso de Goiás."
+      "excerpt_es": "Ruta en Alto Paraíso de Goiás.",
+      "cover_url": "/assets/img/imagens/chapada-alta-guia-chapada-veadeiros-alto-paraiso.jpg"
     },
     {
       "slug": "dragao-4x4-guia-chapada-veadeiros",
@@ -115,7 +116,8 @@
       "title_es": "Boqueirão",
       "excerpt_pt": "Roteiro em Cavalcante.",
       "excerpt_en": "Tour in Cavalcante.",
-      "excerpt_es": "Ruta en Cavalcante."
+      "excerpt_es": "Ruta en Cavalcante.",
+      "cover_url": "/assets/img/imagens/cachoeira-boqueirao-guia-chapada-veadeiros-cavalcante.jpg"
     },
     {
       "slug": "guardiao-4x4-guia-chapada-veadeiros",
@@ -125,7 +127,8 @@
       "title_es": "Guardião",
       "excerpt_pt": "Roteiro 4x4 em Cavalcante.",
       "excerpt_en": "4x4 tour in Cavalcante.",
-      "excerpt_es": "Ruta 4x4 en Cavalcante."
+      "excerpt_es": "Ruta 4x4 en Cavalcante.",
+      "cover_url": "/assets/img/imagens/cachoeira-do-guardiao-guia-chapada-veadeiros-cavalcante.jpg"
     },
     {
       "slug": "curriola-guia-chapada-veadeiros",
@@ -189,7 +192,8 @@
       "title_es": "Catoá",
       "excerpt_pt": "Roteiro na Chapada dos Veadeiros.",
       "excerpt_en": "Tour in Chapada dos Veadeiros.",
-      "excerpt_es": "Ruta en la Chapada dos Veadeiros."
+      "excerpt_es": "Ruta en la Chapada dos Veadeiros.",
+      "cover_url": "/assets/img/imagens/cachoeira-catoa-guia-chapada-veadeiros-cavalcante.jpg"
     },
     {
       "slug": "mirante-da-janela-noturno-guia-chapada-veadeiros",

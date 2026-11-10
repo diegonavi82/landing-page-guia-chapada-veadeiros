@@ -108,7 +108,7 @@ const RAW = [
   }),
   spot({
     slug: "boqueirao-guia-chapada-veadeiros",
-    file: "boqueirao-guia-chapada-veadeiros-mapa.jpg",
+    file: "cachoeira-boqueirao-guia-chapada-veadeiros-cavalcante.jpg",
     map: { l: 40, t: 11, w: 9, h: 4 },
     title: L("Boqueirão", "Boqueirão", "Boqueirão"),
     lead: L(
@@ -417,7 +417,7 @@ const RAW = [
   }),
   spot({
     slug: "catoa-guia-chapada-veadeiros",
-    file: "catoa-guia-chapada-veadeiros-mapa.jpg",
+    file: "cachoeira-catoa-guia-chapada-veadeiros-cavalcante.jpg",
     map: { l: 28, t: 2, w: 8, h: 4 },
     title: L("Catoá", "Catoá", "Catoá"),
     lead: L(
@@ -492,7 +492,7 @@ const RAW = [
   }),
   spot({
     slug: "chapada-alta-guia-chapada-veadeiros",
-    file: "chapada-alta-guia-chapada-veadeiros-mapa.jpg",
+    file: "chapada-alta-guia-chapada-veadeiros-alto-paraiso.jpg",
     map: { l: 74, t: 39, w: 10, h: 4 },
     title: L("Chapada Alta", "Chapada Alta", "Chapada Alta"),
     lead: L(
@@ -714,7 +714,7 @@ const RAW = [
   }),
   spot({
     slug: "guardiao-4x4-guia-chapada-veadeiros",
-    file: "guardiao-4x4-guia-chapada-veadeiros-mapa.jpg",
+    file: "cachoeira-do-guardiao-guia-chapada-veadeiros-cavalcante.jpg",
     map: { l: 64, t: 9, w: 9, h: 4 },
     title: L("Guardião", "Guardião", "Guardião"),
     lead: L(
@@ -1558,6 +1558,26 @@ const ALT_BY_SLUG = {
     "Cachoeira São Félix, prainha e queda na Chapada dos Veadeiros",
     "São Félix waterfall and river beach in Chapada dos Veadeiros",
     "Cascada São Félix y playa de río en la Chapada dos Veadeiros",
+  ),
+  "boqueirao-guia-chapada-veadeiros": L(
+    "Poços verde-esmeralda do Complexo Boqueirão, no Rio Capivara, em Cavalcante, na Chapada dos Veadeiros",
+    "Emerald pools at Complexo Boqueirão, on the Capivara River, in Cavalcante, Chapada dos Veadeiros",
+    "Pozas verde esmeralda del Complejo Boqueirão, en el río Capivara, en Cavalcante, Chapada dos Veadeiros",
+  ),
+  "catoa-guia-chapada-veadeiros": L(
+    "Queda alta da Cachoeira Catoá, em Campo Alegre, ao norte de Cavalcante, na Chapada dos Veadeiros",
+    "Tall drop at Catoá waterfall, in Campo Alegre, north of Cavalcante, Chapada dos Veadeiros",
+    "Caída alta de la cascada Catoá, en Campo Alegre, al norte de Cavalcante, Chapada dos Veadeiros",
+  ),
+  "chapada-alta-guia-chapada-veadeiros": L(
+    "Cachoeira em degraus na Chapada Alta, a nordeste de Alto Paraíso, na Chapada dos Veadeiros",
+    "Stepped waterfall at Chapada Alta, northeast of Alto Paraíso, in Chapada dos Veadeiros",
+    "Cascada en escalones en Chapada Alta, al noreste de Alto Paraíso, en la Chapada dos Veadeiros",
+  ),
+  "guardiao-4x4-guia-chapada-veadeiros": L(
+    "Cachoeira do Guardião, queda no cânion e poço azul, no Vão do Moleque, na Chapada dos Veadeiros",
+    "Guardião waterfall, canyon drop and blue pool, in Vão do Moleque, Chapada dos Veadeiros",
+    "Cascada del Guardião, caída en el cañón y poza azul, en el Vão do Moleque, Chapada dos Veadeiros",
   ),
 };
 
