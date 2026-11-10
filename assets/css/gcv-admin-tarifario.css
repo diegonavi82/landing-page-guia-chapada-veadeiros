@@ -260,7 +260,26 @@
 .ps-tarifa-select:disabled { opacity: .7; cursor: wait; }
 .ps-multi { display: inline-flex; margin-left: .45rem; padding: .12rem .45rem; border-radius: 99px; background: #e0f2fe; color: #075985; font-size: .68rem; font-weight: 800; vertical-align: middle; white-space: nowrap; }
 .ps-city { display: inline-flex; margin-left: .45rem; padding: .12rem .45rem; border-radius: 99px; background: #ecfdf3; color: #166534; font-size: .68rem; font-weight: 800; vertical-align: middle; white-space: nowrap; }
-.ps-cidade { font-weight: 700; color: #14532d; white-space: nowrap; }
+.ps-cidade { font-weight: 700; color: #14532d; }
+.ps-cidade-edit { display: flex; align-items: center; gap: .35rem; }
+.ps-cidade-select { width: auto; flex: 1 1 13rem; min-width: 13rem; max-width: 18rem; font-weight: 700; color: #14532d; }
+.ps-cidade-btn {
+  flex: none;
+  width: 1.85rem;
+  height: 1.85rem;
+  border: 1px solid #d5e7dc;
+  border-radius: 8px;
+  background: #f0f7f3;
+  color: #14532d;
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+.ps-cidade-btn:hover { border-color: #0f766e; background: #e7f5ee; }
+.ps-cidade-btn:disabled { opacity: .45; cursor: not-allowed; }
+.ps-cidade-btn--del { color: #b91c1c; background: #fff; border-color: #fecaca; }
+.ps-cidade-btn--del:hover { background: #fef2f2; border-color: #f87171; }
 .ps-row--multi .ps-passeio { box-shadow: inset 3px 0 0 #0f766e; }
 .ps-tarifa { display: inline-block; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .84rem; font-weight: 700; letter-spacing: .01em; color: #14532d; background: #f0f7f3; border: 1px solid #d5e7dc; border-radius: 8px; padding: .32rem .55rem; white-space: nowrap; }
 .ps-tarifa--trans { color: #1e3a8a; background: #eff6ff; border-color: #dbeafe; font-family: inherit; }

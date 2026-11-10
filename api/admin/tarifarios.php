@@ -103,6 +103,10 @@ try {
             gcv_tarifa_saida_salvar($pdo, $body);
             gcv_tarifario_reply($pdo);
         }
+        if ($action === 'embarque') {
+            gcv_embarque_alterar($pdo, $body);
+            gcv_tarifario_reply($pdo);
+        }
         if ($action === 'tarifa_excluir') {
             $moved = gcv_tarifa_oficial_excluir($pdo, (string)($body['codigo'] ?? ''));
             gcv_tarifario_reply($pdo, $moved);

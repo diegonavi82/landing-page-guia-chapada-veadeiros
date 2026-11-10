@@ -640,7 +640,7 @@
 
   function paintPasseiosTable() {
     var body = $('tf-body');
-    body.innerHTML = markupTabelaPasseios('Cada experiência entra em todas as cidades de embarque dela. O passeio de duas experiências entra só na cidade que as duas têm, com uma tarifa nova.');
+    body.innerHTML = markupTabelaPasseios('Escolha a cidade de embarque de cada passeio. Dá para acrescentar outra cidade ou excluir.');
     ligarTabelaPasseios(body);
   }
 
@@ -656,6 +656,39 @@
       mapa[chave].push(r);
     });
     return ordem.map(function (chave) { return mapa[chave]; });
+  }
+
+  function cidadesCatalogo() {
+    var map = (st.data && st.data.cidades) || {};
+    var ordem = ['alto-paraiso', 'sao-jorge', 'cavalcante'];
+    var keys = ordem.filter(function (k) { return map[k]; });
+    Object.keys(map).forEach(function (k) {
+      if (keys.indexOf(k) < 0) keys.push(k);
+    });
+    return keys.map(function (k) { return { key: k, nome: map[k] || k }; });
+  }
+
+  function opcoesCidade(atual, usadas) {
+    var html = atual ? '' : '<option value="">Sem cidade de embarque</option>';
+    cidadesCatalogo().forEach(function (c) {
+      if (c.key !== atual && usadas.indexOf(c.key) >= 0) return;
+      html += '<option value="' + esc(c.key) + '"' + (c.key === atual ? ' selected' : '') + '>' + esc(c.nome) + '</option>';
+    });
+    return html;
+  }
+
+  function salvarEmbarque(payload, onFail) {
+    payload.action = 'embarque';
+    request('PUT', payload, function (res) {
+      if (!res.ok) {
+        if (onFail) onFail();
+        toast(res.error || 'Não salvou a cidade', true);
+        return;
+      }
+      st.data = res.data;
+      fillPasseioRows();
+      toast(payload.op === 'del' ? 'Cidade de embarque excluída.' : (payload.op === 'add' ? 'Cidade de embarque adicionada.' : 'Cidade de embarque atualizada.'));
+    });
   }
 
   function fillPasseioRows() {
@@ -683,6 +716,12 @@
       return;
     }
     tbody.innerHTML = gruposDoPasseio(rows).map(function (grupo) {
+      var base = grupo[0];
+      var fonte = base.kind === 'relacao'
+        ? (st.data.passeios || []).filter(function (p) { return Number(p.id) === Number(base.id); })[0]
+        : (st.data.atrativos || []).filter(function (a) { return Number(a.id) === Number(base.id); })[0];
+      var usadas = saidasDe(fonte).map(function (s) { return s && s.key; }).filter(Boolean);
+      var livres = cidadesCatalogo().filter(function (c) { return usadas.indexOf(c.key) < 0; });
       return grupo.map(function (r, i) {
         var chip = r.atrativos > 1 ? '<span class="ps-multi">' + r.atrativos + ' experiências</span>' : '';
         var guiaCell = r.semCidade ? '<span class="gcv-cms-muted">Sem cidade em comum</span>' : tarifaDashSelect('guia', r.guiaCodigo, r.piso);
@@ -692,9 +731,19 @@
           var span = grupo.length > 1 ? ' rowspan="' + grupo.length + '"' : '';
           nomeCell = '<td class="ps-passeio' + (grupo.length > 1 ? ' ps-passeio--span' : '') + '"' + span + '><span class="ps-name">' + esc(r.passeio) + '</span>' + chip + '</td>';
         }
+        var cidadeCell = '<div class="ps-cidade-edit">' +
+          '<select class="gcv-dash-select ps-cidade-select" data-cidade-set data-atual="' + esc(r.cidade || '') + '" aria-label="Cidade de embarque de ' + esc(r.passeio) + '">' +
+          opcoesCidade(r.cidade || '', usadas) + '</select>';
+        if (i === grupo.length - 1) {
+          cidadeCell += '<button type="button" class="ps-cidade-btn" data-cidade-add' + (livres.length ? '' : ' disabled') + ' title="' + (livres.length ? 'Adicionar cidade' : 'Todas as cidades já estão neste passeio') + '" aria-label="Adicionar cidade">+</button>';
+        }
+        if (r.cidade) {
+          cidadeCell += '<button type="button" class="ps-cidade-btn ps-cidade-btn--del" data-cidade-del title="Excluir cidade" aria-label="Excluir ' + esc(r.cidadeNome || r.cidade) + '">×</button>';
+        }
+        cidadeCell += '</div>';
         return '<tr class="' + (r.atrativos > 1 ? 'ps-row--multi' : '') + (i > 0 ? ' ps-row--cont' : '') + '" data-kind="' + r.kind + '" data-id="' + r.id + '" data-cidade="' + esc(r.cidade || '') + '">' +
           nomeCell +
-          '<td class="ps-cidade">' + esc(nomeCidadeLinha(r)) + '</td>' +
+          '<td class="ps-cidade">' + cidadeCell + '</td>' +
           '<td>' + guiaCell + '</td>' +
           '<td>' + transCell + '</td>' +
         '</tr>';
@@ -702,6 +751,82 @@
     }).join('');
     tbody.querySelectorAll('[data-tarifa-tipo]').forEach(function (sel) {
       sel.onchange = function () { salvarTarifaLinha(sel); };
+    });
+    tbody.querySelectorAll('[data-cidade-set]').forEach(function (sel) {
+      sel.onchange = function () {
+        var tr = sel.closest('tr');
+        if (!tr) return;
+        var de = sel.getAttribute('data-atual') || '';
+        var para = sel.value;
+        if (para === de) return;
+        sel.disabled = true;
+        salvarEmbarque({
+          op: 'set',
+          kind: tr.getAttribute('data-kind'),
+          id: parseInt(tr.getAttribute('data-id'), 10),
+          de: de,
+          para: para
+        }, function () {
+          sel.disabled = false;
+          sel.value = de;
+        });
+      };
+    });
+    tbody.querySelectorAll('[data-cidade-add]').forEach(function (btn) {
+      btn.onclick = function () {
+        var tr = btn.closest('tr');
+        if (!tr || btn.disabled) return;
+        var kindAdd = tr.getAttribute('data-kind');
+        var idAdd = Number(tr.getAttribute('data-id'));
+        var fonteAdd = kindAdd === 'relacao'
+          ? (st.data.passeios || []).filter(function (p) { return Number(p.id) === idAdd; })[0]
+          : (st.data.atrativos || []).filter(function (a) { return Number(a.id) === idAdd; })[0];
+        var usadasLinha = saidasDe(fonteAdd).map(function (s) { return s && s.key; }).filter(Boolean);
+        var livresBtn = cidadesCatalogo().filter(function (c) { return usadasLinha.indexOf(c.key) < 0; });
+        if (!livresBtn.length) {
+          toast('Todas as cidades já estão neste passeio.', true);
+          return;
+        }
+        var pick = document.createElement('select');
+        pick.className = 'gcv-dash-select ps-cidade-select';
+        pick.setAttribute('aria-label', 'Nova cidade de embarque');
+        pick.innerHTML = '<option value="">Escolher cidade…</option>' + livresBtn.map(function (c) {
+          return '<option value="' + esc(c.key) + '">' + esc(c.nome) + '</option>';
+        }).join('');
+        btn.replaceWith(pick);
+        pick.focus();
+        pick.onchange = function () {
+          if (!pick.value) return;
+          pick.disabled = true;
+          salvarEmbarque({
+            op: 'add',
+            kind: tr.getAttribute('data-kind'),
+            id: parseInt(tr.getAttribute('data-id'), 10),
+            para: pick.value
+          }, function () { pick.disabled = false; });
+        };
+      };
+    });
+    tbody.querySelectorAll('[data-cidade-del]').forEach(function (btn) {
+      btn.onclick = function () {
+        var tr = btn.closest('tr');
+        if (!tr) return;
+        var nome = tr.querySelector('.ps-cidade-select');
+        var rotulo = nome && nome.selectedIndex >= 0 ? nome.options[nome.selectedIndex].text : 'esta cidade';
+        var pedir = (typeof gcvConfirm === 'function')
+          ? gcvConfirm('Excluir a cidade de embarque ' + rotulo + '?', { danger: true, okText: 'Excluir' })
+          : Promise.resolve(window.confirm('Excluir a cidade de embarque ' + rotulo + '?'));
+        pedir.then(function (ok) {
+          if (!ok) return;
+          btn.disabled = true;
+          salvarEmbarque({
+            op: 'del',
+            kind: tr.getAttribute('data-kind'),
+            id: parseInt(tr.getAttribute('data-id'), 10),
+            de: tr.getAttribute('data-cidade') || ''
+          }, function () { btn.disabled = false; });
+        });
+      };
     });
   }
 
@@ -880,7 +1005,7 @@
     var nTrans = oficiaisDo('translado').length;
     var abaInicial = st.tarifaAba === 'translado' ? 'translado' : 'guia';
     body.innerHTML =
-      markupTabelaPasseios('Cada experiência entra em todas as cidades de embarque dela. O passeio de duas experiências entra só na cidade que as duas têm, com uma tarifa nova.') +
+      markupTabelaPasseios('Escolha a cidade de embarque de cada passeio. Dá para acrescentar outra cidade ou excluir.') +
       '<div class="tf-pin">' +
       '<p class="tf-pin__label">Valores globais</p>' +
       '<div class="tf-regras-row">' +

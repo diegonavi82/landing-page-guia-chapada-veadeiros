@@ -533,7 +533,12 @@ function gcv_related_tour_one(PDO $pdo, int $passeioId): array
     $tarifaTranslado = (string)($passeio['tarifa_translado'] ?? '');
     $mapa = gcv_cidades_saida_mapa($pdo);
     $inter = gcv_embarques_intersecao(array_map(static fn($a) => $a['embarques'] ?? [], $attractions));
-    $saidasTarifas = gcv_saidas_tarifas_passeio($passeio, $inter, $mapa);
+    $chavesEmbarque = $inter;
+    $rawSaidas = $passeio['saidas_json'] ?? null;
+    if (count($attractions) >= 2 && $rawSaidas !== null && $rawSaidas !== '') {
+        $chavesEmbarque = gcv_saidas_chaves($rawSaidas, null, $mapa);
+    }
+    $saidasTarifas = gcv_saidas_tarifas_passeio($passeio, $chavesEmbarque, $mapa);
     $pares = [];
     foreach ($saidasTarifas as $saida) {
         if ($saida['guia'] === '' && $saida['translado'] === '') {
@@ -544,7 +549,7 @@ function gcv_related_tour_one(PDO $pdo, int $passeioId): array
     $tarifaPublica = $pares
         ? gcv_tarifa_aplicar_bilingue(gcv_tarifa_de_pares($pares, gcv_tarifario_setting_int($pdo, 'passeio_quorum', 4)), gcv_bilingue_universal_get($pdo))
         : null;
-    $chavesDuracao = $inter ?: array_keys(GCV_TARIFARIO_CIDADES);
+    $chavesDuracao = $chavesEmbarque ?: array_keys(GCV_TARIFARIO_CIDADES);
     $minutosGuardados = (int)($passeio['duration_minutes'] ?? 0);
     $manual = (int)($passeio['duracao_manual'] ?? 0) === 1 && $minutosGuardados > 0;
     $mapaPasseio = [];

@@ -2140,6 +2140,276 @@ function gcv_tarifa_saida_salvar(PDO $pdo, array $body): void
     throw new InvalidArgumentException('Informe a experiência ou o passeio.');
 }
 
+/**
+ * Troca, acrescenta ou tira a cidade de embarque na lista de Passeios.
+ * Experiência: grava em embarques. Passeio com duas ou mais: lista própria.
+ */
+function gcv_embarque_alterar(PDO $pdo, array $body): void
+{
+    $kind = (string)($body['kind'] ?? '');
+    $id = (int)($body['id'] ?? 0);
+    $op = (string)($body['op'] ?? '');
+    $de = trim((string)($body['de'] ?? ''));
+    $para = trim((string)($body['para'] ?? ''));
+    if ($id <= 0) {
+        throw new InvalidArgumentException('Informe a experiência ou o passeio.');
+    }
+    if (!in_array($op, ['set', 'add', 'del'], true)) {
+        throw new InvalidArgumentException('Operação de cidade inválida.');
+    }
+    $mapa = gcv_cidades_saida_mapa($pdo);
+    if ($para !== '' && !isset($mapa[$para])) {
+        throw new InvalidArgumentException('Cidade de embarque inválida.');
+    }
+    if ($de !== '' && !isset($mapa[$de])) {
+        throw new InvalidArgumentException('Cidade de embarque inválida.');
+    }
+    if ($kind === 'atrativo') {
+        gcv_atrativo_embarque_op($pdo, $id, $op, $de, $para, $mapa);
+        return;
+    }
+    if ($kind === 'relacao' || $kind === 'passeio') {
+        gcv_relacao_embarque_op($pdo, $id, $op, $de, $para, $mapa);
+        return;
+    }
+    throw new InvalidArgumentException('Informe a experiência ou o passeio.');
+}
+
+/** @param array<string,string> $mapa */
+function gcv_atrativo_embarque_op(PDO $pdo, int $id, string $op, string $de, string $para, array $mapa): void
+{
+    $stmt = $pdo->prepare('SELECT * FROM gcv_attractions WHERE id = ? LIMIT 1');
+    $stmt->execute([$id]);
+    $row = $stmt->fetch();
+    if (!$row) {
+        throw new InvalidArgumentException('Experiência não encontrada.');
+    }
+    $exp = gcv_experiencia_decode_json($row['experiencia_json'] ?? null);
+    $embarques = [];
+    foreach (is_array($exp['embarques'] ?? null) ? $exp['embarques'] : [] as $key => $item) {
+        $key = (string)$key;
+        if ($key === '' || !isset($mapa[$key]) || !is_array($item)) {
+            continue;
+        }
+        $embarques[$key] = $item;
+    }
+    if (!$embarques) {
+        $rawSaidas = $row['saidas_json'] ?? null;
+        if (is_string($rawSaidas) && $rawSaidas !== '') {
+            $guiaCol = trim((string)($row['tarifa_guia'] ?? ''));
+            $transCol = trim((string)($row['tarifa_translado'] ?? ''));
+            foreach (gcv_saidas_chaves($rawSaidas, null, $mapa) as $key) {
+                $embarques[$key] = [
+                    'nome' => (string)$mapa[$key],
+                    'guia' => $guiaCol,
+                    'trans' => $transCol,
+                ];
+            }
+        }
+    }
+    if ($op === 'set' && $para !== '' && $para === $de) {
+        return;
+    }
+    if ($op === 'del' || ($op === 'set' && $para === '')) {
+        if ($de === '' || !isset($embarques[$de])) {
+            throw new InvalidArgumentException('Não há cidade de embarque para excluir.');
+        }
+        unset($embarques[$de]);
+        $para = '';
+    } elseif ($op === 'add' || ($op === 'set' && $de === '')) {
+        if ($para === '') {
+            throw new InvalidArgumentException('Escolha a cidade de embarque.');
+        }
+        if (isset($embarques[$para])) {
+            throw new InvalidArgumentException('Essa cidade já está neste passeio.');
+        }
+        $embarques[$para] = $embarques
+            ? ['nome' => (string)$mapa[$para], 'guia' => '', 'trans' => '']
+            : [
+                'nome' => (string)$mapa[$para],
+                'guia' => trim((string)($row['tarifa_guia'] ?? '')),
+                'trans' => trim((string)($row['tarifa_translado'] ?? '')),
+            ];
+    } else {
+        if ($de === '' || !isset($embarques[$de])) {
+            throw new InvalidArgumentException('Cidade de embarque não encontrada.');
+        }
+        if ($para === '') {
+            throw new InvalidArgumentException('Escolha a cidade de embarque.');
+        }
+        if (isset($embarques[$para])) {
+            throw new InvalidArgumentException('Essa cidade já está neste passeio.');
+        }
+        $novo = [];
+        foreach ($embarques as $key => $item) {
+            if ($key === $de) {
+                $item['nome'] = (string)$mapa[$para];
+                $novo[$para] = $item;
+                continue;
+            }
+            $novo[$key] = $item;
+        }
+        $embarques = $novo;
+    }
+    if ($de !== '' && (string)($exp['principal'] ?? '') === $de) {
+        $sobrou = array_key_first($embarques);
+        $exp['principal'] = $para !== '' ? $para : (string)($sobrou ?? '');
+    } elseif (trim((string)($exp['principal'] ?? '')) === '' && $para !== '') {
+        $exp['principal'] = $para;
+    }
+    $exp['embarques'] = $embarques;
+    $lista = [];
+    foreach ($embarques as $key => $item) {
+        $lista[] = [
+            'key' => (string)$key,
+            'nome' => (string)$mapa[$key],
+            'guia' => trim((string)($item['guia'] ?? '')),
+            'translado' => trim((string)($item['trans'] ?? ($item['translado'] ?? ''))),
+        ];
+    }
+    if ($lista) {
+        [$guia, $trans] = gcv_tarifa_colunas_da_lista($lista);
+    } else {
+        $guiaCol = trim((string)($row['tarifa_guia'] ?? ''));
+        $transCol = trim((string)($row['tarifa_translado'] ?? ''));
+        $guia = $guiaCol !== '' ? $guiaCol : null;
+        $trans = $transCol !== '' ? $transCol : null;
+    }
+    $erro = gcv_atrativo_erro_embarques_vs_relacionados($pdo, $id, [
+        'experiencia' => $exp,
+        'tarifa_guia' => $guia ?? '',
+        'tarifa_translado' => $trans ?? '',
+    ]);
+    if ($erro !== null) {
+        throw new InvalidArgumentException($erro);
+    }
+    $dur = gcv_experiencia_decode_json($row['duracao_json'] ?? null);
+    if ($de !== '' && array_key_exists($de, $dur)) {
+        if ($para !== '') {
+            $dur[$para] = $dur[$de];
+        }
+        unset($dur[$de]);
+    }
+    $chaves = array_keys($embarques);
+    $pdo->prepare('UPDATE gcv_attractions SET tarifa_guia = ?, tarifa_translado = ?, experiencia_json = ?, saidas_json = ?, duracao_json = ? WHERE id = ?')->execute([
+        $guia,
+        $trans,
+        json_encode($exp, JSON_UNESCAPED_UNICODE),
+        json_encode(array_values($chaves), JSON_UNESCAPED_UNICODE),
+        $dur ? json_encode($dur, JSON_UNESCAPED_UNICODE) : null,
+        $id,
+    ]);
+    if (function_exists('gcv_experiencia_apos_atrativo')) {
+        gcv_experiencia_apos_atrativo($pdo, $id);
+    }
+}
+
+/** @param array<string,string> $mapa */
+function gcv_relacao_embarque_op(PDO $pdo, int $id, string $op, string $de, string $para, array $mapa): void
+{
+    $stmt = $pdo->prepare('SELECT * FROM gcv_passeio_relacionado WHERE id = ? LIMIT 1');
+    $stmt->execute([$id]);
+    $passeio = $stmt->fetch();
+    if (!$passeio) {
+        throw new InvalidArgumentException('Passeio não encontrado.');
+    }
+    if (count(gcv_passeio_atrativo_ids($pdo, $id)) < 2) {
+        throw new InvalidArgumentException('Passeio não encontrado.');
+    }
+    $raw = $passeio['saidas_json'] ?? null;
+    if ($raw !== null && $raw !== '') {
+        $chaves = gcv_saidas_chaves($raw, null, $mapa);
+    } else {
+        $listas = [];
+        foreach (gcv_passeio_atrativo_ids($pdo, $id) as $attractionId) {
+            $row = gcv_atrativo_row_min($pdo, $attractionId);
+            if (!$row) {
+                continue;
+            }
+            $listas[] = gcv_embarques_publicos(
+                isset($row['experiencia_json']) ? (string)$row['experiencia_json'] : null,
+                $row['saidas_json'] ?? null,
+                null,
+                $mapa
+            );
+        }
+        $chaves = gcv_embarques_intersecao($listas);
+    }
+    $tarifas = gcv_passeio_tarifas_saida_map($passeio);
+    if ($op === 'set' && $para !== '' && $para === $de) {
+        return;
+    }
+    if ($op === 'del' || ($op === 'set' && $para === '')) {
+        if ($de === '' || !in_array($de, $chaves, true)) {
+            throw new InvalidArgumentException('Não há cidade de embarque para excluir.');
+        }
+        $chaves = array_values(array_filter($chaves, static function (string $key) use ($de): bool {
+            return $key !== $de;
+        }));
+        unset($tarifas[$de]);
+        $para = '';
+    } elseif ($op === 'add' || ($op === 'set' && $de === '')) {
+        if ($para === '') {
+            throw new InvalidArgumentException('Escolha a cidade de embarque.');
+        }
+        if (in_array($para, $chaves, true)) {
+            throw new InvalidArgumentException('Essa cidade já está neste passeio.');
+        }
+        $primeira = $chaves === [];
+        $chaves[] = $para;
+        $guiaCol = trim((string)($passeio['tarifa_guia'] ?? ''));
+        $transCol = trim((string)($passeio['tarifa_translado'] ?? ''));
+        if ($primeira && ($guiaCol !== '' || $transCol !== '')) {
+            $tarifas[$para] = ['guia' => $guiaCol, 'translado' => $transCol];
+        }
+    } else {
+        if ($de === '' || !in_array($de, $chaves, true)) {
+            throw new InvalidArgumentException('Cidade de embarque não encontrada.');
+        }
+        if ($para === '') {
+            throw new InvalidArgumentException('Escolha a cidade de embarque.');
+        }
+        if (in_array($para, $chaves, true)) {
+            throw new InvalidArgumentException('Essa cidade já está neste passeio.');
+        }
+        $chaves = array_map(static function (string $key) use ($de, $para): string {
+            return $key === $de ? $para : $key;
+        }, $chaves);
+        if (isset($tarifas[$de])) {
+            $tarifas[$para] = $tarifas[$de];
+            unset($tarifas[$de]);
+        }
+    }
+    $map = [];
+    foreach ($chaves as $key) {
+        $par = $tarifas[$key] ?? ['guia' => '', 'translado' => ''];
+        $guia = trim((string)($par['guia'] ?? ''));
+        $trans = trim((string)($par['translado'] ?? ''));
+        if ($guia !== '') {
+            $erro = gcv_passeio_erro_tarifa_abaixo_cidades($pdo, $id, $guia, $key);
+            if ($erro !== null) {
+                throw new InvalidArgumentException($erro);
+            }
+        }
+        if ($guia !== '' || $trans !== '') {
+            $map[$key] = ['guia' => $guia, 'translado' => $trans];
+        }
+    }
+    $dur = gcv_experiencia_decode_json($passeio['duracao_json'] ?? null);
+    if ($de !== '' && array_key_exists($de, $dur)) {
+        if ($para !== '') {
+            $dur[$para] = $dur[$de];
+        }
+        unset($dur[$de]);
+    }
+    $pdo->prepare('UPDATE gcv_passeio_relacionado SET saidas_json = ?, tarifas_saida_json = ?, duracao_json = ? WHERE id = ?')->execute([
+        json_encode(array_values($chaves), JSON_UNESCAPED_UNICODE),
+        $map ? json_encode($map, JSON_UNESCAPED_UNICODE) : null,
+        $dur ? json_encode($dur, JSON_UNESCAPED_UNICODE) : null,
+        $id,
+    ]);
+}
+
 function gcv_tarifa_oficial_realocar_json(PDO $pdo, string $de, string $para, string $campo): void
 {
     $de = trim($de);
@@ -3002,7 +3272,7 @@ function gcv_tarifario_admin_overview(PDO $pdo): array
     return [
         'max_atrativos' => gcv_passeio_max_atrativos($pdo),
         'categorias' => GCV_PASSEIO_CATEGORIAS,
-        'cidades' => GCV_TARIFARIO_CIDADES,
+        'cidades' => $mapaSaidas,
         'tarifas_oficiais' => gcv_tarifas_oficiais(),
         'bilingue' => gcv_bilingue_universal_get($pdo),
         'regras' => gcv_tarifario_regras_get($pdo),
