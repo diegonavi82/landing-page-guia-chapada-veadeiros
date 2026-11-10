@@ -566,78 +566,6 @@ const RAW = [
     ),
   }),
   spot({
-    slug: "curriola-guia-chapada-veadeiros",
-    file: "curriola-guia-chapada-veadeiros-mapa.jpg",
-    map: { l: 66, t: 1.5, w: 8, h: 4 },
-    title: L("Curriola", "Curriola", "Curriola"),
-    lead: L(
-      "Salto do Rio Curriola no Vão do Moleque, território Kalunga, em Cavalcante, na Chapada dos Veadeiros.",
-      "A drop on the Curriola River in Vão do Moleque, Kalunga land, in Cavalcante, Chapada dos Veadeiros.",
-      "Un salto del río Curriola en el Vão do Moleque, territorio Kalunga, en Cavalcante, Chapada dos Veadeiros.",
-    ),
-    info: L(
-      [
-        "Distância de Cavalcante: cerca de 53 km, com 4x4 no final",
-        "Distância da Trilha (ida e volta): cerca de 2 km",
-        "Nível de Dificuldade: Leve na trilha; estrada difícil",
-        "Atrativos:",
-        "- poço azul-esverdeado do Salto do Curriola",
-        "- poços rio acima, em trecho opcional",
-        "Entrada: cobrada no local",
-        "Guia Kalunga obrigatório",
-        "Período recomendado para visitação:",
-        "Seca, de maio a novembro",
-      ],
-      [
-        "Distance from Cavalcante: about 53 km, with a 4x4 at the end",
-        "Trail distance (round trip): about 2 km",
-        "Difficulty: Easy trail; hard road",
-        "Highlights:",
-        "- blue-green pool at Salto do Curriola",
-        "- upstream pools on an optional stretch",
-        "Entry: paid on site",
-        "Kalunga guide required",
-        "Best time to visit:",
-        "Dry season, May to November",
-      ],
-      [
-        "Distancia desde Cavalcante: unos 53 km, con 4x4 al final",
-        "Distancia del sendero (ida y vuelta): unos 2 km",
-        "Dificultad: Sendero fácil; camino difícil",
-        "Atractivos:",
-        "- poza azul verdosa del Salto do Curriola",
-        "- pozas río arriba, en un tramo opcional",
-        "Entrada: de pago en el lugar",
-        "Guía Kalunga obligatorio",
-        "Mejor época:",
-        "Seca, de mayo a noviembre",
-      ],
-    ),
-    html: L(
-      `<p>O Salto do Curriola fica no Vão do Moleque, território Kalunga em Cavalcante, na Chapada dos Veadeiros. É uma queda do mesmo rio que abriga a Cachoeira do Guardião, mas é outro atrativo: o poço é mais perto da estrada e a trilha é curta.</p>
-<h3><strong>O poço</strong></h3>
-<p>A água desce de um paredão estreito para um poço azul-esverdeado, cercado de mata. A trilha principal tem cerca de 2 km ida e volta. Quem quiser segue rio acima por mais uns 4 km, passando por outros poços.</p>
-<h3><strong>Como chegar</strong></h3>
-<p>O acesso curto, cerca de 53 km desde Cavalcante, sobe a estrada do Maquiné a partir do Engenho II. É serra de 4x4. Existe um contorno bem mais longo, pela estrada do Complexo do Prata, que carro comum enfrenta na seca. O guia Kalunga é obrigatório e a entrada é da comunidade.</p>
-<h3><strong>Quando ir</strong></h3>
-<p>A visitação se concentra na seca, de maio a novembro. Na chuva o rio enche e o atrativo costuma fechar. Calçado que molhe e um dia inteiro, se for juntar o Guardião.</p>`,
-      `<p>Salto do Curriola is in Vão do Moleque, Kalunga land in Cavalcante, Chapada dos Veadeiros. It is a fall on the same river as Cachoeira do Guardião, but it is a separate place: the pool is closer to the road and the trail is short.</p>
-<h3><strong>The pool</strong></h3>
-<p>Water comes off a narrow wall into a blue-green pool, wrapped in forest. The main trail is about 2 km round trip. Anyone who wants can follow the river upstream for about 4 km more, past other pools.</p>
-<h3><strong>How to get there</strong></h3>
-<p>The short access, about 53 km from Cavalcante, climbs the Maquiné road out of Engenho II. It is 4x4 country. A much longer way around, by the Complexo do Prata road, is what an ordinary car attempts in the dry season. A Kalunga guide is required and the ticket belongs to the community.</p>
-<h3><strong>When to go</strong></h3>
-<p>Visits concentrate in the dry season, May to November. In the rains the river rises and the place usually closes. Bring shoes that can get wet, and a full day if you add Guardião.</p>`,
-      `<p>El Salto do Curriola está en el Vão do Moleque, territorio Kalunga en Cavalcante, Chapada dos Veadeiros. Es una caída del mismo río que alberga la Cachoeira do Guardião, pero es otro atractivo: la poza queda más cerca del camino y el sendero es corto.</p>
-<h3><strong>La poza</strong></h3>
-<p>El agua baja de una pared estrecha a una poza azul verdosa, rodeada de mata. El sendero principal tiene unos 2 km ida y vuelta. Quien quiera sigue río arriba unos 4 km más, pasando por otras pozas.</p>
-<h3><strong>Cómo llegar</strong></h3>
-<p>El acceso corto, unos 53 km desde Cavalcante, sube el camino del Maquiné desde Engenho II. Es sierra de 4x4. Hay un rodeo mucho más largo, por el camino del Complejo do Prata, que el coche común intenta en la seca. El guía Kalunga es obligatorio y la entrada es de la comunidad.</p>
-<h3><strong>Cuándo ir</strong></h3>
-<p>La visita se concentra en la seca, de mayo a noviembre. Con lluvia el río crece y el lugar suele cerrar. Calzado que se moje y un día entero si se suma el Guardião.</p>`,
-    ),
-  }),
-  spot({
     slug: "dragao-4x4-guia-chapada-veadeiros",
     file: "cachoeira-do-dragao-guia-chapada-veadeiros.jpg",
     map: { l: 88, t: 72, w: 8, h: 4 },
@@ -768,23 +696,17 @@ const RAW = [
 <h3><strong>A trilha</strong></h3>
 <p>São cerca de 3 km por sentido, 6 km ida e volta, em pedra molhada no fundo do cânion. O sol entra na queda mais ou menos entre 10h e 14h. Fora da seca o volume sobe e o passeio fecha pelo risco de cabeça d'água.</p>
 <h3><strong>Como chegar</strong></h3>
-<p>De Cavalcante são cerca de 70 km pela GO-241, terra o caminho inteiro. 4x4 é o veículo do passeio. O guia é Kalunga e a entrada é da comunidade, à parte da diária do condutor.</p>
-<h3><strong>Vizinha</strong></h3>
-<p>O Salto do Curriola é outro poço do mesmo rio, com trilha mais curta. Juntar os dois pede saída cedo e perna para o dia inteiro. Leve calçado que molhe e uma troca de roupa no carro.</p>`,
+<p>De Cavalcante são cerca de 70 km pela GO-241, terra o caminho inteiro. 4x4 é o veículo do passeio. O guia é Kalunga e a entrada é da comunidade, à parte da diária do condutor.</p>`,
       `<p>Guardião waterfall is in Vão do Moleque, Kalunga land in Cavalcante, Chapada dos Veadeiros. The fall closes a canyon of the Curriola River. The pool is blue and deep, with a slab that works as a jump. Almost the whole trail is in the river.</p>
 <h3><strong>The trail</strong></h3>
 <p>It is about 3 km each way, 6 km round trip, on wet rock at the bottom of the canyon. Sun reaches the fall roughly between 10 a.m. and 2 p.m. Outside the dry season the volume rises and the tour closes because of flash-flood risk.</p>
 <h3><strong>How to get there</strong></h3>
-<p>From Cavalcante it is about 70 km on GO-241, dirt the whole way. A 4x4 is the vehicle for this tour. The guide is Kalunga and the ticket belongs to the community, separate from the guide's day rate.</p>
-<h3><strong>Neighbor</strong></h3>
-<p>Salto do Curriola is another pool on the same river, with a shorter trail. Doing both means an early start and legs for a full day. Bring shoes that can get wet and a change of clothes in the car.</p>`,
+<p>From Cavalcante it is about 70 km on GO-241, dirt the whole way. A 4x4 is the vehicle for this tour. The guide is Kalunga and the ticket belongs to the community, separate from the guide's day rate.</p>`,
       `<p>La cascada del Guardião está en el Vão do Moleque, territorio Kalunga en Cavalcante, Chapada dos Veadeiros. La caída cierra un cañón del río Curriola. La poza es azul y honda, con una losa que sirve de trampolín. Casi todo el sendero va dentro del río.</p>
 <h3><strong>El sendero</strong></h3>
 <p>Hay unos 3 km por sentido, 6 km ida y vuelta, en piedra mojada al fondo del cañón. El sol entra en la caída más o menos entre las 10 h y las 14 h. Fuera de la seca el caudal sube y el paseo cierra por riesgo de crecida.</p>
 <h3><strong>Cómo llegar</strong></h3>
-<p>Desde Cavalcante hay unos 70 km por la GO-241, tierra todo el camino. El 4x4 es el vehículo del paseo. El guía es Kalunga y la entrada es de la comunidad, aparte de la diaria del conductor.</p>
-<h3><strong>Vecina</strong></h3>
-<p>El Salto do Curriola es otra poza del mismo río, con un sendero más corto. Juntar las dos pide salida temprano y piernas para el día entero. Lleva calzado que se moje y ropa de cambio en el coche.</p>`,
+<p>Desde Cavalcante hay unos 70 km por la GO-241, tierra todo el camino. El 4x4 es el vehículo del paseo. El guía es Kalunga y la entrada es de la comunidad, aparte de la diaria del conductor.</p>`,
     ),
   }),
   spot({

@@ -305,8 +305,6 @@ function gcv_attraction_card_aliases(): array
         'catoa guia chapada veadeiros' => [$page('catoa-guia-chapada-veadeiros'), $img('cachoeira-catoa-guia-chapada-veadeiros-cavalcante.jpg')],
         'chapada alta' => [$page('chapada-alta-guia-chapada-veadeiros'), $img('chapada-alta-guia-chapada-veadeiros-alto-paraiso.jpg')],
         'chapada alta guia chapada veadeiros' => [$page('chapada-alta-guia-chapada-veadeiros'), $img('chapada-alta-guia-chapada-veadeiros-alto-paraiso.jpg')],
-        'curriola' => [$page('curriola-guia-chapada-veadeiros'), $img('curriola-guia-chapada-veadeiros-mapa.jpg')],
-        'curriola guia chapada veadeiros' => [$page('curriola-guia-chapada-veadeiros'), $img('curriola-guia-chapada-veadeiros-mapa.jpg')],
         'guardiao' => [$page('guardiao-4x4-guia-chapada-veadeiros'), $img('cachoeira-do-guardiao-guia-chapada-veadeiros-cavalcante.jpg')],
         'guardiao 4x4 guia chapada veadeiros' => [$page('guardiao-4x4-guia-chapada-veadeiros'), $img('cachoeira-do-guardiao-guia-chapada-veadeiros-cavalcante.jpg')],
         'lajeado' => [$page('lajeado-guia-chapada-veadeiros'), $img('cachoeira-do-lajeado-guia-chapada-veadeiros-sao-jorge.jpg')],
