@@ -5,6 +5,7 @@
 import { mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { NEW_DETAIL_IMAGES, NEW_GALLERIES } from "./atrativos-novos.mjs";
 import {
   HOTSPOTS,
   STRINGS,
@@ -104,7 +105,7 @@ const FOOTER_WA_PLAN_URL =
 const ATTRACTION_GALLERIES = (() => {
   const raw = JSON.parse(readFileSync(join(__dirname, "attraction-galleries.json"), "utf8"));
   const { _meta, ...rest } = raw;
-  return rest;
+  return { ...rest, ...NEW_GALLERIES };
 })();
 
 function loadEnv() {
@@ -300,6 +301,7 @@ const DETAIL_IMAGE_BY_SLUG = {
     "/imagens/cachoeira-macaquinhos-guia-chapada-veadeiros-6.jpg",
   "caracol-guia-chapada-veadeiros":
     "/imagens/cachoeira-do-caracol-complexo-caldeira-alto-paraiso.jpg",
+  ...NEW_DETAIL_IMAGES,
 };
 
 function esc(s) {
@@ -400,6 +402,7 @@ function getCmsAttraction(locale, baseSlug) {
     ...(edit.bodyHtml != null ? { bodyHtml: String(edit.bodyHtml) } : {}),
     ...(edit.sidebarHtml != null ? { sidebarHtml: String(edit.sidebarHtml) } : {}),
     ...(edit.excerpt ? { excerpt: String(edit.excerpt) } : {}),
+    ...(edit.seoDescription ? { seoDescription: String(edit.seoDescription) } : {}),
     ...(Object.prototype.hasOwnProperty.call(edit, "subtitle") ? { subtitle: String(edit.subtitle || "") } : {}),
   };
 }
@@ -423,9 +426,14 @@ function baseSlugFromLocaleSlug(locale, localeSlug) {
   return localeSlug;
 }
 
+function extraAttractionBases() {
+  const listed = new Set(CMS?.waterfallBaseSlugs || []);
+  return HOTSPOTS.map((h) => h.slug).filter((slug) => !listed.has(slug));
+}
+
 function attractionIterate(locale) {
   if (CMS?.waterfallBaseSlugs?.length) {
-    return CMS.waterfallBaseSlugs
+    return [...CMS.waterfallBaseSlugs, ...extraAttractionBases()]
       .map((base) => {
         const h = HOTSPOTS.find((x) => x.slug === base);
         if (!h) return null;
@@ -2652,7 +2660,7 @@ function atrativoDetailMain(locale, localeSlug, ap, pathKey) {
     <section class="gcv-detail-region-map" aria-label="${esc(S.home.mapInteractiveTitle)}">
       <h2 class="gcv-detail-region-map__title">${esc(S.home.mapInteractiveTitle)}</h2>
       <p class="gcv-detail-region-map__lead">${esc(S.home.mapEmbeddedLead)}</p>
-      ${mapFigureHtml(locale, ap, cur, localeSlug, "embedded")}
+      ${mapFigureHtml(locale, ap, cur, localeSlugForBase(locale, p.mapOf || base), "embedded")}
     </section>
   </div>
 </article>
@@ -3316,7 +3324,9 @@ for (const locale of LOCALES) {
     noteSitemapUrl(locale, pk, { priority: 0.75, changefreq: "weekly", ogImageRel: af.og, title: af.title(locale) });
   }
 
-  const attractionBases = CMS?.waterfallBaseSlugs?.length ? CMS.waterfallBaseSlugs : HOTSPOTS.map((h) => h.slug);
+  const attractionBases = CMS?.waterfallBaseSlugs?.length
+    ? [...CMS.waterfallBaseSlugs, ...extraAttractionBases()]
+    : HOTSPOTS.map((h) => h.slug);
   for (const base of attractionBases) {
     const hot = HOTSPOTS.find((x) => x.slug === base);
     if (!hot) continue;

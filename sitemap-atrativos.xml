@@ -3,9 +3,43 @@
         xmlns:xhtml="http://www.w3.org/1999/xhtml"
         xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url>
+    <loc>https://www.guiachapadaveadeiros.com/atrativos/bocaina-de-farias-guia-chapada-veadeiros.html</loc>
+
+    <lastmod>2026-11-10</lastmod>
+
+    <changefreq>weekly</changefreq>
+
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://www.guiachapadaveadeiros.com/atrativos/bocaina-de-farias-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.guiachapadaveadeiros.com/en/atrativos/bocaina-de-farias-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.guiachapadaveadeiros.com/es/atrativos/bocaina-de-farias-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.guiachapadaveadeiros.com/atrativos/bocaina-de-farias-guia-chapada-veadeiros.html" />
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/imagens/cachoeira-bocaina-de-farias-guia-chapada-veadeiros.jpg</image:loc>
+      <image:title>Bocaina de Farias</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://www.guiachapadaveadeiros.com/atrativos/boqueirao-guia-chapada-veadeiros.html</loc>
+
+    <lastmod>2026-11-10</lastmod>
+
+    <changefreq>weekly</changefreq>
+
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://www.guiachapadaveadeiros.com/atrativos/boqueirao-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.guiachapadaveadeiros.com/en/atrativos/boqueirao-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.guiachapadaveadeiros.com/es/atrativos/boqueirao-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.guiachapadaveadeiros.com/atrativos/boqueirao-guia-chapada-veadeiros.html" />
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/imagens/boqueirao-guia-chapada-veadeiros-mapa.jpg</image:loc>
+      <image:title>Boqueirão</image:title>
+    </image:image>
+  </url>
+  <url>
     <loc>https://www.guiachapadaveadeiros.com/atrativos/cachoeira-almecegas-poco-sao-bento-guia-chapada-veadeiros.html</loc>
 
-    <lastmod>2026-10-13</lastmod>
+    <lastmod>2026-11-10</lastmod>
 
     <changefreq>weekly</changefreq>
 
@@ -22,7 +56,7 @@
   <url>
     <loc>https://www.guiachapadaveadeiros.com/atrativos/cachoeira-anjos-arcanjos-guia-chapada-veadeiros-alto-paraiso.html</loc>
 
-    <lastmod>2026-10-13</lastmod>
+    <lastmod>2026-11-10</lastmod>
 
     <changefreq>weekly</changefreq>
 
@@ -39,7 +73,7 @@
   <url>
     <loc>https://www.guiachapadaveadeiros.com/atrativos/cachoeira-complexo-rio-prata-guia-chapada-veadeiros-cavalcante.html</loc>
 
-    <lastmod>2026-10-13</lastmod>
+    <lastmod>2026-11-10</lastmod>
 
     <changefreq>weekly</changefreq>
 
@@ -56,7 +90,7 @@
   <url>
     <loc>https://www.guiachapadaveadeiros.com/atrativos/cachoeira-cordovil-poco-esmeralda-guia-chapada-veadeiros.html</loc>
 
-    <lastmod>2026-10-13</lastmod>
+    <lastmod>2026-11-10</lastmod>
 
     <changefreq>weekly</changefreq>
 
@@ -73,7 +107,7 @@
   <url>
     <loc>https://www.guiachapadaveadeiros.com/atrativos/cachoeira-cristais-guia-chapada-veadeiros-alto-paraiso.html</loc>
 
-    <lastmod>2026-10-13</lastmod>
+    <lastmod>2026-11-10</lastmod>
 
     <changefreq>weekly</changefreq>
 
@@ -90,7 +124,7 @@
   <url>
     <loc>https://www.guiachapadaveadeiros.com/atrativos/cachoeira-label-guia-chapada-veadeiros-sao-joao-alianca.html</loc>
 
-    <lastmod>2026-10-13</lastmod>
+    <lastmod>2026-11-10</lastmod>
 
     <changefreq>weekly</changefreq>
 
@@ -107,7 +141,7 @@
   <url>
     <loc>https://www.guiachapadaveadeiros.com/atrativos/cachoeira-loquinhas-guia-chapada-veadeiros-alto-paraiso.html</loc>
 
-    <lastmod>2026-10-13</lastmod>
+    <lastmod>2026-11-10</lastmod>
 
     <changefreq>weekly</changefreq>
 
@@ -124,7 +158,7 @@
   <url>
     <loc>https://www.guiachapadaveadeiros.com/atrativos/cachoeira-macacao-guia-chapada-veadeiros-sao-joao-alianca.html</loc>
 
-    <lastmod>2026-10-13</lastmod>
+    <lastmod>2026-11-10</lastmod>
 
     <changefreq>weekly</changefreq>
 
@@ -141,7 +175,7 @@
   <url>
     <loc>https://www.guiachapadaveadeiros.com/atrativos/cachoeira-macaquinhos-guia-chapada-veadeiros-sao-joao-alianca.html</loc>
 
-    <lastmod>2026-10-13</lastmod>
+    <lastmod>2026-11-10</lastmod>
 
     <changefreq>weekly</changefreq>
 
@@ -158,7 +192,7 @@
   <url>
     <loc>https://www.guiachapadaveadeiros.com/atrativos/cachoeira-poco-encantado-guia-chapada-veadeiros-teresina-de-goias.html</loc>
 
-    <lastmod>2026-10-13</lastmod>
+    <lastmod>2026-11-10</lastmod>
 
     <changefreq>weekly</changefreq>
 
@@ -175,7 +209,7 @@
   <url>
     <loc>https://www.guiachapadaveadeiros.com/atrativos/cachoeira-ponte-de-pedra-guia-chapada-veadeiros-cavalcante.html</loc>
 
-    <lastmod>2026-10-13</lastmod>
+    <lastmod>2026-11-10</lastmod>
 
     <changefreq>weekly</changefreq>
 
@@ -192,7 +226,7 @@
   <url>
     <loc>https://www.guiachapadaveadeiros.com/atrativos/cachoeira-santa-barbara-guia-chapada-veadeiros-cavalcante.html</loc>
 
-    <lastmod>2026-10-13</lastmod>
+    <lastmod>2026-11-10</lastmod>
 
     <changefreq>weekly</changefreq>
 
@@ -209,7 +243,7 @@
   <url>
     <loc>https://www.guiachapadaveadeiros.com/atrativos/cachoeira-segredo-guia-chapada-veadeiros-sao-jorge.html</loc>
 
-    <lastmod>2026-10-13</lastmod>
+    <lastmod>2026-11-10</lastmod>
 
     <changefreq>weekly</changefreq>
 
@@ -224,9 +258,60 @@
     </image:image>
   </url>
   <url>
+    <loc>https://www.guiachapadaveadeiros.com/atrativos/candaru-guia-chapada-veadeiros.html</loc>
+
+    <lastmod>2026-11-10</lastmod>
+
+    <changefreq>weekly</changefreq>
+
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://www.guiachapadaveadeiros.com/atrativos/candaru-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.guiachapadaveadeiros.com/en/atrativos/candaru-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.guiachapadaveadeiros.com/es/atrativos/candaru-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.guiachapadaveadeiros.com/atrativos/candaru-guia-chapada-veadeiros.html" />
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/imagens/candaru-guia-chapada-veadeiros-mapa.jpg</image:loc>
+      <image:title>Candaru</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://www.guiachapadaveadeiros.com/atrativos/canjica-aguas-lindas-guia-chapada-veadeiros.html</loc>
+
+    <lastmod>2026-11-10</lastmod>
+
+    <changefreq>weekly</changefreq>
+
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://www.guiachapadaveadeiros.com/atrativos/canjica-aguas-lindas-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.guiachapadaveadeiros.com/en/atrativos/canjica-aguas-lindas-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.guiachapadaveadeiros.com/es/atrativos/canjica-aguas-lindas-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.guiachapadaveadeiros.com/atrativos/canjica-aguas-lindas-guia-chapada-veadeiros.html" />
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/imagens/complexo-aguas-lindas-canjica-guia-chapada-veadeiros-cavalcante.jpg</image:loc>
+      <image:title>Canjica e Águas Lindas</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://www.guiachapadaveadeiros.com/atrativos/capivara-guia-chapada-veadeiros.html</loc>
+
+    <lastmod>2026-11-10</lastmod>
+
+    <changefreq>weekly</changefreq>
+
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://www.guiachapadaveadeiros.com/atrativos/capivara-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.guiachapadaveadeiros.com/en/atrativos/capivara-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.guiachapadaveadeiros.com/es/atrativos/capivara-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.guiachapadaveadeiros.com/atrativos/capivara-guia-chapada-veadeiros.html" />
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/imagens/cachoeira-capivara-guia-chapada-veadeiros-cavalcante.jpg</image:loc>
+      <image:title>Capivara</image:title>
+    </image:image>
+  </url>
+  <url>
     <loc>https://www.guiachapadaveadeiros.com/atrativos/caracol-guia-chapada-veadeiros.html</loc>
 
-    <lastmod>2026-10-13</lastmod>
+    <lastmod>2026-11-10</lastmod>
 
     <changefreq>weekly</changefreq>
 
@@ -243,7 +328,7 @@
   <url>
     <loc>https://www.guiachapadaveadeiros.com/atrativos/cataratas-dos-couros-guia-chapada-veadeiros-alto-paraiso.html</loc>
 
-    <lastmod>2026-10-13</lastmod>
+    <lastmod>2026-11-10</lastmod>
 
     <changefreq>weekly</changefreq>
 
@@ -258,9 +343,128 @@
     </image:image>
   </url>
   <url>
+    <loc>https://www.guiachapadaveadeiros.com/atrativos/catoa-guia-chapada-veadeiros.html</loc>
+
+    <lastmod>2026-11-10</lastmod>
+
+    <changefreq>weekly</changefreq>
+
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://www.guiachapadaveadeiros.com/atrativos/catoa-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.guiachapadaveadeiros.com/en/atrativos/catoa-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.guiachapadaveadeiros.com/es/atrativos/catoa-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.guiachapadaveadeiros.com/atrativos/catoa-guia-chapada-veadeiros.html" />
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/imagens/catoa-guia-chapada-veadeiros-mapa.jpg</image:loc>
+      <image:title>Catoá</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://www.guiachapadaveadeiros.com/atrativos/chapada-alta-guia-chapada-veadeiros.html</loc>
+
+    <lastmod>2026-11-10</lastmod>
+
+    <changefreq>weekly</changefreq>
+
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://www.guiachapadaveadeiros.com/atrativos/chapada-alta-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.guiachapadaveadeiros.com/en/atrativos/chapada-alta-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.guiachapadaveadeiros.com/es/atrativos/chapada-alta-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.guiachapadaveadeiros.com/atrativos/chapada-alta-guia-chapada-veadeiros.html" />
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/imagens/chapada-alta-guia-chapada-veadeiros-mapa.jpg</image:loc>
+      <image:title>Chapada Alta</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://www.guiachapadaveadeiros.com/atrativos/curriola-guia-chapada-veadeiros.html</loc>
+
+    <lastmod>2026-11-10</lastmod>
+
+    <changefreq>weekly</changefreq>
+
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://www.guiachapadaveadeiros.com/atrativos/curriola-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.guiachapadaveadeiros.com/en/atrativos/curriola-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.guiachapadaveadeiros.com/es/atrativos/curriola-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.guiachapadaveadeiros.com/atrativos/curriola-guia-chapada-veadeiros.html" />
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/imagens/curriola-guia-chapada-veadeiros-mapa.jpg</image:loc>
+      <image:title>Curriola</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://www.guiachapadaveadeiros.com/atrativos/dragao-4x4-guia-chapada-veadeiros.html</loc>
+
+    <lastmod>2026-11-10</lastmod>
+
+    <changefreq>weekly</changefreq>
+
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://www.guiachapadaveadeiros.com/atrativos/dragao-4x4-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.guiachapadaveadeiros.com/en/atrativos/dragao-4x4-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.guiachapadaveadeiros.com/es/atrativos/dragao-4x4-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.guiachapadaveadeiros.com/atrativos/dragao-4x4-guia-chapada-veadeiros.html" />
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/imagens/cachoeira-do-dragao-guia-chapada-veadeiros.jpg</image:loc>
+      <image:title>Dragão</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://www.guiachapadaveadeiros.com/atrativos/guardiao-4x4-guia-chapada-veadeiros.html</loc>
+
+    <lastmod>2026-11-10</lastmod>
+
+    <changefreq>weekly</changefreq>
+
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://www.guiachapadaveadeiros.com/atrativos/guardiao-4x4-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.guiachapadaveadeiros.com/en/atrativos/guardiao-4x4-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.guiachapadaveadeiros.com/es/atrativos/guardiao-4x4-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.guiachapadaveadeiros.com/atrativos/guardiao-4x4-guia-chapada-veadeiros.html" />
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/imagens/guardiao-4x4-guia-chapada-veadeiros-mapa.jpg</image:loc>
+      <image:title>Guardião</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://www.guiachapadaveadeiros.com/atrativos/lajeado-guia-chapada-veadeiros.html</loc>
+
+    <lastmod>2026-11-10</lastmod>
+
+    <changefreq>weekly</changefreq>
+
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://www.guiachapadaveadeiros.com/atrativos/lajeado-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.guiachapadaveadeiros.com/en/atrativos/lajeado-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.guiachapadaveadeiros.com/es/atrativos/lajeado-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.guiachapadaveadeiros.com/atrativos/lajeado-guia-chapada-veadeiros.html" />
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/imagens/cachoeira-do-lajeado-guia-chapada-veadeiros-sao-jorge.jpg</image:loc>
+      <image:title>Lajeado</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://www.guiachapadaveadeiros.com/atrativos/mirante-da-janela-noturno-guia-chapada-veadeiros.html</loc>
+
+    <lastmod>2026-11-10</lastmod>
+
+    <changefreq>weekly</changefreq>
+
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://www.guiachapadaveadeiros.com/atrativos/mirante-da-janela-noturno-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.guiachapadaveadeiros.com/en/atrativos/mirante-da-janela-noturno-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.guiachapadaveadeiros.com/es/atrativos/mirante-da-janela-noturno-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.guiachapadaveadeiros.com/atrativos/mirante-da-janela-noturno-guia-chapada-veadeiros.html" />
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/imagens/mirante-da-janela-noturno-guia-chapada-veadeiros-sao-jorge.jpg</image:loc>
+      <image:title>Mirante da Janela Noturno</image:title>
+    </image:image>
+  </url>
+  <url>
     <loc>https://www.guiachapadaveadeiros.com/atrativos/mirante-janela-cachoeira-abismo-guia-chapada-veadeiros-sao-jorge.html</loc>
 
-    <lastmod>2026-10-13</lastmod>
+    <lastmod>2026-11-10</lastmod>
 
     <changefreq>weekly</changefreq>
 
@@ -275,9 +479,26 @@
     </image:image>
   </url>
   <url>
+    <loc>https://www.guiachapadaveadeiros.com/atrativos/morada-do-sol-guia-chapada-veadeiros.html</loc>
+
+    <lastmod>2026-11-10</lastmod>
+
+    <changefreq>weekly</changefreq>
+
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://www.guiachapadaveadeiros.com/atrativos/morada-do-sol-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.guiachapadaveadeiros.com/en/atrativos/morada-do-sol-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.guiachapadaveadeiros.com/es/atrativos/morada-do-sol-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.guiachapadaveadeiros.com/atrativos/morada-do-sol-guia-chapada-veadeiros.html" />
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/imagens/complexo-morada-do-sol-guia-chapada-veadeiros-sao-jorge.jpg</image:loc>
+      <image:title>Morada do Sol</image:title>
+    </image:image>
+  </url>
+  <url>
     <loc>https://www.guiachapadaveadeiros.com/atrativos/parque-nacional-chapada-veadeiros-canions-carioquinhas-sao-jorge.html</loc>
 
-    <lastmod>2026-10-13</lastmod>
+    <lastmod>2026-11-10</lastmod>
 
     <changefreq>weekly</changefreq>
 
@@ -294,7 +515,7 @@
   <url>
     <loc>https://www.guiachapadaveadeiros.com/atrativos/parque-nacional-chapada-veadeiros-saltos-rio-preto-sao-jorge.html</loc>
 
-    <lastmod>2026-10-13</lastmod>
+    <lastmod>2026-11-10</lastmod>
 
     <changefreq>weekly</changefreq>
 
@@ -309,9 +530,77 @@
     </image:image>
   </url>
   <url>
+    <loc>https://www.guiachapadaveadeiros.com/atrativos/parque-nacional-noturno-guia-chapada-veadeiros.html</loc>
+
+    <lastmod>2026-11-10</lastmod>
+
+    <changefreq>weekly</changefreq>
+
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://www.guiachapadaveadeiros.com/atrativos/parque-nacional-noturno-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.guiachapadaveadeiros.com/en/atrativos/parque-nacional-noturno-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.guiachapadaveadeiros.com/es/atrativos/parque-nacional-noturno-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.guiachapadaveadeiros.com/atrativos/parque-nacional-noturno-guia-chapada-veadeiros.html" />
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/imagens/parque-nacional-noturno-guia-chapada-veadeiros-sao-jorge.jpg</image:loc>
+      <image:title>Parque Nacional Noturno</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://www.guiachapadaveadeiros.com/atrativos/raizama-guia-chapada-veadeiros.html</loc>
+
+    <lastmod>2026-11-10</lastmod>
+
+    <changefreq>weekly</changefreq>
+
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://www.guiachapadaveadeiros.com/atrativos/raizama-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.guiachapadaveadeiros.com/en/atrativos/raizama-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.guiachapadaveadeiros.com/es/atrativos/raizama-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.guiachapadaveadeiros.com/atrativos/raizama-guia-chapada-veadeiros.html" />
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/imagens/santuario-raizama-guia-chapada-veadeiros-sao-jorge.jpg</image:loc>
+      <image:title>Raizama</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://www.guiachapadaveadeiros.com/atrativos/sertao-zen-guia-chapada-veadeiros.html</loc>
+
+    <lastmod>2026-11-10</lastmod>
+
+    <changefreq>weekly</changefreq>
+
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://www.guiachapadaveadeiros.com/atrativos/sertao-zen-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.guiachapadaveadeiros.com/en/atrativos/sertao-zen-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.guiachapadaveadeiros.com/es/atrativos/sertao-zen-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.guiachapadaveadeiros.com/atrativos/sertao-zen-guia-chapada-veadeiros.html" />
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/imagens/sertao-zen-guia-chapada-veadeiros-alto-paraiso-2.jpg</image:loc>
+      <image:title>Sertão Zen</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://www.guiachapadaveadeiros.com/atrativos/simao-correia-guia-chapada-veadeiros.html</loc>
+
+    <lastmod>2026-11-10</lastmod>
+
+    <changefreq>weekly</changefreq>
+
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://www.guiachapadaveadeiros.com/atrativos/simao-correia-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.guiachapadaveadeiros.com/en/atrativos/simao-correia-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.guiachapadaveadeiros.com/es/atrativos/simao-correia-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.guiachapadaveadeiros.com/atrativos/simao-correia-guia-chapada-veadeiros.html" />
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/imagens/cachoeira-simao-correia-guia-chapada-veadeiros.jpg</image:loc>
+      <image:title>Simão Correia</image:title>
+    </image:image>
+  </url>
+  <url>
     <loc>https://www.guiachapadaveadeiros.com/atrativos/vale-lua-guia-chapada-veadeiros-sao-jorge.html</loc>
 
-    <lastmod>2026-10-13</lastmod>
+    <lastmod>2026-11-10</lastmod>
 
     <changefreq>weekly</changefreq>
 
@@ -323,6 +612,23 @@
     <image:image>
       <image:loc>https://www.guiachapadaveadeiros.com/assets/img/imagens/vale-lua-guia-chapada-veadeiros-sao-jorge-1.jpg</image:loc>
       <image:title>Vale da Lua</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://www.guiachapadaveadeiros.com/atrativos/veredas-guia-chapada-veadeiros.html</loc>
+
+    <lastmod>2026-11-10</lastmod>
+
+    <changefreq>weekly</changefreq>
+
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://www.guiachapadaveadeiros.com/atrativos/veredas-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.guiachapadaveadeiros.com/en/atrativos/veredas-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.guiachapadaveadeiros.com/es/atrativos/veredas-guia-chapada-veadeiros.html" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.guiachapadaveadeiros.com/atrativos/veredas-guia-chapada-veadeiros.html" />
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/imagens/complexo-veredas-guia-chapada-veadeiros-cavalcante.jpg</image:loc>
+      <image:title>Veredas</image:title>
     </image:image>
   </url>
 </urlset>

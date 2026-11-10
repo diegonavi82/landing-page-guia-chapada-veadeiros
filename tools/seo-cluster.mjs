@@ -14,6 +14,8 @@ export const PILLAR_ORDER = [
   "guia-local-chapada-dos-veadeiros",
 ];
 
+import { NEW_CACHOEIRA_SLUGS, NEW_ECO_SLUGS } from "./atrativos-novos.mjs";
+
 /** Slugs base dos atrativos por pilar (referência interna). */
 const CACHOEIRA_SLUGS = [
   "cachoeira-almecegas-poco-sao-bento-guia-chapada-veadeiros",
@@ -31,12 +33,14 @@ const CACHOEIRA_SLUGS = [
   "cachoeira-anjos-arcanjos-guia-chapada-veadeiros-alto-paraiso",
   "cachoeira-macacao-guia-chapada-veadeiros-sao-joao-alianca",
   "vale-lua-guia-chapada-veadeiros-sao-jorge",
+  ...NEW_CACHOEIRA_SLUGS,
 ];
 
 const ECOTURISMO_SLUGS = [
   "mirante-janela-cachoeira-abismo-guia-chapada-veadeiros-sao-jorge",
   "parque-nacional-chapada-veadeiros-saltos-rio-preto-sao-jorge",
   "parque-nacional-chapada-veadeiros-canions-carioquinhas-sao-jorge",
+  ...NEW_ECO_SLUGS,
 ];
 
 const ARTICLE_CONTRATAR = "revista/contratar-guia-local-chapada-veadeiros.html";
