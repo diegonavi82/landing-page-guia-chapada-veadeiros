@@ -1,27 +1,26 @@
 ---
-description: Ao terminar cada tarefa, commit e push na main publicam o site
+description: Ao terminar cada tarefa, o site sobe direto por FTP, sem esperar o GitHub
 alwaysApply: true
 ---
 
 # Deploy automático
 
-Push na branch `main` publica o site na Hostinger pelo GitHub Actions (`.github/workflows/deploy-hostinger-ftp.yml`).
+O painel e o site vão para o ar da máquina local, por FTP, com `npm run deploy:prod -- <arquivos>`. Credenciais em `.env.deploy`. Destino: `domains/guiachapadaveadeiros.com/public_html`.
 
-Todo comando que alterar arquivo do projeto termina com deploy. Não esperar o usuário dizer "commit", "push" ou "sobe". Esta regra vale mais do que a instrução genérica de só commitar ou só dar push quando pedirem.
+Não esperar a fila do GitHub Actions. Ela passa de 10 minutos e não é o caminho do deploy.
+
+Todo comando que alterar arquivo do site termina com esse envio. Não esperar o usuário dizer "sobe", "commit" ou "push". Esta regra vale mais do que a instrução genérica de só commitar ou só dar push quando pedirem.
 
 Ao terminar a tarefa:
 
 1. Commitar na `main` com uma mensagem curta do porquê.
-2. Dar `git push origin main`.
-3. Um comando curto para o link do run deste commit (`gh run list --branch main --limit 1`, ou a API do GitHub filtrada pelo SHA). Se o primeiro retorno ainda for o run anterior, uma segunda consulta pelo SHA deste commit.
-4. Dizer o que entrou no commit e colar a URL do Actions.
-5. Avisar sozinho quando esse run terminar e o arquivo estiver em `guiachapadaveadeiros.com`. O usuário não precisa perguntar "já foi?". Conferir o HTML ao vivo (sem abrir navegador) antes de dizer que o painel atualizou. Se o run falhar ou for cancelado, avisar também, com a URL.
+2. Enviar só os arquivos do site que mudaram: `npm run deploy:prod -- caminho1 caminho2`. Não enviar `.env`, `config.local.php`, `.env.deploy` nem a pasta `.cursor`.
+3. Conferir no HTML ao vivo (sem abrir navegador) se a versão nova está em `guiachapadaveadeiros.com`.
+4. Dizer o que subiu. O usuário não precisa perguntar "já foi?".
 
-A fila passa de 10 minutos. Não segurar a resposta com `gh run watch` nem com poll no turno. Deixar a consulta em segundo plano e mandar a mensagem quando concluir.
+O `git push` fica para quando o usuário pedir. Um push novo entra na fila lenta e pode cancelar um envio que já estava esperando.
 
-Não fazer outro push enquanto o run que leva a alteração do site ainda está `pending`: a fila cancela o pendente anterior. Esperar ele sair de `pending` para commitar outra coisa.
+Pergunta sem arquivo alterado não gera commit.
 
-Pergunta sem arquivo alterado não gera commit. Não commitar segredo (`.env`, `config.local.php`, `.env.deploy`).
-
-- O envio é incremental. `dangerous-clean-slate` continua `false`: não apagar nem limpar arquivos que já estão na Hostinger.
+- O envio é incremental. Não apagar arquivos que já estão na Hostinger.
 - Não rodar migration no banco da Hostinger (`npm run db:migrate`) a menos que o dono peça essa migration.
