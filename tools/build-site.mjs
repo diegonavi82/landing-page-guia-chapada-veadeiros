@@ -928,6 +928,11 @@ function renderPillarContextLink(locale, pathKey, pageId) {
   });
 }
 
+function galleryField(value, locale) {
+  if (value && typeof value === "object") return String(value[locale] || value.pt || "").trim();
+  return String(value || "").trim();
+}
+
 function picture(ap, rel, alt, w = 1200, h = 800, opts) {
   const m = rel.match(/^(.*)\.(jpe?g|png)$/i);
   const basePath = m ? m[1] : rel;
@@ -1062,7 +1067,7 @@ function attractionPhotoGalleryHtml(locale, ap, baseSlug, pageTitle) {
       const rel = toPublicAssetRel(raw);
       if (!rel) return "";
       const full = `${ap}assets/img/${rel}`;
-      const caption = (item.alt || item.title || "").trim();
+      const caption = galleryField(item.alt, locale) || galleryField(item.title, locale);
       const altText = caption || (pageTitle ? `${pageTitle} — foto ${i + 1}` : `Foto ${i + 1}`);
       const overlay = caption
         ? `<span class="gcv-attract-gallery__overlay" aria-hidden="true"><span class="gcv-attract-gallery__overlay-text">${esc(caption)}</span></span>`
@@ -2515,7 +2520,7 @@ function atrativoDetailMain(locale, localeSlug, ap, pathKey) {
   const hasManifestGallery = Array.isArray(galleryItems) && galleryItems.length > 0;
   const detailImgRel = toPublicAssetRel(rawDetailImage);
   const detailImgHref = detailImgRel ? `${ap}assets/img/${detailImgRel}` : "";
-  const galleryAlt = hasManifestGallery ? String(galleryItems[0].alt || "").trim() : "";
+  const galleryAlt = hasManifestGallery ? galleryField(galleryItems[0].alt, locale) : "";
   const detailImgAlt =
     (firstImage?.alt && String(firstImage.alt).trim()) ||
     galleryAlt ||
