@@ -1208,39 +1208,54 @@
     return window.__gcvPasseiosPromise;
   }
 
-  function initMenuPasseios() {
+  function passeioMenuLang() {
+    var path = window.location.pathname || "";
+    if (path.indexOf("/en/") >= 0) return "en";
+    if (path.indexOf("/es/") >= 0) return "es";
+    return "pt";
+  }
+
+  function ensurePasseioMenuLink() {
+    var nav = document.querySelector(".nav-main");
+    if (!nav) return;
+    var atr = null;
+    var already = false;
+    Array.prototype.forEach.call(nav.querySelectorAll("a"), function (a) {
+      if (a.closest && a.closest(".lang-switch")) return;
+      if (isPasseioMenuLink(a)) already = true;
+      if (/(^|\/)atrativos\.html$/.test(a.getAttribute("href") || "")) atr = a;
+    });
+    if (already || !atr) return;
+    var href = atr.getAttribute("href") || "atrativos.html";
+    var lang = passeioMenuLang();
+    var link = document.createElement("a");
+    link.href = href.replace(/atrativos\.html$/, "passeios.html");
+    link.textContent = lang === "en" ? "Tours" : lang === "es" ? "Paseos" : "Passeios";
+    if (/\/passeios\.html$/.test(window.location.pathname || "")) link.setAttribute("aria-current", "page");
+    atr.insertAdjacentElement("afterend", link);
+  }
+
+  function hidePasseioMenuLink() {
     document.querySelectorAll(".nav-main a").forEach(function (a) {
+      if (a.closest && a.closest(".lang-switch")) return;
       if (isPasseioMenuLink(a)) a.remove();
     });
-    ["gcv-home-passeios", "proximas-saidas"].forEach(function (id) {
-      var el = document.getElementById(id);
-      if (el) el.hidden = true;
-    });
+  }
+
+  function initMenuPasseios() {
+    ensurePasseioMenuLink();
     loadPasseiosCatalog()
       .then(function (res) {
-        if (!res || !res.ok || !res.data || res.data.oculto) return;
-        var nav = document.querySelector(".nav-main");
-        if (!nav) return;
-        var atr = null;
-        var already = false;
-        Array.prototype.forEach.call(nav.querySelectorAll("a"), function (a) {
-          if (isPasseioMenuLink(a)) already = true;
-          if (a.closest && a.closest(".lang-switch")) return;
-          if (/(^|\/)atrativos\.html$/.test(a.getAttribute("href") || "")) atr = a;
-        });
-        var href = (atr && atr.getAttribute("href")) || "atrativos.html";
-        var lang = href.indexOf("/en/") >= 0 || window.location.pathname.indexOf("/en/") >= 0 ? "en" : (href.indexOf("/es/") >= 0 || window.location.pathname.indexOf("/es/") >= 0 ? "es" : "pt");
-        if (!already && atr) {
-          var link = document.createElement("a");
-          link.href = href.replace(/atrativos\.html$/, "passeios.html");
-          link.textContent = lang === "en" ? "Tours" : lang === "es" ? "Paseos" : "Passeios";
-          atr.insertAdjacentElement("afterend", link);
+        if (!res || !res.ok || !res.data || res.data.oculto) {
+          hidePasseioMenuLink();
+          return;
         }
+        ensurePasseioMenuLink();
         ["gcv-home-passeios", "proximas-saidas"].forEach(function (id) {
           var el = document.getElementById(id);
           if (el) el.hidden = false;
         });
-        if (res.data.preview) showPasseioPreview(lang);
+        if (res.data.preview) showPasseioPreview(passeioMenuLang());
       })
       .catch(function () {});
   }
