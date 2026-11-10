@@ -1498,7 +1498,7 @@
         langBr: "Português",
         chipDuration: "{t} de duração",
         chipLeave: "De {city}",
-        chipPerson: "/ pessoa",
+        chipPerson: "/ por pessoa",
         add: "Adicionar ao carrinho",
         roteiroBtn: "Adicionar ao roteiro",
         shopAdd: "Adicionar Passeio",
@@ -1568,7 +1568,7 @@
         langBr: "Portuguese",
         chipDuration: "{t} duration",
         chipLeave: "From {city}",
-        chipPerson: "/ person",
+        chipPerson: "/ per person",
         add: "Add to cart",
         roteiroBtn: "Add to itinerary",
         shopAdd: "Add tour",
@@ -1638,7 +1638,7 @@
         langBr: "Portugués",
         chipDuration: "{t} de duración",
         chipLeave: "De {city}",
-        chipPerson: "/ persona",
+        chipPerson: "/ por persona",
         add: "Agregar al carrito",
         roteiroBtn: "Añadir al itinerario",
         shopAdd: "Agregar paseo",
@@ -2275,7 +2275,7 @@
       ".gcv-passeios{--gp-green:#14532d;--gp-green-2:#0f3d2e;--gp-line:#e6eeea;--gp-soft:#f4f7f5;--gp-ink:#0f2a1d;--gp-muted:#64748b;--gp-blue:#2563eb;margin:1.25rem auto;max-width:460px;padding:0;border:1px solid #e7eeea;border-radius:22px;background:#fff;box-shadow:0 10px 32px rgba(15,42,29,.08);position:relative;overflow:hidden;color:var(--gp-ink)}" +
       ".gcv-passeios__now{display:flex;align-items:center;gap:.55rem;margin:0;padding:.9rem 1.15rem .35rem;font-size:.95rem;font-weight:600;letter-spacing:0;line-height:1.2;color:#64748b;background:#fff}" +
       ".gcv-passeios__now .ti{font-size:1.2rem;line-height:1}" +
-      ".gcv-passeios__body{padding:1rem 1.1rem .4rem}" +
+      ".gcv-passeios__body{padding:.55rem 1.1rem .4rem}" +
       ".gcv-passeios__grid{display:grid;grid-template-columns:1fr 1fr;gap:.85rem 1rem}" +
       ".gcv-passeios__field{display:flex;flex-direction:column;gap:.3rem;min-width:0;font-size:.72rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--gp-muted)}" +
       ".gcv-passeios__field--wide{grid-column:1 / -1}" +
@@ -2331,7 +2331,7 @@
       ".gcv-datepicker__week,.gcv-datepicker__grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}.gcv-datepicker__week{margin-bottom:4px;font-size:.68rem;font-weight:700;color:#94a3b8}" +
       ".gcv-datepicker__day{height:34px;border:0;border-radius:9px;background:transparent;font:inherit;cursor:pointer}.gcv-datepicker__day:hover:not(:disabled){background:#e8f0ec}" +
       ".gcv-datepicker__day.is-today{box-shadow:inset 0 0 0 1.5px #14532d;font-weight:700}.gcv-datepicker__day.is-selected{background:#14532d;color:#fff;font-weight:700}.gcv-datepicker__day:disabled{color:#cbd5e1;cursor:default}" +
-      "@media(max-width:640px){.gcv-passeios__grid{grid-template-columns:1fr 1fr;gap:.65rem .7rem}.gcv-passeios__seg{flex-wrap:wrap}.gcv-passeios__seg button{flex:1 1 6.2rem;font-size:.78rem;padding:.48rem .3rem}.gcv-passeios__foot{flex-direction:column;align-items:stretch}.gcv-passeios__actions,.gcv-passeios__add{width:100%}.gcv-passeios__route{padding:.85rem 1rem .15rem}.gcv-passeios__route-name{font-size:1.55rem}.gcv-passeios__total-value{font-size:1.65rem}.gcv-passeios__body{padding:.75rem 1rem .2rem}.gcv-bi__label{font-size:1rem}}" +
+      "@media(max-width:640px){.gcv-passeios__grid{grid-template-columns:1fr 1fr;gap:.65rem .7rem}.gcv-passeios__seg{flex-wrap:wrap}.gcv-passeios__seg button{flex:1 1 6.2rem;font-size:.78rem;padding:.48rem .3rem}.gcv-passeios__foot{flex-direction:column;align-items:stretch}.gcv-passeios__actions,.gcv-passeios__add{width:100%}.gcv-passeios__route{padding:.85rem 1rem .15rem}.gcv-passeios__route-name{font-size:1.55rem}.gcv-passeios__total-value{font-size:1.65rem}.gcv-passeios__body{padding:.4rem 1rem .2rem}.gcv-bi__label{font-size:1rem}}" +
       "@media(min-width:768px){.gcv-passeios{max-width:none;width:100%;margin-left:0;margin-right:0}.gcv-passeios__grid{grid-template-columns:1fr 1fr 1fr 1fr}.gcv-passeios__field--city{grid-column:span 2}.gcv-passeios__field--date,.gcv-passeios__field--people{grid-column:span 1}.gcv-passeios__field--mode,.gcv-passeios__field--transport{grid-column:span 2}}" +
       ".gcv-passeios__route{padding:1.05rem 1.15rem .25rem}" +
       ".gcv-passeios__route-name{margin:0;font-size:2rem;font-weight:800;line-height:1.12;letter-spacing:-.03em;color:#14532d}" +
@@ -2351,7 +2351,7 @@
       ".gcv-passeios__extra:hover:not(:disabled){border-color:#14532d}" +
       ".gcv-passeios__extra[aria-pressed=true]{background:#14532d;border-color:#14532d;color:#fff}" +
       ".gcv-bi{margin-top:1rem}" +
-      ".gcv-bi__label{margin:0 0 .55rem;font-size:1.14rem;font-weight:700;line-height:1.35;letter-spacing:-.02em;text-transform:none;color:#0f2a1d}" +
+      ".gcv-bi__label{margin:0 0 .75rem;font-size:1.14rem;font-weight:700;line-height:1.35;letter-spacing:-.02em;text-transform:none;color:#0f2a1d}" +
       ".gcv-bi__label strong{color:#166534;font-weight:800;background:#dcfce7;border-radius:6px;padding:.05rem .32rem}" +
       ".gcv-bi__card{border:1px solid #d7ebe3;background:#f4fbf7;border-radius:16px;padding:.75rem .9rem .8rem}" +
       ".gcv-bi__pick{margin:0 0 .65rem;font-size:.98rem;font-weight:800;color:#0f2a1d}" +
@@ -2406,7 +2406,9 @@
       '<p class="gcv-passeios__summary" data-passeio-summary></p>' +
       '<div class="gcv-passeios__route"><p class="gcv-passeios__route-name" data-passeio-route>' + passeioEsc(data.title) + "</p>" +
       '<p class="gcv-passeios__chips" data-passeio-route-meta></p></div>' +
-      '<div class="gcv-passeios__body"><div class="gcv-passeios__grid">' +
+      '<div class="gcv-passeios__body">' +
+      '<p class="gcv-bi__label">' + passeioEsc(copy.extrasLead) + "<strong>" + passeioEsc(copy.extrasMark) + "</strong>" + passeioEsc(copy.extrasMid) + "<strong>" + passeioEsc(copy.extrasPlace) + "</strong></p>" +
+      '<div class="gcv-passeios__grid">' +
       '<label class="gcv-passeios__field gcv-passeios__field--date">' + copy.date + '<input type="text" data-passeio-date value="' + passeioAmanha() + '" /></label>' +
       '<div class="gcv-passeios__field gcv-passeios__field--people">' + copy.people +
         '<div class="gcv-passeios__stepper"><button type="button" data-passeio-step="-1" aria-label="−1">−</button>' +
@@ -2427,7 +2429,6 @@
         '<p class="gcv-passeios__guide" data-passeio-4x4 hidden></p></div>' +
       "</div>" +
       '<div class="gcv-bi">' +
-        '<p class="gcv-bi__label">' + passeioEsc(copy.extrasLead) + "<strong>" + passeioEsc(copy.extrasMark) + "</strong>" + passeioEsc(copy.extrasMid) + "<strong>" + passeioEsc(copy.extrasPlace) + "</strong></p>" +
         '<div class="gcv-bi__card">' +
           '<p class="gcv-bi__pick">' + passeioEsc(copy.pickLang) + "</p>" +
           '<div class="gcv-bi__langs" data-passeio-bi-langs>' +
