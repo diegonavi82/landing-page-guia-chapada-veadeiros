@@ -183,7 +183,7 @@ const RAW = [
   }),
   spot({
     slug: "candaru-guia-chapada-veadeiros",
-    file: "candaru-guia-chapada-veadeiros-mapa.jpg",
+    file: "cachoeira-candaru-guia-chapada-veadeiros-cavalcante.jpg",
     map: { l: 50, t: 12, w: 8, h: 4 },
     title: L("Candaru", "Candaru", "Candaru"),
     lead: L(
@@ -239,21 +239,24 @@ const RAW = [
 <h3><strong>Como chegar</strong></h3>
 <p>O Engenho II fica a cerca de 27 km de terra de Cavalcante, pela GO-241 e um desvio à direita. O check-in é no centro de apoio da comunidade. Dali ainda há alguns quilômetros até o início da trilha, às vezes de traslado interno, às vezes a pé por subida de serra. A caminhada em si fica na casa de 3 km ida e volta, com trechos íngremes.</p>
 <h3><strong>Regra da comunidade</strong></h3>
-<p>A visita é com guia Kalunga. O ingresso é o da comunidade e as vagas do dia têm limite. Dá para combinar Candaru, Capivara e Santa Bárbara, mas o dia começa cedo. Na chuva a trilha e a estrada mudam de risco: o guia decide se entra.</p>`,
+<p>A visita é com guia Kalunga. O ingresso é o da comunidade e as vagas do dia têm limite. Dá para combinar Candaru, Capivara e Santa Bárbara, mas o dia começa cedo. Na chuva a trilha e a estrada mudam de risco: o guia decide se entra.</p>
+<p><em>Foto: Clara Goldenstein, <a href="https://creativecommons.org/licenses/by-sa/3.0">CC BY-SA 3.0</a>, Wikimedia Commons. A imagem foi redimensionada e mostra o leito de pedra da cachoeira.</em></p>`,
       `<p>Candaru waterfall is in the Kalunga village of Engenho II, in Cavalcante, Chapada dos Veadeiros, in the same complex as Santa Bárbara and Capivara. The water drops about 70 meters into green pools on two levels, held by a rock wall.</p>
 <h3><strong>Why it is quieter</strong></h3>
 <p>The approach is longer than the neighbors'. Many people do Santa Bárbara and Capivara and leave Candaru for another day. Those who arrive find the quietest fall of the set, with a deep pool and another at the base where the water hits the rock.</p>
 <h3><strong>How to get there</strong></h3>
 <p>Engenho II is about 27 km of dirt road from Cavalcante, along GO-241 and a right-hand turn. Check-in is at the community visitor center. From there it is still a few kilometers to the trailhead, sometimes by an internal transfer, sometimes on foot up the hill. The walk itself is about 3 km round trip, with steep sections.</p>
 <h3><strong>Community rule</strong></h3>
-<p>The visit is with a Kalunga guide. The ticket belongs to the community and the day's places are limited. Candaru, Capivara and Santa Bárbara can share a day, but the start is early. In the rain the trail and the road change risk: the guide decides whether to go in.</p>`,
+<p>The visit is with a Kalunga guide. The ticket belongs to the community and the day's places are limited. Candaru, Capivara and Santa Bárbara can share a day, but the start is early. In the rain the trail and the road change risk: the guide decides whether to go in.</p>
+<p><em>Photo: Clara Goldenstein, <a href="https://creativecommons.org/licenses/by-sa/3.0">CC BY-SA 3.0</a>, Wikimedia Commons. The image was resized and shows the waterfall's rock bed.</em></p>`,
       `<p>La cascada Candaru está en el pueblo Kalunga de Engenho II, en Cavalcante, Chapada dos Veadeiros, en el mismo complejo que Santa Bárbara y Capivara. El agua baja unos 70 metros y forma pozas verdes, en dos niveles, protegidas por una pared de roca.</p>
 <h3><strong>Por qué está más vacía</strong></h3>
 <p>El acceso es más largo que el de las vecinas. Mucha gente hace Santa Bárbara y Capivara y deja Candaru para otro día. Quien llega encuentra la caída más tranquila del conjunto, con una poza honda y otra en la base, donde el agua golpea la piedra.</p>
 <h3><strong>Cómo llegar</strong></h3>
 <p>Engenho II queda a unos 27 km de tierra de Cavalcante, por la GO-241 y un desvío a la derecha. El registro es en el centro de apoyo de la comunidad. Desde allí aún hay unos kilómetros hasta el inicio del sendero, a veces en traslado interno, a veces a pie cuesta arriba. La caminata en sí ronda los 3 km ida y vuelta, con tramos empinados.</p>
 <h3><strong>Regla de la comunidad</strong></h3>
-<p>La visita es con guía Kalunga. La entrada es de la comunidad y las plazas del día tienen límite. Se puede juntar Candaru, Capivara y Santa Bárbara, pero el día empieza temprano. Con lluvia el sendero y el camino cambian de riesgo: el guía decide si se entra.</p>`,
+<p>La visita es con guía Kalunga. La entrada es de la comunidad y las plazas del día tienen límite. Se puede juntar Candaru, Capivara y Santa Bárbara, pero el día empieza temprano. Con lluvia el sendero y el camino cambian de riesgo: el guía decide si se entra.</p>
+<p><em>Foto: Clara Goldenstein, <a href="https://creativecommons.org/licenses/by-sa/3.0">CC BY-SA 3.0</a>, Wikimedia Commons. La imagen fue redimensionada y muestra el lecho de piedra de la cascada.</em></p>`,
     ),
   }),
   spot({
@@ -1546,6 +1549,11 @@ const ALT_BY_SLUG = {
     "Mirante da Janela no Parque Nacional da Chapada dos Veadeiros, fotografado de dia",
   "parque-nacional-noturno-guia-chapada-veadeiros":
     "Saltos do Rio Preto no Parque Nacional da Chapada dos Veadeiros, fotografados de dia",
+  "candaru-guia-chapada-veadeiros": L(
+    "Leito de pedra na Cachoeira Candaru, no quilombo Kalunga em Cavalcante, na Chapada dos Veadeiros",
+    "Rock bed at Candaru waterfall, in the Kalunga quilombo in Cavalcante, Chapada dos Veadeiros",
+    "Lecho de piedra en la cascada Candaru, en el quilombo Kalunga de Cavalcante, Chapada dos Veadeiros",
+  ),
   "sao-felix-guia-chapada-veadeiros": L(
     "Cachoeira São Félix, prainha e queda na Chapada dos Veadeiros",
     "São Félix waterfall and river beach in Chapada dos Veadeiros",
