@@ -1486,8 +1486,6 @@
         entriesNote: "*entradas não inclusas",
         extrasLead: "Contratação de ",
         extrasMark: "Guia Local",
-        extrasMid: " na ",
-        extrasPlace: "Chapada dos Veadeiros",
         pickLang: "Selecione o idioma",
         bilingual: "Guia bilíngue",
         bilingualHint: "Condutor credenciado que fala inglês ou espanhol",
@@ -1556,8 +1554,6 @@
         entriesNote: "*entrance fees not included",
         extrasLead: "Hiring a ",
         extrasMark: "local guide",
-        extrasMid: " in ",
-        extrasPlace: "Chapada dos Veadeiros",
         pickLang: "Select the language",
         bilingual: "Bilingual guide",
         bilingualHint: "Licensed guide who speaks English or Spanish",
@@ -1626,8 +1622,6 @@
         entriesNote: "*entradas no incluidas",
         extrasLead: "Contratación de ",
         extrasMark: "guía local",
-        extrasMid: " en la ",
-        extrasPlace: "Chapada dos Veadeiros",
         pickLang: "Selecciona el idioma",
         bilingual: "Guía bilingüe",
         bilingualHint: "Guía acreditado que habla inglés o español",
@@ -2407,7 +2401,7 @@
       '<div class="gcv-passeios__route"><p class="gcv-passeios__route-name" data-passeio-route>' + passeioEsc(data.title) + "</p>" +
       '<p class="gcv-passeios__chips" data-passeio-route-meta></p></div>' +
       '<div class="gcv-passeios__body">' +
-      '<p class="gcv-bi__label">' + passeioEsc(copy.extrasLead) + "<strong>" + passeioEsc(copy.extrasMark) + "</strong>" + passeioEsc(copy.extrasMid) + "<strong>" + passeioEsc(copy.extrasPlace) + "</strong></p>" +
+      '<p class="gcv-bi__label">' + passeioEsc(copy.extrasLead) + "<strong>" + passeioEsc(copy.extrasMark) + "</strong></p>" +
       '<div class="gcv-passeios__grid">' +
       '<label class="gcv-passeios__field gcv-passeios__field--date">' + copy.date + '<input type="text" data-passeio-date value="' + passeioAmanha() + '" /></label>' +
       '<div class="gcv-passeios__field gcv-passeios__field--people">' + copy.people +
