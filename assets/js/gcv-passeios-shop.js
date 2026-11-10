@@ -16,12 +16,17 @@
       day: "Data do passeio",
       dayHint: "Só um passeio por dia. A data, as pessoas, a cidade e o transporte ficam na janela que abre ao adicionar.",
       all: "Todos",
+      allCities: "Todas",
+      type: "Tipo",
+      cities: "Cidades de embarque",
+      departures: "Saídas de:",
       from: "A partir de",
       person: "por pessoa",
       add: "Adicionar",
       added: "Adicionado",
       taken: "Esse dia já tem passeio",
       empty: "Nenhum passeio nessa categoria.",
+      emptyFilters: "Nenhum passeio com esses filtros.",
       closed: "Nenhum passeio disponível.",
       loading: "Carregando passeios…",
       fail: "Não foi possível carregar os passeios.",
@@ -38,12 +43,17 @@
       day: "Tour date",
       dayHint: "One tour per day. Date, people, city and transfer are in the window that opens when you add.",
       all: "All",
+      allCities: "All",
+      type: "Type",
+      cities: "Departure cities",
+      departures: "Departing from:",
       from: "From",
       person: "per person",
       add: "Add",
       added: "Added",
       taken: "That day already has a tour",
       empty: "No tours in this category.",
+      emptyFilters: "No tours match these filters.",
       closed: "No tours available.",
       loading: "Loading tours…",
       fail: "Could not load the tours.",
@@ -60,12 +70,17 @@
       day: "Fecha del paseo",
       dayHint: "Un solo paseo por día. La fecha, las personas, la ciudad y el transporte quedan en la ventana que se abre al agregar.",
       all: "Todos",
+      allCities: "Todas",
+      type: "Tipo",
+      cities: "Ciudades de salida",
+      departures: "Salidas desde:",
       from: "Desde",
       person: "por persona",
       add: "Agregar",
       added: "Añadido",
       taken: "Ese día ya tiene un paseo",
       empty: "No hay paseos en esta categoría.",
+      emptyFilters: "No hay paseos con estos filtros.",
       closed: "No hay paseos disponibles.",
       loading: "Cargando paseos…",
       fail: "No se pudieron cargar los paseos.",
@@ -165,28 +180,53 @@
     "sao-jorge": "São Jorge",
     cavalcante: "Cavalcante",
   };
-  function horas(minutos) {
-    minutos = parseInt(minutos, 10) || 0;
-    if (!minutos) return "";
-    var h = Math.floor(minutos / 60);
-    var m = minutos % 60;
-    var mark = lang === "en" ? "h" : lang === "es" ? " h" : "hs";
-    if (!h) return m + " min";
-    if (!m) return h + mark;
-    return h + "h" + (m < 10 ? "0" : "") + m;
-  }
-  function showcase(tour) {
-    if (tour._show) return tour._show;
-    var barato = menorExcursao(tour.tarifa);
-    var key = barato.key || "alto-paraiso";
-    var minutes = (tour.duracao_cidades && parseInt(tour.duracao_cidades[key], 10)) || parseInt(tour.duration_minutes, 10) || 0;
-    tour._show = { key: key, minutes: minutes, city: cityNames[key] || key };
-    return tour._show;
-  }
-  var clock = '<svg class="gcv-shop-card__ico" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 4.6V8.2l2.3 1.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
   var pin = '<svg class="gcv-shop-card__ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 14.5S3.4 9.7 3.4 6.7a4.6 4.6 0 1 1 9.2 0c0 3-4.6 7.8-4.6 7.8z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><circle cx="8" cy="6.65" r="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>';
+  function cidadesDoTour(tour) {
+    var vistos = {};
+    var lista = [];
+    (Array.isArray(tour && tour.saidas) ? tour.saidas : []).forEach(function (saida) {
+      var key = String((saida && saida.key) || "");
+      if (!key || vistos[key]) return;
+      vistos[key] = true;
+      lista.push({
+        key: key,
+        nome: String((saida && (saida.curta || saida.nome)) || cityNames[key] || key)
+      });
+    });
+    if (!lista.length) {
+      (Array.isArray(tour && tour.embarques) ? tour.embarques : []).forEach(function (key) {
+        key = String(key || "");
+        if (!key || vistos[key]) return;
+        vistos[key] = true;
+        lista.push({ key: key, nome: cityNames[key] || key });
+      });
+    }
+    return lista;
+  }
+  function cidadesDoCatalogo(lista) {
+    var mapa = {};
+    var ordem = [];
+    (lista || []).forEach(function (tour) {
+      cidadesDoTour(tour).forEach(function (cidade) {
+        if (mapa[cidade.key]) return;
+        mapa[cidade.key] = cidade.nome;
+        ordem.push(cidade.key);
+      });
+    });
+    var preferida = ["alto-paraiso", "sao-jorge", "cavalcante"];
+    ordem.sort(function (a, b) {
+      var ia = preferida.indexOf(a);
+      var ib = preferida.indexOf(b);
+      if (ia < 0) ia = 99;
+      if (ib < 0) ib = 99;
+      if (ia !== ib) return ia - ib;
+      return String(mapa[a]).localeCompare(String(mapa[b]), lang);
+    });
+    return ordem.map(function (key) { return { key: key, nome: mapa[key] }; });
+  }
   var check = '<svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.17 12.17 2.4 8.4l1.13-1.13 2.64 2.64 6.3-6.3 1.13 1.13z"/></svg>';
   var filter = "all";
+  var cityFilter = "all";
   var tours = [];
   var maxAtrativos = 3;
 
@@ -275,18 +315,19 @@
   function paint() {
     eagerLeft = 6;
     var list = tours.filter(function (tour) {
-      if (filter === "all") return true;
-      return (tour.categories || []).indexOf(filter) >= 0;
+      if (filter !== "all" && (tour.categories || []).indexOf(filter) < 0) return false;
+      if (cityFilter === "all") return true;
+      return cidadesDoTour(tour).some(function (cidade) { return cidade.key === cityFilter; });
     });
     var grid = root.querySelector("[data-shop-grid]");
     if (!list.length) {
-      grid.innerHTML = '<p class="gcv-shop__empty">' + esc(copy.empty) + "</p>";
+      var vazio = cityFilter !== "all" ? (copy.emptyFilters || copy.empty) : copy.empty;
+      grid.innerHTML = '<p class="gcv-shop__empty">' + esc(vazio) + "</p>";
       return;
     }
     grid.innerHTML = list.map(function (tour) {
       var mine = inCart(tour);
-      var show = showcase(tour);
-      var time = horas(show.minutes);
+      var saidas = cidadesDoTour(tour);
       var cents = precoVitrine(tour.tarifa);
       var tags = "<span>" + esc(catName(tagDoCard(tour))) + "</span>";
       var count = tour.count === 1 ? copy.one : tour.count + " " + copy.many;
@@ -307,9 +348,12 @@
         '<p class="gcv-shop-card__tags">' + tags + "</p>" +
         "<h2><a href=\"" + esc(tourHref(tour.href)) + "\" data-tour=\"" + esc(tour.id) + "\">" + esc(tour.title) + "</a></h2>" +
         places +
-        '<p class="gcv-shop-card__meta">' +
-        (time ? "<span>" + clock + esc(time) + "</span>" : "") +
-        "<span>" + pin + esc(copy.leave.replace("{city}", show.city)) + "</span></p>" +
+        (saidas.length
+          ? '<p class="gcv-shop-card__meta"><span class="gcv-shop-card__saidas">' + pin +
+            "<span><strong>" + esc(copy.departures) + "</strong> " +
+            esc(saidas.map(function (cidade) { return cidade.nome; }).join(", ")) +
+            "</span></span></p>"
+          : "") +
         '<div class="gcv-shop-card__foot">' +
         '<p class="gcv-shop-card__price">' + esc(copy.from) + "<strong>" + reais(cents) + "</strong>" + esc(copy.person) + "</p>" +
         '<button type="button" class="gcv-shop-card__add' + (mine ? " is-added" : "") + '" data-add="' + esc(tour.id) + '">' +
@@ -319,8 +363,28 @@
     }).join("");
   }
 
+  function marcarFiltro(seletor, valor) {
+    root.querySelectorAll(seletor).forEach(function (el) {
+      el.classList.toggle("is-on", el.getAttribute(seletor.slice(1, -1)) === valor);
+    });
+  }
+
+  function montarFiltroCidades() {
+    var box = root.querySelector("[data-shop-cities]");
+    if (!box) return;
+    var cidades = cidadesDoCatalogo(tours);
+    if (cityFilter !== "all" && !cidades.some(function (cidade) { return cidade.key === cityFilter; })) {
+      cityFilter = "all";
+    }
+    box.innerHTML = '<button type="button" data-shop-city="all">' + esc(copy.allCities || copy.all) + "</button>" +
+      cidades.map(function (cidade) {
+        return '<button type="button" data-shop-city="' + esc(cidade.key) + '">' + esc(cidade.nome) + "</button>";
+      }).join("");
+    marcarFiltro("[data-shop-city]", cityFilter);
+  }
+
   function shell(cats) {
-    var buttons = '<button type="button" class="is-on" data-shop-filter="all">' + esc(copy.all) + "</button>" +
+    var buttons = '<button type="button" data-shop-filter="all">' + esc(copy.all) + "</button>" +
       cats.map(function (key) {
         return '<button type="button" data-shop-filter="' + esc(key) + '">' + esc(catName(key)) + "</button>";
       }).join("");
@@ -328,16 +392,29 @@
       '<div class="gcv-shop__hero">' +
       "<div><p class=\"gcv-shop__kicker\">" + esc(copy.kicker) + "</p><h1>" + esc(copy.title) + "</h1></div>" +
       "</div>" +
-      '<div class="gcv-shop__filters">' + buttons + "</div>" +
+      '<div class="gcv-shop__bars">' +
+      '<div class="gcv-shop__bar"><p class="gcv-shop__bar-label">' + esc(copy.type) + "</p>" +
+      '<div class="gcv-shop__filters">' + buttons + "</div></div>" +
+      '<div class="gcv-shop__bar"><p class="gcv-shop__bar-label">' + esc(copy.cities) + "</p>" +
+      '<div class="gcv-shop__filters" data-shop-cities></div></div>' +
+      "</div>" +
       '<div class="gcv-shop__grid" data-shop-grid></div>';
-    root.querySelectorAll("[data-shop-filter]").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        filter = btn.getAttribute("data-shop-filter") || "all";
-        root.querySelectorAll("[data-shop-filter]").forEach(function (el) {
-          el.classList.toggle("is-on", el === btn);
-        });
+    marcarFiltro("[data-shop-filter]", filter);
+    montarFiltroCidades();
+    root.addEventListener("click", function (ev) {
+      var tipo = ev.target.closest && ev.target.closest("[data-shop-filter]");
+      if (tipo && root.contains(tipo)) {
+        filter = tipo.getAttribute("data-shop-filter") || "all";
+        marcarFiltro("[data-shop-filter]", filter);
         paint();
-      });
+        return;
+      }
+      var cidade = ev.target.closest && ev.target.closest("[data-shop-city]");
+      if (cidade && root.contains(cidade)) {
+        cityFilter = cidade.getAttribute("data-shop-city") || "all";
+        marcarFiltro("[data-shop-city]", cityFilter);
+        paint();
+      }
     });
     root.addEventListener("click", function (e) {
       var link = e.target.closest && e.target.closest("[data-tour]");
@@ -404,6 +481,7 @@
       maxAtrativos = parseInt(data.max_atrativos, 10) || maxAtrativos;
       boot();
       var grid = root.querySelector("[data-shop-grid]");
+      montarFiltroCidades();
       if (!tours.length) {
         var vazio = payload && payload.ok ? (copy.closed || copy.empty) : copy.fail;
         if (grid) grid.innerHTML = '<p class="gcv-shop__empty">' + esc(vazio) + "</p>";
