@@ -606,8 +606,12 @@ if ($method === 'PUT') {
                 (int)$admin['id'],
                 $id,
             ]);
-            gcv_experiencia_apos_atrativo(db(), $id);
-            gcv_attraction_sync_categorias_passeios(db(), $id);
+            try {
+                gcv_experiencia_apos_atrativo(db(), $id);
+                gcv_attraction_sync_categorias_passeios(db(), $id);
+            } catch (Throwable $e) {
+                error_log('categorias passeio: ' . $e->getMessage());
+            }
             gcv_attraction_limpar_cache_passeios();
             echo json_encode(['ok' => true, 'data' => ['id' => $id, 'categorias' => $ordered]], JSON_UNESCAPED_UNICODE);
             exit;

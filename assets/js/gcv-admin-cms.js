@@ -813,6 +813,8 @@
   }
 
   var xpFiltros = { titulo: '', categorias: '', cidade: '', tags: '', embarques: '', status: '' };
+  var catMenuList = null;
+  var catMenuDoc = false;
   var XP_FILTRO_COLS = [
     ['titulo', 'Filtrar título'],
     ['categorias', 'Filtrar tipo'],
@@ -939,16 +941,18 @@
   }
 
   function ligarMenusCategoria(list) {
-    if (!list._catFora) {
-      list._catFora = function (ev) {
+    catMenuList = list;
+    if (!catMenuDoc) {
+      catMenuDoc = true;
+      document.addEventListener('click', function (ev) {
         var alvo = ev.target;
         if (alvo && alvo.closest && alvo.closest('.xp-cat-edit')) return;
-        fecharMenusCategoria(list);
-      };
-      document.addEventListener('click', list._catFora);
-      document.addEventListener('keydown', function (ev) {
-        if (ev.key === 'Escape') fecharMenusCategoria(list);
+        fecharMenusCategoria(catMenuList);
       });
+      document.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Escape') fecharMenusCategoria(catMenuList);
+      });
+      window.addEventListener('scroll', function () { fecharMenusCategoria(catMenuList); }, true);
     }
     var wrap = list.querySelector('.xp-grade-wrap');
     if (wrap && wrap._catScroll !== list) {
