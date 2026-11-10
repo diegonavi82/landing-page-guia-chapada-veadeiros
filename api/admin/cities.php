@@ -8,18 +8,37 @@ require_once __DIR__ . '/../helpers/cms_schema.php';
 header('Content-Type: application/json; charset=utf-8');
 $admin = require_admin();
 gcv_cms_ensure_schema();
+gcv_cms_ensure_regions(db());
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
-function gcv_city_region_from_body(array $body): ?string
+/** @return array{0:?int,1:?string} */
+function gcv_city_region_pair(PDO $pdo, array $body): array
 {
-    $region = trim((string)($body['region'] ?? ''));
-    if ($region === '') {
-        return null;
+    $id = (int)($body['region_id'] ?? 0);
+    if ($id > 0) {
+        $stmt = $pdo->prepare("SELECT id, name FROM gcv_regions WHERE id = ? AND status = 'active' LIMIT 1");
+        $stmt->execute([$id]);
+        $row = $stmt->fetch();
+        if ($row) {
+            return [(int)$row['id'], (string)$row['name']];
+        }
+    }
+    $name = trim((string)($body['region'] ?? ''));
+    if ($name === '') {
+        return [null, null];
     }
     if (function_exists('mb_substr')) {
-        return mb_substr($region, 0, 160);
+        $name = mb_substr($name, 0, 160);
+    } else {
+        $name = substr($name, 0, 160);
     }
-    return substr($region, 0, 160);
+    $stmt = $pdo->prepare("SELECT id, name FROM gcv_regions WHERE status = 'active' AND name = ? LIMIT 1");
+    $stmt->execute([$name]);
+    $row = $stmt->fetch();
+    if ($row) {
+        return [(int)$row['id'], (string)$row['name']];
+    }
+    return [null, $name];
 }
 
 if ($method === 'GET') {
@@ -47,7 +66,22 @@ if ($method === 'GET') {
     $sql .= ' ORDER BY name ASC';
     $stmt = db()->prepare($sql);
     $stmt->execute($params);
-    echo json_encode(['ok' => true, 'data' => ['cities' => $stmt->fetchAll()]]);
+    $cities = $stmt->fetchAll();
+    $regions = db()->query(
+        "SELECT id, name, sort_order FROM gcv_regions WHERE status = 'active' ORDER BY sort_order ASC, name ASC"
+    )->fetchAll();
+    $byId = [];
+    foreach ($regions as $region) {
+        $byId[(int)$region['id']] = (string)$region['name'];
+    }
+    foreach ($cities as &$city) {
+        $rid = (int)($city['region_id'] ?? 0);
+        if ($rid > 0 && isset($byId[$rid])) {
+            $city['region'] = $byId[$rid];
+        }
+    }
+    unset($city);
+    echo json_encode(['ok' => true, 'data' => ['cities' => $cities, 'regions' => $regions]]);
     exit;
 }
 
@@ -60,9 +94,10 @@ if ($method === 'POST') {
         echo json_encode(['ok' => false, 'error' => 'Nome da cidade obrigatório']);
         exit;
     }
+    [$regionId, $regionName] = gcv_city_region_pair(db(), $body);
     $stmt = db()->prepare(
-        'INSERT INTO gcv_cities (name, state, state_code, country, country_code, region, place_id, formatted_address, lat, lng, is_base, status)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?)'
+        'INSERT INTO gcv_cities (name, state, state_code, country, country_code, region, region_id, place_id, formatted_address, lat, lng, is_base, status)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)'
     );
     $stmt->execute([
         $name,
@@ -70,7 +105,8 @@ if ($method === 'POST') {
         strtoupper(substr(trim((string)($body['state_code'] ?? 'GO')), 0, 2)) ?: 'GO',
         trim((string)($body['country'] ?? 'Brasil')) ?: 'Brasil',
         strtoupper(substr(trim((string)($body['country_code'] ?? 'BR')), 0, 2)) ?: 'BR',
-        gcv_city_region_from_body($body),
+        $regionName,
+        $regionId,
         ($body['place_id'] ?? null) ?: null,
         ($body['formatted_address'] ?? null) ?: $name,
         isset($body['lat']) && $body['lat'] !== '' ? (float)$body['lat'] : null,
@@ -92,8 +128,9 @@ if ($method === 'PUT') {
         echo json_encode(['ok' => false, 'error' => 'id obrigatório']);
         exit;
     }
+    [$regionId, $regionName] = gcv_city_region_pair(db(), $body);
     $stmt = db()->prepare(
-        'UPDATE gcv_cities SET name=?, state=?, state_code=?, country=?, country_code=?, region=?, place_id=?, formatted_address=?, lat=?, lng=?, is_base=?, status=? WHERE id=?'
+        'UPDATE gcv_cities SET name=?, state=?, state_code=?, country=?, country_code=?, region=?, region_id=?, place_id=?, formatted_address=?, lat=?, lng=?, is_base=?, status=? WHERE id=?'
     );
     $stmt->execute([
         trim((string)($body['name'] ?? '')),
@@ -101,7 +138,8 @@ if ($method === 'PUT') {
         strtoupper(substr(trim((string)($body['state_code'] ?? 'GO')), 0, 2)),
         trim((string)($body['country'] ?? 'Brasil')),
         strtoupper(substr(trim((string)($body['country_code'] ?? 'BR')), 0, 2)),
-        gcv_city_region_from_body($body),
+        $regionName,
+        $regionId,
         ($body['place_id'] ?? null) ?: null,
         ($body['formatted_address'] ?? null) ?: null,
         isset($body['lat']) && $body['lat'] !== '' ? (float)$body['lat'] : null,

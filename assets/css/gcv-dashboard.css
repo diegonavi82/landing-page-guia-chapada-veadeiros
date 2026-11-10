@@ -2329,6 +2329,78 @@ body.gcv-dash-page main.gcv-dash-main {
   box-sizing: border-box;
 }
 .gcv-cms-list { display: flex; flex-direction: column; gap: 0.65rem; width: 100%; }
+.gcv-cms-region {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  overflow: hidden;
+}
+.gcv-cms-region__head {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.35rem 0.45rem 0.35rem 0.2rem;
+  background: #f8fafc;
+}
+.gcv-cms-region__toggle {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  padding: 0.45rem 0.35rem;
+  border-radius: 8px;
+}
+.gcv-cms-region__toggle:hover,
+.gcv-cms-region__toggle:focus-visible {
+  background: #eef6f1;
+  outline: none;
+}
+.gcv-cms-region__chevron {
+  width: 0.45rem;
+  height: 0.45rem;
+  margin: 0 0.2rem 0.15rem 0.35rem;
+  border-right: 2px solid #14532d;
+  border-bottom: 2px solid #14532d;
+  transform: rotate(45deg);
+  flex-shrink: 0;
+}
+.gcv-cms-region.is-collapsed .gcv-cms-region__chevron {
+  transform: rotate(-45deg);
+  margin-top: 0.2rem;
+  margin-bottom: 0;
+}
+.gcv-cms-region__name {
+  font-weight: 700;
+  color: #0f172a;
+  min-width: 0;
+}
+.gcv-cms-region__count {
+  flex-shrink: 0;
+  color: #64748b;
+  font-size: 0.8rem;
+}
+.gcv-cms-region__cities {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.65rem;
+  border-top: 1px solid #e2e8f0;
+  background: #fff;
+}
+.gcv-cms-region.is-collapsed .gcv-cms-region__cities { display: none; }
+.gcv-cms-region__empty {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.85rem;
+}
+.gcv-cms-region__head .gcv-cms-row-actions { flex-shrink: 0; }
 .gcv-cms-cat { margin: 1.15rem 0 0; font-size: 1.05rem; }
 .gcv-cms-cat:first-child { margin-top: 0; }
 .gcv-cms-cat__note { margin: 0 0 0.35rem; }
@@ -2368,6 +2440,8 @@ body.gcv-dash-page main.gcv-dash-main {
   line-height: 1.1;
   color: #14532d;
 }
+.gcv-cms-row {
+  display: flex;
   justify-content: space-between;
   gap: 0.75rem;
   align-items: center;

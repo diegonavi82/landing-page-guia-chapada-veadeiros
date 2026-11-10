@@ -2,7 +2,13 @@
 (function (global) {
   'use strict';
 
-  var state = { module: null, editingId: null, cities: [], attractions: [], guides: [] };
+  var state = { module: null, editingId: null, cities: [], regions: [], attractions: [], guides: [] };
+  var cityRegionCollapsed = {};
+  try {
+    cityRegionCollapsed = JSON.parse(sessionStorage.getItem('gcv-city-region-collapsed') || '{}') || {};
+  } catch (eRegion) {
+    cityRegionCollapsed = {};
+  }
   var guideSheet = { filters: { q: '', status: '', city: '' } };
   var excSheet = {
     rows: [],
@@ -298,18 +304,100 @@
   }
 
   /* ---------- CIDADES ---------- */
+  function rememberRegionCollapsed() {
+    try { sessionStorage.setItem('gcv-city-region-collapsed', JSON.stringify(cityRegionCollapsed)); } catch (eStore) {}
+  }
+
+  function cityCountLabel(n) {
+    n = n || 0;
+    if (n === 1) return '1 cidade';
+    return n + ' cidades';
+  }
+
+  function defaultRegionId() {
+    var regions = state.regions || [];
+    var i;
+    for (i = 0; i < regions.length; i++) {
+      if (regions[i].name === 'Chapada dos Veadeiros') return String(regions[i].id);
+    }
+    return regions[0] ? String(regions[0].id) : '';
+  }
+
+  function cityRegionOptions(selectedId) {
+    var current = selectedId == null ? '' : String(selectedId);
+    var html = '<option value="">Não informada</option>';
+    (state.regions || []).forEach(function (region) {
+      html += '<option value="' + region.id + '"' + (String(region.id) === current ? ' selected' : '') + '>' + esc(region.name) + '</option>';
+    });
+    return html;
+  }
+
+  function cityRowHtml(c) {
+    var place = c.formatted_address || [c.state, c.country].filter(Boolean).join(' / ');
+    return (
+      '<article class="gcv-cms-row">' +
+      '<div><strong>' + esc(c.name) + '</strong>' +
+      (place ? '<div class="gcv-cms-muted">' + esc(place) + '</div>' : '') +
+      '</div>' +
+      '<div class="gcv-cms-row-side">' +
+      cmsRowActions(
+        'data-edit-city="' + c.id + '"',
+        'data-del-city="' + c.id + '" data-del-label="' + esc(c.name) + '"'
+      ) +
+      '</div></article>'
+    );
+  }
+
+  function regionBlockHtml(key, name, cities, editable) {
+    var collapsed = !!cityRegionCollapsed[key];
+    var body = cities.length
+      ? cities.map(cityRowHtml).join('')
+      : '<p class="gcv-cms-region__empty">Nenhuma cidade nesta região.</p>';
+    var actions = '';
+    if (editable) {
+      actions = cmsRowActions(
+        'data-edit-region="' + key + '"',
+        'data-del-region="' + key + '" data-del-label="' + esc(name) + '" data-del-count="' + cities.length + '"'
+      );
+    }
+    return (
+      '<section class="gcv-cms-region' + (collapsed ? ' is-collapsed' : '') + '">' +
+      '<header class="gcv-cms-region__head">' +
+      '<button type="button" class="gcv-cms-region__toggle" data-toggle-region="' + esc(key) + '" aria-expanded="' + (collapsed ? 'false' : 'true') + '">' +
+      '<span class="gcv-cms-region__chevron" aria-hidden="true"></span>' +
+      '<span class="gcv-cms-region__name">' + esc(name) + '</span>' +
+      '<span class="gcv-cms-region__count">' + cityCountLabel(cities.length) + '</span>' +
+      '</button>' +
+      actions +
+      '</header>' +
+      '<div class="gcv-cms-region__cities">' + body + '</div>' +
+      '</section>'
+    );
+  }
+
   function renderCities() {
     var box = root('cms-cities-root');
     if (!box) return;
     box.innerHTML =
       '<div class="gcv-cms-toolbar">' +
+      '<button type="button" class="gcv-dash-btn" id="cms-region-new">+ Nova região</button>' +
       '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary" id="cms-city-new">+ Nova cidade</button>' +
-      '<p class="gcv-cms-hint">Digite o nome: o Google Places sugere e preenche automaticamente (requer GOOGLE_PLACES_API_KEY).</p>' +
+      '<p class="gcv-cms-hint">A região agrupa as cidades. A seta oculta ou mostra as cidades de cada região.</p>' +
       '</div>' +
+      '<div id="cms-region-form" class="gcv-cms-card" hidden></div>' +
       '<div id="cms-city-form" class="gcv-cms-card" hidden></div>' +
       '<div id="cms-city-list" class="gcv-cms-list">Carregando…</div>';
 
-    root('cms-city-new').onclick = function () { openCityForm(null); };
+    root('cms-region-new').onclick = function () {
+      var cityForm = root('cms-city-form');
+      if (cityForm) cityForm.hidden = true;
+      openRegionForm(null);
+    };
+    root('cms-city-new').onclick = function () {
+      var regionForm = root('cms-region-form');
+      if (regionForm) regionForm.hidden = true;
+      openCityForm(null);
+    };
     get('/api/admin/cities.php', function (err, res) {
       var list = root('cms-city-list');
       if (!list) return;
@@ -318,53 +406,125 @@
         return;
       }
       state.cities = (res.data && res.data.cities) || [];
-      if (!state.cities.length) {
-        list.innerHTML = '<p>Nenhuma cidade cadastrada.</p>';
-        return;
-      }
-      list.innerHTML = state.cities.map(function (c) {
-        var place = c.formatted_address || ((c.state || '') + ' / ' + (c.country || ''));
-        var meta = c.region ? (c.region + ' · ' + place) : place;
-        return (
-          '<article class="gcv-cms-row">' +
-          '<div><strong>' + esc(c.name) + '</strong><div class="gcv-cms-muted">' + esc(meta) + '</div></div>' +
-          '<div class="gcv-cms-row-side">' +
-          cmsRowActions(
-            'data-edit-city="' + c.id + '"',
-            'data-del-city="' + c.id + '" data-del-label="' + esc(c.name) + '"'
-          ) +
-          '</div></article>'
-        );
-      }).join('');
-      list.querySelectorAll('[data-edit-city]').forEach(function (btn) {
-        btn.onclick = function () {
-          var id = parseInt(btn.getAttribute('data-edit-city'), 10);
-          var city = state.cities.find(function (x) { return Number(x.id) === id; });
-          openCityForm(city || null);
-        };
-      });
-      bindRowDelete(list, 'data-del-city', '/api/admin/cities.php', renderCities);
+      state.regions = (res.data && res.data.regions) || [];
+      paintCityTree(list);
     });
   }
 
-  var CITY_REGIONS = ['Chapada dos Veadeiros'];
-
-  function cityRegionOptions(selected) {
-    var current = selected == null ? '' : String(selected);
-    var values = CITY_REGIONS.slice();
-    if (current && values.indexOf(current) < 0) values.push(current);
-    var html = '<option value="">Não informada</option>';
-    values.forEach(function (name) {
-      html += '<option value="' + esc(name) + '"' + (name === current ? ' selected' : '') + '>' + esc(name) + '</option>';
+  function paintCityTree(list) {
+    var regions = state.regions || [];
+    var buckets = {};
+    regions.forEach(function (region) {
+      buckets[String(region.id)] = [];
     });
-    return html;
+    var orphans = [];
+    state.cities.forEach(function (city) {
+      var id = city.region_id ? String(city.region_id) : '';
+      if (id && buckets[id]) {
+        buckets[id].push(city);
+        return;
+      }
+      var name = String(city.region || '').trim();
+      var match = name ? regions.find(function (region) { return region.name === name; }) : null;
+      if (match) {
+        buckets[String(match.id)].push(city);
+        return;
+      }
+      orphans.push(city);
+    });
+
+    var html = regions.map(function (region) {
+      return regionBlockHtml(String(region.id), region.name, buckets[String(region.id)] || [], true);
+    }).join('');
+    if (orphans.length) html += regionBlockHtml('none', 'Sem região', orphans, false);
+    if (!html) html = '<p>Nenhuma região cadastrada.</p>';
+    list.innerHTML = html;
+
+    list.querySelectorAll('[data-toggle-region]').forEach(function (btn) {
+      btn.onclick = function () {
+        var key = btn.getAttribute('data-toggle-region');
+        var section = btn.closest('.gcv-cms-region');
+        if (!section || !key) return;
+        var collapsed = section.classList.toggle('is-collapsed');
+        btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        if (collapsed) cityRegionCollapsed[key] = 1;
+        else delete cityRegionCollapsed[key];
+        rememberRegionCollapsed();
+      };
+    });
+    list.querySelectorAll('[data-edit-city]').forEach(function (btn) {
+      btn.onclick = function () {
+        var id = parseInt(btn.getAttribute('data-edit-city'), 10);
+        var city = state.cities.find(function (item) { return Number(item.id) === id; });
+        var regionForm = root('cms-region-form');
+        if (regionForm) regionForm.hidden = true;
+        openCityForm(city || null);
+      };
+    });
+    list.querySelectorAll('[data-edit-region]').forEach(function (btn) {
+      btn.onclick = function () {
+        var id = parseInt(btn.getAttribute('data-edit-region'), 10);
+        var region = state.regions.find(function (item) { return Number(item.id) === id; });
+        var cityForm = root('cms-city-form');
+        if (cityForm) cityForm.hidden = true;
+        if (region) openRegionForm(region);
+      };
+    });
+    bindRowDelete(list, 'data-del-city', '/api/admin/cities.php', renderCities);
+    list.querySelectorAll('[data-del-region]').forEach(function (btn) {
+      btn.onclick = function () {
+        var id = parseInt(btn.getAttribute('data-del-region'), 10);
+        var label = btn.getAttribute('data-del-label') || ('#' + id);
+        var n = parseInt(btn.getAttribute('data-del-count'), 10) || 0;
+        var extra = n
+          ? '\n\nAs cidades continuam cadastradas e passam para Sem região.'
+          : '';
+        gcvConfirm('Excluir a região\n' + label + '?' + extra, { danger: true, okText: 'Excluir' }).then(function (ok) {
+          if (!ok) return;
+          btn.disabled = true;
+          sendJson('DELETE', '/api/admin/regions.php', { id: id }, function (e, r) {
+            btn.disabled = false;
+            if (!r || !r.ok) {
+              alert((r && r.error) || 'Erro ao excluir');
+              return;
+            }
+            renderCities();
+          });
+        });
+      };
+    });
+  }
+
+  function openRegionForm(region) {
+    var form = root('cms-region-form');
+    if (!form) return;
+    form.hidden = false;
+    form.innerHTML =
+      '<h3>' + (region ? 'Editar região' : 'Nova região') + '</h3>' +
+      '<div class="gcv-dash-field"><label class="gcv-dash-label">Nome *</label>' +
+      '<input class="gcv-dash-input" id="cms-region-name" value="' + esc(region && region.name || '') + '" /></div>' +
+      '<div style="display:flex;gap:0.5rem;margin-top:0.75rem;">' +
+      '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary" id="cms-region-save">Salvar</button>' +
+      '<button type="button" class="gcv-dash-btn" id="cms-region-cancel">Cancelar</button></div>';
+    root('cms-region-cancel').onclick = function () { form.hidden = true; };
+    root('cms-region-save').onclick = function () {
+      var payload = { id: region && region.id, name: root('cms-region-name').value.trim() };
+      if (!payload.name) { alert('Nome obrigatório'); return; }
+      sendJson(region ? 'PUT' : 'POST', '/api/admin/regions.php', payload, function (e, r) {
+        if (!r || !r.ok) { alert((r && r.error) || 'Erro'); return; }
+        form.hidden = true;
+        renderCities();
+      });
+    };
+    var input = root('cms-region-name');
+    if (input) input.focus();
   }
 
   function openCityForm(city) {
     var form = root('cms-city-form');
     if (!form) return;
     form.hidden = false;
-    var regionValue = city ? (city.region || '') : 'Chapada dos Veadeiros';
+    var regionValue = city ? (city.region_id || '') : defaultRegionId();
     form.innerHTML =
       '<h3>' + (city ? 'Editar cidade' : 'Nova cidade') + '</h3>' +
       '<div class="gcv-dash-field"><label class="gcv-dash-label">Buscar no Google</label>' +
@@ -414,12 +574,16 @@
 
     root('cms-city-cancel').onclick = function () { form.hidden = true; };
     root('cms-city-save').onclick = function () {
+      var regionSelect = root('cms-city-region');
+      var regionId = regionSelect && regionSelect.value ? parseInt(regionSelect.value, 10) : 0;
+      var regionOpt = regionSelect && regionSelect.selectedIndex >= 0 ? regionSelect.options[regionSelect.selectedIndex] : null;
       var payload = {
         id: city && city.id,
         name: root('cms-city-name').value.trim(),
         state_code: root('cms-city-uf').value.trim() || 'GO',
         state: 'Goiás',
-        region: root('cms-city-region').value.trim(),
+        region_id: regionId || null,
+        region: regionId && regionOpt ? regionOpt.text : '',
         formatted_address: root('cms-city-addr').value.trim(),
         place_id: root('cms-city-place').value.trim() || null,
         lat: root('cms-city-lat').value || null,

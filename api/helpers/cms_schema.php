@@ -352,6 +352,133 @@ function gcv_cms_ensure_core_tables(PDO $pdo): void
     } catch (Throwable $e) {
         // ignore
     }
+
+    gcv_cms_ensure_regions($pdo);
+}
+
+function gcv_cms_ensure_regions(PDO $pdo): void
+{
+    try {
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS gcv_regions (
+              id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+              name VARCHAR(160) NOT NULL,
+              status ENUM('active','archived') NOT NULL DEFAULT 'active',
+              sort_order SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+              created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              UNIQUE KEY uq_region_name (name)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        );
+    } catch (Throwable $e) {
+        error_log('cms regions table: ' . $e->getMessage());
+        return;
+    }
+
+    $fields = [];
+    try {
+        $rows = $pdo->query('SHOW COLUMNS FROM gcv_cities')->fetchAll();
+        foreach ($rows as $r) {
+            $fields[strtolower((string)($r['Field'] ?? ''))] = true;
+        }
+    } catch (Throwable $e) {
+        error_log('cms regions columns: ' . $e->getMessage());
+        return;
+    }
+    if (empty($fields['region_id'])) {
+        $after = !empty($fields['region']) ? 'region' : 'country_code';
+        try {
+            $pdo->exec('ALTER TABLE gcv_cities ADD COLUMN region_id INT UNSIGNED NULL AFTER `' . $after . '`');
+        } catch (Throwable $e) {
+            error_log('cms region_id: ' . $e->getMessage());
+        }
+    }
+    try {
+        $pdo->exec('ALTER TABLE gcv_cities ADD INDEX idx_city_region (region_id)');
+    } catch (Throwable $e) {
+        // índice já existe
+    }
+
+    try {
+        $pdo->exec(
+            "INSERT INTO gcv_regions (name, status, sort_order)
+             SELECT 'Chapada dos Veadeiros', 'active', 0
+             WHERE NOT EXISTS (
+               SELECT 1 FROM gcv_regions WHERE name = 'Chapada dos Veadeiros'
+             )"
+        );
+    } catch (Throwable $e) {
+        error_log('cms region seed: ' . $e->getMessage());
+    }
+
+    try {
+        $pdo->exec(
+            "UPDATE gcv_cities c
+             INNER JOIN gcv_regions r ON r.status = 'active' AND r.name = c.region
+             SET c.region_id = r.id
+             WHERE (c.region_id IS NULL OR c.region_id = 0)
+               AND c.region IS NOT NULL
+               AND TRIM(c.region) <> ''"
+        );
+    } catch (Throwable $e) {
+        error_log('cms region link: ' . $e->getMessage());
+    }
+
+    gcv_cms_archive_sao_jorge_region($pdo);
+}
+
+function gcv_cms_is_sao_jorge_label(string $name): bool
+{
+    $name = trim($name);
+    if (function_exists('mb_strtolower')) {
+        $name = mb_strtolower($name, 'UTF-8');
+    } else {
+        $name = strtolower($name);
+    }
+    return $name === 'são jorge' || $name === 'sao jorge';
+}
+
+function gcv_cms_archive_sao_jorge_region(PDO $pdo): void
+{
+    try {
+        $chapadaId = 0;
+        $chapadaName = 'Chapada dos Veadeiros';
+        $find = $pdo->prepare("SELECT id, name FROM gcv_regions WHERE status = 'active' AND name = ? LIMIT 1");
+        $find->execute([$chapadaName]);
+        $chapada = $find->fetch();
+        if ($chapada) {
+            $chapadaId = (int)$chapada['id'];
+            $chapadaName = (string)$chapada['name'];
+        }
+
+        $rows = $pdo->query("SELECT id, name FROM gcv_regions WHERE status = 'active'")->fetchAll();
+        $move = $pdo->prepare('UPDATE gcv_cities SET region_id = ?, region = ? WHERE region_id = ?');
+        $clear = $pdo->prepare('UPDATE gcv_cities SET region_id = NULL, region = NULL WHERE region_id = ?');
+        $arch = $pdo->prepare("UPDATE gcv_regions SET status = 'archived' WHERE id = ?");
+        foreach ($rows as $row) {
+            if (!gcv_cms_is_sao_jorge_label((string)($row['name'] ?? ''))) {
+                continue;
+            }
+            $id = (int)$row['id'];
+            if ($chapadaId > 0) {
+                $move->execute([$chapadaId, $chapadaName, $id]);
+            } else {
+                $clear->execute([$id]);
+            }
+            $arch->execute([$id]);
+        }
+
+        if ($chapadaId > 0) {
+            $fix = $pdo->prepare(
+                "UPDATE gcv_cities
+                 SET region_id = ?, region = ?
+                 WHERE LOWER(TRIM(region)) IN ('são jorge', 'sao jorge')"
+            );
+            $fix->execute([$chapadaId, $chapadaName]);
+        }
+    } catch (Throwable $e) {
+        error_log('cms archive sao jorge region: ' . $e->getMessage());
+    }
 }
 
 function gcv_cms_ensure_city_region(PDO $pdo): void
