@@ -977,7 +977,11 @@
       }).join('');
       var globNova = taxasGlobais();
       var nomeNova = guia ? 'Nova Tarifa Guia' : 'Nova Tarifa Translado';
-      return '<div class="tf-nova">' +
+      return '<h3 class="tf-lista-titulo">Tarifas salvas</h3>' +
+        '<div class="tf-oficial__list' + (guia ? ' tf-oficial__list--guia' : '') + '">' +
+        (cards || (todas.length ? '<p class="gcv-cms-muted tf-small">Nenhuma tarifa com esse filtro.</p>' : '<p class="gcv-cms-muted tf-small">Nenhuma tarifa criada ainda.</p>')) +
+        '</div>' +
+        '<div class="tf-nova">' +
         '<div class="tf-nova__head">' +
           '<div><p class="tf-nova__kicker">Criar tarifa nova</p><h3>' + nomeNova + '</h3></div>' +
           '<p class="tf-nova__lead">Preencha os valores e crie a tarifa. As taxas começam no modelo global do topo, e esta tarifa guarda a própria.</p>' +
@@ -989,11 +993,7 @@
             : campoNova('data-nova-exc', 'Excursão', 'translado') + campoNova('data-nova-pri', 'Privativo', 'translado') +
               campoTaxa('data-nova-pct', 'Privativo %', globNova.transPct, '%') + campoTaxa('data-nova-carro', 'Excursão por pessoa', globNova.transReais, 'R$')) +
           '<button type="submit" class="gcv-dash-btn tf-nova__btn">Criar tarifa</button>' +
-        '</form></div>' +
-        '<h3 class="tf-lista-titulo">Tarifas salvas</h3>' +
-        '<div class="tf-oficial__list' + (guia ? ' tf-oficial__list--guia' : '') + '">' +
-        (cards || (todas.length ? '<p class="gcv-cms-muted tf-small">Nenhuma tarifa com esse filtro.</p>' : '<p class="gcv-cms-muted tf-small">Nenhuma tarifa criada ainda.</p>')) +
-        '</div>';
+        '</form></div>';
     }
     function campoCard(attr, label, cents, total) {
       var side = '';
@@ -1005,7 +1005,6 @@
     var nTrans = oficiaisDo('translado').length;
     var abaInicial = st.tarifaAba === 'translado' ? 'translado' : 'guia';
     body.innerHTML =
-      markupTabelaPasseios('Escolha a cidade de embarque de cada passeio. Dá para acrescentar outra cidade ou excluir.') +
       '<div class="tf-pin">' +
       '<p class="tf-pin__label">Valores globais</p>' +
       '<div class="tf-regras-row">' +
@@ -1035,7 +1034,8 @@
         '<button type="button" class="tf-aba' + (abaInicial === 'guia' ? ' is-on' : '') + '" role="tab" id="tf-aba-guia" data-tf-aba="guia" aria-selected="' + (abaInicial === 'guia' ? 'true' : 'false') + '" aria-controls="tf-aba-panel">Tarifa GUIA<span class="tf-count">' + nGuia + '</span></button>' +
         '<button type="button" class="tf-aba' + (abaInicial === 'translado' ? ' is-on' : '') + '" role="tab" id="tf-aba-translado" data-tf-aba="translado" aria-selected="' + (abaInicial === 'translado' ? 'true' : 'false') + '" aria-controls="tf-aba-panel">Tarifa Translado<span class="tf-count">' + nTrans + '</span></button>' +
       '</div></div>' +
-      '<div id="tf-aba-panel" role="tabpanel" aria-labelledby="' + (abaInicial === 'guia' ? 'tf-aba-guia' : 'tf-aba-translado') + '"></div>';
+      '<div id="tf-aba-panel" role="tabpanel" aria-labelledby="' + (abaInicial === 'guia' ? 'tf-aba-guia' : 'tf-aba-translado') + '"></div>' +
+      markupTabelaPasseios('Escolha a cidade de embarque de cada passeio. Dá para acrescentar outra cidade ou excluir.').replace('class="ps-board"', 'class="ps-board ps-board--fim"');
     $('tf-bi-tipo').onchange = function () {
       var unit = $('tf-bi-unit');
       if (unit) unit.textContent = this.value === 'percentual' ? '%' : 'R$';

@@ -32,9 +32,7 @@
 .tf-field--sm { flex: 0 1 12rem !important; }
 .tf-oficial { margin: 0 0 1.1rem; }
 .tf-pin {
-  position: sticky;
-  top: 0;
-  z-index: 30;
+  position: static;
   margin: 0 0 1rem;
   padding: .9rem 1rem 1rem;
   border-radius: 16px;
@@ -105,6 +103,8 @@
 }
 .tf-nova__btn:hover { background: #ecfdf5; opacity: 1; }
 .tf-lista-titulo { margin: .2rem 0 .55rem; color: var(--tf-green); font-size: 1.02rem; }
+.tf-oficial__list + .tf-nova { margin-top: 1.15rem; }
+.ps-board--fim { margin-top: 1.25rem; }
 .tf-oficial h3, .tf-legado { margin: .2rem 0 .35rem; color: var(--tf-green); font-size: 1.05rem; }
 .tf-regras-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1rem 2rem; margin: 0 0 1.1rem; }
 .tf-regras-row > .tf-oficial { margin: 0; }
@@ -295,7 +295,6 @@
 .ps-empty { padding: 1.4rem .8rem !important; color: var(--tf-muted); text-align: center; }
 
 @media (max-width: 860px) {
-  .tf-pin { top: calc(64px + env(safe-area-inset-top, 0px)); }
   .tf-nova__head { align-items: flex-start; }
   .tf-line--4,
   .tf-line--7,
