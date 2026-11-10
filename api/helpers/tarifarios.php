@@ -3409,7 +3409,7 @@ function gcv_tarifario_public_catalog(PDO $pdo): array
             'duracao_cidades' => $tour['duracao_cidades'],
             'tarifa' => $tour['tarifa'],
             'saidas' => $tour['saidas'],
-            'image' => gcv_normalize_media_url((string)($first['cover_url'] ?? '')),
+            'image' => gcv_attraction_catalog_image((string)($first['cover_url'] ?? ''), (string)$first['title_pt'], (string)$first['slug']),
             'somente_4x4' => !empty($tour['somente_4x4']),
             'max_participantes' => (int)($tour['max_participantes'] ?? 0),
             'href' => $first['page'] !== '' ? '/' . ltrim($first['page'], '/') : '/passeios.html',
@@ -3420,7 +3420,7 @@ function gcv_tarifario_public_catalog(PDO $pdo): array
                 return [
                     'id' => (int)$a['id'],
                     'title' => (string)$a['title_pt'],
-                    'image' => gcv_normalize_media_url((string)($a['cover_url'] ?? '')),
+                    'image' => gcv_attraction_catalog_image((string)($a['cover_url'] ?? ''), (string)$a['title_pt'], (string)$a['slug']),
                     'href' => $page !== '' ? '/' . ltrim($page, '/') : '',
                 ];
             }, $tour['attractions']),
@@ -3487,7 +3487,7 @@ function gcv_tarifario_public_catalog(PDO $pdo): array
             'tarifa' => $tarifa,
             'embarques' => $embarques,
             'saidas' => $saidas,
-            'image' => gcv_normalize_media_url((string)($row['cover_url'] ?? '')),
+            'image' => gcv_attraction_catalog_image((string)($row['cover_url'] ?? ''), (string)$row['title_pt'], (string)$row['slug']),
             'somente_4x4' => gcv_experiencia_so4x4($row['experiencia_json'] ?? null),
             'max_participantes' => gcv_experiencia_max_participantes($row['experiencia_json'] ?? null),
             'href' => '/' . ltrim($page, '/'),
@@ -3497,7 +3497,7 @@ function gcv_tarifario_public_catalog(PDO $pdo): array
             'parts' => [[
                 'id' => (int)$row['id'],
                 'title' => (string)$row['title_pt'],
-                'image' => gcv_normalize_media_url((string)($row['cover_url'] ?? '')),
+                'image' => gcv_attraction_catalog_image((string)($row['cover_url'] ?? ''), (string)$row['title_pt'], (string)$row['slug']),
                 'href' => '/' . ltrim($page, '/'),
             ]],
         ];

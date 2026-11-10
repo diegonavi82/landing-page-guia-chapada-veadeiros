@@ -29,7 +29,8 @@
       "title_es": "Sertão Zen",
       "excerpt_pt": "Roteiro em Alto Paraíso de Goiás.",
       "excerpt_en": "Tour in Alto Paraíso de Goiás.",
-      "excerpt_es": "Ruta en Alto Paraíso de Goiás."
+      "excerpt_es": "Ruta en Alto Paraíso de Goiás.",
+      "cover_url": "/assets/img/imagens/sertao-zen-guia-chapada-veadeiros-alto-paraiso-2.jpg"
     },
     {
       "slug": "simao-correia-guia-chapada-veadeiros",
@@ -50,7 +51,8 @@
       "title_es": "Bocaina de Farias",
       "excerpt_pt": "Roteiro em Alto Paraíso de Goiás.",
       "excerpt_en": "Tour in Alto Paraíso de Goiás.",
-      "excerpt_es": "Ruta en Alto Paraíso de Goiás."
+      "excerpt_es": "Ruta en Alto Paraíso de Goiás.",
+      "cover_url": "/assets/img/imagens/cachoeira-bocaina-de-farias-guia-chapada-veadeiros.jpg"
     },
     {
       "slug": "lajeado-guia-chapada-veadeiros",
@@ -60,7 +62,8 @@
       "title_es": "Lajeado",
       "excerpt_pt": "Roteiro em São Jorge.",
       "excerpt_en": "Tour in São Jorge.",
-      "excerpt_es": "Ruta en São Jorge."
+      "excerpt_es": "Ruta en São Jorge.",
+      "cover_url": "/assets/img/imagens/cachoeira-do-lajeado-guia-chapada-veadeiros-sao-jorge.jpg"
     },
     {
       "slug": "morada-do-sol-guia-chapada-veadeiros",
@@ -70,7 +73,8 @@
       "title_es": "Morada del Sol",
       "excerpt_pt": "Roteiro em São Jorge.",
       "excerpt_en": "Tour in São Jorge.",
-      "excerpt_es": "Ruta en São Jorge."
+      "excerpt_es": "Ruta en São Jorge.",
+      "cover_url": "/assets/img/imagens/complexo-morada-do-sol-guia-chapada-veadeiros-sao-jorge.jpg"
     },
     {
       "slug": "santana-guia-chapada-veadeiros",
@@ -100,7 +104,8 @@
       "title_es": "Veredas",
       "excerpt_pt": "Roteiro em Cavalcante.",
       "excerpt_en": "Tour in Cavalcante.",
-      "excerpt_es": "Ruta en Cavalcante."
+      "excerpt_es": "Ruta en Cavalcante.",
+      "cover_url": "/assets/img/imagens/complexo-veredas-guia-chapada-veadeiros-cavalcante.jpg"
     },
     {
       "slug": "boqueirao-guia-chapada-veadeiros",
@@ -140,7 +145,8 @@
       "title_es": "Rei do Prata",
       "excerpt_pt": "Roteiro em Cavalcante.",
       "excerpt_en": "Tour in Cavalcante.",
-      "excerpt_es": "Ruta en Cavalcante."
+      "excerpt_es": "Ruta en Cavalcante.",
+      "cover_url": "/assets/img/imagens/complexo-rio-prata-cachoeira-rei-guia-chapada-veadeiros-cavalcante.jpg"
     },
     {
       "slug": "pratinha-guia-chapada-veadeiros",
@@ -150,7 +156,8 @@
       "title_es": "Pratinha",
       "excerpt_pt": "Cachoeira Pratinha no complexo do Rio da Prata, Cavalcante.",
       "excerpt_en": "Pratinha waterfall in the Rio da Prata complex, Cavalcante.",
-      "excerpt_es": "Cascada Pratinha en el complejo del Río da Prata, Cavalcante."
+      "excerpt_es": "Cascada Pratinha en el complejo del Río da Prata, Cavalcante.",
+      "cover_url": "/assets/img/imagens/complexo-cachoeiras-rio-prata-guia-chapada-veadeiros-cavalcante-1.jpg"
     },
     {
       "slug": "canjica-aguas-lindas-guia-chapada-veadeiros",
@@ -203,7 +210,8 @@
       "title_es": "Parque Nacional nocturno",
       "excerpt_pt": "Roteiro noturno no Parque Nacional da Chapada dos Veadeiros.",
       "excerpt_en": "Night tour in Chapada dos Veadeiros National Park.",
-      "excerpt_es": "Ruta nocturna en el Parque Nacional Chapada dos Veadeiros."
+      "excerpt_es": "Ruta nocturna en el Parque Nacional Chapada dos Veadeiros.",
+      "cover_url": "/assets/img/imagens/parque-nacional-noturno-guia-chapada-veadeiros-sao-jorge.jpg"
     },
     {
       "slug": "caracol-guia-chapada-veadeiros",

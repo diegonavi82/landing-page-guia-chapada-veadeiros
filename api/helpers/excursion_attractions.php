@@ -359,6 +359,23 @@ function gcv_attraction_lookup_card_alias(string $titleOrSlug): ?array
     return $aliases[$folded] ?? null;
 }
 
+/** Capa do catálogo. Se o banco está vazio, usa a foto da página. Recorte de mapa não entra. */
+function gcv_attraction_catalog_image(string $cover, string $title = '', string $slug = ''): string
+{
+    $cover = gcv_normalize_media_url($cover);
+    if ($cover !== '') {
+        return $cover;
+    }
+    foreach ([$slug, $title] as $key) {
+        $alias = gcv_attraction_lookup_card_alias($key);
+        $img = (string)($alias['img'] ?? '');
+        if ($img !== '' && !str_contains($img, '-mapa.')) {
+            return $img;
+        }
+    }
+    return '';
+}
+
 /**
  * @param list<array<string,mixed>> $attrs
  * @return list<array<string,mixed>>
