@@ -376,11 +376,18 @@
     if (cityFilter !== "all" && !cidades.some(function (cidade) { return cidade.key === cityFilter; })) {
       cityFilter = "all";
     }
-    box.innerHTML = '<button type="button" data-shop-city="all">' + esc(copy.allCities || copy.all) + "</button>" +
+    box.innerHTML =
+      '<label class="gcv-shop__city">' +
+      "<span>" + esc(copy.cities) + "</span>" +
+      '<span class="gcv-shop__city-field">' + pin +
+      '<select data-shop-city-select>' +
+      '<option value="all">' + esc(copy.allCities || copy.all) + "</option>" +
       cidades.map(function (cidade) {
-        return '<button type="button" data-shop-city="' + esc(cidade.key) + '">' + esc(cidade.nome) + "</button>";
-      }).join("");
-    marcarFiltro("[data-shop-city]", cityFilter);
+        return '<option value="' + esc(cidade.key) + '">' + esc(cidade.nome) + "</option>";
+      }).join("") +
+      "</select></span></label>";
+    var select = box.querySelector("[data-shop-city-select]");
+    if (select) select.value = cityFilter;
   }
 
   function shell(cats) {
@@ -395,8 +402,7 @@
       '<div class="gcv-shop__bars">' +
       '<div class="gcv-shop__bar"><p class="gcv-shop__bar-label">' + esc(copy.type) + "</p>" +
       '<div class="gcv-shop__filters">' + buttons + "</div></div>" +
-      '<div class="gcv-shop__bar"><p class="gcv-shop__bar-label">' + esc(copy.cities) + "</p>" +
-      '<div class="gcv-shop__filters" data-shop-cities></div></div>' +
+      '<div data-shop-cities></div>' +
       "</div>" +
       '<div class="gcv-shop__grid" data-shop-grid></div>';
     marcarFiltro("[data-shop-filter]", filter);
@@ -409,12 +415,12 @@
         paint();
         return;
       }
-      var cidade = ev.target.closest && ev.target.closest("[data-shop-city]");
-      if (cidade && root.contains(cidade)) {
-        cityFilter = cidade.getAttribute("data-shop-city") || "all";
-        marcarFiltro("[data-shop-city]", cityFilter);
-        paint();
-      }
+    });
+    root.addEventListener("change", function (ev) {
+      var cidade = ev.target.closest && ev.target.closest("[data-shop-city-select]");
+      if (!cidade || !root.contains(cidade)) return;
+      cityFilter = cidade.value || "all";
+      paint();
     });
     root.addEventListener("click", function (e) {
       var link = e.target.closest && e.target.closest("[data-tour]");
