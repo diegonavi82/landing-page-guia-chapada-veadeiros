@@ -321,6 +321,9 @@ function gcv_attraction_card_aliases(): array
         'sertao zen guia chapada veadeiros' => [$page('sertao-zen-guia-chapada-veadeiros'), $img('sertao-zen-guia-chapada-veadeiros-alto-paraiso-2.jpg')],
         'veredas' => [$page('veredas-guia-chapada-veadeiros'), $img('complexo-veredas-guia-chapada-veadeiros-cavalcante.jpg')],
         'veredas guia chapada veadeiros' => [$page('veredas-guia-chapada-veadeiros'), $img('complexo-veredas-guia-chapada-veadeiros-cavalcante.jpg')],
+        'sao felix' => [$page('sao-felix-guia-chapada-veadeiros'), $img('sao-felix-guia-chapada-veadeiros-mapa.jpg')],
+        'sao felix guia chapada veadeiros' => [$page('sao-felix-guia-chapada-veadeiros'), $img('sao-felix-guia-chapada-veadeiros-mapa.jpg')],
+        'cachoeira sao felix' => [$page('sao-felix-guia-chapada-veadeiros'), $img('sao-felix-guia-chapada-veadeiros-mapa.jpg')],
         'mirante da janela' => [
             $page('mirante-janela-cachoeira-abismo-guia-chapada-veadeiros-sao-jorge'),
             $img('mirante-janela-guia-chapada-veadeiros-sao-jorge-parque-nacional-1.jpg'),

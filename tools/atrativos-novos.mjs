@@ -1405,6 +1405,84 @@ const RAW = [
 <p><em>Fotos: Laura Serradourada y Karina Eliane Quege, ${CC40}.</em></p>`,
     ),
   }),
+  spot({
+    slug: "sao-felix-guia-chapada-veadeiros",
+    file: "sao-felix-guia-chapada-veadeiros-mapa.jpg",
+    map: { l: 24.7, t: 16.3, w: 7.5, h: 7.7 },
+    title: L("São Félix", "São Félix", "São Félix"),
+    lead: L(
+      "Prainha de areia clara e poço raso na fazenda São Félix, a noroeste de Cavalcante, na Chapada dos Veadeiros.",
+      "A pale-sand river beach and a shallow pool at Fazenda São Félix, northwest of Cavalcante, in Chapada dos Veadeiros.",
+      "Playa de río de arena clara y poza poco honda en la Hacienda São Félix, al noroeste de Cavalcante, en la Chapada dos Veadeiros.",
+    ),
+    info: L(
+      [
+        "Distância de Cavalcante: cerca de 68 km de terra",
+        "Distância de Alto Paraíso: cerca de 160 km",
+        "Distância da Trilha: cerca de 200 m",
+        "Nível de Dificuldade: Fácil",
+        "Atrativos:",
+        "- prainha de areia clara",
+        "- poço raso para banho",
+        "- queda de cerca de 35 m",
+        "Entrada: R$ 50 por pessoa",
+        "Guia obrigatório",
+        "Período recomendado para visitação:",
+        "Seca, de maio a setembro. Na chuva a estrada de terra piora",
+      ],
+      [
+        "Distance from Cavalcante: about 68 km of dirt road",
+        "Distance from Alto Paraíso: about 160 km",
+        "Trail distance: about 200 m",
+        "Difficulty: Easy",
+        "Highlights:",
+        "- pale-sand river beach",
+        "- shallow swimming pool",
+        "- fall of about 35 m",
+        "Entry: R$ 50 per person",
+        "Guide required",
+        "Best time to visit:",
+        "Dry season, May to September. Rain makes the dirt road worse",
+      ],
+      [
+        "Distancia desde Cavalcante: unos 68 km de tierra",
+        "Distancia desde Alto Paraíso: unos 160 km",
+        "Distancia del sendero: unos 200 m",
+        "Dificultad: Fácil",
+        "Atractivos:",
+        "- playa de río de arena clara",
+        "- poza poco honda para bañarse",
+        "- caída de unos 35 m",
+        "Entrada: R$ 50 por persona",
+        "Guía obligatorio",
+        "Mejor época:",
+        "Seca, de mayo a septiembre. Con lluvia el camino de tierra empeora",
+      ],
+    ),
+    html: L(
+      `<p>A Cachoeira São Félix fica na fazenda de mesmo nome, a noroeste de Cavalcante, na Chapada dos Veadeiros. A prefeitura de Cavalcante descreve o lugar como a prainha do Cerrado: uma trilha curta, de cerca de 200 metros, abre uma faixa de areia clara e um poço raso. A queda tem cerca de 35 metros de altura, com um lance de corredeiras de cerca de 40 metros.</p>
+<h3><strong>O banho</strong></h3>
+<p>A água para na areia e forma um poço baixo, o que deixa o passeio confortável para família e para quem caminha pouco. Dá para passar o dia na sombra da mata, na beira da queda. O almoço da propriedade, quando a casa prepara, é por encomenda e não entra no valor do passeio.</p>
+<h3><strong>Como chegar</strong></h3>
+<p>Saindo de Cavalcante são cerca de 68 km de terra, no rumo de Minaçu, com uma bifurcação no caminho: um braço segue para o Rio da Prata e a Canjica, o outro passa pelo povoado de São Domingos e chega à fazenda. O trecho final pede carro alto e, depois da chuva, 4x4. De Alto Paraíso o percurso fica em torno de 160 km. Este passeio sai só de Cavalcante.</p>
+<h3><strong>Entrada e guia</strong></h3>
+<p>O ingresso de dia publicado pelos operadores é de R$ 50 por pessoa, pago na propriedade. A prefeitura não lista o valor no site da cidade, e anúncios mais antigos falavam em R$ 40: na hora da visita vale o que a fazenda estiver cobrando. O pernoite, quando existe, é outro valor, cobrado à parte. O acesso é com guia local.</p>`,
+      `<p>São Félix waterfall is on the farm of the same name, northwest of Cavalcante, in Chapada dos Veadeiros. The Cavalcante city page calls it the beach of the Cerrado: a short trail of about 200 meters opens onto a strip of pale sand and a shallow pool. The fall is about 35 meters high, with a run of rapids of about 40 meters.</p>
+<h3><strong>The swim</strong></h3>
+<p>The water stops on the sand and forms a low pool, which makes the visit comfortable for families and for anyone who walks little. The day can stay in the shade of the forest, at the edge of the fall. Lunch at the property, when the house cooks, is ordered ahead and is not part of the tour price.</p>
+<h3><strong>How to get there</strong></h3>
+<p>From Cavalcante it is about 68 km of dirt toward Minaçu, with a fork on the way: one arm goes to the Rio da Prata and Canjica, the other passes the village of São Domingos and reaches the farm. The last stretch needs a high car and, after rain, a 4x4. From Alto Paraíso the drive is about 160 km. This tour leaves only from Cavalcante.</p>
+<h3><strong>Entry and guide</strong></h3>
+<p>The day ticket published by operators is R$ 50 per person, paid at the property. The city website does not list the fee, and older ads said R$ 40: on the day, the farm's current charge is the one that counts. An overnight stay, when offered, is a separate fee. Access is with a local guide.</p>`,
+      `<p>La cascada São Félix está en la hacienda del mismo nombre, al noroeste de Cavalcante, en la Chapada dos Veadeiros. La página de la alcaldía llama al lugar la playa del Cerrado: un sendero corto, de unos 200 metros, abre una franja de arena clara y una poza poco honda. La caída tiene unos 35 metros de altura, con un tramo de rápidos de unos 40 metros.</p>
+<h3><strong>El baño</strong></h3>
+<p>El agua se detiene en la arena y forma una poza baja, lo que deja el paseo cómodo para familias y para quien camina poco. El día puede quedarse a la sombra del bosque, al borde de la caída. El almuerzo de la propiedad, cuando la casa cocina, se encarga antes y no entra en el precio del paseo.</p>
+<h3><strong>Cómo llegar</strong></h3>
+<p>Desde Cavalcante hay unos 68 km de tierra hacia Minaçu, con una bifurcación: un brazo sigue al Rio da Prata y a Canjica, el otro pasa por el pueblo de São Domingos y llega a la hacienda. El tramo final pide coche alto y, después de la lluvia, 4x4. Desde Alto Paraíso el recorrido ronda 160 km. Este paseo sale solo de Cavalcante.</p>
+<h3><strong>Entrada y guía</strong></h3>
+<p>La entrada de día publicada por los operadores es de R$ 50 por persona, pagada en la propiedad. El sitio de la ciudad no lista el valor, y anuncios más viejos hablaban de R$ 40: el día de la visita vale lo que la hacienda esté cobrando. El pernocte, cuando existe, es otro valor, cobrado aparte. El acceso es con guía local.</p>`,
+    ),
+  }),
 ];
 
 export const NEW_HOTSPOTS = RAW.map(({ map, ...rest }) => rest);
