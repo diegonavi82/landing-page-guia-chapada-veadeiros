@@ -361,17 +361,20 @@ function gcv_attraction_lookup_card_alias(string $titleOrSlug): ?array
 function gcv_attraction_catalog_image(string $cover, string $title = '', string $slug = ''): string
 {
     $cover = gcv_normalize_media_url($cover);
-    if ($cover !== '') {
-        return $cover;
-    }
-    foreach ([$slug, $title] as $key) {
-        $alias = gcv_attraction_lookup_card_alias($key);
-        $img = (string)($alias['img'] ?? '');
-        if ($img !== '' && !str_contains($img, '-mapa.')) {
-            return $img;
+    if ($cover === '') {
+        foreach ([$slug, $title] as $key) {
+            $alias = gcv_attraction_lookup_card_alias($key);
+            $img = (string)($alias['img'] ?? '');
+            if ($img !== '' && !str_contains($img, '-mapa.')) {
+                $cover = $img;
+                break;
+            }
         }
     }
-    return '';
+    if ($cover !== '' && str_contains($cover, 'cachoeira-simao-correia-guia-chapada-veadeiros') && !str_contains($cover, '?')) {
+        $cover .= '?v=20261110';
+    }
+    return $cover;
 }
 
 /**
