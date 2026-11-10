@@ -2,15 +2,17 @@
 declare(strict_types=1);
 
 /**
- * Interruptores do site público. Ausente ou diferente de 1 = desligado.
- * PASSEIOS_PUBLICOS=1  mostra compra, lista e menu de passeios.
- * PAGAMENTO_CARTAO=1   mostra cartão nacional e internacional para todo mundo.
- * Sem a flag, o público fica só no Pix. O admin da lista, logado, ainda paga nos dois cartões.
+ * Interruptores do site público.
+ * PASSEIOS_PUBLICOS ausente ou 1 = compra, lista e menu para todo mundo.
+ * PASSEIOS_PUBLICOS=0 = só o admin logado vê (prévia).
+ * PAGAMENTO_CARTAO=1  = cartão nacional e internacional para todo mundo.
+ * Sem a flag do cartão, o público fica só no Pix. O admin da lista, logado, ainda paga nos dois cartões.
  */
 
 function gcv_passeios_flag_ligado(): bool
 {
-    $v = strtolower(trim((string) ($_ENV['PASSEIOS_PUBLICOS'] ?? getenv('PASSEIOS_PUBLICOS') ?: '0')));
+    $raw = $_ENV['PASSEIOS_PUBLICOS'] ?? getenv('PASSEIOS_PUBLICOS');
+    $v = strtolower(trim((string) ($raw === false || $raw === null || $raw === '' ? '1' : $raw)));
     return in_array($v, ['1', 'true', 'on', 'sim'], true);
 }
 
