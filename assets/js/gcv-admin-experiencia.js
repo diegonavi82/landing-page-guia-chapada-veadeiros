@@ -320,7 +320,7 @@
         '<label><span class="xp-req">Tarifa Guia</span><select class="gcv-dash-select" data-kind="guia" data-atual="' + esc(tarifaInicial(key, 'guia')) + '"><option value="">— escolher —</option></select></label>' +
         '<label><span>Tarifa Translado</span><select class="gcv-dash-select" data-kind="trans" data-atual="' + esc(tarifaInicial(key, 'trans')) + '"><option value="">— sem translado —</option></select></label>' +
         '<label><span>Distância de carro (km)</span><input class="gcv-dash-input" data-km inputmode="decimal" value="' + esc(kmInicial(key)) + '" /></label>' +
-        '<label><span class="xp-req">Duração do passeio</span><span class="xp-dur"><input class="gcv-dash-input" data-h inputmode="numeric" data-atual="' + esc(horas) + '" value="' + esc(horas) + '" /> h</span></label>' +
+        '<label><span>Duração do passeio</span><span class="xp-dur"><input class="gcv-dash-input" data-h inputmode="numeric" data-atual="' + esc(horas) + '" value="' + esc(horas) + '" /> h</span></label>' +
         '</div></div>'
       );
     }
@@ -779,7 +779,6 @@
         comSaida += 1;
         var nome = (row.querySelector('strong') || {}).textContent || 'cidade de saída';
         if (!valorTarifa(row.querySelector('[data-kind="guia"]'))) faltas.push('Tarifa Guia em ' + nome);
-        if (!minutosDaCidade(row.getAttribute('data-city'))) faltas.push('Duração em ' + nome);
       });
       if (!comSaida) faltas.push('Pelo menos uma cidade de saída');
       return faltas;

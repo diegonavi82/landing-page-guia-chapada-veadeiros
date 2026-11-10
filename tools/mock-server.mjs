@@ -3000,14 +3000,12 @@ function faltasParaAtivarAtrativo(body) {
       comSaida += 1;
       const nome = String(row.nome || key);
       if (!String(row.guia || "").trim()) faltas.push("Tarifa Guia em " + nome);
-      if (!(parseInt(row.minutos, 10) > 0)) faltas.push("Duração em " + nome);
     }
     if (!comSaida) faltas.push("Pelo menos uma cidade de saída");
   } else {
     if (!String(body.tarifa_guia || "").trim()) {
       faltas.push("Tarifa Guia");
     }
-    if (!(parseInt(body.duration_minutes, 10) > 0)) faltas.push("Duração do passeio");
   }
   return faltas;
 }

@@ -260,7 +260,7 @@ function gcv_attraction_from_body(array $body, ?array $existing = null): array
     ];
 }
 
-/** Ativada só com tarifa (Guia + Translado), duração e os campos da ficha. Rascunho e Desativada passam. */
+/** Ativada só com tarifa Guia e os campos da ficha. Duração do passeio pode ficar vazia. Rascunho e Desativada passam. */
 function gcv_attraction_erro_ativar(array $body): ?string
 {
     if ((string)($body['status'] ?? '') !== 'published') {
@@ -303,9 +303,6 @@ function gcv_attraction_erro_ativar(array $body): ?string
             if (trim((string)($row['guia'] ?? '')) === '') {
                 $faltas[] = 'Tarifa Guia em ' . $nome;
             }
-            if ((int)($row['minutos'] ?? 0) < 1) {
-                $faltas[] = 'Duração em ' . $nome;
-            }
         }
         if ($comSaida === 0) {
             $faltas[] = 'Pelo menos uma cidade de saída';
@@ -313,9 +310,6 @@ function gcv_attraction_erro_ativar(array $body): ?string
     } else {
         if (trim((string)($body['tarifa_guia'] ?? '')) === '') {
             $faltas[] = 'Tarifa Guia';
-        }
-        if ((int)($body['duration_minutes'] ?? 0) < 1) {
-            $faltas[] = 'Duração do passeio';
         }
     }
     if (!$faltas) {
