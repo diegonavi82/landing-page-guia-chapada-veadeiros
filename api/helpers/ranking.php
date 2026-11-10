@@ -66,8 +66,8 @@ function gcv_ranking_ja_fechou(string $dataContabil): bool
 function gcv_ranking_temporadas_vazias(): array
 {
     return [
-        'xango' => ['nome' => 'Ranking Fogo', 'periodo' => 'Seca · 1º de abril a 30 de setembro', 'guias' => []],
-        'oxum' => ['nome' => 'Ranking Água', 'periodo' => 'Águas · 1º de outubro a 31 de março', 'guias' => []],
+        'xango' => ['nome' => 'Ranking Fogo', 'periodo' => '16 de abril a 15 de outubro', 'guias' => []],
+        'oxum' => ['nome' => 'Ranking Água', 'periodo' => '16 de outubro a 15 de abril', 'guias' => []],
     ];
 }
 
@@ -145,10 +145,25 @@ function gcv_ranking_premiacao(array $atra): array
     return $out;
 }
 
+/** Fogo de 16 de abril a 15 de outubro. Água de 16 de outubro a 15 de abril. */
 function gcv_ranking_temporada(string $iso): string
 {
-    $mes = (int)substr($iso, 5, 2);
-    return $mes >= 4 && $mes <= 9 ? 'xango' : 'oxum';
+    $md = substr($iso, 5, 5);
+    return ($md >= '04-16' && $md <= '10-15') ? 'xango' : 'oxum';
+}
+
+/** Fora da janela o Ranking Fogo fica zerado. Na janela só conta o ano corrente. */
+function gcv_ranking_fogo_conta(string $iso, ?DateTimeImmutable $agora = null): bool
+{
+    if (gcv_ranking_temporada($iso) !== 'xango') {
+        return false;
+    }
+    $tz = new DateTimeZone('America/Sao_Paulo');
+    $agora = $agora ?? new DateTimeImmutable('now', $tz);
+    if (gcv_ranking_temporada($agora->format('Y-m-d')) !== 'xango') {
+        return false;
+    }
+    return substr($iso, 0, 4) === $agora->format('Y');
 }
 
 /**
@@ -252,6 +267,9 @@ function gcv_ranking_build(): array
         }
         $data = (string)($saida['data'] ?? substr((string)$row['date_iso'], 0, 10));
         $temp = gcv_ranking_temporada($data);
+        if ($temp === 'xango' && !gcv_ranking_fogo_conta($data)) {
+            continue;
+        }
         $cidadeNome = trim((string)($row['departure_city_name'] ?? ''));
         $cidadeKey = gcv_ranking_cidade_key($cidadeNome);
         if (!isset($porGuia[$temp][$gid])) {

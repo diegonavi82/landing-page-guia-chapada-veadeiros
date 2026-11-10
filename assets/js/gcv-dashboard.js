@@ -169,8 +169,15 @@
       asQ = new URLSearchParams(location.search).get('as') || sessionStorage.getItem('gcv_porta') || '';
     } catch (e) {}
     var q = (asQ ? '&as=' + encodeURIComponent(asQ) : '') + '&t=' + Date.now();
-    var mes = new Date().getMonth() + 1;
-    var chave = mes >= 4 && mes <= 9 ? 'xango' : 'oxum';
+    var partes = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Sao_Paulo', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+    var mes = '01';
+    var dia = '01';
+    partes.forEach(function (p) {
+      if (p.type === 'month') mes = p.value;
+      if (p.type === 'day') dia = p.value;
+    });
+    var md = mes + '-' + dia;
+    var chave = (md >= '04-16' && md <= '10-15') ? 'xango' : 'oxum';
     var temporada = chave === 'xango' ? 'Fogo' : 'Água';
     var lugar = 0;
     var fila = 0;

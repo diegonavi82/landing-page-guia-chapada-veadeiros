@@ -221,8 +221,16 @@ function pesoDe(atra) {
 }
 
 function temporadaDe(iso) {
-  const mes = parseInt(String(iso).slice(5, 7), 10);
-  return mes >= 4 && mes <= 9 ? "xango" : "oxum";
+  const md = String(iso).slice(5, 10);
+  return md >= "04-16" && md <= "10-15" ? "xango" : "oxum";
+}
+
+function fogoConta(iso, agora) {
+  if (temporadaDe(iso) !== "xango") return false;
+  const hoje = agora || new Date();
+  const md = String(hoje.getMonth() + 1).padStart(2, "0") + "-" + String(hoje.getDate()).padStart(2, "0");
+  if (!(md >= "04-16" && md <= "10-15")) return false;
+  return String(iso).slice(0, 4) === String(hoje.getFullYear());
 }
 
 const FECHAMENTO_HORA = 16;
@@ -289,6 +297,7 @@ function rankingGuias(attractions) {
     if (!rankingJaFechou(dataRank, new Date())) return;
     const pessoas = pessoasGuiadas(saida);
     const temp = temporadaDe(dataRank);
+    if (temp === "xango" && !fogoConta(dataRank, new Date())) return;
     if (!porGuia[temp].has(guia.id)) {
       porGuia[temp].set(guia.id, { id: guia.id, nome: guia.nome, foto: guia.foto, cidade: guia.cidade || "", cidade_key: guia.cidade_key || "", pontos: 0, pessoas: 0, dias: new Map() });
     }
@@ -378,8 +387,8 @@ function rankingGuias(attractions) {
       { key: "cavalcante", nome: "Cavalcante" },
     ],
     atrativos,
-    xango: { nome: "Ranking Fogo", periodo: "Seca · 1º de abril a 30 de setembro", guias: fechar(porGuia.xango) },
-    oxum: { nome: "Ranking Água", periodo: "Águas · 1º de outubro a 31 de março", guias: fechar(porGuia.oxum) },
+    xango: { nome: "Ranking Fogo", periodo: "16 de abril a 15 de outubro", guias: fechar(porGuia.xango) },
+    oxum: { nome: "Ranking Água", periodo: "16 de outubro a 15 de abril", guias: fechar(porGuia.oxum) },
   };
 }
 
