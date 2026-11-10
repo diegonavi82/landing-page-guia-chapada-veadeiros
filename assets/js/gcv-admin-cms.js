@@ -815,6 +815,9 @@
   var xpFiltros = { titulo: '', categorias: '', cidade: '', tags: '', embarques: '', status: '' };
   var catMenuList = null;
   var catMenuDoc = false;
+  var catMenuHold = 0;
+  var catSaveTimer = {};
+  var catSaveSeq = {};
   var XP_FILTRO_COLS = [
     ['titulo', 'Filtrar título'],
     ['categorias', 'Filtrar tipo'],
@@ -860,7 +863,7 @@
       var on = keys.indexOf(c[0]) >= 0;
       return '<label class="xp-cat-edit__opt"><input type="checkbox" data-cat-key="' + c[0] + '"' + (on ? ' checked' : '') + ' /> ' + esc(c[1]) + '</label>';
     }).join('');
-    return '<div class="xp-cat-edit" data-cat-id="' + a.id + '">' +
+    return '<div class="xp-cat-edit" data-cat-id="' + a.id + '" data-cat-ok="' + esc(keys.join(',')) + '">' +
       '<button type="button" class="xp-cat-edit__btn" aria-haspopup="true" aria-expanded="false" title="Editar categorias">' +
       chipsHtml(nomesCategoriasPasseio(a)) +
       '</button>' +
@@ -910,34 +913,70 @@
     box.textContent = msg || '';
   }
 
-  function salvarCategoriasLinha(list, id, keys, menu, anteriores) {
-    menu.querySelectorAll('[data-cat-key]').forEach(function (input) { input.disabled = true; });
-    erroMenuCategoria(menu, '');
+  function chavesDoMenu(menu) {
+    var marcadas = [];
+    menu.querySelectorAll('[data-cat-key]:checked').forEach(function (el) {
+      marcadas.push(el.getAttribute('data-cat-key'));
+    });
+    return marcadas;
+  }
+
+  function pintarChipsCategoria(box, keys) {
+    var botao = box.querySelector('.xp-cat-edit__btn');
+    if (botao) botao.innerHTML = chipsHtml(nomesCategoriasPasseio({ categorias: keys }));
+  }
+
+  function aplicarCategoriasLocais(id, keys) {
+    var atrativo = null;
+    (state.attractions || []).forEach(function (item) {
+      if (parseInt(item.id, 10) === id) {
+        item.categorias = keys.slice();
+        atrativo = item;
+      }
+    });
+    var linha = (state.xpLinhas || []).filter(function (row) { return row.id === id; })[0];
+    if (linha && atrativo) linha.tags = nomesCategoriasPasseio(atrativo).join(' ');
+  }
+
+  function salvarCategoriasLinha(id, keys, box, seq) {
     sendJson('PUT', '/api/admin/attractions.php', {
       id: id,
       somente_categorias: true,
       categorias: keys
     }, function (err, res) {
-      menu.querySelectorAll('[data-cat-key]').forEach(function (input) { input.disabled = false; });
+      if (catSaveSeq[id] !== seq) return;
+      var menu = box.querySelector('.xp-cat-edit__menu');
       if (err || !res || !res.ok) {
-        marcarCategorias(menu, anteriores);
-        erroMenuCategoria(menu, (res && res.error) || 'Não foi possível salvar a categoria.');
+        var ok = String(box.getAttribute('data-cat-ok') || 'classicos').split(',').filter(Boolean);
+        if (menu) {
+          marcarCategorias(menu, ok);
+          erroMenuCategoria(menu, (res && res.error) || 'Não foi possível salvar a categoria.');
+        }
+        pintarChipsCategoria(box, ok);
+        aplicarCategoriasLocais(id, ok);
         return;
       }
       var salvas = (res.data && res.data.categorias) || keys;
-      var atrativo = null;
-      (state.attractions || []).forEach(function (item) {
-        if (parseInt(item.id, 10) === id) {
-          item.categorias = salvas;
-          atrativo = item;
-        }
-      });
-      var linha = (state.xpLinhas || []).filter(function (row) { return row.id === id; })[0];
-      if (linha && atrativo) linha.tags = nomesCategoriasPasseio(atrativo).join(' ');
-      var botao = menu.parentNode && menu.parentNode.querySelector('.xp-cat-edit__btn');
-      if (botao) botao.innerHTML = chipsHtml(nomesCategoriasPasseio({ categorias: salvas }));
-      if (linha && !experienciaPassaFiltro(linha)) pintarCorpoExperiencias(list);
+      box.setAttribute('data-cat-ok', salvas.join(','));
+      if (menu) erroMenuCategoria(menu, '');
+      pintarChipsCategoria(box, salvas);
+      aplicarCategoriasLocais(id, salvas);
     });
+  }
+
+  function agendarCategorias(id, box) {
+    var menu = box.querySelector('.xp-cat-edit__menu');
+    var marcadas = chavesDoMenu(menu);
+    if (!marcadas.length) return;
+    erroMenuCategoria(menu, '');
+    pintarChipsCategoria(box, marcadas);
+    aplicarCategoriasLocais(id, marcadas);
+    clearTimeout(catSaveTimer[id]);
+    var seq = (catSaveSeq[id] || 0) + 1;
+    catSaveSeq[id] = seq;
+    catSaveTimer[id] = setTimeout(function () {
+      salvarCategoriasLinha(id, chavesDoMenu(menu), box, seq);
+    }, 180);
   }
 
   function ligarMenusCategoria(list) {
@@ -952,12 +991,14 @@
       document.addEventListener('keydown', function (ev) {
         if (ev.key === 'Escape') fecharMenusCategoria(catMenuList);
       });
-      window.addEventListener('scroll', function () { fecharMenusCategoria(catMenuList); }, true);
     }
     var wrap = list.querySelector('.xp-grade-wrap');
     if (wrap && wrap._catScroll !== list) {
       wrap._catScroll = list;
-      wrap.addEventListener('scroll', function () { fecharMenusCategoria(list); });
+      wrap.addEventListener('scroll', function () {
+        if (Date.now() < catMenuHold) return;
+        fecharMenusCategoria(list);
+      });
     }
     list.querySelectorAll('.xp-cat-edit').forEach(function (box) {
       var id = parseInt(box.getAttribute('data-cat-id'), 10);
@@ -972,24 +1013,23 @@
         }
         abrirMenuCategoria(box);
       };
-      menu.addEventListener('click', function (ev) { ev.stopPropagation(); });
-      menu.querySelectorAll('[data-cat-key]').forEach(function (input) {
-        input.addEventListener('change', function () {
-          var marcadas = [];
-          menu.querySelectorAll('[data-cat-key]:checked').forEach(function (el) {
-            marcadas.push(el.getAttribute('data-cat-key'));
-          });
-          var key = input.getAttribute('data-cat-key');
-          var anteriores = input.checked
-            ? marcadas.filter(function (item) { return item !== key; })
-            : marcadas.concat([key]);
-          if (!marcadas.length) {
-            input.checked = true;
+      menu.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+      });
+      menu.querySelectorAll('.xp-cat-edit__opt').forEach(function (label) {
+        var input = label.querySelector('[data-cat-key]');
+        if (!input) return;
+        label.addEventListener('pointerdown', function (ev) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          catMenuHold = Date.now() + 600;
+          if (input.checked && chavesDoMenu(menu).length === 1) {
             erroMenuCategoria(menu, 'Marque pelo menos uma categoria.');
             return;
           }
-          erroMenuCategoria(menu, '');
-          salvarCategoriasLinha(list, id, marcadas, menu, anteriores);
+          input.checked = !input.checked;
+          agendarCategorias(id, box);
         });
       });
     });

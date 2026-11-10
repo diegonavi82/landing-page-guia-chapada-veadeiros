@@ -570,50 +570,60 @@ if ($method === 'POST') {
     }
 }
 
+function gcv_attraction_put_so_categorias(int $id, array $body, array $admin): void
+{
+    $existe = db()->prepare('SELECT id FROM gcv_attractions WHERE id = ?');
+    $existe->execute([$id]);
+    if (!$existe->fetchColumn()) {
+        http_response_code(404);
+        echo json_encode(['ok' => false, 'error' => 'Atrativo não encontrado']);
+        return;
+    }
+    $cats = gcv_passeio_categorias_lista($body['categorias'] ?? []);
+    if (!$cats) {
+        http_response_code(400);
+        echo json_encode(['ok' => false, 'error' => 'Marque pelo menos uma categoria.']);
+        return;
+    }
+    $ordered = [];
+    foreach (array_keys(GCV_PASSEIO_CATEGORIAS) as $key) {
+        if (in_array($key, $cats, true)) {
+            $ordered[] = $key;
+        }
+    }
+    db()->prepare('UPDATE gcv_attractions SET categorias = ?, updated_by = ? WHERE id = ?')->execute([
+        json_encode($ordered, JSON_UNESCAPED_UNICODE),
+        (int)$admin['id'],
+        $id,
+    ]);
+    try {
+        gcv_attraction_sync_categorias_passeios(db(), $id);
+    } catch (Throwable $e) {
+        error_log('categorias passeio: ' . $e->getMessage());
+    }
+    gcv_attraction_limpar_cache_passeios();
+    echo json_encode(['ok' => true, 'data' => ['id' => $id, 'categorias' => $ordered]], JSON_UNESCAPED_UNICODE);
+}
+
 if ($method === 'PUT') {
     try {
-        gcv_cms_ensure_schema();
         $id = (int)($body['id'] ?? 0);
         if ($id <= 0) {
             http_response_code(400);
             echo json_encode(['ok' => false, 'error' => 'id obrigatório']);
             exit;
         }
+        if (!empty($body['somente_categorias'])) {
+            gcv_attraction_put_so_categorias($id, $body, $admin);
+            exit;
+        }
+        gcv_cms_ensure_schema();
         $stmt = db()->prepare('SELECT * FROM gcv_attractions WHERE id = ?');
         $stmt->execute([$id]);
         $existing = $stmt->fetch();
         if (!$existing) {
             http_response_code(404);
             echo json_encode(['ok' => false, 'error' => 'Atrativo não encontrado']);
-            exit;
-        }
-        if (!empty($body['somente_categorias'])) {
-            gcv_tarifarios_ensure(db());
-            $cats = gcv_passeio_categorias_lista($body['categorias'] ?? []);
-            if (!$cats) {
-                http_response_code(400);
-                echo json_encode(['ok' => false, 'error' => 'Marque pelo menos uma categoria.']);
-                exit;
-            }
-            $ordered = [];
-            foreach (array_keys(GCV_PASSEIO_CATEGORIAS) as $key) {
-                if (in_array($key, $cats, true)) {
-                    $ordered[] = $key;
-                }
-            }
-            db()->prepare('UPDATE gcv_attractions SET categorias = ?, updated_by = ? WHERE id = ?')->execute([
-                json_encode($ordered, JSON_UNESCAPED_UNICODE),
-                (int)$admin['id'],
-                $id,
-            ]);
-            try {
-                gcv_experiencia_apos_atrativo(db(), $id);
-                gcv_attraction_sync_categorias_passeios(db(), $id);
-            } catch (Throwable $e) {
-                error_log('categorias passeio: ' . $e->getMessage());
-            }
-            gcv_attraction_limpar_cache_passeios();
-            echo json_encode(['ok' => true, 'data' => ['id' => $id, 'categorias' => $ordered]], JSON_UNESCAPED_UNICODE);
             exit;
         }
         $row = gcv_attraction_from_body($body, $existing);

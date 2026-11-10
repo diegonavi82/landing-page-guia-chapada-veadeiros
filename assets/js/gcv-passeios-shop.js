@@ -262,6 +262,16 @@
     box.hidden = false;
   }
 
+  function tagDoCard(tour) {
+    var cats = (tour.categories || []).filter(function (key) { return !!labels[key]; });
+    if (!cats.length) cats = ["classicos"];
+    if (filter !== "all" && cats.indexOf(filter) >= 0) return filter;
+    if (!tour._tag || cats.indexOf(tour._tag) < 0) {
+      tour._tag = cats[Math.floor(Math.random() * cats.length)];
+    }
+    return tour._tag;
+  }
+
   function paint() {
     eagerLeft = 6;
     var list = tours.filter(function (tour) {
@@ -278,7 +288,7 @@
       var show = showcase(tour);
       var time = horas(show.minutes);
       var cents = precoVitrine(tour.tarifa);
-      var tags = (tour.categories || []).map(function (key) { return "<span>" + esc(catName(key)) + "</span>"; }).join("");
+      var tags = "<span>" + esc(catName(tagDoCard(tour))) + "</span>";
       var count = tour.count === 1 ? copy.one : tour.count + " " + copy.many;
       var parts = partsOf(tour);
       var places = subtituloDe(tour);
