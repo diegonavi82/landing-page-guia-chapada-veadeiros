@@ -7,11 +7,13 @@ alwaysApply: true
 
 Push na branch `main` publica o site na Hostinger pelo GitHub Actions (`.github/workflows/deploy-hostinger-ftp.yml`).
 
-Ao terminar uma tarefa que alterou arquivo do site, sem esperar outro pedido:
+Todo comando que alterar arquivo do projeto termina com deploy. Não esperar o usuário dizer "commit", "push" ou "sobe". Esta regra vale mais do que a instrução genérica de só commitar ou só dar push quando pedirem.
+
+Ao terminar a tarefa:
 
 1. Commitar na `main` com uma mensagem curta do porquê.
 2. Dar `git push origin main`.
-3. No máximo um comando curto para pegar o link do run (`gh run list --branch main --limit 1`). Não usar `gh run watch`, não ficar em loop e não esperar o job terminar.
+3. Um comando curto para o link do run deste commit (`gh run list --branch main --limit 1`, ou a API do GitHub filtrada pelo SHA). Se o primeiro retorno ainda for o run anterior, uma segunda consulta pelo SHA deste commit. Não usar `gh run watch`, não ficar em loop e não esperar o job terminar.
 4. Dizer o que entrou no commit e colar a URL do Actions. O FTP segue sozinho na fila da Hostinger.
 
 A fila do deploy passa de 10 minutos e já segurou um agente por 40. Esperar o `success` deixa o comando parado sem acelerar o envio. Só consultar o run de novo se o usuário perguntar se já foi para o ar — uma consulta, sem poll.
