@@ -401,10 +401,9 @@
       '<label class="xp-peso' + (pesoAtual === 3 ? ' is-on' : '') + '"><input type="radio" name="xp-peso" value="3"' + (pesoAtual === 3 ? ' checked' : '') + ' /><strong>3 Difícil</strong></label>' +
       '</div>' +
       '<div class="xp-field"><span>Categorias</span><div class="xp-checks" id="xp-cats">' + catsHtml + '</div></div>' +
-      '<p class="xp-note">O passeio desta experiência entra nestas categorias. Um passeio com várias experiências entra em todas: uma em Destaque e outra em Lado B aparece nas duas.</p>' +
+      '<p class="xp-note">Marque onde este passeio aparece na vitrine: Clássicos, Destaque, Lado B, Família e Aventura. Um passeio com várias experiências entra em todas: uma em Destaque e outra em Lado B aparece nas duas.</p>' +
       '<label class="xp-field"><span>Subcategoria</span><input class="gcv-dash-input" id="xp-subcat" list="xp-subcats" value="' + esc(x.subcategoria || 'Cachoeira') + '" /><datalist id="xp-subcats"><option value="Cachoeira"></option><option value="Poço"></option><option value="Mirante"></option><option value="Cânion"></option><option value="Vale"></option><option value="Parque"></option></datalist></label>' +
       '<label class="xp-field"><span>CNPJ</span><input class="gcv-dash-input" id="xp-cnpj" inputmode="numeric" placeholder="00.000.000/0001-00" value="' + esc(x.cnpj || '') + '" /></label>' +
-      '<div class="xp-field"><span>Tags</span><div class="xp-tags" id="xp-tags"></div><div class="xp-inline"><input class="gcv-dash-input" id="xp-tag-input" placeholder="Nova tag" /><button type="button" class="gcv-dash-btn" id="xp-tag-add">Adicionar</button></div></div>' +
       '<label class="xp-field"><span>E-mail do anfitrião</span><input class="gcv-dash-input" id="xp-email" type="email" placeholder="quem administra esta experiência" value="' + esc(x.anfitriao_email || '') + '" /></label>' +
       '<p class="xp-note">O anfitrião entra com este e-mail. O admin aprova em Anfitriões e avisa no WhatsApp. Até a aprovação, o financeiro dele fica fechado.</p>' +
       '</div><div class="xp-card" style="margin-top:14px"><h3>Plano do anfitrião</h3>' + planosHtml +
@@ -479,18 +478,6 @@
       box.classList.add('is-ok');
       box.hidden = !msg;
       box.textContent = msg || '';
-    }
-
-    function pintarTags() {
-      q('xp-tags').innerHTML = tags.map(function (tag, i) {
-        return '<span class="xp-tag">' + esc(tag) + '<button type="button" data-tag="' + i + '" aria-label="Remover">×</button></span>';
-      }).join('');
-      q('xp-tags').querySelectorAll('[data-tag]').forEach(function (btn) {
-        btn.onclick = function () {
-          tags.splice(parseInt(btn.getAttribute('data-tag'), 10), 1);
-          pintarTags();
-        };
-      });
     }
 
     function lerIngressos() {
@@ -1010,18 +997,6 @@
     q('xp-title-pt').addEventListener('input', function () {
       if (api.onTitle) api.onTitle(q('xp-title-pt').value);
     });
-    q('xp-tag-add').onclick = function () {
-      var valor = q('xp-tag-input').value.trim();
-      if (!valor) return;
-      if (tags.some(function (tag) { return tag.toLowerCase() === valor.toLowerCase(); })) return;
-      if (tags.length >= 20) { mostrarErro('No máximo 20 tags.'); return; }
-      tags.push(valor.slice(0, 40));
-      q('xp-tag-input').value = '';
-      pintarTags();
-    };
-    q('xp-tag-input').addEventListener('keydown', function (ev) {
-      if (ev.key === 'Enter') { ev.preventDefault(); q('xp-tag-add').click(); }
-    });
     form.querySelectorAll('.xp-plano input').forEach(function (radio) {
       radio.onchange = function () {
         form.querySelectorAll('.xp-plano').forEach(function (card) {
@@ -1241,7 +1216,6 @@
         });
     }
 
-    pintarTags();
     pintarIngressos();
     pintarRanking();
     pintarGaleria();

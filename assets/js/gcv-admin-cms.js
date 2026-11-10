@@ -727,6 +727,20 @@
     }).join('') + '</div>';
   }
 
+  var CATS_VITRINE = [
+    ['classicos', 'Clássicos'],
+    ['destaque', 'Destaque'],
+    ['lado-b', 'Lado B'],
+    ['familia', 'Família'],
+    ['aventura', 'Aventura']
+  ];
+
+  function nomesCategoriasPasseio(a) {
+    var keys = Array.isArray(a && a.categorias) ? a.categorias : [];
+    if (!keys.length) keys = ['classicos'];
+    return CATS_VITRINE.filter(function (c) { return keys.indexOf(c[0]) >= 0; }).map(function (c) { return c[1]; });
+  }
+
   function categoriasTrilha(a) {
     var exp = (a && a.experiencia) || {};
     var sub = String(exp.subcategoria || '').trim() || 'Cachoeira';
@@ -801,9 +815,9 @@
   var xpFiltros = { titulo: '', categorias: '', cidade: '', tags: '', embarques: '', status: '' };
   var XP_FILTRO_COLS = [
     ['titulo', 'Filtrar título'],
-    ['categorias', 'Filtrar categorias'],
+    ['categorias', 'Filtrar tipo'],
     ['cidade', 'Filtrar cidade'],
-    ['tags', 'Filtrar tags'],
+    ['tags', 'Filtrar categorias'],
     ['embarques', 'Filtrar embarques'],
     ['status', 'Filtrar status']
   ];
@@ -832,7 +846,6 @@
 
   /* ---------- ATRATIVOS ---------- */
   function trilhaLinha(a) {
-    var tags = (a.experiencia && Array.isArray(a.experiencia.tags)) ? a.experiencia.tags : [];
     var cidades = cidadesTrilha(a);
     return (
       '<tr>' +
@@ -841,7 +854,7 @@
       '<td class="xp-cidades">' + (cidades.length ? cidades.map(function (nome) {
         return '<span class="xp-cidade">' + esc(nome) + '</span>';
       }).join(', ') : '<span class="xp-muted">—</span>') + '</td>' +
-      '<td>' + chipsHtml(tags) + '</td>' +
+      '<td>' + chipsHtml(nomesCategoriasPasseio(a)) + '</td>' +
       '<td>' + saidasHtml(a) + '</td>' +
       '<td>' + flagHtml(statusExperiencia(a.status)) + '</td>' +
       '<td>' + cmsRowActions(
@@ -868,12 +881,11 @@
   }
 
   function linhaBuscaTrilha(a) {
-    var tags = (a.experiencia && Array.isArray(a.experiencia.tags)) ? a.experiencia.tags : [];
     return {
       titulo: a.title_pt || '',
       categorias: categoriasTrilha(a).join(' '),
       cidade: cidadesTrilha(a).join(' '),
-      tags: tags.join(' '),
+      tags: nomesCategoriasPasseio(a).join(' '),
       embarques: saidasTexto(a),
       status: statusExperiencia(a.status).texto,
       html: trilhaLinha(a)
@@ -954,7 +966,7 @@
       aviso +
       '<div class="xp-grade-wrap"><table class="xp-grade">' +
       '<thead><tr>' +
-      '<th>Título</th><th>Categorias</th><th>Cidade</th><th>Tags</th>' +
+      '<th>Título</th><th>Tipo</th><th>Cidade</th><th>Categorias</th>' +
       '<th>Embarques e tarifas</th><th>Status</th><th>Ações</th>' +
       '</tr>' + filtros + '</thead><tbody id="xp-grade-body"></tbody></table></div>';
     list.querySelectorAll('[data-xp-filtro]').forEach(function (input) {

@@ -386,7 +386,7 @@ if ($method === 'GET') {
             }
         }
         $select = 'a.id, a.slug, a.status, a.title_pt, a.cover_url, a.difficulty, a.duration_minutes, a.tarifario_id, a.entry_price_cents, a.entry_price_label, a.city_id, a.updated_at';
-        foreach (['tarifa_guia', 'tarifa_translado', 'experiencia_json', 'duracao_json', 'saidas_json'] as $col) {
+        foreach (['tarifa_guia', 'tarifa_translado', 'experiencia_json', 'duracao_json', 'saidas_json', 'categorias'] as $col) {
             if (!empty($fields[$col])) {
                 $select .= ', a.' . $col;
             }
@@ -428,6 +428,7 @@ if ($method === 'GET') {
                 }
             }
             $row['experiencia'] = gcv_attraction_experiencia_lista($full);
+            $row['categorias'] = gcv_passeio_categorias_parse($row['categorias'] ?? null, 1);
             $row['horas_embarque'] = gcv_atrativo_maior_horas_embarque($pdo, $row);
             $row['max_participantes'] = gcv_experiencia_max_participantes($full);
             $tid = (int)($row['tarifario_id'] ?? 0);
