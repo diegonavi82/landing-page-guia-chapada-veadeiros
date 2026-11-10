@@ -1462,7 +1462,6 @@
         withRide: "Com translado",
         withoutRide: "Sem translado",
         only4x4: "Somente veículos 4x4. Sem translado, o deslocamento é no seu próprio veículo.",
-        peopleCap: "Até {n} pessoas neste passeio.",
         from: "De",
         person: "pessoa",
         peopleWord: "pessoas",
@@ -1533,7 +1532,6 @@
         withRide: "With transfer",
         withoutRide: "Without transfer",
         only4x4: "4x4 vehicles only. Without a transfer, you travel in your own vehicle.",
-        peopleCap: "Up to {n} people on this tour.",
         from: "From",
         person: "person",
         peopleWord: "people",
@@ -1604,7 +1602,6 @@
         withRide: "Con traslado",
         withoutRide: "Sin traslado",
         only4x4: "Solo vehículos 4x4. Sin traslado, el desplazamiento es en su propio vehículo.",
-        peopleCap: "Hasta {n} personas en este paseo.",
         from: "Desde",
         person: "persona",
         peopleWord: "personas",
@@ -2305,8 +2302,6 @@
       ".gcv-passeios__guide.is-info,.gcv-passeios__mode-note.is-info{background:#e0f2fe;color:#0c4a6e}" +
       ".gcv-passeios__guide.is-sucesso,.gcv-passeios__mode-note.is-sucesso{background:#dcfce7;color:#14532d}" +
       ".gcv-passeios__guide strong,.gcv-passeios__mode-note strong{font-weight:800}" +
-      ".gcv-passeios__cap{margin:.35rem 0 0;font-size:.75rem;font-weight:700;line-height:1.35;color:#92400e}" +
-      ".gcv-passeios__cap[hidden]{display:none}" +
       ".gcv-passeios__mode-link{display:inline;margin:0 0 0 .2rem;padding:0;border:0;background:none;color:inherit;font:inherit;font-weight:800;text-decoration:underline;text-underline-offset:2px;cursor:pointer}" +
       ".gcv-passeios__mode-link:hover{opacity:.8}" +
       ".gcv-passeios__foot{display:flex;align-items:center;justify-content:space-between;gap:.85rem;margin-top:.35rem;padding:.85rem 1.15rem 1.05rem;border-top:1px solid #eef2f0;background:#fff}" +
@@ -2416,8 +2411,7 @@
       '<div class="gcv-passeios__field gcv-passeios__field--people">' + copy.people +
         '<div class="gcv-passeios__stepper"><button type="button" data-passeio-step="-1" aria-label="−1">−</button>' +
         '<input type="number" min="1" max="15" value="' + gcvPessoasPrefill() + '" inputmode="numeric" aria-label="' + passeioEsc(copy.people) + '" data-passeio-people />' +
-        '<button type="button" data-passeio-step="1" aria-label="+1">+</button></div>' +
-        '<p class="gcv-passeios__cap" data-passeio-cap hidden></p></div>' +
+        '<button type="button" data-passeio-step="1" aria-label="+1">+</button></div></div>' +
       '<div class="gcv-passeios__field gcv-passeios__field--wide gcv-passeios__field--city">' + copy.city +
         seg("city", saidas.map(function (c) { return [c.nome, c.curta || passeioCidadeCurta(c.nome)]; })) +
         '<p class="gcv-passeios__city-empty" data-passeio-city-empty' + (saidas.length ? " hidden" : "") + ">" + passeioEsc(saidas.length ? "" : copy.noCity) + "</p>" +
@@ -2933,7 +2927,6 @@
 
     function aplicarLimitePessoas(sel) {
       var people = box.querySelector("[data-passeio-people]");
-      var note = box.querySelector("[data-passeio-cap]");
       if (!people) return;
       var max = sel && sel.maxPessoas >= 1 ? sel.maxPessoas : 15;
       people.max = String(max);
@@ -2941,14 +2934,6 @@
       if (!v || v < 1) people.value = "1";
       else if (v > max) people.value = String(max);
       if (typeof box._syncPeopleSteps === "function") box._syncPeopleSteps();
-      if (!note) return;
-      if (sel && sel.maxDefinido) {
-        note.hidden = false;
-        note.textContent = String(copy.peopleCap || "").replace("{n}", String(max));
-      } else {
-        note.hidden = true;
-        note.textContent = "";
-      }
     }
 
     function paint() {
