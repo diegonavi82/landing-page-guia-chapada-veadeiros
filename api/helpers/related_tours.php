@@ -598,7 +598,7 @@ function gcv_related_tour_one(PDO $pdo, int $passeioId): array
         'categorias' => gcv_passeio_categorias_merge($catsPartes),
         'tarifa' => $tarifaPublica,
         'saidas' => gcv_saidas_public(
-            $inter,
+            $chavesEmbarque,
             $tarifaPublica,
             $duracao,
             0,
