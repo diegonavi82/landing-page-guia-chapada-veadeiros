@@ -47,6 +47,11 @@ function gcv_experiencias_backfill_faltantes(PDO $pdo): array
 {
     $stats = ['experiencias_novas' => 0];
     try {
+        $ocultas = '';
+        if (function_exists('gcv_tarifario_column_exists')
+            && gcv_tarifario_column_exists($pdo, 'gcv_attractions', 'excluido_em')) {
+            $ocultas = ' AND a.excluido_em IS NULL';
+        }
         $rows = $pdo->query(
             "SELECT a.id
              FROM gcv_attractions a
@@ -55,6 +60,7 @@ function gcv_experiencias_backfill_faltantes(PDO $pdo): array
                  SELECT 1 FROM gcv_experiencias e
                  WHERE e.attraction_id = a.id AND e.tipo = 'atrativo'
                )
+               {$ocultas}
              ORDER BY a.id ASC
              LIMIT 3"
         )->fetchAll();

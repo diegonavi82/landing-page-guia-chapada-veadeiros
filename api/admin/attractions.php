@@ -13,6 +13,7 @@ require_once __DIR__ . '/../helpers/pagina_atrativo.php';
 header('Content-Type: application/json; charset=utf-8');
 $admin = require_admin();
 gcv_cms_ensure_schema();
+gcv_attractions_ensure_excluido(db());
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 function gcv_attraction_gallery(int $attractionId): array
@@ -193,6 +194,7 @@ function gcv_attraction_save_ficha(int $id, array $body): void
                 json_encode($cats, JSON_UNESCAPED_UNICODE),
                 $id,
             ]);
+            gcv_attraction_sync_categorias_passeios(db(), $id);
         }
         if (isset($body['duracao']) && is_array($body['duracao'])) {
             gcv_duracao_save(db(), 'atrativo', $id, $body['duracao']);
@@ -209,6 +211,45 @@ function gcv_attraction_save_ficha(int $id, array $body): void
         }
     } catch (Throwable $e) {
         error_log('ficha atrativo: ' . $e->getMessage());
+    }
+}
+
+/** Passeios que incluem este atrativo passam a usar a união das categorias de cada experiência. */
+function gcv_attraction_sync_categorias_passeios(PDO $pdo, int $attractionId): void
+{
+    if ($attractionId <= 0 || !gcv_tarifario_column_exists($pdo, 'gcv_passeio_relacionado', 'categorias')) {
+        return;
+    }
+    $stmt = $pdo->prepare('SELECT DISTINCT passeio_id FROM gcv_passeio_relacionado_atrativo WHERE attraction_id = ?');
+    $stmt->execute([$attractionId]);
+    $upd = $pdo->prepare('UPDATE gcv_passeio_relacionado SET categorias = ? WHERE id = ?');
+    $parts = $pdo->prepare(
+        'SELECT a.categorias FROM gcv_passeio_relacionado_atrativo x
+         INNER JOIN gcv_attractions a ON a.id = x.attraction_id
+         WHERE x.passeio_id = ?'
+    );
+    foreach ($stmt->fetchAll() as $row) {
+        $passeioId = (int)($row['passeio_id'] ?? 0);
+        if ($passeioId <= 0) {
+            continue;
+        }
+        $parts->execute([$passeioId]);
+        $brutos = [];
+        foreach ($parts->fetchAll() as $parte) {
+            $brutos[] = $parte['categorias'] ?? null;
+        }
+        $upd->execute([
+            json_encode(gcv_passeio_categorias_merge($brutos), JSON_UNESCAPED_UNICODE),
+            $passeioId,
+        ]);
+    }
+}
+
+function gcv_attraction_limpar_cache_passeios(): void
+{
+    $cache = __DIR__ . '/../cache/passeios-public.json';
+    if (is_file($cache)) {
+        @unlink($cache);
     }
 }
 
@@ -396,6 +437,7 @@ if ($method === 'GET') {
              FROM gcv_attractions a
              LEFT JOIN gcv_cities c ON c.id = a.city_id
              WHERE a.title_pt NOT LIKE \'% + %\'
+               AND a.excluido_em IS NULL
              ORDER BY a.title_pt ASC'
         )->fetchAll();
         $tarifas = [];
@@ -545,6 +587,31 @@ if ($method === 'PUT') {
             echo json_encode(['ok' => false, 'error' => 'Atrativo não encontrado']);
             exit;
         }
+        if (!empty($body['somente_categorias'])) {
+            gcv_tarifarios_ensure(db());
+            $cats = gcv_passeio_categorias_lista($body['categorias'] ?? []);
+            if (!$cats) {
+                http_response_code(400);
+                echo json_encode(['ok' => false, 'error' => 'Marque pelo menos uma categoria.']);
+                exit;
+            }
+            $ordered = [];
+            foreach (array_keys(GCV_PASSEIO_CATEGORIAS) as $key) {
+                if (in_array($key, $cats, true)) {
+                    $ordered[] = $key;
+                }
+            }
+            db()->prepare('UPDATE gcv_attractions SET categorias = ?, updated_by = ? WHERE id = ?')->execute([
+                json_encode($ordered, JSON_UNESCAPED_UNICODE),
+                (int)$admin['id'],
+                $id,
+            ]);
+            gcv_experiencia_apos_atrativo(db(), $id);
+            gcv_attraction_sync_categorias_passeios(db(), $id);
+            gcv_attraction_limpar_cache_passeios();
+            echo json_encode(['ok' => true, 'data' => ['id' => $id, 'categorias' => $ordered]], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
         $row = gcv_attraction_from_body($body, $existing);
         if (str_contains($row['title_pt'], ' + ')) {
             http_response_code(400);
@@ -638,6 +705,9 @@ if ($method === 'PUT') {
         $out['related_tours'] = gcv_related_tours_for_attraction(db(), $id);
         $out = gcv_attraction_anexar_experiencia($out);
         $out = gcv_pagina_atrativo_completar($out);
+        if (array_key_exists('categorias', $body)) {
+            gcv_attraction_limpar_cache_passeios();
+        }
         echo json_encode(['ok' => true, 'data' => $out]);
         exit;
     } catch (Throwable $e) {
@@ -658,9 +728,24 @@ if ($method === 'DELETE') {
         echo json_encode(['ok' => false, 'error' => 'id obrigatório']);
         exit;
     }
-    db()->prepare('UPDATE gcv_attractions SET status="archived", updated_by=? WHERE id=?')->execute([(int)$admin['id'], $id]);
-    gcv_experiencia_apos_atrativo(db(), $id);
-    echo json_encode(['ok' => true]);
+    try {
+        $existe = db()->prepare('SELECT id FROM gcv_attractions WHERE id = ? LIMIT 1');
+        $existe->execute([$id]);
+        if (!$existe->fetch()) {
+            http_response_code(404);
+            echo json_encode(['ok' => false, 'error' => 'Experiência não encontrada']);
+            exit;
+        }
+        db()->prepare(
+            'UPDATE gcv_attractions SET status="archived", excluido_em=NOW(), updated_by=? WHERE id=?'
+        )->execute([(int)$admin['id'], $id]);
+        gcv_experiencia_apos_atrativo(db(), $id);
+        echo json_encode(['ok' => true]);
+    } catch (Throwable $e) {
+        error_log('attractions.php DELETE: ' . $e->getMessage());
+        http_response_code(500);
+        echo json_encode(['ok' => false, 'error' => 'Não foi possível excluir a experiência.']);
+    }
     exit;
 }
 

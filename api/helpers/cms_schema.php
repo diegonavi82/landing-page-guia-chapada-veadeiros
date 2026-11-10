@@ -115,6 +115,25 @@ function gcv_cms_ensure_experiencia(PDO $pdo): void
     } catch (Throwable $e) {
         error_log('experiencia_json: ' . $e->getMessage());
     }
+    gcv_attractions_ensure_excluido($pdo);
+}
+
+/** Experiência excluída no painel some da lista. A linha fica para saídas já marcadas. */
+function gcv_attractions_ensure_excluido(PDO $pdo): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+    try {
+        $col = $pdo->query("SHOW COLUMNS FROM gcv_attractions LIKE 'excluido_em'")->fetch();
+        if (!$col) {
+            $pdo->exec('ALTER TABLE gcv_attractions ADD COLUMN excluido_em DATETIME NULL');
+        }
+    } catch (Throwable $e) {
+        error_log('excluido_em: ' . $e->getMessage());
+    }
 }
 
 function gcv_cms_ensure_core_tables(PDO $pdo): void

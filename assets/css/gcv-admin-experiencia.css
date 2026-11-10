@@ -674,6 +674,45 @@
   line-height: 1.35;
 }
 .xp-chip--terapia { background: #dcfce7; color: #14532d; }
+.xp-cat-edit { position: relative; display: inline-block; max-width: 220px; }
+.xp-cat-edit__btn {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+.xp-cat-edit__btn:hover .xp-chip,
+.xp-cat-edit__btn:focus-visible .xp-chip {
+  box-shadow: inset 0 0 0 1px #86efac;
+}
+.xp-cat-edit__menu {
+  z-index: 40;
+  min-width: 168px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.14);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.xp-cat-edit__menu[hidden] { display: none !important; }
+.xp-cat-edit__opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: #111827;
+  cursor: pointer;
+}
+.xp-cat-edit__erro {
+  margin: 2px 0 0;
+  color: #b91c1c;
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
 .xp-cidades { max-width: 220px; }
 .xp-cidade { white-space: nowrap; }
 .xp-saida { margin: 0 0 8px; }

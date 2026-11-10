@@ -2399,6 +2399,7 @@
       ".gcv-passeios.is-modal .gcv-passeios__body{flex:1 1 auto;overflow:auto;min-height:0}" +
       ".gcv-passeios.is-modal .gcv-passeios__foot{flex:none;position:static}" +
       "@media(max-width:767px){.gcv-passeios.is-modal .gcv-passeios__field--mode,.gcv-passeios.is-modal .gcv-passeios__field--transport{grid-column:span 1}}" +
+      "@media(min-width:768px){.gcv-passeio-modal{align-items:safe center}.gcv-passeio-modal__panel{width:min(920px,calc(100vw - 2rem));max-height:none;height:auto;overflow:visible}.gcv-passeios.is-modal{max-height:none;height:auto;overflow:hidden}.gcv-passeios.is-modal .gcv-passeios__body{overflow:visible;flex:none;min-height:auto}}" +
       "@media(max-width:640px){.gcv-passeio-modal{padding:.55rem}.gcv-passeio-modal__panel,.gcv-passeios.is-modal{max-height:calc(100dvh - 1.1rem)}.gcv-passeios.is-modal{border-radius:16px}.gcv-passeios.is-modal .gcv-passeios__field--mode,.gcv-passeios.is-modal .gcv-passeios__field--transport{grid-column:1 / -1}}";
     function seg(name, options) {
       return '<div class="gcv-passeios__seg" role="radiogroup" data-passeio-seg="' + name + '">' +
@@ -3074,13 +3075,18 @@
     }
 
     function travarJanelaModal() {
-      if (!box.classList.contains("is-modal") || box._alturaTravada) return;
+      if (!box.classList.contains("is-modal")) return;
+      var panel = box.closest(".gcv-passeio-modal__panel");
+      var largo = window.matchMedia && window.matchMedia("(min-width: 768px)").matches;
+      if (largo) {
+        if (panel) panel.style.height = "";
+        return;
+      }
+      if (box._alturaTravada) return;
       box._alturaTravada = true;
       requestAnimationFrame(function () {
-        var panel = box.closest(".gcv-passeio-modal__panel");
         if (!panel) return;
-        var estreito = window.matchMedia && window.matchMedia("(max-width: 640px)").matches;
-        var limite = Math.max(280, (window.innerHeight || 640) - (estreito ? 18 : 32));
+        var limite = Math.max(280, (window.innerHeight || 640) - 18);
         var medida = Math.ceil(panel.getBoundingClientRect().height);
         if (medida < 80) {
           box._alturaTravada = false;

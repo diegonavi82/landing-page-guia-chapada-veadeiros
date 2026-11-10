@@ -845,6 +845,152 @@
   }
 
   /* ---------- ATRATIVOS ---------- */
+  function chavesCategoria(a) {
+    var keys = Array.isArray(a && a.categorias) ? a.categorias.filter(function (key) {
+      return CATS_VITRINE.some(function (c) { return c[0] === key; });
+    }) : [];
+    return keys.length ? keys : ['classicos'];
+  }
+
+  function categoriasEditHtml(a) {
+    var keys = chavesCategoria(a);
+    var menu = CATS_VITRINE.map(function (c) {
+      var on = keys.indexOf(c[0]) >= 0;
+      return '<label class="xp-cat-edit__opt"><input type="checkbox" data-cat-key="' + c[0] + '"' + (on ? ' checked' : '') + ' /> ' + esc(c[1]) + '</label>';
+    }).join('');
+    return '<div class="xp-cat-edit" data-cat-id="' + a.id + '">' +
+      '<button type="button" class="xp-cat-edit__btn" aria-haspopup="true" aria-expanded="false" title="Editar categorias">' +
+      chipsHtml(nomesCategoriasPasseio(a)) +
+      '</button>' +
+      '<div class="xp-cat-edit__menu" hidden role="group" aria-label="Categorias">' +
+      menu +
+      '<p class="xp-cat-edit__erro" hidden></p></div></div>';
+  }
+
+  function fecharMenusCategoria(list) {
+    if (!list) return;
+    list.querySelectorAll('.xp-cat-edit__menu').forEach(function (menu) { menu.hidden = true; });
+    list.querySelectorAll('.xp-cat-edit__btn').forEach(function (btn) { btn.setAttribute('aria-expanded', 'false'); });
+  }
+
+  function abrirMenuCategoria(box) {
+    var menu = box.querySelector('.xp-cat-edit__menu');
+    var btn = box.querySelector('.xp-cat-edit__btn');
+    var list = box.closest('#cms-attr-list');
+    fecharMenusCategoria(list);
+    menu.hidden = false;
+    btn.setAttribute('aria-expanded', 'true');
+    var rect = btn.getBoundingClientRect();
+    var margem = 8;
+    menu.style.position = 'fixed';
+    menu.style.left = Math.max(margem, rect.left) + 'px';
+    menu.style.top = (rect.bottom + 4) + 'px';
+    var altura = menu.offsetHeight;
+    var largura = menu.offsetWidth;
+    if (rect.left + largura > window.innerWidth - margem) {
+      menu.style.left = Math.max(margem, window.innerWidth - largura - margem) + 'px';
+    }
+    if (rect.bottom + 4 + altura > window.innerHeight - margem) {
+      menu.style.top = Math.max(margem, rect.top - altura - 4) + 'px';
+    }
+  }
+
+  function marcarCategorias(menu, keys) {
+    menu.querySelectorAll('[data-cat-key]').forEach(function (input) {
+      input.checked = keys.indexOf(input.getAttribute('data-cat-key')) >= 0;
+    });
+  }
+
+  function erroMenuCategoria(menu, msg) {
+    var box = menu.querySelector('.xp-cat-edit__erro');
+    if (!box) return;
+    box.hidden = !msg;
+    box.textContent = msg || '';
+  }
+
+  function salvarCategoriasLinha(list, id, keys, menu, anteriores) {
+    menu.querySelectorAll('[data-cat-key]').forEach(function (input) { input.disabled = true; });
+    erroMenuCategoria(menu, '');
+    sendJson('PUT', '/api/admin/attractions.php', {
+      id: id,
+      somente_categorias: true,
+      categorias: keys
+    }, function (err, res) {
+      menu.querySelectorAll('[data-cat-key]').forEach(function (input) { input.disabled = false; });
+      if (err || !res || !res.ok) {
+        marcarCategorias(menu, anteriores);
+        erroMenuCategoria(menu, (res && res.error) || 'Não foi possível salvar a categoria.');
+        return;
+      }
+      var salvas = (res.data && res.data.categorias) || keys;
+      var atrativo = null;
+      (state.attractions || []).forEach(function (item) {
+        if (parseInt(item.id, 10) === id) {
+          item.categorias = salvas;
+          atrativo = item;
+        }
+      });
+      var linha = (state.xpLinhas || []).filter(function (row) { return row.id === id; })[0];
+      if (linha && atrativo) linha.tags = nomesCategoriasPasseio(atrativo).join(' ');
+      var botao = menu.parentNode && menu.parentNode.querySelector('.xp-cat-edit__btn');
+      if (botao) botao.innerHTML = chipsHtml(nomesCategoriasPasseio({ categorias: salvas }));
+      if (linha && !experienciaPassaFiltro(linha)) pintarCorpoExperiencias(list);
+    });
+  }
+
+  function ligarMenusCategoria(list) {
+    if (!list._catFora) {
+      list._catFora = function (ev) {
+        var alvo = ev.target;
+        if (alvo && alvo.closest && alvo.closest('.xp-cat-edit')) return;
+        fecharMenusCategoria(list);
+      };
+      document.addEventListener('click', list._catFora);
+      document.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Escape') fecharMenusCategoria(list);
+      });
+    }
+    var wrap = list.querySelector('.xp-grade-wrap');
+    if (wrap && wrap._catScroll !== list) {
+      wrap._catScroll = list;
+      wrap.addEventListener('scroll', function () { fecharMenusCategoria(list); });
+    }
+    list.querySelectorAll('.xp-cat-edit').forEach(function (box) {
+      var id = parseInt(box.getAttribute('data-cat-id'), 10);
+      var menu = box.querySelector('.xp-cat-edit__menu');
+      var btn = box.querySelector('.xp-cat-edit__btn');
+      btn.onclick = function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        if (!menu.hidden) {
+          fecharMenusCategoria(list);
+          return;
+        }
+        abrirMenuCategoria(box);
+      };
+      menu.addEventListener('click', function (ev) { ev.stopPropagation(); });
+      menu.querySelectorAll('[data-cat-key]').forEach(function (input) {
+        input.addEventListener('change', function () {
+          var marcadas = [];
+          menu.querySelectorAll('[data-cat-key]:checked').forEach(function (el) {
+            marcadas.push(el.getAttribute('data-cat-key'));
+          });
+          var key = input.getAttribute('data-cat-key');
+          var anteriores = input.checked
+            ? marcadas.filter(function (item) { return item !== key; })
+            : marcadas.concat([key]);
+          if (!marcadas.length) {
+            input.checked = true;
+            erroMenuCategoria(menu, 'Marque pelo menos uma categoria.');
+            return;
+          }
+          erroMenuCategoria(menu, '');
+          salvarCategoriasLinha(list, id, marcadas, menu, anteriores);
+        });
+      });
+    });
+  }
+
   function trilhaLinha(a) {
     var cidades = cidadesTrilha(a);
     return (
@@ -854,7 +1000,7 @@
       '<td class="xp-cidades">' + (cidades.length ? cidades.map(function (nome) {
         return '<span class="xp-cidade">' + esc(nome) + '</span>';
       }).join(', ') : '<span class="xp-muted">—</span>') + '</td>' +
-      '<td>' + chipsHtml(nomesCategoriasPasseio(a)) + '</td>' +
+      '<td>' + categoriasEditHtml(a) + '</td>' +
       '<td>' + saidasHtml(a) + '</td>' +
       '<td>' + flagHtml(statusExperiencia(a.status)) + '</td>' +
       '<td>' + cmsRowActions(
@@ -882,6 +1028,7 @@
 
   function linhaBuscaTrilha(a) {
     return {
+      id: parseInt(a.id, 10),
       titulo: a.title_pt || '',
       categorias: categoriasTrilha(a).join(' '),
       cidade: cidadesTrilha(a).join(' '),
@@ -934,6 +1081,7 @@
     bindRowDelete(list, 'data-del-attr', '/api/admin/attractions.php', function () {
       renderAttractions();
     });
+    ligarMenusCategoria(list);
   }
 
   function pintarCorpoExperiencias(list) {
