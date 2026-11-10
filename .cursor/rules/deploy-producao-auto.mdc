@@ -13,10 +13,13 @@ Ao terminar a tarefa:
 
 1. Commitar na `main` com uma mensagem curta do porquê.
 2. Dar `git push origin main`.
-3. Um comando curto para o link do run deste commit (`gh run list --branch main --limit 1`, ou a API do GitHub filtrada pelo SHA). Se o primeiro retorno ainda for o run anterior, uma segunda consulta pelo SHA deste commit. Não usar `gh run watch`, não ficar em loop e não esperar o job terminar.
-4. Dizer o que entrou no commit e colar a URL do Actions. O FTP segue sozinho na fila da Hostinger.
+3. Um comando curto para o link do run deste commit (`gh run list --branch main --limit 1`, ou a API do GitHub filtrada pelo SHA). Se o primeiro retorno ainda for o run anterior, uma segunda consulta pelo SHA deste commit.
+4. Dizer o que entrou no commit e colar a URL do Actions.
+5. Avisar sozinho quando esse run terminar e o arquivo estiver em `guiachapadaveadeiros.com`. O usuário não precisa perguntar "já foi?". Conferir o HTML ao vivo (sem abrir navegador) antes de dizer que o painel atualizou. Se o run falhar ou for cancelado, avisar também, com a URL.
 
-A fila do deploy passa de 10 minutos e já segurou um agente por 40. Esperar o `success` deixa o comando parado sem acelerar o envio. Só consultar o run de novo se o usuário perguntar se já foi para o ar — uma consulta, sem poll.
+A fila passa de 10 minutos. Não segurar a resposta com `gh run watch` nem com poll no turno. Deixar a consulta em segundo plano e mandar a mensagem quando concluir.
+
+Não fazer outro push enquanto o run que leva a alteração do site ainda está `pending`: a fila cancela o pendente anterior. Esperar ele sair de `pending` para commitar outra coisa.
 
 Pergunta sem arquivo alterado não gera commit. Não commitar segredo (`.env`, `config.local.php`, `.env.deploy`).
 
