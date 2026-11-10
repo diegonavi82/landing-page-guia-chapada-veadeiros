@@ -644,6 +644,20 @@
     ligarTabelaPasseios(body);
   }
 
+  function gruposDoPasseio(rows) {
+    var ordem = [];
+    var mapa = {};
+    rows.forEach(function (r) {
+      var chave = r.kind + ':' + r.id;
+      if (!mapa[chave]) {
+        mapa[chave] = [];
+        ordem.push(chave);
+      }
+      mapa[chave].push(r);
+    });
+    return ordem.map(function (chave) { return mapa[chave]; });
+  }
+
   function fillPasseioRows() {
     var tbody = $('ps-rows');
     var count = $('ps-count');
@@ -668,16 +682,23 @@
       tbody.innerHTML = '<tr><td class="ps-empty" colspan="' + PASSEIO_COLS.length + '">Nenhum passeio com esses filtros.</td></tr>';
       return;
     }
-    tbody.innerHTML = rows.map(function (r) {
-      var chip = r.atrativos > 1 ? '<span class="ps-multi">' + r.atrativos + ' experiências</span>' : '';
-      var guiaCell = r.semCidade ? '<span class="gcv-cms-muted">Sem cidade em comum</span>' : tarifaDashSelect('guia', r.guiaCodigo, r.piso);
-      var transCell = r.semCidade ? '' : tarifaDashSelect('translado', r.transCodigo, 0);
-      return '<tr class="' + (r.atrativos > 1 ? 'ps-row--multi' : '') + '" data-kind="' + r.kind + '" data-id="' + r.id + '" data-cidade="' + esc(r.cidade || '') + '">' +
-        '<td class="ps-passeio"><span class="ps-name">' + esc(r.passeio) + '</span>' + chip + '</td>' +
-        '<td class="ps-cidade">' + esc(nomeCidadeLinha(r)) + '</td>' +
-        '<td>' + guiaCell + '</td>' +
-        '<td>' + transCell + '</td>' +
-      '</tr>';
+    tbody.innerHTML = gruposDoPasseio(rows).map(function (grupo) {
+      return grupo.map(function (r, i) {
+        var chip = r.atrativos > 1 ? '<span class="ps-multi">' + r.atrativos + ' experiências</span>' : '';
+        var guiaCell = r.semCidade ? '<span class="gcv-cms-muted">Sem cidade em comum</span>' : tarifaDashSelect('guia', r.guiaCodigo, r.piso);
+        var transCell = r.semCidade ? '' : tarifaDashSelect('translado', r.transCodigo, 0);
+        var nomeCell = '';
+        if (i === 0) {
+          var span = grupo.length > 1 ? ' rowspan="' + grupo.length + '"' : '';
+          nomeCell = '<td class="ps-passeio' + (grupo.length > 1 ? ' ps-passeio--span' : '') + '"' + span + '><span class="ps-name">' + esc(r.passeio) + '</span>' + chip + '</td>';
+        }
+        return '<tr class="' + (r.atrativos > 1 ? 'ps-row--multi' : '') + (i > 0 ? ' ps-row--cont' : '') + '" data-kind="' + r.kind + '" data-id="' + r.id + '" data-cidade="' + esc(r.cidade || '') + '">' +
+          nomeCell +
+          '<td class="ps-cidade">' + esc(nomeCidadeLinha(r)) + '</td>' +
+          '<td>' + guiaCell + '</td>' +
+          '<td>' + transCell + '</td>' +
+        '</tr>';
+      }).join('');
     }).join('');
     tbody.querySelectorAll('[data-tarifa-tipo]').forEach(function (sel) {
       sel.onchange = function () { salvarTarifaLinha(sel); };
