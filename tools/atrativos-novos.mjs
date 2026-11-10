@@ -1501,6 +1501,11 @@ const ALT_BY_SLUG = {
     "Guardião waterfall, canyon drop and blue pool, in Vão do Moleque, Chapada dos Veadeiros",
     "Cascada del Guardião, caída en el cañón y poza azul, en el Vão do Moleque, Chapada dos Veadeiros",
   ),
+  "simao-correia-guia-chapada-veadeiros": L(
+    "Cachoeira Simão Correia, queda alta na borda da serra a leste de Alto Paraíso, na Chapada dos Veadeiros",
+    "Simão Correia waterfall, a tall drop on the ridge east of Alto Paraíso, in Chapada dos Veadeiros",
+    "Cascada Simão Correia, caída alta en el borde de la sierra al este de Alto Paraíso, en la Chapada dos Veadeiros",
+  ),
 };
 
 export const NEW_GALLERIES = Object.fromEntries(
