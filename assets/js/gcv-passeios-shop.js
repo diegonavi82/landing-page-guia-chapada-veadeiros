@@ -19,6 +19,7 @@
       allCities: "Todas",
       type: "Tipo",
       cities: "Cidades de embarque",
+      search: "Procurar",
       departures: "Saídas de:",
       from: "A partir de",
       person: "por pessoa",
@@ -46,6 +47,7 @@
       allCities: "All",
       type: "Type",
       cities: "Departure cities",
+      search: "Search",
       departures: "Departing from:",
       from: "From",
       person: "per person",
@@ -73,6 +75,7 @@
       allCities: "Todas",
       type: "Tipo",
       cities: "Ciudades de salida",
+      search: "Buscar",
       departures: "Salidas desde:",
       from: "Desde",
       person: "por persona",
@@ -171,7 +174,13 @@
     var quorum = Math.max(1, parseInt(tarifa && tarifa.quorum, 10) || 4);
     return cents + Math.round((parseInt(extra, 10) || 0) / quorum);
   }
-  function catName(key) {
+  function catName(key, onde) {
+    if (key === "destaque" && onde === "filtro") {
+      return { pt: "Destaques", en: "Featured", es: "Destacados" }[lang] || "Destaques";
+    }
+    if (key === "destaque") {
+      return { pt: "Destaque", en: "Featured", es: "Destacado" }[lang] || "Destaque";
+    }
     var row = labels[key];
     return row ? row[lang] || row.pt : key;
   }
@@ -225,8 +234,10 @@
     return ordem.map(function (key) { return { key: key, nome: mapa[key] }; });
   }
   var check = '<svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.17 12.17 2.4 8.4l1.13-1.13 2.64 2.64 6.3-6.3 1.13 1.13z"/></svg>';
+  var lupa = '<svg class="gcv-shop__lupa" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.25" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10.3 10.3 13.4 13.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
   var filter = "all";
   var cityFilter = "all";
+  var busca = "";
   var tours = [];
   var maxAtrativos = 3;
 
@@ -312,16 +323,49 @@
     return tour._tag;
   }
 
+  function textoBusca(s) {
+    return String(s || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+  }
+
+  function tourNaBusca(tour) {
+    var q = textoBusca(busca).trim();
+    if (!q) return true;
+    var nomes = [tour && tour.title];
+    var sub = tour && tour.subtitle;
+    if (sub && typeof sub === "object") nomes.push(sub.pt, sub.en, sub.es);
+    else if (sub) nomes.push(sub);
+    (tour && tour.attractions || []).forEach(function (nome) { nomes.push(nome); });
+    (tour && tour.parts || []).forEach(function (parte) { if (parte) nomes.push(parte.title); });
+    return textoBusca(nomes.filter(Boolean).join(" ")).indexOf(q) >= 0;
+  }
+
+  function embaralhar(lista) {
+    var arr = (lista || []).slice();
+    var i;
+    for (i = arr.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var item = arr[i];
+      arr[i] = arr[j];
+      arr[j] = item;
+    }
+    return arr;
+  }
+
   function paint() {
     eagerLeft = 6;
+    var q = textoBusca(busca).trim();
     var list = tours.filter(function (tour) {
       if (filter !== "all" && (tour.categories || []).indexOf(filter) < 0) return false;
+      if (q && !tourNaBusca(tour)) return false;
       if (cityFilter === "all") return true;
       return cidadesDoTour(tour).some(function (cidade) { return cidade.key === cityFilter; });
     });
     var grid = root.querySelector("[data-shop-grid]");
     if (!list.length) {
-      var vazio = cityFilter !== "all" ? (copy.emptyFilters || copy.empty) : copy.empty;
+      var vazio = (cityFilter !== "all" || q) ? (copy.emptyFilters || copy.empty) : copy.empty;
       grid.innerHTML = '<p class="gcv-shop__empty">' + esc(vazio) + "</p>";
       return;
     }
@@ -393,7 +437,7 @@
   function shell(cats) {
     var buttons = '<button type="button" data-shop-filter="all">' + esc(copy.all) + "</button>" +
       cats.map(function (key) {
-        return '<button type="button" data-shop-filter="' + esc(key) + '">' + esc(catName(key)) + "</button>";
+        return '<button type="button" data-shop-filter="' + esc(key) + '">' + esc(catName(key, "filtro")) + "</button>";
       }).join("");
     root.innerHTML =
       '<div class="gcv-shop__hero">' +
@@ -402,7 +446,12 @@
       '<div class="gcv-shop__bars">' +
       '<div class="gcv-shop__bar"><p class="gcv-shop__bar-label">' + esc(copy.type) + "</p>" +
       '<div class="gcv-shop__filters">' + buttons + "</div></div>" +
+      '<div class="gcv-shop__tools">' +
       '<div data-shop-cities></div>' +
+      '<label class="gcv-shop__search">' +
+      '<span class="gcv-shop__search-field">' + lupa +
+      '<input type="search" data-shop-search enterkeyhint="search" autocomplete="off" placeholder="' + esc(copy.search) + '" aria-label="' + esc(copy.search) + '" />' +
+      "</span></label></div>" +
       "</div>" +
       '<div class="gcv-shop__grid" data-shop-grid></div>';
     marcarFiltro("[data-shop-filter]", filter);
@@ -415,6 +464,12 @@
         paint();
         return;
       }
+    });
+    root.addEventListener("input", function (ev) {
+      var campo = ev.target.closest && ev.target.closest("[data-shop-search]");
+      if (!campo || !root.contains(campo)) return;
+      busca = campo.value || "";
+      paint();
     });
     root.addEventListener("change", function (ev) {
       var cidade = ev.target.closest && ev.target.closest("[data-shop-city-select]");
@@ -483,7 +538,7 @@
   window.__gcvPasseiosPromise
     .then(function (payload) {
       var data = (payload && payload.data) || {};
-      tours = data.tours || [];
+      tours = embaralhar(data.tours || []);
       maxAtrativos = parseInt(data.max_atrativos, 10) || maxAtrativos;
       boot();
       var grid = root.querySelector("[data-shop-grid]");
