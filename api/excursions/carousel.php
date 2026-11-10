@@ -220,12 +220,34 @@ function gcv_redact_guide_text(string $text, array $needles, string $replacement
     return $text;
 }
 
+/** Diego Navi é o único guia cujo nome fica público mesmo com a saída em formação. */
+function gcv_guide_keeps_public_name(array $card): bool
+{
+    $slug = strtolower(trim((string)($card['guiaSlug'] ?? '')));
+    if ($slug === 'diego-navi' || strpos($slug, 'diego-navi-') === 0) {
+        return true;
+    }
+    foreach (['guiaNome', 'guiaNomeCompleto', 'guiaApelido'] as $key) {
+        $name = mb_strtolower(trim((string)($card[$key] ?? '')));
+        if ($name === 'diego navi' || strpos($name, 'diego navi ') === 0) {
+            return true;
+        }
+    }
+    $photo = strtolower((string)($card['guiaFoto'] ?? ''));
+    return strpos($photo, 'guia-diego-navi') !== false;
+}
+
 /** Em formação o card público não leva nome, apelido nem contato. A foto e a bio (sem o nome) continuam. */
 function gcv_carousel_hide_guide_until_confirmed(array $card): array
 {
+    $revealName = gcv_guide_keeps_public_name($card);
     $apelido = trim((string)($card['guiaApelido'] ?? ''));
     unset($card['guiaApelido']);
     if (!empty($card['confirmada'])) {
+        return $card;
+    }
+    if ($revealName) {
+        unset($card['guiaTelefone']);
         return $card;
     }
     $initials = trim((string)($card['guiaIniciais'] ?? ''));

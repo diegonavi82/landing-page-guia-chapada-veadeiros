@@ -3076,6 +3076,29 @@
     de: 1, da: 1, do: 1, dos: 1, das: 1, e: 1, di: 1, du: 1, del: 1, van: 1, von: 1, y: 1,
   };
 
+  function foldGuiaNome(value) {
+    return String(value || "").trim().toLocaleLowerCase();
+  }
+
+  /** Diego Navi é o único guia que permanece com o nome na ficha, mesmo em formação. */
+  function guiaMostraNomeCompleto(e) {
+    if (!e) return false;
+    var slug = String(e.guiaSlug || "").trim().toLowerCase();
+    if (slug === "diego-navi" || slug.indexOf("diego-navi-") === 0) return true;
+    var nome = foldGuiaNome(e.guiaNome);
+    var legal = foldGuiaNome(e.guiaNomeCompleto);
+    if (nome === "diego navi" || nome.indexOf("diego navi ") === 0) return true;
+    if (legal === "diego navi" || legal.indexOf("diego navi ") === 0) return true;
+    return String(e.guiaFoto || "").toLowerCase().indexOf("guia-diego-navi") >= 0;
+  }
+
+  function guiaNomeSemAbreviacao(e) {
+    if (!guiaMostraNomeCompleto(e)) return "";
+    var nome = String((e && e.guiaNome) || "").trim();
+    if (foldGuiaNome(nome).indexOf("diego navi") === 0) return nome;
+    return "Diego Navi";
+  }
+
   /** Primeira letra do nome + primeira letra do primeiro sobrenome + "." */
   function guiaIniciaisTexto(raw) {
     var parts = String(raw || "").trim().split(/\s+/).filter(Boolean);
@@ -3127,7 +3150,8 @@
     if (!hasGuiaDefinido(e)) {
       return guiaChipPendenteHtml(s.guiaPending || "A definir", locale, ["pt"]);
     }
-    if (!e.confirmada) {
+    var nomeAberto = guiaNomeSemAbreviacao(e);
+    if (!e.confirmada && !nomeAberto) {
       var ini =
         (e.guiaIniciais && String(e.guiaIniciais).trim()) ||
         guiaIniciaisTexto(e.guiaNomeCompleto || e.guiaNome || "");
@@ -3140,7 +3164,7 @@
         s.guiaAboutSecret || "Sobre o guia"
       );
     }
-    var nome = String(e.guiaNome || e.guiaNomeCompleto || "").trim();
+    var nome = nomeAberto || String(e.guiaNome || e.guiaNomeCompleto || "").trim();
     if (!nome) {
       return guiaChipPendenteHtml(s.guiaPending || "A definir", locale, ["pt"]);
     }
