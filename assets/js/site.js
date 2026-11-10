@@ -1484,7 +1484,11 @@
         pixIn: "no PIX",
         cardBr: "Cartão brasileiro {price} em até {n}x de {inst} (sem juros)",
         cardIntl: "Cartão internacional {price}",
-        extras: "Guia Local",
+        entriesNote: "*entradas não inclusas",
+        extrasLead: "Contratação de ",
+        extrasMark: "Guia Local",
+        extrasMid: " na ",
+        extrasPlace: "Chapada dos Veadeiros",
         pickLang: "Selecione o idioma",
         bilingual: "Guia bilíngue",
         bilingualHint: "Condutor credenciado que fala inglês ou espanhol",
@@ -1551,7 +1555,11 @@
         pixIn: "with PIX",
         cardBr: "Brazilian card {price} in up to {n}x of {inst} (interest-free)",
         cardIntl: "International card {price}",
-        extras: "Local guide",
+        entriesNote: "*entrance fees not included",
+        extrasLead: "Hiring a ",
+        extrasMark: "local guide",
+        extrasMid: " in ",
+        extrasPlace: "Chapada dos Veadeiros",
         pickLang: "Select the language",
         bilingual: "Bilingual guide",
         bilingualHint: "Licensed guide who speaks English or Spanish",
@@ -1618,7 +1626,11 @@
         pixIn: "con PIX",
         cardBr: "Tarjeta brasileña {price} en hasta {n}x de {inst} (sin intereses)",
         cardIntl: "Tarjeta internacional {price}",
-        extras: "Guía local",
+        entriesNote: "*entradas no incluidas",
+        extrasLead: "Contratación de ",
+        extrasMark: "guía local",
+        extrasMid: " en la ",
+        extrasPlace: "Chapada dos Veadeiros",
         pickLang: "Selecciona el idioma",
         bilingual: "Guía bilingüe",
         bilingualHint: "Guía acreditado que habla inglés o español",
@@ -2305,6 +2317,7 @@
       ".gcv-passeios__pixin{font-size:.95rem;font-weight:800;color:#0f2a1d}" +
       ".gcv-passeios__off{display:inline-flex;align-items:center;padding:.12rem .45rem;border-radius:999px;background:#dcfce7;color:#166534;font-size:.72rem;font-weight:800;letter-spacing:.02em;line-height:1.2}" +
       ".gcv-passeios__cardline{display:block;max-width:28rem;font-size:.8rem;font-weight:600;color:#64748b;line-height:1.35}" +
+      ".gcv-passeios__entries{display:block;margin-top:.28rem;font-size:.84rem;font-weight:800;line-height:1.3;color:#dc2626}" +
       ".gcv-passeios__money{color:var(--gp-blue);font-weight:800}" +
       ".gcv-passeios__actions{display:flex;flex:none}" +
       ".gcv-passeios__add{display:inline-flex;align-items:center;justify-content:center;gap:.45rem;margin:0;padding:.8rem 1.15rem;border:0;border-radius:12px;background:#14532d;color:#fff;font:inherit;font-size:.92rem;font-weight:800;cursor:pointer;box-shadow:none;transition:background .15s,transform .1s}" +
@@ -2323,11 +2336,11 @@
       ".gcv-datepicker__week,.gcv-datepicker__grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}.gcv-datepicker__week{margin-bottom:4px;font-size:.68rem;font-weight:700;color:#94a3b8}" +
       ".gcv-datepicker__day{height:34px;border:0;border-radius:9px;background:transparent;font:inherit;cursor:pointer}.gcv-datepicker__day:hover:not(:disabled){background:#e8f0ec}" +
       ".gcv-datepicker__day.is-today{box-shadow:inset 0 0 0 1.5px #14532d;font-weight:700}.gcv-datepicker__day.is-selected{background:#14532d;color:#fff;font-weight:700}.gcv-datepicker__day:disabled{color:#cbd5e1;cursor:default}" +
-      "@media(max-width:640px){.gcv-passeios__grid{grid-template-columns:1fr 1fr;gap:.65rem .7rem}.gcv-passeios__seg{flex-wrap:wrap}.gcv-passeios__seg button{flex:1 1 6.2rem;font-size:.78rem;padding:.48rem .3rem}.gcv-passeios__foot{flex-direction:column;align-items:stretch}.gcv-passeios__actions,.gcv-passeios__add{width:100%}.gcv-passeios__route{padding:.75rem 1rem .1rem}.gcv-passeios__route-name{font-size:1.25rem}.gcv-passeios__total-value{font-size:1.65rem}.gcv-passeios__body{padding:.75rem 1rem .2rem}}" +
+      "@media(max-width:640px){.gcv-passeios__grid{grid-template-columns:1fr 1fr;gap:.65rem .7rem}.gcv-passeios__seg{flex-wrap:wrap}.gcv-passeios__seg button{flex:1 1 6.2rem;font-size:.78rem;padding:.48rem .3rem}.gcv-passeios__foot{flex-direction:column;align-items:stretch}.gcv-passeios__actions,.gcv-passeios__add{width:100%}.gcv-passeios__route{padding:.85rem 1rem .15rem}.gcv-passeios__route-name{font-size:1.55rem}.gcv-passeios__total-value{font-size:1.65rem}.gcv-passeios__body{padding:.75rem 1rem .2rem}.gcv-bi__label{font-size:1rem}}" +
       "@media(min-width:768px){.gcv-passeios{max-width:none;width:100%;margin-left:0;margin-right:0}.gcv-passeios__grid{grid-template-columns:1fr 1fr 1fr 1fr}.gcv-passeios__field--city{grid-column:span 2}.gcv-passeios__field--date,.gcv-passeios__field--people{grid-column:span 1}.gcv-passeios__field--mode,.gcv-passeios__field--transport{grid-column:span 2}}" +
-      ".gcv-passeios__route{padding:1rem 1.1rem .2rem}" +
-      ".gcv-passeios__route-name{margin:0;font-size:1.55rem;font-weight:800;line-height:1.15;letter-spacing:-.03em;color:#0f2a1d}" +
-      ".gcv-passeios__route-name span{color:#14532d}" +
+      ".gcv-passeios__route{padding:1.05rem 1.15rem .25rem}" +
+      ".gcv-passeios__route-name{margin:0;font-size:2rem;font-weight:800;line-height:1.12;letter-spacing:-.03em;color:#14532d}" +
+      ".gcv-passeios__route-name span{color:#16a34a}" +
       ".gcv-passeios__chips{display:flex;flex-wrap:wrap;gap:.4rem;margin:.65rem 0 0}" +
       ".gcv-passeios__chip{display:inline-flex;align-items:center;gap:.3rem;margin:0;padding:.28rem .6rem;border-radius:999px;background:#f3faf6;color:#166534;font-size:.78rem;font-weight:700;line-height:1.2}" +
       ".gcv-passeios__chip .ti{font-size:.95rem}" +
@@ -2343,7 +2356,8 @@
       ".gcv-passeios__extra:hover:not(:disabled){border-color:#14532d}" +
       ".gcv-passeios__extra[aria-pressed=true]{background:#14532d;border-color:#14532d;color:#fff}" +
       ".gcv-bi{margin-top:1rem}" +
-      ".gcv-bi__label{margin:0 0 .5rem;font-size:1.02rem;font-weight:800;letter-spacing:-.02em;text-transform:none;color:#0f2a1d}" +
+      ".gcv-bi__label{margin:0 0 .55rem;font-size:1.14rem;font-weight:700;line-height:1.35;letter-spacing:-.02em;text-transform:none;color:#0f2a1d}" +
+      ".gcv-bi__label strong{color:#166534;font-weight:800;background:#dcfce7;border-radius:6px;padding:.05rem .32rem}" +
       ".gcv-bi__card{border:1px solid #d7ebe3;background:#f4fbf7;border-radius:16px;padding:.75rem .9rem .8rem}" +
       ".gcv-bi__pick{margin:0 0 .65rem;font-size:.98rem;font-weight:800;color:#0f2a1d}" +
       ".gcv-bi__langs{display:flex;flex-wrap:wrap;gap:.45rem}" +
@@ -2365,7 +2379,7 @@
       ".gcv-passeios.is-dock.is-mini .gcv-passeios__break{display:none}" +
       ".gcv-passeios.is-dock.is-mini .gcv-passeios__foot{margin:0;padding:0;border:0;background:none;flex-wrap:nowrap}" +
       ".gcv-passeios.is-dock.is-mini .gcv-passeios__budget{flex-direction:row;align-items:baseline;gap:.3rem}" +
-      ".gcv-passeios.is-dock.is-mini .gcv-passeios__cardline,.gcv-passeios.is-dock.is-mini .gcv-passeios__off{display:none}" +
+      ".gcv-passeios.is-dock.is-mini .gcv-passeios__cardline,.gcv-passeios.is-dock.is-mini .gcv-passeios__entries,.gcv-passeios.is-dock.is-mini .gcv-passeios__off{display:none}" +
       ".gcv-passeios.is-dock.is-mini .gcv-passeios__total-value{font-size:1.05rem}" +
       ".gcv-passeios.is-dock.is-mini .gcv-passeios__actions,.gcv-passeios.is-dock.is-mini .gcv-passeios__add{width:auto}" +
       ".gcv-passeios.is-dock.is-mini .gcv-passeios__add{padding:.45rem .7rem;font-size:.82rem}" +
@@ -2377,7 +2391,7 @@
       ".gcv-passeio-modal__x{position:absolute;top:.7rem;right:.75rem;z-index:3;width:2rem;height:2rem;border:1px solid #e2e8f0;border-radius:999px;background:#fff;color:#0f2a1d;font-size:1.35rem;line-height:1;cursor:pointer}" +
       ".gcv-passeios.is-modal{flex:1 1 auto;min-height:0;overflow:hidden;margin:0;max-width:none;width:100%;max-height:calc(100dvh - 2rem);display:flex;flex-direction:column;background:#fff;border:1px solid #e7eeea;box-shadow:0 24px 60px rgba(8,20,14,.28)}" +
       ".gcv-passeios.is-modal .gcv-passeios__now{padding-right:3rem;flex:none}" +
-      ".gcv-passeios.is-modal .gcv-passeios__route{flex:none}" +
+      ".gcv-passeios.is-modal .gcv-passeios__route{flex:none;padding-right:3.1rem}" +
       ".gcv-passeios.is-modal .gcv-passeios__body{flex:1 1 auto;overflow:auto;min-height:0}" +
       ".gcv-passeios.is-modal .gcv-passeios__foot{flex:none;position:static}" +
       "@media(max-width:767px){.gcv-passeios.is-modal .gcv-passeios__field--mode,.gcv-passeios.is-modal .gcv-passeios__field--transport{grid-column:span 1}}" +
@@ -2394,7 +2408,6 @@
     var langStart = langForeign ? copy.siteLang : "pt";
     var brFlag = '<svg class="gcv-bi__flag" viewBox="0 0 19 13" aria-hidden="true"><rect width="19" height="13" fill="#009c3b"/><polygon points="9.5,1.15 17.3,6.5 9.5,11.85 1.7,6.5" fill="#ffdf00"/><circle cx="9.5" cy="6.5" r="2.05" fill="#002776"/></svg>';
     return "<style>" + css + "</style>" +
-      '<p class="gcv-passeios__now">' + passeioEsc(copy.title) + "</p>" +
       '<p class="gcv-passeios__summary" data-passeio-summary></p>' +
       '<div class="gcv-passeios__route"><p class="gcv-passeios__route-name" data-passeio-route>' + passeioEsc(data.title) + "</p>" +
       '<p class="gcv-passeios__chips" data-passeio-route-meta></p></div>' +
@@ -2420,7 +2433,7 @@
         '<p class="gcv-passeios__guide" data-passeio-4x4 hidden></p></div>' +
       "</div>" +
       '<div class="gcv-bi">' +
-        '<p class="gcv-bi__label">' + passeioEsc(copy.extras) + "</p>" +
+        '<p class="gcv-bi__label">' + passeioEsc(copy.extrasLead) + "<strong>" + passeioEsc(copy.extrasMark) + "</strong>" + passeioEsc(copy.extrasMid) + "<strong>" + passeioEsc(copy.extrasPlace) + "</strong></p>" +
         '<div class="gcv-bi__card">' +
           '<p class="gcv-bi__pick">' + passeioEsc(copy.pickLang) + "</p>" +
           '<div class="gcv-bi__langs" data-passeio-bi-langs>' +
@@ -3049,13 +3062,14 @@
         ? '<span class="gcv-passeios__cardline">' + brTxt + "</span>" +
           '<span class="gcv-passeios__cardline">' + intlTxt + "</span>"
         : "";
+      var entriesHtml = '<span class="gcv-passeios__entries">' + passeioEsc(copy.entriesNote) + "</span>";
       var totalEl = box.querySelector("[data-passeio-total]");
       totalEl.innerHTML = sel.incompleto || sel.semCidade
-        ? '<strong class="gcv-passeios__total-value">—</strong>'
+        ? '<strong class="gcv-passeios__total-value">—</strong>' + entriesHtml
         : '<span class="gcv-passeios__break">' + breakTxt + "</span>" +
           '<span class="gcv-passeios__pixline"><strong class="gcv-passeios__total-value">' + passeioEsc(passeioReais(pay.pix)) + "</strong>" +
           '<span class="gcv-passeios__pixin">' + passeioEsc(copy.pixIn) + "</span></span>" +
-          cardHtml;
+          cardHtml + entriesHtml;
       var item = buildItem();
       if (item && itemInCart(item.id) && window.GcvExcCart && typeof window.GcvExcCart.sync === "function") {
         window.GcvExcCart.sync(item);
