@@ -2192,13 +2192,14 @@
 
 .gcv-excursoes-card__book-total-copy {
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  flex-direction: row;
+  align-items: baseline;
   justify-content: center;
-  gap: 0.08rem;
-  line-height: 1.05;
+  gap: 0.28rem;
+  line-height: 1;
   min-width: 0;
   text-align: center;
+  white-space: nowrap;
 }
 
 .gcv-excursoes-card__book-total-pix {

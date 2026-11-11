@@ -2654,7 +2654,7 @@
       ".gcv-excursoes-card__book-label{order:0;display:block;text-align:center;justify-self:center;width:100%}" +
       ".gcv-excursoes-card__qty{order:0;justify-self:center;flex-shrink:0}" +
       ".gcv-excursoes-card__book-total{order:0;justify-self:stretch;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.12rem;margin:0;width:100%;max-width:100%;min-width:0;overflow:hidden;white-space:normal;text-align:center;box-sizing:border-box}" +
-      ".gcv-excursoes-card__book-total-copy{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.08rem;line-height:1.05;min-width:0;text-align:center}" +
+      ".gcv-excursoes-card__book-total-copy{display:flex;flex-direction:row;align-items:baseline;justify-content:center;gap:0.28rem;line-height:1;min-width:0;text-align:center;white-space:nowrap}" +
       ".gcv-excursoes-card__book-total-label{font-size:0.72rem;font-weight:800;line-height:1;letter-spacing:0.04em;text-transform:uppercase;color:#64748b;text-align:center}" +
       ".gcv-excursoes-card__book-total-pix{font-size:0.68rem;font-weight:700;line-height:1;color:#64748b;text-transform:none;letter-spacing:0;text-align:center}" +
       ".gcv-excursoes-card__price-go{display:inline-flex;align-items:center;justify-content:center;gap:0.04rem;flex-shrink:0;color:#2563eb;font-size:0.98rem}" +
