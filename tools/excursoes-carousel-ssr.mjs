@@ -824,12 +824,13 @@ function bookingBlockSsr(e, s, locale) {
     ` data-pix-unit="${unit}" data-pix-desc="${esc(desc)}" data-pix-max="${maxQty}"` +
     ` data-cart-id="${esc(cartId)}" data-cart-destino="${esc(destino)}" data-cart-date="${esc(dateLabel)}">` +
     '<div class="gcv-excursoes-card__book-row">' +
+    '<div class="gcv-excursoes-card__book-people">' +
     `<span class="gcv-excursoes-card__book-label">${esc(s.bookPeople)}</span>` +
     '<div class="gcv-excursoes-card__qty">' +
     `<button type="button" class="gcv-excursoes-card__qty-btn" data-gcv-exc-qty-min aria-label="${esc(s.bookQtyMinus)}">−</button>` +
     `<input type="number" class="gcv-excursoes-card__qty-input" value="1" min="1" max="${maxQty}" aria-label="${esc(s.bookQtyAria)}" inputmode="numeric" />` +
     `<button type="button" class="gcv-excursoes-card__qty-btn" data-gcv-exc-qty-plus aria-label="${esc(s.bookQtyPlus)}">+</button>` +
-    "</div>" +
+    "</div></div>" +
     '<div class="gcv-excursoes-card__book-total">' +
     `<span class="gcv-excursoes-card__book-total-copy"><span class="gcv-excursoes-card__book-total-label">${esc(s.bookTotal)}</span>` +
     `<span class="gcv-excursoes-card__book-total-pix">${esc(s.bookPix || "no PIX")}</span></span>` +

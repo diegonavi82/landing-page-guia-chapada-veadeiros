@@ -2042,13 +2042,22 @@
 
 .gcv-excursoes-card__book-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 66fr) minmax(0, 34fr);
   align-items: center;
-  column-gap: 0.35rem;
+  column-gap: 0;
   width: 100%;
   max-width: 100%;
   min-width: 0;
   box-sizing: border-box;
+}
+
+.gcv-excursoes-card__book-people {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-width: 0;
+  width: 100%;
 }
 
 .gcv-excursoes-card__book-label {
@@ -2064,7 +2073,7 @@
   letter-spacing: 0.04em;
   line-height: 1;
   text-align: left;
-  justify-self: start;
+  justify-self: center;
   min-width: 0;
 }
 
@@ -2162,10 +2171,10 @@
 
 .gcv-excursoes-card__book-total {
   order: 0;
-  justify-self: stretch;
+  justify-self: center;
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
   gap: 0.1rem;
   width: 100%;
@@ -2174,7 +2183,7 @@
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;
-  text-align: right;
+  text-align: center;
   box-sizing: border-box;
 }
 
@@ -2182,9 +2191,10 @@
   display: flex;
   flex-direction: row;
   align-items: baseline;
-  justify-content: flex-end;
+  justify-content: center;
   gap: 0.28rem;
   line-height: 1;
+  max-width: 100%;
 }
 
 .gcv-excursoes-card__book-total-pix {
@@ -2206,7 +2216,7 @@
 }
 
 .gcv-excursoes-card__book-total .gcv-excursoes-card__price {
-  align-self: flex-end;
+  align-self: center;
   flex-shrink: 1;
   max-width: 100%;
   font-size: clamp(0.78rem, 5cqi, 1.1rem);
