@@ -238,6 +238,32 @@
         '<p class="gcv-ind__note" id="gcv-ind-saque-msg" hidden></p>' +
       "</form>";
 
+    function bindIndDate(id) {
+      var input = document.getElementById(id);
+      if (!input || typeof window.gcvBindDatePicker !== "function") return;
+      window.gcvBindDatePicker(input, {
+        min: typeof window.gcvTodayIso === "function" ? window.gcvTodayIso() : ""
+      });
+      var btn = input.parentNode && input.parentNode.querySelector(".gcv-datepicker__btn");
+      if (!btn) return;
+      btn.id = id + "-btn";
+      var label = document.querySelector('label[for="' + id + '"]');
+      if (label) label.setAttribute("for", btn.id);
+    }
+    bindIndDate("gcv-ind-from");
+    bindIndDate("gcv-ind-to");
+    var fromDate = document.getElementById("gcv-ind-from");
+    var toDate = document.getElementById("gcv-ind-to");
+    if (fromDate && toDate) {
+      fromDate.addEventListener("change", function () {
+        if (fromDate.value) toDate.min = fromDate.value;
+        if (toDate.value && fromDate.value && toDate.value < fromDate.value) {
+          toDate.value = fromDate.value;
+          toDate.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+      });
+    }
+
     var form = document.getElementById("gcv-ind-form");
     if (form) {
       form.addEventListener("submit", function (ev) {
