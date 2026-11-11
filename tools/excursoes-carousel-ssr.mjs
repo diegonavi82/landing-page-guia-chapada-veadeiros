@@ -130,6 +130,7 @@ const SSR = {
     spotsManyHtml: "Restam <strong>{{n}}</strong> vagas",
     bookPeople: "Pessoas",
     bookTotal: "Total",
+    bookPix: "no PIX",
     bookPay: "Pagar com Pix",
     bookAddCart: "Adicionar ao carrinho",
     shareBtn: "Compartilhar",
@@ -187,6 +188,7 @@ const SSR = {
     spotsManyHtml: "<strong>{{n}}</strong> spots left",
     bookPeople: "People",
     bookTotal: "Total",
+    bookPix: "via PIX",
     bookPay: "Pay with Pix",
     bookAddCart: "Add to cart",
     shareBtn: "Share",
@@ -244,6 +246,7 @@ const SSR = {
     spotsManyHtml: "Quedan <strong>{{n}}</strong> plazas",
     bookPeople: "Personas",
     bookTotal: "Total",
+    bookPix: "por PIX",
     bookPay: "Pagar con Pix",
     bookAddCart: "Añadir al carrito",
     shareBtn: "Compartir",
@@ -858,7 +861,8 @@ function bookingBlockSsr(e, s, locale) {
     `<button type="button" class="gcv-excursoes-card__qty-btn" data-gcv-exc-qty-plus aria-label="${esc(s.bookQtyPlus)}">+</button>` +
     "</div>" +
     '<div class="gcv-excursoes-card__book-total">' +
-    `<span class="gcv-excursoes-card__book-total-label">${esc(s.bookTotal)}</span>` +
+    `<span class="gcv-excursoes-card__book-total-copy"><span class="gcv-excursoes-card__book-total-label">${esc(s.bookTotal)}</span>` +
+    `<span class="gcv-excursoes-card__book-total-pix">${esc(s.bookPix || "no PIX")}</span></span>` +
     `<span class="gcv-excursoes-card__price" data-gcv-exc-total>R$&nbsp;${unit}</span></div></div>` +
     '<div class="gcv-excursoes-card__book-actions">' +
     `<button type="button" class="gcv-excursoes-card__cart-add" data-gcv-exc-cart-add><i class="ti ti-shopping-cart" aria-hidden="true"></i> ${esc(s.bookAddCart)}</button>` +
