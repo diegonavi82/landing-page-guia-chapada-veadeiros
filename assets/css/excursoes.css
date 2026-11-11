@@ -6140,8 +6140,8 @@ html.gcv-waitlist-modal-open {
   padding: 16px;
   border-radius: 0;
   border: 1px solid #e2e8f0;
-  background: #f8fafc;
-  box-shadow: none;
+  background: transparent;
+  box-shadow: 0 1px 1px rgba(15, 23, 42, 0.8);
   filter: none;
   box-sizing: border-box;
   overflow: hidden;
@@ -6151,8 +6151,8 @@ html.gcv-waitlist-modal-open {
 
 .gcv-excursoes__track--day-list .gcv-excursoes-card__guide--btn:hover {
   border: 1px solid #cbd5e1;
-  background: #f8fafc;
-  box-shadow: none;
+  background: transparent;
+  box-shadow: 0 1px 1px rgba(15, 23, 42, 0.8);
   filter: none;
 }
 
@@ -6372,6 +6372,8 @@ html.gcv-waitlist-modal-open {
   .gcv-excursoes__track--day-list .gcv-excursoes-card__guide--btn {
     padding: 16px 24px;
     border: 1px solid #e2e8f0;
+    background: transparent;
+    box-shadow: 0 1px 1px rgba(15, 23, 42, 0.8);
   }
 
   .gcv-excursoes__track--day-list .gcv-excursoes-card__select-band-main .gcv-excursoes-card__meta-col,

@@ -2626,7 +2626,7 @@
       ".gcv-excursoes-card__cart-add--added{background:#0f766e;border-color:#0f766e;color:#fff}" +
       ".gcv-excursoes-card__cart-add--added:hover{background:#115e59;color:#fff}" +
       ".gcv-excursoes-card__book{container-type:inline-size}" +
-      ".gcv-excursoes-card__guide,.gcv-excursoes-card__guide--btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.28rem;width:100%;min-height:11.25rem;margin:0;padding:16px;box-sizing:border-box;text-align:center;background:#f8fafc;border:1px solid #e2e8f0;border-radius:0;box-shadow:none!important;filter:none!important}" +
+      ".gcv-excursoes-card__guide,.gcv-excursoes-card__guide--btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.28rem;width:100%;min-height:11.25rem;margin:0;padding:16px;box-sizing:border-box;text-align:center;background:transparent;border:1px solid #e2e8f0;border-radius:0;box-shadow:0 1px 1px rgba(15,23,42,0.8);filter:none}" +
       ".gcv-excursoes__track--day-list .gcv-excursoes-card__guide{grid-area:incluso;align-self:stretch;height:100%}" +
       ".gcv-excursoes-card__guide-label{display:block;text-transform:none;font-size:0.78rem;font-weight:800;letter-spacing:0.01em;line-height:1.2;color:#0f766e}" +
       ".gcv-excursoes-card__guide-name{display:block;font-size:1rem;font-weight:800;line-height:1.2;text-align:center;color:#0f172a;white-space:normal;overflow:visible;text-overflow:clip}" +
@@ -2640,7 +2640,7 @@
       ".gcv-excursoes-card__out-list li{display:inline-flex;align-items:center;gap:0.28rem;flex:0 0 auto;margin:0;padding:0.22rem 0.55rem;border-radius:999px;background:#ffe4e6;list-style:none;color:#be123c;font-size:0.78rem;font-weight:800;letter-spacing:0.01em;line-height:1.2}" +
       ".gcv-excursoes-card__out-list .ti{color:#be123c;font-size:1rem;flex:0 0 auto}" +
       ".gcv-excursoes__track--day-list .gcv-excursoes-card{grid-template-rows:auto auto auto auto minmax(0,1fr);grid-template-areas:\"banner\" \"photo\" \"main\" \"incluso\" \"book\"}" +
-      "@media (min-width:1024px){.gcv-excursoes__track--day-list .gcv-excursoes-card{grid-template-rows:auto auto auto minmax(0,1fr);grid-template-areas:\"banner banner\" \"photo main\" \"photo incluso\" \"book book\"}.gcv-excursoes-card__guide,.gcv-excursoes-card__guide--btn,.gcv-excursoes__track--day-list .gcv-excursoes-card__guide,.gcv-excursoes__track--day-list .gcv-excursoes-card__guide--btn{padding:16px 24px;border:1px solid #e2e8f0}.gcv-excursoes-card__time-city-grid,.gcv-excursoes__track--day-list .gcv-excursoes-card__time-city-grid{padding-bottom:16px}}";
+      "@media (min-width:1024px){.gcv-excursoes__track--day-list .gcv-excursoes-card{grid-template-rows:auto auto auto minmax(0,1fr);grid-template-areas:\"banner banner\" \"photo main\" \"photo incluso\" \"book book\"}.gcv-excursoes-card__guide,.gcv-excursoes-card__guide--btn,.gcv-excursoes__track--day-list .gcv-excursoes-card__guide,.gcv-excursoes__track--day-list .gcv-excursoes-card__guide--btn{padding:16px 24px;border:1px solid #e2e8f0;background:transparent;box-shadow:0 1px 1px rgba(15,23,42,0.8)}.gcv-excursoes-card__time-city-grid,.gcv-excursoes__track--day-list .gcv-excursoes-card__time-city-grid{padding-bottom:16px}}";
     document.head.appendChild(style);
   }
 
