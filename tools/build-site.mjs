@@ -1522,12 +1522,13 @@ function buildHead(ctx) {
     .map((rel) => cssLink(`${ap}${rel}`, !home || /gcv-hero-slider(\.min)?\.css/.test(String(rel))))
     .join("");
   const canon = `${SITE_ORIGIN}${localePathToUrl(locale, pathKey)}`.replace(/([^:])\/{2,}/g, "$1/");
-  const ogAbs = ogImageRel ? `${SITE_ORIGIN}/assets/img/${ogImageRel.replace(/^\//, "")}` : "";
+  const ogAbs = `${SITE_ORIGIN}/assets/img/${HERO_OG_IMAGE}`;
+  const shareAlt = STRINGS[locale]?.seo?.homeOgImageAlt || ogImageAlt || ogT;
   const feedUrl = `${SITE_ORIGIN}/feed.xml`;
   const seoExtra = seoExtraHeadMeta({
     esc,
     keywords,
-    ogImageAlt: ogImageAlt || ogT,
+    ogImageAlt: shareAlt,
     ogType: ogSiteType,
     feedUrl,
   });
@@ -1586,7 +1587,10 @@ ${ogLocaleAlternate}
     <meta property="og:url" content="${esc(canon)}" />
     <meta property="og:title" content="${esc(ogT)}" />
     <meta property="og:description" content="${esc(ogD)}" />
-    ${ogAbs ? `<meta property="og:image" content="${esc(ogAbs)}" />\n    ` : ""}${ogAbs && ogImageWidth ? `<meta property="og:image:width" content="${esc(String(ogImageWidth))}" />\n    ` : ""}${ogAbs && ogImageHeight ? `<meta property="og:image:height" content="${esc(String(ogImageHeight))}" />\n    ` : ""}<meta name="twitter:card" content="summary_large_image" />
+    <meta property="og:image" content="${esc(ogAbs)}" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="1200" />
+    <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="${esc(ogT)}" />
     <meta name="twitter:description" content="${esc(ogD)}" />
     ${ogAbs ? `<meta name="twitter:image" content="${esc(ogAbs)}" />` : ""}

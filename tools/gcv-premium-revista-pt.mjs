@@ -182,9 +182,6 @@ function buildContratar(h) {
 
   const extraHead = `    <meta name="keywords" content="${esc(CONTRATAR_KEYWORDS)}" />
     <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1" />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="900" />
-    <meta property="og:image:alt" content="${esc(ALT_FOTO2)}" />
     <meta property="article:author" content="Diego Navi" />
     <meta property="article:published_time" content="2026-05-13T00:00:00-03:00" />
     <meta property="article:modified_time" content="2026-05-13T00:00:00-03:00" />
@@ -591,9 +588,6 @@ function buildEpoca(h) {
 
   const extraHead = `    <meta name="keywords" content="${esc(EPOCA_KEYWORDS)}" />
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="800" />
-    <meta property="og:image:alt" content="${esc("Guia Diego Navi entre chuveirinhos do cerrado sob a Via Láctea na Chapada dos Veadeiros")}" />
     <meta property="article:author" content="Diego Navi" />
     <meta property="article:published_time" content="2026-05-13T00:00:00-03:00" />
     <meta property="article:modified_time" content="2026-05-13T00:00:00-03:00" />
