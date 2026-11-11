@@ -2314,6 +2314,19 @@
     return 'Indicações';
   }
 
+  function homeHref() {
+    var lang = String((currentUser && currentUser.lang) || 'pt').slice(0, 2);
+    if (lang === 'en') return '/en/';
+    if (lang === 'es') return '/es/';
+    return '/';
+  }
+
+  function homeLabel() {
+    var lang = String((currentUser && currentUser.lang) || 'pt').slice(0, 2);
+    if (lang === 'es') return 'Inicio';
+    return 'Home';
+  }
+
   function buildNav(role, status) {
     var navList = document.getElementById('gcv-dash-nav-list');
     if (!navList) return;
@@ -2379,6 +2392,7 @@
       footerItems = [profileItem];
     } else if (role === 'client') {
       items = [
+        { href: homeHref(), icon: '🏠', label: homeLabel() },
         { id: 'section-client-tours',    icon: '🌿', label: 'Próximos passeios', load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadClientUpcoming(); } },
         { id: 'section-client-bookings', icon: '📋', label: 'Minhas reservas',   load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadClientBookings(); } },
         { id: 'section-client-publish',  icon: '➕', label: 'Propor excursão',   load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadClientPublish(); } },
@@ -2391,6 +2405,9 @@
     var allItems = items.concat(footerItems);
 
     navList.innerHTML = items.map(function (item) {
+      if (item.href) {
+        return '<li><a href="' + item.href + '">' + item.icon + ' ' + item.label + '</a></li>';
+      }
       return '<li><a href="#" data-section="' + item.id + '">' + item.icon + ' ' + item.label + '</a></li>';
     }).join('');
 
@@ -2411,7 +2428,9 @@
     }
 
     var loadMap = {};
-    allItems.forEach(function (item) { loadMap[item.id] = item.load; });
+    allItems.forEach(function (item) {
+      if (item.id) loadMap[item.id] = item.load;
+    });
     dashLoadMap = loadMap;
 
     function onNavClick(e) {
