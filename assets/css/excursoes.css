@@ -2042,7 +2042,7 @@
 
 .gcv-excursoes-card__book-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto max-content;
   align-items: center;
   column-gap: 0.35rem;
   width: 100%;
@@ -2163,24 +2163,24 @@
   order: 0;
   justify-self: end;
   display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.4rem;
-  max-width: 100%;
-  width: auto;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0.1rem;
+  width: max-content;
+  max-width: none;
   margin-left: 0;
-  min-width: 0;
+  min-width: max-content;
   white-space: nowrap;
   text-align: right;
 }
 
 .gcv-excursoes-card__book-total-copy {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  justify-content: center;
-  gap: 0.12rem;
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 0.28rem;
   line-height: 1;
 }
 
@@ -2203,8 +2203,9 @@
 }
 
 .gcv-excursoes-card__book-total .gcv-excursoes-card__price {
-  align-self: center;
-  font-size: clamp(0.82rem, 4.6cqi, 1.12rem);
+  align-self: flex-end;
+  flex-shrink: 0;
+  font-size: clamp(0.95rem, 5.5cqi, 1.15rem);
   font-weight: 900;
   color: #2563eb;
   line-height: 1;

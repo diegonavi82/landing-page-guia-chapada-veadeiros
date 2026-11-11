@@ -154,7 +154,7 @@
       return;
     }
     _pixLoadWait = [done];
-    loadStylesheet("/assets/css/excursoes.css?v=1.1.102");
+    loadStylesheet("/assets/css/excursoes.css?v=1.1.103");
     loadStylesheet("/assets/css/gcv-detail.css?v=1.1.40");
     var scripts = [
       "/assets/js/qrcode.min.js?v=1.1.31",
@@ -163,7 +163,7 @@
       "/assets/js/gcv-pix-polling.js?v=1.1.31",
       "/assets/js/gcv-confirm.js?v=1.1.31",
       "/assets/js/gcv-exc-bookings.js?v=1.1.31",
-      "/assets/js/excursoes-carousel.js?v=1.1.101",
+      "/assets/js/excursoes-carousel.js?v=1.1.102",
     ];
     var i = 0;
     function next(err) {

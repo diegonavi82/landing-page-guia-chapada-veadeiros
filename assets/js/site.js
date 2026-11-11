@@ -1282,7 +1282,7 @@
         return;
       }
       var script = document.createElement("script");
-      script.src = "/assets/js/excursoes-carousel.js?v=1.1.101";
+      script.src = "/assets/js/excursoes-carousel.js?v=1.1.102";
       script.onload = go;
       document.head.appendChild(script);
     }
