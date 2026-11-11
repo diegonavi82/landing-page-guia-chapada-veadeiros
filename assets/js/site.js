@@ -77,12 +77,12 @@
       es: { login: "Iniciar sesión", account: "Mi cuenta" },
     };
     var ICON_OUT =
-      '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+      '<svg viewBox="2.1 2.1 19.8 19.8" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
       '<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>' +
       '<path d="M10 17l5-5-5-5"></path>' +
       '<path d="M15 12H3"></path></svg>';
     var ICON_IN =
-      '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false" fill="currentColor" stroke="none">' +
+      '<svg viewBox="5.15 3.17 17.47 17.47" aria-hidden="true" focusable="false" fill="currentColor" stroke="none">' +
       '<circle cx="12" cy="8" r="3.35"></circle>' +
       '<path d="M6.15 19.15c.72-3.05 3.05-4.75 5.85-4.75s5.13 1.7 5.85 4.75c.1.42-.22.85-.66.85H6.81c-.44 0-.76-.43-.66-.85z"></path></svg>';
 
@@ -1535,7 +1535,7 @@
         return;
       }
       var script = document.createElement("script");
-      script.src = "/assets/js/excursoes-carousel.js?v=1.1.109";
+      script.src = "/assets/js/excursoes-carousel.js?v=1.1.110";
       script.onload = go;
       document.head.appendChild(script);
     }
