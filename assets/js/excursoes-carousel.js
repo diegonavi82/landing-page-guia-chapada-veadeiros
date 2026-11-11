@@ -2645,7 +2645,7 @@
       ".gcv-excursoes-card__book,.gcv-excursoes-card__book-row{min-width:0;max-width:100%;box-sizing:border-box}" +
       ".gcv-excursoes__track--day-list .gcv-excursoes-card__book{margin:0;padding:0.45rem 0.75rem 0.75rem;min-width:0;width:auto;max-width:none;box-sizing:border-box}" +
       ".gcv-excursoes-card__book-row{display:grid;grid-template-columns:minmax(0,66fr) minmax(0,34fr);align-items:center;column-gap:0;width:100%;max-width:100%}" +
-      ".gcv-excursoes-card__book-people{display:flex;align-items:center;justify-content:center;gap:0.4rem;min-width:0;width:100%}" +
+      ".gcv-excursoes-card__book-people{display:flex;align-items:center;justify-content:flex-end;gap:0.4rem;min-width:0;width:100%;padding-right:0.35rem;box-sizing:border-box}" +
       ".gcv-excursoes-card__book-label{order:0;text-align:left;justify-self:center}" +
       ".gcv-excursoes-card__qty{order:0;justify-self:center;flex-shrink:0}" +
       ".gcv-excursoes-card__book-total{order:0;justify-self:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.1rem;margin:0;width:100%;max-width:100%;min-width:0;overflow:hidden;white-space:nowrap;text-align:center;box-sizing:border-box}" +

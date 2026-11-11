@@ -2054,10 +2054,12 @@
 .gcv-excursoes-card__book-people {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
   gap: 0.4rem;
   min-width: 0;
   width: 100%;
+  padding-right: 0.35rem;
+  box-sizing: border-box;
 }
 
 .gcv-excursoes-card__book-label {
