@@ -1530,6 +1530,10 @@ function gcv_guiagem_accept(int $excursionId, array $user): array
         return ['ok' => false, 'error' => $kalungaErro, 'status' => 422];
     }
 
+    // A fila cria tabela na primeira chamada. Isso dentro da transação
+    // faz o MySQL gravar e encerrar a transação, e o aceite volta como erro.
+    gcv_substitution_ensure_schema();
+
     $pdo = db();
     $isVehicle = false;
     $posicao = 0;
@@ -1642,13 +1646,20 @@ function gcv_guiagem_accept(int $excursionId, array $user): array
         } catch (Throwable $e) {
             error_log('gcv_guiagem_accept sales: ' . $e->getMessage());
         }
-        $pdo->commit();
-    } catch (Throwable $e) {
         if ($pdo->inTransaction()) {
+            $pdo->commit();
+        }
+    } catch (Throwable $e) {
+        $msg = $e->getMessage();
+        $aberta = $pdo->inTransaction();
+        if ($aberta) {
             $pdo->rollBack();
         }
-        error_log('gcv_guiagem_accept: ' . $e->getMessage());
-        return ['ok' => false, 'error' => 'Não foi possível aceitar a guiagem', 'status' => 500];
+        error_log('gcv_guiagem_accept: ' . $msg);
+        $jaGravou = !$aberta && stripos($msg, 'no active transaction') !== false;
+        if (!$jaGravou) {
+            return ['ok' => false, 'error' => 'Não foi possível aceitar a guiagem', 'status' => 500];
+        }
     }
 
     $fresh = gcv_substitution_load_excursion($excursionId) ?: $tour;
