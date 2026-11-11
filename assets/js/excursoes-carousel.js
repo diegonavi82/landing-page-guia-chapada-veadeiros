@@ -2603,7 +2603,7 @@
     var style = document.createElement("style");
     style.id = "gcv-out-foot-css";
     style.textContent =
-      ".gcv-excursoes-card__coverage{grid-template-columns:minmax(0,1fr)}" +
+      ".gcv-excursoes-card__block,.gcv-excursoes-card__block--in,.gcv-excursoes__track--day-list .gcv-excursoes-card__block--in{border-radius:0}" +
       ".gcv-excursoes-card__book-row{justify-content:space-between;gap:0.35rem 0.5rem}" +
       ".gcv-excursoes-card__book-label{order:0;text-align:left}" +
       ".gcv-excursoes-card__qty{order:0}" +
