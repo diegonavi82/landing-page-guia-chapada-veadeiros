@@ -13,6 +13,7 @@ require_once __DIR__ . '/../helpers/marketplace/guide_financial_service.php';
 require_once __DIR__ . '/../helpers/marketplace/constants.php';
 require_once __DIR__ . '/../helpers/guide_languages.php';
 require_once __DIR__ . '/../helpers/guide_profile.php';
+require_once __DIR__ . '/../helpers/guide_vehicle.php';
 require_once __DIR__ . '/../helpers/diego_navi_stash.php';
 require_once __DIR__ . '/../helpers/guide_registration.php';
 
@@ -215,6 +216,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
         json_response(false, null, 'Tipo de chave e chave PIX obrigatórios', 422);
     }
 
+    if (!array_key_exists('vehicle_model', $data) && !array_key_exists('vehicle_year', $data)) {
+        $savedYear = $before['profile']['vehicle_year'] ?? null;
+        $vehicle = [
+            'model' => trim((string)($before['profile']['vehicle_model'] ?? '')) ?: null,
+            'year' => ($savedYear === null || $savedYear === '') ? null : (int)$savedYear,
+        ];
+    } else {
+        try {
+            $vehicle = gcv_guide_vehicle_parse(
+                (string)($data['vehicle_model'] ?? ''),
+                $data['vehicle_year'] ?? ''
+            );
+        } catch (InvalidArgumentException $e) {
+            json_response(false, null, $e->getMessage(), 422);
+        }
+    }
+
     $langJson = gcv_guide_languages_json($data['languages'] ?? $data['languages_json'] ?? ['pt']);
     $resubmitted = false;
 
@@ -226,12 +244,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
                     full_name = ?, nickname = ?,
                     phone = ?, phone_ddi = ?, phone_iso = ?, birth_date = ?, sexo = ?, is_kalunga = ?, base_city_id = ?,
                     id_document_url = ?, photo_3x4_url = ?, photo_url = ?, bio_pt = ?,
-                    languages_json = ?
+                    languages_json = ?, vehicle_model = ?, vehicle_year = ?
                  WHERE user_id = ?'
             )->execute([
                 $fullName, $nickname,
                 $phone, $phoneDdi, $phoneIso, $birth, $sexo, $isKalunga, $baseCityId,
-                $idDoc, $photo34, $photo34, $bio, $langJson, $userId,
+                $idDoc, $photo34, $photo34, $bio, $langJson,
+                $vehicle['model'], $vehicle['year'], $userId,
             ]);
         } catch (Throwable $e) {
             $pdo->prepare(
@@ -239,12 +258,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
                     full_name = ?, nickname = ?,
                     phone = ?, phone_ddi = ?, birth_date = ?, sexo = ?, is_kalunga = ?, base_city_id = ?,
                     id_document_url = ?, photo_3x4_url = ?, photo_url = ?, bio_pt = ?,
-                    languages_json = ?
+                    languages_json = ?, vehicle_model = ?, vehicle_year = ?
                  WHERE user_id = ?'
             )->execute([
                 $fullName, $nickname,
                 $phone, $phoneDdi, $birth, $sexo, $isKalunga, $baseCityId,
-                $idDoc, $photo34, $photo34, $bio, $langJson, $userId,
+                $idDoc, $photo34, $photo34, $bio, $langJson,
+                $vehicle['model'], $vehicle['year'], $userId,
             ]);
         }
 

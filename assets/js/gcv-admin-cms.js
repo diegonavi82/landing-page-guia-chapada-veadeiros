@@ -2499,6 +2499,13 @@
         '</select></div>' +
         '<div class="gcv-dash-field"><label class="gcv-dash-label">Telefone / WhatsApp *</label><div id="g-phone-wrap"></div></div>' +
         '<div class="gcv-dash-field"><label class="gcv-dash-label">Cidade base *</label><select class="gcv-dash-select" id="g-city"><option value="">Selecione…</option>' + cityOptionsHtml(g && g.base_city_id) + '</select></div>' +
+        (window.GcvVehicleCombo
+          ? ('<div class="gcv-cms-pix-box">' +
+            '<h4>' + esc(window.GcvVehicleCombo.labels().title) + '</h4>' +
+            '<p class="gcv-cms-muted" style="margin:0 0 0.75rem;">' + esc(window.GcvVehicleCombo.labels().hint) + '</p>' +
+            window.GcvVehicleCombo.fieldsHtml({ model: g && g.vehicle_model, year: g && g.vehicle_year }) +
+            '</div>')
+          : '') +
         '<div class="gcv-cms-pix-box">' +
         '<h4>Recebimento PIX</h4>' +
         '<p class="gcv-cms-muted" style="margin:0 0 0.75rem;">Pagamentos só são permitidos para guias <strong>ativos</strong> com PIX verificado.</p>' +
@@ -2536,6 +2543,7 @@
       var phoneCtl = mountGuidePhoneField(root('g-phone-wrap'), phoneIso, phoneVal);
       bindGuideEditStatus(form, g);
       bindKalungaToggle(form, 'g-kalunga');
+      if (window.GcvVehicleCombo) window.GcvVehicleCombo.bind(form);
 
       function showPhoto(url) {
         var img = root('g-photo-preview');
@@ -2615,6 +2623,17 @@
           alert('Selecione o sexo.');
           return;
         }
+        var vehicle = window.GcvVehicleCombo
+          ? window.GcvVehicleCombo.read(form)
+          : { model: '', year: '', error: '' };
+        if (vehicle.error) {
+          alert(vehicle.error);
+          var vehicleFocus = /ano|year|año/i.test(vehicle.error)
+            ? form.querySelector('[data-vehicle-year]')
+            : form.querySelector('[data-vehicle-input]');
+          if (vehicleFocus && vehicleFocus.focus) vehicleFocus.focus();
+          return;
+        }
         var payload = {
           user_id: g && g.user_id,
           full_name: root('g-full').value.trim(),
@@ -2634,6 +2653,8 @@
           photo_3x4_url: savedPhoto,
           bio_pt: root('g-bio').value,
           languages: readLanguagesPicker(form),
+          vehicle_model: vehicle.model || '',
+          vehicle_year: vehicle.year || '',
         };
         if (!g) payload.status = 'active';
         sendJson(g ? 'PUT' : 'POST', '/api/admin/cms-guides.php', payload, function (e, r) {

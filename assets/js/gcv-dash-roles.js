@@ -1418,6 +1418,10 @@
     if (t.indexOf('cnpj') >= 0 || (t.indexOf('cpf') >= 0 && t.indexOf('pix') < 0)) return markGuideFieldError(els.doc, apiErr);
     if (t.indexOf('razão') >= 0 || t.indexOf('razao') >= 0 || t.indexOf('nome /') >= 0) return markGuideFieldError(els.legal, apiErr);
     if (t.indexOf('pix') >= 0) return markGuideFieldError(els.pix, apiErr);
+    if (t.indexOf('veiculo') >= 0 || t.indexOf('veículo') >= 0 || t.indexOf('modelo') >= 0 || t.indexOf('vehicle') >= 0) {
+      var yearMsg = t.indexOf('ano') >= 0 || t.indexOf('year') >= 0 || t.indexOf('año') >= 0;
+      return markGuideFieldError(yearMsg ? (els.vehicleYear || els.vehicle) : els.vehicle, apiErr);
+    }
     return null;
   }
 
@@ -1575,6 +1579,14 @@
           '<textarea class="gcv-dash-textarea" id="gp-bio" maxlength="' + limits.bio_max + '" rows="7">' + esc(p.bio_pt || '') + '</textarea>' +
           '<div class="gcv-cms-muted" id="gp-bio-count"></div></div>' +
         '</div>' +
+
+        (window.GcvVehicleCombo
+          ? ('<div class="gcv-dash-card">' +
+            '<h3 class="gcv-dash-card__title">' + esc(window.GcvVehicleCombo.labels().title) + '</h3>' +
+            '<p class="gcv-dash-hint" style="margin:0 0 0.75rem;">' + esc(window.GcvVehicleCombo.labels().hint) + '</p>' +
+            window.GcvVehicleCombo.fieldsHtml({ model: p.vehicle_model || '', year: p.vehicle_year || '' }) +
+            '</div>')
+          : '') +
 
         '<div class="gcv-dash-card">' +
           '<h3 class="gcv-dash-card__title">' + esc(docT.title) + '</h3>' +
@@ -1746,6 +1758,7 @@
       loadGuidePublicReviews(reviewsBox, parseInt(p.user_id, 10) || 0);
 
       bindKalungaToggle(document.getElementById('guide-profile-form'), 'gp-kalunga');
+      if (window.GcvVehicleCombo) window.GcvVehicleCombo.bind(document.getElementById('guide-profile-form'));
 
       document.getElementById('guide-profile-form').onsubmit = function (ev) {
         ev.preventDefault();
@@ -1815,6 +1828,15 @@
         if (!pixKey) {
           addErr(pixEl, 'Informe a chave PIX.');
         }
+        var vehicle = window.GcvVehicleCombo
+          ? window.GcvVehicleCombo.read(form)
+          : { model: '', year: '', error: '' };
+        if (vehicle.error) {
+          var vehicleModelEl = form.querySelector('[data-vehicle-input]');
+          var vehicleYearEl = form.querySelector('[data-vehicle-year]');
+          var yearIssue = /ano|year|año/i.test(vehicle.error);
+          addErr(yearIssue ? vehicleYearEl : vehicleModelEl, vehicle.error);
+        }
 
         if (errors) {
           showGuideFormBanner('Há ' + errors + (errors === 1 ? ' campo' : ' campos') + ' com erro. Corrija o destacado em amarelo.', 'error');
@@ -1842,6 +1864,8 @@
           cnpj: isPj ? docDigits : '',
           pix_key: pixKey,
           pix_key_type: pixType,
+          vehicle_model: vehicle.model || '',
+          vehicle_year: vehicle.year || '',
           submit_for_approval: form.getAttribute('data-submit-approval') === '1' ? 1 : 0
         };
         form.setAttribute('data-submit-approval', '0');
@@ -1864,7 +1888,9 @@
               idDoc: document.getElementById('gp-doc-field'),
               doc: docEl,
               legal: legalEl,
-              pix: pixEl
+              pix: pixEl,
+              vehicle: form.querySelector('[data-vehicle-input]'),
+              vehicleYear: form.querySelector('[data-vehicle-year]')
             });
             showGuideFormBanner(apiErr, 'error');
             if (mapped) focusFirstGuideError(form);

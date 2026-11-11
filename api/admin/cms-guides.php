@@ -11,6 +11,7 @@ require_once __DIR__ . '/../helpers/cms_schema.php';
 require_once __DIR__ . '/../helpers/guide_languages.php';
 require_once __DIR__ . '/../helpers/guide_status.php';
 require_once __DIR__ . '/../helpers/guide_profile.php';
+require_once __DIR__ . '/../helpers/guide_vehicle.php';
 require_once __DIR__ . '/../helpers/guide_registration.php';
 
 header('Content-Type: application/json; charset=utf-8');
@@ -81,7 +82,8 @@ function gcv_cms_guide_select_sql(): string
                 g.birth_date, g.sexo, g.is_kalunga, g.base_city_id, g.cadastur, g.pix_key, g.pix_key_type, g.pix_holder_name,
                 g.pix_verified_at, g.pix_verified_by,
                 g.photo_url, g.diploma_url, g.association_doc_url, g.photo_3x4_url,
-                g.bio_pt, g.bio_en, g.bio_es, g.languages_json, g.cpf, g.profile_complete, g.needs_resubmit, g.approved_at, g.approved_by,
+                g.bio_pt, g.bio_en, g.bio_es, g.languages_json, g.vehicle_model, g.vehicle_year,
+                g.cpf, g.profile_complete, g.needs_resubmit, g.approved_at, g.approved_by,
                 g.rejected_at, g.rejected_reason,
                 c.name AS base_city_name
          FROM gcv_users u
@@ -531,6 +533,13 @@ if ($method === 'POST') {
         echo json_encode(['ok' => false, 'error' => 'Campos obrigatórios: ' . implode(', ', $missing)]);
         exit;
     }
+    try {
+        $vehicle = gcv_guide_vehicle_parse((string)($body['vehicle_model'] ?? ''), $body['vehicle_year'] ?? '');
+    } catch (InvalidArgumentException $e) {
+        http_response_code(400);
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+        exit;
+    }
 
     $exists = db()->prepare('SELECT id FROM gcv_users WHERE email = ?');
     $exists->execute([$email]);
@@ -561,8 +570,9 @@ if ($method === 'POST') {
               user_id, nickname, full_name, phone, phone_ddi, phone_iso, birth_date, sexo, is_kalunga, base_city_id,
               cadastur, pix_key, pix_key_type, pix_holder_name, photo_url, diploma_url,
               association_doc_url, photo_3x4_url, bio_pt, bio_en, bio_es, languages_json,
+              vehicle_model, vehicle_year,
               profile_complete, approved_at, approved_by
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?)'
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?)'
         );
         $stmt->execute([
             $userId,
@@ -587,6 +597,8 @@ if ($method === 'POST') {
             ($body['bio_en'] ?? null),
             ($body['bio_es'] ?? null),
             gcv_guide_languages_json($body['languages'] ?? $body['languages_json'] ?? ['pt']),
+            $vehicle['model'],
+            $vehicle['year'],
             $status === 'active' ? date('Y-m-d H:i:s') : null,
             $status === 'active' ? (int)$admin['id'] : null,
         ]);
@@ -656,6 +668,21 @@ if ($method === 'PUT') {
         echo json_encode(['ok' => false, 'error' => 'Campos obrigatórios: ' . implode(', ', $missing)]);
         exit;
     }
+    if (!array_key_exists('vehicle_model', $body) && !array_key_exists('vehicle_year', $body)) {
+        $savedYear = $current['vehicle_year'] ?? null;
+        $vehicle = [
+            'model' => trim((string)($current['vehicle_model'] ?? '')) ?: null,
+            'year' => ($savedYear === null || $savedYear === '') ? null : (int)$savedYear,
+        ];
+    } else {
+        try {
+            $vehicle = gcv_guide_vehicle_parse((string)($body['vehicle_model'] ?? ''), $body['vehicle_year'] ?? '');
+        } catch (InvalidArgumentException $e) {
+            http_response_code(400);
+            echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+            exit;
+        }
+    }
 
     $status = gcv_cms_allowed_guide_status(
         (string)($body['status'] ?? $current['status'] ?? 'pending'),
@@ -674,7 +701,7 @@ if ($method === 'PUT') {
                 'UPDATE gcv_guides SET nickname=?, full_name=?, phone=?, phone_ddi=?, phone_iso=?, birth_date=?, sexo=?,
                  is_kalunga=?, base_city_id=?, cadastur=?, pix_key=?, pix_key_type=?, pix_holder_name=?, photo_url=?,
                  diploma_url=?, association_doc_url=?, photo_3x4_url=?, bio_pt=?, bio_en=?, bio_es=?,
-                 languages_json=?, profile_complete=1,
+                 languages_json=?, vehicle_model=?, vehicle_year=?, profile_complete=1,
                  pix_verified_at=?, pix_verified_by=? WHERE user_id=?'
             )->execute([
                 $nickname,
@@ -704,6 +731,8 @@ if ($method === 'PUT') {
                 gcv_guide_languages_json(
                     $body['languages'] ?? $body['languages_json'] ?? ($current['languages'] ?? $current['languages_json'] ?? ['pt'])
                 ),
+                $vehicle['model'],
+                $vehicle['year'],
                 $pixKey !== '' ? date('Y-m-d H:i:s') : null,
                 $pixKey !== '' ? (int)$admin['id'] : null,
                 $userId,
@@ -712,8 +741,9 @@ if ($method === 'PUT') {
             db()->prepare(
                 'INSERT INTO gcv_guides (
                   user_id, nickname, full_name, phone, phone_ddi, phone_iso, birth_date, sexo, is_kalunga, base_city_id,
-                  pix_key, pix_key_type, pix_holder_name, photo_url, photo_3x4_url, bio_pt, profile_complete
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1)'
+                  pix_key, pix_key_type, pix_holder_name, photo_url, photo_3x4_url, bio_pt,
+                  vehicle_model, vehicle_year, profile_complete
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1)'
             )->execute([
                 $userId, $nickname, $fullName, $phone,
                 trim((string)($body['phone_ddi'] ?? '+55')) ?: '+55',
@@ -721,6 +751,8 @@ if ($method === 'PUT') {
                 $birth, $sexo, $isKalunga, $cityId,
                 $pixKey, $pixType, $pixHolder, $photoUrl ?: $photo34, $photo34 ?: $photoUrl,
                 ($body['bio_pt'] ?? null),
+                $vehicle['model'],
+                $vehicle['year'],
             ]);
         }
         db()->commit();

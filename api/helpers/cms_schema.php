@@ -601,6 +601,8 @@ function gcv_cms_ensure_guide_columns(PDO $pdo): void
         'rejected_reason' => "VARCHAR(500) NULL",
         'rejected_by' => "INT UNSIGNED NULL",
         'languages_json' => "VARCHAR(80) NULL",
+        'vehicle_model' => "VARCHAR(120) NULL",
+        'vehicle_year' => "SMALLINT UNSIGNED NULL",
         'bio_en' => "TEXT NULL",
         'bio_es' => "TEXT NULL",
     ];
