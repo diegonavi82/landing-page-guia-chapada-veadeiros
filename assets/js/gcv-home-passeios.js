@@ -293,8 +293,14 @@
     if (e.target && e.target.closest && e.target.closest("[data-gcv-cart-remove]")) setTimeout(paint, 0);
   });
 
-  fetch("/api/passeios.php", { credentials: "same-origin", cache: "no-store", headers: { Accept: "application/json" } })
-    .then(function (res) { return res.json(); })
+  if (!window.__gcvPasseiosPromise) {
+    window.__gcvPasseiosPromise = fetch("/api/passeios.php", {
+      credentials: "same-origin",
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+    }).then(function (res) { return res.json(); });
+  }
+  window.__gcvPasseiosPromise
     .then(function (payload) {
       var data = (payload && payload.data) || {};
       maxAtrativos = parseInt(data.max_atrativos, 10) || maxAtrativos;
