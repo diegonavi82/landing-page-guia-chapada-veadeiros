@@ -245,6 +245,9 @@
       pixModalRefLabel: "Código de reserva",
       pixModalEmailContinue: "PIX",
       payPixMeta: "Menor preço",
+      walletPay: "Usar saldo",
+      walletMeta: "O saldo cobre este passeio",
+      walletOff: "Saldo aplicado",
       payChoice: "Como você quer pagar?",
       stripePayCard: "Pagar com cartão",
       stripePayCardBusy: "Abrindo pagamento seguro…",
@@ -461,6 +464,9 @@
       pixModalRefLabel: "Reservation code",
       pixModalEmailContinue: "PIX",
       payPixMeta: "Lowest price",
+      walletPay: "Use balance",
+      walletMeta: "Your balance covers this tour",
+      walletOff: "Balance applied",
       payChoice: "How do you want to pay?",
       stripePayCard: "Pay with card",
       stripePayCardBusy: "Opening secure checkout…",
@@ -677,6 +683,9 @@
       pixModalRefLabel: "Código de reserva",
       pixModalEmailContinue: "PIX",
       payPixMeta: "Menor precio",
+      walletPay: "Usar saldo",
+      walletMeta: "El saldo cubre esta excursión",
+      walletOff: "Saldo aplicado",
       payChoice: "¿Cómo quieres pagar?",
       stripePayCard: "Pagar con tarjeta",
       stripePayCardBusy: "Abriendo el pago seguro…",
@@ -1768,7 +1777,26 @@
     return today;
   }
 
-  function clampIsoRangeToFloor(startIso, endIso, maxIso) {
+  function urlTravelRange() {
+    var q;
+    try {
+      q = new URLSearchParams(window.location.search || "");
+    } catch (err) {
+      return null;
+    }
+    var de = String(q.get("de") || "").trim();
+    var ate = String(q.get("ate") || "").trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(de)) return null;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(ate)) ate = de;
+    if (ate < de) {
+      var swap = de;
+      de = ate;
+      ate = swap;
+    }
+    return { dateFrom: de, dateTo: ate };
+  }
+
+  function clampIsoRangeToFloor(startIso, endIso, maxIso, maxDays) {
     var floor = dateFilterFloorIso(maxIso);
     var ceiling = maxIso || floor;
     var from = startIso || floor;
@@ -1778,8 +1806,9 @@
     if (compareIso(to, ceiling) > 0) to = ceiling;
     if (compareIso(from, ceiling) > 0) from = ceiling;
     if (compareIso(from, to) > 0) from = to;
-    if (daysBetweenIso(from, to) > FILTER_DATE_WINDOW_DAYS) {
-      to = addDaysToIso(from, FILTER_DATE_WINDOW_DAYS);
+    var windowDays = maxDays || FILTER_DATE_WINDOW_DAYS;
+    if (daysBetweenIso(from, to) > windowDays) {
+      to = addDaysToIso(from, windowDays);
       if (compareIso(to, ceiling) > 0) to = ceiling;
     }
     return { dateFrom: from, dateTo: to };
@@ -1898,7 +1927,10 @@
   function mountExcursaoDateRangePicker(fieldEl, bounds, s, locale, excursionDates, onRangeCommit) {
     var maxIso = bounds.dateMax;
     var floor = dateFilterFloorIso(maxIso);
-    var initial = smartDefaultFilterRange(floor, maxIso, excursionDates);
+    var fromUrl = urlTravelRange();
+    var initial = fromUrl
+      ? clampIsoRangeToFloor(fromUrl.dateFrom, fromUrl.dateTo, maxIso, 400)
+      : smartDefaultFilterRange(floor, maxIso, excursionDates);
     var startIso = initial.dateFrom;
     var endIso = initial.dateTo;
     var pickPhase = "start";
@@ -2640,7 +2672,8 @@
       ".gcv-excursoes-card__out-list li{display:inline-flex;align-items:center;gap:0.28rem;flex:0 0 auto;margin:0;padding:0.22rem 0.55rem;border-radius:999px;background:#ffe4e6;list-style:none;color:#be123c;font-size:0.78rem;font-weight:800;letter-spacing:0.01em;line-height:1.2}" +
       ".gcv-excursoes-card__out-list .ti{color:#be123c;font-size:1rem;flex:0 0 auto}" +
       ".gcv-excursoes__track--day-list .gcv-excursoes-card{grid-template-rows:auto auto auto auto minmax(0,1fr);grid-template-areas:\"banner\" \"photo\" \"main\" \"incluso\" \"book\"}" +
-      "@media (min-width:1024px){.gcv-excursoes__track--day-list .gcv-excursoes-card{grid-template-rows:auto auto auto minmax(0,1fr);grid-template-areas:\"banner banner\" \"photo main\" \"photo incluso\" \"book book\"}.gcv-excursoes-card__guide,.gcv-excursoes-card__guide--btn,.gcv-excursoes__track--day-list .gcv-excursoes-card__guide,.gcv-excursoes__track--day-list .gcv-excursoes-card__guide--btn{padding:16px 24px;border:1px solid #e2e8f0;background:transparent;box-shadow:0 1px 1px rgba(15,23,42,0.8)}.gcv-excursoes-card__time-city-grid,.gcv-excursoes__track--day-list .gcv-excursoes-card__time-city-grid{padding-bottom:16px}}";
+      "@media (min-width:1024px){.gcv-excursoes__track--day-list .gcv-excursoes-card{grid-template-rows:auto auto auto minmax(0,1fr);grid-template-areas:\"banner banner\" \"photo main\" \"photo incluso\" \"book book\"}.gcv-excursoes-card__guide,.gcv-excursoes-card__guide--btn,.gcv-excursoes__track--day-list .gcv-excursoes-card__guide,.gcv-excursoes__track--day-list .gcv-excursoes-card__guide--btn{padding:16px 24px;border:1px solid #e2e8f0;background:transparent;box-shadow:0 1px 1px rgba(15,23,42,0.8)}.gcv-excursoes-card__time-city-grid,.gcv-excursoes__track--day-list .gcv-excursoes-card__time-city-grid{padding-bottom:16px}}" +
+      "@media (max-width:1023px){.gcv-excursoes__track--day-list .gcv-excursoes-card__guide,.gcv-excursoes__track--day-list .gcv-excursoes-card__guide--btn{display:grid;grid-template-columns:35% minmax(0,65%);grid-template-rows:1fr auto auto auto 1fr;align-items:center;justify-items:center;column-gap:0;row-gap:0.15rem;padding:0;min-height:8.75rem;text-align:center}.gcv-excursoes__track--day-list .gcv-excursoes-card__guide .gcv-excursoes-card__guide-photo-wrap,.gcv-excursoes__track--day-list .gcv-excursoes-card__guide .gcv-excursoes-card__guide-icon{grid-column:1;grid-row:1 / -1;width:100%;height:100%;min-width:0;max-width:none;min-height:100%;max-height:none;margin:0;align-self:stretch;justify-self:stretch;border-radius:0}.gcv-excursoes__track--day-list .gcv-excursoes-card__guide .gcv-excursoes-card__guide-photo,.gcv-excursoes__track--day-list .gcv-excursoes-card__guide .gcv-excursoes-card__guide-avatar{width:100%;height:100%;min-width:0;max-width:none;min-height:100%;max-height:none;margin:0;border-radius:0;object-fit:cover;object-position:center center}.gcv-excursoes__track--day-list .gcv-excursoes-card__guide .gcv-excursoes-card__guide-label,.gcv-excursoes__track--day-list .gcv-excursoes-card__guide .gcv-excursoes-card__guide-name,.gcv-excursoes__track--day-list .gcv-excursoes-card__guide .gcv-excursoes-card__guide-langs{grid-column:2;width:100%;margin:0;padding-left:12px;padding-right:12px;box-sizing:border-box;text-align:center;justify-content:center}.gcv-excursoes__track--day-list .gcv-excursoes-card__guide .gcv-excursoes-card__guide-label{grid-row:2;align-self:end}.gcv-excursoes__track--day-list .gcv-excursoes-card__guide .gcv-excursoes-card__guide-name{grid-row:3}.gcv-excursoes__track--day-list .gcv-excursoes-card__guide .gcv-excursoes-card__guide-langs{grid-row:4;align-self:start}}";
     document.head.appendChild(style);
   }
 
@@ -4781,6 +4814,7 @@
       pending.loc,
       pending.receiptData,
       function onRegistered(reg) {
+        if (reg && String(reg.status || "").toUpperCase() === "PAID") return;
         var brcode = reg && reg.brcode ? String(reg.brcode).trim() : "";
         var payload = brcode || buildStaticPixPayload(pending);
         if (!payload) return;
@@ -5101,23 +5135,28 @@
     if (!modal) return;
     var L = STRINGS[loc] || STRINGS.pt;
     var base = payBaseCents(modal);
-    var q = modal._gcvPayQuotes && modal._gcvPayQuotes.base === base ? modal._gcvPayQuotes.quotes : null;
+    var quoteBox = modal._gcvPayQuotes && modal._gcvPayQuotes.base === base ? modal._gcvPayQuotes : null;
+    var q = quoteBox ? quoteBox.quotes : null;
+    var charge = quoteBox && quoteBox.charge != null ? quoteBox.charge : base;
+    var covered = !!(quoteBox && quoteBox.covered);
 
     var pix = modal.querySelector("[data-gcv-pix-email-continue]");
     if (pix && !modal._gcvPixCheckoutActive) {
       pix.classList.add("gcv-pay-opt", "gcv-pay-opt--pix");
-      var pixTitle = L.pixModalEmailContinue || "PIX";
-      pix.setAttribute("aria-label", base ? pixTitle + " " + payMoneyBrl(base) + " BRL" : pixTitle);
+      var pixTitle = covered ? (L.walletPay || "Usar saldo") : (L.pixModalEmailContinue || "PIX");
+      var pixAmount = covered ? 0 : charge;
+      var pixMeta = covered ? (L.walletMeta || "") : (quoteBox && quoteBox.wallet ? (L.walletOff || "") : (L.payPixMeta || ""));
+      pix.setAttribute("aria-label", pixAmount ? pixTitle + " " + payMoneyBrl(pixAmount) + " BRL" : pixTitle);
       pix.innerHTML = payOptHtml({
         kind: "pix",
         title: pixTitle,
-        meta: L.payPixMeta || "",
-        amount: base ? payMoneyBrl(base) : "",
+        meta: pixMeta,
+        amount: pixAmount ? payMoneyBrl(pixAmount) : (covered ? payMoneyBrl(0) : ""),
         ccy: "BRL",
       });
     }
 
-    var cardsOn = !!(modal._gcvPayQuotes && modal._gcvPayQuotes.cardsEnabled === true);
+    var cardsOn = !covered && !!(modal._gcvPayQuotes && modal._gcvPayQuotes.cardsEnabled === true);
     modal.querySelectorAll(".gcv-pix-modal__card-note, .gcv-pix-modal__pay-choice").forEach(function (el) {
       el.hidden = !cardsOn;
     });
@@ -5178,12 +5217,15 @@
     })
       .then(function (r) { return r.json(); })
       .then(function (res) {
-        if (res && res.success && res.quotes) {
+        if (res && res.success && (res.quotes || res.covered)) {
           modal._gcvPayQuotes = {
             base: base,
-            quotes: res.quotes,
+            charge: res.charge_cents != null ? res.charge_cents : base,
+            wallet: res.wallet_cents || 0,
+            covered: res.covered === true,
+            quotes: res.quotes || {},
             mpPublicKey: res.mp_public_key || "",
-            cardsEnabled: res.cards_enabled === true,
+            cardsEnabled: res.covered === true ? false : res.cards_enabled === true,
           };
           renderPayButtonLabels(modal, modal._gcvPixLocale || loc || "pt");
         }

@@ -6229,6 +6229,77 @@ html.gcv-waitlist-modal-open {
 
 /* Celular e tablet: foto em cima, informações embaixo */
 @media (max-width: 1023px) {
+  .gcv-excursoes__track--day-list .gcv-excursoes-card__guide,
+  .gcv-excursoes__track--day-list .gcv-excursoes-card__guide--btn {
+    display: grid;
+    grid-template-columns: 35% minmax(0, 65%);
+    grid-template-rows: 1fr auto auto auto 1fr;
+    align-items: center;
+    justify-items: center;
+    column-gap: 0;
+    row-gap: 0.15rem;
+    padding: 0;
+    min-height: 8.75rem;
+    text-align: center;
+  }
+
+  .gcv-excursoes__track--day-list .gcv-excursoes-card__guide .gcv-excursoes-card__guide-photo-wrap,
+  .gcv-excursoes__track--day-list .gcv-excursoes-card__guide .gcv-excursoes-card__guide-icon {
+    grid-column: 1;
+    grid-row: 1 / -1;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    max-width: none;
+    min-height: 100%;
+    max-height: none;
+    margin: 0;
+    align-self: stretch;
+    justify-self: stretch;
+    border-radius: 0;
+  }
+
+  .gcv-excursoes__track--day-list .gcv-excursoes-card__guide .gcv-excursoes-card__guide-photo,
+  .gcv-excursoes__track--day-list .gcv-excursoes-card__guide .gcv-excursoes-card__guide-avatar {
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    max-width: none;
+    min-height: 100%;
+    max-height: none;
+    margin: 0;
+    border-radius: 0;
+    object-fit: cover;
+    object-position: center center;
+  }
+
+  .gcv-excursoes__track--day-list .gcv-excursoes-card__guide .gcv-excursoes-card__guide-label,
+  .gcv-excursoes__track--day-list .gcv-excursoes-card__guide .gcv-excursoes-card__guide-name,
+  .gcv-excursoes__track--day-list .gcv-excursoes-card__guide .gcv-excursoes-card__guide-langs {
+    grid-column: 2;
+    width: 100%;
+    margin: 0;
+    padding-left: 12px;
+    padding-right: 12px;
+    box-sizing: border-box;
+    text-align: center;
+    justify-content: center;
+  }
+
+  .gcv-excursoes__track--day-list .gcv-excursoes-card__guide .gcv-excursoes-card__guide-label {
+    grid-row: 2;
+    align-self: end;
+  }
+
+  .gcv-excursoes__track--day-list .gcv-excursoes-card__guide .gcv-excursoes-card__guide-name {
+    grid-row: 3;
+  }
+
+  .gcv-excursoes__track--day-list .gcv-excursoes-card__guide .gcv-excursoes-card__guide-langs {
+    grid-row: 4;
+    align-self: start;
+  }
+
   .gcv-excursoes__viewport--day-list,
   .gcv-excursoes__shell--by-date .gcv-excursoes__viewport {
     container-type: inline-size;

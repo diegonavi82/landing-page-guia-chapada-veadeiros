@@ -40,6 +40,11 @@
 
   if (redirectToClientLang()) return;
 
+  try {
+    var indCode = String(new URLSearchParams(window.location.search).get("ind") || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (indCode) sessionStorage.setItem("gcv_ind", indCode);
+  } catch (errInd) { /* o convite segue no link */ }
+
   document.addEventListener("click", function (ev) {
     var link = ev.target && ev.target.closest ? ev.target.closest(".lang-switch a") : null;
     if (!link) return;
@@ -240,6 +245,25 @@
 
     var lastCheck = 0;
     var signedIn = false;
+    function claimReferral() {
+      var code = "";
+      try { code = sessionStorage.getItem("gcv_ind") || ""; } catch (err) { return; }
+      if (!code) return;
+      fetch("/api/indicacoes.php", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ action: "vincular", ind: code }),
+      })
+        .then(function (res) { return res.json(); })
+        .then(function (body) {
+          var status = body && body.data && body.data.status;
+          if (status === "linked" || status === "nao_conta" || status === "rewarded") {
+            try { sessionStorage.removeItem("gcv_ind"); } catch (err) {}
+          }
+        })
+        .catch(function () {});
+    }
     function refreshAuth(force) {
       var now = Date.now();
       if (!force && now - lastCheck < 20000) return;
@@ -270,6 +294,7 @@
           if (body && body.ok && body.data && body.data.id) {
             signedIn = true;
             paint(body.data);
+            claimReferral();
             return;
           }
           if (!signedIn) paint(null);
@@ -1510,7 +1535,7 @@
         return;
       }
       var script = document.createElement("script");
-      script.src = "/assets/js/excursoes-carousel.js?v=1.1.108";
+      script.src = "/assets/js/excursoes-carousel.js?v=1.1.109";
       script.onload = go;
       document.head.appendChild(script);
     }
