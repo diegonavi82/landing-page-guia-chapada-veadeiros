@@ -45,7 +45,15 @@ function gcv_substitution_seed_queue(): void
     try {
         $have = db()->query('SELECT user_id FROM gcv_guide_queue')->fetchAll(PDO::FETCH_COLUMN) ?: [];
         $known = array_map('intval', $have);
-        $st = db()->query("SELECT id FROM gcv_users WHERE role = 'guide' AND status = 'active' ORDER BY id ASC");
+        $st = db()->query(
+            "SELECT u.id FROM gcv_users u
+             WHERE u.status = 'active'
+               AND (
+                 u.role = 'guide'
+                 OR EXISTS (SELECT 1 FROM gcv_user_roles r WHERE r.user_id = u.id AND r.role = 'guide')
+               )
+             ORDER BY u.id ASC"
+        );
         $ids = array_map('intval', $st->fetchAll(PDO::FETCH_COLUMN) ?: []);
         $max = (int)db()->query('SELECT COALESCE(MAX(posicao), 0) FROM gcv_guide_queue')->fetchColumn();
         $ins = db()->prepare('INSERT INTO gcv_guide_queue (user_id, posicao) VALUES (?, ?)');
@@ -75,7 +83,11 @@ function gcv_substitution_queue(): array
                     {$kalungaSql} AS is_kalunga,
                     q.posicao
              FROM gcv_guide_queue q
-             INNER JOIN gcv_users u ON u.id = q.user_id AND u.role = 'guide' AND u.status = 'active'
+             INNER JOIN gcv_users u ON u.id = q.user_id AND u.status = 'active'
+               AND (
+                 u.role = 'guide'
+                 OR EXISTS (SELECT 1 FROM gcv_user_roles r WHERE r.user_id = u.id AND r.role = 'guide')
+               )
              LEFT JOIN gcv_guides g ON g.user_id = u.id
              LEFT JOIN gcv_cities c ON c.id = g.base_city_id
              ORDER BY q.posicao ASC, u.id ASC"
