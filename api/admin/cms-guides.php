@@ -81,7 +81,7 @@ function gcv_cms_guide_select_sql(): string
                 g.id AS guide_id, g.nickname, g.full_name, g.phone, g.phone_ddi, g.phone_iso,
                 g.birth_date, g.sexo, g.is_kalunga, g.base_city_id, g.cadastur, g.pix_key, g.pix_key_type, g.pix_holder_name,
                 g.pix_verified_at, g.pix_verified_by,
-                g.photo_url, g.diploma_url, g.association_doc_url, g.photo_3x4_url,
+                g.photo_url, g.diploma_url, g.association_doc_url, g.photo_3x4_url, g.id_document_url,
                 g.bio_pt, g.bio_en, g.bio_es, g.languages_json, g.vehicle_model, g.vehicle_year,
                 g.cpf, g.profile_complete, g.needs_resubmit, g.approved_at, g.approved_by,
                 g.rejected_at, g.rejected_reason,
@@ -119,14 +119,14 @@ function gcv_cms_guides_list(): array
     $select = 'SELECT u.id AS user_id, u.name, u.email, u.status, u.avatar_url, g.nickname, g.full_name, g.phone, g.phone_ddi,
                 g.cadastur, g.pix_key, g.pix_key_type, g.pix_holder_name, g.pix_verified_at, g.approved_at,
                 g.rejected_at, g.rejected_reason, g.sexo, g.is_kalunga,
-                g.photo_3x4_url, g.photo_url, g.languages_json, g.profile_complete, g.needs_resubmit, c.name AS base_city_name
+                g.photo_3x4_url, g.photo_url, g.id_document_url, g.languages_json, g.profile_complete, g.needs_resubmit, c.name AS base_city_name
          FROM gcv_users u
          LEFT JOIN gcv_guides g ON g.user_id = u.id
          LEFT JOIN gcv_cities c ON c.id = g.base_city_id';
     $selectLegacy = 'SELECT u.id AS user_id, u.name, u.email, u.status, u.avatar_url, g.nickname, g.full_name, g.phone, g.phone_ddi,
                 g.cadastur, g.pix_key, g.pix_key_type, g.pix_holder_name, g.pix_verified_at, g.approved_at,
                 g.rejected_at, g.rejected_reason, g.sexo, g.is_kalunga,
-                g.photo_3x4_url, g.photo_url, g.languages_json, g.profile_complete, c.name AS base_city_name
+                g.photo_3x4_url, g.photo_url, g.id_document_url, g.languages_json, g.profile_complete, c.name AS base_city_name
          FROM gcv_users u
          LEFT JOIN gcv_guides g ON g.user_id = u.id
          LEFT JOIN gcv_cities c ON c.id = g.base_city_id';

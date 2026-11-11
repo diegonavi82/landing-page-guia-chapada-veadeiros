@@ -5632,6 +5632,50 @@ body.gcv-spot-open { overflow: hidden; }
   gap: 0.22rem;
   margin-top: 0.28rem;
 }
+.gcv-guide-sheet td.gcv-guide-sheet__doc {
+  min-width: 7.5rem;
+  vertical-align: middle;
+}
+.gcv-guide-doc-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: #0f3d2e;
+  font-weight: 700;
+  font-size: 0.78rem;
+  line-height: 1.2;
+  text-decoration: none;
+}
+.gcv-guide-doc-link:hover span { text-decoration: underline; }
+.gcv-guide-doc-link img {
+  width: 52px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid #d5e4db;
+  background: #fff;
+  flex: 0 0 auto;
+}
+.gcv-guide-doc-missing {
+  color: #b42318;
+  font-weight: 700;
+  font-size: 0.82rem;
+}
+.gcv-cms-id-doc__preview {
+  display: block;
+  max-width: 320px;
+  border: 1px solid #d5e4db;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+}
+.gcv-cms-id-doc__preview img {
+  display: block;
+  width: 100%;
+  max-height: 440px;
+  object-fit: contain;
+  background: #f8fafc;
+}
 .gcv-guide-sheet td.gcv-guide-sheet__actions {
   white-space: nowrap;
   text-align: center;

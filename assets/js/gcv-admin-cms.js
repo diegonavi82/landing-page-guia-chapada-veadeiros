@@ -1677,6 +1677,39 @@
     return (g && (g.photo_3x4_url || g.photo_url || g.avatar_url)) || '';
   }
 
+  function guideIdDocUrl(g) {
+    return String((g && g.id_document_url) || '').trim();
+  }
+
+  function guideIdDocIsImage(url) {
+    return /\.(jpe?g|png|gif|webp)(\?|$)/i.test(String(url || ''));
+  }
+
+  function guideIdDocListHtml(g) {
+    var url = guideIdDocUrl(g);
+    if (!url) return '<span class="gcv-guide-doc-missing">Não anexou</span>';
+    var thumb = guideIdDocIsImage(url)
+      ? '<img src="' + esc(url) + '" alt="Documento de identificação" />'
+      : '<span class="gcv-dash-doc-file__pdf" aria-hidden="true">PDF</span>';
+    return '<a class="gcv-guide-doc-link" href="' + esc(url) + '" target="_blank" rel="noopener">' +
+      thumb + '<span>Ver documento</span></a>';
+  }
+
+  function guideIdDocFormHtml(g) {
+    var url = g ? guideIdDocUrl(g) : '';
+    if (!url) {
+      return '<div class="gcv-dash-field"><label class="gcv-dash-label">Documento de identificação</label>' +
+        '<p class="gcv-guide-doc-missing">Não anexou RG, CNH ou documento com foto.</p></div>';
+    }
+    var body = guideIdDocIsImage(url)
+      ? '<a class="gcv-cms-id-doc__preview" href="' + esc(url) + '" target="_blank" rel="noopener">' +
+        '<img src="' + esc(url) + '" alt="Documento de identificação" /></a>'
+      : '<a class="gcv-dash-btn gcv-dash-btn--sm" href="' + esc(url) + '" target="_blank" rel="noopener">Abrir PDF</a>';
+    return '<div class="gcv-dash-field"><label class="gcv-dash-label">Documento de identificação</label>' +
+      '<p class="gcv-cms-muted" style="margin:0 0 0.45rem;">RG, CNH ou documento com foto enviado pelo guia. Clique para abrir o arquivo.</p>' +
+      body + '</div>';
+  }
+
   function guideListPhotoHtml(g) {
     var url = guidePhotoUrl(g);
     var name = String((g && (g.full_name || g.name || g.nickname)) || '?');
@@ -2056,6 +2089,7 @@
       '<th><span class="gcv-exc-th"><span class="gcv-exc-th__txt">Cidade</span></span></th>' +
       '<th><span class="gcv-exc-th"><span class="gcv-exc-th__txt">PIX</span></span></th>' +
       '<th><span class="gcv-exc-th"><span class="gcv-exc-th__txt">Celular</span></span></th>' +
+      '<th><span class="gcv-exc-th"><span class="gcv-exc-th__txt">Documento</span></span></th>' +
       '<th><span class="gcv-exc-th"><span class="gcv-exc-th__txt">Ações</span></span></th>' +
       '</tr></thead><tbody>' +
       shown.map(function (g) {
@@ -2101,6 +2135,7 @@
           guidePixBadge(g) +
           '</td>' +
           '<td class="gcv-guide-sheet__phone-cell">' + phoneHtml + '</td>' +
+          '<td class="gcv-guide-sheet__doc">' + guideIdDocListHtml(g) + '</td>' +
           '<td class="gcv-guide-sheet__actions">' +
           cmsRowActions(
             'data-edit-guide="' + g.user_id + '"',
@@ -2499,6 +2534,7 @@
         '</select></div>' +
         '<div class="gcv-dash-field"><label class="gcv-dash-label">Telefone / WhatsApp *</label><div id="g-phone-wrap"></div></div>' +
         '<div class="gcv-dash-field"><label class="gcv-dash-label">Cidade base *</label><select class="gcv-dash-select" id="g-city"><option value="">Selecione…</option>' + cityOptionsHtml(g && g.base_city_id) + '</select></div>' +
+        guideIdDocFormHtml(g) +
         (window.GcvVehicleCombo
           ? ('<div class="gcv-cms-pix-box">' +
             '<h4>' + esc(window.GcvVehicleCombo.labels().title) + '</h4>' +
