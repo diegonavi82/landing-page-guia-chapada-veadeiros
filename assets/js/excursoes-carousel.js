@@ -3031,7 +3031,10 @@
     confirmGuideSeatIfNeeded({ qty: data.qty, excursao: e, strings: strings }, function (ok) {
       if (!ok) return;
       var added = window.GcvExcCart.add(cartItemFromBook(block));
-      if (added) excursaoPessoasPrefillCommit(data.qty);
+      if (added) {
+        excursaoPessoasPrefillCommit(data.qty);
+        syncExcursaoCartSelection();
+      }
     });
   }
 
@@ -3372,7 +3375,8 @@
   function excursaoFromBookBlock(block) {
     var card = block && block.closest ? block.closest(".gcv-excursoes-card") : null;
     if (!card) return null;
-    var root = block.closest("#excursoes-junho");
+    var inPage = block.closest && block.closest("#excursoes-junho");
+    var root = inPage || document.getElementById("excursoes-junho");
     if (!root) return null;
     var rows = getMergedExcursaoRows(root);
     if (!rows || !rows.length) return null;
@@ -3382,6 +3386,7 @@
         if (excursaoCartId(rows[i]) === cartId) return rows[i];
       }
     }
+    if (!inPage) return null;
     var idx = parseInt(card.getAttribute("data-excursao-index"), 10);
     if (Number.isFinite(idx) && rows[idx]) return rows[idx];
     return null;
@@ -7452,6 +7457,7 @@
   function removeExcursaoFromCart(cartId) {
     if (!cartId || !window.GcvExcCart || typeof window.GcvExcCart.remove !== "function") return;
     window.GcvExcCart.remove(cartId);
+    syncExcursaoCartSelection();
   }
 
   function tryUnselectInCartCardFromHeadClick(e) {
@@ -7780,6 +7786,13 @@
 
   var syncExcursaoCartSelectionBusy = false;
 
+  function eachExcursaoCard(fn) {
+    [document.getElementById("excursoes-junho"), document.getElementById("gcv-saida-modal")].forEach(function (node) {
+      if (!node || typeof node.querySelectorAll !== "function") return;
+      node.querySelectorAll(".gcv-excursoes-card").forEach(fn);
+    });
+  }
+
   function syncExcursaoCartSelection(locale) {
     if (syncExcursaoCartSelectionBusy) return;
     var root = document.getElementById("excursoes-junho");
@@ -7807,7 +7820,7 @@
     payloadRows.forEach(function (row) {
       rememberValid(excursaoCartId(row), excursaoDateIso(row));
     });
-    root.querySelectorAll(".gcv-excursoes-card").forEach(function (card) {
+    eachExcursaoCard(function (card) {
       rememberValid(
         card.getAttribute("data-cart-id") || "",
         card.getAttribute("data-excursao-date-iso") || "",
@@ -7819,8 +7832,10 @@
         ? window.GcvExcCart.items() || []
         : [];
 
+    // Sem cards ainda (link compartilhado aberto antes da lista), não apaga o item recém-adicionado.
+    var pageReady = payloadRows.length > 0 || !!root.querySelector(".gcv-excursoes-card");
     // Remove do carrinho itens órfãos (ID antigo / passeio inexistente) para não travar o dia.
-    if (window.GcvExcCart && typeof window.GcvExcCart.remove === "function") {
+    if (pageReady && window.GcvExcCart && typeof window.GcvExcCart.remove === "function") {
       var orphanIds = cartItems
         .filter(function (it) {
           if (!it || !it.id) return false;
@@ -7868,7 +7883,7 @@
     syncDateTabsSelection(root, occupiedDates, cartItems, payloadRows);
     updateDayLeadMapFromOccupied(root, occupiedDates);
 
-    root.querySelectorAll(".gcv-excursoes-card").forEach(function (card) {
+    eachExcursaoCard(function (card) {
       var id =
         card.getAttribute("data-cart-id") ||
         ((card.querySelector("[data-cart-id]") && card.querySelector("[data-cart-id]").getAttribute("data-cart-id")) || "");
@@ -7936,8 +7951,31 @@
     reorderDayTrackLead(root, false);
   }
 
+  window.__gcvSyncExcursaoCart = function () {
+    syncExcursaoCartSelection();
+  };
+
   function initExcCart(locale) {
-    if (!window.GcvExcCart || typeof window.GcvExcCart.init !== "function") return;
+    if (!window.GcvExcCart || typeof window.GcvExcCart.init !== "function") {
+      if (initExcCart._wait) return;
+      initExcCart._wait = true;
+      var tries = 0;
+      var tick = function () {
+        if (window.GcvExcCart && typeof window.GcvExcCart.init === "function") {
+          initExcCart._wait = false;
+          initExcCart(locale);
+          return;
+        }
+        if (++tries < 50) window.setTimeout(tick, 40);
+      };
+      window.setTimeout(tick, 0);
+      return;
+    }
+    if (initExcCart._bound) {
+      syncExcursaoCartSelection(locale);
+      return;
+    }
+    initExcCart._bound = true;
     window.GcvExcCart.init({
       strings: STRINGS,
       locale: locale,
@@ -9141,6 +9179,7 @@
         '<div class="gcv-excursoes__track gcv-excursoes__track--day-list">' +
         buildCard(tours[0], 0, locale, s) +
         "</div>";
+      syncExcursaoCartSelection(locale);
       modal.hidden = false;
       return;
     }
@@ -9169,6 +9208,7 @@
       saidaArrowSvg(1) +
       "</button></div>";
     bindSaidaCarousel(modal, tours.length, start || 0);
+    syncExcursaoCartSelection(locale);
     modal.hidden = false;
   }
 

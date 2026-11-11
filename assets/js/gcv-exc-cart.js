@@ -163,7 +163,7 @@
       "/assets/js/gcv-pix-polling.js?v=1.1.40",
       "/assets/js/gcv-confirm.js?v=1.1.31",
       "/assets/js/gcv-exc-bookings.js?v=1.1.31",
-      "/assets/js/excursoes-carousel.js?v=1.1.124",
+      "/assets/js/excursoes-carousel.js?v=1.1.125",
     ];
     var i = 0;
     function next(err) {
@@ -571,6 +571,17 @@
     return sortCartItems(purgeExpiredItems(readStoredItems()));
   }
 
+  function notifyCartChange(items) {
+    if (typeof _onChange === "function") _onChange(items);
+    var hook = global.__gcvSyncExcursaoCart;
+    if (typeof hook !== "function" || hook === _onChange) return;
+    try {
+      hook(items);
+    } catch (err) {
+      /* */
+    }
+  }
+
   function saveItems(items) {
     var purged = sortCartItems(purgeExpiredItems(items || []));
     var sig = purged.map(itemDateIso).filter(Boolean).sort().join(",");
@@ -584,9 +595,7 @@
       /* */
     }
     renderCartUi();
-    if (typeof _onChange === "function") {
-      _onChange(purged);
-    }
+    notifyCartChange(purged);
   }
 
   function showExpiredCartToast() {
@@ -612,9 +621,7 @@
     renderCartUi();
     if (sameDayRemoved > 0) showSameDayToast();
     else if (!opts || opts.notify !== false) showExpiredCartToast();
-    if (typeof _onChange === "function") {
-      _onChange(purged);
-    }
+    notifyCartChange(purged);
     return items.length - purged.length;
   }
 
