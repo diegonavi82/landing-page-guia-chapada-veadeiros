@@ -656,6 +656,7 @@ function gcv_marketplace_ensure_settings(PDO $pdo): void
         ['guia_especial_ativa', '1', 'Guia especial: recebe toda venda antes da fila', 'integer'],
         ['tarifa_ia_ativa', '0', 'Tarifa inteligência artificial progressiva: 0 inativa, 1 ativa. Não vale para passeio publicado pelo guia', 'integer'],
         ['tarifa_ia_passo_pct', '2', 'Passo da tarifa progressiva (%) sobre o último preço vendido', 'percent'],
+        ['indicacao_janela_dias', '7', 'Indicações: dias do carrossel depois da data escolhida', 'integer'],
     ];
     $check = $pdo->prepare('SELECT id FROM gcv_settings WHERE key_name = ? LIMIT 1');
     $ins = $pdo->prepare(

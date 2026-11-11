@@ -6,7 +6,7 @@
       title: "Indicações",
       loading: "Carregando…",
       fail: "Não foi possível carregar agora.",
-      lead: "Indique um telefone com DDI ou um e-mail. No primeiro passeio pago, você ganha 1 ponto e o valor por pessoa do tarifário.",
+      lead: "Indique um telefone com DDI ou um e-mail. No primeiro passeio pago, você ganha 1 ponto por pessoa da reserva e o valor por pessoa do tarifário.",
       leadClient: "Indique um telefone com DDI ou um e-mail. No primeiro passeio pago, você ganha o valor por pessoa do tarifário.",
       viaWa: "Enviado no WhatsApp",
       viaMail: "Enviado por e-mail",
@@ -15,8 +15,8 @@
       email: "E-mail",
       either: "Informe o telefone ou o e-mail.",
       emailInvalid: "E-mail inválido.",
-      arrive: "Chegada (opcional)",
-      leave: "Volta (opcional)",
+      arrive: "Data (opcional)",
+      whenHint: "Se escolher a data, o convite abre o carrossel dos passeios a partir desse dia.",
       send: "Enviar convite",
       sending: "Enviando…",
       sent: "Convite enviado no WhatsApp.",
@@ -63,7 +63,7 @@
       title: "Referrals",
       loading: "Loading…",
       fail: "Could not load this right now.",
-      lead: "Refer a phone number with country code, or an email. On their first paid tour, you earn 1 point and the per-person amount from the price list.",
+      lead: "Refer a phone number with country code, or an email. On their first paid tour, you earn 1 point per person in the booking and the per-person amount from the price list.",
       leadClient: "Refer a phone number with country code, or an email. On their first paid tour, you earn the per-person amount from the price list.",
       viaWa: "Sent on WhatsApp",
       viaMail: "Sent by email",
@@ -72,8 +72,8 @@
       email: "Email",
       either: "Enter a phone number or an email.",
       emailInvalid: "Invalid email.",
-      arrive: "Arrival (optional)",
-      leave: "Return (optional)",
+      arrive: "Date (optional)",
+      whenHint: "If you pick a date, the invite opens the tour carousel from that day on.",
       send: "Send invite",
       sending: "Sending…",
       sent: "Invite sent on WhatsApp.",
@@ -120,7 +120,7 @@
       title: "Indicaciones",
       loading: "Cargando…",
       fail: "No se pudo cargar ahora.",
-      lead: "Indica un teléfono con código de país, o un correo. En su primer paseo pago, ganas 1 punto y el valor por persona del tarifario.",
+      lead: "Indica un teléfono con código de país, o un correo. En su primer paseo pago, ganas 1 punto por persona de la reserva y el valor por persona del tarifario.",
       leadClient: "Indica un teléfono con código de país, o un correo. En su primer paseo pago, ganas el valor por persona del tarifario.",
       viaWa: "Enviado por WhatsApp",
       viaMail: "Enviado por correo",
@@ -129,8 +129,8 @@
       email: "Correo",
       either: "Indica el teléfono o el correo.",
       emailInvalid: "Correo inválido.",
-      arrive: "Llegada (opcional)",
-      leave: "Vuelta (opcional)",
+      arrive: "Fecha (opcional)",
+      whenHint: "Si eliges la fecha, la invitación abre el carrusel de paseos a partir de ese día.",
       send: "Enviar invitación",
       sending: "Enviando…",
       sent: "Invitación enviada por WhatsApp.",
@@ -237,7 +237,7 @@
   }
 
   function inviteRow(item) {
-    var when = item.date_from ? (item.date_from + (item.date_to && item.date_to !== item.date_from ? " → " + item.date_to : "")) : "";
+    var when = item.date_from || "";
     var cents = earnedCents(item);
     var vias = "";
     if (item.phone) vias += '<span class="gcv-ind__via" title="' + esc(t("viaWa")) + '">' + ICO_WA + "</span>";
@@ -292,10 +292,8 @@
         '<div class="gcv-dash-field"><span class="gcv-dash-label">' + esc(t("phone")) + '</span><div id="gcv-ind-phone-wrap"></div></div>' +
         '<div class="gcv-dash-field"><label class="gcv-dash-label" for="gcv-ind-email">' + esc(t("email")) + '</label><input class="gcv-dash-input" id="gcv-ind-email" name="email" type="email" autocomplete="email" /></div>' +
         '<p class="gcv-ind__note">' + esc(t("either")) + "</p>" +
-        '<div class="gcv-dash-field-row">' +
-          '<div class="gcv-dash-field"><label class="gcv-dash-label" for="gcv-ind-from">' + esc(t("arrive")) + '</label><input class="gcv-dash-input" id="gcv-ind-from" name="date_from" type="date" /></div>' +
-          '<div class="gcv-dash-field"><label class="gcv-dash-label" for="gcv-ind-to">' + esc(t("leave")) + '</label><input class="gcv-dash-input" id="gcv-ind-to" name="date_to" type="date" /></div>' +
-        "</div>" +
+        '<div class="gcv-dash-field"><label class="gcv-dash-label" for="gcv-ind-from">' + esc(t("arrive")) + '</label><input class="gcv-dash-input" id="gcv-ind-from" name="date_from" type="date" /></div>' +
+        '<p class="gcv-ind__note">' + esc(t("whenHint")) + "</p>" +
         '<button class="gcv-dash-btn gcv-dash-btn--primary" type="submit">' + esc(t("send")) + "</button>" +
         '<p class="gcv-ind__note" id="gcv-ind-msg" hidden></p>' +
       "</form>" +
@@ -322,18 +320,6 @@
       if (label) label.setAttribute("for", btn.id);
     }
     bindIndDate("gcv-ind-from");
-    bindIndDate("gcv-ind-to");
-    var fromDate = document.getElementById("gcv-ind-from");
-    var toDate = document.getElementById("gcv-ind-to");
-    if (fromDate && toDate) {
-      fromDate.addEventListener("change", function () {
-        if (fromDate.value) toDate.min = fromDate.value;
-        if (toDate.value && fromDate.value && toDate.value < fromDate.value) {
-          toDate.value = fromDate.value;
-          toDate.dispatchEvent(new Event("change", { bubbles: true }));
-        }
-      });
-    }
 
     var phoneCtl = null;
     var phoneWrap = document.getElementById("gcv-ind-phone-wrap");
@@ -379,8 +365,7 @@
           phone_ddi: phoneCtl ? phoneCtl.getDial() : "+55",
           phone_iso: phoneCtl ? phoneCtl.getIso() : "br",
           email: email,
-          date_from: form.date_from.value,
-          date_to: form.date_to.value
+          date_from: form.date_from.value
         }).then(function (res) {
           if (btn) { btn.disabled = false; btn.textContent = t("send"); }
           if (!res.ok) {

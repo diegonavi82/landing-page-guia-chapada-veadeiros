@@ -4,7 +4,8 @@ declare(strict_types=1);
 /**
  * Campanha de indicação.
  * O convite vai por telefone (DDI + número, como no perfil) ou por e-mail.
- * Os dois recebem a mesma URL. O ponto sai só para o guia; o valor por pessoa sai no primeiro passeio pago.
+ * Cliente e guia usam a mesma tela. O ponto do ranking sai só para o guia:
+ * 1 ponto por pessoa da reserva. O valor por pessoa sai no primeiro passeio pago.
  */
 
 require_once __DIR__ . '/db.php';
@@ -16,6 +17,7 @@ function gcv_referral_ensure_schema(): void
     if ($done) {
         return;
     }
+    gcv_referral_ensure_window_setting();
     $file = dirname(__DIR__) . '/database/migration_indicacoes.sql';
     if (!is_file($file)) {
         $done = true;
@@ -121,6 +123,8 @@ function gcv_referral_error(string $lang, string $key): string
             'own_email' => 'Não dá para indicar o próprio e-mail.',
             'taken_email' => 'Este e-mail já tem conta no site.',
             'dup_email' => 'Este e-mail já foi indicado.',
+            'date' => 'Data inválida.',
+            'date_past' => 'A data da viagem precisa ser hoje ou depois.',
         ],
         'en' => [
             'role' => 'Sign in as a client or guide to refer someone.',
@@ -134,6 +138,8 @@ function gcv_referral_error(string $lang, string $key): string
             'own_email' => 'You cannot refer your own email.',
             'taken_email' => 'This email already has an account.',
             'dup_email' => 'This email was already referred.',
+            'date' => 'Invalid date.',
+            'date_past' => 'The trip date has to be today or later.',
         ],
         'es' => [
             'role' => 'Entra como cliente o guía para indicar.',
@@ -147,6 +153,8 @@ function gcv_referral_error(string $lang, string $key): string
             'own_email' => 'No puedes indicar tu propio correo.',
             'taken_email' => 'Este correo ya tiene cuenta en el sitio.',
             'dup_email' => 'Este correo ya fue indicado.',
+            'date' => 'Fecha inválida.',
+            'date_past' => 'La fecha del viaje tiene que ser hoy o después.',
         ],
     ];
     $lang = gcv_referral_lang($lang);
@@ -243,41 +251,72 @@ function gcv_referral_cashback_cents(string $role): int
     return max(0, $reais) * 100;
 }
 
-/** @return array{0:?string,1:?string} */
-function gcv_referral_dates(?string $from, ?string $to): array
+/** Cria a configuração da janela do carrossel se ainda não existir. */
+function gcv_referral_ensure_window_setting(): void
 {
-    $parse = static function (?string $raw): ?string {
-        $raw = trim((string)$raw);
-        if ($raw === '') {
-            return null;
+    try {
+        $st = db()->prepare('SELECT id FROM gcv_settings WHERE key_name = ? LIMIT 1');
+        $st->execute(['indicacao_janela_dias']);
+        if ($st->fetch()) {
+            return;
         }
-        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $raw)) {
-            throw new InvalidArgumentException('Data inválida.');
-        }
-        $dt = DateTimeImmutable::createFromFormat('!Y-m-d', $raw);
-        if (!$dt || $dt->format('Y-m-d') !== $raw) {
-            throw new InvalidArgumentException('Data inválida.');
-        }
-        return $raw;
-    };
-    $a = $parse($from);
-    $b = $parse($to);
-    if ($a === null && $b !== null) {
-        $a = $b;
+        db()->prepare(
+            'INSERT INTO gcv_settings (key_name, value, label, type) VALUES (?,?,?,?)'
+        )->execute([
+            'indicacao_janela_dias',
+            '7',
+            'Indicações: dias do carrossel depois da data escolhida',
+            'integer',
+        ]);
+    } catch (Throwable $e) {
+        error_log('referral window setting: ' . $e->getMessage());
     }
-    if ($a !== null && $b === null) {
-        $b = $a;
+}
+
+/** Dias à frente da data escolhida. 7 cobre uma semana. 0 mostra só esse dia. */
+function gcv_referral_window_days(): int
+{
+    gcv_referral_ensure_window_setting();
+    if (!function_exists('gcv_tarifario_setting_int')) {
+        require_once __DIR__ . '/tarifarios.php';
     }
-    if ($a !== null && $b !== null && $a > $b) {
-        [$a, $b] = [$b, $a];
+    $n = gcv_tarifario_setting_int(db(), 'indicacao_janela_dias', 7);
+    if ($n < 0) {
+        $n = 7;
     }
-    if ($a !== null) {
-        $today = (new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo')))->format('Y-m-d');
-        if ($b < $today) {
-            throw new InvalidArgumentException('A data da viagem precisa ser hoje ou depois.');
-        }
+    if ($n > 60) {
+        $n = 60;
     }
-    return [$a, $b];
+    return $n;
+}
+
+/**
+ * Uma data só. O fim do carrossel é essa data mais a janela das configurações.
+ *
+ * @return array{0:?string,1:?string}
+ */
+function gcv_referral_dates(?string $from, string $lang = 'pt'): array
+{
+    $raw = trim((string)$from);
+    if ($raw === '') {
+        return [null, null];
+    }
+    $lang = gcv_referral_lang($lang);
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $raw)) {
+        throw new InvalidArgumentException(gcv_referral_error($lang, 'date'));
+    }
+    $tz = new DateTimeZone('America/Sao_Paulo');
+    $dt = DateTimeImmutable::createFromFormat('!Y-m-d', $raw, $tz);
+    if (!$dt || $dt->format('Y-m-d') !== $raw) {
+        throw new InvalidArgumentException(gcv_referral_error($lang, 'date'));
+    }
+    $today = (new DateTimeImmutable('now', $tz))->format('Y-m-d');
+    if ($raw < $today) {
+        throw new InvalidArgumentException(gcv_referral_error($lang, 'date_past'));
+    }
+    $days = gcv_referral_window_days();
+    $end = $days > 0 ? $dt->modify('+' . $days . ' days')->format('Y-m-d') : $raw;
+    return [$raw, $end];
 }
 
 function gcv_referral_signup_path(string $lang): string
@@ -329,7 +368,7 @@ function gcv_referral_format_date(string $iso, string $lang): string
     return $dt->format('d/m/Y');
 }
 
-function gcv_referral_message(string $name, string $link, ?string $from, ?string $to, string $lang): string
+function gcv_referral_message(string $name, string $link, ?string $from, string $lang): string
 {
     $lang = gcv_referral_lang($lang);
     $fallback = $lang === 'en' ? 'Someone' : ($lang === 'es' ? 'Alguien' : 'Alguém');
@@ -337,17 +376,13 @@ function gcv_referral_message(string $name, string $link, ?string $from, ?string
     $who = (preg_split('/\s+/u', $who) ?: [$who])[0];
     if ($from) {
         $de = gcv_referral_format_date($from, $lang);
-        $ate = $to ? gcv_referral_format_date($to, $lang) : $de;
         if ($lang === 'en') {
-            $when = $de === $ate ? $de : ($de . ' to ' . $ate);
-            return $who . ' invited you to enjoy the upcoming tours from ' . $when . ': ' . $link;
+            return $who . ' invited you to enjoy the upcoming tours from ' . $de . ': ' . $link;
         }
         if ($lang === 'es') {
-            $when = $de === $ate ? $de : ($de . ' al ' . $ate);
-            return $who . ' te indicó para disfrutar los próximos paseos del ' . $when . ': ' . $link;
+            return $who . ' te indicó para disfrutar los próximos paseos a partir del ' . $de . ': ' . $link;
         }
-        $when = $de === $ate ? ('de ' . $de) : ('de ' . $de . ' a ' . $ate);
-        return $who . ' te indicou para curtir os próximos passeios ' . $when . ': ' . $link;
+        return $who . ' te indicou para curtir os próximos passeios a partir de ' . $de . ': ' . $link;
     }
     if ($lang === 'en') {
         return $who . ' invited you to Chapada dos Veadeiros. Create your account with email and password, then confirm the email: ' . $link;
@@ -368,7 +403,6 @@ function gcv_referral_create(
     array $user,
     string $phoneRaw,
     ?string $dateFrom,
-    ?string $dateTo,
     string $ddi = '+55',
     string $iso = 'br',
     string $emailRaw = ''
@@ -435,7 +469,7 @@ function gcv_referral_create(
         }
     }
 
-    [$from, $to] = gcv_referral_dates($dateFrom, $dateTo);
+    [$from, $to] = gcv_referral_dates($dateFrom, $lang);
     $code = gcv_referral_new_code();
     $cents = gcv_referral_cashback_cents($role);
     db()->prepare(
@@ -443,7 +477,7 @@ function gcv_referral_create(
          VALUES (?,?,?,?,?,?,?,?,\'sent\')'
     )->execute([$code, $userId, $role, $phone !== '' ? $phone : null, $email !== '' ? $email : null, $from, $to, $cents]);
     $link = gcv_referral_public_link($code, $from, $to, $lang);
-    $text = gcv_referral_message((string)($user['name'] ?? ''), $link, $from, $to, $lang);
+    $text = gcv_referral_message((string)($user['name'] ?? ''), $link, $from, $lang);
     $sent = false;
     if ($phone !== '') {
         if (!function_exists('gcv_whatsapp_send_text')) {
@@ -798,7 +832,8 @@ function gcv_referral_ranking(int $limit = 20): array
     try {
         $rows = db()->query(
             "SELECT r.referrer_user_id AS user_id, u.name,
-                    COUNT(*) AS points, MIN(r.rewarded_at) AS first_at
+                    SUM(IF(r.people IS NULL OR r.people < 1, 1, r.people)) AS points,
+                    MIN(r.rewarded_at) AS first_at
              FROM gcv_referrals r
              INNER JOIN gcv_users u ON u.id = r.referrer_user_id
              WHERE r.status = 'rewarded' AND r.referrer_role = 'guide'
@@ -965,7 +1000,8 @@ function gcv_referral_panel(int $userId): array
     $points = 0;
     foreach ($rows as $row) {
         if ((string)$row['status'] === 'rewarded' && (string)($row['referrer_role'] ?? '') === 'guide') {
-            $points++;
+            $people = (int)($row['people'] ?? 0);
+            $points += $people > 0 ? $people : 1;
         }
     }
     $rank = gcv_referral_ranking(20);

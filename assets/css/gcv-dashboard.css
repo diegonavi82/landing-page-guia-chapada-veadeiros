@@ -2202,7 +2202,7 @@ body.gcv-dash-page main.gcv-dash-main {
     margin-bottom: 2px;
   }
 
-  /* Barra inferior fixa no viewport (guia: 4 itens) — só celular */
+  /* Barra inferior fixa no viewport — só celular */
   .gcv-dash-page--tabbar .gcv-dash-mobile-toggle { display: none; }
   .gcv-dash-page--tabbar .gcv-dash-sidebar__nav { display: none !important; }
   .gcv-dash-page--tabbar .gcv-dash-sidebar__actions {
@@ -2247,7 +2247,7 @@ body.gcv-dash-page main.gcv-dash-main {
     padding: 0;
     width: 100%;
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(var(--gcv-tab-cols, 5), minmax(0, 1fr));
     gap: 2px;
   }
   .gcv-dash-bottom-nav li {

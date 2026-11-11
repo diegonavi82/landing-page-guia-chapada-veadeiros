@@ -10,6 +10,8 @@ header('Content-Type: application/json; charset=utf-8');
 
 $admin = require_admin();
 gcv_marketplace_ensure_schema();
+require_once __DIR__ . '/../helpers/indicacoes.php';
+gcv_referral_ensure_window_setting();
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $stmt = db()->prepare('SELECT id, key_name, value, label, type, updated_at FROM gcv_settings ORDER BY id ASC');
@@ -63,6 +65,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
             gcv_tarifario_checar_piso(db(), $diaria, $pg, $quorum);
         } catch (InvalidArgumentException $e) {
             json_response(false, null, $e->getMessage(), 422);
+        }
+        $value = (string)$n;
+    }
+
+    if ($keyName === 'indicacao_janela_dias') {
+        $n = (int)round((float)$value);
+        if ($n < 0 || $n > 60) {
+            json_response(false, null, 'A janela das indicações fica entre 0 e 60 dias', 422);
         }
         $value = (string)$n;
     }

@@ -154,7 +154,57 @@
       return link;
     }
 
+    function indicacoesCopy() {
+      var lang = uiLang();
+      if (lang === "en") return "Referrals";
+      if (lang === "es") return "Indicaciones";
+      return "Indicações";
+    }
+
+    function indicacoesHref(user) {
+      var role = String((user && (user.active_role || user.role)) || "");
+      if (user && user.id) {
+        if (role === "admin" || role === "host") return "";
+        if (role === "guide") return "/dashboard/?as=guide#indicacoes";
+        return "/dashboard/#indicacoes";
+      }
+      var lang = uiLang();
+      var login = lang === "en" ? "/en/login.html" : lang === "es" ? "/es/login.html" : "/login.html";
+      return login + "?redirect=" + encodeURIComponent("/dashboard/#indicacoes");
+    }
+
+    function placeIndicacoesLink(user) {
+      var nav = headerInner.querySelector(".nav-main");
+      if (!nav) return;
+      var href = indicacoesHref(user);
+      var link = document.getElementById("gcv-nav-indicacoes");
+      if (!href) {
+        if (link) link.remove();
+        return;
+      }
+      if (!link) {
+        link = document.createElement("a");
+        link.id = "gcv-nav-indicacoes";
+      }
+      link.textContent = indicacoesCopy();
+      link.href = href;
+      var reservas = null;
+      var contact = null;
+      Array.prototype.forEach.call(nav.querySelectorAll("a"), function (a) {
+        if (a.id === "gcv-nav-indicacoes" || (a.closest && a.closest(".lang-switch"))) return;
+        var h = a.getAttribute("href") || "";
+        if (/consultar-reserva\.html/.test(h)) reservas = a;
+        if (h === "/contact" || /\/contact$/.test(h)) contact = a;
+      });
+      if (reservas) {
+        if (reservas.nextElementSibling !== link) reservas.insertAdjacentElement("afterend", link);
+        return;
+      }
+      if (contact && contact.previousElementSibling !== link) contact.insertAdjacentElement("beforebegin", link);
+    }
+
     function paint(user) {
+      placeIndicacoesLink(user);
       var link = ensureLink();
       var glyph = link.querySelector(".gcv-header-login__glyph");
       var text = copy();

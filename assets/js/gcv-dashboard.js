@@ -1780,9 +1780,14 @@
       oportunidade_urgente_horas: 'regras',
       tarifa_ia_ativa: 'regras',
       tarifa_ia_passo_pct: 'regras',
-      passeio_max_atrativos: 'passeios'
+      passeio_max_atrativos: 'passeios',
+      indicacao_janela_dias: 'indicacoes'
     };
     var groupMeta = {
+      indicacoes: {
+        title: 'Indicações',
+        hint: 'O convite com data abre o carrossel dos passeios a partir desse dia, por estes dias à frente. 7 é uma semana. 0 mostra só o dia escolhido.'
+      },
       passeios: {
         title: 'Passeios do dia',
         hint: 'Um passeio junta de 1 a 3 experiências. No site só entra o passeio feito só de atrativo (trilha). 1 deixa só o passeio unitário. O quórum é o pacote mínimo do privativo sem translado: o cliente paga esse número × PAX 4 Excursão. Cada tarifário pode ter outro quórum.'
@@ -1807,7 +1812,7 @@
     };
     get('/api/admin/settings.php', function (err, res) {
       if (!res || !res.ok) return;
-      var buckets = { passeios: [], notify: [], transfer: [], finance: [], regras: [], other: [] };
+      var buckets = { indicacoes: [], passeios: [], notify: [], transfer: [], finance: [], regras: [], other: [] };
       var special = null;
       (res.data.settings || []).forEach(function (s) {
         if (s.key_name === 'pausa_convite_inicio_hora' || s.key_name === 'pausa_convite_fim_hora') return;
@@ -1820,7 +1825,7 @@
       });
       form.innerHTML = '';
       form.appendChild(renderSpecialGuideCard(special));
-      ['passeios', 'notify', 'transfer', 'finance', 'regras', 'other'].forEach(function (gid) {
+      ['indicacoes', 'passeios', 'notify', 'transfer', 'finance', 'regras', 'other'].forEach(function (gid) {
         var list = buckets[gid];
         if (!list.length) return;
         var box = el('div', 'gcv-dash-settings-group');
@@ -1830,14 +1835,17 @@
         list.forEach(function (s) {
           var row = el('div', 'gcv-dash-settings-row');
           var isMaxDia = s.key_name === 'passeio_max_atrativos';
-          var unit = isMaxDia
+          var isWindow = s.key_name === 'indicacao_janela_dias';
+          var unit = isWindow
+            ? 'dias'
+            : (isMaxDia
             ? 'atrativos'
             : (/(_reais|guide_net_)/.test(s.key_name) && /reais/.test(s.key_name)
             ? 'R$'
-            : (/minute/.test(s.key_name) ? 'min' : (s.type === 'percent' ? '%' : (/hours|hour/.test(s.key_name) ? 'h' : ''))));
+            : (/minute/.test(s.key_name) ? 'min' : (s.type === 'percent' ? '%' : (/hours|hour/.test(s.key_name) ? 'h' : '')))));
           row.innerHTML = '<div class="gcv-dash-settings-label"><strong>' + s.label + '</strong></div>'
             + '<div class="gcv-dash-settings-controls">'
-            + '<input class="gcv-dash-settings-input" type="number" min="' + (isMaxDia ? '1' : '0') + '"' + (isMaxDia ? ' max="3"' : '') + ' step="1" value="' + s.value + '" data-key="' + s.key_name + '" />'
+            + '<input class="gcv-dash-settings-input" type="number" min="' + (isMaxDia ? '1' : '0') + '"' + (isMaxDia ? ' max="3"' : (isWindow ? ' max="60"' : '')) + ' step="1" value="' + s.value + '" data-key="' + s.key_name + '" />'
             + (unit ? '<span class="gcv-dash-settings-unit">' + unit + '</span>' : '')
             + '<button type="button" class="gcv-dash-btn gcv-dash-btn--sm gcv-dash-btn--primary" data-save-key="' + s.key_name + '">Salvar</button>'
             + '<span class="gcv-dash-settings-ok" hidden>Salvo</span>'
@@ -2327,7 +2335,15 @@
       profile:
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
       money:
-        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>'
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>',
+      home:
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 10v10h14V10"/></svg>',
+      tours:
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3c2 3 6 4 6 9a6 6 0 11-12 0c0-5 4-6 6-9z"/></svg>',
+      bookings:
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 6h11v14H5V4h3"/><path d="M8 4v4"/><path d="M9 12h6"/><path d="M9 16h4"/></svg>',
+      gift:
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="8" width="18" height="4"/><path d="M12 8v12"/><path d="M5 12v8h14v-8"/><path d="M12 8c-2-4-6-4-6-1s4 1 6 1z"/><path d="M12 8c2-4 6-4 6-1s-4 1-6 1z"/></svg>'
     };
     return svg[kind] || '';
   }
@@ -2337,6 +2353,12 @@
     if (lang === 'en') return 'Referrals';
     if (lang === 'es') return 'Indicaciones';
     return 'Indicações';
+  }
+
+  function indicacaoTab() {
+    var lang = String((currentUser && currentUser.lang) || 'pt').slice(0, 2);
+    if (lang === 'en') return 'Refer';
+    return 'Indicar';
   }
 
   function homeHref() {
@@ -2371,6 +2393,8 @@
       id: 'section-client-profile',
       icon: '👤',
       label: 'Meu perfil',
+      tab: 'Perfil',
+      tabIcon: 'profile',
       load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadClientProfile(); }
     };
 
@@ -2409,18 +2433,26 @@
       items = [
         { id: 'section-guide-tours',        icon: '📅', label: 'Agenda',            tab: 'Agenda',      tabIcon: 'agenda',  load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideAgenda(); } },
         { id: 'section-guide-ranking',      icon: '🏆', label: 'Ranking',          tab: 'Ranking',    tabIcon: 'rank',    load: function () { if (window.GcvAnfitriao) window.GcvAnfitriao.openRankingGuia(); } },
-        { id: 'section-indicacoes',         icon: '🎁', label: indicacaoLabel(),  load: function () { if (window.GcvIndicacoes) window.GcvIndicacoes.open(); } },
+        { id: 'section-indicacoes',         icon: '🎁', label: indicacaoLabel(), tab: indicacaoTab(), tabIcon: 'gift', load: function () { if (window.GcvIndicacoes) window.GcvIndicacoes.open(); } },
         { id: 'section-guide-financial',    icon: '💲', label: 'Financeiro',       tab: 'Financeiro', tabIcon: 'money',   load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideEarnings(); } },
       ];
       footerItems = [profileItem];
     } else if (role === 'guide' && (status === 'pending' || status === 'suspended')) {
       footerItems = [profileItem];
     } else if (role === 'client') {
+      var clientLang = String((currentUser && currentUser.lang) || 'pt').slice(0, 2);
+      var clientTabs = clientLang === 'en'
+        ? { tours: 'Tours', bookings: 'Bookings', profile: 'Profile' }
+        : (clientLang === 'es'
+          ? { tours: 'Paseos', bookings: 'Reservas', profile: 'Perfil' }
+          : { tours: 'Passeios', bookings: 'Reservas', profile: 'Perfil' });
+      clientProfileItem.tab = clientTabs.profile;
+      clientProfileItem.label = clientLang === 'en' ? 'My profile' : (clientLang === 'es' ? 'Mi perfil' : 'Meu perfil');
       items = [
-        { href: homeHref(), icon: '🏠', label: homeLabel() },
-        { id: 'section-client-tours',    icon: '🌿', label: 'Próximos passeios', load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadClientUpcoming(); } },
-        { id: 'section-client-bookings', icon: '📋', label: 'Minhas reservas',   load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadClientBookings(); } },
-        { id: 'section-indicacoes',      icon: '🎁', label: indicacaoLabel(),   load: function () { if (window.GcvIndicacoes) window.GcvIndicacoes.open(); } },
+        { href: homeHref(), icon: '🏠', label: homeLabel(), tab: homeLabel(), tabIcon: 'home' },
+        { id: 'section-client-tours',    icon: '🌿', label: clientLang === 'en' ? 'Upcoming tours' : (clientLang === 'es' ? 'Próximos paseos' : 'Próximos passeios'), tab: clientTabs.tours, tabIcon: 'tours', load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadClientUpcoming(); } },
+        { id: 'section-client-bookings', icon: '📋', label: clientLang === 'en' ? 'My bookings' : (clientLang === 'es' ? 'Mis reservas' : 'Minhas reservas'), tab: clientTabs.bookings, tabIcon: 'bookings', load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadClientBookings(); } },
+        { id: 'section-indicacoes',      icon: '🎁', label: indicacaoLabel(), tab: indicacaoTab(), tabIcon: 'gift', load: function () { if (window.GcvIndicacoes) window.GcvIndicacoes.open(); } },
       ];
       footerItems = [clientProfileItem];
     }
@@ -2479,7 +2511,7 @@
 
     var tabBar = document.getElementById('gcv-dash-bottom-nav');
     var tabList = document.getElementById('gcv-dash-bottom-nav-list');
-    var useTabBar = role === 'guide' && status === 'active' && allItems.length === 4;
+    var useTabBar = (role === 'guide' && status === 'active' || role === 'client') && allItems.length > 0;
     document.body.classList.toggle('gcv-dash-page--tabbar', useTabBar);
     if (tabBar && tabList) {
       if (useTabBar) {
@@ -2488,10 +2520,13 @@
         if (tabBar.parentNode !== document.body) {
           document.body.appendChild(tabBar);
         }
+        tabList.style.setProperty('--gcv-tab-cols', String(allItems.length));
         tabList.innerHTML = allItems.map(function (item) {
           var fullLabel = item.label || item.tab || '';
+          var href = item.href ? item.href : '#';
+          var section = item.id ? ' data-section="' + item.id + '"' : '';
           return (
-            '<li><a href="#" data-section="' + item.id + '" aria-label="' + fullLabel + '">' +
+            '<li><a href="' + href + '"' + section + ' aria-label="' + fullLabel + '">' +
             dashTabIcon(item.tabIcon) +
             '<span>' + (item.tab || item.label) + '</span></a></li>'
           );
@@ -2571,9 +2606,11 @@
         } catch (e2) {}
         as = String(as || '').toLowerCase();
         var next = '/dashboard/' + (as ? ('?as=' + encodeURIComponent(as)) : '') + (location.hash || '');
+        var hashNow = String(location.hash || '');
+        var clientDoor = as === 'client' || hashNow.indexOf('indicacoes') !== -1;
         window.location.href = (as === 'admin' || /\/admin\//.test(document.referrer || ''))
           ? '/admin/login.html?redirect=' + encodeURIComponent(next)
-          : '/guia/login.html?redirect=' + encodeURIComponent(next);
+          : ((clientDoor ? '/login.html?redirect=' : '/guia/login.html?redirect=') + encodeURIComponent(next));
         return;
       }
       currentUser = res.data;
