@@ -219,7 +219,7 @@ function publicJsSrc(file, pageOutRelPath) {
   let name = String(file || "").trim().replace(/^\//, "");
   if (name === "site.js" || name === "gcv-hero-slider.js") name = name.replace(/\.js$/i, ".min.js");
   let q = BUILD_ASSET_QUERY;
-  if (name === "excursoes-carousel.js") q = "?v=1.1.88";
+  if (name === "excursoes-carousel.js") q = "?v=1.1.89";
   const prefixSegment = sitePathSegmentsTrimmed();
   if (prefixSegment) {
     const raw = `/${prefixSegment}/assets/js/${name}${q}`;
@@ -2061,7 +2061,7 @@ const HERO_OFFER_BASE = {
   online: "reserva-online-passeios-chapada-dos-veadeiros",
 };
 
-const HERO_OG_IMAGE = "og/home-arara.jpg";
+const HERO_OG_IMAGE = "og/home-arara-80.jpg";
 
 function heroOfferHref(kind) {
   if (kind === "exclusivo") return "?tipo=exclusivo#excursoes";
@@ -3354,7 +3354,7 @@ for (const locale of LOCALES) {
     let ogImageHeight;
     if (pk === "") {
       og = HERO_OG_IMAGE;
-      ogImageWidth = 1073;
+      ogImageWidth = 1200;
       ogImageHeight = 1200;
     } else if (og === HERO_SLIDE_OG) {
       ogImageWidth = 1600;
