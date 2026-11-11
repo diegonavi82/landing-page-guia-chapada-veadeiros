@@ -178,6 +178,124 @@ function gcv_excursion_save_attractions(int $excursionId, array $attractionIds):
     } catch (Throwable $e) {
         error_log('bind passeio: ' . $e->getMessage());
     }
+    gcv_excursion_aplicar_teto_vagas($excursionId);
+}
+
+/**
+ * Menor máximo da logística entre as experiências (4–15).
+ * 15 quando nenhuma definiu o número.
+ *
+ * @param list<int> $ids
+ */
+function gcv_excursion_teto_vagas_ids(array $ids): int
+{
+    if (!function_exists('gcv_passeio_max_participantes')) {
+        require_once __DIR__ . '/tarifarios.php';
+    }
+    $teto = gcv_passeio_max_participantes(db(), $ids);
+    if ($teto >= 4 && $teto <= 15) {
+        return $teto;
+    }
+    return 15;
+}
+
+/** @return list<int> */
+function gcv_excursion_linked_attraction_ids(int $excursionId): array
+{
+    $ids = [];
+    if ($excursionId <= 0) {
+        return $ids;
+    }
+    try {
+        $st = db()->prepare(
+            'SELECT attraction_id FROM gcv_excursion_attractions WHERE excursion_id = ? ORDER BY sort_order ASC, attraction_id ASC'
+        );
+        $st->execute([$excursionId]);
+        foreach ($st->fetchAll(PDO::FETCH_COLUMN) as $raw) {
+            $id = (int)$raw;
+            if ($id > 0 && !in_array($id, $ids, true)) {
+                $ids[] = $id;
+            }
+        }
+    } catch (Throwable $e) {
+        error_log('linked attractions: ' . $e->getMessage());
+    }
+    if ($ids) {
+        return $ids;
+    }
+    try {
+        $one = db()->prepare('SELECT attraction_id FROM gcv_excursions WHERE id = ? LIMIT 1');
+        $one->execute([$excursionId]);
+        $aid = (int)$one->fetchColumn();
+        if ($aid > 0) {
+            $ids[] = $aid;
+        }
+    } catch (Throwable $e) {
+        error_log('linked attraction fallback: ' . $e->getMessage());
+    }
+    return $ids;
+}
+
+/**
+ * A excursão fica no menor máximo das experiências do dia.
+ * Um máximo já menor (planilha, até 4) permanece. Privativo não entra.
+ * Devolve o máximo que ficou gravado.
+ */
+function gcv_excursion_aplicar_teto_vagas(int $excursionId): int
+{
+    if ($excursionId <= 0) {
+        return 0;
+    }
+    try {
+        $st = db()->prepare(
+            'SELECT max_people, booked_people, booked_people_transport, preconfirmed_people, quorum, tour_type
+             FROM gcv_excursions WHERE id = ? AND deleted_at IS NULL LIMIT 1'
+        );
+        $st->execute([$excursionId]);
+        $row = $st->fetch(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) {
+        error_log('teto vagas load: ' . $e->getMessage());
+        return 0;
+    }
+    if (!$row) {
+        return 0;
+    }
+    $current = (int)$row['max_people'];
+    $type = strtolower(trim((string)($row['tour_type'] ?? 'excursao')));
+    if (in_array($type, ['privativo', 'exclusivo'], true)) {
+        return $current;
+    }
+    if (!function_exists('gcv_passeio_max_participantes')) {
+        require_once __DIR__ . '/tarifarios.php';
+    }
+    $teto = gcv_passeio_max_participantes(db(), gcv_excursion_linked_attraction_ids($excursionId));
+    if ($teto < 4 || $teto > 15 || $current <= $teto) {
+        return $current;
+    }
+    if (!function_exists('gcv_excursion_occupied_people')) {
+        require_once __DIR__ . '/excursion_status.php';
+    }
+    $next = $teto;
+    $occupied = gcv_excursion_occupied_people($row);
+    if ($occupied > $next) {
+        $next = min(15, $occupied);
+    }
+    if ($next < 4) {
+        $next = 4;
+    }
+    if ($current <= $next) {
+        return $current;
+    }
+    $quorum = (int)$row['quorum'];
+    $newQuorum = $quorum > $next ? $next : $quorum;
+    try {
+        db()->prepare('UPDATE gcv_excursions SET max_people = ?, quorum = ? WHERE id = ?')
+            ->execute([$next, $newQuorum, $excursionId]);
+    } catch (Throwable $e) {
+        error_log('teto vagas save: ' . $e->getMessage());
+        return $current;
+    }
+    return $next;
 }
 
 function gcv_excursion_titles_joined(array $attrRows, string $lang = 'pt'): string

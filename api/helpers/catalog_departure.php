@@ -181,6 +181,8 @@ function gcv_catalog_group_departure_ensure(array $reservation, int $index, arra
     }
     $rid = strtoupper(trim((string)($reservation['reservation_id'] ?? '')));
     $notes = 'Catálogo · excursão aberta pela compra' . ($rid !== '' ? ' ' . $rid : '') . '. Quórum ' . $quorum . '.';
+    require_once __DIR__ . '/excursion_attractions.php';
+    $maxPeople = gcv_excursion_teto_vagas_ids($attrIds);
 
     try {
         $existing = db()->prepare(
@@ -201,7 +203,7 @@ function gcv_catalog_group_departure_ensure(array $reservation, int $index, arra
                   tour_type
                 ) VALUES (
                   \'published\', ?, ?, ?, ?, NULL,
-                  ?, ?, 15, 0, 0,
+                  ?, ?, ?, 0, 0,
                   ?, 0, 0,
                   ?, ?,
                   \'ADMINISTRATIVE\', \'API\', NOW(),
@@ -216,6 +218,7 @@ function gcv_catalog_group_departure_ensure(array $reservation, int $index, arra
                 $attrIds[0],
                 $price,
                 $quorum,
+                $maxPeople,
                 $transport ? 1 : 0,
                 $notes,
                 $slug,
@@ -226,7 +229,6 @@ function gcv_catalog_group_departure_ensure(array $reservation, int $index, arra
             $id = (int)db()->lastInsertId();
             $created = $id > 0;
             if ($id > 0) {
-                require_once __DIR__ . '/excursion_attractions.php';
                 gcv_excursion_save_attractions($id, $attrIds);
                 $point = trim((string)($trip['meetingPoint'] ?? ''));
                 if ($point !== '') {
@@ -244,6 +246,7 @@ function gcv_catalog_group_departure_ensure(array $reservation, int $index, arra
         if ($id <= 0) {
             return null;
         }
+        gcv_excursion_aplicar_teto_vagas($id);
         gcv_catalog_publish_paid_departure($id);
         gcv_private_departure_link_trip($rid, $index, $id);
         $st = db()->prepare(
