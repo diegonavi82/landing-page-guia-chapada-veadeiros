@@ -171,10 +171,13 @@ function gcv_catalog_group_departure_ensure(array $reservation, int $index, arra
     if ($fromTrip >= 1 && $fromTrip <= 15) {
         $quorum = $fromTrip;
     }
-    $unit = (int)round((float)($trip['valorUnit'] ?? 0));
-    $price = $unit > 0 ? $unit * 100 : 0;
-    if ($price < 100) {
-        $price = 100;
+    $rawUnit = $trip['valorUnit'] ?? 0;
+    if (is_string($rawUnit)) {
+        $rawUnit = str_replace(',', '.', $rawUnit);
+    }
+    $price = (int)round((float)$rawUnit * 100);
+    if ($price < 0) {
+        $price = 0;
     }
     $rid = strtoupper(trim((string)($reservation['reservation_id'] ?? '')));
     $notes = 'Catálogo · excursão aberta pela compra' . ($rid !== '' ? ' ' . $rid : '') . '. Quórum ' . $quorum . '.';

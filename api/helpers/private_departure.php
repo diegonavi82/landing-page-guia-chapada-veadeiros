@@ -140,22 +140,27 @@ function gcv_private_trip_people(array $trip): int
 
 function gcv_private_trip_price_cents(array $trip, int $people): int
 {
-    $unitReais = (int)($trip['valorUnit'] ?? 0);
+    $raw = $trip['valorUnit'] ?? 0;
+    if (is_string($raw)) {
+        $raw = str_replace(',', '.', $raw);
+    }
+    $unitReais = (float)$raw;
     $qty = max(1, (int)($trip['qty'] ?? 1));
-    $total = $unitReais * $qty * 100;
-    if ($total < 100) {
+    $total = (int)round($unitReais * $qty * 100);
+    if ($total < 1) {
         $base = (int)($trip['base_cents'] ?? 0);
         if ($base > 0) {
             $total = $base;
         }
     }
-    if ($total < 100) {
-        return 100;
+    if ($total < 1) {
+        return 0;
     }
     if ($qty === 1 && $people > 1) {
-        return max(100, (int)round($total / $people));
+        return max(1, (int)round($total / $people));
     }
-    return max(100, $unitReais > 0 ? $unitReais * 100 : (int)round($total / $people));
+    $per = $unitReais > 0 ? (int)round($unitReais * 100) : (int)round($total / max(1, $people));
+    return max(0, $per);
 }
 
 /**

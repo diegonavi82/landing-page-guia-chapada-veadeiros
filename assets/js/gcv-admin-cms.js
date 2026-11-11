@@ -300,7 +300,9 @@
   }
 
   function centsToMoney(c) {
-    return String(Math.round((parseInt(c, 10) || 0) / 100));
+    var n = parseInt(c, 10) || 0;
+    if (n % 100 === 0) return String(n / 100);
+    return (n / 100).toFixed(2).replace(".", ",");
   }
 
   /* ---------- CIDADES ---------- */
