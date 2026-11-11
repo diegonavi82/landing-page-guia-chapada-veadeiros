@@ -85,6 +85,16 @@ try {
         json_response(false, null, 'Acesso à Área Admin restrito.', 403);
     }
 
+    $indCode = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string)($data['ind'] ?? '')) ?? '');
+    if ($indCode !== '' && $context === 'client') {
+        require_once __DIR__ . '/../helpers/indicacoes.php';
+        try {
+            gcv_referral_attach((int)$user['id'], $indCode);
+        } catch (Throwable $e) {
+            error_log('login referral: ' . $e->getMessage());
+        }
+    }
+
     reset_rate_limit('login');
     destroy_session();
     create_session((int)$user['id'], $context);
@@ -100,7 +110,7 @@ try {
         'lang'        => $user['lang'],
         'status'      => $user['status'],
         'email_verified' => $verified,
-        'need_email_verify' => $context === 'guide' && !$verified,
+        'need_email_verify' => !$verified && ($context === 'guide' || $context === 'client'),
         'email' => $user['email'],
     ]);
 } catch (Throwable $e) {

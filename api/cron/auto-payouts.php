@@ -30,6 +30,14 @@ try {
 } catch (Throwable $e) {
     error_log('ops cron: ' . $e->getMessage());
 }
+$referrals = ['rewarded' => 0, 'released' => 0];
+try {
+    require_once __DIR__ . '/../helpers/indicacoes.php';
+    $referrals['rewarded'] = gcv_referral_settle_due(30);
+    $referrals['released'] = gcv_wallet_release_expired(40);
+} catch (Throwable $e) {
+    error_log('referral cron: ' . $e->getMessage());
+}
 $out = gcv_payout_process_due(null, 25);
 $fiscal = ['sent' => 0, 'skipped' => 0, 'failed' => 0];
 try {
@@ -45,5 +53,6 @@ echo json_encode([
     'skipped' => $out['skipped'],
     'failed' => $out['failed'],
     'ops' => $ops,
+    'referrals' => $referrals,
     'fiscal_notices' => $fiscal,
 ], JSON_UNESCAPED_UNICODE);

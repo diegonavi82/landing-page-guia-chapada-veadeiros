@@ -63,6 +63,10 @@ try {
             gcv_tarifario_regras_save($pdo, $body);
             gcv_tarifario_reply($pdo);
         }
+        if ($action === 'cashback') {
+            gcv_tarifario_cashback_save($pdo, $body);
+            gcv_tarifario_reply($pdo);
+        }
         if ($action === 'oficiais') {
             gcv_tarifa_oficial_vincular($pdo, $body);
             gcv_tarifario_reply($pdo);

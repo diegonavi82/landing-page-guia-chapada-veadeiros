@@ -57,8 +57,12 @@ if ($existing) {
 }
 
 $hash   = password_hash($pass, PASSWORD_BCRYPT, ['cost' => 12]);
-// Guia sempre nasce pending até o admin aprovar
+// Guia sempre nasce pending até o admin aprovar.
+// Cliente vindo de indicação confirma o e-mail antes da conta valer para o prêmio.
+$indCode = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string)($data['ind'] ?? '')) ?? '');
+$referralClient = $role === 'client' && $indCode !== '';
 $status = $role === 'guide' ? 'pending' : 'active';
+$emailVerified = ($role === 'client' && !$referralClient) ? 1 : 0;
 
 $pdo = db();
 if ($role === 'guide') {
@@ -72,7 +76,7 @@ $pdo->beginTransaction();
 try {
     $pdo->prepare(
         'INSERT INTO gcv_users (name, email, password_hash, role, lang, status, email_verified) VALUES (?,?,?,?,?,?,?)'
-    )->execute([$name, $email, $hash, $role, $lang, $status, $role === 'client' ? 1 : 0]);
+    )->execute([$name, $email, $hash, $role, $lang, $status, $emailVerified]);
 
     $userId = (int)$pdo->lastInsertId();
 
@@ -120,6 +124,34 @@ if ($role === 'guide') {
         'redirect' => '/guia/confirmar-email.html',
         'role' => 'guide',
         'status' => 'pending',
+        'email_verified' => false,
+    ]);
+}
+
+if ($referralClient) {
+    require_once __DIR__ . '/../helpers/email_verify.php';
+    require_once __DIR__ . '/../helpers/indicacoes.php';
+    try {
+        gcv_referral_attach($userId, $indCode);
+    } catch (Throwable $e) {
+        error_log('register referral: ' . $e->getMessage());
+    }
+    try {
+        gcv_email_verify_issue($userId, $email, $name, $lang, 'client');
+    } catch (Throwable $e) {
+        error_log('register client verify: ' . $e->getMessage());
+    }
+    destroy_session('client');
+    create_session($userId, 'client');
+    $confirm = gcv_referral_confirm_path($lang);
+    json_response(true, [
+        'message' => 'Conta criada! Confirme seu e-mail para continuar.',
+        'auto_login' => true,
+        'need_email_verify' => true,
+        'email' => $email,
+        'redirect' => $confirm . '?email=' . rawurlencode($email),
+        'role' => 'client',
+        'status' => 'active',
         'email_verified' => false,
     ]);
 }

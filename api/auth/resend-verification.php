@@ -19,11 +19,13 @@ $data = body_json();
 $user = current_user();
 $email = validate_email($data['email'] ?? '') ?: '';
 
+$audience = 'guide';
 if ($user) {
     $userId = (int)$user['id'];
     $email = (string)$user['email'];
     $name = (string)$user['name'];
     $lang = (string)($user['lang'] ?? 'pt');
+    $audience = ((string)($user['role'] ?? '') === 'client') ? 'client' : 'guide';
     if (!empty($user['email_verified'])) {
         json_response(true, ['message' => 'E-mail já confirmado.', 'already' => true, 'redirect' => '/dashboard/']);
     }
@@ -32,7 +34,7 @@ if ($user) {
         json_response(false, null, 'Informe o e-mail', 422);
     }
     $st = db()->prepare(
-        'SELECT id, name, lang, email_verified, status FROM gcv_users WHERE email = ? LIMIT 1'
+        'SELECT id, name, lang, role, email_verified, status FROM gcv_users WHERE email = ? LIMIT 1'
     );
     $st->execute([$email]);
     $row = $st->fetch(PDO::FETCH_ASSOC);
@@ -42,7 +44,8 @@ if ($user) {
     $userId = (int)$row['id'];
     $name = (string)$row['name'];
     $lang = (string)($row['lang'] ?? 'pt');
+    $audience = ((string)($row['role'] ?? '') === 'client') ? 'client' : 'guide';
 }
 
-gcv_email_verify_issue($userId, $email, $name, $lang);
+gcv_email_verify_issue($userId, $email, $name, $lang, $audience);
 json_response(true, ['message' => 'Enviamos um novo código e um link para o seu e-mail.']);

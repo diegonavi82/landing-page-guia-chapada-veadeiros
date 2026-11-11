@@ -286,7 +286,7 @@
       var email = form.querySelector('[name=email]').value.trim();
       var pass  = form.querySelector('[name=password]').value;
 
-      post(BASE + '/login.php', { email: email, password: pass, context: context }, function (error, res) {
+      post(BASE + '/login.php', { email: email, password: pass, context: context, ind: rememberInd() }, function (error, res) {
         if (btn) btn.disabled = false;
         if (btn) btn.textContent = btnDefault;
         if (error || !res.ok) {
@@ -299,14 +299,17 @@
           window.location.href = '/dashboard/?as=admin';
           return;
         }
-        if (context === 'guide') {
-          if (res.data && (res.data.need_email_verify || res.data.email_verified === false)) {
+        if (context === 'guide' || context === 'client') {
+          if (res.data && res.data.need_email_verify) {
             var verifyEmail = (res.data.email || email || '').trim();
-            window.location.href = '/guia/confirmar-email.html' + (verifyEmail ? ('?email=' + encodeURIComponent(verifyEmail)) : '');
+            try { sessionStorage.setItem('gcv_verify_email', verifyEmail); } catch (e3) {}
+            window.location.href = confirmEmailPath(context) + (verifyEmail ? ('?email=' + encodeURIComponent(verifyEmail)) : '');
             return;
           }
-          window.location.href = '/dashboard/?as=guide#agenda';
-          return;
+          if (context === 'guide') {
+            window.location.href = '/dashboard/?as=guide#agenda';
+            return;
+          }
         }
         window.location.href = getRedirect();
       });
@@ -432,10 +435,15 @@
 
       if (btn) btn.disabled = true;
 
-      post(BASE + '/register.php', { name: name, email: email, password: pass, role: role, lang: lang, cadastur: cadastur, is_kalunga: isKalunga }, function (error, res) {
+      post(BASE + '/register.php', { name: name, email: email, password: pass, role: role, lang: lang, cadastur: cadastur, is_kalunga: isKalunga, ind: rememberInd() }, function (error, res) {
         if (btn) btn.disabled = false;
         if (error || !res.ok) {
           showError(err, (res && res.error) || 'Erro ao criar conta');
+          return;
+        }
+        if (res.data && res.data.need_email_verify && res.data.redirect) {
+          try { sessionStorage.setItem('gcv_verify_email', email); } catch (e) {}
+          window.location.href = res.data.redirect;
           return;
         }
         if (res.data && res.data.need_email_verify) {
@@ -605,7 +613,27 @@
   }
 
   /* ---- Init ---- */
+  function rememberInd() {
+    var code = '';
+    try {
+      code = String(new URLSearchParams(window.location.search).get('ind') || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    } catch (e) {}
+    if (code) {
+      try { sessionStorage.setItem('gcv_ind', code); } catch (e2) {}
+      return code;
+    }
+    try { return String(sessionStorage.getItem('gcv_ind') || ''); } catch (e3) { return ''; }
+  }
+
+  function confirmEmailPath(context) {
+    if (context === 'guide') return '/guia/confirmar-email.html';
+    if (lang === 'en') return '/en/confirmar-email.html';
+    if (lang === 'es') return '/es/confirmar-email.html';
+    return '/confirmar-email.html';
+  }
+
   function init() {
+    rememberInd();
     loadI18n(function () {
       initLogin();
       initRegister();

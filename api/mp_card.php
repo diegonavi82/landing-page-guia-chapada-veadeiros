@@ -36,12 +36,57 @@ if (!gcv_cartao_visivel()) {
 gcv_rate_limit_or_fail('mp_card', 8, 600);
 
 $req = gcv_checkout_read_request();
+$fullCents = (int) $req['base']['base_cents'];
+require_once __DIR__ . '/helpers/indicacoes.php';
+$walletCents = gcv_wallet_reserve_for_email($req['email'], $req['reservation_id'], $fullCents);
+$chargeCents = max(0, $fullCents - $walletCents);
+if ($walletCents > 0) {
+    gcv_wallet_arm($req['reservation_id']);
+}
+if ($chargeCents < 1) {
+    gcv_wallet_disarm();
+    $cover = [
+        'reservation_id' => $req['reservation_id'],
+        'status' => 'PENDING',
+        'amount' => 0,
+        'amount_cents' => 0,
+        'catalog_cents' => $fullCents,
+        'wallet_cents' => $walletCents,
+        'locale' => $req['locale'],
+        'trips' => is_array($req['data']['trips'] ?? null) ? $req['data']['trips'] : [],
+        'email' => $req['email'],
+        'name' => $req['name'],
+        'customer_name' => $req['name'],
+        'created_at' => gmdate('c'),
+        'paid_source' => null,
+    ];
+    if ($req['phone'] !== '') {
+        $cover['phone'] = $req['phone'];
+    }
+    if (!gcv_pix_write_reservation($cover)) {
+        gcv_wallet_release($req['reservation_id']);
+        gcv_checkout_fail(500, 'Could not save reservation');
+    }
+    $paid = gcv_pix_mark_paid($req['reservation_id'], 'wallet');
+    if (!$paid) {
+        gcv_wallet_release($req['reservation_id']);
+        gcv_checkout_fail(500, 'Could not confirm balance payment');
+    }
+    echo json_encode([
+        'success' => true,
+        'state' => 'PAID',
+        'paid_with' => 'wallet',
+        'redirect' => gcv_checkout_confirm_path($req['locale']) . '?id=' . rawurlencode($req['reservation_id']),
+        'reservation_id' => $req['reservation_id'],
+    ]);
+    exit;
+}
 $card = is_array($req['data']['card'] ?? null) ? $req['data']['card'] : [];
 if (empty($card['token']) || empty($card['payment_method_id'])) {
     gcv_checkout_fail(422, 'Dados do cartão incompletos.', 'card_missing');
 }
 
-$quote = gcv_pay_quote((int) $req['base']['base_cents'], 'card_br');
+$quote = gcv_pay_quote($chargeCents, 'card_br');
 if (empty($quote['ok'])) {
     gcv_checkout_fail(422, 'Invalid amount');
 }
@@ -51,6 +96,8 @@ if ($installments > (int) $quote['max_installments']) {
 }
 
 $rec = gcv_checkout_build_record($req, $quote, 'mercadopago');
+$rec['catalog_cents'] = $fullCents;
+$rec['wallet_cents'] = $walletCents;
 $rec['installments'] = $installments;
 $rec['charged_label'] = gcv_checkout_charged_label('brl', (int) $quote['charge_minor'], $installments);
 if (!gcv_pix_write_reservation($rec)) {
@@ -89,6 +136,7 @@ if (gcv_auth_can_authorize_now($rec, 'mercadopago')) {
         'fee_detail' => ['card_last4' => $p['card']['last_four_digits'] ?? null, 'payment_method_id' => $p['payment_method_id'] ?? null],
     ]);
     gcv_auth_process_reservation($rid); // se o passeio já estiver confirmado, cobra na hora
+    gcv_wallet_disarm();
     echo json_encode(['success' => true, 'state' => 'AUTHORIZED', 'redirect' => $confirmUrl, 'reservation_id' => $rid]);
     exit;
 }
@@ -116,4 +164,5 @@ gcv_auth_mark_reserved($rid, 'CARD_SAVED', [
     ],
 ]);
 gcv_ledger_upsert(['reservation_id' => $rid, 'gateway' => 'mercadopago', 'status' => 'CARD_SAVED']);
+gcv_wallet_disarm();
 echo json_encode(['success' => true, 'state' => 'CARD_SAVED', 'redirect' => $confirmUrl, 'reservation_id' => $rid]);

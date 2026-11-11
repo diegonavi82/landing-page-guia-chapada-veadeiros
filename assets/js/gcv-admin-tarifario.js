@@ -1003,7 +1003,7 @@
     }
     var nGuia = oficiaisDo('guia').length;
     var nTrans = oficiaisDo('translado').length;
-    var abaInicial = st.tarifaAba === 'translado' ? 'translado' : 'guia';
+    var abaInicial = st.tarifaAba === 'translado' ? 'translado' : (st.tarifaAba === 'cashback' ? 'cashback' : 'guia');
     body.innerHTML =
       '<div class="tf-pin">' +
       '<p class="tf-pin__label">Valores globais</p>' +
@@ -1034,8 +1034,9 @@
       '<div class="tf-abas" role="tablist" aria-label="Tipo de tarifa">' +
         '<button type="button" class="tf-aba' + (abaInicial === 'guia' ? ' is-on' : '') + '" role="tab" id="tf-aba-guia" data-tf-aba="guia" aria-selected="' + (abaInicial === 'guia' ? 'true' : 'false') + '" aria-controls="tf-aba-panel">Tarifa GUIA<span class="tf-count">' + nGuia + '</span></button>' +
         '<button type="button" class="tf-aba' + (abaInicial === 'translado' ? ' is-on' : '') + '" role="tab" id="tf-aba-translado" data-tf-aba="translado" aria-selected="' + (abaInicial === 'translado' ? 'true' : 'false') + '" aria-controls="tf-aba-panel">Tarifa Translado<span class="tf-count">' + nTrans + '</span></button>' +
+        '<button type="button" class="tf-aba' + (abaInicial === 'cashback' ? ' is-on' : '') + '" role="tab" id="tf-aba-cashback" data-tf-aba="cashback" aria-selected="' + (abaInicial === 'cashback' ? 'true' : 'false') + '" aria-controls="tf-aba-panel">Cashback</button>' +
       '</div>' +
-      '<div id="tf-aba-panel" role="tabpanel" aria-labelledby="' + (abaInicial === 'guia' ? 'tf-aba-guia' : 'tf-aba-translado') + '"></div>' +
+      '<div id="tf-aba-panel" role="tabpanel" aria-labelledby="' + (abaInicial === 'guia' ? 'tf-aba-guia' : (abaInicial === 'cashback' ? 'tf-aba-cashback' : 'tf-aba-translado')) + '"></div>' +
       '</section>' +
       markupTabelaPasseios('Escolha a cidade de embarque de cada passeio. Dá para acrescentar outra cidade ou excluir.').replace('class="ps-board"', 'class="ps-board ps-board--fim"');
     $('tf-bi-tipo').onchange = function () {
@@ -1311,8 +1312,49 @@
       };
     });
     }
+    function cashbackReais(key) {
+      var r = (st.data && st.data.regras) || {};
+      var n = parseInt(r[key], 10);
+      return Number.isFinite(n) && n > 0 ? String(n) : '';
+    }
+    function cashbackPainel() {
+      return '<div class="tf-nova">' +
+        '<div class="tf-nova__head">' +
+          '<div><p class="tf-nova__kicker">Campanha de indicação</p><h3>Cashback</h3></div>' +
+          '<p class="tf-nova__lead">Valor fixo por cliente indicado, creditado uma vez quando o primeiro passeio pago é concluído. R$ 0 não gera saldo.</p>' +
+        '</div>' +
+        '<form class="tf-oficial__new tf-line tf-line--4btn" id="tf-cashback-form">' +
+          '<label class="tf-field"><span>CASHBACK Cliente</span><span class="tf-money"><em>R$</em><input inputmode="numeric" id="tf-cashback-cliente" value="' + esc(cashbackReais('cashback_cliente_reais')) + '" aria-label="Cashback do cliente" /></span></label>' +
+          '<label class="tf-field"><span>CASHBACK Guia</span><span class="tf-money"><em>R$</em><input inputmode="numeric" id="tf-cashback-guia" value="' + esc(cashbackReais('cashback_guia_reais')) + '" aria-label="Cashback do guia" /></span></label>' +
+          '<button type="submit" class="gcv-dash-btn tf-nova__btn">Salvar cashback</button>' +
+        '</form></div>';
+    }
+    function ligarCashback(panel) {
+      var form = panel.querySelector('#tf-cashback-form');
+      if (!form) return;
+      form.onsubmit = function (ev) {
+        if (ev) ev.preventDefault();
+        function reaisOuZero(v) {
+          if (String(v == null ? '' : v).trim() === '') return 0;
+          return inteiroCampo(v);
+        }
+        var cliente = reaisOuZero(($('tf-cashback-cliente') || {}).value);
+        var guia = reaisOuZero(($('tf-cashback-guia') || {}).value);
+        if (cliente == null || guia == null) {
+          toast('O cashback precisa ser um valor em reais, ou vazio para R$ 0.', true);
+          return;
+        }
+        request('PUT', {
+          action: 'cashback',
+          cashback_cliente_reais: cliente,
+          cashback_guia_reais: guia
+        }, function (res) {
+          apply(res, 'Cashback salvo');
+        });
+      };
+    }
     function pintarAba() {
-      var aba = st.tarifaAba === 'translado' ? 'translado' : 'guia';
+      var aba = st.tarifaAba === 'translado' ? 'translado' : (st.tarifaAba === 'cashback' ? 'cashback' : 'guia');
       st.tarifaAba = aba;
       body.querySelectorAll('[data-tf-aba]').forEach(function (btn) {
         var on = btn.getAttribute('data-tf-aba') === aba;
@@ -1321,7 +1363,12 @@
       });
       var panel = $('tf-aba-panel');
       if (!panel) return;
-      panel.setAttribute('aria-labelledby', aba === 'guia' ? 'tf-aba-guia' : 'tf-aba-translado');
+      panel.setAttribute('aria-labelledby', aba === 'guia' ? 'tf-aba-guia' : (aba === 'cashback' ? 'tf-aba-cashback' : 'tf-aba-translado'));
+      if (aba === 'cashback') {
+        panel.innerHTML = cashbackPainel();
+        ligarCashback(panel);
+        return;
+      }
       panel.innerHTML = lista(aba);
       ligarAba(panel);
     }

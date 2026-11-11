@@ -42,10 +42,25 @@ if (!is_finite($amount) || $cents < 1 || $cents > 10000000) {
     exit;
 }
 
+$walletCents = 0;
+if (!function_exists('current_user')) {
+    require_once __DIR__ . '/helpers/auth.php';
+}
+require_once __DIR__ . '/helpers/indicacoes.php';
+$session = current_user();
+if ($session) {
+    $walletCents = min($cents, max(0, gcv_wallet_balance((int) $session['id'])));
+}
+$chargeCents = max(0, $cents - $walletCents);
+$covered = $chargeCents < 1;
+
 echo json_encode([
     'success' => true,
     'base_cents' => $cents,
-    'quotes' => gcv_pay_quote_all($cents),
+    'wallet_cents' => $walletCents,
+    'charge_cents' => $chargeCents,
+    'covered' => $covered,
+    'quotes' => $covered ? [] : gcv_pay_quote_all($chargeCents),
     'cards_enabled' => gcv_cartao_visivel(),
     // Chave pública do Mercado Pago (pode ir ao navegador) para o formulário de cartão embutido.
     'mp_public_key' => gcv_cartao_visivel()

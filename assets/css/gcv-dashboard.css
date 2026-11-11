@@ -5797,6 +5797,36 @@ body.gcv-spot-open { overflow: hidden; }
   .gcv-vehicle__row { grid-template-columns: 1fr; }
 }
 
+.gcv-ind { display: grid; gap: 1rem; }
+.gcv-ind__cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin: 0 0 1rem;
+}
+.gcv-ind__card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+.gcv-ind__card span { color: #64748b; font-size: 0.82rem; }
+.gcv-ind__card strong { display: block; margin-top: 4px; font-size: 1.35rem; color: #0f3d2e; }
+.gcv-ind__note { margin: 0 0 0.75rem; color: #64748b; font-size: 0.9rem; }
+.gcv-ind__list { display: grid; gap: 8px; margin-bottom: 1rem; }
+.gcv-ind__row {
+  display: grid;
+  gap: 2px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.gcv-ind__row span { color: #64748b; font-size: 0.85rem; }
+.gcv-ind__rank { margin: 0 0 1rem; padding-left: 1.2rem; }
+.gcv-ind__rank .is-mine { font-weight: 700; color: #0f3d2e; }
+.gcv-ind__wa { font-weight: 700; }
+
 
 
 

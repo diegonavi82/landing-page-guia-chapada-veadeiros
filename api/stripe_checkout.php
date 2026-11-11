@@ -32,7 +32,52 @@ if (!gcv_cartao_visivel()) {
 }
 gcv_rate_limit_or_fail('stripe_checkout', 8, 600);
 $req = gcv_checkout_read_request();
-$quote = gcv_pay_quote((int) $req['base']['base_cents'], 'card_intl');
+$fullCents = (int) $req['base']['base_cents'];
+require_once __DIR__ . '/helpers/indicacoes.php';
+$walletCents = gcv_wallet_reserve_for_email($req['email'], $req['reservation_id'], $fullCents);
+$chargeCents = max(0, $fullCents - $walletCents);
+if ($walletCents > 0) {
+    gcv_wallet_arm($req['reservation_id']);
+}
+if ($chargeCents < 1) {
+    gcv_wallet_disarm();
+    $cover = [
+        'reservation_id' => $req['reservation_id'],
+        'status' => 'PENDING',
+        'amount' => 0,
+        'amount_cents' => 0,
+        'catalog_cents' => $fullCents,
+        'wallet_cents' => $walletCents,
+        'locale' => $req['locale'],
+        'trips' => is_array($req['data']['trips'] ?? null) ? $req['data']['trips'] : [],
+        'email' => $req['email'],
+        'name' => $req['name'],
+        'customer_name' => $req['name'],
+        'created_at' => gmdate('c'),
+        'paid_source' => null,
+    ];
+    if ($req['phone'] !== '') {
+        $cover['phone'] = $req['phone'];
+    }
+    if (!gcv_pix_write_reservation($cover)) {
+        gcv_wallet_release($req['reservation_id']);
+        gcv_checkout_fail(500, 'Could not save reservation');
+    }
+    $paid = gcv_pix_mark_paid($req['reservation_id'], 'wallet');
+    if (!$paid) {
+        gcv_wallet_release($req['reservation_id']);
+        gcv_checkout_fail(500, 'Could not confirm balance payment');
+    }
+    echo json_encode([
+        'success' => true,
+        'state' => 'PAID',
+        'paid_with' => 'wallet',
+        'url' => gcv_checkout_confirm_path($req['locale']) . '?id=' . rawurlencode($req['reservation_id']),
+        'reservation_id' => $req['reservation_id'],
+    ]);
+    exit;
+}
+$quote = gcv_pay_quote($chargeCents, 'card_intl');
 if (empty($quote['ok'])) {
     $fx = ($quote['error'] ?? '') === 'fx_unavailable';
     gcv_checkout_fail($fx ? 503 : 422, $fx ? 'Câmbio indisponível no momento. Tente de novo em instantes.' : 'Invalid amount', (string) ($quote['error'] ?? ''));
@@ -52,6 +97,8 @@ if ($existing && !empty($existing['stripe_session_id'])
 }
 
 $record = gcv_checkout_build_record($req, $quote, 'stripe');
+$record['catalog_cents'] = $fullCents;
+$record['wallet_cents'] = $walletCents;
 if (!gcv_pix_write_reservation($record)) {
     gcv_checkout_fail(500, 'Could not save reservation');
 }
@@ -90,6 +137,7 @@ gcv_ledger_upsert([
     'price_review' => !empty($record['price_review']) ? 1 : 0,
 ]);
 
+gcv_wallet_disarm();
 echo json_encode([
     'success' => true,
     'url' => (string) $session['data']['url'],

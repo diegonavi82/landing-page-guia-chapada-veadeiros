@@ -58,7 +58,10 @@
   background: #fff;
   box-shadow: 0 10px 28px rgba(15, 61, 46, .06);
 }
-.tf-abas { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; margin: 0 0 .9rem; }
+.tf-abas { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .5rem; margin: 0 0 .9rem; }
+@media (max-width: 800px) {
+  .tf-abas { grid-template-columns: 1fr; }
+}
 .tf-aba {
   display: flex;
   align-items: center;

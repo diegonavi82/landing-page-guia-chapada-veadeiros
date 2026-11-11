@@ -12,6 +12,8 @@
     'section-cms-passeios': 'passeios',
     'section-cms-tarifario': 'tarifario',
     'section-cms-cupons': 'cupons',
+    'section-admin-saques': 'saques',
+    'section-indicacoes': 'indicacoes',
     'section-cms-guides': 'guias',
     'section-admin-anfitrioes': 'anfitrioes',
     'section-host-financial': 'ingressos',
@@ -2305,6 +2307,13 @@
     return svg[kind] || '';
   }
 
+  function indicacaoLabel() {
+    var lang = String((currentUser && currentUser.lang) || 'pt').slice(0, 2);
+    if (lang === 'en') return 'Referrals';
+    if (lang === 'es') return 'Indicaciones';
+    return 'Indicações';
+  }
+
   function buildNav(role, status) {
     var navList = document.getElementById('gcv-dash-nav-list');
     if (!navList) return;
@@ -2334,6 +2343,7 @@
         { id: 'section-cms-passeios',      icon: '🥾', label: 'Passeios',          load: function () { if (window.GcvAdminTarifario) window.GcvAdminTarifario.openPasseios(); } },
         { id: 'section-cms-tarifario',     icon: '🎟️', label: 'Tarifário',         load: function () { if (window.GcvAdminTarifario) window.GcvAdminTarifario.open(); } },
         { id: 'section-cms-cupons',        icon: '🏷️', label: 'Cupons',            load: function () { if (window.GcvAdminCupons) window.GcvAdminCupons.open(); } },
+        { id: 'section-admin-saques',      icon: '🏦', label: 'Saques',            load: function () { if (window.GcvIndicacoes) window.GcvIndicacoes.openAdmin(); } },
         { id: 'section-cms-guides',        icon: '🧭', label: 'Guias credenciados', load: function () { if (window.GcvAdminCms) window.GcvAdminCms.open('guides'); } },
         { id: 'section-admin-anfitrioes',  icon: '🏡', label: 'Anfitriões',        load: function () { if (window.GcvAnfitriao) window.GcvAnfitriao.openAdmin(); } },
         { id: 'section-admin-broadcast',   icon: '📣', label: 'Broadcast',         load: loadBroadcast      },
@@ -2361,6 +2371,7 @@
       items = [
         { id: 'section-guide-tours',        icon: '📅', label: 'Agenda',            tab: 'Agenda',      tabIcon: 'agenda',  load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideAgenda(); } },
         { id: 'section-guide-ranking',      icon: '🏆', label: 'Ranking',          tab: 'Ranking',    tabIcon: 'rank',    load: function () { if (window.GcvAnfitriao) window.GcvAnfitriao.openRankingGuia(); } },
+        { id: 'section-indicacoes',         icon: '🎁', label: indicacaoLabel(),  load: function () { if (window.GcvIndicacoes) window.GcvIndicacoes.open(); } },
         { id: 'section-guide-financial',    icon: '💲', label: 'Financeiro',       tab: 'Financeiro', tabIcon: 'money',   load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadGuideEarnings(); } },
       ];
       footerItems = [profileItem];
@@ -2372,6 +2383,7 @@
         { id: 'section-client-bookings', icon: '📋', label: 'Minhas reservas',   load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadClientBookings(); } },
         { id: 'section-client-publish',  icon: '➕', label: 'Propor excursão',   load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadClientPublish(); } },
         { id: 'section-inbox',           icon: '🔔', label: 'Notificações',      load: function () { if (window.GcvInbox) window.GcvInbox.open(); } },
+        { id: 'section-indicacoes',      icon: '🎁', label: indicacaoLabel(),   load: function () { if (window.GcvIndicacoes) window.GcvIndicacoes.open(); } },
       ];
       footerItems = [clientProfileItem];
     }

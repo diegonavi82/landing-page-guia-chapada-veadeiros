@@ -2659,6 +2659,8 @@ function gcv_tarifario_regras_ensure(PDO $pdo): void
         ['passeio_quorum', '4', 'Quórum do passeio (pessoas no pacote mínimo do privativo sem translado)', 'integer'],
         ['diaria_minima_reais', '320', 'Diária mínima de guiagem (R$)', 'integer'],
         ['pg_minimo_guia_reais', '280', 'Pagamento mínimo de guiagem (R$). Tem que ser menor que a diária mínima.', 'integer'],
+        ['cashback_cliente_reais', '0', 'Cashback do cliente por indicação concluída (R$)', 'integer'],
+        ['cashback_guia_reais', '0', 'Cashback do guia por indicação concluída (R$)', 'integer'],
     ];
     try {
         $check = $pdo->prepare('SELECT id FROM gcv_settings WHERE key_name = ? LIMIT 1');
@@ -2677,14 +2679,31 @@ function gcv_tarifario_regras_ensure(PDO $pdo): void
     }
 }
 
-/** @return array{quorum:int,diaria_minima_reais:int,pg_minimo_guia_reais:int} */
+/** @return array{quorum:int,diaria_minima_reais:int,pg_minimo_guia_reais:int,cashback_cliente_reais:int,cashback_guia_reais:int} */
 function gcv_tarifario_regras_get(PDO $pdo): array
 {
+    gcv_tarifario_regras_ensure($pdo);
     return [
         'quorum' => max(1, min(20, gcv_tarifario_setting_int($pdo, 'passeio_quorum', 4))),
         'diaria_minima_reais' => max(0, gcv_tarifario_setting_int($pdo, 'diaria_minima_reais', 320)),
         'pg_minimo_guia_reais' => max(0, gcv_tarifario_setting_int($pdo, 'pg_minimo_guia_reais', 280)),
+        'cashback_cliente_reais' => max(0, gcv_tarifario_setting_int($pdo, 'cashback_cliente_reais', 0)),
+        'cashback_guia_reais' => max(0, gcv_tarifario_setting_int($pdo, 'cashback_guia_reais', 0)),
     ];
+}
+
+/** Salva os dois cashbacks da campanha de indicação. Valores em reais inteiros. */
+function gcv_tarifario_cashback_save(PDO $pdo, array $body): void
+{
+    gcv_tarifario_regras_ensure($pdo);
+    $cliente = (int)($body['cashback_cliente_reais'] ?? 0);
+    $guia = (int)($body['cashback_guia_reais'] ?? 0);
+    if ($cliente < 0 || $cliente > 5000 || $guia < 0 || $guia > 5000) {
+        throw new InvalidArgumentException('O cashback fica entre R$ 0 e R$ 5.000.');
+    }
+    $upd = $pdo->prepare('UPDATE gcv_settings SET value = ? WHERE key_name = ?');
+    $upd->execute([(string)$cliente, 'cashback_cliente_reais']);
+    $upd->execute([(string)$guia, 'cashback_guia_reais']);
 }
 
 function gcv_tarifario_msg(string $onde, string $msg): string

@@ -46,6 +46,7 @@ try {
 }
 
 $raw = (string)file_get_contents($path);
+$raw = preg_replace('/^\s*--.*$/m', '', $raw) ?? $raw;
 $parts = preg_split('/;\s*\n/', $raw) ?: [];
 $ok = 0;
 $skip = 0;
@@ -62,6 +63,10 @@ foreach ($parts as $stmt) {
         $ok++;
         $preview = preg_replace('/\s+/', ' ', substr($stmt, 0, 90));
         out('OK: ' . $preview);
+        if (preg_match('/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?`?([A-Za-z0-9_]+)`?/i', $stmt, $created)) {
+            $cols = $pdo->query('SHOW COLUMNS FROM `' . $created[1] . '`')->fetchAll(PDO::FETCH_COLUMN);
+            out('COLUNAS ' . $created[1] . ': ' . implode(', ', $cols));
+        }
     } catch (Throwable $e) {
         $msg = $e->getMessage();
         $dup = stripos($msg, 'Duplicate') !== false

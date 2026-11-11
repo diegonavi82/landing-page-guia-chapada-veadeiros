@@ -16,6 +16,12 @@ require_once __DIR__ . '/../excursion_status.php';
 
 function gcv_checkout_fail(int $code, string $message, string $error = ''): void
 {
+    if (!function_exists('gcv_wallet_release_armed') && is_file(__DIR__ . '/../indicacoes.php')) {
+        require_once __DIR__ . '/../indicacoes.php';
+    }
+    if (function_exists('gcv_wallet_release_armed')) {
+        gcv_wallet_release_armed();
+    }
     http_response_code($code);
     echo json_encode(['success' => false, 'message' => $message, 'error' => $error], JSON_UNESCAPED_UNICODE);
     exit;

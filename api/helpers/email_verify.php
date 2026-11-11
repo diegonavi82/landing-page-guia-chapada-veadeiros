@@ -30,7 +30,7 @@ function gcv_email_verify_ensure_schema(): void
     }
 }
 
-function gcv_email_verify_issue(int $userId, string $email, string $name, string $lang = 'pt'): array
+function gcv_email_verify_issue(int $userId, string $email, string $name, string $lang = 'pt', string $audience = 'guide'): array
 {
     gcv_email_verify_ensure_schema();
     $token = bin2hex(random_bytes(32));
@@ -60,7 +60,7 @@ function gcv_email_verify_issue(int $userId, string $email, string $name, string
     if (!function_exists('mail_verify_email')) {
         require_once __DIR__ . '/mailer.php';
     }
-    mail_verify_email($email, $name, $token, $code6, $lang);
+    mail_verify_email($email, $name, $token, $code6, $lang, $audience);
 
     return ['token' => $token, 'code_6' => $code6];
 }

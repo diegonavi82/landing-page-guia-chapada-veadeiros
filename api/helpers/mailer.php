@@ -101,20 +101,34 @@ HTML;
 
 /* ---- Templates ---- */
 
-function mail_verify_email(string $to, string $name, string $token, string $code6, string $lang = 'pt'): void
+function mail_verify_email(string $to, string $name, string $token, string $code6, string $lang = 'pt', string $audience = 'guide'): void
 {
     $appUrl = rtrim((string)($_ENV['APP_URL'] ?? 'https://www.guiachapadaveadeiros.com'), '/');
-    $link = $appUrl . '/guia/confirmar-email.html?token=' . rawurlencode($token);
+    $lang = in_array($lang, ['pt', 'en', 'es'], true) ? $lang : 'pt';
+    if ($audience === 'client') {
+        $page = $lang === 'en' ? '/en/confirmar-email.html' : ($lang === 'es' ? '/es/confirmar-email.html' : '/confirmar-email.html');
+    } else {
+        $page = '/guia/confirmar-email.html';
+    }
+    $link = $appUrl . $page . '?token=' . rawurlencode($token);
     $subjects = [
         'pt' => 'Confirme seu e-mail — Guia Chapada Veadeiros',
         'en' => 'Confirm your email — Guia Chapada Veadeiros',
         'es' => 'Confirma tu correo — Guia Chapada Veadeiros',
     ];
-    $bodies = [
-        'pt' => "<p>Olá, <strong>{$name}</strong>!</p><p>Para continuar o cadastro de guia, confirme que este e-mail é seu.</p><p><a href='{$link}' style='background:#0f3d2e;color:#fff;padding:10px 20px;border-radius:4px;text-decoration:none;'>Confirmar e-mail</a></p><p>Ou digite o código de 6 dígitos:</p><p><strong style='font-size:28px;letter-spacing:6px;'>{$code6}</strong></p><p>O código expira em 24 horas. Se você não se cadastrou, ignore este e-mail.</p>",
-        'en' => "<p>Hello, <strong>{$name}</strong>!</p><p>To continue your guide registration, confirm this email is yours.</p><p><a href='{$link}' style='background:#0f3d2e;color:#fff;padding:10px 20px;border-radius:4px;text-decoration:none;'>Confirm email</a></p><p>Or enter this 6-digit code:</p><p><strong style='font-size:28px;letter-spacing:6px;'>{$code6}</strong></p><p>The code expires in 24 hours. If you did not sign up, ignore this email.</p>",
-        'es' => "<p>Hola, <strong>{$name}</strong>!</p><p>Para continuar el registro de guía, confirma que este correo es tuyo.</p><p><a href='{$link}' style='background:#0f3d2e;color:#fff;padding:10px 20px;border-radius:4px;text-decoration:none;'>Confirmar correo</a></p><p>O escribe el código de 6 dígitos:</p><p><strong style='font-size:28px;letter-spacing:6px;'>{$code6}</strong></p><p>El código caduca en 24 horas. Si no te registraste, ignora este correo.</p>",
-    ];
+    if ($audience === 'client') {
+        $bodies = [
+            'pt' => "<p>Olá, <strong>{$name}</strong>!</p><p>Confirme este e-mail para entrar na sua conta.</p><p><a href='{$link}' style='background:#0f3d2e;color:#fff;padding:10px 20px;border-radius:4px;text-decoration:none;'>Confirmar e-mail</a></p><p>Ou digite o código de 6 dígitos:</p><p><strong style='font-size:28px;letter-spacing:6px;'>{$code6}</strong></p><p>O código expira em 24 horas. Se você não se cadastrou, ignore este e-mail.</p>",
+            'en' => "<p>Hello, <strong>{$name}</strong>!</p><p>Confirm this email to open your account.</p><p><a href='{$link}' style='background:#0f3d2e;color:#fff;padding:10px 20px;border-radius:4px;text-decoration:none;'>Confirm email</a></p><p>Or enter this 6-digit code:</p><p><strong style='font-size:28px;letter-spacing:6px;'>{$code6}</strong></p><p>The code expires in 24 hours. If you did not sign up, ignore this email.</p>",
+            'es' => "<p>Hola, <strong>{$name}</strong>!</p><p>Confirma este correo para entrar en tu cuenta.</p><p><a href='{$link}' style='background:#0f3d2e;color:#fff;padding:10px 20px;border-radius:4px;text-decoration:none;'>Confirmar correo</a></p><p>O escribe el código de 6 dígitos:</p><p><strong style='font-size:28px;letter-spacing:6px;'>{$code6}</strong></p><p>El código caduca en 24 horas. Si no te registraste, ignora este correo.</p>",
+        ];
+    } else {
+        $bodies = [
+            'pt' => "<p>Olá, <strong>{$name}</strong>!</p><p>Para continuar o cadastro de guia, confirme que este e-mail é seu.</p><p><a href='{$link}' style='background:#0f3d2e;color:#fff;padding:10px 20px;border-radius:4px;text-decoration:none;'>Confirmar e-mail</a></p><p>Ou digite o código de 6 dígitos:</p><p><strong style='font-size:28px;letter-spacing:6px;'>{$code6}</strong></p><p>O código expira em 24 horas. Se você não se cadastrou, ignore este e-mail.</p>",
+            'en' => "<p>Hello, <strong>{$name}</strong>!</p><p>To continue your guide registration, confirm this email is yours.</p><p><a href='{$link}' style='background:#0f3d2e;color:#fff;padding:10px 20px;border-radius:4px;text-decoration:none;'>Confirm email</a></p><p>Or enter this 6-digit code:</p><p><strong style='font-size:28px;letter-spacing:6px;'>{$code6}</strong></p><p>The code expires in 24 hours. If you did not sign up, ignore this email.</p>",
+            'es' => "<p>Hola, <strong>{$name}</strong>!</p><p>Para continuar el registro de guía, confirma que este correo es tuyo.</p><p><a href='{$link}' style='background:#0f3d2e;color:#fff;padding:10px 20px;border-radius:4px;text-decoration:none;'>Confirmar correo</a></p><p>O escribe el código de 6 dígitos:</p><p><strong style='font-size:28px;letter-spacing:6px;'>{$code6}</strong></p><p>El código caduca en 24 horas. Si no te registraste, ignora este correo.</p>",
+        ];
+    }
     send_mail($to, $subjects[$lang] ?? $subjects['pt'], $bodies[$lang] ?? $bodies['pt'], $name);
 }
 

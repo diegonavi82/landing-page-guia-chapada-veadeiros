@@ -64,8 +64,9 @@ if ($cupomCodigo !== '' && $grossCents > 0) {
 if (!is_finite($amount) || $amount <= 0) {
     gcv_pix_json_error(422, 'Invalid amount');
 }
+$fullCents = (int) round($amount * 100);
 $locale = in_array($data['locale'] ?? 'pt', ['pt', 'en', 'es'], true) ? (string) $data['locale'] : 'pt';
-$erroTeste = gcv_teste_pagamento_erro($data, (int) round($amount * 100));
+$erroTeste = gcv_teste_pagamento_erro($data, $fullCents);
 if ($erroTeste === 'teste_restrito') {
     gcv_pix_json_error(422, gcv_teste_mensagem($locale));
 }
@@ -112,12 +113,21 @@ if (
     exit;
 }
 
+$clientEmailEarly = strtolower(trim((string)($data['email'] ?? '')));
+$walletCents = 0;
+if ($clientEmailEarly !== '' && filter_var($clientEmailEarly, FILTER_VALIDATE_EMAIL)) {
+    require_once __DIR__ . '/helpers/indicacoes.php';
+    $walletCents = gcv_wallet_reserve_for_email($clientEmailEarly, $reservationId, $fullCents);
+}
+$chargeCents = max(0, $fullCents - $walletCents);
+$amount = round($chargeCents / 100, 2);
+
 $txid = gcv_sicoob_txid_from_reservation_id($reservationId);
 $pixMode = 'static_fallback';
 $brcode = '';
 $cobError = null;
 
-if (gcv_sicoob_is_configured()) {
+if ($chargeCents >= 1 && gcv_sicoob_is_configured()) {
     $payerRequest = trim((string)($data['description'] ?? ''));
     if ($payerRequest === '') {
         $payerRequest = $reservationId . ' Guia Chapada Veadeiros';
@@ -140,6 +150,9 @@ $record = [
     'reservation_id' => $reservationId,
     'status' => 'PENDING',
     'amount' => round($amount, 2),
+    'amount_cents' => $chargeCents,
+    'catalog_cents' => $walletCents > 0 ? $fullCents : $chargeCents,
+    'wallet_cents' => $walletCents,
     'cupom' => $cupomCodigo,
     'txid' => $txid,
     'brcode' => $brcode,
@@ -205,7 +218,26 @@ if ($clientPhone !== '') {
 }
 
 if (!gcv_pix_write_reservation($record)) {
+    if ($walletCents > 0 && function_exists('gcv_wallet_release')) {
+        gcv_wallet_release($reservationId);
+    }
     gcv_pix_json_error(500, 'Could not save reservation');
+}
+
+if ($chargeCents < 1 && $walletCents > 0) {
+    $paid = gcv_pix_mark_paid($reservationId, 'wallet');
+    if (!$paid) {
+        gcv_wallet_release($reservationId);
+        gcv_pix_json_error(500, 'Could not confirm balance payment');
+    }
+    echo json_encode([
+        'success' => true,
+        'status' => 'PAID',
+        'reservation_id' => $reservationId,
+        'wallet_cents' => $walletCents,
+        'paid_with' => 'wallet',
+    ]);
+    exit;
 }
 
 $out = [

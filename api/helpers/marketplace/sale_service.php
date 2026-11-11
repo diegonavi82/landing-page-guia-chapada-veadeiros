@@ -66,6 +66,11 @@ function gcv_sale_capture_from_pix_reservation(array $reservation, string $sourc
 
     $amountReais = (float)($reservation['amount'] ?? 0);
     $soldCents = (int)round($amountReais * 100);
+    $walletCents = max(0, (int)($reservation['wallet_cents'] ?? 0));
+    $catalogCents = max(0, (int)($reservation['catalog_cents'] ?? 0));
+    if ($catalogCents > $soldCents) {
+        $soldCents = $catalogCents;
+    }
     if ($soldCents <= 0) {
         throw new InvalidArgumentException('Valor da venda inválido');
     }
@@ -166,6 +171,9 @@ function gcv_sale_capture_from_pix_reservation(array $reservation, string $sourc
         $platformRevenue = (int) $blackfriday['plataforma_cents'];
         $commissionPct = (float) $blackfriday['taxa_pct'];
         $ruleId = null;
+    }
+    if ($walletCents > 0) {
+        $platformRevenue = max(0, $soldCents - $guideAmount - $walletCents);
     }
 
     $startsAt = null;

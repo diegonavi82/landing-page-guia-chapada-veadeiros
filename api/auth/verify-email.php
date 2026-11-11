@@ -32,6 +32,12 @@ if (!$row) {
 }
 
 $userId = gcv_email_verify_consume($row);
+require_once __DIR__ . '/../helpers/indicacoes.php';
+try {
+    gcv_referral_on_verified($userId);
+} catch (Throwable $e) {
+    error_log('verify referral: ' . $e->getMessage());
+}
 $st = db()->prepare('SELECT id, name, email, role, status, email_verified FROM gcv_users WHERE id = ?');
 $st->execute([$userId]);
 $user = $st->fetch(PDO::FETCH_ASSOC);
@@ -51,9 +57,12 @@ $redirect = '/dashboard/?as=' . rawurlencode($context);
 if ($context === 'guide') {
     $redirect .= '#agenda';
 }
+$message = $context === 'client'
+    ? 'E-mail confirmado!'
+    : 'E-mail confirmado! Complete seu perfil para enviar à aprovação.';
 
 json_response(true, [
-    'message' => 'E-mail confirmado! Complete seu perfil para enviar à aprovação.',
+    'message' => $message,
     'redirect' => $redirect,
     'email_verified' => true,
     'role' => $context,
