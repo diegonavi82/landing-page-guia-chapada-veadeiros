@@ -775,7 +775,8 @@ function gcv_ops_guide_posse_text(int $excursionId, ?array $exc = null): string
     $unit = gcv_ops_guide_unit_for_notice($exc, $excursionId);
     $quorum = max(0, (int)($exc['quorum'] ?? 0));
     $lines = [
-        $rotulo . ' ' . $status,
+        '*' . $rotulo . ' ' . $status . '*',
+        '',
         '✅ Você é o guia dessa excursão.',
         '',
         'Destino: ' . gcv_ops_excursion_title($exc),
