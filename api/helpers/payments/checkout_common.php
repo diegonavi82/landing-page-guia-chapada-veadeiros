@@ -143,6 +143,7 @@ function gcv_checkout_build_record(array $req, array $quote, string $gateway): a
         'status' => 'PENDING',
         'amount' => round($baseCents / 100, 2),
         'amount_cents' => $baseCents,
+        'cupom' => strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', (string) ($req['base']['cupom'] ?? $data['cupom'] ?? ''))),
         'txid' => '',
         'brcode' => '',
         'pix_mode' => $gateway,

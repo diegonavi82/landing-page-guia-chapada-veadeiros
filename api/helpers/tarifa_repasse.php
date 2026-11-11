@@ -210,3 +210,84 @@ function gcv_tarifa_transporte_carros_cheios(int $pessoas, int $porCarro = 4): b
     $porCarro = max(1, $porCarro);
     return $pessoas >= $porCarro && $pessoas % $porCarro === 0;
 }
+
+/**
+ * Repasse só do cupom BLACKFRIDAY, sobre o valor já cobrado.
+ * Sem veículo a plataforma fica com 16%. Com veículo, com 10%.
+ * Carrinho misto reparte o valor cobrado na proporção de cada grupo.
+ * Outro cupom, ou compra sem cupom, devolve null e a tarifa vigente segue.
+ *
+ * @param array<string,mixed> $reservation
+ * @return array{guia_cents:int,plataforma_cents:int,taxa_pct:float}|null
+ */
+function gcv_blackfriday_repasse_cents(int $soldCents, array $reservation): ?array
+{
+    $codigo = strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', (string) ($reservation['cupom'] ?? '')));
+    if ($codigo !== 'BLACKFRIDAY' || $soldCents <= 0) {
+        return null;
+    }
+
+    $sem = 0;
+    $com = 0;
+    foreach ((array) ($reservation['trips'] ?? []) as $trip) {
+        if (!is_array($trip)) {
+            continue;
+        }
+        $qty = max(1, (int) ($trip['qty'] ?? 1));
+        $bruto = max(0, (int) round(((float) ($trip['valorUnit'] ?? $trip['valor_unit'] ?? 0)) * 100)) * $qty;
+        if (gcv_blackfriday_trip_tem_veiculo($trip)) {
+            $com += $bruto;
+        } else {
+            $sem += $bruto;
+        }
+    }
+
+    if ($sem + $com <= 0) {
+        $com = gcv_blackfriday_reserva_tem_veiculo($reservation) ? $soldCents : 0;
+        $sem = $soldCents - $com;
+    } else {
+        $base = $sem + $com;
+        $sem = (int) round($soldCents * $sem / $base);
+        $com = $soldCents - $sem;
+    }
+
+    $fee = (int) round($sem * 16 / 100) + (int) round($com * 10 / 100);
+    if ($fee > $soldCents) {
+        $fee = $soldCents;
+    }
+    if ($fee < 0) {
+        $fee = 0;
+    }
+
+    return [
+        'guia_cents' => $soldCents - $fee,
+        'plataforma_cents' => $fee,
+        'taxa_pct' => round(($fee / $soldCents) * 100, 3),
+    ];
+}
+
+/** @param array<string,mixed> $trip */
+function gcv_blackfriday_trip_tem_veiculo(array $trip): bool
+{
+    if (!empty($trip['comTransporte']) || !empty($trip['include_transport']) || !empty($trip['withTransport']) || !empty($trip['with_transport'])) {
+        return true;
+    }
+    $cart = strtolower(trim((string) ($trip['cartId'] ?? $trip['cart_id'] ?? $trip['cartSlug'] ?? '')));
+
+    return $cart !== '' && (str_ends_with($cart, '-t') || str_contains($cart, '-t-'));
+}
+
+/** @param array<string,mixed> $reservation */
+function gcv_blackfriday_reserva_tem_veiculo(array $reservation): bool
+{
+    if (!empty($reservation['comTransporte']) || !empty($reservation['include_transport']) || !empty($reservation['with_transport'])) {
+        return true;
+    }
+    foreach ((array) ($reservation['trips'] ?? []) as $trip) {
+        if (is_array($trip) && gcv_blackfriday_trip_tem_veiculo($trip)) {
+            return true;
+        }
+    }
+
+    return false;
+}

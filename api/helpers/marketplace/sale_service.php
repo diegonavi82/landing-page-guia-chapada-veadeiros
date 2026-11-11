@@ -151,6 +151,16 @@ function gcv_sale_capture_from_pix_reservation(array $reservation, string $sourc
         $platformRevenue = 0;
     }
 
+    // BLACKFRIDAY troca a tarifa: 16% sem veículo, 10% com veículo, sobre o valor já cobrado.
+    require_once __DIR__ . '/../tarifa_repasse.php';
+    $blackfriday = gcv_blackfriday_repasse_cents($soldCents, $reservation);
+    if ($blackfriday !== null) {
+        $guideAmount = (int) $blackfriday['guia_cents'];
+        $platformRevenue = (int) $blackfriday['plataforma_cents'];
+        $commissionPct = (float) $blackfriday['taxa_pct'];
+        $ruleId = null;
+    }
+
     $startsAt = null;
     $scheduledPayoutAt = null;
     if ($excursion && !empty($excursion['date_iso'])) {
