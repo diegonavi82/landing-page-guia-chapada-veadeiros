@@ -3124,7 +3124,7 @@
 
   function approvalCellHtml(e) {
     var tip = approvalHoverTitle(e);
-    if (e.status === 'pending_approval') {
+    if (e.status === 'pending_approval' && !isSitePurchase(e)) {
       return (
         '<span class="gcv-exc-appr gcv-exc-appr--wait" title="' + esc(tip) + '">' + icoHourglass() + '</span>' +
         '<span class="gcv-exc-appr-btns">' +
@@ -3133,7 +3133,7 @@
         '</span>'
       );
     }
-    if (e.status === 'published' || e.status === 'soldout') {
+    if (e.status === 'published' || e.status === 'soldout' || isSitePurchase(e)) {
       return '<span class="gcv-exc-appr gcv-exc-appr--ok" title="' + esc(tip) + '">' + icoCheck() + '</span>';
     }
     if (e.status === 'rejected') {
@@ -3153,6 +3153,11 @@
     return t === 'privativo' || t === 'exclusivo' ? 'privativo' : 'excursao';
   }
 
+  function isSitePurchase(e) {
+    return String((e && e.created_by_origin) || '').toUpperCase() === 'API'
+      && tourTypeOf(e) !== 'privativo';
+  }
+
   function tourTypeLabel(e) {
     return tourTypeOf(e) === 'privativo' ? 'Privativo' : 'Excursão';
   }
@@ -3170,7 +3175,10 @@
     var st = String((e && e.status) || '');
     var life = String((e && e.lifecycle) || '');
     if (st === 'rejected' || st === 'cancelled' || life === 'rejeitada' || life === 'cancelada') return 'recusada';
-    if (st === 'pending_approval' || life === 'aguardando_aprovacao') return 'aguardando';
+    if ((st === 'pending_approval' || life === 'aguardando_aprovacao') && !isSitePurchase(e)) return 'aguardando';
+    if (isSitePurchase(e) && (st === 'pending_approval' || life === 'aguardando_aprovacao')) {
+      return walkQuorumMet(e) ? 'confirmada' : 'em_formacao';
+    }
     if (st === 'draft' || life === 'rascunho') return 'rascunho';
     if (life === 'concluida' || String((e && e.status_lock) || '') === 'concluida') return 'concluida';
     if (life === 'confirmada' || walkQuorumMet(e)) return 'confirmada';
@@ -3202,7 +3210,7 @@
 
   function statusSelectHtml(e) {
     var cur = sheetStatusValue(e);
-    var pending = e.status === 'pending_approval' || cur === 'aguardando';
+    var pending = !isSitePurchase(e) && (e.status === 'pending_approval' || cur === 'aguardando');
     if (pending) {
       return (
         '<div class="gcv-exc-status-actions" title="Aguardando aprovação">' +
@@ -3374,7 +3382,7 @@
 
   function excSheetRowHtml(e) {
     e = rowWithDraft(e);
-    var pending = e.status === 'pending_approval';
+    var pending = e.status === 'pending_approval' && !isSitePurchase(e);
     var dirty = !!excSheet.drafts[String(e.id)];
     var timeVal = String(e.departure_time || '').slice(0, 5);
     var teto = tetoVagasExcursao(e);

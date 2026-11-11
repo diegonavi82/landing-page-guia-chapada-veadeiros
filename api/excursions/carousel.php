@@ -21,6 +21,8 @@ $verTeste = gcv_teste_logada();
 
 try {
     gcv_marketplace_ensure_excursion_finance_columns(db());
+    require_once __DIR__ . '/../helpers/catalog_departure.php';
+    gcv_catalog_publish_paid_pending();
 } catch (Throwable $e) {
     error_log('carousel tour_type: ' . $e->getMessage());
 }

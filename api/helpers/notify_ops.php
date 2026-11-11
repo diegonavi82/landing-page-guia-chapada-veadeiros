@@ -609,6 +609,7 @@ function gcv_ops_mark_sale_col(int $id, string $col): bool
         'notify_m15_sent_at' => true,
         'notify_review_sent_at' => true,
         'notify_guide_intro_sent_at' => true,
+        'notify_live_sent_at' => true,
     ];
     if ($id <= 0 || empty($ok[$col])) {
         return false;
@@ -1958,6 +1959,7 @@ function gcv_ops_notify_guide_dayof(int $excursionId): void
 
 function gcv_ops_notify_client_pix_paid(array $sale, ?array $exc = null): void
 {
+    gcv_ops_notify_client_excursion_live($sale, $exc);
     $id = (int)($sale['id'] ?? 0);
     if (!empty($sale['notify_pix_paid_sent_at'])) {
         return;
@@ -2022,6 +2024,92 @@ function gcv_ops_notify_client_pix_paid(array $sale, ?array $exc = null): void
             $imgCap = 'Seu QR CODE da reserva ' . $code . '. Mostre ao guia no embarque — uma leitura vale para todos os dias deste grupo.';
         }
         gcv_whatsapp_send_image($phone, $imgCap, $png);
+    }
+}
+
+/**
+ * Excursão comprada no site já entra aprovada. Avisa a cliente que está no ar, em formação.
+ */
+function gcv_ops_notify_client_excursion_live(array $sale, ?array $exc): void
+{
+    if (!$exc) {
+        return;
+    }
+    if (!function_exists('gcv_excursion_is_private')) {
+        require_once __DIR__ . '/excursion_status.php';
+    }
+    if (gcv_excursion_is_private($exc) || gcv_excursion_is_guide_submitted($exc)) {
+        return;
+    }
+    if (strtoupper((string)($exc['created_by_origin'] ?? '')) !== 'API') {
+        return;
+    }
+    $status = (string)($exc['status'] ?? '');
+    if (!in_array($status, ['published', 'soldout'], true)) {
+        return;
+    }
+    if (gcv_resolve_excursion_lifecycle($exc) !== 'em_formacao') {
+        return;
+    }
+    $id = (int)($sale['id'] ?? 0);
+    if ($id > 0 && !empty($sale['notify_live_sent_at'])) {
+        return;
+    }
+    if (function_exists('gcv_marketplace_ensure_checkin_columns')) {
+        gcv_marketplace_ensure_checkin_columns(db());
+    }
+    $loc = gcv_ops_sale_locale($sale);
+    $title = trim((string)($sale['excursion_title'] ?? ''));
+    if ($title === '' || $title === 'Passeio') {
+        $title = gcv_ops_excursion_title($exc);
+    }
+    $when = trim(gcv_ops_date_br((string)($exc['date_iso'] ?? '')) . ' às ' . substr((string)($exc['departure_time'] ?? ''), 0, 5));
+    $city = trim((string)($exc['departure_city_name'] ?? ''));
+    $inscritos = max(
+        gcv_excursion_platform_inscriptions($exc) + gcv_excursion_platform_inscriptions_transport($exc),
+        max(1, (int)($sale['spots'] ?? 1))
+    );
+    $quorum = max(0, (int)($exc['quorum'] ?? 0));
+    $faltam = max(0, $quorum - gcv_excursion_platform_inscriptions($exc));
+    if ($faltam < 1 && $quorum > $inscritos) {
+        $faltam = $quorum - $inscritos;
+    }
+    $code = strtoupper(trim((string)($sale['reservation_id'] ?? '')));
+    if ($loc === 'en') {
+        $people = $inscritos === 1 ? '1 person' : ($inscritos . ' people');
+        $text = "Your group tour is live\n\n"
+            . "It is already approved and showing on the site. The group is still forming.\n\n"
+            . 'Tour: ' . $title . "\n"
+            . ($when !== '' ? 'When: ' . $when . "\n" : '')
+            . ($city !== '' ? 'City: ' . $city . "\n" : '')
+            . 'Signed up: ' . $people . "\n"
+            . ($faltam > 0 ? ('Still needed to confirm: ' . $faltam . "\n") : '')
+            . 'Code: ' . $code;
+    } elseif ($loc === 'es') {
+        $people = $inscritos === 1 ? '1 persona' : ($inscritos . ' personas');
+        $text = "Tu excursión ya está en el sitio\n\n"
+            . "Ya fue aprobada y aparece en el sitio. El grupo sigue en formación.\n\n"
+            . 'Paseo: ' . $title . "\n"
+            . ($when !== '' ? 'Cuándo: ' . $when . "\n" : '')
+            . ($city !== '' ? 'Ciudad: ' . $city . "\n" : '')
+            . 'Inscritos: ' . $people . "\n"
+            . ($faltam > 0 ? ('Faltan ' . $faltam . " para confirmar\n") : '')
+            . 'Código: ' . $code;
+    } else {
+        $text = "Sua excursão está no ar\n\n"
+            . "Ela já foi aprovada e aparece no site. O grupo ainda está em formação.\n\n"
+            . 'Destino: ' . $title . "\n"
+            . ($when !== '' ? 'Data: ' . $when . "\n" : '')
+            . ($city !== '' ? 'Cidade: ' . $city . "\n" : '')
+            . 'Inscritos: ' . gcv_ops_pessoas($inscritos) . "\n"
+            . ($faltam > 0 ? ('Faltam ' . gcv_ops_pessoas($faltam) . " para confirmar\n") : '')
+            . 'Código: ' . $code;
+    }
+    if (!gcv_ops_wa_client($sale, trim($text), ['kind' => 'excursion_live'])) {
+        return;
+    }
+    if ($id > 0) {
+        gcv_ops_mark_sale_col($id, 'notify_live_sent_at');
     }
 }
 

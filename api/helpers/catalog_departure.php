@@ -265,6 +265,34 @@ function gcv_catalog_group_departure_ensure(array $reservation, int $index, arra
     }
 }
 
+/** Compra pelo site não fica em aprovação: entra publicada, em formação, sem guia. */
+function gcv_catalog_publish_paid_pending(): void
+{
+    try {
+        db()->exec(
+            "UPDATE gcv_excursions e
+             SET e.status = 'published', e.approved_at = COALESCE(e.approved_at, NOW())
+             WHERE e.deleted_at IS NULL
+               AND e.status = 'pending_approval'
+               AND e.created_by_origin = 'API'
+               AND COALESCE(e.tour_type, 'excursao') <> 'privativo'
+               AND (e.guide_user_id IS NULL OR e.guide_user_id = 0)
+               AND (
+                 e.booked_people > 0
+                 OR e.booked_people_transport > 0
+                 OR EXISTS (
+                   SELECT 1 FROM gcv_sales s
+                   WHERE s.excursion_id = e.id
+                     AND s.deleted_at IS NULL
+                     AND s.sale_status IN ('PAID','AUTHORIZED')
+                 )
+               )"
+        );
+    } catch (Throwable $e) {
+        error_log('catalog publish pending: ' . $e->getMessage());
+    }
+}
+
 /** A compra paga já coloca a excursão no site. O guia continua vazio até o quórum. */
 function gcv_catalog_publish_paid_departure(int $id): void
 {

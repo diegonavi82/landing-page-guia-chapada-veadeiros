@@ -736,6 +736,8 @@ if ($method === 'GET' && !empty($_GET['publish_options'])) {
 }
 
 if ($method === 'GET') {
+    require_once __DIR__ . '/../helpers/catalog_departure.php';
+    gcv_catalog_publish_paid_pending();
     $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
     if ($id > 0) {
         $stmt = db()->prepare(

@@ -648,6 +648,13 @@ function gcv_publish_load_excursion(int $id): array
 function gcv_publish_list_pending(): array
 {
     gcv_marketplace_ensure_schema();
+    $catalog = dirname(__DIR__) . '/catalog_departure.php';
+    if (is_file($catalog)) {
+        require_once $catalog;
+        if (function_exists('gcv_catalog_publish_paid_pending')) {
+            gcv_catalog_publish_paid_pending();
+        }
+    }
     return db()->query(
         "SELECT e.*, a.title_pt AS attraction_title, c.name AS departure_city_name,
                 u.name AS guide_name, u.email AS guide_email

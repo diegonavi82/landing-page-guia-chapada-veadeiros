@@ -64,6 +64,21 @@ function gcv_sale_capture_from_pix_reservation(array $reservation, string $sourc
         try {
             require_once __DIR__ . '/../catalog_departure.php';
             gcv_catalog_repair_paid_sale($reservation, $sale);
+            $liveId = (int)($sale['excursion_id'] ?? 0);
+            if ($liveId > 0) {
+                $live = db()->prepare(
+                    'SELECT e.*, c.name AS departure_city_name, a.title_pt AS attraction_title
+                     FROM gcv_excursions e
+                     LEFT JOIN gcv_cities c ON c.id = e.departure_city_id
+                     LEFT JOIN gcv_attractions a ON a.id = e.attraction_id
+                     WHERE e.id = ? LIMIT 1'
+                );
+                $live->execute([$liveId]);
+                $liveRow = $live->fetch(PDO::FETCH_ASSOC) ?: null;
+                if ($liveRow) {
+                    gcv_ops_notify_client_excursion_live($sale, $liveRow);
+                }
+            }
         } catch (Throwable $e) {
             error_log('catalog repair paid: ' . $e->getMessage());
         }
