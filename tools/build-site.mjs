@@ -1604,6 +1604,12 @@ ${ogLocaleAlternate}
     ${webmcpBootScript(locale)}`;
 }
 
+function headerLoginLink(locale) {
+  const href = locale === "en" ? "/en/login.html" : locale === "es" ? "/es/login.html" : "/login.html";
+  const label = locale === "en" ? "Sign in" : locale === "es" ? "Iniciar sesión" : "Entrar";
+  return `<a class="gcv-header-login" id="gcv-header-login" href="${esc(href)}" data-gcv-login="out" aria-label="${esc(label)}"><span class="gcv-header-login__glyph"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><path d="M10 17l5-5-5-5"></path><path d="M15 12H3"></path></svg></span></a>`;
+}
+
 function headerHtml(ctx) {
   const { locale, pathKey, ap, current } = ctx;
   const S = STRINGS[locale];
@@ -1643,6 +1649,7 @@ function headerHtml(ctx) {
           <ul class="nav-search-results" role="listbox" aria-live="polite"></ul>
         </div>
       </div>
+      ${headerLoginLink(locale)}
       ${langLinksHtml(locale, pathKey)}
     </nav>
   </div>

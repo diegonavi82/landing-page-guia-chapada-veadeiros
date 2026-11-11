@@ -60,6 +60,234 @@
     });
   }
 
+  initHeaderLogin();
+
+  function initHeaderLogin() {
+    var headerInner = document.querySelector(".site-header .header-inner");
+    if (!headerInner) return;
+
+    var COPY = {
+      pt: { login: "Entrar", account: "Minha conta" },
+      en: { login: "Sign in", account: "My account" },
+      es: { login: "Iniciar sesión", account: "Mi cuenta" },
+    };
+    var ICON_OUT =
+      '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>' +
+      '<path d="M10 17l5-5-5-5"></path>' +
+      '<path d="M15 12H3"></path></svg>';
+    var ICON_IN =
+      '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false" fill="currentColor" stroke="none">' +
+      '<circle cx="12" cy="8" r="3.35"></circle>' +
+      '<path d="M6.15 19.15c.72-3.05 3.05-4.75 5.85-4.75s5.13 1.7 5.85 4.75c.1.42-.22.85-.66.85H6.81c-.44 0-.76-.43-.66-.85z"></path></svg>';
+
+    function uiLang() {
+      return pageSiteLang(window.location.pathname || "/");
+    }
+
+    function copy() {
+      return COPY[uiLang()] || COPY.pt;
+    }
+
+    function safeSameOriginPath(raw) {
+      var value = String(raw || "").trim();
+      if (!value || value.charAt(0) !== "/" || value.charAt(1) === "/" || value.charAt(1) === "\\") return "";
+      if (/[\u0000-\u001F\\]/.test(value)) return "";
+      try {
+        var url = new URL(value, window.location.origin);
+        if (url.origin !== window.location.origin) return "";
+        if (url.username || url.password) return "";
+        var path = url.pathname || "/";
+        if (path.charAt(0) !== "/" || path.indexOf("//") !== -1) return "";
+        if (/^\/(api|assets|tools)(\/|$)/.test(path)) return "";
+        if (/\/(login|cadastro|registro|register|esqueci-senha|forgot-password|olvide-contrasena|resetar-senha|reset-password|restablecer-contrasena|confirmar-email)\.html$/i.test(path)) return "";
+        return path + url.search + url.hash;
+      } catch (err) {
+        return "";
+      }
+    }
+
+    function currentReturnPath() {
+      var path = window.location.pathname || "/";
+      if (window.location.search) path += window.location.search;
+      if (window.location.hash && window.location.hash !== "#") path += window.location.hash;
+      return safeSameOriginPath(path);
+    }
+
+    function loginHref() {
+      var lang = uiLang();
+      var base = lang === "en" ? "/en/login.html" : lang === "es" ? "/es/login.html" : "/login.html";
+      var next = currentReturnPath();
+      if (!next) return base;
+      return base + "?redirect=" + encodeURIComponent(next);
+    }
+
+    function accountHref(user) {
+      var role = String((user && (user.active_role || user.role)) || "client");
+      if (role === "admin") return "/dashboard/?as=admin";
+      if (role === "guide") return "/dashboard/?as=guide#agenda";
+      return "/dashboard/";
+    }
+
+    function firstName(user) {
+      var name = String((user && user.name) || "").replace(/\s+/g, " ").trim();
+      if (!name) return "";
+      return name.split(" ")[0];
+    }
+
+    function ensureLink() {
+      var link = document.getElementById("gcv-header-login");
+      if (!link) {
+        link = document.createElement("a");
+        link.id = "gcv-header-login";
+        link.className = "gcv-header-login";
+        headerInner.appendChild(link);
+      }
+      if (!link.querySelector(".gcv-header-login__glyph")) {
+        var glyph = document.createElement("span");
+        glyph.className = "gcv-header-login__glyph";
+        link.textContent = "";
+        link.appendChild(glyph);
+      }
+      return link;
+    }
+
+    function paint(user) {
+      var link = ensureLink();
+      var glyph = link.querySelector(".gcv-header-login__glyph");
+      var text = copy();
+      var signedIn = !!(user && user.id);
+      link.classList.toggle("is-in", signedIn);
+      link.setAttribute("data-gcv-login", signedIn ? "in" : "out");
+      if (glyph) glyph.innerHTML = signedIn ? ICON_IN : ICON_OUT;
+      if (signedIn) {
+        var who = firstName(user);
+        link.setAttribute("aria-label", who ? text.account + ", " + who : text.account);
+        link.href = accountHref(user);
+        return;
+      }
+      link.setAttribute("aria-label", text.login);
+      link.href = loginHref();
+    }
+
+    function cartInHeader() {
+      var cart = document.getElementById("gcv-exc-cart-float-header");
+      if (!cart || !cart.closest) return null;
+      return cart.closest(".site-header") ? cart : null;
+    }
+
+    var placing = false;
+    function placeHeaderLogin() {
+      if (placing) return;
+      var link = document.getElementById("gcv-header-login");
+      if (!link) return;
+      placing = true;
+      try {
+        var cart = cartInHeader();
+        var nav = headerInner.querySelector(".nav-main");
+        var toggle = headerInner.querySelector(".nav-toggle");
+        var actions = headerInner.querySelector(".header-actions");
+        var mobile = window.matchMedia("(max-width: 860px)").matches;
+        if (cart && cart.parentElement) {
+          if (link.parentElement !== cart.parentElement || link.nextElementSibling !== cart) {
+            cart.parentElement.insertBefore(link, cart);
+          }
+          return;
+        }
+        if (mobile && actions) {
+          var before = toggle && toggle.parentElement === actions ? toggle : null;
+          if (link.parentElement !== actions || link.nextElementSibling !== before) {
+            actions.insertBefore(link, before);
+          }
+          return;
+        }
+        if (nav) {
+          var lang = nav.querySelector(".lang-switch");
+          if (lang) {
+            if (link.parentElement !== nav || link.nextElementSibling !== lang) nav.insertBefore(link, lang);
+          } else if (link.parentElement !== nav) {
+            nav.appendChild(link);
+          }
+        }
+      } finally {
+        placing = false;
+      }
+    }
+
+    window.gcvPlaceHeaderLogin = placeHeaderLogin;
+    paint(null);
+    placeHeaderLogin();
+
+    var placeQueued = false;
+    if (window.MutationObserver) {
+      var observer = new MutationObserver(function () {
+        if (placeQueued) return;
+        placeQueued = true;
+        window.requestAnimationFrame(function () {
+          placeQueued = false;
+          placeHeaderLogin();
+        });
+      });
+      observer.observe(headerInner, { childList: true, subtree: true });
+    }
+
+    var mq = window.matchMedia("(max-width: 860px)");
+    var onMq = function () {
+      window.setTimeout(placeHeaderLogin, 0);
+    };
+    if (mq.addEventListener) mq.addEventListener("change", onMq);
+    else if (mq.addListener) mq.addListener(onMq);
+
+    var lastCheck = 0;
+    var signedIn = false;
+    function refreshAuth(force) {
+      var now = Date.now();
+      if (!force && now - lastCheck < 20000) return;
+      lastCheck = now;
+      fetch("/api/auth/me.php", {
+        method: "GET",
+        credentials: "same-origin",
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+      })
+        .then(function (res) {
+          return res.json().then(
+            function (body) {
+              return { status: res.status, body: body };
+            },
+            function () {
+              return { status: res.status, body: null };
+            },
+          );
+        })
+        .then(function (result) {
+          var body = result.body;
+          if (result.status === 401 || (body && body.ok === false)) {
+            signedIn = false;
+            paint(null);
+            return;
+          }
+          if (body && body.ok && body.data && body.data.id) {
+            signedIn = true;
+            paint(body.data);
+            return;
+          }
+          if (!signedIn) paint(null);
+        })
+        .catch(function () {
+          if (!signedIn) paint(null);
+        });
+    }
+
+    refreshAuth(true);
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "visible") refreshAuth(false);
+    });
+    window.addEventListener("pageshow", function (ev) {
+      if (ev.persisted) refreshAuth(true);
+    });
+  }
+
   function initHeroCarousel() {
     try {
       bootHeroCarousel();

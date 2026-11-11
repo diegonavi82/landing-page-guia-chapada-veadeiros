@@ -147,9 +147,35 @@
     return (form && form.getAttribute('data-context')) || 'client';
   }
 
+  function safeSameOriginPath(raw) {
+    var value = String(raw || '').trim();
+    if (!value || value.charAt(0) !== '/' || value.charAt(1) === '/' || value.charAt(1) === '\\') return '';
+    if (/[\u0000-\u001F\\]/.test(value)) return '';
+    try {
+      var url = new URL(value, window.location.origin);
+      if (url.origin !== window.location.origin) return '';
+      if (url.username || url.password) return '';
+      var path = url.pathname || '/';
+      if (path.charAt(0) !== '/' || path.indexOf('//') !== -1) return '';
+      if (/^\/(api|assets|tools)(\/|$)/.test(path)) return '';
+      if (/\/(login|cadastro|registro|register|esqueci-senha|forgot-password|olvide-contrasena|resetar-senha|reset-password|restablecer-contrasena|confirmar-email)\.html$/i.test(path)) return '';
+      return path + url.search + url.hash;
+    } catch (e) {
+      return '';
+    }
+  }
+
   function getRedirect() {
     var params = new URLSearchParams(window.location.search);
-    return params.get('redirect') || '/dashboard/';
+    return safeSameOriginPath(params.get('redirect')) || '/dashboard/';
+  }
+
+  function loggedInDestination(context) {
+    var back = safeSameOriginPath(new URLSearchParams(window.location.search).get('redirect'));
+    if (back) return back;
+    if (context === 'admin') return '/dashboard/?as=admin';
+    if (context === 'guide') return '/dashboard/?as=guide#agenda';
+    return '/dashboard/';
   }
 
   function bindCodeInputs(root) {
@@ -235,6 +261,20 @@
         db: 'Erro ao entrar. Tente novamente em instantes.'
       };
       showError(err, oauthMsgs[oauthErr] || 'Erro no login com Google. Tente novamente.');
+    } else {
+      fetch('/api/auth/me.php', {
+        method: 'GET',
+        credentials: 'same-origin',
+        headers: { Accept: 'application/json' },
+        cache: 'no-store'
+      }).then(function (r) {
+        return r.json().catch(function () { return null; });
+      }).then(function (res) {
+        if (!res || !res.ok || !res.data) return;
+        var role = String(res.data.active_role || res.data.role || '');
+        if (role !== context) return;
+        window.location.replace(loggedInDestination(context));
+      }).catch(function () {});
     }
 
     form.addEventListener('submit', function (e) {
