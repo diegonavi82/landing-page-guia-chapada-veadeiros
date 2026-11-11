@@ -5,7 +5,7 @@
   <url>
     <loc>https://www.guiachapadaveadeiros.com/</loc>
 
-    <lastmod>2026-11-10</lastmod>
+    <lastmod>2026-11-11</lastmod>
 
     <changefreq>daily</changefreq>
 
@@ -86,7 +86,7 @@
   <url>
     <loc>https://www.guiachapadaveadeiros.com/atrativos.html</loc>
 
-    <lastmod>2026-11-10</lastmod>
+    <lastmod>2026-11-11</lastmod>
 
     <changefreq>weekly</changefreq>
 
@@ -103,7 +103,7 @@
   <url>
     <loc>https://www.guiachapadaveadeiros.com/confirmacao.html</loc>
 
-    <lastmod>2026-11-10</lastmod>
+    <lastmod>2026-11-11</lastmod>
 
     <changefreq>weekly</changefreq>
 
@@ -120,7 +120,7 @@
   <url>
     <loc>https://www.guiachapadaveadeiros.com/consultar-reserva.html</loc>
 
-    <lastmod>2026-11-10</lastmod>
+    <lastmod>2026-11-11</lastmod>
 
     <changefreq>weekly</changefreq>
 
@@ -137,7 +137,7 @@
   <url>
     <loc>https://www.guiachapadaveadeiros.com/contato.html</loc>
 
-    <lastmod>2026-11-10</lastmod>
+    <lastmod>2026-11-11</lastmod>
 
     <changefreq>weekly</changefreq>
 
@@ -152,9 +152,26 @@
     </image:image>
   </url>
   <url>
+    <loc>https://www.guiachapadaveadeiros.com/privacidade.html</loc>
+
+    <lastmod>2026-11-11</lastmod>
+
+    <changefreq>weekly</changefreq>
+
+    <priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://www.guiachapadaveadeiros.com/privacidade.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.guiachapadaveadeiros.com/en/privacidade.html" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.guiachapadaveadeiros.com/es/privacidade.html" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.guiachapadaveadeiros.com/privacidade.html" />
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/imagens/hero-slide-01-guias-locais-cachoeira.png</image:loc>
+      <image:title>Política de privacidade | Guia Chapada Veadeiros</image:title>
+    </image:image>
+  </url>
+  <url>
     <loc>https://www.guiachapadaveadeiros.com/revista.html</loc>
 
-    <lastmod>2026-11-10</lastmod>
+    <lastmod>2026-11-11</lastmod>
 
     <changefreq>weekly</changefreq>
 
@@ -166,6 +183,40 @@
     <image:image>
       <image:loc>https://www.guiachapadaveadeiros.com/assets/img/imagens/hero-slide-01-guias-locais-cachoeira.png</image:loc>
       <image:title>Revista Chapada dos Veadeiros | Guia Chapada Veadeiros</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://www.guiachapadaveadeiros.com/sobre.html</loc>
+
+    <lastmod>2026-11-11</lastmod>
+
+    <changefreq>weekly</changefreq>
+
+    <priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://www.guiachapadaveadeiros.com/sobre.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.guiachapadaveadeiros.com/en/sobre.html" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.guiachapadaveadeiros.com/es/sobre.html" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.guiachapadaveadeiros.com/sobre.html" />
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/imagens/hero-slide-01-guias-locais-cachoeira.png</image:loc>
+      <image:title>Sobre o Guia Chapada Veadeiros | Guia Chapada Veadeiros</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://www.guiachapadaveadeiros.com/termos.html</loc>
+
+    <lastmod>2026-11-11</lastmod>
+
+    <changefreq>weekly</changefreq>
+
+    <priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://www.guiachapadaveadeiros.com/termos.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.guiachapadaveadeiros.com/en/termos.html" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.guiachapadaveadeiros.com/es/termos.html" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.guiachapadaveadeiros.com/termos.html" />
+    <image:image>
+      <image:loc>https://www.guiachapadaveadeiros.com/assets/img/imagens/hero-slide-01-guias-locais-cachoeira.png</image:loc>
+      <image:title>Termos de uso e cancelamento | Guia Chapada Veadeiros</image:title>
     </image:image>
   </url>
 </urlset>

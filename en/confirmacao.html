@@ -14,6 +14,8 @@
     <title>Payment confirmation | Guia Chapada Veadeiros</title>
     <meta name="description" content="Your excursion Pix payment confirmation." />
     <link rel="canonical" href="https://www.guiachapadaveadeiros.com/en/confirmacao.html" />
+    <link rel="describedby" href="https://www.guiachapadaveadeiros.com/llms.txt" type="text/markdown" />
+    <link rel="alternate" type="text/markdown" title="Markdown" href="https://www.guiachapadaveadeiros.com/en/index.md" />
     <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1" />
     <meta name="author" content="Diego Navi" />
     <meta name="publisher" content="Guia Chapada Veadeiros" />
@@ -47,12 +49,57 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../assets/css/site.css?v=1.1.35" />
-    <link rel="stylesheet" href="../assets/css/gcv-detail.css?v=1.1.35" />
-    <link rel="stylesheet" href="../assets/css/gcv-seo.css?v=1.1.35" />
-    <link rel="stylesheet" href="../assets/css/gcv-confirmacao.css?v=1.1.35" />
-    <link rel="stylesheet" href="../assets/css/excursoes.css?v=1.1.35" />
+    <link rel="stylesheet" href="../assets/css/site.css?v=1.1.36" />
+    <link rel="stylesheet" href="../assets/css/gcv-detail.css?v=1.1.36" />
+    <link rel="stylesheet" href="../assets/css/gcv-seo.css?v=1.1.36" />
+    <link rel="stylesheet" href="../assets/css/gcv-confirmacao.css?v=1.1.36" />
+    <link rel="stylesheet" href="../assets/css/excursoes.css?v=1.1.36" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" crossorigin="anonymous" />
+    <script>
+(function(){
+  var C = {"toursDesc":"Lists the most requested Chapada dos Veadeiros tours and how to book a local guide.","interest":"Waterfall, trail, date or type of tour","toursText":"Local-guide tours in Chapada dos Veadeiros. Often requested: Cataratas dos Couros, Vale da Lua, Cachoeira do Segredo, Santa Bárbara, Saltos do Rio Preto and Mirante da Janela. The price of each departure is shown on the tour page before payment.","contactDesc":"Returns phone, WhatsApp, email and the contact, about, privacy and terms pages.","contactText":"Guia Chapada Veadeiros. WhatsApp and phone: +55 62 98250-6891. Email: contato@guiachapadaveadeiros.com. Based in Alto Paraíso de Goiás, Goiás, Brazil.","toursUrl":"https://www.guiachapadaveadeiros.com/en/passeios.html","contactUrl":"https://www.guiachapadaveadeiros.com/en/contato.html","aboutUrl":"https://www.guiachapadaveadeiros.com/en/sobre.html","privacyUrl":"https://www.guiachapadaveadeiros.com/en/privacidade.html","termsUrl":"https://www.guiachapadaveadeiros.com/en/termos.html"};
+  function tools(){
+    return [
+      {
+        name: "listar_passeios",
+        description: C.toursDesc,
+        inputSchema: { type: "object", properties: { interesse: { type: "string", description: C.interest } } },
+        execute: function(args){
+          var q = args && args.interesse ? String(args.interesse) : "";
+          var text = C.toursText + "\n" + C.toursUrl + (q ? "\n" + q : "");
+          return Promise.resolve({ content: [{ type: "text", text: text }] });
+        }
+      },
+      {
+        name: "consultar_contato",
+        description: C.contactDesc,
+        inputSchema: { type: "object", properties: {} },
+        execute: function(){
+          var text = C.contactText + "\n" + C.contactUrl + "\n" + C.aboutUrl + "\n" + C.privacyUrl + "\n" + C.termsUrl;
+          return Promise.resolve({ content: [{ type: "text", text: text }] });
+        }
+      }
+    ];
+  }
+  function reg(){
+    var mc = navigator.modelContext;
+    if (!mc || typeof mc.registerTool !== "function" || window.__gcvWebmcp) return !!window.__gcvWebmcp;
+    var list = tools();
+    var ok = 0;
+    for (var i = 0; i < list.length; i++) {
+      try { mc.registerTool(list[i]); ok++; } catch (e) {}
+    }
+    if (ok) window.__gcvWebmcp = 1;
+    return ok > 0;
+  }
+  if (!reg()) {
+    var n = 0;
+    var id = setInterval(function(){ if (reg() || ++n > 40) clearInterval(id); }, 100);
+  }
+  document.addEventListener("DOMContentLoaded", reg);
+  window.addEventListener("load", reg);
+})();
+</script>
 </head>
 <body>
   <a class="skip-link" href="#conteudo">Skip to content</a>
@@ -71,10 +118,10 @@
       <a href="index.html"  aria-current="page">Home</a>
       <a href="revista.html" >Magazine</a>
       <a href="atrativos.html" >Attractions</a>
-      <a href="passeios.html">Tours</a>
+      <a href="passeios.html" >Tours</a>
       <a href="consultar-reserva.html" >Reservations</a>
       <a href="contato.html" >Contact</a>
-      <div class="nav-search-wrap" data-gcv-search data-locale="en" data-page-out="en/confirmacao.html" data-search-index="/assets/data/search-index.json?v=1.1.35" data-no-results="No pages found">
+      <div class="nav-search-wrap" data-gcv-search data-locale="en" data-page-out="en/confirmacao.html" data-search-index="/assets/data/search-index.json?v=1.1.36" data-no-results="No pages found">
         <button type="button" class="nav-search" aria-label="Search" aria-expanded="false" aria-controls="nav-search-panel">⌕</button>
         <div class="nav-search-panel" id="nav-search-panel" hidden>
           <input type="search" id="nav-search-input" class="nav-search-input" placeholder="Search the site…" autocomplete="off" aria-label="Type to search pages" />
@@ -117,7 +164,10 @@
         <span>Tours &amp; services</span>
         <span>Lodging</span>
         <a href="consultar-reserva.html">Reservations</a>
-        <a href="contato.html">Contact</a>
+        <a href="sobre.html" title="About / Sobre">About</a>
+        <a href="contato.html" title="Contact / Contato">Contact</a>
+        <a href="privacidade.html" rel="privacy-policy" title="Privacy / Privacidade">Privacy</a>
+        <a href="termos.html" rel="terms-of-service" title="Terms / Termos">Terms</a>
         <a href="https://api.whatsapp.com/send?phone=5562982506891&amp;text=*Quero%20planejar%20minha%20viagem%20na%20Chapada*" rel="noreferrer" target="_blank">WhatsApp</a>
       </nav>
       <div class="footer-col footer-support">
@@ -134,13 +184,13 @@
 </footer>
     <script type="application/json" id="gcv-excursoes-payload">{"pt":[],"en":[],"es":[]}</script>
   <script type="application/json" id="gcv-exc-cart-catalog">{"pt":[],"en":[],"es":[]}</script>
-  <script src="/assets/js/qrcode.min.js?v=1.1.35" defer></script>
-  <script src="/assets/js/gcv-pix-receipt.js?v=1.1.35" defer></script>
-  <script src="/assets/js/gcv-reserva-voucher.js?v=1.1.35" defer></script>
-  <script src="/assets/js/gcv-exc-bookings.js?v=1.1.35" defer></script>
-  <script src="/assets/js/gcv-confirmacao.js?v=1.1.35" defer></script>
-  <script src="../assets/js/gcv-exc-cart-policies.js?v=1.1.41" defer></script>
-  <script src="../assets/js/gcv-exc-cart.js?v=1.1.48" defer></script>
-<script src="/assets/js/site.js?v=1.1.89" defer></script>
+  <script src="/assets/js/qrcode.min.js?v=1.1.36" defer></script>
+  <script src="/assets/js/gcv-pix-receipt.js?v=1.1.36" defer></script>
+  <script src="/assets/js/gcv-reserva-voucher.js?v=1.1.36" defer></script>
+  <script src="/assets/js/gcv-exc-bookings.js?v=1.1.36" defer></script>
+  <script src="/assets/js/gcv-confirmacao.js?v=1.1.36" defer></script>
+  <script src="../assets/js/gcv-exc-cart-policies.js?v=1.1.36" defer></script>
+  <script src="../assets/js/gcv-exc-cart.js?v=1.1.36" defer></script>
+<script src="/assets/js/site.js?v=1.1.36" defer></script>
 </body>
 </html>

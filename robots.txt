@@ -1,10 +1,17 @@
 # Guia Chapada Veadeiros — robots.txt otimizado para SEO e IA generativa
 # https://www.guiachapadaveadeiros.com
 # Contexto para LLMs: https://www.guiachapadaveadeiros.com/llms.txt
+# Content Signals (https://contentsignals.org):
+# search — índice e trechos; ai-input — resposta no momento da consulta; ai-train — treino de modelo
+# "yes" permite o uso. "no" registra objeção.
 
 User-agent: *
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 Allow: /
 Allow: /llms.txt
+Allow: /index.md
+Allow: /mcp
+Allow: /.well-known/
 Disallow: /Build_prod/
 Disallow: /api/
 Disallow: /dashboard/
@@ -13,78 +20,103 @@ Disallow: /guia/cadastro.html
 
 User-agent: GPTBot
 Allow: /
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 
 User-agent: ChatGPT-User
 Allow: /
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 
 User-agent: OAI-SearchBot
 Allow: /
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 
 User-agent: Google-Extended
 Allow: /
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 
 User-agent: Google-CloudVertexBot
 Allow: /
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 
 User-agent: GoogleOther
 Allow: /
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 
 User-agent: anthropic-ai
 Allow: /
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 
 User-agent: ClaudeBot
 Allow: /
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 
 User-agent: Claude-Web
 Allow: /
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 
 User-agent: Claude-SearchBot
 Allow: /
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 
 User-agent: Claude-User
 Allow: /
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 
 User-agent: PerplexityBot
 Allow: /
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 
 User-agent: Applebot-Extended
 Allow: /
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 
 User-agent: cohere-ai
 Allow: /
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 
 User-agent: Bytespider
 Allow: /
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 
 User-agent: Amazonbot
 Allow: /
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 
 User-agent: meta-externalagent
 Allow: /
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 
 User-agent: FacebookBot
 Allow: /
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 
 User-agent: CCBot
 Allow: /
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 
 User-agent: YouBot
 Allow: /
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 
 User-agent: DuckAssistBot
 Allow: /
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 
 User-agent: MistralAI-User
 Allow: /
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 
 User-agent: Timpibot
 Allow: /
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 
 User-agent: Diffbot
 Allow: /
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 
 User-agent: ImagesiftBot
 Allow: /
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 
 # Feeds e sitemaps
 Sitemap: https://www.guiachapadaveadeiros.com/sitemap.xml

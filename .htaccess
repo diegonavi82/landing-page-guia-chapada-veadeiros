@@ -11,6 +11,28 @@ Options -Indexes
 <IfModule mod_rewrite.c>
   RewriteEngine On
 
+  # Home em Markdown quando o agente pede text/markdown
+  RewriteCond %{HTTP_ACCEPT} text/markdown [NC]
+  RewriteRule ^$ /index.md [L]
+
+  RewriteCond %{HTTP_ACCEPT} text/markdown [NC]
+  RewriteRule ^index\.html$ /index.md [L]
+
+  RewriteCond %{HTTP_ACCEPT} text/markdown [NC]
+  RewriteRule ^en/?$ /en/index.md [L]
+
+  RewriteCond %{HTTP_ACCEPT} text/markdown [NC]
+  RewriteRule ^en/index\.html$ /en/index.md [L]
+
+  RewriteCond %{HTTP_ACCEPT} text/markdown [NC]
+  RewriteRule ^es/?$ /es/index.md [L]
+
+  RewriteCond %{HTTP_ACCEPT} text/markdown [NC]
+  RewriteRule ^es/index\.html$ /es/index.md [L]
+
+  # MCP streamable HTTP
+  RewriteRule ^mcp/?$ /mcp/index.php [L]
+
   # Bloquear acesso direto a vendor
   RewriteRule ^api/vendor/ - [F,L]
 
@@ -26,10 +48,19 @@ Options -Indexes
   RewriteRule ^(.+?)/?$ /$1/index.html [L]
 </IfModule>
 
+AddType text/markdown .md
+AddType application/json .json
+
 # Headers de segurança
 <IfModule mod_headers.c>
   Header set X-Frame-Options "SAMEORIGIN"
   Header set X-Content-Type-Options "nosniff"
   Header set Referrer-Policy "strict-origin-when-cross-origin"
   Header always set X-XSS-Protection "1; mode=block"
+
+  # RFC 8288: llms.txt e a versão Markdown da home
+  <FilesMatch "\.(html|md)$">
+    Header add Link "<https://www.guiachapadaveadeiros.com/llms.txt>; rel=\"describedby\"; type=\"text/markdown\""
+    Header add Link "<https://www.guiachapadaveadeiros.com/index.md>; rel=\"alternate\"; type=\"text/markdown\""
+  </FilesMatch>
 </IfModule>

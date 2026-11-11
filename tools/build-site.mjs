@@ -25,6 +25,7 @@ import {
 import { excursaoPayloadForSite, excursaoRowsForLocale } from "./excursoes-carousel-data.mjs";
 import { excursionsCarouselTrackSsrHtml } from "./excursoes-carousel-ssr.mjs";
 import { guiaProfilesForSite } from "./excursoes-guides-profiles.mjs";
+import { INSTITUTIONAL } from "./institutional-pages.mjs";
 import { rewriteHtmlMediaUrls, htmlWithStaticAssetPrefix, toPublicAssetRel } from "./media-url.mjs";
 import {
   heroAgencyImageUrls,
@@ -84,6 +85,7 @@ import {
   touristAttractionJsonLd,
   seoExtraHeadMeta,
   buildLlmsTxt,
+  buildHomeMarkdown,
   relatedPagesHtml,
   pillarContextLinkHtml,
   isoDateNow,
@@ -861,6 +863,9 @@ function writeAdvancedSitemapsAndFeed() {
 
   writeFileSync(join(ROOT, "robots.txt"), buildRobotsTxt(SITE_ORIGIN), "utf8");
   writeFileSync(join(ROOT, "llms.txt"), buildLlmsTxt(SITE_ORIGIN), "utf8");
+  writeFileSync(join(ROOT, "index.md"), buildHomeMarkdown(SITE_ORIGIN, "pt"), "utf8");
+  writeFileSync(join(ROOT, "en", "index.md"), buildHomeMarkdown(SITE_ORIGIN, "en"), "utf8");
+  writeFileSync(join(ROOT, "es", "index.md"), buildHomeMarkdown(SITE_ORIGIN, "es"), "utf8");
 
   const rssSorted = RSS_ITEMS.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
   writeFileSync(join(ROOT, "feed.xml"), buildRssFeed(SITE_ORIGIN, rssSorted), "utf8");
@@ -1326,6 +1331,90 @@ function langLinksHtml(locale, pathKey) {
   return `<div class="lang-switch" role="navigation" aria-label="Language">${items.join("\n    ")}</div>`;
 }
 
+function webmcpBootScript(locale) {
+  const prefix = locale === "pt" ? "" : `/${locale}`;
+  const pack = {
+    pt: {
+      toursDesc: "Lista os passeios mais pedidos na Chapada dos Veadeiros e como reservar com guia local.",
+      interest: "Cachoeira, trilha, data ou tipo de passeio",
+      toursText:
+        "Passeios com guia local na Chapada dos Veadeiros. Mais pedidos: Cataratas dos Couros, Vale da Lua, Cachoeira do Segredo, Santa Bárbara, Saltos do Rio Preto e Mirante da Janela. O preço de cada saída aparece na página do passeio, antes do pagamento.",
+      contactDesc: "Informa telefone, WhatsApp, e-mail e as páginas de contato, sobre, privacidade e termos.",
+      contactText: "Guia Chapada Veadeiros. WhatsApp e telefone: +55 62 98250-6891. E-mail: contato@guiachapadaveadeiros.com. Base: Alto Paraíso de Goiás, Goiás, Brasil.",
+    },
+    en: {
+      toursDesc: "Lists the most requested Chapada dos Veadeiros tours and how to book a local guide.",
+      interest: "Waterfall, trail, date or type of tour",
+      toursText:
+        "Local-guide tours in Chapada dos Veadeiros. Often requested: Cataratas dos Couros, Vale da Lua, Cachoeira do Segredo, Santa Bárbara, Saltos do Rio Preto and Mirante da Janela. The price of each departure is shown on the tour page before payment.",
+      contactDesc: "Returns phone, WhatsApp, email and the contact, about, privacy and terms pages.",
+      contactText: "Guia Chapada Veadeiros. WhatsApp and phone: +55 62 98250-6891. Email: contato@guiachapadaveadeiros.com. Based in Alto Paraíso de Goiás, Goiás, Brazil.",
+    },
+    es: {
+      toursDesc: "Lista las excursiones más pedidas en la Chapada dos Veadeiros y cómo reservar con guía local.",
+      interest: "Cascada, sendero, fecha o tipo de excursión",
+      toursText:
+        "Excursiones con guía local en la Chapada dos Veadeiros. Las más pedidas: Cataratas dos Couros, Vale da Lua, Cachoeira do Segredo, Santa Bárbara, Saltos do Rio Preto y Mirante da Janela. El precio de cada salida aparece en la página de la excursión, antes del pago.",
+      contactDesc: "Informa teléfono, WhatsApp, correo y las páginas de contacto, acerca de, privacidad y términos.",
+      contactText: "Guía Chapada Veadeiros. WhatsApp y teléfono: +55 62 98250-6891. Correo: contato@guiachapadaveadeiros.com. Base: Alto Paraíso de Goiás, Goiás, Brasil.",
+    },
+  }[locale] || null;
+  if (!pack) return "";
+  const urls = {
+    toursUrl: `${SITE_ORIGIN}${prefix}/passeios.html`,
+    contactUrl: `${SITE_ORIGIN}${prefix}/contato.html`,
+    aboutUrl: `${SITE_ORIGIN}${prefix}/sobre.html`,
+    privacyUrl: `${SITE_ORIGIN}${prefix}/privacidade.html`,
+    termsUrl: `${SITE_ORIGIN}${prefix}/termos.html`,
+  };
+  const json = JSON.stringify({ ...pack, ...urls }).replace(/</g, "\\u003c");
+  return `<script>
+(function(){
+  var C = ${json};
+  function tools(){
+    return [
+      {
+        name: "listar_passeios",
+        description: C.toursDesc,
+        inputSchema: { type: "object", properties: { interesse: { type: "string", description: C.interest } } },
+        execute: function(args){
+          var q = args && args.interesse ? String(args.interesse) : "";
+          var text = C.toursText + "\\n" + C.toursUrl + (q ? "\\n" + q : "");
+          return Promise.resolve({ content: [{ type: "text", text: text }] });
+        }
+      },
+      {
+        name: "consultar_contato",
+        description: C.contactDesc,
+        inputSchema: { type: "object", properties: {} },
+        execute: function(){
+          var text = C.contactText + "\\n" + C.contactUrl + "\\n" + C.aboutUrl + "\\n" + C.privacyUrl + "\\n" + C.termsUrl;
+          return Promise.resolve({ content: [{ type: "text", text: text }] });
+        }
+      }
+    ];
+  }
+  function reg(){
+    var mc = navigator.modelContext;
+    if (!mc || typeof mc.registerTool !== "function" || window.__gcvWebmcp) return !!window.__gcvWebmcp;
+    var list = tools();
+    var ok = 0;
+    for (var i = 0; i < list.length; i++) {
+      try { mc.registerTool(list[i]); ok++; } catch (e) {}
+    }
+    if (ok) window.__gcvWebmcp = 1;
+    return ok > 0;
+  }
+  if (!reg()) {
+    var n = 0;
+    var id = setInterval(function(){ if (reg() || ++n > 40) clearInterval(id); }, 100);
+  }
+  document.addEventListener("DOMContentLoaded", reg);
+  window.addEventListener("load", reg);
+})();
+</script>`;
+}
+
 function buildHead(ctx) {
   const {
     title,
@@ -1404,6 +1493,8 @@ function buildHead(ctx) {
     <title>${esc(title)}</title>
     <meta name="description" content="${esc(desc)}" />
     <link rel="canonical" href="${esc(canon)}" />
+    <link rel="describedby" href="${esc(`${SITE_ORIGIN}/llms.txt`)}" type="text/markdown" />
+    <link rel="alternate" type="text/markdown" title="Markdown" href="${esc(`${SITE_ORIGIN}${locale === "pt" ? "/index.md" : `/${locale}/index.md`}`)}" />
     ${seoExtra}
 ${hreflangBlock}
     <meta property="og:type" content="${esc(ogSiteType)}" />
@@ -1422,7 +1513,8 @@ ${ogLocaleAlternate}
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="${esc(publicCssSrc("site.css", outRelPath(locale, pathKey)))}" />
     <link rel="stylesheet" href="${esc(publicCssSrc("gcv-detail.css", outRelPath(locale, pathKey)))}" />
-    <link rel="stylesheet" href="${esc(publicCssSrc("gcv-seo.css", outRelPath(locale, pathKey)))}" />${cssExtra}${extraHead ? `\n${extraHead}` : ""}`;
+    <link rel="stylesheet" href="${esc(publicCssSrc("gcv-seo.css", outRelPath(locale, pathKey)))}" />${cssExtra}${extraHead ? `\n${extraHead}` : ""}
+    ${webmcpBootScript(locale)}`;
 }
 
 function headerHtml(ctx) {
@@ -1476,6 +1568,9 @@ function footerHtml(ctx) {
   const F = S.footer;
   const cur = outRelPath(locale, pathKey);
   const contactHref = relBetweenSync(cur, outRelPath(locale, "contato.html"));
+  const aboutHref = relBetweenSync(cur, outRelPath(locale, "sobre.html"));
+  const privacyHref = relBetweenSync(cur, outRelPath(locale, "privacidade.html"));
+  const termsHref = relBetweenSync(cur, outRelPath(locale, "termos.html"));
   const brandPic = picture(
     ap,
     "imagens/parque-nacional-guia-chapada-veadeiros-saltos-rio-preto-garimpao.jpg",
@@ -1507,7 +1602,10 @@ function footerHtml(ctx) {
         <span>${esc(F.linkShop)}</span>
         <span>${esc(F.linkLodging)}</span>
         <a href="${esc(relBetweenSync(cur, outRelPath(locale, "consultar-reserva.html")))}">${esc(S.nav.reservas)}</a>
-        <a href="${esc(contactHref)}">${esc(F.linkContact)}</a>
+        <a href="${esc(aboutHref)}" title="${esc(F.linkAboutTitle)}">${esc(F.linkAbout)}</a>
+        <a href="${esc(contactHref)}" title="${esc(F.linkContactTitle)}">${esc(F.linkContact)}</a>
+        <a href="${esc(privacyHref)}" rel="privacy-policy" title="${esc(F.linkPrivacyTitle)}">${esc(F.linkPrivacy)}</a>
+        <a href="${esc(termsHref)}" rel="terms-of-service" title="${esc(F.linkTermsTitle)}">${esc(F.linkTerms)}</a>
         <a href="${esc(FOOTER_WA_PLAN_URL)}" rel="noreferrer" target="_blank">${esc(F.linkWhatsapp)}</a>
       </nav>
       <div class="footer-col footer-support">
@@ -2164,6 +2262,33 @@ ${reservaLookupWidgetHtml(locale, { idPrefix: "gcv-reserva" })}
   </section>`;
 }
 
+function institutionalMain(locale, pathKey) {
+  const page = INSTITUTIONAL[pathKey]?.[locale];
+  if (!page) return "";
+  const cur = outRelPath(locale, pathKey);
+  const labels = {
+    pt: { about: "Sobre", contact: "Contato", privacy: "Privacidade", terms: "Termos" },
+    en: { about: "About", contact: "Contact", privacy: "Privacy", terms: "Terms" },
+    es: { about: "Acerca de", contact: "Contacto", privacy: "Privacidad", terms: "Términos" },
+  }[locale];
+  const link = (pk, label, rel) => {
+    const href = relBetweenSync(cur, outRelPath(locale, pk));
+    const relAttr = rel ? ` rel="${esc(rel)}"` : "";
+    return `<a href="${esc(href)}"${relAttr}>${esc(label)}</a>`;
+  };
+  const sections = page.sections
+    .map((s) => `<h2>${esc(s.h)}</h2>\n${s.paragraphs.map((p) => `<p>${esc(p)}</p>`).join("\n")}`)
+    .join("\n");
+  const related = `<p>${link("sobre.html", labels.about)} · ${link("contato.html", labels.contact)} · ${link("privacidade.html", labels.privacy, "privacy-policy")} · ${link("termos.html", labels.terms, "terms-of-service")}</p>`;
+  const phone = `<p><a href="mailto:${esc(CONTACT_EMAIL)}">${esc(CONTACT_EMAIL)}</a> · <a href="tel:+5562982506891">+55 62 98250-6891</a></p>`;
+  return `<div class="gcv-institutional"><article class="prose">
+<h1>${esc(page.h1)}</h1>
+${sections}
+${phone}
+${related}
+</article></div>`;
+}
+
 function contatoMain(locale, ap) {
   const S = STRINGS[locale];
   const c = S.contact;
@@ -2190,7 +2315,7 @@ function contatoMain(locale, ap) {
 <button type="button" class="gcv-contact-btn gcv-contact-btn--secondary" id="gcv-contact-sent-reset">${esc(c.clear)}</button>
 </div>
 </div>
-<form id="gcv-contact-form" class="gcv-contact-form" novalidate
+<form id="gcv-contact-form" class="gcv-contact-form" novalidate toolname="enviar_contato" tool-name="enviar_contato" tool-description="${esc(c.toolDescription)}" tooldescription="${esc(c.toolDescription)}"
   data-endpoint="${esc(CONTACT_POST_URL)}"
   data-locale="${esc(locale)}"
   data-accept-language="${esc(acceptLang)}"
@@ -2950,6 +3075,11 @@ function collectSearchEntries(locale) {
   add(S.nav.revista, "revista.html", S.revistaPage.seoDesc);
   add(S.atrativosHub.title, "atrativos.html", S.atrativosHub.seoDesc);
   add(S.contact.title, "contato.html", S.contact.subtitle);
+  for (const pk of ["sobre.html", "privacidade.html", "termos.html"]) {
+    const inst = INSTITUTIONAL[pk][locale];
+    const body = inst.sections.map((s) => `${s.h} ${s.paragraphs.join(" ")}`).join(" ");
+    add(inst.h1, pk, inst.desc, body);
+  }
 
   for (const item of attractionIterate(locale)) {
     const cms = item.cms;
@@ -3060,6 +3190,9 @@ for (const locale of LOCALES) {
       main: (l) => homeMainHtml(l, assetPrefix(outRelPath(l, "")), INSTAGRAM_FEED_POSTS, GOOGLE_REVIEWS_POOL),
     },
     { key: "contato.html", current: "contact", main: (l) => contatoMain(l, assetPrefix(outRelPath(l, "contato.html"))) },
+    { key: "sobre.html", current: "institucional", main: (l) => institutionalMain(l, "sobre.html") },
+    { key: "privacidade.html", current: "institucional", main: (l) => institutionalMain(l, "privacidade.html") },
+    { key: "termos.html", current: "institucional", main: (l) => institutionalMain(l, "termos.html") },
     {
       key: "confirmacao.html",
       current: "home",
@@ -3089,6 +3222,10 @@ for (const locale of LOCALES) {
     if (pk === "contato.html") {
       title = `${S.contact.title} | Guia Chapada Veadeiros`;
       desc = S.contact.subtitle;
+    } else if (INSTITUTIONAL[pk]) {
+      const inst = INSTITUTIONAL[pk][locale];
+      title = `${inst.h1} | Guia Chapada Veadeiros`;
+      desc = inst.desc;
     } else if (pk === "confirmacao.html") {
       title =
         locale === "en"

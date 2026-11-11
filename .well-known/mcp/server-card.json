@@ -1,0 +1,46 @@
+{
+  "name": "Guia Chapada Veadeiros",
+  "version": "1.0.0",
+  "description": "Passeios, cachoeiras e guia local na Chapada dos Veadeiros. Ferramentas para listar passeios e consultar contato.",
+  "endpoint": "https://www.guiachapadaveadeiros.com/mcp",
+  "protocolVersion": "2025-11-25",
+  "transport": {
+    "type": "streamable-http",
+    "endpoint": "https://www.guiachapadaveadeiros.com/mcp"
+  },
+  "capabilities": {
+    "tools": {
+      "listChanged": false
+    }
+  },
+  "serverInfo": {
+    "name": "guia-chapada-veadeiros",
+    "title": "Guia Chapada Veadeiros",
+    "version": "1.0.0"
+  },
+  "tools": [
+    {
+      "name": "listar_passeios",
+      "title": "Listar passeios",
+      "description": "Lista os passeios mais pedidos na Chapada dos Veadeiros e o endereço para reservar com guia local.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "interesse": {
+            "type": "string",
+            "description": "Cachoeira, trilha, data ou tipo de passeio"
+          }
+        }
+      }
+    },
+    {
+      "name": "consultar_contato",
+      "title": "Consultar contato",
+      "description": "Telefone, WhatsApp, e-mail e páginas de contato, sobre, privacidade e termos.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    }
+  ]
+}
