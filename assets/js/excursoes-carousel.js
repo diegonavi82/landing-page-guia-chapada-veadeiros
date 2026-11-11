@@ -7073,7 +7073,7 @@
     return rest ? m[1] + "-" + rest : m[1];
   }
 
-  function sharePageUrl(locale, cartId, todos) {
+  function sharePageUrl(locale, cartId) {
     var origin = "https://www.guiachapadaveadeiros.com";
     try {
       if (location.protocol === "http:" || location.protocol === "https:") origin = location.origin;
@@ -7081,8 +7081,7 @@
       /* */
     }
     var prefix = locale === "en" ? "/en" : locale === "es" ? "/es" : "";
-    var url = origin + prefix + "/s/" + encodeURIComponent(saidaPublicId(cartId));
-    return todos ? url + "?todos=1" : url;
+    return origin + prefix + "/s/" + encodeURIComponent(saidaPublicId(cartId));
   }
 
   function shareMessage(s, destino, dateLabel, url) {
@@ -7171,52 +7170,7 @@
     return sheet;
   }
 
-  var shareActor = { ready: false, id: 0, guide: false };
-  function loadShareActor() {
-    if (shareActor.loading) return;
-    shareActor.loading = true;
-    fetch("/api/auth/me.php", {
-      method: "GET",
-      credentials: "same-origin",
-      headers: { Accept: "application/json" },
-      cache: "no-store",
-    })
-      .then(function (res) {
-        return res.json().then(
-          function (body) {
-            return body;
-          },
-          function () {
-            return null;
-          },
-        );
-      })
-      .then(function (body) {
-        var user = body && body.ok && body.data && body.data.id ? body.data : null;
-        var role = user ? String(user.active_role || user.role || "") : "";
-        shareActor.id = user ? parseInt(String(user.id), 10) || 0 : 0;
-        shareActor.guide = role === "guide";
-        shareActor.ready = true;
-      })
-      .catch(function () {
-        shareActor.ready = true;
-      });
-  }
-
   function openShareSheet(btn) {
-    if (!shareActor.ready) {
-      if (btn._gcvShareWait) return;
-      btn._gcvShareWait = true;
-      var tries = 0;
-      var timer = window.setInterval(function () {
-        tries += 1;
-        if (!shareActor.ready && tries < 25) return;
-        window.clearInterval(timer);
-        btn._gcvShareWait = false;
-        openShareSheet(btn);
-      }, 40);
-      return;
-    }
     var card = btn.closest(".gcv-excursoes-card");
     var block = btn.closest(".gcv-excursoes-card__book");
     var sec = card && card.closest("#excursoes-junho");
@@ -7227,9 +7181,7 @@
     if (!cartId) return;
     var destino = (block && block.getAttribute("data-cart-destino")) || "";
     var dateLabel = (block && block.getAttribute("data-cart-date")) || "";
-    var guideId = parseInt((block && block.getAttribute("data-guide-user-id")) || "0", 10) || 0;
-    var ownGuide = shareActor.guide && shareActor.id > 0 && guideId > 0 && shareActor.id === guideId;
-    var url = sharePageUrl(locale, cartId, !ownGuide);
+    var url = sharePageUrl(locale, cartId);
     var message = shareMessage(s, destino, dateLabel, url);
     var text = shareMessage(s, destino, dateLabel, "");
     var sheet = ensureShareSheet();
@@ -7297,7 +7249,6 @@
     var de = isoDay(queryParam("de"));
     var ate = isoDay(queryParam("ate")) || de;
     var id = queryParam("saida");
-    var todos = queryParam("todos") === "1";
     if (!window.GcvSaidaPopup) return;
     if (!de && !id) return;
     var section = document.getElementById("excursoes") || document.getElementById("excursoes-junho");
@@ -7312,7 +7263,7 @@
       window.GcvSaidaPopup.openPeriod(de, ate);
       return;
     }
-    if (id && typeof window.GcvSaidaPopup.open === "function") window.GcvSaidaPopup.open(id, todos ? "todos" : "guide");
+    if (id && typeof window.GcvSaidaPopup.open === "function") window.GcvSaidaPopup.open(id);
   }
 
   function initBookingControls() {
@@ -8271,7 +8222,6 @@
       initBookingControls();
       initExcCart(locale);
       bootExcursaoCarousel();
-      loadShareActor();
     } catch (err) {
       if (typeof console !== "undefined" && console.error) console.error("[gcv-excursoes]", err);
     }
@@ -8408,6 +8358,16 @@
     }
   }
 
+  function focusSharedSaida(rows) {
+    var id = queryParam("saida");
+    if (!id) return rows || [];
+    var want = saidaPublicId(id);
+    var found = (rows || []).filter(function (row) {
+      return saidaPublicId(excursaoCartId(row)) === want;
+    });
+    return found;
+  }
+
   function bootExcursaoCarousel() {
     var root = document.getElementById("excursoes-junho");
     if (!root) return;
@@ -8417,7 +8377,7 @@
     var staticRows = resolveStaticExcursaoRows(root, locale);
     var sourceRows = staticRows;
 
-    var allExcursoes = sortExcursaoByDeparture(filterFutureExcursoes(applyBookingOverlays(sourceRows)));
+    var allExcursoes = focusSharedSaida(sortExcursaoByDeparture(filterFutureExcursoes(applyBookingOverlays(sourceRows))));
     if (!allExcursoes.length) {
       hideExcursaoSection(root);
       // Ainda tenta API: pode haver saídas só no MySQL
@@ -8941,7 +8901,7 @@
 
       function refreshBookableFromClock() {
         var source = sourceRows && sourceRows.length ? sourceRows : staticRows;
-        var freshAll = sortExcursaoByDeparture(filterFutureExcursoes(applyBookingOverlays(source)));
+        var freshAll = focusSharedSaida(sortExcursaoByDeparture(filterFutureExcursoes(applyBookingOverlays(source))));
         if (window.GcvExcWaitlist && typeof window.GcvExcWaitlist.checkRowsForOpenedSpots === "function") {
           window.GcvExcWaitlist.checkRowsForOpenedSpots(freshAll, excursaoCartId, vagasDisponiveis);
         }
@@ -8990,7 +8950,7 @@
     } else {
       function refreshWithoutFilters() {
         var source = sourceRows && sourceRows.length ? sourceRows : staticRows;
-        allExcursoes = sortExcursaoByDeparture(filterFutureExcursoes(applyBookingOverlays(source)));
+        allExcursoes = focusSharedSaida(sortExcursaoByDeparture(filterFutureExcursoes(applyBookingOverlays(source))));
         if (!allExcursoes.length) {
           hideExcursaoSection(root);
         } else {
@@ -9026,7 +8986,7 @@
     fetchLiveExcursaoRows(locale, function (liveRows) {
       if (!liveRows || !liveRows.length) return;
       sourceRows = mergeExcursaoRows(staticRows, liveRows);
-      var freshAll = sortExcursaoByDeparture(filterFutureExcursoes(applyBookingOverlays(sourceRows)));
+      var freshAll = focusSharedSaida(sortExcursaoByDeparture(filterFutureExcursoes(applyBookingOverlays(sourceRows))));
       allExcursoes = freshAll;
       if (!allExcursoes.length) {
         hideExcursaoSection(root);
@@ -9256,7 +9216,7 @@
     });
   }
 
-  function paintSaidaCard(cartId, rows, locale, scope) {
+  function paintSaidaCard(cartId, rows, locale) {
     var s = STRINGS[locale] || STRINGS.pt;
     var found = null;
     (rows || []).some(function (row) {
@@ -9266,30 +9226,7 @@
       }
       return false;
     });
-    var pool = rows || [];
-    if (scope !== "todos") {
-      if (!found) {
-        showSaidaTours([], locale, 0, s.joinTripMissing);
-        return;
-      }
-      var guideKey = guideSaidaKey(found);
-      pool = guideKey
-        ? pool.filter(function (row) {
-            return guideSaidaKey(row) === guideKey;
-          })
-        : [found];
-    }
-    var tours = sortExcursaoByDeparture(dedupeSaidaTours(pool, cartId));
-    var start = 0;
-    var want = saidaPublicId(cartId);
-    tours.some(function (row, i) {
-      if (saidaPublicId(excursaoCartId(row)) === want) {
-        start = i;
-        return true;
-      }
-      return false;
-    });
-    showSaidaTours(tours, locale, start, s.joinTripMissing);
+    showSaidaTours(found ? [found] : [], locale, 0, s.joinTripMissing);
   }
 
   function paintSaidaPeriod(from, to, rows, locale) {
@@ -9315,7 +9252,7 @@
       var modal = ensureSaidaModal();
       modal.hidden = false;
       popupRows(locale, function (rows) {
-        paintSaidaCard(cartId, rows, locale, scope === "todos" ? "todos" : "guide");
+        paintSaidaCard(cartId, rows, locale);
       });
     },
     openPeriod: function (from, to) {

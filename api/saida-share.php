@@ -11,7 +11,6 @@ $lang = gcv_saida_lang((string)($_GET['lang'] ?? 'pt'));
 $cartId = gcv_saida_slug((string)($_GET['id'] ?? ''));
 $row = $cartId !== '' ? gcv_saida_find($cartId) : null;
 $bundle = $row ? gcv_saida_share_bundle($row, $lang) : null;
-$todos = (string)($_GET['todos'] ?? '') === '1';
 
 if ($bundle) {
     $title = $bundle['title'];
@@ -21,9 +20,6 @@ if ($bundle) {
     $imageH = '630';
     $pageUrl = $bundle['url'];
     $go = gcv_saida_home_url($bundle['cartId'], $lang);
-    if ($todos) {
-        $go .= (str_contains($go, '?') ? '&' : '?') . 'todos=1';
-    }
 } else {
     $title = $lang === 'en'
         ? 'Tours in Chapada dos Veadeiros'

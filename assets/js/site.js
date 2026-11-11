@@ -1503,7 +1503,7 @@
           return;
         }
         ensurePasseioMenuLink();
-        ["gcv-home-passeios", "proximas-saidas"].forEach(function (id) {
+        ["proximas-saidas"].forEach(function (id) {
           var el = document.getElementById(id);
           if (el) el.hidden = false;
         });
@@ -1534,7 +1534,7 @@
         return;
       }
       var script = document.createElement("script");
-      script.src = "/assets/js/excursoes-carousel.js?v=1.1.115";
+      script.src = "/assets/js/excursoes-carousel.js?v=1.1.116";
       script.onload = go;
       document.head.appendChild(script);
     }

@@ -219,7 +219,7 @@ function publicJsSrc(file, pageOutRelPath) {
   let name = String(file || "").trim().replace(/^\//, "");
   if (name === "site.js" || name === "gcv-hero-slider.js") name = name.replace(/\.js$/i, ".min.js");
   let q = BUILD_ASSET_QUERY;
-  if (name === "excursoes-carousel.js") q = "?v=1.1.101";
+  if (name === "excursoes-carousel.js") q = "?v=1.1.116";
   const prefixSegment = sitePathSegmentsTrimmed();
   if (prefixSegment) {
     const raw = `/${prefixSegment}/assets/js/${name}${q}`;
@@ -1466,6 +1466,10 @@ function cssLink(href, blocking) {
   return `\n    <link rel="stylesheet" href="${safe}" media="print" onload="this.media='all'" />\n    <noscript><link rel="stylesheet" href="${safe}" /></noscript>`;
 }
 
+function deferScriptTags(srcs) {
+  return srcs.map((src) => `  <script src="${esc(src)}" defer></script>\n`).join("");
+}
+
 function loadAfterIdle(srcs) {
   const json = JSON.stringify(srcs);
   const tabler = JSON.stringify(
@@ -1726,7 +1730,7 @@ function footerHtml(ctx) {
 
 const VOUCHER_PAYLOAD_SCRIPT = `  <script type="application/json" id="gcv-excursoes-payload">${safeJsonLd(excursaoPayloadForSite())}</script>\n`;
 
-function wrapPageFixed({ lang, topbar, skipLabel, head, header, main, footer, ap, pageOutRel, extraFooterScripts = "", extraAfterFooter = "" }) {
+function wrapPageFixed({ lang, topbar, skipLabel, head, header, main, footer, ap, pageOutRel, extraFooterScripts = "", extraAfterFooter = "", omitSiteScript = false }) {
   return `<!DOCTYPE html>
 <html lang="${esc(lang)}">
 <head>
@@ -1740,7 +1744,7 @@ ${head}
 ${main}
   </main>
   ${footer}
-  ${extraAfterFooter}${extraFooterScripts}<script src="${esc(publicJsSrc("site.js", pageOutRel))}" defer></script>
+  ${extraAfterFooter}${extraFooterScripts}${omitSiteScript ? "" : `<script src="${esc(publicJsSrc("site.js", pageOutRel))}" defer></script>`}
 </body>
 </html>`;
 }
@@ -3103,7 +3107,7 @@ function withSitewideExcCart(pageOutRel, { extraCss = [], extraHead = "", extraF
   return { extraCss: css, extraHead: head, extraFooterScripts: scripts };
 }
 
-function renderPage(locale, pathKey, { title, desc, ogImageRel, current, mainHtml, extraCss, ogTitle, ogDesc, extraHead, ogType, ogImageWidth, ogImageHeight, extraFooterScripts, extraAfterFooter, keywords, ogImageAlt }) {
+function renderPage(locale, pathKey, { title, desc, ogImageRel, current, mainHtml, extraCss, ogTitle, ogDesc, extraHead, ogType, ogImageWidth, ogImageHeight, extraFooterScripts, extraAfterFooter, keywords, ogImageAlt, omitSiteScript = false }) {
   const outR = outRelPath(locale, pathKey);
   const ap = assetPrefix(outR);
   const cartAssets = withSitewideExcCart(outR, { extraCss, extraHead, extraFooterScripts });
@@ -3138,6 +3142,7 @@ function renderPage(locale, pathKey, { title, desc, ogImageRel, current, mainHtm
     ap,
     pageOutRel: outR,
     extraFooterScripts: cartAssets.extraFooterScripts,
+    omitSiteScript,
     extraAfterFooter,
   });
 }
@@ -3391,18 +3396,22 @@ for (const locale of LOCALES) {
           extraFooterScripts:
             homeExcursionsHideScript +
             `  <script src="${esc(publicJsSrc("gcv-hero-slider.js", outPk))}" defer></script>\n` +
+            `  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" crossorigin="anonymous" />\n` +
+            deferScriptTags([
+              publicJsSrc("gcv-home-passeios.js", outPk),
+              publicJsSrc("site.js", outPk),
+              publicJsSrc("gcv-exc-bookings.js", outPk),
+              publicJsSrc("gcv-exc-waitlist.js", outPk),
+              publicJsSrc("excursoes-carousel.js", outPk),
+              publicJsSrc("gcv-exc-cart-policies.js", outPk),
+              publicJsSrc("gcv-exc-cart.js", outPk),
+            ]) +
             loadAfterIdle([
               publicJsSrc("qrcode.min.js", outPk),
               publicJsSrc("gcv-pix.js", outPk),
               publicJsSrc("gcv-pix-receipt.js", outPk),
               publicJsSrc("gcv-pix-polling.js", outPk),
               publicJsSrc("gcv-confirm.js", outPk),
-              publicJsSrc("gcv-exc-bookings.js", outPk),
-              publicJsSrc("gcv-exc-waitlist.js", outPk),
-              publicJsSrc("gcv-exc-cart-policies.js", outPk),
-              publicJsSrc("gcv-exc-cart.js", outPk),
-              publicJsSrc("excursoes-carousel.js", outPk),
-              publicJsSrc("gcv-home-passeios.js", outPk),
             ]),
         }
       : {};
@@ -3425,6 +3434,7 @@ for (const locale of LOCALES) {
         ...(homeExcursionsHead.extraCss || []),
       ],
       extraHead: homeExcursionsHead.extraHead,
+      omitSiteScript: homeIsLanding,
     });
     writePage(locale, pk || "", html);
     const pagePriority = pk === "" ? 1.0 : pk === "atrativos.html" || pk === "revista.html" ? 0.85 : 0.6;
