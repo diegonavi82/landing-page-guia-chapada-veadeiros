@@ -479,6 +479,66 @@ function gcv_transfer_client_owns_sale(array $user, array $sale): bool
 }
 
 /**
+ * Excursão ou exclusivo, pelo que foi comprado. A saída ligada à venda desempata.
+ *
+ * @param array<string,mixed> $sale
+ * @param array<string,mixed>|null $reservation
+ * @return list<string>
+ */
+function gcv_sale_tipo_codigos(array $sale, ?array $reservation): array
+{
+    $codes = [];
+    if ($reservation) {
+        if (!function_exists('gcv_private_trip_mode')) {
+            require_once dirname(__DIR__) . '/private_departure.php';
+        }
+        foreach (['trips', 'packages'] as $key) {
+            foreach (is_array($reservation[$key] ?? null) ? $reservation[$key] : [] as $trip) {
+                if (!is_array($trip)) {
+                    continue;
+                }
+                $found = gcv_private_trip_mode($trip);
+                if ($found === 'privativo') {
+                    $codes['exclusivo'] = true;
+                } elseif ($found === 'excursao') {
+                    $codes['excursao'] = true;
+                }
+            }
+        }
+    }
+    if (!$codes) {
+        $tour = strtolower(trim((string)($sale['tour_type'] ?? '')));
+        $codes[$tour === 'privativo' || $tour === 'exclusivo' ? 'exclusivo' : 'excursao'] = true;
+    }
+    return array_keys($codes);
+}
+
+function gcv_sale_tipo_label(array $codes, string $lang): string
+{
+    $names = [
+        'pt' => ['excursao' => 'Excursão', 'exclusivo' => 'Exclusivo'],
+        'en' => ['excursao' => 'Group', 'exclusivo' => 'Private'],
+        'es' => ['excursao' => 'En grupo', 'exclusivo' => 'Privado'],
+    ];
+    $bag = $names[$lang] ?? $names['pt'];
+    $out = [];
+    foreach ($codes as $code) {
+        if (isset($bag[$code])) {
+            $out[] = $bag[$code];
+        }
+    }
+    if (!$out) {
+        $out[] = $bag['excursao'];
+    }
+    return implode(' · ', $out);
+}
+
+function gcv_sale_tipo_heading(string $lang): string
+{
+    return $lang === 'en' ? 'Type' : 'Tipo';
+}
+
+/**
  * @return list<array<string,mixed>>
  */
 function gcv_transfer_list_client_sales(array $user): array
@@ -489,7 +549,7 @@ function gcv_transfer_list_client_sales(array $user): array
     $email = strtolower(trim((string)($user['email'] ?? '')));
     $st = db()->prepare(
         "SELECT s.*, e.date_iso, e.departure_time, e.quorum, e.booked_people, e.max_people, e.status AS excursion_status,
-                e.departure_city_id, e.attraction_id, e.meeting_point,
+                e.tour_type, e.departure_city_id, e.attraction_id, e.meeting_point,
                 a.title_pt AS attraction_title, c.name AS departure_city_name,
                 COALESCE(NULLIF(g.full_name,''), NULLIF(g.nickname,''), u.name, s.guide_name) AS guide_display
          FROM gcv_sales s
@@ -506,6 +566,10 @@ function gcv_transfer_list_client_sales(array $user): array
          ORDER BY COALESCE(e.date_iso, s.sold_at) DESC, s.id DESC"
     );
     $st->execute([$uid, $email]);
+    $lang = strtolower(substr((string)($user['lang'] ?? 'pt'), 0, 2));
+    if (!in_array($lang, ['pt', 'en', 'es'], true)) {
+        $lang = 'pt';
+    }
     $rows = [];
     foreach ($st->fetchAll(PDO::FETCH_ASSOC) ?: [] as $s) {
         $exc = [
@@ -541,18 +605,27 @@ function gcv_transfer_list_client_sales(array $user): array
         $inOffer = gcv_transfer_in_offer_window($hoursLeft);
         $s['can_transfer'] = $life === 'em_formacao' && strtoupper((string)$s['sale_status']) === 'PAID' && $offers !== [] && $inOffer;
         $s['refund_trips'] = [];
-        if (strtoupper((string)$s['sale_status']) === 'PAID') {
+        $pix = null;
+        $reservationId = (string)($s['reservation_id'] ?? '');
+        if ($reservationId !== '') {
             try {
                 require_once dirname(__DIR__) . '/pix_reservation_store.php';
+                $pix = gcv_pix_read_reservation($reservationId);
+            } catch (Throwable $e) {
+                error_log('transfer sale reservation: ' . $e->getMessage());
+            }
+        }
+        if ($pix && strtoupper((string)$s['sale_status']) === 'PAID') {
+            try {
                 require_once dirname(__DIR__) . '/payments/pix_refund.php';
-                $pix = gcv_pix_read_reservation((string)($s['reservation_id'] ?? ''));
-                if ($pix && gcv_pix_effective_status($pix) === 'PAID') {
+                if (gcv_pix_effective_status($pix) === 'PAID') {
                     $s['refund_trips'] = gcv_pix_refund_annotate_trips($pix);
                 }
             } catch (Throwable $e) {
                 error_log('transfer refund trips: ' . $e->getMessage());
             }
         }
+        $s['tour_mode_label'] = gcv_sale_tipo_label(gcv_sale_tipo_codigos($s, is_array($pix) ? $pix : null), $lang);
         $anyOpen = false;
         foreach ($s['refund_trips'] as $trip) {
             if (!empty($trip['can_cancel'])) {
@@ -599,6 +672,7 @@ function gcv_transfer_public_sale(array $s): array
         'sale_status' => (string)($s['sale_status'] ?? ''),
         'lifecycle' => (string)($s['lifecycle'] ?? ''),
         'lifecycle_label' => (string)($s['lifecycle_label'] ?? ''),
+        'tour_mode_label' => (string)($s['tour_mode_label'] ?? ''),
         'can_transfer' => !empty($s['can_transfer']),
         'can_refund_full' => !empty($s['can_refund_full']),
         'refund_trips' => array_map(static function ($t) {

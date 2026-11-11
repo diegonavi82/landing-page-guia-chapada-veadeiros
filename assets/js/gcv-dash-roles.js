@@ -4931,10 +4931,13 @@
     if (!tbody) return;
     get('/api/client/sales.php', function (err, res) {
       var sales = (res && res.ok && res.data && res.data.sales) || [];
+      var typeHead = document.getElementById('client-bookings-type');
+      if (typeHead) typeHead.textContent = (res && res.data && res.data.type_heading) || 'Tipo';
       if (!sales.length) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#888;">Nenhuma reserva ainda.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" data-label="" style="text-align:center;color:#888;">Nenhuma reserva ainda.</td></tr>';
         return;
       }
+      var typeLabel = (res && res.data && res.data.type_heading) || 'Tipo';
       tbody.innerHTML = sales.map(function (b) {
         var when = (typeof formatGuideDate === 'function' ? formatGuideDate(b.date_iso) : (b.date_iso || '')) +
           (b.departure_time ? ' · ' + b.departure_time : '');
@@ -4964,12 +4967,13 @@
             }).join('') + '</div>'
           : '';
         return '<tr>' +
-          '<td>' + esc(b.tour_title) + (b.reservation_id ? '<div class="gcv-cms-muted"><code>' + esc(b.reservation_id) + '</code></div>' : '') + offers + '</td>' +
-          '<td>' + esc(when) + '</td>' +
-          '<td>' + (b.spots || 1) + '</td>' +
-          '<td>' + money(b.sold_price_cents) + '</td>' +
-          '<td>' + lifeBadge(b.lifecycle, b.lifecycle_label) + '</td>' +
-          '<td>' + refundBtn + '</td></tr>';
+          '<td data-label="Passeio">' + esc(b.tour_title) + (b.reservation_id ? '<div class="gcv-cms-muted"><code>' + esc(b.reservation_id) + '</code></div>' : '') + offers + '</td>' +
+          '<td data-label="' + esc(typeLabel) + '">' + esc(b.tour_mode_label || 'Excursão') + '</td>' +
+          '<td data-label="Data">' + esc(when) + '</td>' +
+          '<td data-label="Vagas">' + (b.spots || 1) + '</td>' +
+          '<td data-label="Total">' + money(b.sold_price_cents) + '</td>' +
+          '<td data-label="Status">' + lifeBadge(b.lifecycle, b.lifecycle_label) + '</td>' +
+          '<td data-label="Ação">' + refundBtn + '</td></tr>';
       }).join('');
 
       tbody.querySelectorAll('[data-refund]').forEach(function (btn) {
