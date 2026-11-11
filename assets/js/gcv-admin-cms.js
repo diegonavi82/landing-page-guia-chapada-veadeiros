@@ -3940,11 +3940,31 @@
         return;
       }
       mergeExcRow(res.data);
-      delete excSheet.drafts[String(id)];
-      delete excSheet.changes[String(id)];
+      var draftKey = String(id);
+      if (extra.keepOtherDrafts && extra.field) {
+        if (excSheet.drafts[draftKey]) {
+          delete excSheet.drafts[draftKey][extra.field];
+          if (!Object.keys(excSheet.drafts[draftKey]).length) delete excSheet.drafts[draftKey];
+        }
+        if (excSheet.changes[draftKey]) {
+          delete excSheet.changes[draftKey][extra.field];
+          if (!Object.keys(excSheet.changes[draftKey]).length) delete excSheet.changes[draftKey];
+        }
+      } else {
+        delete excSheet.drafts[draftKey];
+        delete excSheet.changes[draftKey];
+      }
+      syncSheetSaveBar();
       if (typeof extra.onSuccess === 'function') extra.onSuccess(res.data);
       if (extra.replaceRow) {
-        replaceExcSheetRow(res.data);
+        var shown = res.data;
+        if (excSheet.drafts[draftKey]) {
+          var keptIdx = findExcRow(id);
+          if (keptIdx >= 0) shown = rowWithDraft(excSheet.rows[keptIdx]);
+        }
+        replaceExcSheetRow(shown);
+        var keptRow = document.querySelector('[data-exc-row="' + id + '"]');
+        if (keptRow && excSheet.drafts[draftKey]) keptRow.classList.add('is-dirty');
         return;
       }
       var rowEl = document.querySelector('[data-exc-row="' + id + '"]') || tr;
@@ -4065,8 +4085,8 @@
       var titulo = (e.attraction_title || ('Passeio #' + e.id)) + ' · ' + fmtDateBr(e.date_iso);
       var novoNome = findGuideLabel(next);
       var msg = atualGuia
-        ? ('Trocar o guia deste passeio?\n\n' + titulo + '\nDe: ' + findGuideLabel(atualGuia) + '\nPara: ' + novoNome + '\n\nAo salvar, o novo guia e o guia que sai recebem o aviso no WhatsApp.')
-        : ('Alocar ' + novoNome + ' neste passeio?\n\n' + titulo + '\n\nAo salvar, ele recebe o aviso no WhatsApp.');
+        ? ('Trocar o guia deste passeio?\n\n' + titulo + '\nDe: ' + findGuideLabel(atualGuia) + '\nPara: ' + novoNome + '\n\nO novo guia e o guia que sai recebem o aviso no WhatsApp.')
+        : ('Alocar ' + novoNome + ' neste passeio?\n\n' + titulo + '\n\nEle recebe o aviso no WhatsApp.');
       var ask = window.gcvConfirm
         ? window.gcvConfirm
         : function (m) { return Promise.resolve(window.confirm(m)); };
@@ -4075,7 +4095,15 @@
           el.value = atualGuia ? String(atualGuia) : '';
           return;
         }
-        apply();
+        var tr = el.closest('[data-exc-row]');
+        saveExcSheetPatch(id, payloadForField('guide_user_id', next), tr, {
+          field: 'guide_user_id',
+          replaceRow: true,
+          keepOtherDrafts: true,
+          onError: function () {
+            el.value = atualGuia ? String(atualGuia) : '';
+          }
+        });
       });
       return;
     }
