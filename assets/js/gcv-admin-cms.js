@@ -4057,7 +4057,29 @@
     var hadT = excHasTransport(rowWithDraft(e));
     var willDropT = field === 'max_people_transport' && !(parseInt(next, 10) > 0);
     var willAddT = field === 'max_people_transport' && (parseInt(next, 10) > 0) && !hadT;
-    queueExcSheetChange(id, field, next, { replaceRow: willDropT || willAddT || field === 'sheet_status' || field === 'attraction_id' });
+    var apply = function () {
+      queueExcSheetChange(id, field, next, { replaceRow: willDropT || willAddT || field === 'sheet_status' || field === 'attraction_id' });
+    };
+    var atualGuia = field === 'guide_user_id' ? currentFieldValue(e, 'guide_user_id') : null;
+    if (field === 'guide_user_id' && next && String(atualGuia || '') !== String(next)) {
+      var titulo = (e.attraction_title || ('Passeio #' + e.id)) + ' · ' + fmtDateBr(e.date_iso);
+      var novoNome = findGuideLabel(next);
+      var msg = atualGuia
+        ? ('Trocar o guia deste passeio?\n\n' + titulo + '\nDe: ' + findGuideLabel(atualGuia) + '\nPara: ' + novoNome + '\n\nAo salvar, o novo guia e o guia que sai recebem o aviso no WhatsApp.')
+        : ('Alocar ' + novoNome + ' neste passeio?\n\n' + titulo + '\n\nAo salvar, ele recebe o aviso no WhatsApp.');
+      var ask = window.gcvConfirm
+        ? window.gcvConfirm
+        : function (m) { return Promise.resolve(window.confirm(m)); };
+      ask(msg, { okText: atualGuia ? 'Trocar' : 'Alocar', cancelText: 'Cancelar' }).then(function (ok) {
+        if (!ok) {
+          el.value = atualGuia ? String(atualGuia) : '';
+          return;
+        }
+        apply();
+      });
+      return;
+    }
+    apply();
   }
 
   function bindExcSheetTable(wrap) {

@@ -2555,7 +2555,7 @@ function gcv_ops_notify_guides_no_guide(array $exc, array $guideIds): void
     }
 }
 
-function gcv_ops_notify_outgoing_guide_replaced(int $guideId, array $exc): void
+function gcv_ops_notify_outgoing_guide_replaced(int $guideId, array $exc, bool $byAdmin = false): void
 {
     $newId = (int)($exc['guide_user_id'] ?? 0);
     if ($guideId <= 0 || $guideId === $newId) {
@@ -2563,17 +2563,24 @@ function gcv_ops_notify_outgoing_guide_replaced(int $guideId, array $exc): void
     }
     $title = gcv_ops_excursion_title($exc);
     $when = trim(gcv_ops_date_br((string)($exc['date_iso'] ?? '')) . ' às ' . substr((string)($exc['departure_time'] ?? ''), 0, 5));
-    $text = "Outro guia assumiu esta saída.\n\n"
-        . 'Passeio: ' . $title . "\n"
-        . ($when !== '' ? 'Quando: ' . $when . "\n" : '')
-        . 'O passeio dos clientes continua. Eles foram avisados da troca.';
+    if ($byAdmin) {
+        $text = "A administração trocou o guia desta saída. Você não conduz mais este passeio.\n\n"
+            . 'Passeio: ' . $title . "\n"
+            . ($when !== '' ? 'Quando: ' . $when . "\n" : '');
+    } else {
+        $text = "Outro guia assumiu esta saída.\n\n"
+            . 'Passeio: ' . $title . "\n"
+            . ($when !== '' ? 'Quando: ' . $when . "\n" : '')
+            . 'O passeio dos clientes continua. Eles foram avisados da troca.';
+    }
     gcv_ops_wa_guide($guideId, $text, [
         'kind' => 'guide_replaced',
         'excursion_id' => (int)($exc['id'] ?? 0),
     ]);
     $email = trim((string)(gcv_ops_guide_contact($guideId)['email'] ?? ''));
     if ($email !== '') {
-        gcv_ops_mail_plain($email, 'Outro guia assumiu — ' . $title, $text);
+        $assunto = $byAdmin ? ('Guia trocado — ' . $title) : ('Outro guia assumiu — ' . $title);
+        gcv_ops_mail_plain($email, $assunto, $text);
     }
 }
 

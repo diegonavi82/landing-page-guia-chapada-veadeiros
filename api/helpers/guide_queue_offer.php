@@ -499,7 +499,7 @@ function gcv_guiagem_assign_admin(int $excursionId, int $guideId): array
         gcv_guiagem_notify_taken($excursionId, $others);
     }
     if ($previous > 0) {
-        gcv_guiagem_notify_clients_swapped($excursionId, $previous);
+        gcv_guiagem_notify_clients_swapped($excursionId, $previous, true);
     } else {
         gcv_guiagem_notify_clients_assigned($excursionId);
     }
@@ -2072,7 +2072,7 @@ function gcv_guiagem_notify_taken(int $excursionId, array $guideIds): void
 }
 
 /** Avisa os clientes só depois que o guia novo já está na saída. */
-function gcv_guiagem_notify_clients_swapped(int $excursionId, int $previousGuideId = 0): void
+function gcv_guiagem_notify_clients_swapped(int $excursionId, int $previousGuideId = 0, bool $byAdmin = false): void
 {
     try {
         require_once __DIR__ . '/notify_ops.php';
@@ -2100,7 +2100,7 @@ function gcv_guiagem_notify_clients_swapped(int $excursionId, int $previousGuide
             gcv_ops_notify_client_guide_changed($sale, $exc);
         }
         if ($previousGuideId > 0) {
-            gcv_ops_notify_outgoing_guide_replaced($previousGuideId, $exc);
+            gcv_ops_notify_outgoing_guide_replaced($previousGuideId, $exc, $byAdmin);
         }
     } catch (Throwable $e) {
         error_log('gcv_guiagem_notify_clients_swapped: ' . $e->getMessage());

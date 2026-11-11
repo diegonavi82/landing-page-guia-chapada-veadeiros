@@ -243,12 +243,16 @@ function gcv_admin_commit_guide(int $excursionId, int $guideId): string
     if ($conflict) {
         throw new InvalidArgumentException($conflict);
     }
-    if (gcv_guiagem_tour_has_customers($tour)) {
+    $previous = (int)($tour['guide_user_id'] ?? 0);
+    $trocando = $previous > 0 && $previous !== $guideId;
+    if ($trocando || gcv_guiagem_tour_has_customers($tour)) {
         $result = gcv_guiagem_assign_admin($excursionId, $guideId);
         if (empty($result['ok'])) {
             throw new InvalidArgumentException((string)($result['error'] ?? 'Não foi possível alocar o guia'));
         }
-        return 'Guia alocado neste passeio.';
+        return $trocando
+            ? 'Guia trocado. Os dois foram avisados no WhatsApp.'
+            : 'Guia alocado neste passeio.';
     }
     $invited = gcv_guiagem_designate($excursionId, $guideId);
     if (empty($invited['ok'])) {
