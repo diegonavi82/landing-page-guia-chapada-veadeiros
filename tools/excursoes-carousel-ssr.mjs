@@ -736,8 +736,7 @@ function inclExclBlocksSsr(e, s, locale) {
   const ingressoIncl = esc(formatIngressoWithValor(s.inclEntries, e.valorIngresso, locale));
   let inclItems =
     `<li><i class="ti ti-user text-ok" aria-hidden="true"></i> ${esc(s.inclSpot)}</li>` +
-    `<li class="gcv-excursoes-card__guide-slot">${guiaChipSsr(e, locale)}</li>` +
-    `<li><i class="ti ti-flag text-ok" aria-hidden="true"></i> ${esc(s.inclGuideShort)}</li>`;
+    `<li class="gcv-excursoes-card__guide-slot">${guiaChipSsr(e, locale)}</li>`;
   if (inclEntradas) {
     inclItems += `<li><i class="ti ti-ticket text-ok" aria-hidden="true"></i> ${ingressoIncl}</li>`;
   }

@@ -2604,10 +2604,19 @@
     style.id = "gcv-out-foot-css";
     style.textContent =
       ".gcv-excursoes-card__coverage{grid-template-columns:minmax(0,1fr)}" +
-      ".gcv-excursoes-card__out-foot{margin:0.55rem 0 0;padding:0;background:none;border:0;box-shadow:none}" +
-      ".gcv-excursoes-card__out-foot .gcv-excursoes-card__label{margin-bottom:0.28rem;color:#b91c1c}" +
-      ".gcv-excursoes-card__out-list{display:flex;flex-wrap:wrap;gap:0.3rem 0.85rem;margin:0;padding:0;list-style:none}" +
-      ".gcv-excursoes-card__out-list li{display:inline-flex;align-items:center;gap:0.28rem;flex:1 1 auto;color:#b91c1c;font-size:0.78rem;font-weight:700;line-height:1.2}" +
+      ".gcv-excursoes-card__book-row{justify-content:space-between;gap:0.35rem 0.5rem}" +
+      ".gcv-excursoes-card__book-label{order:0;text-align:left}" +
+      ".gcv-excursoes-card__qty{order:0}" +
+      ".gcv-excursoes-card__book-total{order:0;flex:1 1 auto;width:auto;margin-left:auto;min-width:0}" +
+      ".gcv-excursoes-card__list li.gcv-excursoes-card__guide-slot{margin:0.45rem -0.58rem 0.28rem;width:calc(100% + 1.16rem)}" +
+      ".gcv-excursoes-card__block--in .gcv-excursoes-card__guide,.gcv-excursoes-card__block--in .gcv-excursoes-card__guide--btn{width:100%;border-radius:0;box-sizing:border-box}" +
+      ".gcv-excursoes__track--day-list .gcv-excursoes-card__block--in .gcv-excursoes-card__guide-slot{margin:0.4rem -0.5rem 0.2rem;width:calc(100% + 1rem)}" +
+      ".gcv-excursoes__track--day-list .gcv-excursoes-card__block--in .gcv-excursoes-card__guide,.gcv-excursoes__track--day-list .gcv-excursoes-card__block--in .gcv-excursoes-card__guide--btn{width:100%;border-radius:0;align-items:stretch;padding:0 0.55rem 0 0;gap:0.55rem}" +
+      ".gcv-excursoes__track--day-list .gcv-excursoes-card__block--in .gcv-excursoes-card__guide-photo-wrap,.gcv-excursoes__track--day-list .gcv-excursoes-card__block--in .gcv-excursoes-card__guide-icon{border-radius:0;align-self:stretch;height:auto;min-height:2.75rem;max-height:none;box-shadow:none}" +
+      ".gcv-excursoes-card__out-foot{display:flex;flex-wrap:wrap;align-items:center;gap:0.35rem 0.85rem;margin:0.55rem 0 0;padding:0;background:none;border:0;box-shadow:none}" +
+      ".gcv-excursoes-card__out-foot .gcv-excursoes-card__label{display:inline-flex;margin:0;flex:0 0 auto;color:#b91c1c}" +
+      ".gcv-excursoes-card__out-list{display:contents}" +
+      ".gcv-excursoes-card__out-list li{display:inline-flex;align-items:center;gap:0.28rem;flex:0 0 auto;list-style:none;color:#b91c1c;font-size:0.78rem;font-weight:700;line-height:1.2}" +
       ".gcv-excursoes-card__out-list .ti{color:#b91c1c;font-size:1rem;flex:0 0 auto}" +
       ".gcv-excursoes__track--day-list .gcv-excursoes-card{grid-template-rows:auto auto auto auto minmax(0,1fr);grid-template-areas:\"banner\" \"photo\" \"main\" \"incluso\" \"book\"}" +
       "@media (min-width:1024px){.gcv-excursoes__track--day-list .gcv-excursoes-card{grid-template-rows:auto auto auto minmax(0,1fr);grid-template-areas:\"banner banner\" \"photo main\" \"photo incluso\" \"book book\"}}";
@@ -3702,9 +3711,6 @@
       "</li>" +
       '<li class="gcv-excursoes-card__guide-slot">' +
       guiaChipHtml(e, locale, s) +
-      "</li>" +
-      '<li><i class="ti ti-flag text-ok" aria-hidden="true"></i> ' +
-      escapeHtml(s.inclGuideShort) +
       "</li>";
     if (inclEntradas) {
       inclItems +=
