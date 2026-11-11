@@ -29,8 +29,8 @@ try {
     error_log('me-profile is_kalunga: ' . $e->getMessage());
 }
 
-$BIO_MAX = 800;
-$BIO_RECOMMENDED = 600;
+$BIO_MAX = 2000;
+$BIO_RECOMMENDED = 1200;
 
 function gcv_guide_profile_row(int $userId): ?array
 {

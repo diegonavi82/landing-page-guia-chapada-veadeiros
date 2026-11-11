@@ -1471,7 +1471,7 @@
       var d = res.data || {};
       var p = d.profile || {};
       var cities = d.base_cities || [];
-      var limits = d.limits || { bio_max: 800, bio_recommended: 600 };
+      var limits = d.limits || { bio_max: 2000, bio_recommended: 1200 };
       var missing = d.missing || [];
       var complete = missing.length === 0;
       var fin = d.financial || {};
