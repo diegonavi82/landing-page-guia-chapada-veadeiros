@@ -146,7 +146,8 @@ function gcv_pay_quote(int $baseCents, string $method): array
     if ($method === '' || $baseCents < 1) {
         return ['ok' => false, 'error' => 'invalid_quote'];
     }
-    if ($baseCents < 100 && $method !== 'pix') {
+    // Mercado Pago não cobra menos de R$ 1. O cartão internacional segue em dólar mesmo abaixo disso.
+    if ($method === 'card_br' && $baseCents < 100) {
         return ['ok' => false, 'error' => 'below_minimum'];
     }
     $cfg = gcv_pay_config();

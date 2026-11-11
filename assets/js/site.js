@@ -77,14 +77,14 @@
       es: { login: "Iniciar sesión", account: "Mi cuenta" },
     };
     var ICON_OUT =
-      '<svg viewBox="2.1 2.1 19.8 19.8" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
-      '<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>' +
-      '<path d="M10 17l5-5-5-5"></path>' +
-      '<path d="M15 12H3"></path></svg>';
+      '<svg viewBox="2.95 3.75 17.7 14.6" aria-hidden="true" focusable="false" fill="currentColor" stroke="currentColor" stroke-width="0.4" stroke-linejoin="round" stroke-linecap="round">' +
+      '<circle cx="7.2" cy="6.3" r="2.55" stroke="none"></circle>' +
+      '<path d="M3.15 18.15V14.9Q3.15 9.55 7.2 9.55Q11.25 9.55 11.25 14.9V18.15Z"></path>' +
+      '<path d="M20.45 12.2H16.45V9.75L12.85 13.85 16.45 17.95V15.5H20.45Z"></path></svg>';
     var ICON_IN =
-      '<svg viewBox="5.15 3.17 17.47 17.47" aria-hidden="true" focusable="false" fill="currentColor" stroke="none">' +
-      '<circle cx="12" cy="8" r="3.35"></circle>' +
-      '<path d="M6.15 19.15c.72-3.05 3.05-4.75 5.85-4.75s5.13 1.7 5.85 4.75c.1.42-.22.85-.66.85H6.81c-.44 0-.76-.43-.66-.85z"></path></svg>';
+      '<svg viewBox="2.95 3.75 8.5 14.6" aria-hidden="true" focusable="false" fill="currentColor" stroke="currentColor" stroke-width="0.4" stroke-linejoin="round" stroke-linecap="round">' +
+      '<circle cx="7.2" cy="6.3" r="2.55" stroke="none"></circle>' +
+      '<path d="M3.15 18.15V14.9Q3.15 9.55 7.2 9.55Q11.25 9.55 11.25 14.9V18.15Z"></path></svg>';
 
     function uiLang() {
       return pageSiteLang(window.location.pathname || "/");
@@ -3340,11 +3340,11 @@
         });
       };
       var brTxt = fill(copy.cardBr, { price: passeioReais(pay.card), n: String(pay.n), inst: passeioReais(pay.inst) });
-      var intlTxt = fill(copy.cardIntl, { price: pay.usd ? passeioUsd(pay.usd) : passeioReais(pay.intl) });
+      var intlTxt = pay.usd ? fill(copy.cardIntl, { price: passeioUsd(pay.usd) }) : "";
       var cardsOn = !!(box._payQuote && box._payQuote.base === base && box._payQuote.cardsEnabled === true);
       var cardHtml = cardsOn
         ? '<span class="gcv-passeios__cardline">' + brTxt + "</span>" +
-          '<span class="gcv-passeios__cardline">' + intlTxt + "</span>"
+          (intlTxt ? '<span class="gcv-passeios__cardline">' + intlTxt + "</span>" : "")
         : "";
       var entriesHtml = '<span class="gcv-passeios__entries">' + passeioEsc(copy.entriesNote) + "</span>";
       var totalEl = box.querySelector("[data-passeio-total]");
