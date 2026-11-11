@@ -146,7 +146,7 @@
     return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="6" cy="7" r="2.2"/><path d="M2.2 16.5c.4-2.3 2-3.6 3.8-3.6s3.4 1.3 3.8 3.6"/><circle cx="13.2" cy="8.2" r="1.7"/><path d="M10.2 16.5c.3-1.8 1.5-2.8 3-2.8s2.7 1 3 2.8"/><circle cx="18.6" cy="9.2" r="1.25"/><path d="M16.4 16.5c.2-1.3 1.1-2 2.2-2s2 .7 2.2 2"/></svg>';
   }
 
-  function paintGuideMarks(lugar, temporada, fila) {
+  function paintGuideMarks(lugar, temporada, fila, filaKalunga) {
     var box = document.getElementById('dash-marks');
     if (!box) return;
     var rank = lugar > 0 ? lugar + 'º' : '—';
@@ -154,7 +154,9 @@
     var rankTitle = lugar > 0
       ? (lugar + 'º no Ranking ' + temporada)
       : ('Sem pontuação no Ranking ' + temporada);
-    var queueTitle = fila > 0 ? (fila + 'º na fila de guias') : 'Sem lugar na fila';
+    var queueTitle = fila > 0
+      ? (fila + 'º na fila ' + (filaKalunga ? 'Kalunga' : 'de guias'))
+      : 'Sem lugar na fila';
     box.hidden = false;
     box.innerHTML =
       '<span class="gcv-dash-mark' + guideMarkClass(lugar) + '" title="' + rankTitle + '">' + guideMarkSvg('trophy') + rank + '</span>' +
@@ -181,11 +183,12 @@
     var temporada = chave === 'xango' ? 'Fogo' : 'Água';
     var lugar = 0;
     var fila = 0;
+    var filaKalunga = false;
     var left = 2;
     function finish() {
       left -= 1;
       if (left > 0) return;
-      paintGuideMarks(lugar, temporada, fila);
+      paintGuideMarks(lugar, temporada, fila, filaKalunga);
     }
     get('/api/guides/ranking.php?' + q.replace(/^&/, ''), function (_e, res) {
       var temp = res && res.data && res.data[chave];
@@ -197,6 +200,7 @@
     });
     get('/api/guides/substituir.php?' + q.replace(/^&/, ''), function (_e, res) {
       fila = Number(res && res.data && res.data.posicao) || 0;
+      filaKalunga = !!(res && res.data && res.data.fila_kalunga);
       finish();
     });
   }

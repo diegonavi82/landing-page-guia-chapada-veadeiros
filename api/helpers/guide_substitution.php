@@ -18,9 +18,15 @@ function gcv_substitution_ensure_schema(): void
             "CREATE TABLE IF NOT EXISTS gcv_guide_queue (
               user_id INT UNSIGNED NOT NULL PRIMARY KEY,
               posicao INT UNSIGNED NOT NULL DEFAULT 1,
+              fila VARCHAR(16) NOT NULL DEFAULT 'geral',
               updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
         );
+        try {
+            db()->query('SELECT fila FROM gcv_guide_queue LIMIT 0');
+        } catch (Throwable $e) {
+            db()->exec("ALTER TABLE gcv_guide_queue ADD COLUMN fila VARCHAR(16) NOT NULL DEFAULT 'geral' AFTER posicao");
+        }
         db()->exec(
             "CREATE TABLE IF NOT EXISTS gcv_guide_substitutions (
               id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -43,39 +49,81 @@ function gcv_substitution_seed_queue(): void
 {
     gcv_substitution_ensure_schema();
     try {
-        $have = db()->query('SELECT user_id FROM gcv_guide_queue')->fetchAll(PDO::FETCH_COLUMN) ?: [];
-        $known = array_map('intval', $have);
+        $kalungaSql = gcv_guides_tem_coluna_kalunga() ? 'COALESCE(g.is_kalunga, 0)' : '0';
         $st = db()->query(
-            "SELECT u.id FROM gcv_users u
+            "SELECT u.id, {$kalungaSql} AS is_kalunga
+             FROM gcv_users u
+             INNER JOIN gcv_guides g ON g.user_id = u.id
              WHERE u.status = 'active'
                AND (
                  u.role = 'guide'
                  OR EXISTS (SELECT 1 FROM gcv_user_roles r WHERE r.user_id = u.id AND r.role = 'guide')
                )
-             ORDER BY u.id ASC"
+             ORDER BY u.created_at ASC, u.id ASC"
         );
-        $ids = array_map('intval', $st->fetchAll(PDO::FETCH_COLUMN) ?: []);
-        $max = (int)db()->query('SELECT COALESCE(MAX(posicao), 0) FROM gcv_guide_queue')->fetchColumn();
-        $ins = db()->prepare('INSERT INTO gcv_guide_queue (user_id, posicao) VALUES (?, ?)');
-        foreach ($ids as $id) {
-            if ($id <= 0 || in_array($id, $known, true)) {
+        $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        $known = [];
+        foreach (db()->query('SELECT user_id, fila FROM gcv_guide_queue')->fetchAll(PDO::FETCH_ASSOC) ?: [] as $have) {
+            $known[(int)$have['user_id']] = (string)($have['fila'] ?? 'geral');
+        }
+        $kalungaIds = [];
+        foreach ($rows as $row) {
+            if ((int)($row['is_kalunga'] ?? 0) === 1) {
+                $kalungaIds[] = (int)$row['id'];
+            }
+        }
+        $jaKalunga = (int)db()->query("SELECT COUNT(*) FROM gcv_guide_queue WHERE fila = 'kalunga'")->fetchColumn();
+        if ($jaKalunga === 0 && $kalungaIds) {
+            $place = implode(',', array_fill(0, count($kalungaIds), '?'));
+            $mark = db()->prepare("UPDATE gcv_guide_queue SET fila = 'kalunga' WHERE user_id IN ($place)");
+            $mark->execute($kalungaIds);
+            foreach ($kalungaIds as $id) {
+                if (isset($known[$id])) {
+                    $known[$id] = 'kalunga';
+                }
+            }
+        }
+        $ins = db()->prepare('INSERT INTO gcv_guide_queue (user_id, posicao, fila) VALUES (?, ?, ?)');
+        $move = db()->prepare('UPDATE gcv_guide_queue SET fila = ?, posicao = ? WHERE user_id = ?');
+        foreach ($rows as $row) {
+            $id = (int)($row['id'] ?? 0);
+            if ($id <= 0) {
                 continue;
             }
-            $max++;
-            $ins->execute([$id, $max]);
+            $fila = ((int)($row['is_kalunga'] ?? 0) === 1) ? 'kalunga' : 'geral';
+            if (!isset($known[$id])) {
+                $maxSt = db()->prepare('SELECT COALESCE(MAX(posicao), 0) FROM gcv_guide_queue WHERE fila = ?');
+                $maxSt->execute([$fila]);
+                $ins->execute([$id, (int)$maxSt->fetchColumn() + 1, $fila]);
+                $known[$id] = $fila;
+                continue;
+            }
+            if ($known[$id] === $fila) {
+                continue;
+            }
+            $maxSt = db()->prepare('SELECT COALESCE(MAX(posicao), 0) FROM gcv_guide_queue WHERE fila = ?');
+            $maxSt->execute([$fila]);
+            $move->execute([$fila, (int)$maxSt->fetchColumn() + 1, $id]);
+            $known[$id] = $fila;
         }
     } catch (Throwable $e) {
         error_log('gcv_substitution_seed_queue: ' . $e->getMessage());
     }
 }
 
-/** @return list<array{id:int,nome:string,foto:string,cidade:string,posicao:int}> */
-function gcv_substitution_queue(): array
+function gcv_substitution_fila_do_guia(int $userId): string
+{
+    return gcv_guia_e_kalunga($userId) ? 'kalunga' : 'geral';
+}
+
+/** @return list<array{id:int,nome:string,foto:string,cidade:string,posicao:int,kalunga:bool}> */
+function gcv_substitution_queue(string $fila = 'geral'): array
 {
     gcv_substitution_seed_queue();
+    $fila = $fila === 'kalunga' ? 'kalunga' : 'geral';
     try {
         $kalungaSql = gcv_guides_tem_coluna_kalunga() ? 'COALESCE(g.is_kalunga, 0)' : '0';
-        $st = db()->query(
+        $st = db()->prepare(
             "SELECT u.id, u.name,
                     COALESCE(NULLIF(g.full_name, ''), NULLIF(g.nickname, ''), u.name) AS nome,
                     COALESCE(g.photo_url, g.photo_3x4_url, '') AS foto,
@@ -90,8 +138,10 @@ function gcv_substitution_queue(): array
                )
              LEFT JOIN gcv_guides g ON g.user_id = u.id
              LEFT JOIN gcv_cities c ON c.id = g.base_city_id
-             ORDER BY q.posicao ASC, u.id ASC"
+             WHERE q.fila = ?
+             ORDER BY q.posicao ASC, u.created_at ASC, u.id ASC"
         );
+        $st->execute([$fila]);
         $out = [];
         $n = 0;
         foreach ($st->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
@@ -115,15 +165,15 @@ function gcv_substitution_queue(): array
 function gcv_substitution_move_to_end(int $userId): int
 {
     gcv_substitution_seed_queue();
-    $max = (int)db()->query('SELECT COALESCE(MAX(posicao), 0) FROM gcv_guide_queue')->fetchColumn();
-    db()->prepare('UPDATE gcv_guide_queue SET posicao = ? WHERE user_id = ?')->execute([$max + 1, $userId]);
-    $fila = gcv_substitution_queue();
-    foreach ($fila as $g) {
-        if ((int)$g['id'] === $userId) {
-            return (int)$g['posicao'];
-        }
-    }
-    return count($fila);
+    $fila = gcv_substitution_fila_do_guia($userId);
+    $maxSt = db()->prepare('SELECT COALESCE(MAX(posicao), 0) FROM gcv_guide_queue WHERE fila = ?');
+    $maxSt->execute([$fila]);
+    db()->prepare('UPDATE gcv_guide_queue SET posicao = ?, fila = ? WHERE user_id = ?')->execute([
+        (int)$maxSt->fetchColumn() + 1,
+        $fila,
+        $userId,
+    ]);
+    return gcv_substitution_fila_posicao($userId);
 }
 
 function gcv_substitution_load_excursion(int $id): ?array
@@ -183,13 +233,10 @@ function gcv_substitution_busy(int $guideId, array $tour): bool
 /** @return list<array<string,mixed>> */
 function gcv_substitution_available(array $tour, int $fromId): array
 {
-    $soKalunga = gcv_excursao_exige_guia_kalunga($tour);
+    $fila = gcv_excursao_exige_guia_kalunga($tour) ? 'kalunga' : 'geral';
     $out = [];
-    foreach (gcv_substitution_queue() as $g) {
+    foreach (gcv_substitution_queue($fila) as $g) {
         if ((int)$g['id'] === $fromId) {
-            continue;
-        }
-        if ($soKalunga && empty($g['kalunga'])) {
             continue;
         }
         if (gcv_substitution_busy((int)$g['id'], $tour)) {
@@ -269,7 +316,7 @@ function gcv_substitution_attach(array $rows, int $userId): array
 
 function gcv_substitution_fila_posicao(int $userId): int
 {
-    foreach (gcv_substitution_queue() as $g) {
+    foreach (gcv_substitution_queue(gcv_substitution_fila_do_guia($userId)) as $g) {
         if ((int)$g['id'] === $userId) {
             return (int)$g['posicao'];
         }
@@ -279,7 +326,7 @@ function gcv_substitution_fila_posicao(int $userId): int
 
 function gcv_guia_kalunga_erro_msg(): string
 {
-    return 'Santa Bárbara, Capivara e Candaru só podem ser guiados por guia Kalunga.';
+    return 'Santa Bárbara, Capivara, Candaru e Guardião só podem ser guiados por guia Kalunga.';
 }
 
 function gcv_guides_tem_coluna_kalunga(): bool
@@ -307,12 +354,12 @@ function gcv_texto_sem_acento(string $s): string
     );
 }
 
-/** Santa Bárbara, Capivara ou Candaru, inclusive nos combinados. */
+/** Santa Bárbara, Capivara, Candaru ou Guardião, inclusive nos combinados. */
 function gcv_texto_exige_guia_kalunga(string $texto): bool
 {
     $t = gcv_texto_sem_acento($texto);
     $t = str_replace(['-', '_', '+'], ' ', $t);
-    return (bool)preg_match('/\b(santa barbara|capivara|candaru)\b/', $t);
+    return (bool)preg_match('/\b(santa barbara|capivara|candaru|guardiao)\b/', $t);
 }
 
 /** @param list<array<string,mixed>> $rows */
@@ -402,6 +449,15 @@ function gcv_guia_erro_kalunga_excursao(array $tour, int $guideId): ?string
         return null;
     }
     return gcv_guia_kalunga_erro_msg();
+}
+
+/** Guia Kalunga não entra na fila dos outros passeios. */
+function gcv_guia_erro_fila_kalunga(array $tour, int $guideId): ?string
+{
+    if ($guideId <= 0 || !gcv_guia_e_kalunga($guideId) || gcv_excursao_exige_guia_kalunga($tour)) {
+        return null;
+    }
+    return 'Guia Kalunga só recebe proposta de Santa Bárbara, Capivara, Candaru e Guardião.';
 }
 
 /** @param list<int> $ids */

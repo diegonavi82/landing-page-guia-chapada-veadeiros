@@ -2903,13 +2903,13 @@
     return html + '</select>';
   }
 
-  var KALUNGA_GUIA_MSG = "Santa Bárbara, Capivara e Candaru só podem ser guiados por guia Kalunga.";
+  var KALUNGA_GUIA_MSG = "Santa Bárbara, Capivara, Candaru e Guardião só podem ser guiados por guia Kalunga.";
 
   function textoExigeKalunga(s) {
     var t = String(s || "").toLowerCase();
     if (typeof t.normalize === "function") t = t.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     t = t.replace(/[-_+]/g, " ");
-    return /\b(santa barbara|capivara|candaru)\b/.test(t);
+    return /\b(santa barbara|capivara|candaru|guardiao)\b/.test(t);
   }
 
   function excExigeKalunga(e) {
@@ -2947,6 +2947,7 @@
       var id = g.user_id || g.id;
       var kalunga = isKalungaFlag(g.is_kalunga);
       if (exige && !kalunga && String(id) !== String(selected)) return;
+      if (!exige && kalunga && String(id) !== String(selected)) return;
       var label = g.full_name || g.nickname || g.name || ("#" + id);
       if (exige && kalunga) label += " · Kalunga";
       if (waiting && String(id) === String(selected)) label += " (aguardando WhatsApp)";

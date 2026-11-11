@@ -3075,7 +3075,7 @@
     var upcoming = guideAgendaState.upcoming || [];
     var archived = guideAgendaState.archived || [];
     var fila = guideAgendaState.fila > 0
-      ? '<p class="gcv-agenda-fila">Você está em ' + guideAgendaState.fila + 'º na fila de guias.</p>'
+      ? '<p class="gcv-agenda-fila">Você está em ' + guideAgendaState.fila + 'º na fila ' + (guideAgendaState.filaKalunga ? 'Kalunga' : 'de guias') + '.</p>'
       : '';
     var html = fila;
     if (guideAgendaState.view === 'archived') {
@@ -3134,6 +3134,7 @@
       guideAgendaState.archived = archived;
       guideAgendaState.fila = Number(res.data && res.data.fila_posicao) || 0;
       guideAgendaState.filaTotal = Number(res.data && res.data.fila_total) || 0;
+      guideAgendaState.filaKalunga = !!(res.data && res.data.fila_kalunga);
       guideAgendaState.loaded = true;
       paintGuideAgenda();
       if (typeof window.gcvRefreshGuideMarks === 'function') window.gcvRefreshGuideMarks();
@@ -4150,7 +4151,7 @@
             return String(g.user_id || g.id) === String(gidKalunga);
           })[0];
           if (gidKalunga && escolhido && !guiaEhKalunga(escolhido)) {
-            return issue(selG, 'Santa Bárbara, Capivara e Candaru só podem ser guiados por guia Kalunga.');
+            return issue(selG, 'Santa Bárbara, Capivara, Candaru e Guardião só podem ser guiados por guia Kalunga.');
           }
         }
         return null;
@@ -4181,7 +4182,7 @@
         var t = String(s || '').toLowerCase();
         if (typeof t.normalize === 'function') t = t.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
         t = t.replace(/[-_+]/g, ' ');
-        return /\b(santa barbara|capivara|candaru)\b/.test(t);
+        return /\b(santa barbara|capivara|candaru|guardiao)\b/.test(t);
       }
 
       function guiaEhKalunga(g) {
@@ -4211,6 +4212,7 @@
           var gid = g.user_id || g.id;
           var kalunga = guiaEhKalunga(g);
           if (exige && !kalunga && String(gid) !== String(atual)) return;
+          if (!exige && kalunga && String(gid) !== String(atual)) return;
           var label = (g.full_name || g.nickname || g.name || '') + (g.nickname && g.full_name ? ' (' + g.nickname + ')' : '');
           if (exige && kalunga) label += ' · Kalunga';
           html += '<option value="' + gid + '"' + (String(atual) === String(gid) ? ' selected' : '') + '>' + esc(label) + '</option>';

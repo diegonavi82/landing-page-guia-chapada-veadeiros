@@ -23,7 +23,8 @@ if ($method === 'GET') {
     if ($excursionId <= 0) {
         json_response(true, [
             'posicao' => gcv_substitution_fila_posicao($me),
-            'fila' => gcv_substitution_queue(),
+            'fila' => gcv_substitution_queue(gcv_substitution_fila_do_guia($me)),
+            'fila_kalunga' => gcv_substitution_fila_do_guia($me) === 'kalunga',
         ]);
     }
     $tour = gcv_substitution_load_excursion($excursionId);
