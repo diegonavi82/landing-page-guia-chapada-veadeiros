@@ -1607,7 +1607,7 @@ ${ogLocaleAlternate}
 function headerLoginLink(locale) {
   const href = locale === "en" ? "/en/login.html" : locale === "es" ? "/es/login.html" : "/login.html";
   const label = locale === "en" ? "Sign in" : locale === "es" ? "Iniciar sesión" : "Entrar";
-  return `<a class="gcv-header-login" id="gcv-header-login" href="${esc(href)}" data-gcv-login="out" aria-label="${esc(label)}"><span class="gcv-header-login__glyph"><svg viewBox="2.95 3.75 17.7 14.6" aria-hidden="true" focusable="false" fill="currentColor" stroke="currentColor" stroke-width="0.4" stroke-linejoin="round" stroke-linecap="round"><circle cx="7.2" cy="6.3" r="2.55" stroke="none"></circle><path d="M3.15 16.3V14.9Q3.15 9.55 7.2 9.55Q11.25 9.55 11.25 14.9V16.3Q11.25 18.15 9.55 18.15H4.85Q3.15 18.15 3.15 16.3Z"></path><path d="M20.45 12.2H16.45V9.75L12.85 13.85 16.45 17.95V15.5H20.45Z"></path></svg></span></a>`;
+  return `<a class="gcv-header-login" id="gcv-header-login" href="${esc(href)}" data-gcv-login="out" aria-label="${esc(label)}"><span class="gcv-header-login__glyph"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></span></a>`;
 }
 
 function headerHtml(ctx) {

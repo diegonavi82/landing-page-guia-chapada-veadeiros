@@ -3383,7 +3383,7 @@ table.season th {
   outline-offset: 2px;
 }
 
-/* Login no header — par do carrinho: círculo, fundo transparente, borda e ícone na mesma cor. */
+/* Login no header — mesmo círculo e o mesmo traço do carrinho. */
 .gcv-header-login {
   display: inline-flex;
   align-items: center;
@@ -3393,32 +3393,39 @@ table.season th {
   box-sizing: border-box;
   width: 2.65rem;
   height: 2.65rem;
-  margin: 0 0.2rem;
+  margin: 0 0.15rem 0 0.2rem;
   padding: 0;
-  border: 1.5px solid #047857;
+  border: none;
   border-radius: 50%;
-  background: transparent;
-  color: #047857;
+  background: linear-gradient(145deg, #059669 0%, #047857 100%);
+  color: #fff;
+  box-shadow:
+    0 0.2rem 0.75rem rgba(4, 120, 87, 0.32),
+    0 0 0 1px rgba(255, 255, 255, 0.14) inset;
   text-decoration: none;
-  line-height: 0;
+  font-size: 1.35rem;
+  line-height: 1;
   cursor: pointer;
   z-index: 200;
-  transition: background-color 0.15s ease, transform 0.15s ease;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .site-header .nav-main a.gcv-header-login,
 .site-header .header-actions a.gcv-header-login {
   padding: 0;
-  background: transparent;
-  color: #047857;
+  border: none;
+  background: linear-gradient(145deg, #059669 0%, #047857 100%);
+  color: #fff;
   border-radius: 50%;
+  font-size: 1.35rem;
+  line-height: 1;
 }
 
 .gcv-header-login:hover,
 .site-header .nav-main a.gcv-header-login:hover,
 .site-header .header-actions a.gcv-header-login:hover {
-  background: rgba(4, 120, 87, 0.08);
-  color: #047857;
+  background: linear-gradient(145deg, #10b981 0%, #059669 100%);
+  color: #fff;
   transform: scale(1.05);
 }
 
@@ -3431,16 +3438,9 @@ table.season th {
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Boneco + seta: o canto de baixo é o ponto mais perto do círculo. */
-  width: calc(2.65rem - 15px);
-  height: calc(2.65rem - 15px);
+  width: 1.15em;
+  height: 1.15em;
   pointer-events: none;
-}
-
-.gcv-header-login.is-in .gcv-header-login__glyph {
-  /* Só o boneco, centralizado, com a mesma folga da borda. */
-  width: calc(2.65rem - 11px);
-  height: calc(2.65rem - 11px);
 }
 
 .gcv-header-login__glyph svg {
