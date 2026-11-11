@@ -68,7 +68,30 @@ function gcv_saida_city(string $name): string
     return $map[$name] ?? $name;
 }
 
-/** Mesmo id do card: data ISO + slug do cart_slug. */
+/**
+ * Tira a data repetida. O cart_slug já traz o dia; o id do card prefixa o mesmo dia de novo.
+ * 2026-11-14-destino-2026-11-14-0820 → 2026-11-14-destino-0820
+ */
+function gcv_saida_collapse_cart_id(string $id): string
+{
+    $id = gcv_saida_slug($id);
+    if (!preg_match('/^(\d{4}-\d{2}-\d{2})-(.+)$/', $id, $m)) {
+        return $id;
+    }
+    $iso = $m[1];
+    $rest = $m[2];
+    if (!str_contains($rest, $iso)) {
+        return $id;
+    }
+    $rest = str_replace('-' . $iso . '-', '-', $rest);
+    if (str_ends_with($rest, '-' . $iso)) {
+        $rest = substr($rest, 0, -strlen('-' . $iso));
+    }
+    $rest = trim($rest, '-');
+    return $rest === '' ? $iso : ($iso . '-' . $rest);
+}
+
+/** Id público da saída: a data aparece uma vez. */
 function gcv_saida_public_cart_id(array $exc): string
 {
     $iso = substr((string)($exc['date_iso'] ?? ''), 0, 10);
@@ -85,9 +108,9 @@ function gcv_saida_public_cart_id(array $exc): string
     }
     $slug = gcv_saida_slug($slug);
     if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $iso) && $slug !== '') {
-        return $iso . '-' . $slug;
+        return gcv_saida_collapse_cart_id($iso . '-' . $slug);
     }
-    return $slug;
+    return gcv_saida_collapse_cart_id($slug);
 }
 
 function gcv_saida_share_url(string $cartId, string $lang = 'pt'): string
@@ -153,15 +176,20 @@ function gcv_saida_rows_on_date(string $date): array
 /** @return array<string,mixed>|null */
 function gcv_saida_find(string $cartId): ?array
 {
-    $cartId = strtolower(trim($cartId));
-    if (!preg_match('/^(\d{4}-\d{2}-\d{2})-[a-z0-9-]{1,160}$/', $cartId, $m)) {
+    $cartId = gcv_saida_slug($cartId);
+    if (!preg_match('/(\d{4}-\d{2}-\d{2})/', $cartId, $m)) {
         return null;
     }
-    $wantTransport = str_ends_with($cartId, '-t');
+    $collapsed = gcv_saida_collapse_cart_id($cartId);
+    if (!str_starts_with($collapsed, $m[1] . '-')) {
+        $collapsed = gcv_saida_collapse_cart_id($m[1] . '-' . $cartId);
+    }
+    $wantTransport = str_ends_with($collapsed, '-t');
+    $want = $wantTransport ? substr($collapsed, 0, -2) : $collapsed;
     $best = null;
     foreach (gcv_saida_rows_on_date($m[1]) as $row) {
         $base = gcv_saida_public_cart_id($row);
-        $match = $base === $cartId || ($wantTransport && $base . '-t' === $cartId);
+        $match = $want === $base || $collapsed === $base;
         if (!$match) {
             continue;
         }
@@ -169,7 +197,7 @@ function gcv_saida_find(string $cartId): ?array
             || trim((string)($row['guide_photo'] ?? '')) !== '';
         if ($best === null || ($photo && empty($best['_has_photo']))) {
             $row['_has_photo'] = $photo;
-            $row['_saida_transport'] = $wantTransport && $base . '-t' === $cartId;
+            $row['_saida_transport'] = $wantTransport;
             $best = $row;
         }
     }

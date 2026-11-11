@@ -6992,6 +6992,19 @@
     });
   }
 
+  /** O id interno prefixa a data que o slug já tem. Na URL a data fica uma vez. */
+  function saidaPublicId(cartId) {
+    var id = String(cartId || "")
+      .trim()
+      .toLowerCase();
+    var m = id.match(/^(\d{4}-\d{2}-\d{2})-(.+)$/);
+    if (!m || m[2].indexOf(m[1]) === -1) return id;
+    var rest = m[2].split("-" + m[1] + "-").join("-");
+    if (rest.slice(-(m[1].length + 1)) === "-" + m[1]) rest = rest.slice(0, -(m[1].length + 1));
+    rest = rest.replace(/^-+|-+$/g, "");
+    return rest ? m[1] + "-" + rest : m[1];
+  }
+
   function sharePageUrl(locale, cartId) {
     var origin = "https://www.guiachapadaveadeiros.com";
     try {
@@ -7000,7 +7013,7 @@
       /* */
     }
     var prefix = locale === "en" ? "/en" : locale === "es" ? "/es" : "";
-    return origin + prefix + "/s/" + encodeURIComponent(cartId);
+    return origin + prefix + "/s/" + encodeURIComponent(saidaPublicId(cartId));
   }
 
   function shareMessage(s, destino, dateLabel, url) {
@@ -8944,7 +8957,7 @@
     var found = null;
     var idx = 0;
     (rows || []).some(function (row, i) {
-      if (String(excursaoCartId(row)) === String(cartId)) {
+      if (saidaPublicId(excursaoCartId(row)) === saidaPublicId(cartId)) {
         found = row;
         idx = i;
         return true;
