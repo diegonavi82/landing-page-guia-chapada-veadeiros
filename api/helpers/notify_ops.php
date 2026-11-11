@@ -1204,9 +1204,15 @@ function gcv_ops_notify_guide_new_booking(array $sale, ?array $exc, int $spots, 
     $life = function_exists('gcv_resolve_excursion_lifecycle')
         ? gcv_resolve_excursion_lifecycle($exc)
         : '';
-    $confirmed = in_array($life, ['confirmada', 'soldout'], true);
+    $guideAceitou = $excId > 0 && gcv_ops_guide_aceitou($excId);
+    $privado = gcv_excursion_is_private($exc);
+    $confirmed = in_array($life, ['confirmada', 'soldout'], true) && $guideAceitou;
 
-    if ($note === '' && !gcv_excursion_is_guide_submitted($exc) && !$comTransporte && $guideId > 0) {
+    if ($privado && !$guideAceitou) {
+        $textGuide = "Nova reserva privativa\n"
+            . "Você ainda não confirmou esta guiagem.\n\n"
+            . gcv_ops_aviso_saida_linhas($excId, $exc);
+    } elseif ($note === '' && !gcv_excursion_is_guide_submitted($exc) && !$comTransporte && $guideId > 0) {
         $g = gcv_ops_group_counts($excId, $exc);
         $mais = (int)($sale['guide_amount_cents'] ?? 0);
         $verbo = $people === 1 ? 'Entrou mais 1 pessoa.' : ('Entraram mais ' . $people . ' pessoas.');
@@ -1214,11 +1220,8 @@ function gcv_ops_notify_guide_new_booking(array $sale, ?array $exc, int $spots, 
             . '. Total garantido: ' . gcv_ops_brl_curto((int)$g['guide_cents']) . '.';
     } elseif ($confirmed) {
         $textGuide = "Nova inscrição — passeio já confirmado\n\n"
-            . 'Destino: ' . ($title !== '' ? $title : gcv_ops_excursion_title($exc)) . "\n"
-            . ($when !== '' ? 'Data: ' . $when . "\n" : '')
-            . 'Embarque: ' . gcv_ops_embarque_text($exc) . "\n"
-            . 'Pessoas nesta inscrição: ' . $pax . "\n"
-            . gcv_ops_group_update_text($excId, $exc) . "\n\n"
+            . gcv_ops_aviso_saida_linhas($excId, $exc) . "\n"
+            . 'Pessoas nesta inscrição: ' . $pax . "\n\n"
             . gcv_ops_client_contact_block($sale)
             . "\nA reserva está na sua Agenda do painel.";
     } else {
@@ -1342,6 +1345,120 @@ function gcv_ops_notify_guide_approved(int $excursionId): void
     }
 }
 
+function gcv_ops_guide_aceitou(int $excursionId): bool
+{
+    if ($excursionId <= 0) {
+        return false;
+    }
+    try {
+        $acc = db()->prepare(
+            "SELECT 1 FROM gcv_guide_queue_offers
+             WHERE excursion_id = ? AND status = 'accepted' LIMIT 1"
+        );
+        $acc->execute([$excursionId]);
+        if ($acc->fetchColumn()) {
+            return true;
+        }
+        $seat = db()->prepare(
+            'SELECT 1 FROM gcv_excursion_guide_seats WHERE excursion_id = ? LIMIT 1'
+        );
+        $seat->execute([$excursionId]);
+        return (bool)$seat->fetchColumn();
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
+function gcv_ops_excursion_teste(array $exc): bool
+{
+    if (!function_exists('gcv_excursion_is_teste')) {
+        $file = __DIR__ . '/teste_acesso.php';
+        if (is_file($file)) {
+            require_once $file;
+        }
+    }
+    return function_exists('gcv_excursion_is_teste') && gcv_excursion_is_teste($exc);
+}
+
+function gcv_ops_ponto_encontro(array $exc): string
+{
+    $placeId = trim((string)($exc['meeting_point_place_id'] ?? ''));
+    $fallback = trim((string)($exc['meeting_point'] ?? ''));
+    if (!function_exists('gcv_meeting_point_public')) {
+        $file = __DIR__ . '/meeting_points_catalog.php';
+        if (is_file($file)) {
+            require_once $file;
+        }
+    }
+    if (function_exists('gcv_meeting_point_public')) {
+        $pub = gcv_meeting_point_public($placeId !== '' ? $placeId : null, $fallback, 'pt');
+        $label = trim((string)($pub['label'] ?? ''));
+        if ($label !== '') {
+            return $label;
+        }
+    }
+    return $fallback !== '' ? $fallback : 'A combinar';
+}
+
+function gcv_ops_reserva_codigo(int $excursionId): string
+{
+    $codes = [];
+    foreach (gcv_ops_paid_sales_for_excursion($excursionId) as $sale) {
+        $code = strtoupper(trim((string)($sale['reservation_id'] ?? '')));
+        if ($code !== '' && !in_array($code, $codes, true)) {
+            $codes[] = $code;
+        }
+    }
+    return implode(', ', $codes);
+}
+
+function gcv_ops_saida_rotulo(array $exc, int $excursionId): string
+{
+    if (gcv_excursion_is_private($exc)) {
+        $code = gcv_ops_reserva_codigo($excursionId);
+        return $code !== '' ? ('Privativo ' . $code) : ('Privativo #' . $excursionId);
+    }
+    return 'Excursão #' . $excursionId;
+}
+
+/** Corpo do aviso de saída. Privativo não leva quórum nem “confirmados por fora”. */
+function gcv_ops_aviso_saida_linhas(int $excursionId, array $exc): string
+{
+    $g = gcv_ops_group_counts($excursionId, $exc);
+    $when = trim(
+        gcv_ops_date_br((string)($exc['date_iso'] ?? ''))
+        . ' às ' . substr((string)($exc['departure_time'] ?? ''), 0, 5)
+    );
+    $city = trim((string)($exc['departure_city_name'] ?? ''));
+    if ($city === '') {
+        $city = 'Alto Paraíso de Goiás';
+    }
+    $inscritosWord = (int)$g['total'] === 1 ? 'inscrito' : 'inscritos';
+    $privado = gcv_excursion_is_private($exc);
+    $lines = [
+        'Destino: ' . gcv_ops_excursion_title($exc),
+        'Data: ' . $when,
+        'Cidade: ' . $city,
+        'Ponto de Encontro: ' . gcv_ops_ponto_encontro($exc),
+    ];
+    if (!$privado && (int)$g['por_fora'] > 0) {
+        $lines[] = 'Confirmados por fora: ' . gcv_ops_pessoas((int)$g['por_fora']);
+    }
+    $lines[] = 'Inscritos: ' . gcv_ops_pessoas((int)$g['platform']);
+    if (!$privado) {
+        $lines[] = 'Quórum: ' . gcv_ops_quorum_text(max(0, (int)($exc['quorum'] ?? 0)));
+    }
+    $lines[] = 'Grupo total: ' . $g['total'] . '/' . $g['max'] . ' ' . $inscritosWord;
+    if ($privado) {
+        $lines[] = 'Valor da reserva: ' . gcv_ops_brl((int)$g['cents']);
+    } else {
+        $lines[] = 'Valor a receber por inscrição: ' . gcv_ops_brl(gcv_ops_guide_unit_cents($exc))
+            . ' (total até o momento ' . gcv_ops_brl((int)$g['guide_cents']) . ')';
+    }
+    $lines[] = gcv_ops_saida_rotulo($exc, $excursionId);
+    return implode("\n", $lines);
+}
+
 function gcv_ops_maybe_notify_confirmed(?array $before, ?array $after): void
 {
     if (!$after) {
@@ -1388,6 +1505,11 @@ function gcv_ops_notify_guide_confirmed(int $excursionId): void
     if (!empty($exc['notify_confirmed_at'])) {
         return;
     }
+    $privado = gcv_excursion_is_private($exc);
+    $teste = gcv_ops_excursion_teste($exc);
+    if (($privado || $teste) && !gcv_ops_guide_aceitou($excursionId)) {
+        return;
+    }
     try {
         $lock = db()->prepare('UPDATE gcv_excursions SET notify_confirmed_at = NOW() WHERE id = ? AND notify_confirmed_at IS NULL');
         $lock->execute([$excursionId]);
@@ -1399,23 +1521,18 @@ function gcv_ops_notify_guide_confirmed(int $excursionId): void
     }
     $guideId = (int)($exc['guide_user_id'] ?? 0);
     $title = gcv_ops_excursion_title($exc);
-    $when = trim(gcv_ops_date_br((string)$exc['date_iso']) . ' às ' . substr((string)($exc['departure_time'] ?? ''), 0, 5));
-    $city = trim((string)($exc['departure_city_name'] ?? 'Alto Paraíso'));
-    $textAdmin = "✅ Passeio CONFIRMADO (Em formação → Confirmado)\n\n"
-        . 'Destino: ' . $title . "\n"
-        . 'Data: ' . $when . "\n"
-        . 'Saída: ' . ($city !== '' ? $city : 'Alto Paraíso') . "\n"
-        . 'Ponto: ' . gcv_ops_meeting_point_text($exc) . "\n"
-        . gcv_ops_group_update_text($excursionId, $exc) . "\n"
-        . 'Excursão #' . $excursionId;
+    $linhas = gcv_ops_aviso_saida_linhas($excursionId, $exc);
+    $textAdmin = ($privado
+            ? "✅ Guia confirmou a guiagem\n\n"
+            : "✅ Passeio CONFIRMADO (Em formação → Confirmado)\n\n")
+        . $linhas;
     gcv_ops_wa_agency($textAdmin);
     gcv_ops_mail_plain('diegonavi82@gmail.com', 'Passeio confirmado — ' . $title, $textAdmin);
 
-    $textGuide = "✅ Passeio CONFIRMADO!\n\n"
-        . 'Destino: ' . $title . "\n"
-        . 'Data: ' . $when . "\n"
-        . 'Embarque: ' . gcv_ops_embarque_text($exc) . "\n"
-        . gcv_ops_group_update_text($excursionId, $exc) . "\n\n"
+    $textGuide = ($privado
+            ? "✅ Você confirmou a guiagem\n\n"
+            : "✅ Passeio CONFIRMADO!\n\n")
+        . $linhas . "\n\n"
         . gcv_ops_roster_text($excursionId) . "\n\n"
         . 'Os dados dos clientes também estão na Agenda.' . "\n"
         . gcv_ops_guide_qr_scan_lines();
@@ -1597,12 +1714,16 @@ function gcv_ops_group_update_text(int $excursionId, ?array $exc = null): string
     $unitGuide = gcv_ops_guide_unit_cents($exc);
     $quorum = max(0, (int)($exc['quorum'] ?? 0));
     $inscritosWord = $g['total'] === 1 ? 'inscrito' : 'inscritos';
-    return 'Confirmados por fora: ' . gcv_ops_pessoas($g['por_fora']) . "\n"
-        . 'Inscritos: ' . gcv_ops_pessoas($g['platform']) . "\n"
-        . 'Quórum: ' . gcv_ops_quorum_text($quorum) . "\n"
-        . 'Grupo total: ' . $g['total'] . '/' . $g['max'] . ' ' . $inscritosWord . "\n"
-        . 'Valor a receber por inscrição: ' . gcv_ops_brl($unitGuide)
+    $lines = [];
+    if ((int)$g['por_fora'] > 0) {
+        $lines[] = 'Confirmados por fora: ' . gcv_ops_pessoas((int)$g['por_fora']);
+    }
+    $lines[] = 'Inscritos: ' . gcv_ops_pessoas((int)$g['platform']);
+    $lines[] = 'Quórum: ' . gcv_ops_quorum_text($quorum);
+    $lines[] = 'Grupo total: ' . $g['total'] . '/' . $g['max'] . ' ' . $inscritosWord;
+    $lines[] = 'Valor a receber por inscrição: ' . gcv_ops_brl($unitGuide)
         . ' (total até o momento ' . gcv_ops_brl((int)$g['guide_cents']) . ')';
+    return implode("\n", $lines);
 }
 
 function gcv_ops_roster_text(int $excursionId): string

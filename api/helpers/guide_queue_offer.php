@@ -1035,6 +1035,56 @@ function gcv_guiagem_offer_priority(array $tour, int $exceptId): array
     return [['id' => $diego, 'priority' => true]];
 }
 
+function gcv_guiagem_tour_is_teste(array $tour): bool
+{
+    if (!function_exists('gcv_excursion_is_teste')) {
+        require_once __DIR__ . '/teste_acesso.php';
+    }
+    return gcv_excursion_is_teste($tour);
+}
+
+/**
+ * Passeio de teste só chega no guia Diego. Recusa não abre a fila dos outros.
+ *
+ * @param array<string,mixed> $tour
+ * @return list<array<string,mixed>>
+ */
+function gcv_guiagem_offer_somente_diego(array $tour, int $exceptId = 0): array
+{
+    gcv_guiagem_ensure_schema();
+    if (!function_exists('gcv_teste_guia_id')) {
+        require_once __DIR__ . '/teste_acesso.php';
+    }
+    $tourId = (int)($tour['id'] ?? 0);
+    $diego = gcv_teste_guia_id();
+    if ($tourId <= 0 || $diego <= 0 || $diego === $exceptId) {
+        return [];
+    }
+    if ((int)($tour['guide_user_id'] ?? 0) > 0) {
+        return [];
+    }
+    if (gcv_guiagem_pending_guide_ids($tourId)) {
+        return [];
+    }
+    try {
+        if (gcv_guiagem_column_exists('kind')) {
+            db()->prepare(
+                "INSERT INTO gcv_guide_queue_offers (excursion_id, guide_user_id, status, kind)
+                 VALUES (?, ?, 'pending', 'teste')"
+            )->execute([$tourId, $diego]);
+        } else {
+            db()->prepare(
+                "INSERT INTO gcv_guide_queue_offers (excursion_id, guide_user_id, status)
+                 VALUES (?, ?, 'pending')"
+            )->execute([$tourId, $diego]);
+        }
+    } catch (Throwable $e) {
+        error_log('gcv_guiagem_offer_somente_diego: ' . $e->getMessage());
+        return [];
+    }
+    return [['id' => $diego, 'teste' => true]];
+}
+
 /**
  * Translado: uma proposta pendente para cada guia ativo com modelo e ano no perfil.
  * Não usa a fila nem a prioridade do guia especial.
@@ -1044,6 +1094,9 @@ function gcv_guiagem_offer_priority(array $tour, int $exceptId): array
  */
 function gcv_guiagem_open_vehicle_all(array $tour, int $exceptId): array
 {
+    if (gcv_guiagem_tour_is_teste($tour)) {
+        return gcv_guiagem_offer_somente_diego($tour, $exceptId);
+    }
     gcv_guiagem_ensure_schema();
     $tourId = (int)($tour['id'] ?? 0);
     if ($tourId <= 0) {
@@ -1144,6 +1197,9 @@ function gcv_guiagem_open_next(array $tour, int $exceptId): array
     if ($tourId <= 0) {
         return [];
     }
+    if (gcv_guiagem_tour_is_teste($tour)) {
+        return gcv_guiagem_offer_somente_diego($tour, $exceptId);
+    }
     $vehicle = gcv_guiagem_is_vehicle_broadcast($tour);
     $owner = (int)($tour['guide_user_id'] ?? 0);
     if ($owner > 0 && !$vehicle) {
@@ -1179,6 +1235,10 @@ function gcv_guiagem_after_unassigned_sale(int $excursionId): void
     $tour = gcv_substitution_load_excursion($excursionId);
     if (!$tour) {
         return;
+    }
+    if (gcv_guiagem_tour_is_teste($tour)) {
+        gcv_teste_soltar_guia_sem_aceite($excursionId);
+        $tour = gcv_substitution_load_excursion($excursionId) ?: $tour;
     }
     $vehicle = gcv_guiagem_is_vehicle_broadcast($tour);
     if (!$vehicle && (int)($tour['guide_user_id'] ?? 0) > 0) {
@@ -1280,6 +1340,9 @@ function gcv_guiagem_drop_priority_holds(): int
  */
 function gcv_guiagem_open_top(array $tour, int $exceptId): array
 {
+    if (gcv_guiagem_tour_is_teste($tour)) {
+        return gcv_guiagem_offer_somente_diego($tour, $exceptId);
+    }
     gcv_guiagem_ensure_schema();
     $tourId = (int)($tour['id'] ?? 0);
     if ($tourId <= 0) {
@@ -1590,7 +1653,22 @@ function gcv_guiagem_accept(int $excursionId, array $user): array
 
     $fresh = gcv_substitution_load_excursion($excursionId) ?: $tour;
     $still = max(0, gcv_guiagem_guides_needed($fresh) - count(gcv_guiagem_filled_ids($fresh)));
-    gcv_guiagem_notify_seat_accepted($me, $fresh, $still);
+    $avisouConfirmado = false;
+    if ($still < 1) {
+        try {
+            require_once __DIR__ . '/notify_ops.php';
+            require_once __DIR__ . '/excursion_status.php';
+            if (gcv_resolve_excursion_lifecycle($fresh) === 'confirmada') {
+                gcv_ops_notify_guide_confirmed($excursionId);
+                $avisouConfirmado = !empty(gcv_ops_load_excursion($excursionId)['notify_confirmed_at']);
+            }
+        } catch (Throwable $e) {
+            error_log('gcv_guiagem_accept aviso confirmado: ' . $e->getMessage());
+        }
+    }
+    if (!$avisouConfirmado) {
+        gcv_guiagem_notify_seat_accepted($me, $fresh, $still);
+    }
     if ($still > 0) {
         gcv_guiagem_ensure_invites($fresh);
     } else {
@@ -1664,11 +1742,13 @@ function gcv_guiagem_decline(int $excursionId, int $guideId): array
         $pending = (int)$left->fetchColumn();
         $picked = [];
         $cancelNow = false;
+        $tour = null;
         if ($pending < 1) {
             $tour = gcv_substitution_load_excursion($excursionId);
             if ($tour && !gcv_guiagem_staffing_ready($tour)) {
                 $picked = gcv_guiagem_open_next($tour, $guideId);
-                if (!$picked && count(gcv_guiagem_filled_ids($tour)) < 1) {
+                $testeSemOutro = $tour && gcv_guiagem_tour_is_teste($tour);
+                if (!$picked && !$testeSemOutro && count(gcv_guiagem_filled_ids($tour)) < 1) {
                     $cancelNow = gcv_guiagem_mark_cancelled($excursionId);
                 }
             }
@@ -1824,6 +1904,8 @@ function gcv_guiagem_notify_new_purchase(int $excursionId, array $guideIds): voi
                     if ($exp !== '') {
                         $note = gcv_guiagem_priority_note($exp);
                     }
+                } elseif ($offerKind === 'teste') {
+                    $note = 'Passeio de teste. Só você recebe esta proposta. Confirme se pode guiar.';
                 } elseif ($offerKind === 'vehicle') {
                     $note = 'Passeio com translado. Não há fila: todos os guias com veículo cadastrado receberam esta proposta. O primeiro que aceitar fica com a vaga.';
                 }

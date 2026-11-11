@@ -276,10 +276,6 @@ function gcv_private_departure_ensure(string $reservationId, int $index, array $
     $guideId = null;
     require_once __DIR__ . '/teste_acesso.php';
     if (gcv_teste_so_atracoes($attrIds)) {
-        $gid = gcv_teste_guia_id();
-        if ($gid > 0) {
-            $guideId = $gid;
-        }
         $note = 'TESTE · privativo de centavos. Reserva ' . $reservationId;
     }
 

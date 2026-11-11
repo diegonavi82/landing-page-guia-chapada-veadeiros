@@ -105,6 +105,68 @@ function gcv_teste_so_atracoes(array $ids): bool
     return true;
 }
 
+/** Saída de teste: slug, anotação ou atrativo teste-*. Não entra na fila dos outros guias. */
+function gcv_excursion_is_teste(array $exc): bool
+{
+    $slug = strtolower(trim((string)($exc['cart_slug'] ?? '')));
+    if ($slug !== '' && str_starts_with($slug, 'teste-')) {
+        return true;
+    }
+    $notes = (string)($exc['notes_pt'] ?? '');
+    if (preg_match('/^\s*TESTE\b/u', $notes)) {
+        return true;
+    }
+    $attrId = (int)($exc['attraction_id'] ?? 0);
+    return $attrId > 0 && gcv_teste_so_atracoes([$attrId]);
+}
+
+/**
+ * Tira o guia colocado na criação, quando ele ainda não aceitou a proposta.
+ * Sem isso o sistema trata o Diego como se já tivesse confirmado a guiagem.
+ */
+function gcv_teste_soltar_guia_sem_aceite(int $excursionId): void
+{
+    if ($excursionId <= 0) {
+        return;
+    }
+    try {
+        $st = db()->prepare(
+            'SELECT guide_user_id FROM gcv_excursions WHERE id = ? AND deleted_at IS NULL LIMIT 1'
+        );
+        $st->execute([$excursionId]);
+        $guideId = (int)$st->fetchColumn();
+        if ($guideId <= 0) {
+            return;
+        }
+        $acc = db()->prepare(
+            "SELECT 1 FROM gcv_guide_queue_offers
+             WHERE excursion_id = ? AND status = 'accepted' LIMIT 1"
+        );
+        $acc->execute([$excursionId]);
+        if ($acc->fetchColumn()) {
+            return;
+        }
+        $seat = db()->prepare(
+            'SELECT 1 FROM gcv_excursion_guide_seats WHERE excursion_id = ? LIMIT 1'
+        );
+        $seat->execute([$excursionId]);
+        if ($seat->fetchColumn()) {
+            return;
+        }
+        db()->prepare(
+            'UPDATE gcv_excursions SET guide_user_id = NULL WHERE id = ? AND guide_user_id = ?'
+        )->execute([$excursionId, $guideId]);
+        db()->prepare(
+            "UPDATE gcv_sales
+             SET guide_user_id = NULL, guide_name = NULL, guide_cpf = NULL, guide_cnpj = NULL, updated_at = NOW()
+             WHERE excursion_id = ? AND guide_user_id = ? AND deleted_at IS NULL
+               AND payout_status <> 'PAYOUT_PAID'"
+        )->execute([$excursionId, $guideId]);
+    } catch (Throwable $e) {
+        error_log('gcv_teste_soltar_guia_sem_aceite: ' . $e->getMessage());
+    }
+}
+
 /**
  * @param list<array<string,mixed>> $trips
  */
@@ -282,7 +344,6 @@ function gcv_teste_group_departure_ensure(array $trip, array $attrIds): ?array
     $attrId = (int)$attrIds[0];
     $transport = gcv_private_trip_has_transport($trip);
     $slug = 'teste-grupo-' . $attrId . '-' . $date . '-' . $cityId . '-' . ($transport ? 't' : 's');
-    $guideId = gcv_teste_guia_id();
     $time = function_exists('gcv_normalize_departure_time')
         ? gcv_normalize_departure_time((string)($trip['hora'] ?? '08:00'))
         : '08:00:00';
@@ -321,7 +382,7 @@ function gcv_teste_group_departure_ensure(array $trip, array $attrIds): ?array
                 $time,
                 $cityId,
                 $attrId,
-                $guideId > 0 ? $guideId : null,
+                null,
                 $transport ? 1 : 0,
                 $notes,
                 $slug,
@@ -334,12 +395,8 @@ function gcv_teste_group_departure_ensure(array $trip, array $attrIds): ?array
                 require_once __DIR__ . '/excursion_attractions.php';
                 gcv_excursion_save_attractions($id, $attrIds);
             }
-        } elseif ($guideId > 0) {
-            db()->prepare(
-                'UPDATE gcv_excursions
-                 SET guide_user_id = ?
-                 WHERE id = ? AND (guide_user_id IS NULL OR guide_user_id = 0)'
-            )->execute([$guideId, $id]);
+        } else {
+            gcv_teste_soltar_guia_sem_aceite($id);
         }
         if ($id <= 0) {
             return null;

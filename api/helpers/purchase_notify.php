@@ -92,6 +92,22 @@ function gcv_purchase_clean_destino(array $t): string
 }
 
 /** @param array<string, mixed> $t */
+function gcv_purchase_trip_tipo(array $t): string
+{
+    if (!function_exists('gcv_private_trip_mode')) {
+        require_once __DIR__ . '/private_departure.php';
+    }
+    $mode = gcv_private_trip_mode($t);
+    if ($mode === 'privativo') {
+        return 'Privativo';
+    }
+    if ($mode === 'excursao') {
+        return 'Excursão';
+    }
+    return '';
+}
+
+/** @param array<string, mixed> $t */
 function gcv_purchase_trip_date(array $t): string
 {
     $date = trim((string)($t['dateShort'] ?? $t['dateLabel'] ?? ''));
@@ -136,7 +152,9 @@ function gcv_purchase_trip_lines(array $rec): string
         $qty = max(1, (int)($t['qty'] ?? 1));
         $hora = trim((string)($t['hora'] ?? $t['time'] ?? ''));
         $embarque = trim((string)($t['embarque'] ?? $t['boarding'] ?? ''));
+        $tipo = gcv_purchase_trip_tipo($t);
         $parts = array_filter([
+            $tipo !== '' ? $tipo : null,
             $date !== '' ? $date : null,
             $dest !== '' ? $dest : null,
             $hora !== '' ? ('horário ' . $hora) : null,
@@ -192,7 +210,22 @@ function gcv_purchase_notify_message(array $rec): string
     $buyerPhone = trim((string)($rec['phone'] ?? $rec['telefone'] ?? $rec['buyer_phone'] ?? ''));
     $brl = !empty($rec['charged_label']) ? (string)$rec['charged_label'] : 'R$ ' . number_format($amount, 2, ',', '.');
     $people = gcv_purchase_total_people($rec);
-    $msg = "🛒 Nova reserva confirmada\n\n";
+    $tipos = [];
+    $trips = is_array($rec['trips'] ?? null) ? $rec['trips'] : [];
+    foreach ($trips as $t) {
+        if (!is_array($t)) {
+            continue;
+        }
+        $tipo = gcv_purchase_trip_tipo($t);
+        if ($tipo !== '' && !in_array($tipo, $tipos, true)) {
+            $tipos[] = $tipo;
+        }
+    }
+    $msg = "🛒 Nova reserva confirmada\n";
+    $msg .= "Aviso interno da administração\n\n";
+    if (count($tipos) === 1) {
+        $msg .= 'Tipo: ' . $tipos[0] . "\n";
+    }
     $msg .= "Código: {$code}\n";
     $msg .= "Valor: {$brl}\n";
     $msg .= "Pessoas: {$people} PAX\n";
