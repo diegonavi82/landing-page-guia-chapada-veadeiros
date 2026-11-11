@@ -245,7 +245,8 @@
 .rk-table th, .rk-table td { padding: 9px 14px; font-size: .88rem; font-weight: 600; }
 .rk-table thead th { color: #94a3b8; font-size: .72rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
 .rk-table tbody th { text-align: left; color: #0f172a; font-weight: 700; }
-.rk-table td { text-align: right; color: #0f3d2e; }
+.rk-table td { text-align: right; color: #0f3d2e; vertical-align: top; }
+.rk-sub { display: block; margin-top: 2px; font-size: .72rem; font-weight: 600; color: #64748b; line-height: 1.35; }
 .rk-table tbody tr.is-aqui { background: #f3faf6; }
 .rk-kicker { margin: 0 0 8px; font-size: .68rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #64748b; }
 .rk-premios { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
@@ -271,6 +272,11 @@
 .xp-rank__guia img { width: 64px; height: 64px; object-fit: cover; border-radius: 50%; flex: 0 0 auto; background: #e7f0eb; }
 .xp-rank__guia header { display: flex; justify-content: space-between; gap: 8px; }
 .xp-rank__guia p { margin: 4px 0; }
+.xp-rank__onde { margin: 4px 0 0; font-size: .75rem; font-weight: 700; color: #0f3d2e; white-space: normal; }
+.xp-rank__detalhe td { text-align: left; font-weight: 600; background: #fafaf9; }
+.xp-rank__conta { font-size: .8rem; font-weight: 600; color: #334155; line-height: 1.4; }
+.xp-rank__conta p { margin: 8px 0 2px; }
+.xp-rank__conta ul { margin: 0 0 4px; padding-left: 1.1rem; }
 .xp-rank__dia { margin-top: 8px; font-size: .84rem; }
 .xp-rank__dia ul { margin: 4px 0; padding-left: 1.1rem; }
 .xp-rank__atra.is-aqui { color: #0f3d2e; font-weight: 600; }

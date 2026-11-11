@@ -459,7 +459,7 @@
             if (!atrativos.length) return null;
             var pts = 0;
             atrativos.forEach(function (item) { pts += item.pontos; });
-            return { pessoas: saida.pessoas, pontos: pts, atrativos: atrativos };
+            return { pessoas: saida.pessoas, pontos: pts, cidade: saida.cidade || '', atrativos: atrativos };
           }).filter(Boolean);
           if (!grupos.length) return;
           var diaPessoas = 0;
@@ -472,7 +472,7 @@
           });
           pontos += diaPontos;
           pessoas += diaPessoas;
-          dias.push({ data: dia.data, grupos: grupos.length, pessoas: diaPessoas, pontos: diaPontos, atrativos: atrativos });
+          dias.push({ data: dia.data, grupos: grupos.length, pessoas: diaPessoas, pontos: diaPontos, atrativos: atrativos, saidas: grupos });
         });
         if (!dias.length) return null;
         return {
@@ -507,6 +507,76 @@
     return n ? n + 'º' : 'sem pontuação';
   }
 
+  function dataBr(iso) {
+    var s = String(iso || '').slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    return s.slice(8, 10) + '/' + s.slice(5, 7) + '/' + s.slice(0, 4);
+  }
+
+  function nomeCidade(key) {
+    if (key === 'alto-paraiso') return 'Alto Paraíso';
+    if (key === 'sao-jorge') return 'São Jorge';
+    if (key === 'cavalcante') return 'Cavalcante';
+    return '';
+  }
+
+  function nomePeso(peso) {
+    if (Number(peso) === 1) return 'fácil';
+    if (Number(peso) === 3) return 'difícil';
+    return 'moderado';
+  }
+
+  function acharGuia(temp, guiaId) {
+    var guias = (temp && temp.guias) || [];
+    var i;
+    for (i = 0; i < guias.length; i++) {
+      if (String(guias[i].id) === String(guiaId)) return guias[i];
+    }
+    return null;
+  }
+
+  function cidadesDoGuia(g) {
+    var mapa = {};
+    var lista = [];
+    (g && g.dias || []).forEach(function (dia) {
+      (dia.saidas || []).forEach(function (saida) {
+        var nome = nomeCidade(saida.cidade);
+        if (!nome || mapa[nome]) return;
+        mapa[nome] = true;
+        lista.push(nome);
+      });
+    });
+    return lista;
+  }
+
+  function textoConta(g) {
+    if (!g) return 'sem pontuação';
+    var dias = Number(g.dias_guiados) || 0;
+    var onde = cidadesDoGuia(g);
+    var texto = g.pontos + ' pts · ' + g.pessoas + ' pessoas · ' + dias + ' dia' + (dias === 1 ? '' : 's');
+    if (onde.length) texto += ' · ' + onde.join(', ');
+    return texto;
+  }
+
+  function contasDoGuia(g) {
+    var dias = (g && g.dias) || [];
+    if (!dias.length) return '';
+    return dias.map(function (dia) {
+      var saidas = dia.saidas || [];
+      if (!saidas.length && (dia.atrativos || []).length) {
+        saidas = [{ pessoas: dia.pessoas, cidade: '', atrativos: dia.atrativos }];
+      }
+      return saidas.map(function (saida) {
+        var onde = nomeCidade(saida.cidade);
+        var linhas = (saida.atrativos || []).map(function (item) {
+          return esc(item.nome) + ': ' + item.pessoas + ' pessoas × peso ' + item.peso + ' (' + nomePeso(item.peso) + ') = ' + item.pontos + ' pts';
+        }).join('</li><li>');
+        var cab = dataBr(dia.data) + ' · ' + (onde ? 'saindo de ' + onde + ' · ' : '') + saida.pessoas + ' pessoas no grupo';
+        return '<p>' + esc(cab) + '</p>' + (linhas ? '<ul><li>' + linhas + '</li></ul>' : '');
+      }).join('');
+    }).join('');
+  }
+
   function linhaRanking(g, lugar, guiaId, premio, mostrarPremio) {
     var podium = lugar === 1 ? ' is-1' : lugar === 2 ? ' is-2' : lugar === 3 ? ' is-3' : '';
     var eu = guiaId && String(g.id) === String(guiaId) ? ' is-eu' : '';
@@ -519,6 +589,7 @@
     return '<article class="xp-rank__guia' + podium + eu + '"><img src="' + esc(g.foto) + '" alt="Foto de ' + esc(g.nome) + '" /><div><header><strong>' + lugar + 'º ' + esc(g.nome) + (eu ? ' <span class="xp-rank__eu">você</span>' : '') + '</strong><span>' + g.pontos + ' pts</span></header>' +
       atua +
       '<p>' + g.pessoas + ' pessoas · ' + g.dias_guiados + ' dia' + (g.dias_guiados > 1 ? 's' : '') + ' · média ' + (typeof g.media_dia === 'number' ? casa(g.media_dia) : g.media_dia) + ' por dia</p>' +
+      '<div class="xp-rank__conta">' + contasDoGuia(g) + '</div>' +
       recebe + '</div></article>';
   }
 
@@ -570,7 +641,7 @@
       return '<article class="xp-rank__card xp-rank__' + chave + '">' + cabeca + '<p class="xp-note">Nenhum guia pontuou nesta temporada.</p></article>';
     }
     var cols = colunasRank(guias);
-    var head = '<th class="xp-rank__pos">#</th><th class="xp-rank__quem">Guia</th><th class="xp-rank__pontos" scope="col">Pontos</th>' + cols.map(function (col) {
+    var head = '<th class="xp-rank__pos">#</th><th class="xp-rank__quem">Guia</th><th class="xp-rank__pontos" scope="col">Pontos</th><th class="xp-rank__media" scope="col">Pessoas</th><th class="xp-rank__media" scope="col">Dias</th>' + cols.map(function (col) {
       var aqui = slugAqui && col.slug === slugAqui ? ' is-aqui' : '';
       return '<th class="xp-rank__col' + aqui + '" scope="col"><strong>' + esc(col.nome) + '</strong></th>';
     }).join('');
@@ -584,9 +655,16 @@
         return '<td class="xp-rank__col' + aqui + '">' + (pts == null ? '<span class="xp-rank__vazio">—</span>' : esc(String(pts))) + '</td>';
       }).join('');
       var voce = eu ? '<em class="xp-rank__eu">você</em>' : '';
+      var onde = cidadesDoGuia(g);
+      var conta = contasDoGuia(g);
+      var span = 5 + cols.length;
       return '<tr class="' + (podium + (eu ? ' is-eu' : '')).trim() + '"><th class="xp-rank__pos" scope="row">' + lugar + 'º</th>' +
-        '<td class="xp-rank__quem"><div class="xp-rank__pessoa"><img src="' + esc(g.foto) + '" alt="" /><span>' + esc(g.nome) + '</span>' + voce + '</div></td>' +
-        '<td class="xp-rank__pontos">' + esc(String(g.pontos)) + '</td>' + cells + '</tr>';
+        '<td class="xp-rank__quem"><div class="xp-rank__pessoa"><img src="' + esc(g.foto) + '" alt="" /><span>' + esc(g.nome) + '</span>' + voce + '</div>' +
+        (onde.length ? '<p class="xp-rank__onde">Saindo de ' + esc(onde.join(', ')) + '</p>' : '') + '</td>' +
+        '<td class="xp-rank__pontos">' + esc(String(g.pontos)) + '</td>' +
+        '<td class="xp-rank__media">' + esc(String(g.pessoas)) + '</td>' +
+        '<td class="xp-rank__media">' + esc(String(g.dias_guiados)) + '</td>' + cells + '</tr>' +
+        (conta ? '<tr class="xp-rank__detalhe' + (eu ? ' is-eu' : '') + '"><td colspan="' + span + '"><div class="xp-rank__conta">' + conta + '</div></td></tr>' : '');
     }).join('');
     return '<article class="xp-rank__card xp-rank__' + chave + '">' + cabeca +
       '<div class="xp-rank__scroll"><table class="xp-rank__table"><thead><tr>' + head + '</tr></thead><tbody>' + body + '</tbody></table></div></article>';
@@ -615,8 +693,17 @@
     ];
     var atra = '';
     var cidade = 'chapada';
-    function lugarHero(n) {
-      return '<strong>' + (n ? n + 'º' : '—') + '</strong>' + (n ? '' : '<small>sem pontuação</small>');
+    function lugarHero(temp) {
+      var n = lugarDe(temp, data.guia_id);
+      var g = acharGuia(temp, data.guia_id);
+      var sub = g ? textoConta(g).replace(/^\d+ pts · /, '') : 'sem pontuação';
+      return '<strong>' + (n ? n + 'º' : '—') + '</strong><small>' + esc(sub) + '</small>';
+    }
+    function celulaResumo(temp) {
+      var n = lugarDe(temp, data.guia_id);
+      var g = acharGuia(temp, data.guia_id);
+      if (!n || !g) return 'sem pontuação';
+      return n + 'º<small class="rk-sub">' + esc(textoConta(g)) + '</small>';
     }
     function chip(attrs, on, label) {
       return '<button type="button" ' + attrs + ' class="' + (on ? 'is-on' : '') + '" role="radio" aria-checked="' + (on ? 'true' : 'false') + '">' + esc(label) + '</button>';
@@ -625,21 +712,19 @@
       var slugs = atra ? [atra] : atrativos.map(function (a) { return a.slug; });
       var escolha = atra ? atrativos.filter(function (a) { return a.slug === atra; }) : atrativos.slice();
       var filtrado = filtrarRanking(data, slugs, cidade);
-      var fogo = lugarDe(filtrado.xango, data.guia_id);
-      var agua = lugarDe(filtrado.oxum, data.guia_id);
       var linhasAtra = atrativos.map(function (a) {
         var so = filtrarRanking(data, [a.slug], cidade);
         var aqui = a.slug === atra ? ' class="is-aqui"' : '';
-        return '<tr' + aqui + '><th>' + esc(a.nome) + '</th><td>' + textoLugar(lugarDe(so.xango, data.guia_id)) + '</td><td>' + textoLugar(lugarDe(so.oxum, data.guia_id)) + '</td></tr>';
+        return '<tr' + aqui + '><th>' + esc(a.nome) + '</th><td>' + celulaResumo(so.xango) + '</td><td>' + celulaResumo(so.oxum) + '</td></tr>';
       }).join('');
       var linhasCidade = cidades.filter(function (c) { return c.key && c.key !== 'chapada'; }).map(function (c) {
         var so = filtrarRanking(data, slugs, c.key);
         var aqui = c.key === cidade ? ' class="is-aqui"' : '';
-        return '<tr' + aqui + '><th>' + esc(c.nome) + '</th><td>' + textoLugar(lugarDe(so.xango, data.guia_id)) + '</td><td>' + textoLugar(lugarDe(so.oxum, data.guia_id)) + '</td></tr>';
+        return '<tr' + aqui + '><th>' + esc(c.nome) + '</th><td>' + celulaResumo(so.xango) + '</td><td>' + celulaResumo(so.oxum) + '</td></tr>';
       }).join('');
       root.innerHTML =
         '<div class="rk-board">' +
-        '<header class="rk-hero"><article class="rk-hero__fogo"><span>Ranking Fogo</span>' + lugarHero(fogo) + '</article><article class="rk-hero__agua"><span>Ranking Água</span>' + lugarHero(agua) + '</article></header>' +
+        '<header class="rk-hero"><article class="rk-hero__fogo"><span>Ranking Fogo</span>' + lugarHero(filtrado.xango) + '</article><article class="rk-hero__agua"><span>Ranking Água</span>' + lugarHero(filtrado.oxum) + '</article></header>' +
         '<div class="rk-panel">' +
         '<div class="rk-row"><span class="rk-row__label">Atrativo</span><div class="rk-seg" role="radiogroup" aria-label="Atrativo">' +
         chip('data-rk=""', !atra, 'Todos atrativos') +
