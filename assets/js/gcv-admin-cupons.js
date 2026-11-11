@@ -78,8 +78,11 @@
     var modo = (box.querySelector('[data-cupom-modo]') || {}).value || 'fixo';
     var grupo = box.querySelector('[data-cupom-grupo]');
     var valorLabel = box.querySelector('[data-cupom-valor-label]');
+    var ativoBox = box.querySelector('[data-cupom-ativo]');
+    var aviso = box.querySelector('[data-cupom-ativo-aviso]');
     if (grupo) grupo.hidden = tipo !== 'grupo';
     if (valorLabel) valorLabel.textContent = modo === 'percentual' ? 'Percentual' : 'Valor em R$';
+    if (aviso) aviso.hidden = !ativoBox || !!ativoBox.checked;
   }
 
   function fillForm(c) {
@@ -114,6 +117,7 @@
         (c.ativo ? '' : ' <span class="gcv-cupom-off">desativado</span>') +
         '<p>' + esc(regra(c)) + '</p></div>' +
         '<div class="gcv-cupom-item__actions">' +
+        (c.ativo ? '' : '<button type="button" class="gcv-dash-btn" data-cupom-on="' + esc(c.id) + '">Ativar</button>') +
         '<button type="button" class="gcv-dash-btn" data-cupom-edit="' + esc(c.id) + '">Editar</button>' +
         '<button type="button" class="gcv-dash-btn" data-cupom-del="' + esc(c.id) + '">Excluir</button>' +
         '</div></li>';
@@ -148,7 +152,8 @@
       '<option value="total">no total do carrinho</option>' +
       '<option value="pessoa">em cada pessoa</option>' +
       '</select></label></div>' +
-      '<label class="gcv-cupom-form__check"><input type="checkbox" data-cupom-ativo checked /> Cupom ativo</label>' +
+      '<label class="gcv-cupom-form__check"><input type="checkbox" data-cupom-ativo checked /> Cupom ativo no carrinho</label>' +
+      '<p class="gcv-cupom-form__warn" data-cupom-ativo-aviso hidden>Desmarcado, o carrinho recusa este código.</p>' +
       '<div class="gcv-cupom-form__actions">' +
       '<button type="submit" class="gcv-dash-btn gcv-dash-btn--primary" data-cupom-save>Salvar cupom</button>' +
       '<button type="button" class="gcv-dash-btn" data-cupom-cancel>Limpar</button>' +
@@ -188,6 +193,24 @@
         clearForm();
         var err = box.querySelector('[data-cupom-err]');
         if (err) err.hidden = true;
+        return;
+      }
+      var on = e.target.closest('[data-cupom-on]');
+      if (on) {
+        var onId = on.getAttribute('data-cupom-on');
+        var alvoOn = lista.filter(function (c) { return c.id === onId; })[0];
+        if (!alvoOn) return;
+        var ligado = {};
+        Object.keys(alvoOn).forEach(function (k) { ligado[k] = alvoOn[k]; });
+        ligado.ativo = true;
+        request('PUT', ligado, function (error, res) {
+          if (error) {
+            window.alert(error.message);
+            return;
+          }
+          lista = res.cupons || [];
+          paint();
+        });
         return;
       }
       var edit = e.target.closest('[data-cupom-edit]');
@@ -232,11 +255,14 @@
       '.gcv-cupom-form{display:grid;gap:.75rem;max-width:36rem;margin:0 0 1.25rem;padding:1rem;border:1px solid #e2e8f0;border-radius:14px;background:#fff}' +
       '.gcv-cupom-form h3{margin:0;font-size:1rem}' +
       '.gcv-cupom-form label{display:grid;gap:.3rem;font-size:.82rem;font-weight:700;color:#334155}' +
-      '.gcv-cupom-form input,.gcv-cupom-form select{font:inherit;font-weight:600;padding:.55rem .7rem;border:1px solid #cbd5e1;border-radius:10px}' +
+      '.gcv-cupom-form input:not([type=checkbox]),.gcv-cupom-form select{font:inherit;font-weight:600;padding:.55rem .7rem;border:1px solid #cbd5e1;border-radius:10px}' +
+      '.gcv-cupom-form input[type=checkbox]{width:1.05rem;height:1.05rem;margin:0;accent-color:#0f3d2e}' +
+      '.gcv-cupom-form [hidden]{display:none !important}' +
       '.gcv-cupom-form__row,.gcv-cupom-form__grupo{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}' +
-      '.gcv-cupom-form__check{display:flex;align-items:center;gap:.45rem}' +
+      '.gcv-cupom-form label.gcv-cupom-form__check{display:flex;align-items:center;gap:.45rem}' +
       '.gcv-cupom-form__actions{display:flex;gap:.5rem}' +
       '.gcv-cupom-form__err{margin:0;color:#b91c1c;font-weight:700}' +
+      '.gcv-cupom-form__warn{margin:0;color:#b45309;font-size:.82rem;font-weight:700}' +
       '.gcv-cupom-list{list-style:none;margin:0;padding:0;display:grid;gap:.6rem}' +
       '.gcv-cupom-item{display:flex;justify-content:space-between;gap:1rem;align-items:center;padding:.85rem 1rem;border:1px solid #e2e8f0;border-radius:12px;background:#f8fafc}' +
       '.gcv-cupom-item p{margin:.2rem 0 0;color:#475569;font-size:.88rem}' +
