@@ -163,7 +163,7 @@
       "/assets/js/gcv-pix-polling.js?v=1.1.40",
       "/assets/js/gcv-confirm.js?v=1.1.31",
       "/assets/js/gcv-exc-bookings.js?v=1.1.31",
-      "/assets/js/excursoes-carousel.js?v=1.1.125",
+      "/assets/js/excursoes-carousel.js?v=1.1.126",
     ];
     var i = 0;
     function next(err) {
@@ -525,6 +525,17 @@
     return String(it.id || "").indexOf("roteiro-") === 0;
   }
 
+  function cardOnPageMatches(id) {
+    if (!id || typeof document === "undefined" || !document.querySelectorAll) return false;
+    var want = normalizeCartItemId(id);
+    if (!want) return false;
+    var nodes = document.querySelectorAll(".gcv-excursoes-card[data-cart-id], .gcv-excursoes-card__book[data-cart-id]");
+    for (var i = 0; i < nodes.length; i++) {
+      if (normalizeCartItemId(nodes[i].getAttribute("data-cart-id")) === want) return true;
+    }
+    return false;
+  }
+
   function isCartItemBookable(it, nowMs) {
     var now = nowMs != null ? nowMs : Date.now();
     if (isRoteiroCartItem(it)) {
@@ -538,14 +549,17 @@
     if (catalog && catalog.ids && !Object.keys(catalog.ids).length) {
       catalog = null;
     }
-    // Se o passeio sumiu das próximas saídas, remove do carrinho
-    if (catalog && id && !catalog.ids[id]) return false;
     var dep = itemDepartureMs(it);
-    if (catalog && id && Number.isFinite(catalog.ids[id]) && catalog.ids[id] > 1) {
+    var onScreen = cardOnPageMatches(id);
+    // Card visível com saída ainda reservável não pode ser rejeitado por diferença de id no catálogo.
+    if (catalog && id && !catalog.ids[id]) {
+      if (!(onScreen && (!Number.isFinite(dep) || dep >= now + BOOKING_CUTOFF_MS))) return false;
+    }
+    if (catalog && id && catalog.ids[id] && Number.isFinite(catalog.ids[id]) && catalog.ids[id] > 1) {
       dep = catalog.ids[id];
     }
     if (!Number.isFinite(dep)) {
-      // Sem data e sem catálogo: manter. Com catálogo já validado acima.
+      if (onScreen) return true;
       return !catalog || !!(catalog.ids && catalog.ids[id]);
     }
     return dep >= now + BOOKING_CUTOFF_MS;
@@ -806,8 +820,9 @@
     if (!item) return false;
     var dateIso = itemDateIso(item);
     if (!dateIso) return false;
+    var selfId = normalizeCartItemId(item.id);
     return items.some(function (it) {
-      return it && it.id !== item.id && itemDateIso(it) === dateIso;
+      return it && normalizeCartItemId(it.id) !== selfId && itemDateIso(it) === dateIso;
     });
   }
 
@@ -1712,7 +1727,8 @@
 
   function addItem(item) {
     if (!item || !item.id) return false;
-    if (!isCartItemBookable(item)) return false;
+    item.id = normalizeCartItemId(item.id);
+    if (!item.id || !isCartItemBookable(item)) return false;
     var items = loadItems();
     var max = parseInt(String(item.maxQty), 10) || 10;
     var qty = Math.max(1, Math.min(max, parseInt(String(item.qty), 10) || 1));
@@ -1724,12 +1740,13 @@
       });
     }
     var existing = items.find(function (it) {
-      return it.id === item.id;
+      return it && normalizeCartItemId(it.id) === item.id;
     });
     if (hasSameDayConflict(items, item)) {
       return false;
     }
     if (existing) {
+      existing.id = item.id;
       existing.qty = qty;
       existing.valorUnit = item.valorUnit;
       existing.pixDesc = item.pixDesc;
@@ -1839,9 +1856,10 @@
   }
 
   function removeItem(id) {
+    var want = normalizeCartItemId(id);
     saveItems(
       loadItems().filter(function (it) {
-        return it.id !== id;
+        return normalizeCartItemId(it && it.id) !== want;
       }),
     );
   }
@@ -2166,9 +2184,11 @@
     },
     add: function (item) {
       if (!item || !item.id) return false;
+      item.id = normalizeCartItemId(item.id);
+      if (!item.id) return false;
       var items = loadItems();
       var exists = items.some(function (it) {
-        return it && it.id === item.id;
+        return it && normalizeCartItemId(it.id) === item.id;
       });
       if (!exists && hasSameDayConflict(items, item)) {
         showSameDayToast();

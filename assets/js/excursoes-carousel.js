@@ -2833,12 +2833,16 @@
     var qty = input ? parseInt(input.value, 10) || 1 : 1;
     qty = Math.max(1, Math.min(max, qty));
     if (input) input.value = String(qty);
+    var card = block.closest ? block.closest(".gcv-excursoes-card") : null;
     return {
       unit: unit,
       qty: qty,
       total: unit * qty,
       desc: block.getAttribute("data-pix-desc") || "",
-      cartId: block.getAttribute("data-cart-id") || "",
+      cartId:
+        block.getAttribute("data-cart-id") ||
+        (card && card.getAttribute("data-cart-id")) ||
+        "",
       destino: block.getAttribute("data-cart-destino") || "",
       dateLabel: block.getAttribute("data-cart-date") || "",
       maxQty: max,
@@ -2863,7 +2867,7 @@
     var strings = STRINGS[loc] || STRINGS.pt;
     var e = excursaoFromBookBlock(block);
     var item = {
-      id: data.cartId,
+      id: normalizeLookupCartId(data.cartId),
       destino: data.destino,
       dateLabel: data.dateLabel,
       valorUnit: data.unit,
@@ -2993,12 +2997,12 @@
     var inCart = {};
     if (window.GcvExcCart && typeof window.GcvExcCart.items === "function") {
       window.GcvExcCart.items().forEach(function (it) {
-        if (it && it.id) inCart[it.id] = true;
+        if (it && it.id) inCart[normalizeLookupCartId(it.id)] = true;
       });
     }
     root.querySelectorAll(".gcv-excursoes-card__book").forEach(function (block) {
       if (block.classList.contains("gcv-excursoes-card__book--soldout")) return;
-      var cartId = block.getAttribute("data-cart-id") || "";
+      var cartId = normalizeLookupCartId(block.getAttribute("data-cart-id") || "");
       if (cartId && inCart[cartId]) return;
       var input = block.querySelector(".gcv-excursoes-card__qty-input");
       if (!input) return;
@@ -3029,12 +3033,14 @@
     var e = excursaoFromBookBlock(block);
     var data = readBookBlock(block);
     confirmGuideSeatIfNeeded({ qty: data.qty, excursao: e, strings: strings }, function (ok) {
-      if (!ok) return;
-      var added = window.GcvExcCart.add(cartItemFromBook(block));
-      if (added) {
-        excursaoPessoasPrefillCommit(data.qty);
-        syncExcursaoCartSelection();
+      if (!ok) {
+        schedulePaintCartButtons(data.cartId, strings);
+        return;
       }
+      var added = window.GcvExcCart.add(cartItemFromBook(block));
+      if (added) excursaoPessoasPrefillCommit(data.qty);
+      syncExcursaoCartSelection();
+      schedulePaintCartButtons(data.cartId, strings);
     });
   }
 
@@ -3042,10 +3048,12 @@
     if (!block || !window.GcvExcCart || typeof window.GcvExcCart.sync !== "function") return;
     var cartId = block.getAttribute("data-cart-id");
     if (!cartId) return;
+    var wantSync = normalizeLookupCartId(cartId);
     var inCart =
+      !!wantSync &&
       typeof window.GcvExcCart.items === "function" &&
       window.GcvExcCart.items().some(function (it) {
-        return it && it.id === cartId;
+        return it && normalizeLookupCartId(it.id) === wantSync;
       });
     if (!inCart) return;
     window.GcvExcCart.sync(cartItemFromBook(block));
@@ -3382,8 +3390,9 @@
     if (!rows || !rows.length) return null;
     var cartId = block.getAttribute("data-cart-id") || card.getAttribute("data-cart-id");
     if (cartId) {
+      var want = normalizeLookupCartId(cartId);
       for (var i = 0; i < rows.length; i++) {
-        if (excursaoCartId(rows[i]) === cartId) return rows[i];
+        if (normalizeLookupCartId(excursaoCartId(rows[i])) === want) return rows[i];
       }
     }
     if (!inPage) return null;
@@ -7391,19 +7400,46 @@
           e.stopPropagation();
           if (!window.GcvExcCart) return;
           var cartExcursao = excursaoFromBookBlock(block);
-          if (cartExcursao && !isExcursaoBookable(cartExcursao)) {
+          var blockId = normalizeLookupCartId(
+            block.getAttribute("data-cart-id") ||
+              ((block.closest(".gcv-excursoes-card") &&
+                block.closest(".gcv-excursoes-card").getAttribute("data-cart-id")) ||
+                ""),
+          );
+          var foundId = cartExcursao ? normalizeLookupCartId(excursaoCartId(cartExcursao)) : "";
+          if (cartExcursao && foundId && foundId === blockId && !isExcursaoBookable(cartExcursao)) {
             refreshExcursaoCarouselNow();
             return;
           }
           var cartData = readBookBlock(block);
-          var alreadyInCart =
-            typeof window.GcvExcCart.items === "function" &&
+          var wantId = normalizeLookupCartId(cartData.cartId);
+          var storedId = cartData.cartId;
+          var alreadyInCart = false;
+          if (wantId && typeof window.GcvExcCart.items === "function") {
             window.GcvExcCart.items().some(function (it) {
-              return it && it.id === cartData.cartId;
+              if (!it || normalizeLookupCartId(it.id) !== wantId) return false;
+              alreadyInCart = true;
+              storedId = it.id;
+              return true;
             });
+          }
           if (alreadyInCart) {
-            removeExcursaoFromCart(cartData.cartId);
+            setCartAddButtonState(cartBtn, false, false, strings);
+            var offCard = cartBtn.closest(".gcv-excursoes-card");
+            if (offCard) {
+              offCard.classList.remove("gcv-excursoes-card--in-cart");
+              offCard.setAttribute("aria-selected", "false");
+            }
+            removeExcursaoFromCart(storedId);
+            schedulePaintCartButtons(wantId, strings);
           } else if (typeof window.GcvExcCart.add === "function") {
+            setCartAddButtonState(cartBtn, true, false, strings);
+            var onCard = cartBtn.closest(".gcv-excursoes-card");
+            if (onCard) {
+              onCard.classList.add("gcv-excursoes-card--in-cart");
+              onCard.classList.remove("gcv-excursoes-card--day-blocked");
+              onCard.setAttribute("aria-selected", "true");
+            }
             addExcursaoToCartWithGuideSeat(block, strings);
           }
           return;
@@ -7458,6 +7494,52 @@
     if (!cartId || !window.GcvExcCart || typeof window.GcvExcCart.remove !== "function") return;
     window.GcvExcCart.remove(cartId);
     syncExcursaoCartSelection();
+    schedulePaintCartButtons(cartId);
+  }
+
+  function schedulePaintCartButtons(cartId, strings) {
+    paintCartButtons(cartId, strings);
+    var again = function () {
+      paintCartButtons(cartId, strings);
+    };
+    if (typeof window.requestAnimationFrame === "function") window.requestAnimationFrame(again);
+    window.setTimeout(again, 0);
+  }
+
+  /** O botão clicado, o card da página e o do popup usam o mesmo id normalizado. */
+  function paintCartButtons(cartId, strings) {
+    var want = normalizeLookupCartId(cartId);
+    if (!want) return;
+    if (!strings) {
+      var root = document.getElementById("excursoes-junho");
+      var loc = root ? detectLocale(root) : "pt";
+      if (loc !== "en" && loc !== "es") loc = "pt";
+      strings = STRINGS[loc] || STRINGS.pt;
+    }
+    var on = false;
+    if (window.GcvExcCart && typeof window.GcvExcCart.items === "function") {
+      on = window.GcvExcCart.items().some(function (it) {
+        return it && normalizeLookupCartId(it.id) === want;
+      });
+    }
+    document.querySelectorAll(".gcv-excursoes-card").forEach(function (card) {
+      var book = card.querySelector(".gcv-excursoes-card__book");
+      var id = (book && book.getAttribute("data-cart-id")) || card.getAttribute("data-cart-id") || "";
+      if (normalizeLookupCartId(id) !== want) return;
+      var blocked = !on && card.classList.contains("gcv-excursoes-card--day-blocked");
+      card.classList.toggle("gcv-excursoes-card--in-cart", on);
+      card.setAttribute("aria-selected", on ? "true" : "false");
+      if (on) {
+        card.classList.remove("gcv-excursoes-card--day-blocked");
+        card.removeAttribute("aria-disabled");
+        applyDayBlockedInteractivity(card, false);
+        blocked = false;
+      }
+      syncQuickAddButton(card, on, blocked, strings);
+      card.querySelectorAll("[data-gcv-exc-cart-add]").forEach(function (btn) {
+        setCartAddButtonState(btn, on, blocked, strings);
+      });
+    });
   }
 
   function tryUnselectInCartCardFromHeadClick(e) {
@@ -7591,7 +7673,7 @@
     }
     var leadCard = null;
     for (var j = 0; j < cards.length; j++) {
-      if (cards[j].getAttribute("data-cart-id") === leadId) {
+      if (normalizeLookupCartId(cards[j].getAttribute("data-cart-id")) === normalizeLookupCartId(leadId)) {
         leadCard = cards[j];
         break;
       }
@@ -7701,18 +7783,26 @@
     if (!block || block.classList.contains("gcv-excursoes-card__book--soldout")) return false;
     var cartId = card.getAttribute("data-cart-id") || block.getAttribute("data-cart-id") || "";
     if (!cartId) return false;
+    var wantToggle = normalizeLookupCartId(cartId);
     var excursao = excursaoFromBookBlock(block);
-    if (excursao && !isExcursaoBookable(excursao)) {
+    var foundToggle = excursao ? normalizeLookupCartId(excursaoCartId(excursao)) : "";
+    if (excursao && foundToggle && foundToggle === wantToggle && !isExcursaoBookable(excursao)) {
       refreshExcursaoCarouselNow();
       return false;
     }
-    var alreadyInCart =
-      typeof window.GcvExcCart.items === "function" &&
+    var storedToggle = cartId;
+    var alreadyInCart = false;
+    if (wantToggle && typeof window.GcvExcCart.items === "function") {
       window.GcvExcCart.items().some(function (it) {
-        return it && it.id === cartId;
+        if (!it || normalizeLookupCartId(it.id) !== wantToggle) return false;
+        alreadyInCart = true;
+        storedToggle = it.id;
+        return true;
       });
+    }
     if (alreadyInCart) {
-      removeExcursaoFromCart(cartId);
+      removeExcursaoFromCart(storedToggle);
+      schedulePaintCartButtons(wantToggle);
       return true;
     }
     if (typeof window.GcvExcCart.add === "function") {
@@ -7725,9 +7815,10 @@
   function resolveSelectedTourTitle(cartId, cartItems, payloadRows, root) {
     if (!cartId) return "";
     var i;
+    var wantTitle = normalizeLookupCartId(cartId);
     for (i = 0; i < (cartItems || []).length; i++) {
       var it = cartItems[i];
-      if (!it || it.id !== cartId) continue;
+      if (!it || normalizeLookupCartId(it.id) !== wantTitle) continue;
       var fromCart = String(it.destino || "").trim();
       if (fromCart) return fromCart;
       break;
@@ -7735,7 +7826,7 @@
     if (root) {
       var cards = root.querySelectorAll(".gcv-excursoes-card[data-cart-id]");
       for (i = 0; i < cards.length; i++) {
-        if (cards[i].getAttribute("data-cart-id") !== cartId) continue;
+        if (normalizeLookupCartId(cards[i].getAttribute("data-cart-id")) !== wantTitle) continue;
         var titleEl =
           cards[i].querySelector(".gcv-excursoes-card__spot-dest .gcv-excursoes-card__atrativo-link") ||
           cards[i].querySelector(".gcv-excursoes-card__spot-dest") ||
@@ -7748,7 +7839,7 @@
       }
     }
     for (i = 0; i < (payloadRows || []).length; i++) {
-      if (excursaoCartId(payloadRows[i]) !== cartId) continue;
+      if (normalizeLookupCartId(excursaoCartId(payloadRows[i])) !== wantTitle) continue;
       var dests = getDestinos(payloadRows[i]);
       if (dests[0] && dests[0].destino) return String(dests[0].destino).trim();
       if (payloadRows[i].destino) return String(payloadRows[i].destino).trim();
@@ -7810,20 +7901,25 @@
     var validIdsByDate = {};
     var validIds = {};
     function rememberValid(id, iso) {
-      if (!id) return;
-      validIds[id] = true;
+      var key = normalizeLookupCartId(id);
+      if (!key) return;
+      validIds[key] = true;
       if (!iso) return;
+      iso = String(iso).slice(0, 10);
       if (!validIdsByDate[iso]) validIdsByDate[iso] = {};
-      validIdsByDate[iso][id] = true;
+      validIdsByDate[iso][key] = true;
     }
     var payloadRows = loadExcursaoRowsFromPayload(root) || [];
     payloadRows.forEach(function (row) {
       rememberValid(excursaoCartId(row), excursaoDateIso(row));
     });
     eachExcursaoCard(function (card) {
+      var book = card.querySelector(".gcv-excursoes-card__book");
       rememberValid(
-        card.getAttribute("data-cart-id") || "",
-        card.getAttribute("data-excursao-date-iso") || "",
+        (book && book.getAttribute("data-cart-id")) || card.getAttribute("data-cart-id") || "",
+        card.getAttribute("data-excursao-date-iso") ||
+          (book && book.getAttribute("data-cart-date-iso")) ||
+          "",
       );
     });
 
@@ -7840,7 +7936,7 @@
         .filter(function (it) {
           if (!it || !it.id) return false;
           if (it.passeioKey || String(it.id).indexOf("roteiro-") === 0) return false;
-          return !validIds[it.id];
+          return !validIds[normalizeLookupCartId(it.id)];
         })
         .map(function (it) {
           return it.id;
@@ -7861,13 +7957,15 @@
 
     var ids = {};
     cartItems.forEach(function (it) {
-      if (it && it.id) ids[it.id] = true;
+      var key = it && it.id ? normalizeLookupCartId(it.id) : "";
+      if (key) ids[key] = true;
     });
 
     /** Só conta como “dia ocupado” se o item do carrinho for um passeio válido daquele dia. */
     var occupiedDates = {};
     cartItems.forEach(function (it) {
-      if (!it || !it.id || !validIds[it.id]) return;
+      var key = it && it.id ? normalizeLookupCartId(it.id) : "";
+      if (!key || !validIds[key]) return;
       var iso = "";
       if (it.dateIso) iso = String(it.dateIso).slice(0, 10);
       if (!iso) {
@@ -7875,8 +7973,8 @@
         if (m) iso = m[1];
       }
       if (!iso) return;
-      if (validIdsByDate[iso] && validIdsByDate[iso][it.id]) {
-        occupiedDates[iso] = it.id;
+      if (validIdsByDate[iso] && validIdsByDate[iso][key]) {
+        occupiedDates[iso] = key;
       }
     });
 
@@ -7884,9 +7982,11 @@
     updateDayLeadMapFromOccupied(root, occupiedDates);
 
     eachExcursaoCard(function (card) {
-      var id =
+      var bookIdEl = card.querySelector("[data-cart-id]");
+      var id = normalizeLookupCartId(
         card.getAttribute("data-cart-id") ||
-        ((card.querySelector("[data-cart-id]") && card.querySelector("[data-cart-id]").getAttribute("data-cart-id")) || "");
+          ((bookIdEl && bookIdEl.getAttribute("data-cart-id")) || ""),
+      );
       var inCart = !!(id && ids[id]);
       var cardDateIso = card.getAttribute("data-excursao-date-iso") || "";
       var selectedIdForDay = cardDateIso ? occupiedDates[cardDateIso] : "";
@@ -7922,7 +8022,9 @@
         }
       }
       syncQuickAddButton(card, inCart, dayBlocked, strings);
-      setCartAddButtonState(card.querySelector("[data-gcv-exc-cart-add]"), inCart, dayBlocked, strings);
+      card.querySelectorAll("[data-gcv-exc-cart-add]").forEach(function (btn) {
+        setCartAddButtonState(btn, inCart, dayBlocked, strings);
+      });
       var bookBlock = card.querySelector(".gcv-excursoes-card__book");
       if (bookBlock && !bookBlock.classList.contains("gcv-excursoes-card__book--soldout")) {
         bookBlock.classList.toggle("gcv-excursoes-card__book--day-blocked", !!(dayBlocked && !inCart));
