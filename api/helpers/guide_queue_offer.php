@@ -1914,7 +1914,7 @@ function gcv_guiagem_notify_new_purchase(int $excursionId, array $guideIds): voi
             }
             $first = true;
             $token = gcv_guiagem_ensure_offer_token($excursionId, $gid);
-            $linkNote = $token !== '' ? ("Clique aqui para confirmar:\n" . gcv_guiagem_offer_url($token)) : '';
+            $linkNote = $token !== '' ? ("Abra o link para aceitar ou recusar:\n" . gcv_guiagem_offer_url($token)) : '';
             $guideNote = trim($note . ($linkNote !== '' ? "\n\n" . $linkNote : ''));
             foreach ($sales as $sale) {
                 $copy = $sale;

@@ -162,6 +162,9 @@ function gcv_teste_soltar_guia_sem_aceite(int $excursionId): void
              WHERE excursion_id = ? AND guide_user_id = ? AND deleted_at IS NULL
                AND payout_status <> 'PAYOUT_PAID'"
         )->execute([$excursionId, $guideId]);
+        db()->prepare(
+            'UPDATE gcv_booking_trips SET guide_user_id = NULL WHERE excursion_id = ? AND guide_user_id = ?'
+        )->execute([$excursionId, $guideId]);
     } catch (Throwable $e) {
         error_log('gcv_teste_soltar_guia_sem_aceite: ' . $e->getMessage());
     }
