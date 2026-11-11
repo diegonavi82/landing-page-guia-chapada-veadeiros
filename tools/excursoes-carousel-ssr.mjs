@@ -718,6 +718,7 @@ function inclExclBlocksSsr(e, s, locale) {
   const ingressoExclItems = ingressoExclItemsSsr(e, s, locale, inclEntradas);
   let inclItems =
     `<li><i class="ti ti-user text-ok" aria-hidden="true"></i> ${esc(s.inclSpot)}</li>` +
+    `<li class="gcv-excursoes-card__guide-slot">${guiaChipSsr(e, locale)}</li>` +
     `<li><i class="ti ti-flag text-ok" aria-hidden="true"></i> ${esc(s.inclGuideShort)}</li>`;
   if (inclEntradas) {
     inclItems += `<li><i class="ti ti-ticket text-ok" aria-hidden="true"></i> ${ingressoIncl}</li>`;
@@ -929,11 +930,7 @@ export function excursionsCarouselTrackSsrHtml(locale) {
         `<span class="gcv-excursoes-card__time-kicker">${esc(embarqueLabel)}</span>` +
         `<span class="gcv-excursoes-card__loc gcv-excursoes-card__loc--inline" title="${esc(city)}">` +
         esc(city) +
-        "</span></div></div></div></div>" +
-        '<div class="gcv-excursoes-card__select-band-guide">' +
-        guiaChipSsr(e, locale) +
-        '<div class="gcv-excursoes-card__guide-spacer" aria-hidden="true"></div>' +
-        "</div></div>" +
+        "</span></div></div></div></div></div>" +
         cardSpotsBlockSsr(e, locale, s) +
         "</div>" +
         '<div class="gcv-excursoes-card__body">' +

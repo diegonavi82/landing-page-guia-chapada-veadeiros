@@ -3651,6 +3651,9 @@
       '<li><i class="ti ti-user text-ok" aria-hidden="true"></i> ' +
       escapeHtml(s.inclSpot) +
       "</li>" +
+      '<li class="gcv-excursoes-card__guide-slot">' +
+      guiaChipHtml(e, locale, s) +
+      "</li>" +
       '<li><i class="ti ti-flag text-ok" aria-hidden="true"></i> ' +
       escapeHtml(s.inclGuideShort) +
       "</li>";
@@ -3781,11 +3784,7 @@
       '">' +
       cityName +
       "</span></div>" +
-      "</div></div></div>" +
-      '<div class="gcv-excursoes-card__select-band-guide">' +
-      guiaChipHtml(e, locale, s) +
-      '<div class="gcv-excursoes-card__guide-spacer" aria-hidden="true"></div>' +
-      "</div></div>";
+      "</div></div></div></div>";
 
     var cardImgBlock = cardSpotsBlockHtml(e, locale, s);
 
