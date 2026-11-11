@@ -54,21 +54,19 @@ $life = gcv_resolve_excursion_lifecycle([
     'quorum' => $quorum,
 ]);
 
-// Em formação: pode cancelar. Confirmada: sem ressarcimento (ainda permite cancelar a vaga).
-$allowCancel = in_array($life, ['em_formacao', 'confirmada'], true);
+// Em formação: pode cancelar. Confirmado: não cancela.
+$allowCancel = $life === 'em_formacao';
 if (!$allowCancel) {
-    json_response(false, null, 'Não é possível cancelar este passeio', 409);
+    json_response(false, null, $life === 'confirmada'
+        ? 'Passeio confirmado não pode ser cancelado.'
+        : 'Não é possível cancelar este passeio', 409);
 }
 
 $hoursUntilDeparture = (strtotime((string)$booking['departure_date']) - time()) / 3600;
 $refundCents = 0;
 $refundType  = 'none';
 
-if ($life === 'confirmada') {
-    // Regra de negócio: confirmado → sem ressarcimento
-    $refundCents = 0;
-    $refundType = 'none';
-} elseif ($booking['status'] === 'paid' && $booking['mp_payment_id']) {
+if ($booking['status'] === 'paid' && $booking['mp_payment_id']) {
     $refundHours  = (int)setting('cancel_refund_hours', 48);
     $partialHours = (int)setting('cancel_partial_hours', 24);
     $partialPct   = (float)setting('cancel_partial_pct', 50);
@@ -114,9 +112,7 @@ db()->prepare(
      WHERE b.id = ?'
 )->execute([$bookingId]);
 
-$msg = $life === 'confirmada'
-    ? 'Reserva cancelada sem ressarcimento (passeio já confirmado).'
-    : 'Reserva cancelada' . ($refundType !== 'none' ? ' com reembolso (' . $refundType . ').' : '.');
+$msg = 'Reserva cancelada' . ($refundType !== 'none' ? ' com reembolso (' . $refundType . ').' : '.');
 
 json_response(true, [
     'message'      => $msg,

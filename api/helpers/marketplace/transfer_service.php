@@ -619,7 +619,10 @@ function gcv_transfer_list_client_sales(array $user): array
             try {
                 require_once dirname(__DIR__) . '/payments/pix_refund.php';
                 if (gcv_pix_effective_status($pix) === 'PAID') {
-                    $s['refund_trips'] = gcv_pix_refund_annotate_trips($pix);
+                    $s['refund_trips'] = gcv_pix_refund_apply_sale_lock(
+                        gcv_pix_refund_annotate_trips($pix),
+                        $s
+                    );
                 }
             } catch (Throwable $e) {
                 error_log('transfer refund trips: ' . $e->getMessage());

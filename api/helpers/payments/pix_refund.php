@@ -138,6 +138,53 @@ function gcv_pix_trip_cancel_state(array $trip, ?array $row, bool $refundedAlrea
 }
 
 /**
+ * Passeio já confirmado não cancela. A venda aponta a saída; o dia sem id próprio segue essa saída.
+ *
+ * @param list<array<string,mixed>> $trips
+ * @param array<string,mixed>|null $sale
+ * @return list<array<string,mixed>>
+ */
+function gcv_pix_refund_apply_sale_lock(array $trips, ?array $sale): array
+{
+    if (!$sale || !$trips) {
+        return $trips;
+    }
+    $excId = (int)($sale['excursion_id'] ?? 0);
+    if ($excId <= 0) {
+        return $trips;
+    }
+    try {
+        $st = db()->prepare('SELECT * FROM gcv_excursions WHERE id = ? LIMIT 1');
+        $st->execute([$excId]);
+        $exc = $st->fetch(PDO::FETCH_ASSOC) ?: null;
+    } catch (Throwable $e) {
+        error_log('pix refund sale lock: ' . $e->getMessage());
+        return $trips;
+    }
+    if (!$exc) {
+        return $trips;
+    }
+    $life = gcv_resolve_excursion_lifecycle($exc);
+    if (!in_array($life, ['confirmada', 'concluida'], true)) {
+        return $trips;
+    }
+    foreach ($trips as &$trip) {
+        if (!is_array($trip) || !empty($trip['refunded'])) {
+            continue;
+        }
+        $tripExc = (int)($trip['excursion_id'] ?? 0);
+        if ($tripExc > 0 && $tripExc !== $excId) {
+            continue;
+        }
+        $trip['confirmed'] = true;
+        $trip['can_cancel'] = false;
+        $trip['lifecycle'] = $life;
+    }
+    unset($trip);
+    return $trips;
+}
+
+/**
  * @param array<string,mixed> $reservation
  */
 function gcv_pix_refund_e2e(array &$reservation): string
@@ -330,7 +377,7 @@ function gcv_pix_refund_reservation(
         ];
     }
 
-    $annotated = gcv_pix_refund_annotate_trips($res);
+    $annotated = gcv_pix_refund_apply_sale_lock(gcv_pix_refund_annotate_trips($res), $sale);
     $byIndex = [];
     foreach ($annotated as $i => $trip) {
         $idx = array_key_exists('trip_index', $trip) ? (int)$trip['trip_index'] : $i;

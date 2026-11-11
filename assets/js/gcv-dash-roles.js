@@ -4947,10 +4947,10 @@
           refundBtn = tripsRefund.map(function (t) {
             var label = [t.date_label, t.title].filter(Boolean).join(' · ') || 'Passeio';
             if (t.refunded) return '<div class="gcv-cms-muted">' + esc(label) + ' — estornado</div>';
-            if (t.confirmed || !t.can_cancel) return '<div class="gcv-cms-muted">' + esc(label) + ' — confirmado</div>';
+            if (t.confirmed || !t.can_cancel || b.lifecycle === 'confirmada' || b.lifecycle === 'concluida') return '—';
             return '<button type="button" class="gcv-dash-btn gcv-dash-btn--danger gcv-dash-btn--sm" data-refund="' + b.id + '" data-trip="' + t.trip_index + '">Cancelar este dia</button>';
           }).join('');
-        } else if (b.can_refund_full) {
+        } else if (b.can_refund_full && b.lifecycle !== 'confirmada' && b.lifecycle !== 'concluida') {
           refundBtn = '<button type="button" class="gcv-dash-btn gcv-dash-btn--danger gcv-dash-btn--sm" data-refund="' + b.id + '">Cancelar em formação</button>';
         }
         var offers = (b.can_transfer && (b.transfer_offers || []).length)

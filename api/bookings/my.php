@@ -79,9 +79,9 @@ function gcv_my_bookings_legacy(array $user, string $today): ?array
         $b['lifecycle'] = $life;
         $b['lifecycle_label'] = gcv_excursion_lifecycle_label($life);
         $b['can_cancel'] = in_array($b['status'], ['pending', 'paid'], true)
-            && in_array($life, ['em_formacao', 'confirmada'], true)
+            && $life === 'em_formacao'
             && (string)$b['departure_date'] >= $today;
-        $b['cancel_no_refund'] = $life === 'confirmada';
+        $b['cancel_no_refund'] = false;
         $bookings[] = $b;
     }
     return $bookings;
