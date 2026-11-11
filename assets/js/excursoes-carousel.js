@@ -10,78 +10,27 @@
   var GUIA_PROFILES_FALLBACK = {
     "diego-navi": {
       slug: "diego-navi",
-      nome: "Diego Navi",
-      nomeCompleto: "Diego Navi Marques Carvalho",
+      nome: "DN.",
+      nomeCompleto: "DN.",
       foto: "/assets/img/imagens/guia-diego-navi.webp",
       idiomas: ["pt", "en", "es"],
-      bio: {
-        pt: [
-          "Diego Navi Marques Carvalho é analista de sistemas formado pela PUC-Rio, brasileiro naturalizado italiano e pai de um pré-adolescente. Nascido (19 de dezembro de 1982) e criado no Rio de Janeiro, decidiu trocar a rotina dos escritórios pela natureza da Chapada dos Veadeiros em 2016, onde encontrou sua verdadeira vocação.",
-          "Em 2017, concluiu sua formação como Condutor Local de Visitantes de Ecoturismo da Chapada dos Veadeiros. No mesmo ano, uniu sua experiência na área de tecnologia à paixão pelo turismo de natureza para fundar a Guia Chapada Veadeiros, uma agência virtual criada para orientar visitantes no planejamento de suas viagens, oferecer informações confiáveis sobre os atrativos da região, conectar turistas aos mais experientes guias locais e incentivar um turismo seguro, responsável e de alta qualidade, valorizando a natureza, a cultura e a comunidade da Chapada dos Veadeiros.",
-          "Fluente em português, inglês e espanhol, já conduziu dezenas de grupos com segurança e profissionalismo, recebendo visitantes do Brasil e de diversos países. Frequentador da Chapada dos Veadeiros desde 2009, conhece profundamente a região em todas as épocas do ano. Das cachoeiras mais famosas aos recantos menos explorados, domina trilhas, atrativos, logística, condições climáticas e particularidades de cada destino, proporcionando roteiros personalizados, seguros e memoráveis.",
-          "Com uma visão que une tecnologia, atendimento de excelência e profundo conhecimento da Chapada dos Veadeiros, Diego dedica-se a transformar cada viagem em uma experiência única. Sua missão é ir além de conduzir visitantes: é compartilhar a essência da Chapada, valorizando sua natureza, cultura e as comunidades locais para que cada viajante viva uma experiência autêntica, segura e inesquecível.",
-        ],
-        en: [
-          "Diego Navi Marques Carvalho is a systems analyst graduated from PUC-Rio, a Brazilian national naturalized as Italian and father of a pre-teen. Born (December 19, 1982) and raised in Rio de Janeiro, he left office life behind for the nature of Chapada dos Veadeiros in 2016, where he found his true calling.",
-          "In 2017, he completed his training as a Local Ecotourism Visitor Guide in Chapada dos Veadeiros. That same year, he combined his technology background with his passion for nature tourism to found Guia Chapada Veadeiros, a virtual agency created to help visitors plan their trips, provide reliable information about regional attractions, connect travelers with the most experienced local guides, and promote safe, responsible, high-quality tourism that values the nature, culture and community of Chapada dos Veadeiros.",
-          "Fluent in Portuguese, English and Spanish, he has led dozens of groups safely and professionally, welcoming visitors from Brazil and many countries. A regular visitor to Chapada dos Veadeiros since 2009, he knows the region deeply in every season. From the most famous waterfalls to lesser-known spots, he masters trails, attractions, logistics, weather conditions and the specifics of each destination, delivering personalized, safe and memorable itineraries.",
-          "With a vision that combines technology, excellent service and deep knowledge of Chapada dos Veadeiros, Diego is dedicated to turning every trip into a unique experience. His mission goes beyond guiding visitors: it is to share the essence of the Chapada, valuing its nature, culture and local communities so that every traveler enjoys an authentic, safe and unforgettable experience.",
-        ],
-        es: [
-          "Diego Navi Marques Carvalho es analista de sistemas graduado por la PUC-Rio, brasileño naturalizado italiano y padre de un preadolescente. Nacido (19 de diciembre de 1982) y criado en Río de Janeiro, dejó la rutina de oficina por la naturaleza de la Chapada dos Veadeiros en 2016, donde encontró su verdadera vocación.",
-          "En 2017, completó su formación como Conductor Local de Visitantes de Ecoturismo de la Chapada dos Veadeiros. Ese mismo año, unió su experiencia en tecnología con la pasión por el turismo de naturaleza para fundar Guia Chapada Veadeiros, una agencia virtual creada para orientar a los visitantes en la planificación de sus viajes, ofrecer información confiable sobre los atractivos de la región, conectar a los turistas con los guías locales más experimentados e incentivar un turismo seguro, responsable y de alta calidad, valorando la naturaleza, la cultura y la comunidad de la Chapada dos Veadeiros.",
-          "Fluido en portugués, inglés y español, ha guiado decenas de grupos con seguridad y profesionalismo, recibiendo visitantes de Brasil y de diversos países. Frecuentador de la Chapada dos Veadeiros desde 2009, conoce profundamente la región en todas las épocas del año. Desde las cascadas más famosas hasta rincones poco explorados, domina senderos, atractivos, logística, condiciones climáticas y particularidades de cada destino, ofreciendo itinerarios personalizados, seguros y memorables.",
-          "Con una visión que une tecnología, atención de excelencia y profundo conocimiento de la Chapada dos Veadeiros, Diego se dedica a transformar cada viaje en una experiencia única. Su misión va más allá de conducir visitantes: es compartir la esencia de la Chapada, valorando su naturaleza, cultura y las comunidades locales para que cada viajero viva una experiencia auténtica, segura e inolvidable.",
-        ],
-      },
+      bio: { pt: [], en: [], es: [] },
     },
     "martina-motlova": {
       slug: "martina-motlova",
-      nome: "Martina Motlová",
-      nomeCompleto: "Martina Motlová",
+      nome: "MM.",
+      nomeCompleto: "MM.",
       foto: "/assets/img/imagens/guia-martina-motlova.webp",
       idiomas: ["cs", "en", "pt"],
-      bio: {
-        pt: [
-          "Martina Motlová é natural da República Tcheca e vive no Brasil há mais de 15 anos, período em que construiu uma forte conexão com a cultura, a natureza e o povo brasileiro. Guia regional de turismo da América do Sul, é cadastrada no Cadastur e possui ampla experiência no atendimento a viajantes nacionais e internacionais.",
-          "Mãe de dois filhos, Martina une sensibilidade, acolhimento e profissionalismo em cada experiência que proporciona. Além de guia de turismo, é professora de yoga e massagista profissional, conhecimentos que complementam sua atuação e oferecem aos visitantes uma vivência mais consciente, equilibrada e conectada com a natureza.",
-          "Fluente em tcheco, inglês e português, recebe visitantes de diferentes nacionalidades com atenção aos detalhes, segurança e dedicação.",
-        ],
-        en: [
-          "Martina Motlová is originally from the Czech Republic and has lived in Brazil for over 15 years, a period in which she built a strong connection with Brazilian culture, nature and people. A regional tourism guide in South America, she is registered with Cadastur and has extensive experience serving domestic and international travelers.",
-          "A mother of two, Martina brings sensitivity, warmth and professionalism to every experience she provides. In addition to being a tour guide, she is a yoga teacher and professional massage therapist — skills that complement her work and offer visitors a more mindful, balanced experience connected with nature.",
-          "Fluent in Czech, English and Portuguese, she welcomes visitors from different countries with attention to detail, safety and dedication.",
-        ],
-        es: [
-          "Martina Motlová es natural de la República Checa y vive en Brasil desde hace más de 15 años, período en el que construyó una fuerte conexión con la cultura, la naturaleza y el pueblo brasileño. Guía regional de turismo de América del Sur, está registrada en Cadastur y tiene amplia experiencia atendiendo a viajeros nacionales e internacionales.",
-          "Madre de dos hijos, Martina une sensibilidad, acogida y profesionalismo en cada experiencia que ofrece. Además de guía de turismo, es profesora de yoga y masajista profesional, conocimientos que complementan su trabajo y brindan a los visitantes una vivencia más consciente, equilibrada y conectada con la naturaleza.",
-          "Fluida en checo, inglés y portugués, recibe visitantes de distintas nacionalidades con atención al detalle, seguridad y dedicación.",
-        ],
-      },
+      bio: { pt: [], en: [], es: [] },
     },
     "gyovanna-torres": {
       slug: "gyovanna-torres",
-      nome: "Gyovanna Torres",
-      nomeCompleto: "Gyovanna Torres",
+      nome: "GM.",
+      nomeCompleto: "GM.",
       foto: "/assets/img/imagens/guia-gyovanna-torres.png",
       idiomas: ["pt"],
-      bio: {
-        pt: [
-          "Gyovanna Torres é guia local de ecoturismo na Chapada dos Veadeiros, com experiência em trilhas, cachoeiras e mirantes da região de Alto Paraíso e entorno.",
-          "Conduz grupos com atenção à segurança, ao ritmo dos visitantes e ao respeito à natureza, compartilhando histórias e orientações práticas ao longo do passeio.",
-          "Fala português.",
-        ],
-        en: [
-          "Gyovanna Torres is a local ecotourism guide in Chapada dos Veadeiros, experienced in trails, waterfalls and viewpoints around Alto Paraíso and the surrounding area.",
-          "She leads groups with a focus on safety, a comfortable pace and respect for nature, sharing stories and practical guidance throughout the tour.",
-          "Speaks Portuguese.",
-        ],
-        es: [
-          "Gyovanna Torres es guía local de ecoturismo en la Chapada dos Veadeiros, con experiencia en senderos, cascadas y miradores en la región de Alto Paraíso y alrededores.",
-          "Conduce grupos con atención a la seguridad, al ritmo de los visitantes y al respeto por la naturaleza, compartiendo historias y orientaciones prácticas durante el paseo.",
-          "Habla portugués.",
-        ],
-      },
+      bio: { pt: [], en: [], es: [] },
     },
   };
 
@@ -3076,27 +3025,53 @@
     de: 1, da: 1, do: 1, dos: 1, das: 1, e: 1, di: 1, du: 1, del: 1, van: 1, von: 1, y: 1,
   };
 
-  function foldGuiaNome(value) {
-    return String(value || "").trim().toLocaleLowerCase();
+  function guiaNeedles(values) {
+    var needles = [];
+    (values || []).forEach(function (value) {
+      var text = String(value || "").trim();
+      if (text.length >= 3) needles.push(text);
+      text.split(/\s+/).forEach(function (part) {
+        part = part.replace(/^[^\p{L}\p{M}]+|[^\p{L}\p{M}]+$/gu, "");
+        if (part.length < 3) return;
+        if (GUIA_NAME_PARTICLES[part.toLocaleLowerCase()]) return;
+        needles.push(part);
+      });
+    });
+    var seen = {};
+    return needles
+      .filter(function (needle) {
+        var key = needle.toLocaleLowerCase();
+        if (seen[key]) return false;
+        seen[key] = 1;
+        return true;
+      })
+      .sort(function (a, b) {
+        return b.length - a.length;
+      });
   }
 
-  /** Diego Navi é o único guia que permanece com o nome na ficha, mesmo em formação. */
-  function guiaMostraNomeCompleto(e) {
-    if (!e) return false;
-    var slug = String(e.guiaSlug || "").trim().toLowerCase();
-    if (slug === "diego-navi" || slug.indexOf("diego-navi-") === 0) return true;
-    var nome = foldGuiaNome(e.guiaNome);
-    var legal = foldGuiaNome(e.guiaNomeCompleto);
-    if (nome === "diego navi" || nome.indexOf("diego navi ") === 0) return true;
-    if (legal === "diego navi" || legal.indexOf("diego navi ") === 0) return true;
-    return String(e.guiaFoto || "").toLowerCase().indexOf("guia-diego-navi") >= 0;
+  function redactGuiaTexto(text, needles, initials) {
+    var out = String(text || "");
+    if (!out || !initials) return out;
+    needles.forEach(function (needle) {
+      if (needle.toLocaleLowerCase() === initials.toLocaleLowerCase()) return;
+      var re = new RegExp(
+        "(?<![\\p{L}\\p{M}\\p{N}])" + needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(?![\\p{L}\\p{M}\\p{N}])",
+        "giu"
+      );
+      out = out.replace(re, initials);
+    });
+    var quoted = initials.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    out = out.replace(new RegExp(",?\\s*conhecid[oa] como\\s+" + quoted, "giu"), "");
+    out = out.replace(new RegExp(",?\\s*known as\\s+" + quoted, "giu"), "");
+    out = out.replace(new RegExp(",?\\s*conocid[oa] como\\s+" + quoted, "giu"), "");
+    return out.replace(/\s{2,}/g, " ").replace(/\s+([,.;])/g, "$1").trim();
   }
 
-  function guiaNomeSemAbreviacao(e) {
-    if (!guiaMostraNomeCompleto(e)) return "";
-    var nome = String((e && e.guiaNome) || "").trim();
-    if (foldGuiaNome(nome).indexOf("diego navi") === 0) return nome;
-    return "Diego Navi";
+  function guiaRotuloPublico(e) {
+    var ini = e && e.guiaIniciais ? String(e.guiaIniciais).trim() : "";
+    if (ini) return ini;
+    return guiaIniciaisTexto((e && (e.guiaNomeCompleto || e.guiaNome)) || "");
   }
 
   /** Primeira letra do nome + primeira letra do primeiro sobrenome + "." */
@@ -3150,34 +3125,21 @@
     if (!hasGuiaDefinido(e)) {
       return guiaChipPendenteHtml(s.guiaPending || "A definir", locale, ["pt"]);
     }
-    var nomeAberto = guiaNomeSemAbreviacao(e);
-    if (!e.confirmada && !nomeAberto) {
-      var ini =
-        (e.guiaIniciais && String(e.guiaIniciais).trim()) ||
-        guiaIniciaisTexto(e.guiaNomeCompleto || e.guiaNome || "");
-      var langs = e && Array.isArray(e.guiaIdiomas) && e.guiaIdiomas.length ? e.guiaIdiomas : ["pt"];
-      return guiaChipPendenteHtml(
-        ini || s.guiaPending || "A definir",
-        locale,
-        langs,
-        e.guiaFoto ? String(e.guiaFoto) : "",
-        s.guiaAboutSecret || "Sobre o guia"
-      );
-    }
-    var nome = nomeAberto || String(e.guiaNome || e.guiaNomeCompleto || "").trim();
-    if (!nome) {
+    var ini = guiaRotuloPublico(e);
+    var langs = e && Array.isArray(e.guiaIdiomas) && e.guiaIdiomas.length ? e.guiaIdiomas : ["pt"];
+    var foto = e.guiaFoto ? String(e.guiaFoto) : "";
+    if (!ini) {
       return guiaChipPendenteHtml(s.guiaPending || "A definir", locale, ["pt"]);
     }
-    var foto = e.guiaFoto ? String(e.guiaFoto) : null;
-    var slug = resolveGuiaSlug(e, nome);
-    var idiomas = resolveGuiaIdiomas(e, nome);
+    var about = s.guiaAboutSecret || "Sobre o guia";
+    if (!e.confirmada) {
+      return guiaChipPendenteHtml(ini, locale, langs, foto, about);
+    }
     return (
-      '<button type="button" class="gcv-excursoes-card__guide gcv-excursoes-card__guide--btn" data-guia-profile="' +
-      escapeHtml(slug) +
-      '" aria-label="' +
-      escapeHtml(tpl(s.guiaAbout, { nome: nome })) +
+      '<button type="button" class="gcv-excursoes-card__guide gcv-excursoes-card__guide--btn" data-guia-sigilo="1" aria-label="' +
+      escapeHtml(about) +
       '">' +
-      guiaChipInnerHtml(nome, foto, locale, null, idiomas) +
+      guiaChipInnerHtml(ini, foto, locale, null, langs) +
       "</button>"
     );
   }
@@ -7685,17 +7647,29 @@
   }
 
   function profileGuiaSigilo(row, s) {
-    var ini = row && row.guiaIniciais ? String(row.guiaIniciais).trim() : "";
+    var ini = guiaRotuloPublico(row) || (s && s.guiaPending) || "Guia";
     var idiomas =
       row && Array.isArray(row.guiaIdiomas) && row.guiaIdiomas.length
         ? normalizeGuiaIdiomas(row.guiaIdiomas)
         : ["pt"];
+    var needles = guiaNeedles([
+      row && row.guiaNomeCompleto,
+      row && row.guiaNome,
+      row && row.guiaApelido,
+    ]);
+    var raw = row && row.guiaBio ? row.guiaBio : {};
+    var bio = {};
+    ["pt", "en", "es"].forEach(function (lang) {
+      bio[lang] = bioParagraphs(raw[lang]).map(function (paragraph) {
+        return redactGuiaTexto(paragraph, needles, ini);
+      });
+    });
     return {
-      nome: ini || (s && s.guiaPending) || "Guia",
+      nome: ini,
       nomeCompleto: "",
       foto: row && row.guiaFoto ? String(row.guiaFoto) : "",
       idiomas: idiomas,
-      bio: row && row.guiaBio ? row.guiaBio : {},
+      bio: bio,
       guideUserId: parseInt(String((row && (row.guideUserId || row.guiaId)) || 0), 10) || 0,
       sigilo: true,
     };
@@ -7717,6 +7691,33 @@
     var sigilo = trigger && trigger.getAttribute && trigger.getAttribute("data-guia-sigilo") === "1";
     var profile = sigilo ? profileGuiaSigilo(row, s) : resolveGuiaProfile(slug, row, profiles);
     if (!profile || !profile.nome) return;
+    if (!sigilo) {
+      var iniPerfil =
+        guiaRotuloPublico(row) ||
+        guiaIniciaisTexto(profile.nomeCompleto || profile.nome || "");
+      var needlesPerfil = guiaNeedles([
+        row && row.guiaNomeCompleto,
+        row && row.guiaNome,
+        profile.nomeCompleto,
+        profile.nome,
+      ]);
+      var bioLimpa = {};
+      ["pt", "en", "es"].forEach(function (lang) {
+        bioLimpa[lang] = bioParagraphs(profile.bio && profile.bio[lang]).map(function (paragraph) {
+          return redactGuiaTexto(paragraph, needlesPerfil, iniPerfil);
+        });
+      });
+      profile = {
+        slug: profile.slug,
+        nome: iniPerfil || profile.nome,
+        nomeCompleto: "",
+        foto: profile.foto,
+        idiomas: profile.idiomas,
+        bio: bioLimpa,
+        guideUserId: profile.guideUserId,
+        sigilo: true,
+      };
+    }
     var modal = ensureGuiaModal();
     var loc = locale === "en" || locale === "es" ? locale : "pt";
     var bio = bioParagraphs(profile.bio && (profile.bio[loc] || profile.bio.pt));

@@ -220,50 +220,89 @@ function gcv_redact_guide_text(string $text, array $needles, string $replacement
     return $text;
 }
 
-/** Diego Navi é o único guia cujo nome fica público mesmo com a saída em formação. */
-function gcv_guide_keeps_public_name(array $card): bool
+/** @return list<string> */
+function gcv_guide_name_needles(string $legal, string $publico, string $apelido): array
 {
-    $slug = strtolower(trim((string)($card['guiaSlug'] ?? '')));
-    if ($slug === 'diego-navi' || strpos($slug, 'diego-navi-') === 0) {
-        return true;
-    }
-    foreach (['guiaNome', 'guiaNomeCompleto', 'guiaApelido'] as $key) {
-        $name = mb_strtolower(trim((string)($card[$key] ?? '')));
-        if ($name === 'diego navi' || strpos($name, 'diego navi ') === 0) {
-            return true;
+    $particles = ['de', 'da', 'do', 'dos', 'das', 'e', 'di', 'du', 'del', 'van', 'von', 'y'];
+    $needles = [];
+    foreach ([$legal, $publico, $apelido] as $src) {
+        $src = trim($src);
+        if ($src !== '') {
+            $needles[] = $src;
+        }
+        $parts = preg_split('/\s+/u', $src) ?: [];
+        foreach ($parts as $part) {
+            $part = trim((string)$part, " \t\n\r\0\x0B.,;:!?");
+            if ($part === '' || mb_strlen($part) < 3) {
+                continue;
+            }
+            if (in_array(mb_strtolower($part), $particles, true)) {
+                continue;
+            }
+            $needles[] = $part;
         }
     }
-    $photo = strtolower((string)($card['guiaFoto'] ?? ''));
-    return strpos($photo, 'guia-diego-navi') !== false;
+    [$first, $surname] = gcv_guide_name_parts($legal !== '' ? $legal : $publico);
+    $pair = trim($first . ' ' . $surname);
+    if ($pair !== '') {
+        $needles[] = $pair;
+    }
+    $uniq = [];
+    foreach ($needles as $needle) {
+        $uniq[mb_strtolower($needle)] = $needle;
+    }
+    return array_values($uniq);
 }
 
-/** Em formação o card público não leva nome, apelido nem contato. A foto e a bio (sem o nome) continuam. */
+function gcv_guide_strip_alias_echo(string $text, string $initials): string
+{
+    if ($initials === '') {
+        return trim($text);
+    }
+    $q = preg_quote($initials, '/');
+    foreach ([
+        '/,?\s*conhecid[oa] como\s+' . $q . '/iu',
+        '/,?\s*known as\s+' . $q . '/iu',
+        '/,?\s*conocid[oa] como\s+' . $q . '/iu',
+    ] as $pattern) {
+        $next = preg_replace($pattern, '', $text);
+        if (is_string($next)) {
+            $text = $next;
+        }
+    }
+    $text = preg_replace('/\s{2,}/u', ' ', $text) ?? $text;
+    $text = preg_replace('/\s+([,.;])/u', '$1', $text) ?? $text;
+    return trim($text);
+}
+
+/** No site público o card e a descrição levam só as iniciais. O nome completo fica para o comprovante da reserva confirmada. */
 function gcv_carousel_hide_guide_until_confirmed(array $card): array
 {
-    $revealName = gcv_guide_keeps_public_name($card);
     $apelido = trim((string)($card['guiaApelido'] ?? ''));
     unset($card['guiaApelido']);
-    if (!empty($card['confirmada'])) {
-        return $card;
-    }
-    if ($revealName) {
-        unset($card['guiaTelefone']);
-        return $card;
-    }
-    $initials = trim((string)($card['guiaIniciais'] ?? ''));
     $legal = trim((string)($card['guiaNomeCompleto'] ?? ''));
     $publico = trim((string)($card['guiaNome'] ?? ''));
-    [$first, $surname] = gcv_guide_name_parts($legal !== '' ? $legal : $publico);
+    $initials = trim((string)($card['guiaIniciais'] ?? ''));
+    if ($initials === '') {
+        $initials = gcv_guide_initials($legal !== '' ? $legal : $publico);
+    }
+    if ($initials !== '') {
+        $card['guiaIniciais'] = $initials;
+    }
     if (isset($card['guiaBio']) && is_array($card['guiaBio'])) {
-        $needles = [$legal, $publico, $apelido, trim($first . ' ' . $surname), $first, $surname];
+        $needles = gcv_guide_name_needles($legal, $publico, $apelido);
         foreach (['pt', 'en', 'es'] as $lang) {
             if (!isset($card['guiaBio'][$lang]) || !is_array($card['guiaBio'][$lang])) {
                 continue;
             }
             $card['guiaBio'][$lang] = array_map(static function ($paragraph) use ($needles, $initials) {
-                return gcv_redact_guide_text((string)$paragraph, $needles, $initials);
+                $clean = gcv_redact_guide_text((string)$paragraph, $needles, $initials);
+                return gcv_guide_strip_alias_echo($clean, $initials);
             }, $card['guiaBio'][$lang]);
         }
+    }
+    if (!empty($card['confirmada'])) {
+        return $card;
     }
     unset(
         $card['guiaNome'],
@@ -271,9 +310,6 @@ function gcv_carousel_hide_guide_until_confirmed(array $card): array
         $card['guiaTelefone'],
         $card['guiaSlug']
     );
-    if ($initials !== '') {
-        $card['guiaIniciais'] = $initials;
-    }
     return $card;
 }
 

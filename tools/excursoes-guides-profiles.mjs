@@ -61,7 +61,7 @@ export const GUIA_PROFILES = {
   "gyovanna-torres": {
     slug: "gyovanna-torres",
     nome: "Gyovanna Torres",
-    nomeCompleto: "Gyovanna Torres",
+    nomeCompleto: "Gyovanna Mendes Batista Torres",
     foto: "/assets/img/imagens/guia-gyovanna-torres.png",
     idiomas: ["pt"],
     bio: {
@@ -84,6 +84,78 @@ export const GUIA_PROFILES = {
   },
 };
 
+const GUIA_NAME_PARTICLES = { de: 1, da: 1, do: 1, dos: 1, das: 1, e: 1, di: 1, du: 1, del: 1, van: 1, von: 1, y: 1 };
+
+function guiaInitials(raw) {
+  const parts = String(raw || "").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "";
+  let surname = "";
+  for (let i = 1; i < parts.length; i++) {
+    if (GUIA_NAME_PARTICLES[parts[i].toLocaleLowerCase()]) continue;
+    surname = parts[i];
+    break;
+  }
+  const letters = parts[0].charAt(0).toLocaleUpperCase() + (surname ? surname.charAt(0).toLocaleUpperCase() : "");
+  return letters ? letters + "." : "";
+}
+
+function guiaNameNeedles(values) {
+  const needles = [];
+  for (const value of values) {
+    const text = String(value || "").trim();
+    if (text.length >= 3) needles.push(text);
+    for (const bit of text.split(/\s+/)) {
+      const part = bit.replace(/^[^\p{L}\p{M}]+|[^\p{L}\p{M}]+$/gu, "");
+      if (part.length < 3 || GUIA_NAME_PARTICLES[part.toLocaleLowerCase()]) continue;
+      needles.push(part);
+    }
+  }
+  const seen = new Set();
+  return needles.filter((needle) => {
+    const key = needle.toLocaleLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).sort((a, b) => b.length - a.length);
+}
+
+function redactGuiaPublicText(text, needles, initials) {
+  let out = String(text || "");
+  if (!out || !initials) return out;
+  for (const needle of needles) {
+    if (needle.toLocaleLowerCase() === initials.toLocaleLowerCase()) continue;
+    const re = new RegExp(
+      `(?<![\\p{L}\\p{M}\\p{N}])${needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\p{L}\\p{M}\\p{N}])`,
+      "giu"
+    );
+    out = out.replace(re, initials);
+  }
+  const quoted = initials.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  out = out.replace(new RegExp(`,?\\s*conhecid[oa] como\\s+${quoted}`, "giu"), "");
+  out = out.replace(new RegExp(`,?\\s*known as\\s+${quoted}`, "giu"), "");
+  out = out.replace(new RegExp(`,?\\s*conocid[oa] como\\s+${quoted}`, "giu"), "");
+  return out.replace(/\s{2,}/g, " ").replace(/\s+([,.;])/g, "$1").trim();
+}
+
+function publicGuiaProfile(profile) {
+  const initials = guiaInitials(profile.nomeCompleto || profile.nome);
+  const needles = guiaNameNeedles([profile.nomeCompleto, profile.nome]);
+  const bio = {};
+  for (const lang of ["pt", "en", "es"]) {
+    bio[lang] = (profile.bio?.[lang] || []).map((paragraph) => redactGuiaPublicText(paragraph, needles, initials));
+  }
+  return {
+    ...profile,
+    nome: initials || profile.nome,
+    nomeCompleto: initials || profile.nomeCompleto,
+    bio,
+  };
+}
+
 export function guiaProfilesForSite() {
-  return GUIA_PROFILES;
+  const out = {};
+  for (const [slug, profile] of Object.entries(GUIA_PROFILES)) {
+    out[slug] = publicGuiaProfile(profile);
+  }
+  return out;
 }
