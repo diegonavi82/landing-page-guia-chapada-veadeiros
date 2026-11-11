@@ -14,6 +14,7 @@
       phone: "Telefone",
       email: "E-mail",
       either: "Informe o telefone ou o e-mail.",
+      one: "Escolha o telefone ou o e-mail. O convite vai para um só.",
       emailInvalid: "E-mail inválido.",
       arrive: "Data (opcional)",
       whenHint: "Se escolher a data, o convite abre o carrossel dos passeios a partir desse dia.",
@@ -71,6 +72,7 @@
       phone: "Phone",
       email: "Email",
       either: "Enter a phone number or an email.",
+      one: "Choose the phone or the email. The invite goes to only one.",
       emailInvalid: "Invalid email.",
       arrive: "Date (optional)",
       whenHint: "If you pick a date, the invite opens the tour carousel from that day on.",
@@ -128,6 +130,7 @@
       phone: "Teléfono",
       email: "Correo",
       either: "Indica el teléfono o el correo.",
+      one: "Elige el teléfono o el correo. La invitación va a uno solo.",
       emailInvalid: "Correo inválido.",
       arrive: "Fecha (opcional)",
       whenHint: "Si eliges la fecha, la invitación abre el carrusel de paseos a partir de ese día.",
@@ -288,9 +291,9 @@
         (isGuide ? '<div class="gcv-ind__card"><span>' + esc(t("points")) + "</span><strong>" + esc(data.points || 0) + "</strong></div>" : "") +
         (isGuide ? '<div class="gcv-ind__card"><span>' + esc(t("place")) + "</span><strong>" + esc(data.position || t("none")) + "</strong></div>" : "") +
       "</div>" +
-      '<form class="gcv-dash-form" id="gcv-ind-form">' +
+      '<form class="gcv-dash-form" id="gcv-ind-form" autocomplete="off">' +
         '<div class="gcv-dash-field"><span class="gcv-dash-label">' + esc(t("phone")) + '</span><div id="gcv-ind-phone-wrap"></div></div>' +
-        '<div class="gcv-dash-field"><label class="gcv-dash-label" for="gcv-ind-email">' + esc(t("email")) + '</label><input class="gcv-dash-input" id="gcv-ind-email" name="email" type="email" autocomplete="email" /></div>' +
+        '<div class="gcv-dash-field"><label class="gcv-dash-label" for="gcv-ind-email">' + esc(t("email")) + '</label><input class="gcv-dash-input" id="gcv-ind-email" name="referral_email" type="email" autocomplete="off" /></div>' +
         '<p class="gcv-ind__note">' + esc(t("either")) + "</p>" +
         '<div class="gcv-dash-field"><label class="gcv-dash-label" for="gcv-ind-from">' + esc(t("arrive")) + '</label><input class="gcv-dash-input" id="gcv-ind-from" name="date_from" type="date" /></div>' +
         '<p class="gcv-ind__note">' + esc(t("whenHint")) + "</p>" +
@@ -323,31 +326,63 @@
 
     var phoneCtl = null;
     var phoneWrap = document.getElementById("gcv-ind-phone-wrap");
+    var phoneInput = null;
     if (phoneWrap && window.GcvDashRoles && typeof window.GcvDashRoles.bindDashPhone === "function") {
       phoneCtl = window.GcvDashRoles.bindDashPhone(phoneWrap, "gcv-ind", "br", "");
-      var phoneInput = document.getElementById("gcv-ind-phone");
-      if (phoneInput) phoneInput.removeAttribute("required");
+      phoneInput = document.getElementById("gcv-ind-phone");
+      if (phoneInput) {
+        phoneInput.removeAttribute("required");
+        phoneInput.setAttribute("autocomplete", "off");
+        phoneInput.setAttribute("name", "referral_phone");
+      }
     }
 
     var form = document.getElementById("gcv-ind-form");
     if (form) {
+      var msg = document.getElementById("gcv-ind-msg");
+      var emailEl = document.getElementById("gcv-ind-email");
+      function showMsg(text) {
+        if (!msg) return;
+        msg.hidden = false;
+        msg.textContent = text;
+      }
+      function hideMsg() {
+        if (!msg) return;
+        msg.hidden = true;
+        msg.textContent = "";
+      }
+      function currentDigits() {
+        if (phoneCtl && typeof phoneCtl.getPhoneDigits === "function") return phoneCtl.getPhoneDigits();
+        return phoneInput ? String(phoneInput.value || "").replace(/\D+/g, "") : "";
+      }
+      var armedDigits = null;
+      var sendBtn = form.querySelector('button[type="submit"]');
+      if (sendBtn) {
+        sendBtn.addEventListener("pointerdown", function () {
+          armedDigits = currentDigits();
+        });
+      }
+      if (phoneInput) {
+        phoneInput.addEventListener("input", hideMsg);
+      }
+      if (emailEl) {
+        emailEl.addEventListener("input", hideMsg);
+      }
       form.addEventListener("submit", function (ev) {
         ev.preventDefault();
-        var btn = form.querySelector('button[type="submit"]');
-        var msg = document.getElementById("gcv-ind-msg");
-        var emailEl = document.getElementById("gcv-ind-email");
+        var btn = sendBtn;
         var email = emailEl ? String(emailEl.value || "").trim() : "";
-        var digits = phoneCtl ? phoneCtl.getPhoneDigits() : "";
-        function showMsg(text) {
-          if (!msg) return;
-          msg.hidden = false;
-          msg.textContent = text;
-        }
+        var digits = armedDigits != null ? armedDigits : currentDigits();
+        armedDigits = null;
         if (!digits && !email) {
           showMsg(t("either"));
           return;
         }
-        if (digits && phoneCtl) {
+        if (digits && email) {
+          showMsg(t("one"));
+          return;
+        }
+        if (digits && phoneCtl && digits === currentDigits()) {
           var issue = phoneCtl.validate();
           if (issue) {
             showMsg(issue);
@@ -382,8 +417,6 @@
           }
           if (parts.length) {
             flash = { invite: { html: parts.join("<br>") } };
-          } else if (data.phone && data.email) {
-            flash = { invite: { text: t("sentBoth") } };
           } else if (data.email) {
             flash = { invite: { text: t("sentEmail") } };
           } else {

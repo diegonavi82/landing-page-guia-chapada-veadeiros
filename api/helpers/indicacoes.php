@@ -115,6 +115,7 @@ function gcv_referral_error(string $lang, string $key): string
             'role' => 'Entre como cliente ou guia para indicar.',
             'suspended' => 'Esta conta não pode indicar agora.',
             'need' => 'Informe o telefone ou o e-mail.',
+            'one' => 'Escolha o telefone ou o e-mail. O convite vai para um só.',
             'phone' => 'Telefone: DDD (2 dígitos) + número (8 ou 9 dígitos)',
             'own_phone' => 'Não dá para indicar o próprio telefone.',
             'taken_phone' => 'Este telefone já tem conta no site.',
@@ -130,6 +131,7 @@ function gcv_referral_error(string $lang, string $key): string
             'role' => 'Sign in as a client or guide to refer someone.',
             'suspended' => 'This account cannot refer anyone right now.',
             'need' => 'Enter a phone number or an email.',
+            'one' => 'Choose the phone or the email. The invite goes to only one.',
             'phone' => 'Phone: area code (2 digits) + number (8 or 9 digits)',
             'own_phone' => 'You cannot refer your own phone number.',
             'taken_phone' => 'This phone number already has an account.',
@@ -145,6 +147,7 @@ function gcv_referral_error(string $lang, string $key): string
             'role' => 'Entra como cliente o guía para indicar.',
             'suspended' => 'Esta cuenta no puede indicar ahora.',
             'need' => 'Indica el teléfono o el correo.',
+            'one' => 'Elige el teléfono o el correo. La invitación va a uno solo.',
             'phone' => 'Teléfono: código de área (2 dígitos) + número (8 o 9 dígitos)',
             'own_phone' => 'No puedes indicar tu propio teléfono.',
             'taken_phone' => 'Este teléfono ya tiene cuenta en el sitio.',
@@ -395,7 +398,7 @@ function gcv_referral_message(string $name, string $link, ?string $from, string 
 
 /**
  * Convite por telefone (DDI + número, como no perfil) ou por e-mail.
- * Os dois recebem a mesma URL.
+ * Um convite vai para um contato só.
  *
  * @return array<string,mixed>
  */
@@ -436,6 +439,9 @@ function gcv_referral_create(
     }
     if ($phone === '' && $email === '') {
         throw new InvalidArgumentException(gcv_referral_error($lang, 'need'));
+    }
+    if ($phone !== '' && $email !== '') {
+        throw new InvalidArgumentException(gcv_referral_error($lang, 'one'));
     }
 
     $userId = (int)$user['id'];
