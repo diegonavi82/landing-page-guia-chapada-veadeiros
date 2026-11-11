@@ -3,10 +3,9 @@ declare(strict_types=1);
 
 /**
  * O guia cancela a própria guiagem sem cancelar o passeio dos clientes.
- * A vaga volta para os 3 primeiros da fila, com o mesmo aceite e os mesmos
- * avisos de uma compra nova. Quem aceita vai para o fim da fila.
- * O cliente só é avisado quando a troca fecha. O passeio só é cancelado
- * se não houver guia disponível.
+ * Sem translado, a vaga volta para os 3 primeiros da fila. Quem aceita vai para o fim da fila.
+ * Com translado, não há fila: todos os guias com veículo recebem a proposta e o primeiro que aceita fica com a vaga.
+ * O cliente só é avisado quando a troca fecha. O passeio só é cancelado se não houver guia disponível.
  */
 
 require_once __DIR__ . '/db.php';
@@ -97,6 +96,58 @@ function gcv_guiagem_ensure_priority_columns(): void
 function gcv_guiagem_top_count(): int
 {
     return 3;
+}
+
+function gcv_guide_has_registered_vehicle(int $userId): bool
+{
+    if ($userId <= 0) {
+        return false;
+    }
+    try {
+        $st = db()->prepare(
+            'SELECT vehicle_model, vehicle_year FROM gcv_guides WHERE user_id = ? LIMIT 1'
+        );
+        $st->execute([$userId]);
+        $row = $st->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            return false;
+        }
+        return trim((string)($row['vehicle_model'] ?? '')) !== ''
+            && (int)($row['vehicle_year'] ?? 0) >= 1960;
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
+/**
+ * Venda com translado: a proposta vai a todos os guias com veículo, sem fila.
+ *
+ * @param array<string,mixed> $tour
+ */
+function gcv_guiagem_is_vehicle_broadcast(array $tour): bool
+{
+    $id = (int)($tour['id'] ?? 0);
+    if ($id <= 0) {
+        return false;
+    }
+    if ((int)($tour['booked_people_transport'] ?? 0) > 0) {
+        return true;
+    }
+    try {
+        $st = db()->prepare(
+            "SELECT 1 FROM gcv_sales
+             WHERE excursion_id = ? AND deleted_at IS NULL AND include_transport = 1
+               AND sale_status IN ('PAID','AUTHORIZED','PENDING')
+             LIMIT 1"
+        );
+        $st->execute([$id]);
+        if ($st->fetchColumn()) {
+            return true;
+        }
+    } catch (Throwable $e) {
+        error_log('gcv_guiagem_is_vehicle_broadcast: ' . $e->getMessage());
+    }
+    return !empty($tour['include_transport']) && empty($tour['offer_transport']);
 }
 
 /** Guias com veículo necessários: 1 sem translado; com translado, 1 a cada 4 clientes. */
@@ -247,6 +298,9 @@ function gcv_guiagem_designate(int $excursionId, int $guideId): array
     if (gcv_guiagem_staffing_ready($tour)) {
         return ['ok' => false, 'error' => 'Esta saída já tem os guias necessários'];
     }
+    if (gcv_guiagem_is_vehicle_broadcast($tour) && !gcv_guide_has_registered_vehicle($guideId)) {
+        return ['ok' => false, 'error' => 'Este passeio é com translado. Escolha um guia com veículo cadastrado.'];
+    }
     $token = gcv_guiagem_ensure_offer_token($excursionId, $guideId);
     if ($token === '') {
         $token = gcv_guiagem_new_token();
@@ -311,6 +365,24 @@ function gcv_guiagem_pending_for(int $excursionId, int $guideId): bool
         return false;
     }
     return in_array($guideId, gcv_guiagem_pending_guide_ids($excursionId), true);
+}
+
+function gcv_guiagem_taken_by_other(int $excursionId, int $guideId): bool
+{
+    if ($excursionId <= 0) {
+        return false;
+    }
+    try {
+        $st = db()->prepare(
+            "SELECT 1 FROM gcv_guide_queue_offers
+             WHERE excursion_id = ? AND status = 'accepted' AND guide_user_id <> ?
+             LIMIT 1"
+        );
+        $st->execute([$excursionId, $guideId]);
+        return (bool)$st->fetchColumn();
+    } catch (Throwable $e) {
+        return false;
+    }
 }
 
 /** @return array<int,true> */
@@ -696,7 +768,104 @@ function gcv_guiagem_offer_priority(array $tour, int $exceptId): array
 }
 
 /**
- * Prioridade do Diego, se couber. Senão, os 3 primeiros da fila.
+ * Translado: uma proposta pendente para cada guia ativo com modelo e ano no perfil.
+ * Não usa a fila nem a prioridade do guia especial.
+ *
+ * @param array<string,mixed> $tour
+ * @return list<array<string,mixed>>
+ */
+function gcv_guiagem_open_vehicle_all(array $tour, int $exceptId): array
+{
+    gcv_guiagem_ensure_schema();
+    $tourId = (int)($tour['id'] ?? 0);
+    if ($tourId <= 0) {
+        return [];
+    }
+    $skip = gcv_guiagem_skip_ids($tourId);
+    if ($exceptId > 0) {
+        $skip[$exceptId] = true;
+    }
+    $pending = array_flip(gcv_guiagem_pending_guide_ids($tourId));
+    try {
+        $st = db()->query(
+            "SELECT u.id,
+                    COALESCE(NULLIF(g.full_name, ''), NULLIF(g.nickname, ''), u.name) AS nome
+             FROM gcv_users u
+             INNER JOIN gcv_guides g ON g.user_id = u.id
+             WHERE u.status = 'active'
+               AND (
+                 u.role = 'guide'
+                 OR EXISTS (SELECT 1 FROM gcv_user_roles r WHERE r.user_id = u.id AND r.role = 'guide')
+               )
+               AND g.vehicle_model IS NOT NULL AND TRIM(g.vehicle_model) <> ''
+               AND g.vehicle_year IS NOT NULL AND g.vehicle_year >= 1960"
+        );
+        $rows = $st ? ($st->fetchAll(PDO::FETCH_ASSOC) ?: []) : [];
+    } catch (Throwable $e) {
+        error_log('gcv_guiagem_open_vehicle_all: ' . $e->getMessage());
+        return [];
+    }
+    $picked = [];
+    foreach ($rows as $row) {
+        $id = (int)($row['id'] ?? 0);
+        if ($id <= 0 || isset($skip[$id]) || isset($pending[$id])) {
+            continue;
+        }
+        if (gcv_substitution_busy($id, $tour)) {
+            continue;
+        }
+        $kalungaErro = gcv_guia_erro_kalunga_excursao($tour, $id);
+        if ($kalungaErro === null) {
+            $kalungaErro = gcv_guia_erro_fila_kalunga($tour, $id);
+        }
+        if ($kalungaErro !== null) {
+            continue;
+        }
+        $picked[] = ['id' => $id, 'nome' => (string)($row['nome'] ?? ''), 'vehicle' => true];
+    }
+    if (!$picked) {
+        return [];
+    }
+    $hasKind = gcv_guiagem_column_exists('kind');
+    $hasToken = gcv_guiagem_column_exists('accept_token');
+    $saved = [];
+    try {
+        if ($hasKind && $hasToken) {
+            $ins = db()->prepare(
+                "INSERT INTO gcv_guide_queue_offers (excursion_id, guide_user_id, status, kind, accept_token)
+                 VALUES (?, ?, 'pending', 'vehicle', ?)"
+            );
+            foreach ($picked as $g) {
+                $ins->execute([$tourId, (int)$g['id'], gcv_guiagem_new_token()]);
+                $saved[] = $g;
+            }
+        } elseif ($hasKind) {
+            $ins = db()->prepare(
+                "INSERT INTO gcv_guide_queue_offers (excursion_id, guide_user_id, status, kind)
+                 VALUES (?, ?, 'pending', 'vehicle')"
+            );
+            foreach ($picked as $g) {
+                $ins->execute([$tourId, (int)$g['id']]);
+                $saved[] = $g;
+            }
+        } else {
+            $ins = db()->prepare(
+                "INSERT INTO gcv_guide_queue_offers (excursion_id, guide_user_id, status) VALUES (?, ?, 'pending')"
+            );
+            foreach ($picked as $g) {
+                $ins->execute([$tourId, (int)$g['id']]);
+                $saved[] = $g;
+            }
+        }
+    } catch (Throwable $e) {
+        error_log('gcv_guiagem_open_vehicle_all insert: ' . $e->getMessage());
+        return $saved;
+    }
+    return $saved;
+}
+
+/**
+ * Com translado, todos os guias com veículo. Sem translado, prioridade e depois o TOP 3.
  *
  * @param array<string,mixed> $tour
  * @return list<array<string,mixed>>
@@ -704,11 +873,22 @@ function gcv_guiagem_offer_priority(array $tour, int $exceptId): array
 function gcv_guiagem_open_next(array $tour, int $exceptId): array
 {
     $tourId = (int)($tour['id'] ?? 0);
-    if ($tourId <= 0 || (int)($tour['guide_user_id'] ?? 0) > 0) {
+    if ($tourId <= 0) {
+        return [];
+    }
+    $vehicle = gcv_guiagem_is_vehicle_broadcast($tour);
+    $owner = (int)($tour['guide_user_id'] ?? 0);
+    if ($owner > 0 && !$vehicle) {
+        return [];
+    }
+    if ($owner > 0 && $vehicle && gcv_guiagem_staffing_ready($tour)) {
         return [];
     }
     if (gcv_guiagem_pending_guide_ids($tourId)) {
         return [];
+    }
+    if ($vehicle) {
+        return gcv_guiagem_open_vehicle_all($tour, $exceptId);
     }
     $priority = gcv_guiagem_offer_priority($tour, $exceptId);
     if ($priority) {
@@ -718,8 +898,9 @@ function gcv_guiagem_open_next(array $tour, int $exceptId): array
 }
 
 /**
- * Venda paga ou autorizada, ainda sem guia.
- * O guia especial recebe primeiro. Se o dia estiver ocupado, ele recusar ou o prazo acabar, segue a fila.
+ * Venda paga ou autorizada.
+ * Sem translado, o guia especial recebe primeiro e depois a fila.
+ * Com translado, todos os guias com veículo recebem ao mesmo tempo.
  */
 function gcv_guiagem_after_unassigned_sale(int $excursionId): void
 {
@@ -728,7 +909,14 @@ function gcv_guiagem_after_unassigned_sale(int $excursionId): void
     }
     gcv_guiagem_expire_priority();
     $tour = gcv_substitution_load_excursion($excursionId);
-    if (!$tour || (int)($tour['guide_user_id'] ?? 0) > 0) {
+    if (!$tour) {
+        return;
+    }
+    $vehicle = gcv_guiagem_is_vehicle_broadcast($tour);
+    if (!$vehicle && (int)($tour['guide_user_id'] ?? 0) > 0) {
+        return;
+    }
+    if ($vehicle && gcv_guiagem_staffing_ready($tour)) {
         return;
     }
     if (gcv_guiagem_pending_guide_ids($excursionId)) {
@@ -736,6 +924,9 @@ function gcv_guiagem_after_unassigned_sale(int $excursionId): void
     }
     $picked = gcv_guiagem_open_next($tour, 0);
     if (!$picked) {
+        if ($vehicle && (int)($tour['guide_user_id'] ?? 0) <= 0) {
+            gcv_guiagem_notify_agency_no_vehicle($excursionId);
+        }
         return;
     }
     gcv_guiagem_notify_new_purchase($excursionId, array_map(static fn ($g) => (int)($g['id'] ?? 0), $picked));
@@ -788,7 +979,9 @@ function gcv_guiagem_close_priority_offers(?string $expiresBy): int
             $n++;
             continue;
         }
-        $picked = gcv_guiagem_open_top($tour, 0);
+        $picked = gcv_guiagem_is_vehicle_broadcast($tour)
+            ? gcv_guiagem_open_vehicle_all($tour, 0)
+            : gcv_guiagem_open_top($tour, 0);
         if ($picked) {
             gcv_guiagem_notify_new_purchase($excursionId, array_map(static fn ($g) => (int)($g['id'] ?? 0), $picked));
         } elseif (gcv_guiagem_mark_cancelled($excursionId)) {
@@ -884,6 +1077,7 @@ function gcv_guiagem_release(int $excursionId, array $user, bool $isAdmin = fals
     }
 
     $cancelNow = false;
+    $vehicleRelease = gcv_guiagem_is_vehicle_broadcast($tour);
     $pdo = db();
     $pdo->beginTransaction();
     try {
@@ -929,7 +1123,7 @@ function gcv_guiagem_release(int $excursionId, array $user, bool $isAdmin = fals
         $pdo->prepare(
             'DELETE FROM gcv_excursion_guide_seats WHERE excursion_id = ? AND guide_user_id = ?'
         )->execute([$excursionId, $owner]);
-        $posicao = gcv_substitution_move_to_end($owner);
+        $posicao = $vehicleRelease ? 0 : gcv_substitution_move_to_end($owner);
         $tour['guide_user_id'] = null;
         $picked = gcv_guiagem_open_next($tour, $owner);
         if (!$picked && count(gcv_guiagem_seat_ids($excursionId)) < 1) {
@@ -948,15 +1142,23 @@ function gcv_guiagem_release(int $excursionId, array $user, bool $isAdmin = fals
     $ids = array_map(static fn ($g) => (int)$g['id'], $picked);
     if ($cancelNow) {
         gcv_guiagem_finish_no_guide($excursionId);
-        $message = $posicao > 0
-            ? 'Guiagem cancelada. Você foi para o fim da fila (' . $posicao . 'º). Não havia outro guia disponível, então o passeio foi cancelado.'
-            : 'Guiagem cancelada. Você continua em destaque. Não havia outro guia disponível, então o passeio foi cancelado.';
+        if ($vehicleRelease) {
+            $message = 'Guiagem cancelada. Não havia outro guia com veículo, então o passeio foi cancelado.';
+        } else {
+            $message = $posicao > 0
+                ? 'Guiagem cancelada. Você foi para o fim da fila (' . $posicao . 'º). Não havia outro guia disponível, então o passeio foi cancelado.'
+                : 'Guiagem cancelada. Você continua em destaque. Não havia outro guia disponível, então o passeio foi cancelado.';
+        }
     } elseif ($ids) {
         gcv_guiagem_notify_new_purchase($excursionId, $ids);
         gcv_guiagem_notify_agency_released($tour, $owner, count($ids));
-        $message = $posicao > 0
-            ? 'Guiagem cancelada. Você foi para o fim da fila (' . $posicao . 'º). Os guias do topo foram avisados e podem aceitar, como em uma compra nova. Os clientes só são avisados quando outro guia assumir.'
-            : 'Guiagem cancelada. Você continua em destaque. A vaga foi para a fila. Os clientes só são avisados quando outro guia assumir.';
+        if ($vehicleRelease) {
+            $message = 'Guiagem cancelada. A proposta foi enviada a todos os guias com veículo. O primeiro que aceitar fica com a vaga. Os clientes só são avisados quando outro guia assumir.';
+        } else {
+            $message = $posicao > 0
+                ? 'Guiagem cancelada. Você foi para o fim da fila (' . $posicao . 'º). Os guias do topo foram avisados e podem aceitar, como em uma compra nova. Os clientes só são avisados quando outro guia assumir.'
+                : 'Guiagem cancelada. Você continua em destaque. A vaga foi para a fila. Os clientes só são avisados quando outro guia assumir.';
+        }
     } else {
         $message = $posicao > 0
             ? 'Guiagem cancelada. Você foi para o fim da fila (' . $posicao . 'º). A vaga segue aberta até 24 horas antes do passeio.'
@@ -974,6 +1176,9 @@ function gcv_guiagem_accept(int $excursionId, array $user): array
     gcv_guiagem_ensure_schema();
     $me = (int)($user['id'] ?? 0);
     if ($me <= 0 || !gcv_guiagem_pending_for($excursionId, $me)) {
+        if ($me > 0 && gcv_guiagem_taken_by_other($excursionId, $me)) {
+            return ['ok' => false, 'error' => 'A proposta foi aceita por outro guia e não está mais disponível.', 'status' => 409];
+        }
         return ['ok' => false, 'error' => 'Esta vaga não está aguardando você', 'status' => 404];
     }
     $tour = gcv_substitution_load_excursion($excursionId);
@@ -995,18 +1200,30 @@ function gcv_guiagem_accept(int $excursionId, array $user): array
     }
 
     $pdo = db();
+    $isVehicle = false;
+    $posicao = 0;
+    $others = [];
     $pdo->beginTransaction();
     try {
         $offer = $pdo->prepare(
-            "SELECT id FROM gcv_guide_queue_offers
+            "SELECT id, kind FROM gcv_guide_queue_offers
              WHERE excursion_id = ? AND guide_user_id = ? AND status = 'pending'
              LIMIT 1 FOR UPDATE"
         );
         $offer->execute([$excursionId, $me]);
-        $offerId = (int)($offer->fetchColumn() ?: 0);
+        $offerRow = $offer->fetch(PDO::FETCH_ASSOC) ?: null;
+        $offerId = (int)($offerRow['id'] ?? 0);
+        $isVehicle = (string)($offerRow['kind'] ?? '') === 'vehicle';
         if ($offerId <= 0) {
             $pdo->rollBack();
+            if (gcv_guiagem_taken_by_other($excursionId, $me)) {
+                return ['ok' => false, 'error' => 'A proposta foi aceita por outro guia e não está mais disponível.', 'status' => 409];
+            }
             return ['ok' => false, 'error' => 'Esta vaga não está aguardando você', 'status' => 404];
+        }
+        if ($isVehicle && !gcv_guide_has_registered_vehicle($me)) {
+            $pdo->rollBack();
+            return ['ok' => false, 'error' => 'Só guia com veículo cadastrado pode aceitar este passeio', 'status' => 422];
         }
         $needed = gcv_guiagem_guides_needed($tour);
         $lockTour = $pdo->prepare('SELECT guide_user_id FROM gcv_excursions WHERE id = ? FOR UPDATE');
@@ -1026,7 +1243,10 @@ function gcv_guiagem_accept(int $excursionId, array $user): array
                 "UPDATE gcv_guide_queue_offers SET status = 'declined', decided_at = NOW() WHERE id = ?"
             )->execute([$offerId]);
             $pdo->commit();
-            return ['ok' => false, 'error' => 'Outro guia aceitou esta vaga antes', 'status' => 409];
+            $taken = $isVehicle
+                ? 'A proposta foi aceita por outro guia e não está mais disponível.'
+                : 'Outro guia aceitou esta vaga antes';
+            return ['ok' => false, 'error' => $taken, 'status' => 409];
         }
         $pdo->prepare(
             'INSERT INTO gcv_excursion_guide_seats (excursion_id, guide_user_id) VALUES (?, ?)'
@@ -1044,6 +1264,10 @@ function gcv_guiagem_accept(int $excursionId, array $user): array
         );
         $othersSt->execute([$excursionId, $me]);
         $others = array_map('intval', $othersSt->fetchAll(PDO::FETCH_COLUMN) ?: []);
+        $closeRace = !$isVehicle || (count($seated) + 1 >= $needed);
+        if (!$closeRace) {
+            $others = [];
+        }
         if ($ownerNow <= 0) {
             $pdo->prepare(
                 "UPDATE gcv_booking_trips SET guide_user_id = ?
@@ -1054,11 +1278,13 @@ function gcv_guiagem_accept(int $excursionId, array $user): array
         $pdo->prepare(
             "UPDATE gcv_guide_queue_offers SET status = 'accepted', decided_at = NOW() WHERE id = ?"
         )->execute([$offerId]);
-        $pdo->prepare(
-            "UPDATE gcv_guide_queue_offers SET status = 'declined', decided_at = NOW()
-             WHERE excursion_id = ? AND status = 'pending'"
-        )->execute([$excursionId]);
-        $posicao = gcv_substitution_move_to_end($me);
+        if ($closeRace) {
+            $pdo->prepare(
+                "UPDATE gcv_guide_queue_offers SET status = 'declined', decided_at = NOW()
+                 WHERE excursion_id = ? AND status = 'pending'"
+            )->execute([$excursionId]);
+        }
+        $posicao = $isVehicle ? 0 : gcv_substitution_move_to_end($me);
         if ($ownerNow <= 0) {
             $tour['guide_user_id'] = $me;
         }
@@ -1118,13 +1344,21 @@ function gcv_guiagem_accept(int $excursionId, array $user): array
     gcv_guiagem_notify_clients_swapped($excursionId);
 
     $title = (string)($tour['attraction_title'] ?? 'o passeio');
+    if ($isVehicle && $still > 0) {
+        $message = 'Você assumiu ' . $title . '. Ainda falta ' . $still
+            . ' guia com veículo. A proposta continua aberta para os outros guias com veículo.';
+    } elseif ($isVehicle) {
+        $message = 'Você assumiu ' . $title . '. Os outros guias foram avisados de que a proposta não está mais disponível.';
+    } elseif ($posicao > 0) {
+        $message = 'Você assumiu ' . $title . ' e foi para o fim da fila (' . $posicao . 'º).';
+    } else {
+        $message = 'Você assumiu ' . $title . '. A próxima venda também chega primeiro para você.';
+    }
     return [
         'ok' => true,
         'result' => 'accepted',
         'posicao' => $posicao,
-        'message' => $posicao > 0
-            ? 'Você assumiu ' . $title . ' e foi para o fim da fila (' . $posicao . 'º).'
-            : 'Você assumiu ' . $title . '. A próxima venda também chega primeiro para você.',
+        'message' => $message,
     ];
 }
 
@@ -1134,6 +1368,18 @@ function gcv_guiagem_decline(int $excursionId, int $guideId): array
     gcv_guiagem_ensure_schema();
     if (!gcv_guiagem_pending_for($excursionId, $guideId)) {
         return ['ok' => false, 'error' => 'Esta vaga não está aguardando você', 'status' => 404];
+    }
+    $wasVehicle = false;
+    try {
+        $kindSt = db()->prepare(
+            "SELECT kind FROM gcv_guide_queue_offers
+             WHERE excursion_id = ? AND guide_user_id = ? AND status = 'pending'
+             ORDER BY id DESC LIMIT 1"
+        );
+        $kindSt->execute([$excursionId, $guideId]);
+        $wasVehicle = (string)($kindSt->fetchColumn() ?: '') === 'vehicle';
+    } catch (Throwable $e) {
+        $wasVehicle = false;
     }
     $pdo = db();
     $pdo->beginTransaction();
@@ -1177,7 +1423,9 @@ function gcv_guiagem_decline(int $excursionId, int $guideId): array
     return [
         'ok' => true,
         'result' => 'declined',
-        'message' => 'Você recusou esta guiagem. Sua posição na fila não mudou.',
+        'message' => $wasVehicle
+            ? 'Você recusou esta proposta. Ela continua disponível para os outros guias com veículo.'
+            : 'Você recusou esta guiagem. Sua posição na fila não mudou.',
     ];
 }
 
@@ -1220,7 +1468,9 @@ function gcv_guiagem_attach(array $rows, int $userId): array
         if (!$tour || !function_exists('gcv_map_excursion_row')) {
             continue;
         }
-        if ((int)($tour['guide_user_id'] ?? 0) > 0) {
+        $ownerId = (int)($tour['guide_user_id'] ?? 0);
+        $vehicleOffer = (string)($offer['kind'] ?? '') === 'vehicle';
+        if ($ownerId > 0 && (!$vehicleOffer || gcv_guiagem_staffing_ready($tour))) {
             continue;
         }
         $mapped = gcv_map_excursion_row($tour);
@@ -1231,6 +1481,7 @@ function gcv_guiagem_attach(array $rows, int $userId): array
         $mapped['can_substitute'] = false;
         $mapped['can_cancel'] = false;
         $mapped['queue_offer'] = true;
+        $mapped['vehicle_offer'] = $vehicleOffer;
         $priority = (string)($offer['kind'] ?? '') === 'priority' && !empty($offer['expires_at']);
         $mapped['priority_offer'] = $priority;
         if ($priority) {
@@ -1293,14 +1544,20 @@ function gcv_guiagem_notify_new_purchase(int $excursionId, array $guideIds): voi
             $note = '';
             try {
                 $kind = db()->prepare(
-                    "SELECT expires_at FROM gcv_guide_queue_offers
-                     WHERE excursion_id = ? AND guide_user_id = ? AND status = 'pending' AND kind = 'priority'
-                     LIMIT 1"
+                    "SELECT kind, expires_at FROM gcv_guide_queue_offers
+                     WHERE excursion_id = ? AND guide_user_id = ? AND status = 'pending'
+                     ORDER BY id DESC LIMIT 1"
                 );
                 $kind->execute([$excursionId, $gid]);
-                $exp = $kind->fetchColumn();
-                if (is_string($exp) && $exp !== '') {
-                    $note = gcv_guiagem_priority_note($exp);
+                $offerRow = $kind->fetch(PDO::FETCH_ASSOC) ?: null;
+                $offerKind = (string)($offerRow['kind'] ?? '');
+                if ($offerKind === 'priority') {
+                    $exp = (string)($offerRow['expires_at'] ?? '');
+                    if ($exp !== '') {
+                        $note = gcv_guiagem_priority_note($exp);
+                    }
+                } elseif ($offerKind === 'vehicle') {
+                    $note = 'Passeio com translado. Não há fila: todos os guias com veículo cadastrado receberam esta proposta. O primeiro que aceitar fica com a vaga.';
                 }
             } catch (Throwable $e) {
                 $note = '';
@@ -1348,6 +1605,27 @@ function gcv_guiagem_notify_agency_exhausted(int $excursionId): void
     }
 }
 
+function gcv_guiagem_notify_agency_no_vehicle(int $excursionId): void
+{
+    try {
+        require_once __DIR__ . '/notify_ops.php';
+        $exc = gcv_ops_load_excursion($excursionId);
+        if (!$exc) {
+            return;
+        }
+        $title = gcv_ops_excursion_title($exc);
+        $when = trim(gcv_ops_date_br((string)($exc['date_iso'] ?? '')) . ' às ' . substr((string)($exc['departure_time'] ?? ''), 0, 5));
+        gcv_ops_wa_agency(
+            "Venda com translado sem guia disponível.\n\n"
+            . 'Passeio: ' . $title . "\n"
+            . ($when !== '' ? 'Quando: ' . $when . "\n" : '')
+            . 'Nenhum guia com veículo cadastrado pôde receber a proposta. A vaga não foi para a fila.'
+        );
+    } catch (Throwable $e) {
+        error_log('gcv_guiagem_notify_agency_no_vehicle: ' . $e->getMessage());
+    }
+}
+
 function gcv_guiagem_notify_agency_released(array $tour, int $guideId, int $offered): void
 {
     try {
@@ -1361,7 +1639,9 @@ function gcv_guiagem_notify_agency_released(array $tour, int $guideId, int $offe
         $text = 'O guia ' . (string)($guide['name'] ?? 'Guia') . " cancelou a guiagem.\n\n"
             . 'Passeio: ' . $title . "\n"
             . ($when !== '' ? 'Quando: ' . $when . "\n" : '')
-            . 'A vaga foi oferecida a ' . $offered . ' guia(s) do topo da fila, como uma compra nova.';
+            . (gcv_guiagem_is_vehicle_broadcast($tour)
+                ? 'A vaga foi oferecida a todos os guias com veículo cadastrado. Não há fila: o primeiro que aceitar fica com ela.'
+                : ('A vaga foi oferecida a ' . $offered . ' guia(s) do topo da fila, como uma compra nova.'));
         gcv_ops_wa_agency($text);
     } catch (Throwable $e) {
         error_log('gcv_guiagem_notify_agency_released: ' . $e->getMessage());

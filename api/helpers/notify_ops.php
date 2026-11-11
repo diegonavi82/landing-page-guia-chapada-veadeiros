@@ -2268,17 +2268,16 @@ function gcv_ops_notify_guide_opportunity_taken(int $guideId, array $exc): void
     }
     $title = gcv_ops_excursion_title($exc);
     $when = trim(gcv_ops_date_br((string)($exc['date_iso'] ?? '')) . ' às ' . substr((string)($exc['departure_time'] ?? ''), 0, 5));
-    $text = "A vaga foi aceita por outro guia.\n\n"
+    $text = "A proposta foi aceita por outro guia e não está mais disponível.\n\n"
         . 'Passeio: ' . $title . "\n"
-        . ($when !== '' ? 'Quando: ' . $when . "\n" : '')
-        . 'Esta oportunidade encerrou.';
+        . ($when !== '' ? 'Quando: ' . $when . "\n" : '');
     gcv_ops_wa_guide($guideId, $text, [
         'kind' => 'opportunity_taken',
         'excursion_id' => (int)($exc['id'] ?? 0),
     ]);
     $email = trim((string)(gcv_ops_guide_contact($guideId)['email'] ?? ''));
     if ($email !== '') {
-        gcv_ops_mail_plain($email, 'Vaga aceita por outro guia — ' . $title, $text);
+        gcv_ops_mail_plain($email, 'Proposta aceita — não está mais disponível — ' . $title, $text);
     }
 }
 

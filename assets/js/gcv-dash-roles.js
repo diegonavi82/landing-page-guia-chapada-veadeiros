@@ -3015,10 +3015,12 @@
         no: 'Não',
         fresh: 'NOVO',
         priority: 'PRIORIDADE',
+        vehicle: 'TRANSLADO',
         confirmIn: 'Confirme em',
         acceptIn: 'Aceite em',
         normalHint: 'Sem a sua confirmação até {hours} horas antes da saída, a reserva do cliente é liberada.',
-        priorityHint: 'Você tem até o prazo abaixo para aceitar ou recusar. Esse dia já está na sua agenda. Se recusar ou o prazo acabar, a vaga segue para os outros guias.'
+        priorityHint: 'Você tem até o prazo abaixo para aceitar ou recusar. Esse dia já está na sua agenda. Se recusar ou o prazo acabar, a vaga segue para os outros guias.',
+        vehicleHint: 'Passeio com translado. Não há fila: todos os guias com veículo receberam esta proposta. O primeiro que aceitar fica com a vaga.'
       },
       en: {
         one: 'Do you want to guide this tour?',
@@ -3027,10 +3029,12 @@
         no: 'No',
         fresh: 'NEW',
         priority: 'PRIORITY',
+        vehicle: 'TRANSPORT',
         confirmIn: 'Confirm within',
         acceptIn: 'Accept within',
         normalHint: 'If you do not confirm by {hours} hours before departure, the guest’s booking is released.',
-        priorityHint: 'You have until the deadline below to accept or decline. This day is already on your schedule. If you decline or the time runs out, the job goes to the other guides.'
+        priorityHint: 'You have until the deadline below to accept or decline. This day is already on your schedule. If you decline or the time runs out, the job goes to the other guides.',
+        vehicleHint: 'This tour includes transport. There is no queue: every guide with a vehicle received this offer. The first to accept gets it.'
       },
       es: {
         one: '¿Quieres guiar este paseo?',
@@ -3039,10 +3043,12 @@
         no: 'No',
         fresh: 'NUEVO',
         priority: 'PRIORIDAD',
+        vehicle: 'TRASLADO',
         confirmIn: 'Confirma en',
         acceptIn: 'Acepta en',
         normalHint: 'Si no confirmas hasta {hours} horas antes de la salida, la reserva del cliente se libera.',
-        priorityHint: 'Tienes hasta el plazo de abajo para aceptar o rechazar. Ese día ya está en tu agenda. Si rechazas o se acaba el plazo, la plaza sigue con los otros guías.'
+        priorityHint: 'Tienes hasta el plazo de abajo para aceptar o rechazar. Ese día ya está en tu agenda. Si rechazas o se acaba el plazo, la plaza sigue con los otros guías.',
+        vehicleHint: 'Paseo con traslado. No hay fila: todos los guías con vehículo recibieron esta propuesta. El primero que acepte se queda con la plaza.'
       }
     };
     return all[profileUiLang()] || all.pt;
@@ -3055,16 +3061,19 @@
     var question = many ? ui.many : ui.one;
     var hours = 12;
     var hasPriority = false;
+    var hasVehicle = false;
     var hasNormal = false;
     tours.forEach(function (e) {
       var n = Number(e && e.decision_hours);
       if (isFinite(n) && n >= 1) hours = n;
-      if (e && e.priority_offer) hasPriority = true;
+      if (e && e.vehicle_offer) hasVehicle = true;
+      else if (e && e.priority_offer) hasPriority = true;
       else hasNormal = true;
     });
     var hint = ui.normalHint.replace('{hours}', String(hours));
-    if (hasPriority && !hasNormal) hint = ui.priorityHint;
-    else if (hasPriority) hint = hint + ' ' + ui.priorityHint;
+    if (hasVehicle && !hasPriority && !hasNormal) hint = ui.vehicleHint;
+    else if (hasPriority && !hasNormal && !hasVehicle) hint = ui.priorityHint;
+    else if (hasPriority || hasVehicle) hint = hint + (hasVehicle ? ' ' + ui.vehicleHint : '') + (hasPriority ? ' ' + ui.priorityHint : '');
     var items = tours.map(function (e) {
       var time = String(e.departure_time || '').slice(0, 5);
       var when = formatGuideDate(e.date_iso) + (time ? ' · ' + time : '');
@@ -3076,7 +3085,7 @@
         : '';
       return (
         '<li class="gcv-agenda-ask__item">' +
-        '<span class="gcv-agenda-novo">' + esc(e && e.priority_offer ? ui.priority : ui.fresh) + '</span>' +
+        '<span class="gcv-agenda-novo">' + esc(e && e.vehicle_offer ? ui.vehicle : (e && e.priority_offer ? ui.priority : ui.fresh)) + '</span>' +
         '<span class="gcv-agenda-ask__name">' + esc(e.attraction_title || 'Passeio') + '</span>' +
         '<span class="gcv-agenda-ask__when">' + esc(when) + '</span>' +
         timer +

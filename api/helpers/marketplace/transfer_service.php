@@ -907,6 +907,14 @@ function gcv_transfer_complete(array $offer, array $sale, array $to, int $extraP
             );
         }
         gcv_ops_notify_guide_new_booking($saleAfter, $to, $spots);
+        try {
+            require_once dirname(__DIR__) . '/guide_queue_offer.php';
+            if ((int)($to['guide_user_id'] ?? 0) <= 0) {
+                gcv_guiagem_after_unassigned_sale($toId);
+            }
+        } catch (Throwable $e) {
+            error_log('transfer guiagem: ' . $e->getMessage());
+        }
         $phone = gcv_ops_client_phone($saleAfter);
         $code = strtoupper(trim((string)($saleAfter['reservation_id'] ?? '')));
         $png = function_exists('gcv_ops_voucher_png') ? gcv_ops_voucher_png($saleAfter, $to, $code !== '' ? $code : 'GCV') : '';

@@ -147,7 +147,7 @@
         {
           heading: "4.3 Carros e guias com translado",
           paragraphs: [
-            "Com translado, o CONTRATANTE contrata o passeio com o guia e o transporte a partir da cidade de hospedagem. O carro é do guia. Só entra nessa fila o guia que marcou veículo no perfil, com modelo e ano. Cada carro leva até 4 clientes e 1 guia. A conta é uma vaga de guia e um carro para cada grupo de até 4 clientes: 5 clientes exigem 2 carros e 2 guias. O preço do Privativo com translado acompanha o número de carros.",
+            "Com translado, o CONTRATANTE contrata o passeio com o guia e o transporte a partir da cidade de hospedagem. O carro é do guia. Não há fila: todos os guias com veículo cadastrado no perfil, com modelo e ano, recebem a proposta ao mesmo tempo. O primeiro que aceitar fica com a vaga, e os demais são avisados de que ela não está mais disponível. Cada carro leva até 4 clientes e 1 guia. A conta é uma vaga de guia e um carro para cada grupo de até 4 clientes: 5 clientes exigem 2 carros e 2 guias. O preço do Privativo com translado acompanha o número de carros.",
           ],
         },
         {
@@ -261,15 +261,15 @@
           heading: "2. Fila",
           paragraphs: [
             "Para receber oportunidade, o GUIA precisa responder que tem interesse em participar da lista. Sem esse aceite, não entra na fila.",
-            "A fila do passeio com transporte reúne quem tem veículo, modelo e ano no perfil. A fila sem transporte é a de guiagem. As duas seguem a mesma regra. O GUIA vê a própria posição e é avisado quando ela muda. A posição não aparece para o cliente.",
-            "A fila sempre anda. Quem aceita vai para o final, e a próxima oportunidade usa essa nova ordem. O guia do TOP 3 que não clica para aceitar acumula uma vez. Na terceira vez sem clique, vai para o final da fila. Aceitar não entra nessa conta.",
+            "A fila é só do passeio sem translado. Com translado não há fila: a proposta vai ao mesmo tempo para todos os guias com veículo, modelo e ano no perfil, e o primeiro que aceitar fica com a vaga. Na fila sem translado, o GUIA vê a própria posição e é avisado quando ela muda. A posição não aparece para o cliente.",
+            "Na fila sem translado, quem aceita vai para o final, e a próxima oportunidade usa essa nova ordem. O guia do TOP 3 que não clica para aceitar acumula uma vez. Na terceira vez sem clique, vai para o final da fila. Aceitar não entra nessa conta.",
           ],
         },
         {
           heading: "3. Oportunidade",
           paragraphs: [
-            "Toda venda confirmada de passeio exclusivo ou de excursão, com transporte ou sem transporte, é enviada aos 3 primeiros da fila do idioma da compra, o TOP 3. Na excursão, isso ocorre quando o quórum é atingido. A exclusividade do TOP 3 dura 2 horas.",
-            "Diego Navi Marques Carvalho é o guia especial e não entra na fila. Enquanto essa prioridade estiver ativa, toda venda confirmada chega primeiro para ele, por 24 horas, para aceitar ou recusar. A saída entra na agenda dele nesse prazo. Se ele recusar, não responder, já estiver ocupado nesse dia, ou se essa prioridade estiver desligada, a venda segue para o TOP 3. Santa Bárbara, Capivara, Candaru e Guardião não passam por ele: vão para a fila Kalunga.",
+            "Sem translado, toda venda confirmada de passeio exclusivo ou de excursão é enviada aos 3 primeiros da fila, o TOP 3. Na excursão, isso ocorre quando o quórum é atingido. Com translado, não há fila nem prioridade: todos os guias com veículo cadastrado recebem a proposta ao mesmo tempo e o primeiro que aceitar fica com a vaga.",
+            "Diego Navi Marques Carvalho é o guia especial e não entra na fila. Enquanto essa prioridade estiver ativa, toda venda confirmada sem translado chega primeiro para ele, por 24 horas, para aceitar ou recusar. Com translado, ele só recebe a proposta se tiver veículo cadastrado, junto com os outros guias. Na prioridade sem translado, a saída entra na agenda dele durante as 24 horas. Se ele recusar, não responder, já estiver ocupado nesse dia, ou se essa prioridade estiver desligada, a venda segue para o TOP 3. Santa Bárbara, Capivara, Candaru e Guardião não passam por ele: vão para a fila Kalunga.",
             "O envio da oportunidade é pelo WhatsApp. O GUIA e o cliente também recebem o aviso por e-mail. A mensagem traz os dados da excursão ou do passeio exclusivo, o pagamento que aquele GUIA recebe, o número de pessoas, se é com o veículo do GUIA, e os dados do comprador: nome, telefone e e-mail.",
             "O aceite é o clique no link enviado no WhatsApp. O mesmo link segue no e-mail. O tempo para aceitar é de 4 horas e 20 minutos. O primeiro clique válido ocupa a vaga e o link expira. Quem mais recebeu a oportunidade é avisado, por WhatsApp e por e-mail, de que ela foi aceita por outro guia.",
             "Se nenhum dos 3 aceitar nas 2 horas, todos os outros guias da lista são notificados ao mesmo tempo, com o mesmo prazo de 4 horas e 20 minutos. O primeiro que aceitar entra e o link expira.",
@@ -280,7 +280,7 @@
         {
           heading: "4. Mais de um guia e troca",
           paragraphs: [
-            "No passeio com transporte, cada carro exige um GUIA. Cinco clientes exigem 2 guias. Cada vaga gera a própria oportunidade. O primeiro aceite ocupa aquela vaga, o link expira, e a vaga que ainda faltar chama o TOP 3 da fila, que já andou. Quem já aceitou permanece.",
+            "No passeio com transporte, cada carro exige um GUIA. Cinco clientes exigem 2 guias. Todos os guias com veículo recebem a proposta ao mesmo tempo. O primeiro aceite ocupa uma vaga. Se ainda faltar outro carro, a proposta continua aberta para os demais até todas as vagas serem preenchidas. Quando a última vaga fecha, os outros são avisados de que a proposta não está mais disponível. Quem já aceitou permanece.",
             "Enquanto faltar guia, os inscritos veem \"Aguardando confirmação do guia\" e não podem cancelar. No cartão, nada é cobrado nessa espera.",
             "Se nenhum guia aceitar, o passeio é cancelado porque não há guias disponíveis. O cliente e os guias que receberam a oportunidade são avisados por WhatsApp e por e-mail. No Pix há estorno. No cartão, nada foi cobrado.",
             "Um administrador pode destacar um GUIA a qualquer momento. Isso não vale como aceite. O GUIA recebe no WhatsApp a mensagem \"Clique aqui para confirmar\" e só entra quando clica no link. Em seguida recebe a confirmação da guiagem. A cobrança não sai enquanto faltar guia necessário ou quórum.",
@@ -414,7 +414,7 @@
         {
           heading: "4.3 Cars and guides with transport",
           paragraphs: [
-            "With transport, the Client books the tour with the guide and the transfer from the city where the group is staying. The car is the guide's. Only a guide who has marked a vehicle on the profile, with model and year, enters that queue. Each car takes up to 4 guests and 1 guide. The count is one guide seat and one car for every group of up to 4 guests: 5 guests require 2 cars and 2 guides. The price of a private tour with transport follows the number of cars.",
+            "With transport, the Client books the tour with the guide and the transfer from the city where the group is staying. The car is the guide's. There is no queue: every guide with a vehicle on the profile, including model and year, receives the offer at the same time. The first to accept gets the seat, and the others are told it is no longer available. Each car takes up to 4 guests and 1 guide. The count is one guide seat and one car for every group of up to 4 guests: 5 guests require 2 cars and 2 guides. The price of a private tour with transport follows the number of cars.",
           ],
         },
         {
@@ -601,7 +601,7 @@
         {
           heading: "4.3 Autos y guías con traslado",
           paragraphs: [
-            "Con traslado, el contratante contrata el paseo con el guía y el transporte desde la ciudad de hospedaje. El auto es del guía. Solo entra en esa fila el guía que marcó vehículo en el perfil, con modelo y año. Cada auto lleva hasta 4 clientes y 1 guía. La cuenta es una plaza de guía y un auto por cada grupo de hasta 4 clientes: 5 clientes exigen 2 autos y 2 guías. El precio del paseo privado con traslado acompaña el número de autos.",
+            "Con traslado, el contratante contrata el paseo con el guía y el transporte desde la ciudad de hospedaje. El auto es del guía. No hay fila: todos los guías con vehículo registrado en el perfil, con modelo y año, reciben la propuesta al mismo tiempo. El primero que acepta se queda con la plaza, y los demás son avisados de que ya no está disponible. Cada auto lleva hasta 4 clientes y 1 guía. La cuenta es una plaza de guía y un auto por cada grupo de hasta 4 clientes: 5 clientes exigen 2 autos y 2 guías. El precio del paseo privado con traslado acompaña el número de autos.",
           ],
         },
         {

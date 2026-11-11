@@ -17,19 +17,24 @@ $ok = false;
 if ($token !== '' && preg_match('/^[a-f0-9]{32}$/', $token)) {
     gcv_guiagem_ensure_schema();
     $st = db()->prepare(
-        "SELECT excursion_id, guide_user_id FROM gcv_guide_queue_offers
-         WHERE accept_token = ? AND status = 'pending'
+        "SELECT excursion_id, guide_user_id, status FROM gcv_guide_queue_offers
+         WHERE accept_token = ?
          ORDER BY id DESC LIMIT 1"
     );
     $st->execute([$token]);
     $offer = $st->fetch(PDO::FETCH_ASSOC) ?: null;
-    if ($offer) {
+    if ($offer && (string)($offer['status'] ?? '') === 'pending') {
         $result = gcv_guiagem_accept((int)$offer['excursion_id'], [
             'id' => (int)$offer['guide_user_id'],
             'role' => 'guide',
         ]);
         $ok = !empty($result['ok']);
         $message = (string)($result['message'] ?? $result['error'] ?? $message);
+    } elseif ($offer && (string)($offer['status'] ?? '') === 'accepted') {
+        $ok = true;
+        $message = 'Você já confirmou esta guiagem.';
+    } elseif ($offer && gcv_guiagem_taken_by_other((int)$offer['excursion_id'], (int)$offer['guide_user_id'])) {
+        $message = 'A proposta foi aceita por outro guia e não está mais disponível.';
     }
 }
 

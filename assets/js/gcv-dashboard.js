@@ -1732,7 +1732,7 @@
       },
       regras: {
         title: 'Tarifa do roteiro',
-        hint: 'Cada tarifa oficial guarda a própria taxa do guia. O modelo global só preenche a tarifa nova. Passeio criado pelo guia continua na comissão da plataforma. A oportunidade vai ao TOP 3 por 2 horas. O aceite é de 4h20 corridas, sem pausa noturna.'
+        hint: 'Cada tarifa oficial guarda a própria taxa do guia. O modelo global só preenche a tarifa nova. Passeio criado pelo guia continua na comissão da plataforma. Sem translado, a oportunidade vai ao TOP 3. Com translado, todos os guias com veículo recebem ao mesmo tempo e o primeiro que aceita fica com a vaga.'
       },
       finance: {
         title: 'Financeiro e repasse',
