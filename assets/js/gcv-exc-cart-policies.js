@@ -70,7 +70,7 @@
           heading: "1. Aceite da Contratação",
           paragraphs: [
             "Ao concluir a compra, o CONTRATANTE declara ter lido, compreendido e aceitado integralmente esta Política de Cancelamento e os Termos de Prestação de Serviços da Guia Chapada Veadeiros.",
-            "O CONTRATANTE contrata um passeio por data, prestado pela Guia Chapada Veadeiros. Não contrata um guia específico: no Privativo e na Excursão, com transporte ou sem transporte, entra o primeiro guia da fila que aceitar pelo link. A data que já tiver um passeio no carrinho fica bloqueada para outro passeio.",
+            "O CONTRATANTE contrata um passeio por data, prestado pela Guia Chapada Veadeiros. Não contrata um guia específico. Sem translado, entra o primeiro guia da fila que aceitar pelo link. Com translado, não há fila: todos os guias com veículo cadastrado recebem a proposta ao mesmo tempo e o primeiro que aceitar fica com a vaga. A data que já tiver um passeio no carrinho fica bloqueada para outro passeio.",
             "No cartão de crédito o cartão fica apenas salvo. A operadora confirma que o cartão existe e aceita cobrança futura. Não há sinal e o limite não fica reservado antes da saída. O CONTRATANTE autoriza a cobrança automática de 100% somente quando o passeio confirmar.",
             "A confirmação da Excursão exige quórum fechado e o aceite de todos os guias necessários. A do Privativo exige o aceite do guia e, se houver translado, o veículo. Com translado, cada carro leva até 4 clientes e 1 guia. Na Excursão o cartão de todos os inscritos necessários ao quórum é testado no mesmo momento: enquanto um não passar, ninguém é cobrado.",
           ],
@@ -337,7 +337,7 @@
           heading: "1. Acceptance of the booking",
           paragraphs: [
             "By completing the purchase, the Client states that they have read, understood and fully accepted this Cancellation Policy and the Terms of Service of Guia Chapada Veadeiros.",
-            "The Client books a tour for a date, provided by Guia Chapada Veadeiros. The Client does not hire a specific guide: on a private tour and on a shared tour, with or without transport, the first guide in the queue who accepts through the link is assigned. A date that already has a tour in the cart is blocked for another tour.",
+            "The Client books a tour for a date, provided by Guia Chapada Veadeiros. The Client does not hire a specific guide. Without transport, the first guide in the queue who accepts through the link is assigned. With transport, there is no queue: every guide with a registered vehicle receives the offer at the same time, and the first to accept gets the seat. A date that already has a tour in the cart is blocked for another tour.",
             "On a credit card, the card is only saved. The card network confirms that the card exists and can be charged later. There is no deposit, and the limit is not held before departure. The Client authorizes the automatic charge of 100% only when the tour is confirmed.",
             "A shared tour is confirmed only when the minimum group is closed and every required guide has accepted. A private tour is confirmed when the guide accepts and, if there is transport, when the vehicle is secured. With transport, each car takes up to 4 guests and 1 guide. On a shared tour, the card of every guest needed for the minimum group is tested at the same time: while one card fails, nobody is charged.",
           ],
@@ -524,7 +524,7 @@
           heading: "1. Aceptación de la contratación",
           paragraphs: [
             "Al concluir la compra, el contratante declara haber leído, comprendido y aceptado íntegramente esta Política de cancelación y los Términos de prestación de servicios de Guia Chapada Veadeiros.",
-            "El contratante contrata un paseo por fecha, prestado por Guia Chapada Veadeiros. No contrata un guía específico: en el paseo privado y en la excursión, con transporte o sin transporte, entra el primer guía de la fila que acepte por el enlace. La fecha que ya tenga un paseo en el carrito queda bloqueada para otro paseo.",
+            "El contratante contrata un paseo por fecha, prestado por Guia Chapada Veadeiros. No contrata un guía específico. Sin traslado, entra el primer guía de la fila que acepte por el enlace. Con traslado, no hay fila: todos los guías con vehículo registrado reciben la propuesta al mismo tiempo y el primero que acepta se queda con la plaza. La fecha que ya tenga un paseo en el carrito queda bloqueada para otro paseo.",
             "En la tarjeta de crédito la tarjeta solo queda guardada. La operadora confirma que la tarjeta existe y acepta un cobro futuro. No hay seña y el límite no queda reservado antes de la salida. El contratante autoriza el cobro automático del 100% solo cuando el paseo se confirme.",
             "La confirmación de la excursión exige el quórum cerrado y la aceptación de todos los guías necesarios. La del paseo privado exige la aceptación del guía y, si hay traslado, el vehículo. Con traslado, cada auto lleva hasta 4 clientes y 1 guía. En la excursión la tarjeta de todos los inscritos necesarios para el quórum se prueba en el mismo momento: mientras una no pase, nadie es cobrado.",
           ],
