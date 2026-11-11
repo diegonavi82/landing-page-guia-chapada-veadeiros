@@ -6869,3 +6869,147 @@ html.gcv-waitlist-modal-open {
 #excursoes-junho.gcv-excursoes:not(.gcv-excursoes--page) .gcv-excursoes__shell {
   margin-top: 1rem;
 }
+
+.gcv-excursoes-card__share {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  width: 100%;
+  margin: 0;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid #d6d3d1;
+  border-radius: 10px;
+  background: #fff;
+  color: #1c3a2e;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.gcv-excursoes-card__share:hover,
+.gcv-excursoes-card__share:focus-visible {
+  background: #f7f4ee;
+  outline: none;
+}
+
+.gcv-excursoes-card__share .ti {
+  font-size: 0.95rem;
+}
+
+body:has(.gcv-saida-modal:not([hidden])),
+body:has(.gcv-share-sheet:not([hidden])) {
+  overflow: hidden;
+}
+
+.gcv-share-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(4, 10, 8, 0.72);
+}
+
+.gcv-share-sheet[hidden] {
+  display: none !important;
+}
+
+.gcv-share-sheet__panel {
+  position: relative;
+  width: min(420px, 100%);
+  margin: 0 auto;
+  padding: 1.15rem 1rem 1rem;
+  border-radius: 18px;
+  background: #fffdf9;
+  color: #1c3a2e;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+}
+
+.gcv-share-sheet__x {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.55rem;
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  border-radius: 999px;
+  background: #fff;
+  color: #1c3a2e;
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.gcv-share-sheet__title {
+  margin: 0 2rem 0.35rem 0;
+  font-size: 1.05rem;
+  line-height: 1.25;
+}
+
+.gcv-share-sheet__lead {
+  margin: 0 0 0.85rem;
+  color: #57534e;
+  font-size: 0.86rem;
+  line-height: 1.35;
+}
+
+.gcv-share-sheet__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.gcv-share-sheet__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 2.6rem;
+  padding: 0.55rem 0.75rem;
+  border: 0;
+  border-radius: 12px;
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 800;
+  line-height: 1.2;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.gcv-share-sheet__btn--whatsapp {
+  background: #25d366;
+  color: #08301a;
+}
+
+.gcv-share-sheet__btn--sms {
+  background: #e8f1ff;
+  color: #1d4ed8;
+}
+
+.gcv-share-sheet__btn--email {
+  background: #f4efe4;
+  color: #1c3a2e;
+}
+
+.gcv-share-sheet__btn--telegram {
+  background: #e7f5fc;
+  color: #0e7490;
+}
+
+.gcv-share-sheet__btn--copy,
+.gcv-share-sheet__btn--more {
+  border: 1px solid #d6d3d1;
+  background: #fff;
+  color: #1c3a2e;
+}
+
+@media (min-width: 720px) {
+  .gcv-share-sheet {
+    align-items: center;
+  }
+}

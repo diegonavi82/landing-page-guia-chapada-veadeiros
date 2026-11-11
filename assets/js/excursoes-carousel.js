@@ -292,6 +292,18 @@
       bookTotal: "Total",
       bookPay: "Pagamento",
       bookAddCart: "Adicionar ao carrinho",
+      shareBtn: "Compartilhar",
+      shareTitle: "Compartilhar este passeio",
+      shareWhatsapp: "WhatsApp",
+      shareSms: "SMS",
+      shareEmail: "E-mail",
+      shareTelegram: "Telegram",
+      shareCopy: "Copiar link",
+      shareCopied: "Link copiado",
+      shareMore: "Outros apps",
+      shareClose: "Fechar",
+      shareSubject: "Passeio na Chapada dos Veadeiros",
+      shareText: "Vem comigo neste passeio na Chapada dos Veadeiros.\n{{destino}}\n{{data}}\n{{url}}",
       bookAddedCart: "Adicionado",
       bookQtyMinus: "Menos uma pessoa",
       bookQtyPlus: "Mais uma pessoa",
@@ -491,6 +503,18 @@
       bookTotal: "Total",
       bookPay: "Payment",
       bookAddCart: "Add to cart",
+      shareBtn: "Share",
+      shareTitle: "Share this tour",
+      shareWhatsapp: "WhatsApp",
+      shareSms: "SMS",
+      shareEmail: "Email",
+      shareTelegram: "Telegram",
+      shareCopy: "Copy link",
+      shareCopied: "Link copied",
+      shareMore: "More apps",
+      shareClose: "Close",
+      shareSubject: "Tour in Chapada dos Veadeiros",
+      shareText: "Come with me on this tour in Chapada dos Veadeiros.\n{{destino}}\n{{data}}\n{{url}}",
       bookAddedCart: "Added",
       bookQtyMinus: "Remove one person",
       bookQtyPlus: "Add one person",
@@ -690,6 +714,18 @@
       bookTotal: "Total",
       bookPay: "Pago",
       bookAddCart: "Añadir al carrito",
+      shareBtn: "Compartir",
+      shareTitle: "Compartir este paseo",
+      shareWhatsapp: "WhatsApp",
+      shareSms: "SMS",
+      shareEmail: "Correo",
+      shareTelegram: "Telegram",
+      shareCopy: "Copiar enlace",
+      shareCopied: "Enlace copiado",
+      shareMore: "Otras apps",
+      shareClose: "Cerrar",
+      shareSubject: "Paseo en la Chapada dos Veadeiros",
+      shareText: "Ven conmigo en este paseo en la Chapada dos Veadeiros.\n{{destino}}\n{{data}}\n{{url}}",
       bookAddedCart: "Añadido",
       bookQtyMinus: "Quitar una persona",
       bookQtyPlus: "Añadir una persona",
@@ -2544,6 +2580,15 @@
     return [day, month, year].filter(Boolean).join(" ");
   }
 
+  function shareButtonHtml(s) {
+    return (
+      '<button type="button" class="gcv-excursoes-card__share" data-gcv-exc-share aria-haspopup="dialog">' +
+      '<i class="ti ti-share" aria-hidden="true"></i> ' +
+      escapeHtml(s.shareBtn || "Compartilhar") +
+      "</button>"
+    );
+  }
+
   /**
    * @param {Record<string, unknown>} e
    * @param {Record<string, string>} s
@@ -2580,7 +2625,9 @@
         '<button type="button" class="gcv-excursoes-card__waitlist" data-gcv-exc-waitlist>' +
         '<i class="ti ti-bell" aria-hidden="true"></i> ' +
         escapeHtml(waitLabel) +
-        "</button></div></div>"
+        "</button>" +
+        shareButtonHtml(s) +
+        "</div></div>"
       );
     }
 
@@ -2635,7 +2682,9 @@
       '<button type="button" class="gcv-excursoes-card__cart-add" data-gcv-exc-cart-add>' +
       '<i class="ti ti-shopping-cart" aria-hidden="true"></i> ' +
       escapeHtml(s.bookAddCart) +
-      "</button></div></div>"
+      "</button>" +
+      shareButtonHtml(s) +
+      "</div></div>"
     );
   }
 
@@ -6943,11 +6992,199 @@
     });
   }
 
+  function shareHomePath(locale) {
+    if (locale === "en") return "/en/";
+    if (locale === "es") return "/es/";
+    return "/";
+  }
+
+  function sharePageUrl(locale, cartId) {
+    var origin = "https://www.guiachapadaveadeiros.com";
+    try {
+      if (location.protocol === "http:" || location.protocol === "https:") origin = location.origin;
+    } catch (err) {
+      /* */
+    }
+    return origin + shareHomePath(locale) + "?saida=" + encodeURIComponent(cartId);
+  }
+
+  function shareMessage(s, destino, dateLabel, url) {
+    return tpl(s.shareText || "{{url}}", {
+      destino: destino || "",
+      data: dateLabel || "",
+      url: url || "",
+    })
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+  }
+
+  function shareAnchor(href, kind, label, blank) {
+    return (
+      '<a class="gcv-share-sheet__btn gcv-share-sheet__btn--' +
+      kind +
+      '" href="' +
+      escapeHtml(href) +
+      '"' +
+      (blank ? ' target="_blank" rel="noopener noreferrer"' : "") +
+      ">" +
+      escapeHtml(label) +
+      "</a>"
+    );
+  }
+
+  function closeShareSheet() {
+    var sheet = document.getElementById("gcv-share-sheet");
+    if (sheet) sheet.hidden = true;
+  }
+
+  function copyShareText(text) {
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    var ok = false;
+    try {
+      ok = document.execCommand("copy");
+    } catch (err) {
+      ok = false;
+    }
+    document.body.removeChild(ta);
+    return ok;
+  }
+
+  function markShareCopied(btn, payload) {
+    if (!btn || !payload) return;
+    btn.textContent = payload.copied || payload.copy;
+    window.setTimeout(function () {
+      btn.textContent = payload.copy || btn.textContent;
+    }, 1600);
+  }
+
+  function ensureShareSheet() {
+    var sheet = document.getElementById("gcv-share-sheet");
+    if (sheet) return sheet;
+    sheet = document.createElement("div");
+    sheet.id = "gcv-share-sheet";
+    sheet.className = "gcv-share-sheet";
+    sheet.hidden = true;
+    sheet.innerHTML =
+      '<div class="gcv-share-sheet__panel" role="dialog" aria-modal="true" aria-labelledby="gcv-share-title">' +
+      '<button type="button" class="gcv-share-sheet__x" data-share-close>×</button>' +
+      '<h2 id="gcv-share-title" class="gcv-share-sheet__title"></h2>' +
+      '<p class="gcv-share-sheet__lead" data-share-lead></p>' +
+      '<div class="gcv-share-sheet__actions" data-share-actions></div></div>';
+    sheet.addEventListener("click", function (e) {
+      if (e.target === sheet || (e.target.closest && e.target.closest("[data-share-close]"))) closeShareSheet();
+    });
+    document.addEventListener(
+      "keydown",
+      function (e) {
+        var open = document.getElementById("gcv-share-sheet");
+        if (!open || open.hidden || e.key !== "Escape") return;
+        e.preventDefault();
+        e.stopPropagation();
+        closeShareSheet();
+      },
+      true,
+    );
+    document.body.appendChild(sheet);
+    return sheet;
+  }
+
+  function openShareSheet(btn) {
+    var card = btn.closest(".gcv-excursoes-card");
+    var block = btn.closest(".gcv-excursoes-card__book");
+    var sec = card && card.closest("#excursoes-junho");
+    var locale = sec ? detectLocale(sec) : detectLocale(document.documentElement);
+    var s = STRINGS[locale] || STRINGS.pt;
+    var cartId =
+      (block && block.getAttribute("data-cart-id")) || (card && card.getAttribute("data-cart-id")) || "";
+    if (!cartId) return;
+    var destino = (block && block.getAttribute("data-cart-destino")) || "";
+    var dateLabel = (block && block.getAttribute("data-cart-date")) || "";
+    var url = sharePageUrl(locale, cartId);
+    var message = shareMessage(s, destino, dateLabel, url);
+    var text = shareMessage(s, destino, dateLabel, "");
+    var sheet = ensureShareSheet();
+    var title = sheet.querySelector(".gcv-share-sheet__title");
+    var lead = sheet.querySelector("[data-share-lead]");
+    var actions = sheet.querySelector("[data-share-actions]");
+    var closeBtn = sheet.querySelector("[data-share-close]");
+    if (title) title.textContent = s.shareTitle || s.shareBtn || "Compartilhar";
+    if (lead) lead.textContent = [destino, dateLabel].filter(Boolean).join(" · ");
+    if (closeBtn) closeBtn.setAttribute("aria-label", s.shareClose || "Fechar");
+    var smsBody = encodeURIComponent(message);
+    var sms = /iPhone|iPad|iPod/i.test(navigator.userAgent || "")
+      ? "sms:&body=" + smsBody
+      : "sms:?body=" + smsBody;
+    var html =
+      shareAnchor("https://wa.me/?text=" + encodeURIComponent(message), "whatsapp", s.shareWhatsapp || "WhatsApp", true) +
+      shareAnchor(sms, "sms", s.shareSms || "SMS", false) +
+      shareAnchor(
+        "mailto:?subject=" + encodeURIComponent(s.shareSubject || "") + "&body=" + encodeURIComponent(message),
+        "email",
+        s.shareEmail || "E-mail",
+        false,
+      ) +
+      shareAnchor(
+        "https://t.me/share/url?url=" + encodeURIComponent(url) + "&text=" + encodeURIComponent(text),
+        "telegram",
+        s.shareTelegram || "Telegram",
+        true,
+      ) +
+      '<button type="button" class="gcv-share-sheet__btn gcv-share-sheet__btn--copy" data-share-copy>' +
+      escapeHtml(s.shareCopy || "Copiar link") +
+      "</button>";
+    if (navigator.share) {
+      html +=
+        '<button type="button" class="gcv-share-sheet__btn gcv-share-sheet__btn--more" data-share-native>' +
+        escapeHtml(s.shareMore || "Outros apps") +
+        "</button>";
+    }
+    if (actions) actions.innerHTML = html;
+    sheet._gcvShare = {
+      url: url,
+      message: message,
+      text: text,
+      title: s.shareSubject || s.shareTitle || "",
+      copied: s.shareCopied || "Link copiado",
+      copy: s.shareCopy || "Copiar link",
+    };
+    sheet.hidden = false;
+    if (closeBtn && typeof closeBtn.focus === "function") closeBtn.focus();
+  }
+
+  function saidaIdFromUrl() {
+    try {
+      return String(new URLSearchParams(window.location.search || "").get("saida") || "").trim();
+    } catch (err) {
+      return "";
+    }
+  }
+
+  function openSharedSaidaFromUrl() {
+    var id = saidaIdFromUrl();
+    if (!id || !window.GcvSaidaPopup || typeof window.GcvSaidaPopup.open !== "function") return;
+    var section = document.getElementById("excursoes") || document.getElementById("excursoes-junho");
+    if (section && typeof section.scrollIntoView === "function") {
+      try {
+        section.scrollIntoView({ block: "start" });
+      } catch (err) {
+        section.scrollIntoView();
+      }
+    }
+    window.GcvSaidaPopup.open(id);
+  }
+
   function initBookingControls() {
     if (document.documentElement._gcvExcBookBound) return;
     document.documentElement._gcvExcBookBound = true;
 
     function blockDayBlockedEvent(e) {
+      if (e.target.closest && e.target.closest("[data-gcv-exc-share], .gcv-share-sheet")) return false;
       var blocked = e.target.closest && e.target.closest(".gcv-excursoes-card--day-blocked");
       if (!blocked || !blocked.closest("#excursoes-junho")) return false;
       e.preventDefault();
@@ -6970,11 +7207,59 @@
     });
 
     document.addEventListener("click", function (e) {
-      if (e.target.closest(".gcv-excursoes-card--day-blocked")) {
+      if (e.target.closest(".gcv-excursoes-card--day-blocked") && !e.target.closest("[data-gcv-exc-share]")) {
         e.preventDefault();
         e.stopPropagation();
         return;
       }
+
+      var shareBtn = e.target.closest("[data-gcv-exc-share]");
+      if (shareBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        openShareSheet(shareBtn);
+        return;
+      }
+
+      var copyBtn = e.target.closest("[data-share-copy]");
+      if (copyBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        var copySheet = document.getElementById("gcv-share-sheet");
+        var copyPayload = copySheet && copySheet._gcvShare;
+        if (copyPayload && navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(copyPayload.url).then(
+            function () {
+              markShareCopied(copyBtn, copyPayload);
+            },
+            function () {
+              if (copyShareText(copyPayload.url)) markShareCopied(copyBtn, copyPayload);
+            },
+          );
+        } else if (copyPayload && copyShareText(copyPayload.url)) {
+          markShareCopied(copyBtn, copyPayload);
+        }
+        return;
+      }
+
+      var nativeBtn = e.target.closest("[data-share-native]");
+      if (nativeBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        var nativeSheet = document.getElementById("gcv-share-sheet");
+        var nativePayload = nativeSheet && nativeSheet._gcvShare;
+        if (nativePayload && navigator.share) {
+          navigator
+            .share({ title: nativePayload.title, text: nativePayload.text, url: nativePayload.url })
+            .then(function () {
+              closeShareSheet();
+            })
+            .catch(function () {});
+        }
+        return;
+      }
+
+      if (e.target.closest(".gcv-share-sheet__btn[href]")) closeShareSheet();
 
       var waitBtn = e.target.closest("[data-gcv-exc-waitlist]");
       if (waitBtn && window.GcvExcWaitlist) {
@@ -7853,6 +8138,7 @@
     } catch (err) {
       if (typeof console !== "undefined" && console.error) console.error("[gcv-excursoes]", err);
     }
+    openSharedSaidaFromUrl();
   }
 
   /** @type {null | function(): void} */

@@ -132,6 +132,7 @@ const SSR = {
     bookTotal: "Total",
     bookPay: "Pagar com Pix",
     bookAddCart: "Adicionar ao carrinho",
+    shareBtn: "Compartilhar",
     bookQtyMinus: "Menos uma pessoa",
     bookQtyPlus: "Mais uma pessoa",
     bookQtyAria: "Número de pessoas",
@@ -187,6 +188,7 @@ const SSR = {
     bookTotal: "Total",
     bookPay: "Pay with Pix",
     bookAddCart: "Add to cart",
+    shareBtn: "Share",
     bookQtyMinus: "Remove one person",
     bookQtyPlus: "Add one person",
     bookQtyAria: "Number of people",
@@ -242,6 +244,7 @@ const SSR = {
     bookTotal: "Total",
     bookPay: "Pagar con Pix",
     bookAddCart: "Añadir al carrito",
+    shareBtn: "Compartir",
     bookQtyMinus: "Quitar una persona",
     bookQtyPlus: "Añadir una persona",
     bookQtyAria: "Número de personas",
@@ -805,6 +808,13 @@ function excursaoPixDesc(e, locale) {
   return `${prefix} ${date} - ${dest}`.trim().slice(0, 73);
 }
 
+function shareButtonSsr(s) {
+  return (
+    '<button type="button" class="gcv-excursoes-card__share" data-gcv-exc-share aria-haspopup="dialog">' +
+    `<i class="ti ti-share" aria-hidden="true"></i> ${esc(s.shareBtn || "Compartilhar")}</button>`
+  );
+}
+
 function bookingBlockSsr(e, s, locale) {
   const unit = excursaoValor(e);
   const maxQty = Math.max(0, vagasDisponiveis(e));
@@ -827,7 +837,9 @@ function bookingBlockSsr(e, s, locale) {
       `<span class="gcv-excursoes-card__price gcv-excursoes-card__price--soldout">${esc(s.spotsNone)}</span></div>` +
       '<div class="gcv-excursoes-card__book-actions">' +
       `<button type="button" class="gcv-excursoes-card__waitlist" data-gcv-exc-waitlist>` +
-      `<i class="ti ti-bell" aria-hidden="true"></i> ${esc(waitLabel)}</button></div></div>`
+      `<i class="ti ti-bell" aria-hidden="true"></i> ${esc(waitLabel)}</button>` +
+      shareButtonSsr(s) +
+      "</div></div>"
     );
   }
 
@@ -847,6 +859,7 @@ function bookingBlockSsr(e, s, locale) {
     `<span class="gcv-excursoes-card__price" data-gcv-exc-total>R$&nbsp;${unit}</span></div></div>` +
     '<div class="gcv-excursoes-card__book-actions">' +
     `<button type="button" class="gcv-excursoes-card__cart-add" data-gcv-exc-cart-add><i class="ti ti-shopping-cart" aria-hidden="true"></i> ${esc(s.bookAddCart)}</button>` +
+    shareButtonSsr(s) +
     "</div></div>"
   );
 }
