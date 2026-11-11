@@ -302,6 +302,8 @@
       shareCopied: "Link copiado",
       shareMore: "Outros apps",
       shareClose: "Fechar",
+      saidaPrev: "Passeio anterior",
+      saidaNext: "Próximo passeio",
       shareSubject: "Passeio na Chapada dos Veadeiros",
       shareText: "Vem comigo neste passeio na Chapada dos Veadeiros.\n{{destino}}\n{{data}}\n{{url}}",
       bookAddedCart: "Adicionado",
@@ -513,6 +515,8 @@
       shareCopied: "Link copied",
       shareMore: "More apps",
       shareClose: "Close",
+      saidaPrev: "Previous tour",
+      saidaNext: "Next tour",
       shareSubject: "Tour in Chapada dos Veadeiros",
       shareText: "Come with me on this tour in Chapada dos Veadeiros.\n{{destino}}\n{{data}}\n{{url}}",
       bookAddedCart: "Added",
@@ -724,6 +728,8 @@
       shareCopied: "Enlace copiado",
       shareMore: "Otras apps",
       shareClose: "Cerrar",
+      saidaPrev: "Paseo anterior",
+      saidaNext: "Siguiente paseo",
       shareSubject: "Paseo en la Chapada dos Veadeiros",
       shareText: "Ven conmigo en este paseo en la Chapada dos Veadeiros.\n{{destino}}\n{{data}}\n{{url}}",
       bookAddedCart: "Añadido",
@@ -8943,7 +8949,96 @@
       if (e.key === "Escape" && modal && !modal.hidden) modal.hidden = true;
     });
     document.body.appendChild(modal);
+    if (!document.getElementById("gcv-saida-carousel-css")) {
+      var style = document.createElement("style");
+      style.id = "gcv-saida-carousel-css";
+      style.textContent =
+        ".gcv-saida-modal__carousel{position:relative}" +
+        ".gcv-saida-modal__viewport{overflow:hidden;border-radius:16px}" +
+        ".gcv-saida-modal__strip{display:flex;align-items:flex-start;transition:transform .28s ease}" +
+        ".gcv-saida-modal__slide{flex:0 0 100%;min-width:100%}" +
+        ".gcv-saida-modal__arrow{position:absolute;top:42%;z-index:4;display:inline-flex;align-items:center;justify-content:center;width:2.35rem;height:2.35rem;padding:0;border:0;border-radius:999px;background:#fff;color:#0f2a1d;box-shadow:0 6px 18px rgba(0,0,0,.22);cursor:pointer}" +
+        ".gcv-saida-modal__arrow svg{width:1.25rem;height:1.25rem;display:block}" +
+        ".gcv-saida-modal__arrow--prev{left:-.15rem}" +
+        ".gcv-saida-modal__arrow--next{right:-.15rem}" +
+        ".gcv-saida-modal__arrow:hover,.gcv-saida-modal__arrow:focus-visible{background:#ecfdf5;outline:none}";
+      document.head.appendChild(style);
+    }
     return modal;
+  }
+
+  function guideSaidaKey(row) {
+    var id = parseInt(String((row && (row.guideUserId || row.guiaId)) || 0), 10);
+    return id > 0 ? "id:" + id : "";
+  }
+
+  function saidaArrowSvg(dir) {
+    var d = dir < 0 ? "M14.5 5.5 8 12l6.5 6.5" : "M9.5 5.5 16 12l-6.5 6.5";
+    return (
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' +
+      d +
+      '" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+    );
+  }
+
+  function bindSaidaCarousel(modal, count, start) {
+    var strip = modal.querySelector("[data-saida-strip]");
+    var prev = modal.querySelector("[data-saida-prev]");
+    var next = modal.querySelector("[data-saida-next]");
+    if (!strip || !prev || !next || count < 2) return;
+    var index = Math.max(0, Math.min(count - 1, start || 0));
+    function show(i) {
+      index = (i + count) % count;
+      strip.style.transform = "translateX(" + -index * 100 + "%)";
+    }
+    show(index);
+    prev.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      show(index - 1);
+    });
+    next.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      show(index + 1);
+    });
+    var viewport = modal.querySelector(".gcv-saida-modal__viewport");
+    if (viewport) {
+      var startX = 0;
+      var tracking = false;
+      viewport.addEventListener(
+        "touchstart",
+        function (e) {
+          if (!e.touches || e.touches.length !== 1) return;
+          if (e.target.closest("button, a, input, textarea, select")) return;
+          tracking = true;
+          startX = e.touches[0].clientX;
+        },
+        { passive: true },
+      );
+      viewport.addEventListener(
+        "touchend",
+        function (e) {
+          if (!tracking) return;
+          tracking = false;
+          var x = e.changedTouches && e.changedTouches[0] ? e.changedTouches[0].clientX : startX;
+          var dx = x - startX;
+          if (dx > 42) show(index - 1);
+          else if (dx < -42) show(index + 1);
+        },
+        { passive: true },
+      );
+    }
+    if (modal._gcvSaidaKeys) document.removeEventListener("keydown", modal._gcvSaidaKeys);
+    modal._gcvSaidaKeys = function (e) {
+      if (modal.hidden) return;
+      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+      var tag = e.target && e.target.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      e.preventDefault();
+      show(e.key === "ArrowLeft" ? index - 1 : index + 1);
+    };
+    document.addEventListener("keydown", modal._gcvSaidaKeys);
   }
 
   function paintSaidaCard(cartId, rows, locale) {
@@ -8966,13 +9061,79 @@
     });
     if (!found || !body) {
       if (body) body.innerHTML = '<p class="gcv-saida-modal__empty">' + escapeHtml(s.joinTripMissing || "Essa saída não está mais disponível.") + "</p>";
+      var emptyPanel = modal.querySelector(".gcv-saida-modal__panel");
+      if (emptyPanel) emptyPanel.classList.remove("gcv-saida-modal__panel--carousel");
       modal.hidden = false;
       return;
     }
+    var guideKey = guideSaidaKey(found);
+    var sameGuide = guideKey
+      ? (rows || []).filter(function (row) {
+          return guideSaidaKey(row) === guideKey;
+        })
+      : [found];
+    if (!sameGuide.length) sameGuide = [found];
+    var byExcursion = {};
+    var excursionOrder = [];
+    sameGuide.forEach(function (row) {
+      var eid = parseInt(String((row && row.id) || 0), 10);
+      var bucket = eid > 0 ? "e" + eid : "c" + saidaPublicId(excursaoCartId(row));
+      if (!byExcursion[bucket]) {
+        byExcursion[bucket] = row;
+        excursionOrder.push(bucket);
+        return;
+      }
+      if (saidaPublicId(excursaoCartId(row)) === saidaPublicId(cartId)) byExcursion[bucket] = row;
+    });
+    var tours = excursionOrder.map(function (bucket) {
+      return byExcursion[bucket];
+    });
+    if (!tours.length) tours = [found];
+    tours = sortExcursaoByDeparture(tours);
+    var start = 0;
+    var want = saidaPublicId(cartId);
+    tours.some(function (row, i) {
+      if (saidaPublicId(excursaoCartId(row)) === want) {
+        start = i;
+        return true;
+      }
+      return false;
+    });
+    var panel = modal.querySelector(".gcv-saida-modal__panel");
+    if (tours.length < 2) {
+      if (panel) panel.classList.remove("gcv-saida-modal__panel--carousel");
+      body.innerHTML =
+        '<div class="gcv-excursoes__track gcv-excursoes__track--day-list">' +
+        buildCard(found, idx, locale, s) +
+        "</div>";
+      modal.hidden = false;
+      return;
+    }
+    if (panel) panel.classList.add("gcv-saida-modal__panel--carousel");
     body.innerHTML =
-      '<div class="gcv-excursoes__track gcv-excursoes__track--day-list">' +
-      buildCard(found, idx, locale, s) +
-      "</div>";
+      '<div class="gcv-saida-modal__carousel">' +
+      '<button type="button" class="gcv-saida-modal__arrow gcv-saida-modal__arrow--prev" data-saida-prev aria-label="' +
+      escapeHtml(s.saidaPrev || "Passeio anterior") +
+      '">' +
+      saidaArrowSvg(-1) +
+      "</button>" +
+      '<div class="gcv-saida-modal__viewport"><div class="gcv-saida-modal__strip" data-saida-strip>' +
+      tours
+        .map(function (row, i) {
+          return (
+            '<div class="gcv-saida-modal__slide"><div class="gcv-excursoes__track gcv-excursoes__track--day-list">' +
+            buildCard(row, i, locale, s) +
+            "</div></div>"
+          );
+        })
+        .join("") +
+      "</div></div>" +
+      '<button type="button" class="gcv-saida-modal__arrow gcv-saida-modal__arrow--next" data-saida-next aria-label="' +
+      escapeHtml(s.saidaNext || "Próximo passeio") +
+      '">' +
+      saidaArrowSvg(1) +
+      "</button></div>";
+    bindSaidaCarousel(modal, tours.length, start);
     modal.hidden = false;
   }
 
