@@ -1928,6 +1928,31 @@
     return 0;
   }
 
+  /** Mesma cidade do "a partir de" do card: a excursão mais barata, sem translado. */
+  function passeioCidadeMaisBarata(tarifa, saidas) {
+    var cidades = (tarifa && tarifa.cidades) || {};
+    var melhorKey = "";
+    var menor = 0;
+    Object.keys(cidades).forEach(function (k) {
+      var n = parseInt((cidades[k] || {}).excursao_pessoa_cents, 10) || 0;
+      if (n > 0 && (!menor || n < menor)) {
+        menor = n;
+        melhorKey = k;
+      }
+    });
+    if (!melhorKey) return "";
+    var nome = "";
+    (saidas || []).some(function (c) {
+      if (!c) return false;
+      var key = c.key || passeioCidadeKey(c.nome);
+      if (key !== melhorKey) return false;
+      nome = c.nome || "";
+      return !!nome;
+    });
+    if (!nome && PASSEIO_CIDADE_ROTULO[melhorKey]) nome = PASSEIO_CIDADE_ROTULO[melhorKey][0];
+    return nome;
+  }
+
   function passeioCidadeCurta(cidade) {
     var key = passeioCidadeKey(cidade);
     if (key === "sao-jorge") return "São Jorge";
@@ -3306,7 +3331,15 @@
     body.appendChild(box);
     box.innerHTML = passeioBuilderHtml(copy, data);
     bindPasseioBuilder(box, copy, data);
-    if (!existing) gcvApplyAddPrefs(box);
+    if (!existing) {
+      gcvApplyAddPrefs(box);
+      var cidadeCard = passeioCidadeMaisBarata(data.tarifa, passeioSaidasLista(data));
+      var citySel = box.querySelector("[data-passeio-city]");
+      if (cidadeCard && citySel && citySel.value !== cidadeCard) {
+        citySel.value = cidadeCard;
+        citySel.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    }
     if (existing) {
       var dateEl = box.querySelector("[data-passeio-date]");
       var peopleEl = box.querySelector("[data-passeio-people]");
