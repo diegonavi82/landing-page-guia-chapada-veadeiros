@@ -209,12 +209,28 @@ function gcv_guiagem_staffing_ready(array $tour): bool
     return count(gcv_guiagem_filled_ids($tour)) >= gcv_guiagem_guides_needed($tour);
 }
 
+/** Excursão do site fica sem guia até o grupo confirmar. Privativo e passeio de teste não esperam. */
+function gcv_guiagem_espera_confirmacao(array $tour): bool
+{
+    if (gcv_guiagem_tour_is_teste($tour)) {
+        return false;
+    }
+    if (!function_exists('gcv_excursion_is_private')) {
+        require_once __DIR__ . '/excursion_status.php';
+    }
+    if (gcv_excursion_is_private($tour) || gcv_excursion_is_guide_submitted($tour)) {
+        return false;
+    }
+    $life = gcv_resolve_excursion_lifecycle($tour);
+    return !in_array($life, ['confirmada', 'concluida'], true);
+}
+
 /** Abre o próximo convite do TOP 3 quando ainda falta guia e ninguém está com a vaga na mão. */
 function gcv_guiagem_ensure_invites(array $tour): void
 {
     static $done = [];
     $id = (int)($tour['id'] ?? 0);
-    if ($id <= 0 || isset($done[$id]) || gcv_guiagem_staffing_ready($tour)) {
+    if ($id <= 0 || isset($done[$id]) || gcv_guiagem_staffing_ready($tour) || gcv_guiagem_espera_confirmacao($tour)) {
         return;
     }
     $done[$id] = true;
@@ -1239,6 +1255,9 @@ function gcv_guiagem_after_unassigned_sale(int $excursionId): void
     if (gcv_guiagem_tour_is_teste($tour)) {
         gcv_teste_soltar_guia_sem_aceite($excursionId);
         $tour = gcv_substitution_load_excursion($excursionId) ?: $tour;
+    }
+    if (gcv_guiagem_espera_confirmacao($tour)) {
+        return;
     }
     $vehicle = gcv_guiagem_is_vehicle_broadcast($tour);
     if (!$vehicle && (int)($tour['guide_user_id'] ?? 0) > 0) {

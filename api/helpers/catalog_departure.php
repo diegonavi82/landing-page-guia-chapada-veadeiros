@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 /**
  * Compra de excursão no catálogo (roteiro-…-excursao-…) abre uma saída
- * com quórum 4, em aguardando aprovação, para o admin ver o aviso no menu.
+ * publicada, com quórum 4 e sem guia. O guia só entra quando o grupo confirma.
  */
 
 require_once __DIR__ . '/db.php';
@@ -200,11 +200,11 @@ function gcv_catalog_group_departure_ensure(array $reservation, int $index, arra
                   offer_transport, price_transport_cents, quorum_transport, max_people_transport, booked_people_transport,
                   tour_type
                 ) VALUES (
-                  \'pending_approval\', ?, ?, ?, ?, NULL,
+                  \'published\', ?, ?, ?, ?, NULL,
                   ?, ?, 15, 0, 0,
                   ?, 0, 0,
                   ?, ?,
-                  \'ADMINISTRATIVE\', \'API\', NULL,
+                  \'ADMINISTRATIVE\', \'API\', NOW(),
                   ?, ?, 0, ?, 0,
                   \'excursao\'
                 )'
@@ -244,6 +244,7 @@ function gcv_catalog_group_departure_ensure(array $reservation, int $index, arra
         if ($id <= 0) {
             return null;
         }
+        gcv_catalog_publish_paid_departure($id);
         gcv_private_departure_link_trip($rid, $index, $id);
         $st = db()->prepare(
             'SELECT e.*, c.name AS departure_city_name, a.title_pt AS attraction_title
@@ -264,15 +265,36 @@ function gcv_catalog_group_departure_ensure(array $reservation, int $index, arra
     }
 }
 
-/**
- * Liga uma venda já paga que ficou sem saída.
- *
- * @param array<string,mixed> $reservation
- * @param array<string,mixed> $sale
- */
+/** A compra paga já coloca a excursão no site. O guia continua vazio até o quórum. */
+function gcv_catalog_publish_paid_departure(int $id): void
+{
+    if ($id <= 0) {
+        return;
+    }
+    try {
+        db()->prepare(
+            "UPDATE gcv_excursions
+             SET status = 'published', approved_at = COALESCE(approved_at, NOW())
+             WHERE id = ?
+               AND deleted_at IS NULL
+               AND status = 'pending_approval'
+               AND COALESCE(tour_type, 'excursao') <> 'privativo'
+               AND created_by_origin = 'API'
+               AND (guide_user_id IS NULL OR guide_user_id = 0)"
+        )->execute([$id]);
+    } catch (Throwable $e) {
+        error_log('catalog publish paid: ' . $e->getMessage());
+    }
+}
+
 function gcv_catalog_repair_paid_sale(array $reservation, array $sale): void
 {
-    if ((int)($sale['excursion_id'] ?? 0) > 0) {
+    $linked = (int)($sale['excursion_id'] ?? 0);
+    if ($linked > 0) {
+        gcv_catalog_publish_paid_departure($linked);
+        if (function_exists('gcv_sale_refresh_booked_people')) {
+            gcv_sale_refresh_booked_people($linked);
+        }
         return;
     }
     $row = gcv_catalog_group_departure_sync($reservation);

@@ -640,6 +640,18 @@
     requestSection('section-cms-guides');
   }
 
+  function bookingTourWhen(b) {
+    var date = String((b && b.tour_date) || '').substr(0, 10);
+    var time = String((b && b.tour_time) || '').substr(0, 5);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      var paid = String((b && b.created_at) || '').replace('T', ' ');
+      return paid.substr(0, 16);
+    }
+    var p = date.split('-');
+    var shown = p[2] + '/' + p[1] + '/' + p[0];
+    return time ? (shown + ' às ' + time) : shown;
+  }
+
   function loadAdminBookings() {
     var tbody = document.getElementById('admin-bookings-body');
     if (!tbody) return;
@@ -657,7 +669,7 @@
       }
       tbody.innerHTML = rows.map(function (b) {
         var code = b.reservation_id || ('#' + b.id);
-        var when = String(b.created_at || '').replace('T', ' ').substr(0, 10);
+        var when = bookingTourWhen(b);
         var transport = b.with_transport
           ? '<span class="gcv-badge gcv-badge--transport-com">Com transporte</span>'
           : '<span class="gcv-badge gcv-badge--transport-sem">Sem transporte</span>';
@@ -674,7 +686,7 @@
           + '<td data-label="Pago ao guia">' + fmtMoney(b.guide_amount_cents) + '</td>'
           + '<td data-label="Pagamento">' + escapeHtml(b.payment_label || 'PIX') + '</td>'
           + '<td data-label="Status">' + statusBadge(b.status) + '</td>'
-          + '<td data-label="Data">' + escapeHtml(when) + '</td>'
+          + '<td data-label="Data do passeio">' + escapeHtml(when) + '</td>'
           + '</tr>';
       }).join('');
     });

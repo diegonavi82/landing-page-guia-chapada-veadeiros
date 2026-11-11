@@ -132,6 +132,8 @@ function gcv_admin_booking_row(array $row): array
         'source' => $row['source'] ?? 'sale',
         'payment_label' => (string)($row['payment_label'] ?? 'PIX'),
         'tour_type_label' => (string)($row['tour_type_label'] ?? '—'),
+        'tour_date' => substr((string)($row['tour_date'] ?? ''), 0, 10),
+        'tour_time' => substr((string)($row['tour_time'] ?? ''), 0, 5),
     ];
 }
 
@@ -160,6 +162,8 @@ try {
                 ' . $excTransportSql . ' ' . $excOfferSql . ' ' . $excPriceSql . '
                 s.sale_status AS status,
                 e.tour_type,
+                e.date_iso AS tour_date,
+                e.departure_time AS tour_time,
                 COALESCE(s.paid_at, s.sold_at, s.created_at) AS created_at,
                 COALESCE(NULLIF(NULLIF(s.excursion_title, \'\'), \'Passeio\'), NULLIF(a.title_pt, \'\'), \'Passeio\') AS tour_title,
                 COALESCE(NULLIF(s.tourist_name, \'\'), s.tourist_email, \'—\') AS client_name,
@@ -242,6 +246,9 @@ try {
         if ($guideName === '' && !empty($res['trips'][0]['guiaNome'])) {
             $guideName = (string)$res['trips'][0]['guiaNome'];
         }
+        $firstTrip = (!empty($res['trips'][0]) && is_array($res['trips'][0])) ? $res['trips'][0] : [];
+        $tourDate = substr((string)($firstTrip['dateIso'] ?? $firstTrip['date_iso'] ?? $res['date_iso'] ?? ''), 0, 10);
+        $tourTime = substr((string)($firstTrip['hora'] ?? $firstTrip['departure_time'] ?? ''), 0, 5);
         $rows[] = gcv_admin_booking_row([
             'id' => $rid,
             'reservation_id' => $rid,
@@ -259,6 +266,8 @@ try {
             'with_transport' => gcv_reservation_has_transport($res),
             'payment_label' => gcv_admin_pay_label($res),
             'tour_type_label' => gcv_admin_tipo_label([], $res),
+            'tour_date' => $tourDate,
+            'tour_time' => $tourTime,
         ]);
     }
 } catch (Throwable $e) {
