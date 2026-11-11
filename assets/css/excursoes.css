@@ -5590,11 +5590,57 @@ html.gcv-waitlist-modal-open {
   overflow-x: auto;
   overflow-y: visible;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
+  scrollbar-width: auto;
+  scrollbar-color: #047857 #e7e5e4;
   overscroll-behavior-x: contain;
   min-height: 0;
   cursor: grab;
   touch-action: pan-x pan-y;
+}
+
+.gcv-excursoes__viewport--day-list::-webkit-scrollbar,
+.gcv-excursoes__shell--by-date .gcv-excursoes__viewport::-webkit-scrollbar {
+  display: block;
+  height: 12px;
+}
+
+.gcv-excursoes__viewport--day-list::-webkit-scrollbar-track,
+.gcv-excursoes__shell--by-date .gcv-excursoes__viewport::-webkit-scrollbar-track {
+  background: #e7e5e4;
+  border-radius: 999px;
+}
+
+.gcv-excursoes__viewport--day-list::-webkit-scrollbar-thumb,
+.gcv-excursoes__shell--by-date .gcv-excursoes__viewport::-webkit-scrollbar-thumb {
+  background: #047857;
+  border: 2px solid #e7e5e4;
+  border-radius: 999px;
+}
+
+.gcv-excursoes__shell--by-date::before,
+.gcv-excursoes__shell--by-date::after {
+  content: "";
+  grid-area: view;
+  align-self: stretch;
+  width: 2.75rem;
+  pointer-events: none;
+  z-index: 4;
+  opacity: 0;
+}
+
+.gcv-excursoes__shell--by-date::before {
+  justify-self: start;
+  background: linear-gradient(90deg, #fff 10%, rgba(255, 255, 255, 0));
+}
+
+.gcv-excursoes__shell--by-date::after {
+  justify-self: end;
+  background: linear-gradient(270deg, #fff 10%, rgba(255, 255, 255, 0));
+}
+
+.gcv-excursoes__shell--by-date.is-more-left::before,
+.gcv-excursoes__shell--by-date.is-more-right::after {
+  opacity: 1;
 }
 
 .gcv-excursoes__track--day-list {
@@ -6423,14 +6469,10 @@ html.gcv-waitlist-modal-open {
     overflow-x: auto;
     overflow-y: hidden;
     scroll-snap-type: x mandatory;
-    scrollbar-width: none;
+    scrollbar-width: auto;
+    scrollbar-color: #047857 #e7e5e4;
     cursor: default;
     touch-action: pan-y;
-  }
-
-  .gcv-excursoes__viewport--day-list::-webkit-scrollbar,
-  .gcv-excursoes__shell--by-date .gcv-excursoes__viewport::-webkit-scrollbar {
-    display: none;
   }
 
   .gcv-excursoes__track--day-list {

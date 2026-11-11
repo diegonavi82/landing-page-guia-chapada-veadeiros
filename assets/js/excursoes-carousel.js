@@ -8655,6 +8655,10 @@
         next.setAttribute("aria-hidden", hide ? "true" : "false");
         next.disabled = hide || !canScrollRight();
       }
+      if (shell) {
+        shell.classList.toggle("is-more-left", canScrollLeft());
+        shell.classList.toggle("is-more-right", canScrollRight());
+      }
     }
 
     function syncCarouselUi() {
