@@ -806,7 +806,7 @@
             var image = String(p.image || p.imageRel || "").trim().replace(/^\//, "");
             var alt = String(p.alt || p.caption || "").trim() || "Publicação no Instagram — Guia Chapada Veadeiros";
             if (!permalink || !image) return "";
-            var imgSrc = assetBase + image;
+            var imgSrc = assetBase + image.replace(/\.(jpe?g|png|webp)$/i, ".w480.webp");
             return (
               '<li class="gcv-instagram-grid__cell">' +
               '<a class="gcv-instagram-grid__link" href="' +

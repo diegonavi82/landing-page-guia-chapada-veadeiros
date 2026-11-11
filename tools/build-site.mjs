@@ -938,15 +938,28 @@ function galleryField(value, locale) {
   return String(value || "").trim();
 }
 
+function pictureWidths(w) {
+  const n = Number(w) || 640;
+  if (n <= 200) return [160];
+  if (n <= 480) return [480];
+  if (n <= 800) return [480, 800];
+  return [640, 1280];
+}
+
 function picture(ap, rel, alt, w = 1200, h = 800, opts) {
-  const m = rel.match(/^(.*)\.(jpe?g|png)$/i);
+  const m = rel.match(/^(.*)\.(jpe?g|png|webp)$/i);
   const basePath = m ? m[1] : rel;
   const webpPath = `${ap}assets/img/${basePath}.webp`;
   const fallbackPath = `${ap}assets/img/${rel}`;
   const loading = opts?.eager ? "eager" : "lazy";
   const fetchpriority = opts?.fetchPriority ? ` fetchpriority="${esc(opts.fetchPriority)}"` : "";
+  const widths = opts?.widths || (opts?.responsive ? pictureWidths(w) : null);
+  const sizes = opts?.sizes || `(max-width: 780px) 92vw, ${Math.min(Number(w) || 640, 640)}px`;
+  const source = widths
+    ? `<source srcset="${esc(widths.map((width) => `${ap}assets/img/${basePath}.w${width}.webp ${width}w`).join(", "))}" sizes="${esc(sizes)}" type="image/webp" />`
+    : `<source srcset="${esc(webpPath)}" type="image/webp" />`;
   return `<picture>
-  <source srcset="${esc(webpPath)}" type="image/webp" />
+  ${source}
   <img src="${esc(fallbackPath)}" alt="${esc(alt)}" width="${w}" height="${h}" loading="${loading}" decoding="async"${fetchpriority} />
 </picture>`;
 }
@@ -1164,6 +1177,7 @@ function homeRevistaTeaserHtml(locale, ap, cur) {
         cardImgAlt,
         640,
         360,
+        { responsive: true },
       )}</div>
       <div class="gcv-revista-teaser-card__body">
         <h3 class="gcv-revista-teaser-card__title">${esc(cardTitle)}</h3>
@@ -1202,7 +1216,7 @@ ${cards}
   </div>
   <div class="gcv-revista-teaser-grid">
     <a class="gcv-revista-teaser-card" href="${esc(cHref)}">
-      <div class="gcv-revista-teaser-card__media">${picture(ap, cImg, R.cardContratarTitle, 640, 360)}</div>
+      <div class="gcv-revista-teaser-card__media">${picture(ap, cImg, R.cardContratarTitle, 640, 360, { responsive: true })}</div>
       <div class="gcv-revista-teaser-card__body">
         <h3 class="gcv-revista-teaser-card__title">${esc(R.cardContratarTitle)}</h3>
         <p class="gcv-revista-teaser-card__excerpt">${esc(R.cardContratarLead)}</p>
@@ -1210,7 +1224,7 @@ ${cards}
       </div>
     </a>
     <a class="gcv-revista-teaser-card" href="${esc(eHref)}">
-      <div class="gcv-revista-teaser-card__media">${picture(ap, eImg, R.cardEpocaTitle, 640, 360)}</div>
+      <div class="gcv-revista-teaser-card__media">${picture(ap, eImg, R.cardEpocaTitle, 640, 360, { responsive: true })}</div>
       <div class="gcv-revista-teaser-card__body">
         <h3 class="gcv-revista-teaser-card__title">${esc(R.cardEpocaTitle)}</h3>
         <p class="gcv-revista-teaser-card__excerpt">${esc(R.cardEpocaLead)}</p>
@@ -1224,10 +1238,10 @@ ${cards}
 function instagramGridCellsHtml(posts, ap, openOnIg) {
   return posts
     .map((p) => {
-      const imgSrc = `${ap}assets/img/${String(p.image).replace(/^\//, "")}`;
+      const rel = String(p.image).replace(/^\//, "");
       return `  <li class="gcv-instagram-grid__cell">
     <a class="gcv-instagram-grid__link" href="${esc(p.permalink)}" target="_blank" rel="noopener noreferrer" aria-label="${esc(openOnIg)}">
-      <img class="gcv-instagram-grid__img" src="${esc(imgSrc)}" alt="${esc(p.alt || "")}" width="400" height="400" loading="lazy" decoding="async" />
+      ${picture(ap, rel, p.alt || "", 400, 400, { widths: [480], sizes: "(max-width: 700px) 46vw, 220px" }).replace("<img ", '<img class="gcv-instagram-grid__img" ')}
       <span class="gcv-instagram-grid__shade" aria-hidden="true">${INSTAGRAM_ICON_SVG}</span>
     </a>
   </li>`;
@@ -1278,7 +1292,7 @@ function reviewCardHtml(r, { ap, googleLabel }) {
   const img = r.image ? String(r.image).trim() : "";
   const tour = r.tour ? String(r.tour).trim() : "";
   const avatar = img
-    ? `<div class="gcv-review-card__avatar"><img src="${esc(`${ap}assets/img/${img}`)}" alt="" width="80" height="80" loading="lazy" decoding="async" /></div>`
+    ? `<div class="gcv-review-card__avatar">${picture(ap, img, "", 80, 80, { widths: [160], sizes: "80px" })}</div>`
     : `<div class="gcv-review-card__avatar gcv-review-card__avatar--fallback" aria-hidden="true">${esc(String(r.name || "?").charAt(0))}</div>`;
   return `<article class="gcv-review-card">
   <div class="gcv-review-card__head">
@@ -1415,6 +1429,17 @@ function webmcpBootScript(locale) {
 </script>`;
 }
 
+function cssLink(href, blocking) {
+  const safe = esc(href);
+  if (blocking) return `\n    <link rel="stylesheet" href="${safe}" />`;
+  return `\n    <link rel="stylesheet" href="${safe}" media="print" onload="this.media='all'" />\n    <noscript><link rel="stylesheet" href="${safe}" /></noscript>`;
+}
+
+function loadAfterIdle(srcs) {
+  const json = JSON.stringify(srcs);
+  return `  <script>(function(){var srcs=${json};function go(){srcs.forEach(function(src){var s=document.createElement("script");s.src=src;s.async=false;document.body.appendChild(s);});}window.addEventListener("load",function(){if(window.requestIdleCallback)requestIdleCallback(go,{timeout:1800});else setTimeout(go,400);});})();</script>\n`;
+}
+
 function buildHead(ctx) {
   const {
     title,
@@ -1436,8 +1461,9 @@ function buildHead(ctx) {
   const ogT = ogTitle ?? title;
   const ogD = ogDesc ?? desc;
   const ogSiteType = ogType || "website";
+  const home = pathKey === "";
   const cssExtra = (extraCss || [])
-    .map((rel) => `\n    <link rel="stylesheet" href="${esc(`${ap}${rel}`)}" />`)
+    .map((rel) => cssLink(`${ap}${rel}`, !home || /gcv-hero-slider\.css/.test(String(rel))))
     .join("");
   const canon = `${SITE_ORIGIN}${localePathToUrl(locale, pathKey)}`.replace(/([^:])\/{2,}/g, "$1/");
   const ogAbs = ogImageRel ? `${SITE_ORIGIN}/assets/img/${ogImageRel.replace(/^\//, "")}` : "";
@@ -1511,9 +1537,9 @@ ${ogLocaleAlternate}
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="${esc(publicCssSrc("site.css", outRelPath(locale, pathKey)))}" />
-    <link rel="stylesheet" href="${esc(publicCssSrc("gcv-detail.css", outRelPath(locale, pathKey)))}" />
-    <link rel="stylesheet" href="${esc(publicCssSrc("gcv-seo.css", outRelPath(locale, pathKey)))}" />${cssExtra}${extraHead ? `\n${extraHead}` : ""}
+    ${cssLink(publicCssSrc("site.css", outRelPath(locale, pathKey)), true)}
+    ${cssLink(publicCssSrc("gcv-detail.css", outRelPath(locale, pathKey)), !home)}
+    ${cssLink(publicCssSrc("gcv-seo.css", outRelPath(locale, pathKey)), !home)}${cssExtra}${extraHead ? `\n${extraHead}` : ""}
     ${webmcpBootScript(locale)}`;
 }
 
@@ -1537,7 +1563,7 @@ function headerHtml(ctx) {
         "Guia Chapada Veadeiros — Chapada dos Veadeiros",
         1024,
         189,
-        { eager: true, fetchPriority: "high" },
+        { eager: true, widths: [480], sizes: "320px" },
       )}
     </a>
     <div class="header-actions"></div>
@@ -1578,6 +1604,7 @@ function footerHtml(ctx) {
     F.nationalParkAlt,
     128,
     96,
+    { responsive: true, sizes: "128px" },
   );
   const cadasturPic = picture(
     ap,
@@ -1585,6 +1612,7 @@ function footerHtml(ctx) {
     F.cadasturAlt,
     400,
     520,
+    { responsive: true, sizes: "(max-width: 700px) 70vw, 280px" },
   );
   return `<footer class="site-footer">
   <div class="footer-shell">
@@ -1994,13 +2022,13 @@ function heroOfferPicture(ap, locale, theme, alt, eager) {
     return heroRotationPicture(ap, locale, theme, eager);
   }
   const base = `${ap}assets/img/hero/${HERO_OFFER_BASE[theme]}`;
-  const loading = eager ? `fetchpriority="high"` : `loading="lazy"`;
   return `<picture class="gcv-media">
-      <source type="image/avif" media="(max-width:780px)" srcset="${esc(heroImg(`${base}-mobile-1x.avif`))} 1x, ${esc(heroImg(`${base}-mobile.avif`))} 2x" width="1080" height="1200">
-      <source type="image/webp" media="(max-width:780px)" srcset="${esc(heroImg(`${base}-mobile-1x.webp`))} 1x, ${esc(heroImg(`${base}-mobile.webp`))} 2x" width="1080" height="1200">
-      <source type="image/avif" media="(min-width:781px)" srcset="${esc(heroImg(`${base}-desktop-1x.avif`))} 1x, ${esc(heroImg(`${base}-desktop.avif`))} 2x" width="2160" height="1240">
-      <source type="image/webp" media="(min-width:781px)" srcset="${esc(heroImg(`${base}-desktop-1x.webp`))} 1x, ${esc(heroImg(`${base}-desktop.webp`))} 2x" width="2160" height="1240">
-      <img src="${esc(heroImg(`${base}-desktop.webp`))}" width="2160" height="1240" ${loading} decoding="async" alt="${esc(alt)}">
+      <source type="image/avif" media="(max-width:780px)" data-srcset="${esc(heroImg(`${base}-mobile-1x.avif`))} 1x, ${esc(heroImg(`${base}-mobile.avif`))} 2x" width="1080" height="1200">
+      <source type="image/webp" media="(max-width:780px)" data-srcset="${esc(heroImg(`${base}-mobile-1x.webp`))} 1x, ${esc(heroImg(`${base}-mobile.webp`))} 2x" width="1080" height="1200">
+      <source type="image/avif" media="(min-width:781px)" data-srcset="${esc(heroImg(`${base}-desktop-1x.avif`))} 1x, ${esc(heroImg(`${base}-desktop.avif`))} 2x" width="2160" height="1240">
+      <source type="image/webp" media="(min-width:781px)" data-srcset="${esc(heroImg(`${base}-desktop-1x.webp`))} 1x, ${esc(heroImg(`${base}-desktop.webp`))} 2x" width="2160" height="1240">
+      <img data-src="${esc(heroImg(`${base}-desktop.webp`))}" width="2160" height="1240" loading="lazy" decoding="async" alt="${esc(alt)}">
+      <noscript><img src="${esc(heroImg(`${base}-desktop.webp`))}" width="2160" height="1240" alt="${esc(alt)}"></noscript>
     </picture>`;
 }
 
@@ -2134,7 +2162,7 @@ function homeMainHtml(locale, ap, instagramPosts, reviewsPool) {
       const hrefSlug = localeSlugForBase(locale, item.slug);
       const href = relBetweenSync(cur, outRelPath(locale, `atrativos/${hrefSlug}.html`));
       return `<a class="gcv-photo-card" href="${esc(href)}">
-  ${picture(ap, p.image, displayTitle, 640, 400)}
+  ${picture(ap, p.image, displayTitle, 640, 400, { responsive: true })}
   <span class="gcv-photo-card__grad" aria-hidden="true"></span>
   <span class="gcv-photo-card__tag">${esc(item.label)}</span>
   <div class="gcv-photo-card__caption">
@@ -2209,7 +2237,7 @@ ${featuredCards}
         <p class="gcv-map-promo__lead">${esc(home.mapPromoLead)}</p>
       </div>
       <button type="button" class="gcv-map-trigger" data-gcv-map-open aria-label="${esc(home.mapOpenAria)}">
-        ${picture(ap, MAP_IMAGE, home.mapAlt, 1366, 600)}
+        ${picture(ap, MAP_IMAGE, home.mapAlt, 1366, 600, { widths: [960], sizes: "(max-width: 780px) 92vw, 640px" })}
       </button>
     </div>
 
@@ -3284,17 +3312,32 @@ for (const locale of LOCALES) {
     const homeExcursionsHead = homeIsLanding
       ? {
           extraCss: [
-            `assets/css/gcv-hero-slider.css?v=1.1.35`,
-            `assets/css/excursoes.css?v=1.1.34`,
+            `assets/css/gcv-hero-slider.css${BUILD_ASSET_QUERY}`,
+            `assets/css/excursoes.css${BUILD_ASSET_QUERY}`,
             `assets/css/gcv-home-passeios.css${BUILD_ASSET_QUERY}`,
           ],
           extraHead: `${heroPreloadLinks(homeAp, locale)}
     <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&display=swap" rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" crossorigin="anonymous" />`,
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" /></noscript>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" crossorigin="anonymous" media="print" onload="this.media='all'" />
+    <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" crossorigin="anonymous" /></noscript>`,
           extraFooterScripts:
             homeExcursionsHideScript +
-            `  <script src="${esc(publicJsSrc("gcv-hero-slider.js", outPk).replace(BUILD_ASSET_QUERY, "?v=1.1.32"))}" defer></script>\n  <script src="${esc(publicJsSrc("qrcode.min.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix-receipt.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix-polling.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-confirm.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-bookings.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-waitlist.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-cart-policies.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-cart.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("excursoes-carousel.js", outPk).replace(BUILD_ASSET_QUERY, "?v=1.1.87"))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-home-passeios.js", outPk).replace(BUILD_ASSET_QUERY, "?v=1.1.37"))}" defer></script>\n`,
+            `  <script src="${esc(publicJsSrc("gcv-hero-slider.js", outPk))}" defer></script>\n` +
+            loadAfterIdle([
+              publicJsSrc("qrcode.min.js", outPk),
+              publicJsSrc("gcv-pix.js", outPk),
+              publicJsSrc("gcv-pix-receipt.js", outPk),
+              publicJsSrc("gcv-pix-polling.js", outPk),
+              publicJsSrc("gcv-confirm.js", outPk),
+              publicJsSrc("gcv-exc-bookings.js", outPk),
+              publicJsSrc("gcv-exc-waitlist.js", outPk),
+              publicJsSrc("gcv-exc-cart-policies.js", outPk),
+              publicJsSrc("gcv-exc-cart.js", outPk),
+              publicJsSrc("excursoes-carousel.js", outPk),
+              publicJsSrc("gcv-home-passeios.js", outPk),
+            ]),
         }
       : {};
     const homeConsultarScript = "";
@@ -3594,6 +3637,9 @@ for (const pk of SITEMAP_STATIC_REVISTA_PATHS) {
 writeAdvancedSitemapsAndFeed();
 
 writeSearchIndexAsset();
+
+const { generateResponsiveVariants } = await import("./responsive-variants.mjs");
+await generateResponsiveVariants(ROOT);
 
 const { copied: buildProdEntries } = assembleBuildProd();
 for (const loc of LOCALES) {

@@ -80,4 +80,7 @@ AddType application/json .json
   Header add Link "%{GCV_LINK_MD}e" env=GCV_LINK_MD
   Header add Link "%{REDIRECT_GCV_LINK_LLMS}e" env=REDIRECT_GCV_LINK_LLMS
   Header add Link "%{REDIRECT_GCV_LINK_MD}e" env=REDIRECT_GCV_LINK_MD
+  <FilesMatch "\.(css|js|mjs|webp|avif|jpe?g|png|gif|svg|ico|woff2)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
 </IfModule>
