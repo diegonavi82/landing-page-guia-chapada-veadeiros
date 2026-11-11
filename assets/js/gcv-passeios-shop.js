@@ -20,6 +20,7 @@
       cities: "Cidades de embarque",
       search: "Procurar",
       departures: "Saídas de:",
+      leaving: "Saindo de:",
       from: "A partir de",
       person: "por pessoa",
       add: "Adicionar",
@@ -47,6 +48,7 @@
       cities: "Departure cities",
       search: "Search",
       departures: "Departing from:",
+      leaving: "Leaving from:",
       from: "From",
       person: "per person",
       add: "Add",
@@ -74,6 +76,7 @@
       cities: "Ciudades de salida",
       search: "Buscar",
       departures: "Salidas desde:",
+      leaving: "Saliendo de:",
       from: "Desde",
       person: "por persona",
       add: "Agregar",
@@ -389,12 +392,19 @@
         '<p class="gcv-shop-card__tags">' + tags + "</p>" +
         "<h2><a href=\"" + esc(tourHref(tour.href)) + "\" data-tour=\"" + esc(tour.id) + "\">" + esc(tour.title) + "</a></h2>" +
         places +
-        (saidas.length
-          ? '<p class="gcv-shop-card__meta"><span class="gcv-shop-card__saidas">' + pin +
-            "<span><strong>" + esc(copy.departures) + "</strong> " +
-            esc(saidas.map(function (cidade) { return cidade.nome; }).join(", ")) +
-            "</span></span></p>"
-          : "") +
+        (function () {
+          if (!saidas.length) return "";
+          var escolhida = null;
+          if (cityFilter !== "all") {
+            saidas.forEach(function (cidade) {
+              if (cidade.key === cityFilter) escolhida = cidade;
+            });
+          }
+          var rotulo = escolhida ? (copy.leaving || copy.departures) : copy.departures;
+          var nomes = escolhida ? escolhida.nome : saidas.map(function (cidade) { return cidade.nome; }).join(", ");
+          return '<p class="gcv-shop-card__meta"><span class="gcv-shop-card__saidas">' + pin +
+            "<span><strong>" + esc(rotulo) + "</strong> " + esc(nomes) + "</span></span></p>";
+        })() +
         '<div class="gcv-shop-card__foot">' +
         '<p class="gcv-shop-card__price">' + esc(copy.from) + "<strong>" + reais(cents) + "</strong>" + esc(copy.person) + "</p>" +
         '<button type="button" class="gcv-shop-card__add' + (mine ? " is-added" : "") + '" data-add="' + esc(tour.id) + '">' +
