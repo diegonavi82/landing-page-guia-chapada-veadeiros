@@ -1899,6 +1899,9 @@
             }
             return;
           }
+          if (window.GcvDashboard && typeof window.GcvDashboard.markWhatsappOk === 'function') {
+            window.GcvDashboard.markWhatsappOk();
+          }
           if (r.data && r.data.submitted_for_approval) {
             var pendingMsg = 'Cadastro enviado para aprovação. Você receberá um WhatsApp quando for aprovado. Enquanto isso, só esta tela de perfil fica disponível.';
             var afterOk = function () { loadGuideProfile(); };
@@ -5079,6 +5082,9 @@
           msg.hidden = false;
           msg.className = 'gcv-dash-alert ' + (r && r.ok ? 'gcv-dash-alert--info' : 'gcv-dash-alert--warning');
           msg.textContent = (r && r.ok) ? 'Salvo!' : ((r && r.error) || 'Erro');
+          if (r && r.ok && window.GcvDashboard && typeof window.GcvDashboard.markWhatsappOk === 'function') {
+            window.GcvDashboard.markWhatsappOk();
+          }
         });
       };
     });

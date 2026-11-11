@@ -137,3 +137,36 @@ function gcv_validate_contact_phone(string $phone, string $ddi = '+55', string $
         'iso' => $iso,
     ];
 }
+
+/** Mantém o mesmo WhatsApp no perfil de guia e no de cliente da mesma conta. */
+function gcv_profile_mirror_whatsapp(int $userId, string $phone, string $ddi, string $source): void
+{
+    $phone = preg_replace('/\D+/', '', $phone) ?? '';
+    $ddi = trim($ddi) !== '' ? trim($ddi) : '+55';
+    if ($userId <= 0 || $phone === '') {
+        return;
+    }
+    try {
+        require_once __DIR__ . '/cms_schema.php';
+        gcv_cms_ensure_client_profiles();
+        if ($source === 'guide') {
+            db()->prepare(
+                'INSERT INTO gcv_client_profiles (user_id, phone, phone_ddi)
+                 VALUES (?, ?, ?)
+                 ON DUPLICATE KEY UPDATE phone = VALUES(phone), phone_ddi = VALUES(phone_ddi)'
+            )->execute([$userId, $phone, $ddi]);
+            return;
+        }
+        if ($source === 'client') {
+            $st = db()->prepare('SELECT user_id FROM gcv_guides WHERE user_id = ? LIMIT 1');
+            $st->execute([$userId]);
+            if (!$st->fetchColumn()) {
+                return;
+            }
+            db()->prepare('UPDATE gcv_guides SET phone = ?, phone_ddi = ? WHERE user_id = ?')
+                ->execute([$phone, $ddi, $userId]);
+        }
+    } catch (Throwable $e) {
+        error_log('gcv_profile_mirror_whatsapp: ' . $e->getMessage());
+    }
+}

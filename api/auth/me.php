@@ -25,6 +25,22 @@ if ($isGuide) {
     }
 }
 
+$whatsappOk = true;
+$activeRole = (string)($user['role'] ?? '');
+if ($activeRole === 'guide' || $activeRole === 'client') {
+    $whatsappOk = false;
+    try {
+        $sql = $activeRole === 'guide'
+            ? 'SELECT phone FROM gcv_guides WHERE user_id = ? LIMIT 1'
+            : 'SELECT phone FROM gcv_client_profiles WHERE user_id = ? LIMIT 1';
+        $st = db()->prepare($sql);
+        $st->execute([(int)$user['id']]);
+        $whatsappOk = trim((string)$st->fetchColumn()) !== '';
+    } catch (Throwable $e) {
+        $whatsappOk = true;
+    }
+}
+
 json_response(true, [
     'id'             => $user['id'],
     'name'           => $user['name'],
@@ -38,4 +54,5 @@ json_response(true, [
     'status'         => $user['status'],
     'email_verified' => (bool)$user['email_verified'],
     'profile_complete' => $profileComplete,
+    'whatsapp_ok'    => $whatsappOk,
 ]);

@@ -92,6 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
         $notes !== '' ? $notes : null,
         (int)$user['id'],
     ]);
+    gcv_profile_mirror_whatsapp((int)$user['id'], $phone, $phoneDdi, 'client');
 
     json_response(true, [
         'message' => 'Perfil atualizado',

@@ -4,7 +4,7 @@ declare(strict_types=1);
 /**
  * Passeios de teste (slug teste-*, tarifário "Teste …").
  * O catálogo público não os lista. Só a conta logada da lista abaixo vê e paga.
- * A Cecy entra aqui quando o e-mail chegar. O Diego é o guia, não um cliente desta lista.
+ * A Cecy entra aqui quando o e-mail chegar.
  */
 
 require_once __DIR__ . '/db.php';
@@ -13,6 +13,7 @@ function gcv_teste_emails(): array
 {
     return [
         'priscilacsp@yahoo.com.br',
+        'diegonavi82@gmail.com',
     ];
 }
 

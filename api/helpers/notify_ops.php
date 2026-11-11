@@ -493,6 +493,21 @@ function gcv_ops_client_phone(array $sale): string
                 $raw = (string)($p['phone'] ?? '');
                 $ddi = (string)($p['phone_ddi'] ?? $ddi);
             }
+            if ($raw === '') {
+                $guideUid = $uid;
+                if ($guideUid <= 0 && $email !== '') {
+                    $st = db()->prepare('SELECT id FROM gcv_users WHERE LOWER(email) = ? LIMIT 1');
+                    $st->execute([$email]);
+                    $guideUid = (int)($st->fetchColumn() ?: 0);
+                }
+                if ($guideUid > 0) {
+                    $st = db()->prepare('SELECT phone, phone_ddi FROM gcv_guides WHERE user_id = ? LIMIT 1');
+                    $st->execute([$guideUid]);
+                    $p = $st->fetch(PDO::FETCH_ASSOC) ?: [];
+                    $raw = (string)($p['phone'] ?? '');
+                    $ddi = (string)($p['phone_ddi'] ?? $ddi);
+                }
+            }
         } catch (Throwable $e) {
             error_log('gcv_ops_client_phone profile: ' . $e->getMessage());
         }
@@ -1305,18 +1320,15 @@ function gcv_ops_notify_guide_approved(int $excursionId): void
         error_log('gcv_ops_notify_guide_approved: WhatsApp não enviado ao guia (excursão ' . $excursionId . ', guia ' . $guideId . ')');
     }
     $guide = gcv_ops_guide_contact($guideId);
-    $okAgency = false;
-    if (!gcv_ops_phones_same((string)($guide['phone'] ?? ''), gcv_admin_whatsapp_phone())) {
-        $okAgency = gcv_ops_wa_agency(
-            "✅ Passeio APROVADO\n\n"
-            . 'Guia: ' . (string)($guide['name'] ?? 'Guia') . "\n"
-            . 'Passeio: ' . $title . "\n"
-            . 'Quando: ' . $when . "\n"
-            . 'ID: #' . $excursionId
-        );
-        if (!$okAgency) {
-            error_log('gcv_ops_notify_guide_approved: WhatsApp não enviado à VPS (excursão ' . $excursionId . ')');
-        }
+    $okAgency = gcv_ops_wa_agency(
+        "✅ Passeio APROVADO\n\n"
+        . 'Guia: ' . (string)($guide['name'] ?? 'Guia') . "\n"
+        . 'Passeio: ' . $title . "\n"
+        . 'Quando: ' . $when . "\n"
+        . 'ID: #' . $excursionId
+    );
+    if (!$okAgency) {
+        error_log('gcv_ops_notify_guide_approved: WhatsApp não enviado à VPS (excursão ' . $excursionId . ')');
     }
     if (!$okGuide && !$okAgency) {
         return;
@@ -1364,13 +1376,7 @@ function gcv_ops_send_guide_saida_link(int $guideId, int $excursionId, string $g
         return;
     }
     $text = $share['description'] . "\n" . $share['url'];
-    if ($guidePhone === '' || !gcv_ops_phones_same($guidePhone, $agency)) {
-        gcv_ops_wa_guide($guideId, $text, ['kind' => 'saida_share', 'excursion_id' => $excursionId]);
-        return;
-    }
-    if (function_exists('gcv_inbox_push')) {
-        gcv_inbox_push($guideId, $text, ['kind' => 'saida_share', 'excursion_id' => $excursionId]);
-    }
+    gcv_ops_wa_guide($guideId, $text, ['kind' => 'saida_share', 'excursion_id' => $excursionId]);
 }
 
 function gcv_ops_notify_guide_confirmed(int $excursionId): void
@@ -1416,11 +1422,7 @@ function gcv_ops_notify_guide_confirmed(int $excursionId): void
     if ($guideId > 0) {
         $guidePhone = (string)(gcv_ops_guide_contact($guideId)['phone'] ?? '');
         $agency = function_exists('gcv_admin_whatsapp_phone') ? gcv_admin_whatsapp_phone() : '5521996039027';
-        if ($guidePhone === '' || !gcv_ops_phones_same($guidePhone, $agency)) {
-            gcv_ops_wa_guide($guideId, $textGuide);
-        } elseif (function_exists('gcv_inbox_push')) {
-            gcv_inbox_push($guideId, $textGuide, ['kind' => 'confirmed', 'excursion_id' => $excursionId]);
-        }
+        gcv_ops_wa_guide($guideId, $textGuide, ['kind' => 'confirmed', 'excursion_id' => $excursionId]);
         $email = trim((string)(gcv_ops_guide_contact($guideId)['email'] ?? ''));
         if ($email !== '' && strtolower($email) !== 'diegonavi82@gmail.com') {
             gcv_ops_mail_plain($email, 'Passeio confirmado — ' . $title, $textGuide);
@@ -1456,7 +1458,8 @@ function gcv_ops_notify_guide_cancelled(array $sale, ?array $exc, string $lifecy
         . gcv_ops_group_update_text($excId, $exc);
     gcv_ops_wa_guide($guideId, $text);
     $agency = function_exists('gcv_admin_whatsapp_phone') ? gcv_admin_whatsapp_phone() : '';
-    if ($agency !== '' && function_exists('gcv_whatsapp_send_text')) {
+    $guidePhone = (string)(gcv_ops_guide_contact($guideId)['phone'] ?? '');
+    if ($agency !== '' && function_exists('gcv_whatsapp_send_text') && !gcv_ops_phones_same($guidePhone, $agency)) {
         gcv_whatsapp_send_text($agency, $text);
     }
     if (!$notifyClient) {
@@ -2673,7 +2676,8 @@ function gcv_ops_notify_guide_payout(array $sale, bool $ok, string $error = '', 
     }
     gcv_ops_wa_guide($guideId, $text);
     $agency = function_exists('gcv_admin_whatsapp_phone') ? gcv_admin_whatsapp_phone() : '';
-    if ($agency !== '' && function_exists('gcv_whatsapp_send_text')) {
+    $guidePhone = (string)(gcv_ops_guide_contact($guideId)['phone'] ?? '');
+    if ($agency !== '' && function_exists('gcv_whatsapp_send_text') && !gcv_ops_phones_same($guidePhone, $agency)) {
         gcv_whatsapp_send_text($agency, $text);
     }
 }

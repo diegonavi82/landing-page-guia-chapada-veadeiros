@@ -107,8 +107,56 @@
     if (dashLoadMap[id]) dashLoadMap[id]();
   }
 
+  function whatsappProfileSection() {
+    var role = currentUser && (currentUser.role || currentUser.active_role);
+    if (role === 'client') return 'section-client-profile';
+    if (role === 'guide') return 'section-guide-profile';
+    return '';
+  }
+
+  function needsWhatsapp() {
+    return !!(currentUser && currentUser.whatsapp_ok === false && whatsappProfileSection());
+  }
+
+  function whatsappGateCopy() {
+    var lang = String((currentUser && currentUser.lang) || 'pt').slice(0, 2);
+    var all = {
+      pt: 'Informe o WhatsApp no perfil para receber os avisos. O número é obrigatório.',
+      en: 'Add your WhatsApp on the profile to receive alerts. The number is required.',
+      es: 'Indica tu WhatsApp en el perfil para recibir los avisos. El número es obligatorio.'
+    };
+    return all[lang] || all.pt;
+  }
+
+  function paintWhatsappGate(show) {
+    var main = document.getElementById('gcv-dash-main');
+    var box = document.getElementById('gcv-wa-gate');
+    if (!show) {
+      if (box) box.hidden = true;
+      return;
+    }
+    if (!box && main) {
+      box = document.createElement('div');
+      box.id = 'gcv-wa-gate';
+      box.className = 'gcv-dash-alert gcv-dash-alert--warning';
+      box.setAttribute('role', 'status');
+      main.insertBefore(box, main.firstChild);
+    }
+    if (box) {
+      box.hidden = false;
+      box.textContent = whatsappGateCopy();
+    }
+  }
+
   function requestSection(id, skipHash) {
     if (id === 'section-pending-guides') id = 'section-cms-guides';
+    if (needsWhatsapp()) {
+      var locked = whatsappProfileSection();
+      if (locked) id = locked;
+      paintWhatsappGate(true);
+    } else {
+      paintWhatsappGate(false);
+    }
     var current = document.querySelector('.gcv-dash-section.active');
     var from = current && current.id;
     var cms = window.GcvAdminCms;
@@ -2419,8 +2467,17 @@
             : allItems[0].id;
         }
         if (guiaAtivo && !hashAgora) openId = 'section-guide-tours';
+        if (needsWhatsapp()) openId = whatsappProfileSection() || openId;
         showSection(openId);
+        paintWhatsappGate(needsWhatsapp());
         if (loadMap[openId]) loadMap[openId]();
+      } else if (needsWhatsapp()) {
+        var lockedWa = whatsappProfileSection();
+        if (lockedWa) {
+          showSection(lockedWa);
+          paintWhatsappGate(true);
+          if (loadMap[lockedWa]) loadMap[lockedWa]();
+        }
       }
     }
     if (role === 'admin') {
@@ -2584,6 +2641,10 @@
     refreshApprovalBadge: refreshApprovalBadge,
     refreshGuideBadge: refreshGuideBadge,
     loadPendingGuides: loadPendingGuides,
-    showSection: requestSection
+    showSection: requestSection,
+    markWhatsappOk: function () {
+      if (currentUser) currentUser.whatsapp_ok = true;
+      paintWhatsappGate(false);
+    }
   };
 }());

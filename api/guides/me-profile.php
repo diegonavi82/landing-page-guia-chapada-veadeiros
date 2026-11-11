@@ -327,6 +327,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
         }
 
         $pdo->commit();
+        gcv_profile_mirror_whatsapp($userId, $phone, $phoneDdi, 'guide');
     } catch (InvalidArgumentException $e) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
