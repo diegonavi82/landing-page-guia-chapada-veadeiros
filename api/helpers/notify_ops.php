@@ -693,6 +693,23 @@ function gcv_ops_is_group_excursion(?array $exc): bool
     return true;
 }
 
+/** Nas notificações do guia, o valor da reserva é o repasse, não o preço cheio. */
+function gcv_ops_reserva_guia_cents(int $guideCents, int $soldCents): int
+{
+    if ($guideCents > 0 && $soldCents > 0 && $guideCents < $soldCents) {
+        return $guideCents;
+    }
+    $base = $soldCents > 0 ? $soldCents : $guideCents;
+    if ($base <= 0) {
+        return 0;
+    }
+    $pct = (float)setting('platform_commission_pct', '10');
+    if ($pct <= 0 || $pct >= 100) {
+        return $base;
+    }
+    return max(0, $base - (int)round($base * $pct / 100));
+}
+
 function gcv_ops_guide_unit_cents(array $exc): int
 {
     $n = (int)($exc['guide_net_cents'] ?? 0);
@@ -1451,7 +1468,7 @@ function gcv_ops_aviso_saida_linhas(int $excursionId, array $exc): string
         $lines[] = 'Grupo total: ' . $g['total'] . '/' . $g['max'] . ' ' . $inscritosWord;
     }
     if ($privado) {
-        $lines[] = 'Valor da reserva: ' . gcv_ops_brl((int)$g['cents']);
+        $lines[] = 'Valor da reserva: ' . gcv_ops_brl(gcv_ops_reserva_guia_cents((int)$g['guide_cents'], (int)$g['cents']));
     } else {
         $lines[] = 'Valor a receber por inscrição: ' . gcv_ops_brl(gcv_ops_guide_unit_cents($exc))
             . ' (total até o momento ' . gcv_ops_brl((int)$g['guide_cents']) . ')';

@@ -73,10 +73,12 @@ if ($status === 'pending' && gcv_guiagem_taken_by_other($excursionId, $me)) {
 $sales = gcv_ops_paid_sales_for_excursion($excursionId);
 $sale = $sales[0] ?? [];
 $people = 0;
-$cents = 0;
+$soldCents = 0;
+$guideCents = 0;
 foreach ($sales as $row) {
     $people += max(1, (int)($row['spots'] ?? 1));
-    $cents += max(0, (int)($row['sold_price_cents'] ?? 0));
+    $soldCents += max(0, (int)($row['sold_price_cents'] ?? 0));
+    $guideCents += max(0, (int)($row['guide_amount_cents'] ?? 0));
 }
 if ($people < 1) {
     $people = max(1, (int)($tour['booked_people'] ?? 1));
@@ -100,7 +102,7 @@ json_response(true, [
     'city' => $city,
     'meeting_point' => gcv_ops_ponto_encontro($tour),
     'people' => $people,
-    'price' => gcv_ops_brl($cents),
+    'price' => gcv_ops_brl(gcv_ops_reserva_guia_cents($guideCents, $soldCents)),
     'code' => $private ? ('Privativo ' . $code) : $code,
     'private' => $private,
     'test' => $test,
