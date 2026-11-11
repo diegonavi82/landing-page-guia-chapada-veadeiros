@@ -1558,7 +1558,7 @@
   }
 
   function excursaoValor(e) {
-    var n = parseInt(String(e && e.valor), 10);
+    var n = Number(e && e.valor);
     return Number.isFinite(n) ? n : 0;
   }
 
@@ -2579,7 +2579,12 @@
   }
 
   function formatBrlAmount(n) {
-    return "R$&nbsp;" + (parseInt(String(n), 10) || 0);
+    var v = Number(n);
+    if (!Number.isFinite(v) || v <= 0) return "R$&nbsp;0";
+    if (Math.abs(v - Math.round(v)) > 0.001) {
+      return "R$&nbsp;" + v.toFixed(2).replace(".", ",");
+    }
+    return "R$&nbsp;" + Math.round(v);
   }
 
   function excursaoCartId(e) {
@@ -8311,7 +8316,8 @@
   function fetchLiveExcursaoRows(locale, cb) {
     try {
       var xhr = new XMLHttpRequest();
-      xhr.open("GET", "/api/excursions/carousel.php");
+      xhr.open("GET", "/api/excursions/carousel.php", true);
+      xhr.withCredentials = true;
       xhr.timeout = 8000;
       xhr.onload = function () {
         try {

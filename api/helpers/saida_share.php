@@ -143,6 +143,10 @@ function gcv_saida_lang(string $lang): string
  */
 function gcv_saida_rows_on_date(string $date): array
 {
+    if (!function_exists('gcv_teste_logada')) {
+        require_once __DIR__ . '/teste_acesso.php';
+    }
+    $verTeste = gcv_teste_logada();
     $select = 'SELECT e.id, e.status, e.date_iso, e.departure_time, e.cart_slug, e.attraction_id, e.guide_user_id,
             c.name AS city_name,
             u.name AS guide_name,
@@ -154,10 +158,11 @@ function gcv_saida_rows_on_date(string $date): array
          LEFT JOIN gcv_guides g ON g.user_id = e.guide_user_id
          WHERE e.date_iso = ? AND ';
     try {
-        $stmt = db()->prepare($select . gcv_excursion_sql_public_live('e') . ' ORDER BY e.id ASC, g.id DESC');
+        $stmt = db()->prepare($select . gcv_excursion_sql_public_live('e', $verTeste) . ' ORDER BY e.id ASC, g.id DESC');
         $stmt->execute([$date]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        return is_array($rows) ? $rows : [];
+        $rows = is_array($rows) ? $rows : [];
+        return $verTeste ? $rows : gcv_teste_ocultar_excursao_publica($rows);
     } catch (Throwable $e) {
         try {
             $stmt = db()->prepare(
@@ -165,7 +170,8 @@ function gcv_saida_rows_on_date(string $date): array
             );
             $stmt->execute([$date]);
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            return is_array($rows) ? $rows : [];
+            $rows = is_array($rows) ? $rows : [];
+            return $verTeste ? $rows : gcv_teste_ocultar_excursao_publica($rows);
         } catch (Throwable $e2) {
             error_log('gcv_saida_rows_on_date: ' . $e2->getMessage());
             return [];

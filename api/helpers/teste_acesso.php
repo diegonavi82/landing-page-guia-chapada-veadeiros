@@ -4,6 +4,7 @@ declare(strict_types=1);
 /**
  * Passeios de teste (slug teste-*, tarifário "Teste …").
  * O catálogo público não os lista. Só a conta logada da lista abaixo vê e paga.
+ * A excursão em grupo criada nessa compra entra no carrossel só para essas contas.
  */
 
 require_once __DIR__ . '/db.php';
@@ -171,8 +172,61 @@ function gcv_teste_pagamento_erro(array $data, int $amountCents): ?string
 }
 
 /**
+ * Tira do carrossel público a excursão criada pelo passeio de teste.
+ *
+ * @param list<array<string,mixed>> $rows
+ * @return list<array<string,mixed>>
+ */
+function gcv_teste_ocultar_excursao_publica(array $rows): array
+{
+    if (!$rows) {
+        return [];
+    }
+    $ids = [];
+    foreach ($rows as $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+        $id = (int)($row['attraction_id'] ?? 0);
+        if ($id > 0) {
+            $ids[$id] = true;
+        }
+    }
+    $hide = [];
+    if ($ids) {
+        try {
+            $place = implode(',', array_fill(0, count($ids), '?'));
+            $st = db()->prepare("SELECT id FROM gcv_attractions WHERE id IN ($place) AND slug LIKE 'teste-%'");
+            $st->execute(array_keys($ids));
+            foreach ($st->fetchAll(PDO::FETCH_COLUMN) ?: [] as $id) {
+                $hide[(int)$id] = true;
+            }
+        } catch (Throwable $e) {
+            $hide = [];
+        }
+    }
+    $out = [];
+    foreach ($rows as $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+        $slug = strtolower((string)($row['cart_slug'] ?? ''));
+        if (str_starts_with($slug, 'teste-')) {
+            continue;
+        }
+        $id = (int)($row['attraction_id'] ?? 0);
+        if ($id > 0 && isset($hide[$id])) {
+            continue;
+        }
+        $out[] = $row;
+    }
+    return $out;
+}
+
+/**
  * Excursão em grupo do teste: uma saída por atrativo, data, cidade e transporte.
- * O guia é o Diego, para a fila real não abrir. Não entra no carrossel.
+ * O guia é o Diego, para a fila real não abrir.
+ * O carrossel só mostra essa saída para quem está em gcv_teste_emails().
  *
  * @param array<string,mixed> $reservation
  * @return array<string,mixed>|null

@@ -44,9 +44,19 @@ function gcv_excursion_is_publicly_bookable(array $e): bool
 /**
  * Cláusula SQL: saídas públicas (carrossel / checkout).
  */
-function gcv_excursion_sql_public_live(string $alias = 'e'): string
+function gcv_excursion_sql_public_live(string $alias = 'e', bool $incluirTeste = false): string
 {
     $a = preg_replace('/[^a-zA-Z0-9_]/', '', $alias) ?: 'e';
+    $teste = '';
+    if (!$incluirTeste) {
+        $teste = "
+      AND NOT EXISTS (
+        SELECT 1 FROM gcv_attractions gcv_teste_a
+        WHERE gcv_teste_a.id = {$a}.attraction_id
+          AND gcv_teste_a.slug LIKE 'teste-%'
+      )
+      AND COALESCE({$a}.cart_slug, '') NOT LIKE 'teste-%'";
+    }
     return "{$a}.status IN ('published','soldout')
       AND {$a}.deleted_at IS NULL
       AND COALESCE({$a}.tour_type, 'excursao') <> 'privativo'
@@ -60,12 +70,7 @@ function gcv_excursion_sql_public_live(string $alias = 'e'): string
           SELECT 1 FROM gcv_users ug
           WHERE ug.id = {$a}.guide_user_id AND ug.status = 'active'
         )
-      )
-      AND NOT EXISTS (
-        SELECT 1 FROM gcv_attractions gcv_teste_a
-        WHERE gcv_teste_a.id = {$a}.attraction_id
-          AND gcv_teste_a.slug LIKE 'teste-%'
-      )";
+      ){$teste}";
 }
 
 /** Pessoas já confirmadas pelo guia no cadastro (0–5), aparte das vendas PIX. */

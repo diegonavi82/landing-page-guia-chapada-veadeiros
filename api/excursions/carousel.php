@@ -15,6 +15,9 @@ require_once __DIR__ . '/../helpers/excursion_attractions.php';
 require_once __DIR__ . '/../helpers/google_places.php';
 require_once __DIR__ . '/../helpers/guide_languages.php';
 require_once __DIR__ . '/../helpers/marketplace_schema.php';
+require_once __DIR__ . '/../helpers/teste_acesso.php';
+
+$verTeste = gcv_teste_logada();
 
 try {
     gcv_marketplace_ensure_excursion_finance_columns(db());
@@ -23,7 +26,12 @@ try {
 }
 
 header('Content-Type: application/json; charset=utf-8');
-header('Cache-Control: public, max-age=60');
+header('Vary: Cookie');
+if ($verTeste) {
+    header('Cache-Control: private, no-store');
+} else {
+    header('Cache-Control: public, max-age=60');
+}
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') {
     json_response(false, null, 'Método não permitido', 405);
@@ -61,7 +69,7 @@ try {
          INNER JOIN gcv_cities c ON c.id = e.departure_city_id
          LEFT JOIN gcv_users u ON u.id = e.guide_user_id
          LEFT JOIN gcv_guides g ON g.user_id = e.guide_user_id
-         WHERE ' . gcv_excursion_sql_public_live('e') . '
+         WHERE ' . gcv_excursion_sql_public_live('e', $verTeste) . '
            AND e.date_iso >= CURDATE()
          ORDER BY e.date_iso ASC, e.departure_time ASC
          LIMIT 100'
@@ -406,7 +414,7 @@ function gcv_row_to_card(array $r, string $lang, array $months, array $weekdays)
         'destinos' => $destinos,
         'cartSlug' => $cartSlug,
         'hora' => $hora,
-        'valor' => (int)round(((int)$r['price_cents']) / 100),
+        'valor' => round(((int)$r['price_cents']) / 100, 2),
         'confirmada' => gcv_excursion_quorum_met($r),
         'pessoasInscritas' => $occupied,
         'grupoMaximo' => $max,
@@ -502,7 +510,7 @@ function gcv_row_to_cards(array $r, string $lang, array $months, array $weekdays
 
     $van = $walk;
     $van['comTransporte'] = true;
-    $van['valor'] = (int)round(((int)($r['price_transport_cents'] ?? 0)) / 100);
+    $van['valor'] = round(((int)($r['price_transport_cents'] ?? 0)) / 100, 2);
     $van['cartSlug'] = (string)($walk['cartSlug'] ?? '') . '-t';
     $vanBooked = $occ['transport'];
     $vanSlots = max(0, $occ['transport_slots']);
@@ -579,6 +587,9 @@ function gcv_carousel_sort_cards(array $cards): array
 
 $out = ['pt' => [], 'en' => [], 'es' => []];
 $rows = array_values(array_filter(is_array($rows ?? null) ? $rows : [], 'gcv_excursion_is_publicly_bookable'));
+if (!$verTeste) {
+    $rows = gcv_teste_ocultar_excursao_publica($rows);
+}
 foreach ($rows as $r) {
     foreach (['pt', 'en', 'es'] as $lang) {
         foreach (gcv_row_to_cards($r, $lang, $months, $weekdays) as $card) {
