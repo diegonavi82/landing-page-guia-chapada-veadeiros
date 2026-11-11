@@ -2633,11 +2633,11 @@
       ".gcv-excursoes-card__guide-photo{width:100%;height:100%;min-width:0;max-width:none;min-height:0;max-height:none;object-fit:cover;object-position:center center;border-radius:12px}" +
       ".gcv-excursoes-card__guide-langs{justify-content:center;width:100%}" +
       ".gcv-excursoes__track--day-list .gcv-excursoes-card__guide .gcv-excursoes-card__guide-avatar{width:100%;height:100%;border-radius:12px}" +
-      ".gcv-excursoes-card__out-foot{display:flex;flex-wrap:wrap;align-items:center;gap:0.35rem 0.85rem;margin:0.55rem 0 0;padding:0;background:none;border:0;box-shadow:none}" +
+      ".gcv-excursoes-card__out-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:0.35rem 0.45rem;margin:0.55rem 0 0;padding:0;background:none;border:0;box-shadow:none;text-align:center}" +
       ".gcv-excursoes-card__out-foot .gcv-excursoes-card__label{display:inline-flex;margin:0;flex:0 0 auto;color:#e11d48;font-weight:800;letter-spacing:0.04em}" +
       ".gcv-excursoes-card__out-list{display:contents}" +
-      ".gcv-excursoes-card__out-list li{display:inline-flex;align-items:center;gap:0.28rem;flex:0 0 auto;list-style:none;color:#e11d48;font-size:0.78rem;font-weight:800;letter-spacing:0.01em;line-height:1.2}" +
-      ".gcv-excursoes-card__out-list .ti{color:#e11d48;font-size:1rem;flex:0 0 auto}" +
+      ".gcv-excursoes-card__out-list li{display:inline-flex;align-items:center;gap:0.28rem;flex:0 0 auto;margin:0;padding:0.22rem 0.55rem;border-radius:999px;background:#ffe4e6;list-style:none;color:#be123c;font-size:0.78rem;font-weight:800;letter-spacing:0.01em;line-height:1.2}" +
+      ".gcv-excursoes-card__out-list .ti{color:#be123c;font-size:1rem;flex:0 0 auto}" +
       ".gcv-excursoes__track--day-list .gcv-excursoes-card{grid-template-rows:auto auto auto auto minmax(0,1fr);grid-template-areas:\"banner\" \"photo\" \"main\" \"incluso\" \"book\"}" +
       "@media (min-width:1024px){.gcv-excursoes__track--day-list .gcv-excursoes-card{grid-template-rows:auto auto auto minmax(0,1fr);grid-template-areas:\"banner banner\" \"photo main\" \"photo incluso\" \"book book\"}}";
     document.head.appendChild(style);

@@ -7305,12 +7305,14 @@ html.gcv-waitlist-modal-open {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.35rem 0.85rem;
+  justify-content: center;
+  gap: 0.35rem 0.45rem;
   margin: 0.55rem 0 0;
   padding: 0;
   background: none;
   border: 0;
   box-shadow: none;
+  text-align: center;
 }
 
 .gcv-excursoes-card__out-foot .gcv-excursoes-card__label {
@@ -7336,8 +7338,12 @@ html.gcv-waitlist-modal-open {
   align-items: center;
   gap: 0.28rem;
   flex: 0 0 auto;
+  margin: 0;
+  padding: 0.22rem 0.55rem;
+  border-radius: 999px;
+  background: #ffe4e6;
   list-style: none;
-  color: #e11d48;
+  color: #be123c;
   font-size: 0.78rem;
   font-weight: 800;
   letter-spacing: 0.01em;
@@ -7345,7 +7351,7 @@ html.gcv-waitlist-modal-open {
 }
 
 .gcv-excursoes-card__out-list .ti {
-  color: #e11d48;
+  color: #be123c;
   font-size: 1rem;
   flex: 0 0 auto;
 }
