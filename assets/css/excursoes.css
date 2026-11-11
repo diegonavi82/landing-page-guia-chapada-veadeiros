@@ -5913,6 +5913,7 @@ html.gcv-waitlist-modal-open {
   -webkit-line-clamp: 2;
   overflow: hidden;
   min-height: calc(2 * 1.2 * 1.2rem);
+  padding-bottom: 4px;
 }
 
 .gcv-excursoes__track--day-list .gcv-excursoes-card__time-city-grid {
