@@ -2604,10 +2604,13 @@
     style.id = "gcv-out-foot-css";
     style.textContent =
       ".gcv-excursoes-card__block,.gcv-excursoes-card__block--in,.gcv-excursoes__track--day-list .gcv-excursoes-card__block--in{border-radius:0}" +
-      ".gcv-excursoes-card__book-row{justify-content:space-between;gap:0.35rem 0.5rem}" +
-      ".gcv-excursoes-card__book-label{order:0;text-align:left}" +
-      ".gcv-excursoes-card__qty{order:0}" +
-      ".gcv-excursoes-card__book-total{order:0;flex:1 1 auto;width:auto;margin-left:auto;min-width:0}" +
+      ".gcv-excursoes-card__book,.gcv-excursoes-card__book-row,.gcv-excursoes__track--day-list .gcv-excursoes-card__book{min-width:0;max-width:100%}" +
+      ".gcv-excursoes-card__book-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:0.35rem 0.45rem;width:100%}" +
+      ".gcv-excursoes-card__book-label{order:0;text-align:left;flex-shrink:0}" +
+      ".gcv-excursoes-card__qty{order:0;flex-shrink:0}" +
+      ".gcv-excursoes-card__book{container-type:inline-size}" +
+      ".gcv-excursoes-card__book-total{order:0;flex:1 0 auto;width:auto;max-width:100%;margin-left:auto;min-width:auto;justify-content:flex-end}" +
+      ".gcv-excursoes-card__book-total .gcv-excursoes-card__price{font-size:clamp(0.95rem,5cqi,1.15rem)}" +
       ".gcv-excursoes-card__block--in{border-left:0;border-right:0;border-top:1px solid #6ee7b7;border-bottom:1px solid #6ee7b7}" +
       ".gcv-excursoes__track--day-list .gcv-excursoes-card__block--in{border-left:0;border-right:0;border-top:1px solid #34d399;border-bottom:1px solid #34d399;padding-left:0;padding-right:0;box-shadow:none}" +
       ".gcv-excursoes__track--day-list .gcv-excursoes-card__block--in .gcv-excursoes-card__label--in,.gcv-excursoes__track--day-list .gcv-excursoes-card__block--in .gcv-excursoes-card__list>li:not(.gcv-excursoes-card__guide-slot){padding-left:0.5rem;padding-right:0.5rem}" +
