@@ -2255,12 +2255,15 @@
   justify-content: center;
   gap: 0.4rem;
   width: 100%;
+  min-height: 2.15rem;
   margin: 0;
   padding: 0.55rem 0.65rem;
   border-radius: 10px;
   font-family: inherit;
   font-size: 0.78rem;
   font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
 }
@@ -5725,32 +5728,13 @@ html.gcv-waitlist-modal-open {
 
 .gcv-excursoes__track--day-list .gcv-excursoes-card--pendente.gcv-excursoes-card--in-cart,
 .gcv-excursoes__track--day-list .gcv-excursoes-card--confirmada.gcv-excursoes-card--in-cart {
-  border-width: 3px;
+  border-width: 1px;
   border-style: solid;
-  border-radius: 16px;
-  overflow: hidden;
-  filter: none;
-}
-
-.gcv-excursoes__track--day-list .gcv-excursoes-card--pendente.gcv-excursoes-card--in-cart,
-.gcv-excursoes__track--day-list .gcv-excursoes-card--confirmada.gcv-excursoes-card--in-cart {
   border-color: #047857;
-}
-
-.gcv-excursoes__track--day-list .gcv-excursoes-card--in-cart:has(.gcv-excursoes-card__status-bar.is-warning) {
-  box-shadow: 0 0 0 1px rgba(253, 230, 138, 0.5);
-}
-
-.gcv-excursoes__track--day-list .gcv-excursoes-card--in-cart:has(.gcv-excursoes-card__status-bar.is-success) {
-  box-shadow: 0 0 0 1px rgba(134, 239, 172, 0.5);
-}
-
-.gcv-excursoes__track--day-list .gcv-excursoes-card--in-cart:has(.gcv-excursoes-card__status-bar.is-urgent) {
-  box-shadow: 0 0 0 1px rgba(253, 186, 116, 0.5);
-}
-
-.gcv-excursoes__track--day-list .gcv-excursoes-card--in-cart:has(.gcv-excursoes-card__status-bar.is-neutral) {
-  box-shadow: 0 0 0 1px rgba(226, 232, 240, 0.5);
+  border-radius: 16px;
+  overflow: visible;
+  filter: none;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
 }
 
 .gcv-excursoes__track--day-list .gcv-excursoes-card__head,
@@ -7290,7 +7274,7 @@ html.gcv-waitlist-modal-open {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: rgba(248, 250, 252, 0.42);
+  background: rgba(248, 250, 252, 0.08);
   pointer-events: auto !important;
   cursor: not-allowed !important;
   z-index: 40;
@@ -7468,10 +7452,11 @@ html.gcv-waitlist-modal-open {
 
 .gcv-excursoes-card__out-foot {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: center;
   gap: 0.35rem 0.45rem;
+  min-height: 1.7rem;
   margin: 0.55rem 0 0;
   padding: 0;
   background: none;
