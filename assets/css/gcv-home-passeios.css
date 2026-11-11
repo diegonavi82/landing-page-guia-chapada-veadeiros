@@ -1,4 +1,4 @@
-/* Oito passeios na home, entre o hero e as próximas saídas. */
+/* Oito passeios na home, abaixo das próximas saídas. */
 .gcv-home-passeios[hidden] {
   display: none !important;
 }

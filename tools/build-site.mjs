@@ -1588,7 +1588,7 @@ function homeExcursionsSection(locale) {
   const shellHiddenAttrs = hasStaticRows
     ? ""
     : ' hidden aria-hidden="true" style="display:none"';
-  return `${homePasseiosDestaqueSection(locale)}    <div id="excursoes"></div>
+  return `    <div id="excursoes"></div>
     <section id="excursoes-junho" class="gcv-excursoes" data-locale="${esc(locale)}" aria-labelledby="gcv-excursoes-heading"${shellHiddenAttrs}>
       <script type="application/json" id="gcv-excursoes-payload">${safeJsonLd(excursaoPayloadForSite())}</script>
       <script type="application/json" id="gcv-guia-profiles">${safeJsonLd(guiaProfilesForSite())}</script>
@@ -1611,8 +1611,7 @@ function homeExcursionsSection(locale) {
         </button>
       </div>
     </section>
-
-`;
+${homePasseiosDestaqueSection(locale)}`;
 }
 
 function homePasseiosDestaqueSection(locale) {
