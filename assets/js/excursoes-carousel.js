@@ -306,7 +306,6 @@
       shareTelegram: "Telegram",
       shareCopy: "Copiar link",
       shareCopied: "Link copiado",
-      shareMore: "Outros apps",
       shareClose: "Fechar",
       saidaPrev: "Passeio anterior",
       saidaNext: "Próximo passeio",
@@ -526,7 +525,6 @@
       shareTelegram: "Telegram",
       shareCopy: "Copy link",
       shareCopied: "Link copied",
-      shareMore: "More apps",
       shareClose: "Close",
       saidaPrev: "Previous tour",
       saidaNext: "Next tour",
@@ -746,7 +744,6 @@
       shareTelegram: "Telegram",
       shareCopy: "Copiar enlace",
       shareCopied: "Enlace copiado",
-      shareMore: "Otras apps",
       shareClose: "Cerrar",
       saidaPrev: "Paseo anterior",
       saidaNext: "Siguiente paseo",
@@ -7214,12 +7211,6 @@
       '<button type="button" class="gcv-share-sheet__btn gcv-share-sheet__btn--copy" data-share-copy>' +
       escapeHtml(s.shareCopy || "Copiar link") +
       "</button>";
-    if (navigator.share) {
-      html +=
-        '<button type="button" class="gcv-share-sheet__btn gcv-share-sheet__btn--more" data-share-native>' +
-        escapeHtml(s.shareMore || "Outros apps") +
-        "</button>";
-    }
     if (actions) actions.innerHTML = html;
     sheet._gcvShare = {
       url: url,
@@ -7325,23 +7316,6 @@
           );
         } else if (copyPayload && copyShareText(copyPayload.url)) {
           markShareCopied(copyBtn, copyPayload);
-        }
-        return;
-      }
-
-      var nativeBtn = e.target.closest("[data-share-native]");
-      if (nativeBtn) {
-        e.preventDefault();
-        e.stopPropagation();
-        var nativeSheet = document.getElementById("gcv-share-sheet");
-        var nativePayload = nativeSheet && nativeSheet._gcvShare;
-        if (nativePayload && navigator.share) {
-          navigator
-            .share({ title: nativePayload.title, text: nativePayload.text, url: nativePayload.url })
-            .then(function () {
-              closeShareSheet();
-            })
-            .catch(function () {});
         }
         return;
       }
@@ -8358,14 +8332,8 @@
     }
   }
 
-  function focusSharedSaida(rows) {
-    var id = queryParam("saida");
-    if (!id) return rows || [];
-    var want = saidaPublicId(id);
-    var found = (rows || []).filter(function (row) {
-      return saidaPublicId(excursaoCartId(row)) === want;
-    });
-    return found;
+  function listedExcursoes(rows) {
+    return sortExcursaoByDeparture(filterFutureExcursoes(applyBookingOverlays(rows)));
   }
 
   function bootExcursaoCarousel() {
@@ -8377,7 +8345,7 @@
     var staticRows = resolveStaticExcursaoRows(root, locale);
     var sourceRows = staticRows;
 
-    var allExcursoes = focusSharedSaida(sortExcursaoByDeparture(filterFutureExcursoes(applyBookingOverlays(sourceRows))));
+    var allExcursoes = listedExcursoes(sourceRows);
     if (!allExcursoes.length) {
       hideExcursaoSection(root);
       // Ainda tenta API: pode haver saídas só no MySQL
@@ -8901,7 +8869,7 @@
 
       function refreshBookableFromClock() {
         var source = sourceRows && sourceRows.length ? sourceRows : staticRows;
-        var freshAll = focusSharedSaida(sortExcursaoByDeparture(filterFutureExcursoes(applyBookingOverlays(source))));
+        var freshAll = listedExcursoes(source);
         if (window.GcvExcWaitlist && typeof window.GcvExcWaitlist.checkRowsForOpenedSpots === "function") {
           window.GcvExcWaitlist.checkRowsForOpenedSpots(freshAll, excursaoCartId, vagasDisponiveis);
         }
@@ -8950,7 +8918,7 @@
     } else {
       function refreshWithoutFilters() {
         var source = sourceRows && sourceRows.length ? sourceRows : staticRows;
-        allExcursoes = focusSharedSaida(sortExcursaoByDeparture(filterFutureExcursoes(applyBookingOverlays(source))));
+        allExcursoes = listedExcursoes(source);
         if (!allExcursoes.length) {
           hideExcursaoSection(root);
         } else {
@@ -8986,7 +8954,7 @@
     fetchLiveExcursaoRows(locale, function (liveRows) {
       if (!liveRows || !liveRows.length) return;
       sourceRows = mergeExcursaoRows(staticRows, liveRows);
-      var freshAll = focusSharedSaida(sortExcursaoByDeparture(filterFutureExcursoes(applyBookingOverlays(sourceRows))));
+      var freshAll = listedExcursoes(sourceRows);
       allExcursoes = freshAll;
       if (!allExcursoes.length) {
         hideExcursaoSection(root);

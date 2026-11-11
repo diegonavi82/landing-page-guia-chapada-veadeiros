@@ -7570,8 +7570,7 @@ body:has(.gcv-share-sheet:not([hidden])) {
   color: #0e7490;
 }
 
-.gcv-share-sheet__btn--copy,
-.gcv-share-sheet__btn--more {
+.gcv-share-sheet__btn--copy {
   border: 1px solid #d6d3d1;
   background: #fff;
   color: #1c3a2e;
