@@ -2042,12 +2042,13 @@
 
 .gcv-excursoes-card__book-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto max-content;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   column-gap: 0.35rem;
   width: 100%;
   max-width: 100%;
   min-width: 0;
+  box-sizing: border-box;
 }
 
 .gcv-excursoes-card__book-label {
@@ -2161,18 +2162,20 @@
 
 .gcv-excursoes-card__book-total {
   order: 0;
-  justify-self: end;
+  justify-self: stretch;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   justify-content: center;
   gap: 0.1rem;
-  width: max-content;
-  max-width: none;
-  margin-left: 0;
-  min-width: max-content;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
   white-space: nowrap;
   text-align: right;
+  box-sizing: border-box;
 }
 
 .gcv-excursoes-card__book-total-copy {
@@ -2204,8 +2207,9 @@
 
 .gcv-excursoes-card__book-total .gcv-excursoes-card__price {
   align-self: flex-end;
-  flex-shrink: 0;
-  font-size: clamp(0.95rem, 5.5cqi, 1.15rem);
+  flex-shrink: 1;
+  max-width: 100%;
+  font-size: clamp(0.78rem, 5cqi, 1.1rem);
   font-weight: 900;
   color: #2563eb;
   line-height: 1;
@@ -6042,10 +6046,13 @@ html.gcv-waitlist-modal-open {
 
 .gcv-excursoes__track--day-list .gcv-excursoes-card__book {
   grid-area: book;
-  margin: 0.45rem 0.55rem 0.75rem;
+  margin: 0;
+  padding: 0.45rem 0.75rem 0.75rem;
   align-self: end;
   min-width: 0;
-  max-width: 100%;
+  width: auto;
+  max-width: none;
+  box-sizing: border-box;
 }
 
 .gcv-excursoes__track--day-list .gcv-excursoes-card__block {
@@ -6508,15 +6515,35 @@ html.gcv-waitlist-modal-open {
 
 .gcv-saida-modal .gcv-excursoes__track--day-list {
   width: 100%;
+  max-width: 100%;
   min-width: 0;
   padding: 0;
+  box-sizing: border-box;
+}
+
+.gcv-saida-modal .gcv-saida-modal__slide {
+  flex: 0 0 100%;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .gcv-saida-modal .gcv-excursoes__track--day-list .gcv-excursoes-card {
   flex: 1 1 auto;
   width: 100%;
   min-width: 0;
-  max-width: none;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.gcv-saida-modal .gcv-excursoes-card__book,
+.gcv-saida-modal .gcv-excursoes-card__book-row,
+.gcv-saida-modal .gcv-excursoes-card__book-total,
+.gcv-saida-modal .gcv-excursoes-card__book-total .gcv-excursoes-card__price {
+  max-width: 100%;
+  min-width: 0;
 }
 
 .gcv-saida-modal .gcv-excursoes-card__status-bar {

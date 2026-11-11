@@ -2610,15 +2610,16 @@
     style.id = "gcv-out-foot-css";
     style.textContent =
       ".gcv-excursoes-card__block,.gcv-excursoes-card__block--in,.gcv-excursoes__track--day-list .gcv-excursoes-card__block--in{border-radius:0}" +
-      ".gcv-excursoes-card__book,.gcv-excursoes-card__book-row,.gcv-excursoes__track--day-list .gcv-excursoes-card__book{min-width:0;max-width:100%}" +
-      ".gcv-excursoes-card__book-row{display:grid;grid-template-columns:minmax(0,1fr) auto max-content;align-items:center;column-gap:0.35rem;width:100%;max-width:100%}" +
+      ".gcv-excursoes-card__book,.gcv-excursoes-card__book-row{min-width:0;max-width:100%;box-sizing:border-box}" +
+      ".gcv-excursoes__track--day-list .gcv-excursoes-card__book{margin:0;padding:0.45rem 0.75rem 0.75rem;min-width:0;width:auto;max-width:none;box-sizing:border-box}" +
+      ".gcv-excursoes-card__book-row{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;column-gap:0.35rem;width:100%;max-width:100%}" +
       ".gcv-excursoes-card__book-label{order:0;text-align:left;justify-self:start}" +
       ".gcv-excursoes-card__qty{order:0;justify-self:center}" +
-      ".gcv-excursoes-card__book-total{order:0;justify-self:end;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:0.1rem;margin:0;width:max-content;max-width:none;min-width:max-content;white-space:nowrap;text-align:right}" +
-      ".gcv-excursoes-card__book-total-copy{display:flex;flex-direction:row;align-items:baseline;justify-content:flex-end;gap:0.28rem;line-height:1}" +
+      ".gcv-excursoes-card__book-total{order:0;justify-self:stretch;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:0.1rem;margin:0;width:100%;max-width:100%;min-width:0;overflow:hidden;white-space:nowrap;text-align:right;box-sizing:border-box}" +
+      ".gcv-excursoes-card__book-total-copy{display:flex;flex-direction:row;align-items:baseline;justify-content:flex-end;gap:0.28rem;line-height:1;max-width:100%}" +
       ".gcv-excursoes-card__book-total-label{font-size:0.68rem;font-weight:800;line-height:1;letter-spacing:0.04em;text-transform:uppercase;color:#64748b}" +
       ".gcv-excursoes-card__book-total-pix{font-size:0.58rem;font-weight:700;line-height:1;color:#64748b;text-transform:none;letter-spacing:0.01em}" +
-      ".gcv-excursoes-card__book-total .gcv-excursoes-card__price,.gcv-excursoes-card--pendente .gcv-excursoes-card__book-total .gcv-excursoes-card__price{color:#2563eb!important;align-self:flex-end;flex-shrink:0;line-height:1;font-size:clamp(0.95rem,5.5cqi,1.15rem)}" +
+      ".gcv-excursoes-card__book-total .gcv-excursoes-card__price,.gcv-excursoes-card--pendente .gcv-excursoes-card__book-total .gcv-excursoes-card__price{color:#2563eb!important;align-self:flex-end;flex-shrink:1;max-width:100%;line-height:1;font-size:clamp(0.78rem,5cqi,1.1rem)}" +
       ".gcv-excursoes-card__cart-add{background:#14b8a6;border-color:#0f766e;color:#fff}" +
       ".gcv-excursoes-card__cart-add:hover{background:#0d9488;color:#fff}" +
       ".gcv-excursoes-card__cart-add--added{background:#0f766e;border-color:#0f766e;color:#fff}" +
