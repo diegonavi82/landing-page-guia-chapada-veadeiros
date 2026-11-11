@@ -56,6 +56,7 @@
     if (hash === 'pagar-guias') return 'section-admin-payouts';
     if (hash === 'confirmar-reservas' || hash === 'publicar') return 'section-guide-tours';
     if ((hash.indexOf('passeio/') === 0 || hash.indexOf('relacao/') === 0) && dashLoadMap['section-cms-passeios']) return 'section-cms-passeios';
+    if (hash.indexOf('guiagem/') === 0 && dashLoadMap['section-guide-tours']) return 'section-guide-tours';
     if (dashLoadMap[hash]) return hash;
     var found = '';
     Object.keys(SECTION_HASH).forEach(function (id) {
@@ -68,6 +69,7 @@
     if (!id || dashHashLock) return;
     var cur = String(location.hash || '').replace(/^#/, '').split('?')[0].split('&')[0];
     if (id === 'section-cms-passeios' && (cur.indexOf('passeio/') === 0 || cur.indexOf('relacao/') === 0)) return;
+    if (id === 'section-guide-tours' && cur.indexOf('guiagem/') === 0) return;
     var slug = hashForSection(id);
     if (!slug) return;
     var next = '#' + slug;

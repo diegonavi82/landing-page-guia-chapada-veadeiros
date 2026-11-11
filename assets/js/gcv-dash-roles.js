@@ -3177,6 +3177,7 @@
       guideAgendaState.guiaEspecial = !!(res.data && res.data.guia_especial);
       guideAgendaState.loaded = true;
       paintGuideAgenda();
+      maybeOpenGuideOffer();
       if (typeof window.gcvRefreshGuideMarks === 'function') window.gcvRefreshGuideMarks();
     });
   }
@@ -5093,6 +5094,189 @@
       };
     });
   }
+
+  function guideOfferToken() {
+    var hash = String(location.hash || '').replace(/^#/, '');
+    var m = hash.match(/^guiagem\/([a-f0-9]{32})$/i);
+    return m ? m[1] : '';
+  }
+
+  function offerPopUi() {
+    var all = {
+      pt: {
+        title: 'Aceitar esta guiagem?',
+        close: 'Fechar',
+        accept: 'Aceitar',
+        decline: 'Recusar',
+        dest: 'Destino',
+        when: 'Data',
+        city: 'Cidade',
+        point: 'Ponto de encontro',
+        people: 'Inscritos',
+        price: 'Valor da reserva',
+        code: 'Código',
+        client: 'Cliente',
+        testHint: 'Passeio de teste. Só você recebe esta proposta. Se recusar, nenhum outro guia recebe.',
+        nextHint: 'Se recusar, a proposta passa para outro guia.',
+        stay: 'Se fechar, a proposta continua na sua agenda.',
+        loading: 'Carregando a proposta…',
+        accepted: 'Você já confirmou esta guiagem.',
+        declined: 'Você recusou esta guiagem.',
+        taken: 'A proposta foi aceita por outro guia.'
+      },
+      en: {
+        title: 'Accept this guiding job?',
+        close: 'Close',
+        accept: 'Accept',
+        decline: 'Decline',
+        dest: 'Destination',
+        when: 'Date',
+        city: 'City',
+        point: 'Meeting point',
+        people: 'Guests',
+        price: 'Booking amount',
+        code: 'Code',
+        client: 'Guest',
+        testHint: 'Test tour. Only you receive this offer. If you decline, no other guide receives it.',
+        nextHint: 'If you decline, the offer goes to another guide.',
+        stay: 'If you close this, the offer stays on your schedule.',
+        loading: 'Loading the offer…',
+        accepted: 'You already confirmed this job.',
+        declined: 'You declined this job.',
+        taken: 'Another guide already accepted this offer.'
+      },
+      es: {
+        title: '¿Aceptar esta guiada?',
+        close: 'Cerrar',
+        accept: 'Aceptar',
+        decline: 'Rechazar',
+        dest: 'Destino',
+        when: 'Fecha',
+        city: 'Ciudad',
+        point: 'Punto de encuentro',
+        people: 'Inscritos',
+        price: 'Valor de la reserva',
+        code: 'Código',
+        client: 'Cliente',
+        testHint: 'Paseo de prueba. Solo tú recibes esta propuesta. Si rechazas, ningún otro guía la recibe.',
+        nextHint: 'Si rechazas, la propuesta pasa a otro guía.',
+        stay: 'Si cierras, la propuesta sigue en tu agenda.',
+        loading: 'Cargando la propuesta…',
+        accepted: 'Ya confirmaste esta guiada.',
+        declined: 'Rechazaste esta guiada.',
+        taken: 'Otro guía ya aceptó esta propuesta.'
+      }
+    };
+    return all[profileUiLang()] || all.pt;
+  }
+
+  function closeGuideOffer(keepAgenda) {
+    var pop = document.getElementById('gcv-offer-pop');
+    if (pop) pop.remove();
+    if (!keepAgenda) return;
+    if (!guideOfferToken()) return;
+    try {
+      history.replaceState(null, '', location.pathname + location.search + '#agenda');
+    } catch (err) {
+      location.hash = 'agenda';
+    }
+  }
+
+  function paintGuideOffer(data, ui) {
+    var pop = document.getElementById('gcv-offer-pop');
+    if (!pop) return;
+    var card = pop.querySelector('.gcv-offer-pop__card');
+    if (!card) return;
+    var status = String((data && data.status) || '');
+    var note = status === 'accepted' ? ui.accepted
+      : (status === 'declined' ? ui.declined
+        : (status === 'taken' ? ui.taken : ''));
+    if (note) {
+      card.innerHTML = '<div class="gcv-offer-pop__head"><h2>' + esc(ui.title) + '</h2>'
+        + '<button type="button" class="gcv-offer-pop__x" data-offer-close aria-label="' + esc(ui.close) + '">×</button></div>'
+        + '<p class="gcv-offer-pop__hint">' + esc(note) + '</p>';
+      return;
+    }
+    function line(label, value) {
+      if (!value) return '';
+      return '<div><span>' + esc(label) + '</span><strong>' + esc(value) + '</strong></div>';
+    }
+    var people = data.people ? (data.people + (profileUiLang() === 'en' ? (data.people === 1 ? ' guest' : ' guests') : (data.people === 1 ? ' pessoa' : ' pessoas'))) : '';
+    card.innerHTML = '<div class="gcv-offer-pop__head"><h2>' + esc(ui.title) + '</h2>'
+      + '<button type="button" class="gcv-offer-pop__x" data-offer-close aria-label="' + esc(ui.close) + '">×</button></div>'
+      + '<div class="gcv-offer-pop__lines">'
+      + line(ui.dest, data.title)
+      + line(ui.when, data.when)
+      + line(ui.city, data.city)
+      + line(ui.point, data.meeting_point)
+      + line(ui.people, people)
+      + line(ui.client, data.client_name)
+      + line(ui.price, data.price)
+      + line(ui.code, data.code)
+      + '</div>'
+      + '<p class="gcv-offer-pop__hint">' + esc(data.test ? ui.testHint : ui.nextHint) + ' ' + esc(ui.stay) + '</p>'
+      + '<div class="gcv-offer-pop__actions">'
+      + '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary" data-offer-accept>' + esc(ui.accept) + '</button>'
+      + '<button type="button" class="gcv-dash-btn" data-offer-decline>' + esc(ui.decline) + '</button>'
+      + '</div>';
+  }
+
+  function maybeOpenGuideOffer() {
+    var token = guideOfferToken();
+    if (!token) {
+      closeGuideOffer(false);
+      return;
+    }
+    var ui = offerPopUi();
+    var pop = document.getElementById('gcv-offer-pop');
+    if (!pop) {
+      pop = document.createElement('div');
+      pop.id = 'gcv-offer-pop';
+      pop.className = 'gcv-offer-pop';
+      pop.innerHTML = '<div class="gcv-offer-pop__card" role="dialog" aria-modal="true"><p class="gcv-offer-pop__hint">' + esc(ui.loading) + '</p></div>';
+      pop.addEventListener('click', function (ev) {
+        if (ev.target === pop) closeGuideOffer(true);
+        if (ev.target.closest('[data-offer-close]')) {
+          closeGuideOffer(true);
+          return;
+        }
+        var accept = ev.target.closest('[data-offer-accept]');
+        var decline = ev.target.closest('[data-offer-decline]');
+        if (!accept && !decline) return;
+        var btn = accept || decline;
+        btn.disabled = true;
+        sendJson('POST', '/api/guides/offer.php', {
+          t: guideOfferToken(),
+          action: accept ? 'accept' : 'decline'
+        }, function (err, res) {
+          var hint = pop.querySelector('.gcv-offer-pop__hint');
+          if (!res || !res.ok) {
+            if (hint) hint.textContent = (res && res.error) || ui.loading;
+            btn.disabled = false;
+            return;
+          }
+          closeGuideOffer(true);
+          loadGuideAgenda();
+          if (res.data && res.data.message && window.gcvAlert) window.gcvAlert(res.data.message);
+        });
+      });
+      document.body.appendChild(pop);
+    }
+    get('/api/guides/offer.php?t=' + encodeURIComponent(token), function (err, res) {
+      if (!guideOfferToken()) return;
+      if (!res || !res.ok) {
+        paintGuideOffer({ status: 'declined' }, ui);
+        var hint = pop.querySelector('.gcv-offer-pop__hint');
+        if (hint && res && res.error) hint.textContent = res.error;
+        return;
+      }
+      paintGuideOffer(res.data || {}, ui);
+    });
+  }
+
+  window.addEventListener('hashchange', function () {
+    if (document.getElementById('guide-tours-list')) maybeOpenGuideOffer();
+  });
 
   global.GcvDashRoles = {
     loadGuideProfile: loadGuideProfile,

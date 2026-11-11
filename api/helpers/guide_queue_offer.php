@@ -238,7 +238,7 @@ function gcv_guiagem_new_token(): string
 
 function gcv_guiagem_offer_url(string $token): string
 {
-    return 'https://www.guiachapadaveadeiros.com/api/guides/accept-offer.php?t=' . rawurlencode($token);
+    return 'https://www.guiachapadaveadeiros.com/dashboard/?as=guide#guiagem/' . rawurlencode($token);
 }
 
 function gcv_guiagem_ensure_offer_token(int $excursionId, int $guideId): string
@@ -1768,12 +1768,19 @@ function gcv_guiagem_decline(int $excursionId, int $guideId): array
     } elseif ($picked) {
         gcv_guiagem_notify_new_purchase($excursionId, array_map(static fn ($g) => (int)$g['id'], $picked));
     }
+    if ($wasVehicle) {
+        $message = 'Você recusou esta proposta. Ela continua disponível para os outros guias com veículo.';
+    } elseif ($tour && gcv_guiagem_tour_is_teste($tour)) {
+        $message = 'Você recusou este passeio de teste. Nenhum outro guia recebe esta proposta.';
+    } elseif ($picked) {
+        $message = 'Você recusou. A proposta passou para outro guia.';
+    } else {
+        $message = 'Você recusou esta guiagem. Sua posição na fila não mudou.';
+    }
     return [
         'ok' => true,
         'result' => 'declined',
-        'message' => $wasVehicle
-            ? 'Você recusou esta proposta. Ela continua disponível para os outros guias com veículo.'
-            : 'Você recusou esta guiagem. Sua posição na fila não mudou.',
+        'message' => $message,
     ];
 }
 

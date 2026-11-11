@@ -1447,8 +1447,8 @@ function gcv_ops_aviso_saida_linhas(int $excursionId, array $exc): string
     $lines[] = 'Inscritos: ' . gcv_ops_pessoas((int)$g['platform']);
     if (!$privado) {
         $lines[] = 'Quórum: ' . gcv_ops_quorum_text(max(0, (int)($exc['quorum'] ?? 0)));
+        $lines[] = 'Grupo total: ' . $g['total'] . '/' . $g['max'] . ' ' . $inscritosWord;
     }
-    $lines[] = 'Grupo total: ' . $g['total'] . '/' . $g['max'] . ' ' . $inscritosWord;
     if ($privado) {
         $lines[] = 'Valor da reserva: ' . gcv_ops_brl((int)$g['cents']);
     } else {
@@ -2443,7 +2443,50 @@ function gcv_ops_notify_client_confirmed(array $sale, array $exc): void
     $point = trim((string)($exc['meeting_point'] ?? $exc['departure_city_name'] ?? ''));
     $guideId = (int)($sale['guide_user_id'] ?? $exc['guide_user_id'] ?? 0);
     $guideBlock = gcv_ops_guide_public_block($sale, $exc, $loc, true);
-    if ($loc === 'en') {
+    $clientName = trim((string)($sale['tourist_name'] ?? ''));
+    $clientEmail = trim((string)($sale['tourist_email'] ?? ''));
+    $clientPhone = gcv_ops_format_phone_display(gcv_ops_client_phone($sale));
+    $privado = gcv_excursion_is_private($exc);
+    if ($privado) {
+        $point = gcv_ops_ponto_encontro($exc);
+    }
+    if ($privado && $loc === 'en') {
+        $text = "✅ Your private tour is confirmed\n\n"
+            . "The guide accepted this booking.\n\n"
+            . 'Guest: ' . ($clientName !== '' ? $clientName : 'Guest') . "\n"
+            . ($clientEmail !== '' ? 'Email: ' . $clientEmail . "\n" : '')
+            . ($clientPhone !== '' ? 'Phone: ' . $clientPhone . "\n" : '')
+            . 'Tour: ' . $title . "\n"
+            . ($when !== '' ? 'When: ' . $when . "\n" : '')
+            . ($point !== '' ? 'Meeting point: ' . $point . "\n" : '')
+            . 'People: ' . $pax . "\n"
+            . 'Code: ' . $code . "\n\n"
+            . $guideBlock;
+    } elseif ($privado && $loc === 'es') {
+        $text = "✅ Tu paseo privado está confirmado\n\n"
+            . "El guía aceptó esta reserva.\n\n"
+            . 'Cliente: ' . ($clientName !== '' ? $clientName : 'Cliente') . "\n"
+            . ($clientEmail !== '' ? 'Correo: ' . $clientEmail . "\n" : '')
+            . ($clientPhone !== '' ? 'Teléfono: ' . $clientPhone . "\n" : '')
+            . 'Paseo: ' . $title . "\n"
+            . ($when !== '' ? 'Cuándo: ' . $when . "\n" : '')
+            . ($point !== '' ? 'Punto de encuentro: ' . $point . "\n" : '')
+            . 'Personas: ' . $pax . "\n"
+            . 'Código: ' . $code . "\n\n"
+            . $guideBlock;
+    } elseif ($privado) {
+        $text = "✅ Seu privativo está confirmado\n\n"
+            . "O guia aceitou esta guiagem.\n\n"
+            . 'Cliente: ' . ($clientName !== '' ? $clientName : 'Cliente') . "\n"
+            . ($clientEmail !== '' ? 'E-mail: ' . $clientEmail . "\n" : '')
+            . ($clientPhone !== '' ? 'Telefone: ' . $clientPhone . "\n" : '')
+            . 'Destino: ' . $title . "\n"
+            . ($when !== '' ? 'Data: ' . $when . "\n" : '')
+            . ($point !== '' ? 'Ponto de encontro: ' . $point . "\n" : '')
+            . 'Inscritos: ' . $pax . "\n"
+            . 'Código: ' . $code . "\n\n"
+            . $guideBlock;
+    } elseif ($loc === 'en') {
         $text = "🎉 Your tour is CONFIRMED (group complete)!\n\n"
             . "This tour can no longer be cancelled.\n\n"
             . 'Tour: ' . $title . "\n"
