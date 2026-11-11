@@ -4,7 +4,7 @@ declare(strict_types=1);
 /**
  * Campanha de indicação.
  * O convite vai por telefone (DDI + número, como no perfil) ou por e-mail.
- * Os dois recebem a mesma URL. 1 ponto e o valor por pessoa saem no primeiro passeio pago.
+ * Os dois recebem a mesma URL. O ponto sai só para o guia; o valor por pessoa sai no primeiro passeio pago.
  */
 
 require_once __DIR__ . '/db.php';
@@ -928,7 +928,7 @@ function gcv_referral_panel(int $userId): array
 {
     gcv_referral_ensure_schema();
     $st = db()->prepare(
-        'SELECT id, code, phone, email, referred_user_id, date_from, date_to, cashback_cents, earned_cents, people, status, rewarded_at, created_at
+        'SELECT id, code, phone, email, referred_user_id, referrer_role, date_from, date_to, cashback_cents, earned_cents, people, status, rewarded_at, created_at
          FROM gcv_referrals WHERE referrer_user_id = ? ORDER BY id DESC LIMIT 50'
     );
     $st->execute([$userId]);
@@ -963,8 +963,8 @@ function gcv_referral_panel(int $userId): array
         ];
     }
     $points = 0;
-    foreach ($items as $item) {
-        if ($item['status'] === 'rewarded') {
+    foreach ($rows as $row) {
+        if ((string)$row['status'] === 'rewarded' && (string)($row['referrer_role'] ?? '') === 'guide') {
             $points++;
         }
     }

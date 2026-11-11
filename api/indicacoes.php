@@ -19,6 +19,7 @@ if ($method === 'GET') {
     if ($role !== 'guide') {
         $panel['ranking'] = [];
         $panel['position'] = null;
+        $panel['points'] = 0;
     }
     $panel['lang'] = in_array((string)($user['lang'] ?? 'pt'), ['pt', 'en', 'es'], true)
         ? (string)$user['lang']

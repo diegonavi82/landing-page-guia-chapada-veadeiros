@@ -7,6 +7,7 @@
       loading: "Carregando…",
       fail: "Não foi possível carregar agora.",
       lead: "Indique um telefone com DDI ou um e-mail. No primeiro passeio pago, você ganha 1 ponto e o valor por pessoa do tarifário.",
+      leadClient: "Indique um telefone com DDI ou um e-mail. No primeiro passeio pago, você ganha o valor por pessoa do tarifário.",
       viaWa: "Enviado no WhatsApp",
       viaMail: "Enviado por e-mail",
       bought: "Compra fechada",
@@ -63,6 +64,7 @@
       loading: "Loading…",
       fail: "Could not load this right now.",
       lead: "Refer a phone number with country code, or an email. On their first paid tour, you earn 1 point and the per-person amount from the price list.",
+      leadClient: "Refer a phone number with country code, or an email. On their first paid tour, you earn the per-person amount from the price list.",
       viaWa: "Sent on WhatsApp",
       viaMail: "Sent by email",
       bought: "Purchase closed",
@@ -119,6 +121,7 @@
       loading: "Cargando…",
       fail: "No se pudo cargar ahora.",
       lead: "Indica un teléfono con código de país, o un correo. En su primer paseo pago, ganas 1 punto y el valor por persona del tarifario.",
+      leadClient: "Indica un teléfono con código de país, o un correo. En su primer paseo pago, ganas el valor por persona del tarifario.",
       viaWa: "Enviado por WhatsApp",
       viaMail: "Enviado por correo",
       bought: "Compra cerrada",
@@ -279,10 +282,10 @@
           }).join("") + "</ol>"
         : '<p class="gcv-ind__note">' + esc(t("rankEmpty")) + "</p>");
     root.innerHTML =
-      '<p class="gcv-ind__note">' + esc(t("lead")) + "</p>" +
+      '<p class="gcv-ind__note">' + esc(isGuide ? t("lead") : t("leadClient")) + "</p>" +
       '<div class="gcv-ind__cards">' +
         '<div class="gcv-ind__card"><span>' + esc(t("balance")) + '</span><strong>' + esc(money(data.balance_cents, uiLang)) + "</strong></div>" +
-        '<div class="gcv-ind__card"><span>' + esc(t("points")) + "</span><strong>" + esc(data.points || 0) + "</strong></div>" +
+        (isGuide ? '<div class="gcv-ind__card"><span>' + esc(t("points")) + "</span><strong>" + esc(data.points || 0) + "</strong></div>" : "") +
         (isGuide ? '<div class="gcv-ind__card"><span>' + esc(t("place")) + "</span><strong>" + esc(data.position || t("none")) + "</strong></div>" : "") +
       "</div>" +
       '<form class="gcv-dash-form" id="gcv-ind-form">' +
