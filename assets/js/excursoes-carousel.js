@@ -8316,7 +8316,7 @@
   function fetchLiveExcursaoRows(locale, cb) {
     try {
       var xhr = new XMLHttpRequest();
-      xhr.open("GET", "/api/excursions/carousel.php", true);
+      xhr.open("GET", "/api/excursions/carousel.php?t=" + Date.now(), true);
       xhr.withCredentials = true;
       xhr.timeout = 8000;
       xhr.onload = function () {

@@ -27,11 +27,10 @@ try {
 
 header('Content-Type: application/json; charset=utf-8');
 header('Vary: Cookie');
-if ($verTeste) {
-    header('Cache-Control: private, no-store');
-} else {
-    header('Cache-Control: public, max-age=60');
-}
+header('Cache-Control: private, no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+header('Expires: 0');
+header('X-LiteSpeed-Cache-Control: no-cache');
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') {
     json_response(false, null, 'Método não permitido', 405);
