@@ -5417,9 +5417,47 @@ html.gcv-waitlist-modal-open {
   grid-area: view;
 }
 
-/* Mobile/tablet: arraste; desktop: setas laterais */
+/* Setas sobre os cards, em qualquer largura, quando ainda há passeio ao lado. */
 .gcv-excursoes__shell--by-date .gcv-excursoes__nav {
+  display: inline-flex !important;
+  grid-area: view;
+  align-self: center;
+  z-index: 6;
+  width: 2.75rem;
+  height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  background: #047857;
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.28);
+  cursor: pointer;
+}
+
+.gcv-excursoes__shell--by-date .gcv-excursoes__nav .ti {
+  font-size: 1.5rem;
+  color: #fff;
+}
+
+.gcv-excursoes__shell--by-date .gcv-excursoes__nav--prev {
+  justify-self: start;
+  margin-left: 0.35rem;
+}
+
+.gcv-excursoes__shell--by-date .gcv-excursoes__nav--next {
+  justify-self: end;
+  margin-right: 0.35rem;
+}
+
+.gcv-excursoes__shell--by-date .gcv-excursoes__nav[hidden] {
   display: none !important;
+}
+
+.gcv-excursoes__shell--by-date .gcv-excursoes__nav:disabled {
+  opacity: 0.32;
+  cursor: default;
+  pointer-events: none;
 }
 
 @media (min-width: 1024px) {
@@ -5435,6 +5473,9 @@ html.gcv-waitlist-modal-open {
   .gcv-excursoes__shell--by-date .gcv-excursoes__nav {
     display: inline-flex !important;
     align-self: center;
+    grid-area: auto;
+    width: 2.85rem;
+    height: 2.85rem;
   }
 
   .gcv-excursoes__shell--by-date .gcv-excursoes__nav[hidden] {
@@ -5443,10 +5484,14 @@ html.gcv-waitlist-modal-open {
 
   .gcv-excursoes__shell--by-date .gcv-excursoes__nav--prev {
     grid-area: prev;
+    justify-self: center;
+    margin-left: 0;
   }
 
   .gcv-excursoes__shell--by-date .gcv-excursoes__nav--next {
     grid-area: next;
+    justify-self: center;
+    margin-right: 0;
   }
 }
 
@@ -5615,32 +5660,6 @@ html.gcv-waitlist-modal-open {
   background: #047857;
   border: 2px solid #e7e5e4;
   border-radius: 999px;
-}
-
-.gcv-excursoes__shell--by-date::before,
-.gcv-excursoes__shell--by-date::after {
-  content: "";
-  grid-area: view;
-  align-self: stretch;
-  width: 2.75rem;
-  pointer-events: none;
-  z-index: 4;
-  opacity: 0;
-}
-
-.gcv-excursoes__shell--by-date::before {
-  justify-self: start;
-  background: linear-gradient(90deg, #fff 10%, rgba(255, 255, 255, 0));
-}
-
-.gcv-excursoes__shell--by-date::after {
-  justify-self: end;
-  background: linear-gradient(270deg, #fff 10%, rgba(255, 255, 255, 0));
-}
-
-.gcv-excursoes__shell--by-date.is-more-left::before,
-.gcv-excursoes__shell--by-date.is-more-right::after {
-  opacity: 1;
 }
 
 .gcv-excursoes__track--day-list {
