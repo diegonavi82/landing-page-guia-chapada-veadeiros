@@ -17,7 +17,6 @@
       dayHint: "Só um passeio por dia. A data, as pessoas, a cidade e o transporte ficam na janela que abre ao adicionar.",
       all: "Todos",
       allCities: "Todas",
-      type: "Tipo",
       cities: "Cidades de embarque",
       search: "Procurar",
       departures: "Saídas de:",
@@ -45,7 +44,6 @@
       dayHint: "One tour per day. Date, people, city and transfer are in the window that opens when you add.",
       all: "All",
       allCities: "All",
-      type: "Type",
       cities: "Departure cities",
       search: "Search",
       departures: "Departing from:",
@@ -73,7 +71,6 @@
       dayHint: "Un solo paseo por día. La fecha, las personas, la ciudad y el transporte quedan en la ventana que se abre al agregar.",
       all: "Todos",
       allCities: "Todas",
-      type: "Tipo",
       cities: "Ciudades de salida",
       search: "Buscar",
       departures: "Salidas desde:",
@@ -444,14 +441,13 @@
       "<div><p class=\"gcv-shop__kicker\">" + esc(copy.kicker) + "</p><h1>" + esc(copy.title) + "</h1></div>" +
       "</div>" +
       '<div class="gcv-shop__bars">' +
-      '<div class="gcv-shop__bar"><p class="gcv-shop__bar-label">' + esc(copy.type) + "</p>" +
-      '<div class="gcv-shop__filters">' + buttons + "</div></div>" +
       '<div class="gcv-shop__tools">' +
       '<div data-shop-cities></div>' +
       '<label class="gcv-shop__search">' +
       '<span class="gcv-shop__search-field">' + lupa +
       '<input type="search" data-shop-search enterkeyhint="search" autocomplete="off" placeholder="' + esc(copy.search) + '" aria-label="' + esc(copy.search) + '" />' +
       "</span></label></div>" +
+      '<div class="gcv-shop__bar"><div class="gcv-shop__filters">' + buttons + "</div></div>" +
       "</div>" +
       '<div class="gcv-shop__grid" data-shop-grid></div>';
     marcarFiltro("[data-shop-filter]", filter);
