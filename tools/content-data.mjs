@@ -523,7 +523,7 @@ export const HOME_SEO = {
     desc: "Passeios exclusivos e compartilhados na Chapada dos Veadeiros com guia local. Conheça as melhores cachoeiras e reserve online com vaga garantida.",
     keywords:
       "chapada dos veadeiros, passeios na chapada dos veadeiros, guia chapada veadeiros, contratar guia na chapada dos veadeiros, guia local alto paraíso, parque nacional chapada dos veadeiros",
-    ogImageAlt: "Emblema da arara ao lado de um grupo em passeio com guia diante de uma cachoeira na Chapada dos Veadeiros",
+    ogImageAlt: "Emblema da arara do Guia Chapada Veadeiros",
     heroAlt: "Grupo em passeio exclusivo com guia diante de uma cachoeira na Chapada dos Veadeiros",
     chip: "Chapada dos Veadeiros · Goiás",
     h2: "Passeios e guia local na Chapada dos Veadeiros",
@@ -579,7 +579,7 @@ export const HOME_SEO = {
     desc: "Private and shared tours in Chapada dos Veadeiros with a local guide. See the best waterfalls and book online with a guaranteed spot.",
     keywords:
       "chapada dos veadeiros, chapada dos veadeiros tours, chapada veadeiros guide, hire a guide in chapada dos veadeiros, local guide alto paraiso, chapada national park",
-    ogImageAlt: "Macaw emblem beside a group on a guided tour in front of a waterfall in Chapada dos Veadeiros",
+    ogImageAlt: "Macaw emblem of Guia Chapada Veadeiros",
     heroAlt: "Group on a private tour with a guide in front of a waterfall in Chapada dos Veadeiros",
     chip: "Chapada dos Veadeiros · Brazil",
     h2: "Tours and a local guide in Chapada dos Veadeiros",
@@ -635,7 +635,7 @@ export const HOME_SEO = {
     desc: "Paseos exclusivos y compartidos en la Chapada dos Veadeiros con guía local. Conoce las mejores cascadas y reserva online con plaza garantizada.",
     keywords:
       "chapada dos veadeiros, paseos en chapada dos veadeiros, guía chapada veadeiros, contratar guía en chapada dos veadeiros, guía local alto paraíso, parque nacional chapada dos veadeiros",
-    ogImageAlt: "Emblema de la guacamaya junto a un grupo en un paseo con guía frente a una cascada en la Chapada dos Veadeiros",
+    ogImageAlt: "Emblema de la guacamaya de Guia Chapada Veadeiros",
     heroAlt: "Grupo en un paseo exclusivo con guía frente a una cascada en la Chapada dos Veadeiros",
     chip: "Chapada dos Veadeiros · Brasil",
     h2: "Excursiones y guía local en Chapada dos Veadeiros",

@@ -2061,7 +2061,7 @@ const HERO_OFFER_BASE = {
   online: "reserva-online-passeios-chapada-dos-veadeiros",
 };
 
-const HERO_OG_IMAGE = "og/home-arara-grupo.jpg";
+const HERO_OG_IMAGE = "og/home-arara.jpg";
 
 function heroOfferHref(kind) {
   if (kind === "exclusivo") return "?tipo=exclusivo#excursoes";
@@ -3354,8 +3354,8 @@ for (const locale of LOCALES) {
     let ogImageHeight;
     if (pk === "") {
       og = HERO_OG_IMAGE;
-      ogImageWidth = 1200;
-      ogImageHeight = 630;
+      ogImageWidth = 1073;
+      ogImageHeight = 1200;
     } else if (og === HERO_SLIDE_OG) {
       ogImageWidth = 1600;
       ogImageHeight = 900;
