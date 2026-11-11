@@ -33,6 +33,9 @@ Options -Indexes
   # MCP streamable HTTP
   RewriteRule ^mcp/?$ /mcp/index.php [L]
 
+  # Link headers com aspas reais (o LiteSpeed não remove a barra de \")
+  RewriteRule ^ - [E=GCV_LINK_LLMS:<https://www.guiachapadaveadeiros.com/llms.txt>;rel="describedby";type="text/markdown",E=GCV_LINK_MD:<https://www.guiachapadaveadeiros.com/index.md>;rel="alternate";type="text/markdown"]
+
   # Bloquear acesso direto a vendor
   RewriteRule ^api/vendor/ - [F,L]
 
@@ -57,10 +60,8 @@ AddType application/json .json
   Header set X-Content-Type-Options "nosniff"
   Header set Referrer-Policy "strict-origin-when-cross-origin"
   Header always set X-XSS-Protection "1; mode=block"
-
-  # RFC 8288: llms.txt e a versão Markdown da home
-  <FilesMatch "\.(html|md)$">
-    Header add Link "<https://www.guiachapadaveadeiros.com/llms.txt>; rel=\"describedby\"; type=\"text/markdown\""
-    Header add Link "<https://www.guiachapadaveadeiros.com/index.md>; rel=\"alternate\"; type=\"text/markdown\""
-  </FilesMatch>
+  Header add Link "%{GCV_LINK_LLMS}e" env=GCV_LINK_LLMS
+  Header add Link "%{GCV_LINK_MD}e" env=GCV_LINK_MD
+  Header add Link "%{REDIRECT_GCV_LINK_LLMS}e" env=REDIRECT_GCV_LINK_LLMS
+  Header add Link "%{REDIRECT_GCV_LINK_MD}e" env=REDIRECT_GCV_LINK_MD
 </IfModule>
