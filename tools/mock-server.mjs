@@ -4035,16 +4035,6 @@ const API_ROUTES = {
     },
   }),
 
-  "/api/client/excursions.php": () => ({
-    ok: true,
-    data: {
-      min_quorum: 4,
-      attractions: MOCK_ATTRACTIONS,
-      cities: MOCK_CITIES,
-      my_proposals: [],
-    },
-  }),
-
   "/api/bookings/list.php": () => ({
     ok: true,
     data: {
@@ -4763,14 +4753,13 @@ const server = http.createServer((req, res) => {
       (urlPath === "/api/guides/me-profile.php" ||
         urlPath === "/api/client/profile.php" ||
         urlPath === "/api/guides/excursions.php" ||
-        urlPath === "/api/client/excursions.php" ||
         urlPath === "/api/bookings/cancel.php") &&
       (req.method === "POST" || req.method === "PUT")
     ) {
       readJsonBody(req)
         .then((data) => {
           console.log("[mock]", req.method, urlPath, data || {});
-          if (urlPath === "/api/guides/excursions.php" || urlPath === "/api/client/excursions.php") {
+          if (urlPath === "/api/guides/excursions.php") {
             const recusa = anfitriaoApi().recusaExcursao(data || {});
             if (recusa) {
               res.writeHead(422, { "Content-Type": "application/json; charset=utf-8" });

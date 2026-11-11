@@ -5090,113 +5090,6 @@
     });
   }
 
-  function loadClientPublish() {
-    var root = document.getElementById('client-publish-root');
-    if (!root) return;
-    root.innerHTML = 'Carregando…';
-    get('/api/client/excursions.php', function (err, res) {
-      if (!res || !res.ok) {
-        root.innerHTML = '<p class="gcv-dash-alert">Erro ao carregar.</p>';
-        return;
-      }
-      var d = res.data || {};
-      var attrs = sortAttractionsCatalog(d.attractions || []);
-      var cities = d.cities || [];
-      var minQ = d.min_quorum != null ? parseFiniteInt(d.min_quorum, MIN_QUORUM) : MIN_QUORUM;
-      var maxQ = d.max_quorum != null ? parseFiniteInt(d.max_quorum, MAX_PEOPLE_CAP) : MAX_PEOPLE_CAP;
-      var maxCap = d.max_people_cap != null ? parseFiniteInt(d.max_people_cap, MAX_PEOPLE_CAP) : MAX_PEOPLE_CAP;
-      var proposals = d.my_proposals || [];
-
-      root.innerHTML =
-        '<p class="gcv-dash-hint" style="margin:0 0 1rem;color:#64748b;">Você define o <strong>valor por pessoa</strong>. A proposta fica em rascunho até o admin atribuir o guia e publicar.</p>' +
-        '<form class="gcv-dash-form" id="client-pub-form">' +
-        '<div class="gcv-dash-field"><label class="gcv-dash-label">Atrativo *</label>' +
-        attractionComboboxHtml('ce-attr-q', 'ce-attr', 'ce-attr-suggest') +
-        '</div>' +
-        '<div class="gcv-dash-field-row">' +
-        '<div class="gcv-dash-field"><label class="gcv-dash-label">Data *</label><input class="gcv-dash-input" type="date" id="ce-date" /></div>' +
-        '<div class="gcv-dash-field"><label class="gcv-dash-label">Horário de saída *</label>' +
-        timeSelectHtml('ce-time-h', 'ce-time-m', '10:15') + '</div>' +
-        '</div>' +
-        '<div class="gcv-dash-field"><label class="gcv-dash-label">Saída *</label><select class="gcv-dash-select" id="ce-city">' +
-        '<option value="">Selecione…</option>' +
-        cities.map(function (c) { return '<option value="' + c.id + '">' + esc(c.name) + '</option>'; }).join('') +
-        '</select></div>' +
-        '<div class="gcv-dash-field"><label class="gcv-dash-label">Valor por pessoa (R$) *</label>' +
-        '<input class="gcv-dash-input" type="number" min="1" step="0.01" id="ce-price" /></div>' +
-        confirmedQuorumRowHtml('ce-', false) +
-        '<div class="gcv-dash-field"><label class="gcv-dash-label">Vagas</label>' +
-        '<input class="gcv-dash-input" type="number" min="1" max="' + maxCap + '" value="' + DEFAULT_MAX_PEOPLE + '" id="ce-max" /></div>' +
-        '<button type="submit" class="gcv-dash-btn gcv-dash-btn--primary">Enviar proposta</button>' +
-        '<div id="ce-msg" class="gcv-dash-alert" hidden style="margin-top:1rem;"></div></form>' +
-        '<h3 style="margin:1.5rem 0 0.75rem;font-size:1.05rem;">Minhas propostas</h3>' +
-        (proposals.length
-          ? proposals.map(function (e) {
-            return '<article class="gcv-cms-row"><div><strong>' + esc(e.date_iso) + ' · ' + esc(e.attraction_title || '') +
-              '</strong><div class="gcv-cms-muted">' + money(e.price_cents) + ' · ' + esc(e.status) +
-              (e.guide_name ? ' · guia: ' + esc(e.guide_name) : ' · aguardando guia') + '</div></div>' +
-              lifeBadge(e.lifecycle, e.lifecycle_label) + '</article>';
-          }).join('')
-          : '<p class="gcv-cms-muted">Nenhuma proposta ainda.</p>');
-
-      bindAttractionCombobox('ce-attr-q', 'ce-attr', 'ce-attr-suggest', attrs);
-      bindConfirmedYesNo('ce-');
-      if (typeof global.gcvBindDatePicker === 'function') {
-        global.gcvBindDatePicker(document.getElementById('ce-date'), {
-          min: typeof global.gcvTodayIso === 'function' ? global.gcvTodayIso() : ''
-        });
-      }
-      clampField(document.getElementById('ce-max'), 1, maxCap, DEFAULT_MAX_PEOPLE);
-      var ceMax = document.getElementById('ce-max');
-      if (ceMax) {
-        ceMax.addEventListener('change', function () { syncWalkQuorumFromVagas('ce-'); });
-      }
-      syncWalkQuorumFromVagas('ce-');
-
-      document.getElementById('client-pub-form').onsubmit = function (ev) {
-        ev.preventDefault();
-        var price = parseFloat(document.getElementById('ce-price').value);
-        var attrId = parseInt(document.getElementById('ce-attr').value, 10) || 0;
-        var msg = document.getElementById('ce-msg');
-        if (!attrId) {
-          if (msg) {
-            msg.hidden = false;
-            msg.className = 'gcv-dash-alert gcv-dash-alert--warning';
-            msg.textContent = 'Selecione um passeio da lista.';
-          }
-          return;
-        }
-        var time = readTimeSelect('ce-time-h', 'ce-time-m');
-        if (!time) {
-          if (msg) {
-            msg.hidden = false;
-            msg.className = 'gcv-dash-alert gcv-dash-alert--warning';
-            msg.textContent = 'Informe o horário de saída.';
-          }
-          return;
-        }
-        sendJson('POST', '/api/client/excursions.php', {
-          attraction_id: attrId,
-          date_iso: document.getElementById('ce-date').value,
-          departure_time: time,
-          departure_city_id: parseInt(document.getElementById('ce-city').value, 10) || 0,
-          price_cents: Math.round((price || 0) * 100),
-          quorum: isTourConfirmed('ce-')
-            ? 0
-            : clampRange(parseFiniteInt(document.getElementById('ce-quorum').value, DEFAULT_QUORUM), 1, clampRange(parseFiniteInt(document.getElementById('ce-max').value, DEFAULT_MAX_PEOPLE), 1, maxCap)),
-          max_people: clampRange(parseFiniteInt(document.getElementById('ce-max').value, DEFAULT_MAX_PEOPLE), 1, maxCap),
-        }, function (e, r) {
-          var msg = document.getElementById('ce-msg');
-          if (!msg) return;
-          msg.hidden = false;
-          msg.className = 'gcv-dash-alert ' + (r && r.ok ? 'gcv-dash-alert--info' : 'gcv-dash-alert--warning');
-          msg.textContent = (r && r.ok) ? ((r.data && r.data.message) || 'Enviado!') : ((r && r.error) || 'Erro');
-          if (r && r.ok) loadClientPublish();
-        });
-      };
-    });
-  }
-
   global.GcvDashRoles = {
     loadGuideProfile: loadGuideProfile,
     loadGuideAgenda: loadGuideAgenda,
@@ -5207,7 +5100,6 @@
     loadClientUpcoming: loadClientUpcoming,
     loadClientBookings: loadClientBookingsEnhanced,
     loadClientProfile: loadClientProfile,
-    loadClientPublish: loadClientPublish,
     openCheckinScanner: openCheckinScanner,
     consumeCheckinHash: consumeCheckinHash,
   };

@@ -37,7 +37,6 @@
     'section-guide-ranking': 'ranking',
     'section-client-tours': 'passeios',
     'section-client-bookings': 'reservas',
-    'section-client-publish': 'propor',
     'section-client-profile': 'perfil',
     'section-inbox': 'notificacoes'
   };
@@ -2395,7 +2394,6 @@
         { href: homeHref(), icon: '🏠', label: homeLabel() },
         { id: 'section-client-tours',    icon: '🌿', label: 'Próximos passeios', load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadClientUpcoming(); } },
         { id: 'section-client-bookings', icon: '📋', label: 'Minhas reservas',   load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadClientBookings(); } },
-        { id: 'section-client-publish',  icon: '➕', label: 'Propor excursão',   load: function () { if (window.GcvDashRoles) window.GcvDashRoles.loadClientPublish(); } },
         { id: 'section-inbox',           icon: '🔔', label: 'Notificações',      load: function () { if (window.GcvInbox) window.GcvInbox.open(); } },
         { id: 'section-indicacoes',      icon: '🎁', label: indicacaoLabel(),   load: function () { if (window.GcvIndicacoes) window.GcvIndicacoes.open(); } },
       ];
