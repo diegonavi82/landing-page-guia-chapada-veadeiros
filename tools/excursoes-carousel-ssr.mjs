@@ -145,6 +145,7 @@ const SSR = {
     badgeTransport: "Com transporte",
     exclLabel: "Não incluso",
     exclEntries: "Ingresso",
+    exclEntriesShort: "Entradas",
     exclEntriesMany: "Ingressos",
     exclEntry: "Entrada",
     exclTransport: "Transporte",
@@ -201,6 +202,7 @@ const SSR = {
     badgeTransport: "With transport",
     exclLabel: "Not included",
     exclEntries: "Admission",
+    exclEntriesShort: "Tickets",
     exclEntriesMany: "Admissions",
     exclEntry: "Admission",
     exclTransport: "Transport",
@@ -257,6 +259,7 @@ const SSR = {
     badgeTransport: "Con transporte",
     exclLabel: "No incluye",
     exclEntries: "Entrada",
+    exclEntriesShort: "Entradas",
     exclEntriesMany: "Entradas",
     exclEntry: "Entrada",
     exclTransport: "Transporte",
@@ -711,11 +714,26 @@ function ingressoExclItemsSsr(e, s, locale, inclEntradas) {
   return `<li><i class="ti ti-ticket text-no" aria-hidden="true"></i> ${ingressoExcl}</li>`;
 }
 
+function naoInclusoFootSsr(e, s) {
+  let items = "";
+  if (e.comTransporte !== true) {
+    items += `<li><i class="ti ti-bus" aria-hidden="true"></i> ${esc(s.exclTransport || "Transporte")}</li>`;
+  }
+  if (e.inclEntradas !== true) {
+    items += `<li><i class="ti ti-ticket" aria-hidden="true"></i> ${esc(s.exclEntriesShort || "Entradas")}</li>`;
+  }
+  if (!items) return "";
+  return (
+    '<div class="gcv-excursoes-card__out-foot">' +
+    `<span class="gcv-excursoes-card__label gcv-excursoes-card__label--out">${esc(s.exclLabel || "Não incluso")}</span>` +
+    `<ul class="gcv-excursoes-card__out-list">${items}</ul></div>`
+  );
+}
+
 function inclExclBlocksSsr(e, s, locale) {
   const comTransporte = e.comTransporte === true;
   const inclEntradas = e.inclEntradas === true;
   const ingressoIncl = esc(formatIngressoWithValor(s.inclEntries, e.valorIngresso, locale));
-  const ingressoExclItems = ingressoExclItemsSsr(e, s, locale, inclEntradas);
   let inclItems =
     `<li><i class="ti ti-user text-ok" aria-hidden="true"></i> ${esc(s.inclSpot)}</li>` +
     `<li class="gcv-excursoes-card__guide-slot">${guiaChipSsr(e, locale)}</li>` +
@@ -729,28 +747,11 @@ function inclExclBlocksSsr(e, s, locale) {
   if (e.inclLanterna) {
     inclItems += `<li><i class="ti ti-bulb text-ok" aria-hidden="true"></i> ${esc(s.inclLanterna)}</li>`;
   }
-  let exclItems;
-  const lunchItem = `<li><i class="ti ti-tools-kitchen-2 text-no" aria-hidden="true"></i> ${esc(s.exclLunch)}</li>`;
-  if (comTransporte) {
-    exclItems = inclEntradas
-      ? e.exclAlmoco === false
-        ? ""
-        : lunchItem
-      : ingressoExclItems + (e.exclAlmoco === false ? "" : lunchItem);
-  } else {
-    const transportLabel = e.badge4x4 ? `${esc(s.exclTransport)} (4×4)` : esc(s.exclTransport);
-    exclItems =
-      ingressoExclItems +
-      `<li><i class="ti ti-bus text-no" aria-hidden="true"></i> ${transportLabel}</li>` +
-      (e.exclAlmoco === false ? "" : lunchItem);
-  }
   return (
+    '<div class="gcv-excursoes-card__coverage">' +
     '<div class="gcv-excursoes-card__block gcv-excursoes-card__block--in">' +
     `<span class="gcv-excursoes-card__label gcv-excursoes-card__label--in">${esc(s.inclLabel)}</span>` +
-    `<ul class="gcv-excursoes-card__list">${inclItems}</ul></div>` +
-    '<div class="gcv-excursoes-card__block gcv-excursoes-card__block--out">' +
-    `<span class="gcv-excursoes-card__label gcv-excursoes-card__label--out">${esc(s.exclLabel)}</span>` +
-    `<ul class="gcv-excursoes-card__list">${exclItems}</ul></div>`
+    `<ul class="gcv-excursoes-card__list">${inclItems}</ul></div></div>`
   );
 }
 
@@ -840,7 +841,9 @@ function bookingBlockSsr(e, s, locale) {
       `<button type="button" class="gcv-excursoes-card__waitlist" data-gcv-exc-waitlist>` +
       `<i class="ti ti-bell" aria-hidden="true"></i> ${esc(waitLabel)}</button>` +
       shareButtonSsr(s) +
-      "</div></div>"
+      "</div>" +
+      naoInclusoFootSsr(e, s) +
+      "</div>"
     );
   }
 
@@ -861,7 +864,9 @@ function bookingBlockSsr(e, s, locale) {
     '<div class="gcv-excursoes-card__book-actions">' +
     `<button type="button" class="gcv-excursoes-card__cart-add" data-gcv-exc-cart-add><i class="ti ti-shopping-cart" aria-hidden="true"></i> ${esc(s.bookAddCart)}</button>` +
     shareButtonSsr(s) +
-    "</div></div>"
+    "</div>" +
+    naoInclusoFootSsr(e, s) +
+    "</div>"
   );
 }
 

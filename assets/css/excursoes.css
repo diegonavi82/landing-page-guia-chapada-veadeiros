@@ -5522,13 +5522,12 @@ html.gcv-waitlist-modal-open {
   max-width: 248px;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto auto auto auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto auto minmax(0, 1fr);
   grid-template-areas:
     "banner"
     "photo"
     "main"
     "incluso"
-    "excl"
     "book";
   align-items: stretch;
 }
@@ -5544,12 +5543,11 @@ html.gcv-waitlist-modal-open {
     min-width: 280px;
     max-width: 280px;
     grid-template-columns: minmax(0, 40%) minmax(0, 60%);
-    grid-template-rows: auto auto auto auto minmax(0, 1fr);
+    grid-template-rows: auto auto auto minmax(0, 1fr);
     grid-template-areas:
       "banner banner"
       "photo main"
       "photo incluso"
-      "photo excl"
       "book book";
   }
 }
@@ -6235,12 +6233,11 @@ html.gcv-waitlist-modal-open {
     scroll-snap-stop: always;
     display: grid;
     grid-template-columns: minmax(0, 40%) minmax(0, 60%);
-    grid-template-rows: auto auto auto auto minmax(0, 1fr);
+    grid-template-rows: auto auto auto minmax(0, 1fr);
     grid-template-areas:
       "banner banner"
       "photo main"
       "photo incluso"
-      "photo excl"
       "book book";
     align-items: stretch;
   }
@@ -6704,7 +6701,7 @@ html.gcv-waitlist-modal-open {
 
 .gcv-excursoes-card__coverage {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.55rem;
   align-items: stretch;
 }
@@ -7124,6 +7121,45 @@ html.gcv-waitlist-modal-open {
 
 .gcv-excursoes-card__share .ti {
   font-size: 0.95rem;
+}
+
+.gcv-excursoes-card__out-foot {
+  margin: 0.55rem 0 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  box-shadow: none;
+}
+
+.gcv-excursoes-card__out-foot .gcv-excursoes-card__label {
+  margin-bottom: 0.28rem;
+  color: #b91c1c;
+}
+
+.gcv-excursoes-card__out-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.85rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gcv-excursoes-card__out-list li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  flex: 1 1 auto;
+  color: #b91c1c;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.gcv-excursoes-card__out-list .ti {
+  color: #b91c1c;
+  font-size: 1rem;
+  flex: 0 0 auto;
 }
 
 body:has(.gcv-saida-modal:not([hidden])),

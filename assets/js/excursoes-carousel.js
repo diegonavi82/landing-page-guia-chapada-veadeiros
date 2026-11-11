@@ -360,6 +360,7 @@
       badgeTransport: "Com transporte",
       exclLabel: "Não incluso:",
       exclEntries: "Ingresso",
+      exclEntriesShort: "Entradas",
       exclEntriesMany: "Ingressos",
       exclEntry: "Entrada",
       exclTransport: "Transporte",
@@ -573,6 +574,7 @@
       badgeTransport: "With transport",
       exclLabel: "Not included:",
       exclEntries: "Admission",
+      exclEntriesShort: "Tickets",
       exclEntriesMany: "Admissions",
       exclEntry: "Admission",
       exclTransport: "Transport",
@@ -786,6 +788,7 @@
       badgeTransport: "Con transporte",
       exclLabel: "No incluido:",
       exclEntries: "Entrada",
+      exclEntriesShort: "Entradas",
       exclEntriesMany: "Entradas",
       exclEntry: "Entrada",
       exclTransport: "Transporte",
@@ -2595,6 +2598,49 @@
     );
   }
 
+  function ensureOutFootCss() {
+    if (document.getElementById("gcv-out-foot-css")) return;
+    var style = document.createElement("style");
+    style.id = "gcv-out-foot-css";
+    style.textContent =
+      ".gcv-excursoes-card__coverage{grid-template-columns:minmax(0,1fr)}" +
+      ".gcv-excursoes-card__out-foot{margin:0.55rem 0 0;padding:0;background:none;border:0;box-shadow:none}" +
+      ".gcv-excursoes-card__out-foot .gcv-excursoes-card__label{margin-bottom:0.28rem;color:#b91c1c}" +
+      ".gcv-excursoes-card__out-list{display:flex;flex-wrap:wrap;gap:0.3rem 0.85rem;margin:0;padding:0;list-style:none}" +
+      ".gcv-excursoes-card__out-list li{display:inline-flex;align-items:center;gap:0.28rem;flex:1 1 auto;color:#b91c1c;font-size:0.78rem;font-weight:700;line-height:1.2}" +
+      ".gcv-excursoes-card__out-list .ti{color:#b91c1c;font-size:1rem;flex:0 0 auto}" +
+      ".gcv-excursoes__track--day-list .gcv-excursoes-card{grid-template-rows:auto auto auto auto minmax(0,1fr);grid-template-areas:\"banner\" \"photo\" \"main\" \"incluso\" \"book\"}" +
+      "@media (min-width:1024px){.gcv-excursoes__track--day-list .gcv-excursoes-card{grid-template-rows:auto auto auto minmax(0,1fr);grid-template-areas:\"banner banner\" \"photo main\" \"photo incluso\" \"book book\"}}";
+    document.head.appendChild(style);
+  }
+
+  function naoInclusoFootHtml(e, s) {
+    ensureOutFootCss();
+    var items = "";
+    if (e.comTransporte !== true) {
+      items +=
+        '<li><i class="ti ti-bus" aria-hidden="true"></i> ' +
+        escapeHtml(s.exclTransport || "Transporte") +
+        "</li>";
+    }
+    if (e.inclEntradas !== true) {
+      items +=
+        '<li><i class="ti ti-ticket" aria-hidden="true"></i> ' +
+        escapeHtml(s.exclEntriesShort || "Entradas") +
+        "</li>";
+    }
+    if (!items) return "";
+    return (
+      '<div class="gcv-excursoes-card__out-foot">' +
+      '<span class="gcv-excursoes-card__label gcv-excursoes-card__label--out">' +
+      escapeHtml(s.exclLabel || "Não incluso") +
+      "</span>" +
+      '<ul class="gcv-excursoes-card__out-list">' +
+      items +
+      "</ul></div>"
+    );
+  }
+
   /**
    * @param {Record<string, unknown>} e
    * @param {Record<string, string>} s
@@ -2633,7 +2679,9 @@
         escapeHtml(waitLabel) +
         "</button>" +
         shareButtonHtml(s) +
-        "</div></div>"
+        "</div>" +
+        naoInclusoFootHtml(e, s) +
+        "</div>"
       );
     }
 
@@ -2690,7 +2738,9 @@
       escapeHtml(s.bookAddCart) +
       "</button>" +
       shareButtonHtml(s) +
-      "</div></div>"
+      "</div>" +
+      naoInclusoFootHtml(e, s) +
+      "</div>"
     );
   }
 
@@ -3646,7 +3696,6 @@
     var comTransporte = e.comTransporte === true;
     var inclEntradas = e.inclEntradas === true;
     var ingressoIncl = escapeHtml(formatIngressoWithValor(s.inclEntries, e.valorIngresso, locale));
-    var ingressoExclItems = ingressoExclItemsHtml(e, s, locale, inclEntradas);
     var inclItems =
       '<li><i class="ti ti-user text-ok" aria-hidden="true"></i> ' +
       escapeHtml(s.inclSpot) +
@@ -3675,33 +3724,6 @@
         escapeHtml(s.inclLanterna) +
         "</li>";
     }
-    var exclItems;
-    if (comTransporte) {
-      exclItems = inclEntradas
-        ? e.exclAlmoco === false
-          ? ""
-          : '<li><i class="ti ti-tools-kitchen-2 text-no" aria-hidden="true"></i> ' +
-            escapeHtml(s.exclLunch) +
-            "</li>"
-        : ingressoExclItems +
-          (e.exclAlmoco === false
-            ? ""
-            : '<li><i class="ti ti-tools-kitchen-2 text-no" aria-hidden="true"></i> ' +
-              escapeHtml(s.exclLunch) +
-              "</li>");
-    } else {
-      var transportLabel = e.badge4x4 ? escapeHtml(s.exclTransport) + " (4×4)" : escapeHtml(s.exclTransport);
-      exclItems =
-        ingressoExclItems +
-        '<li><i class="ti ti-bus text-no" aria-hidden="true"></i> ' +
-        transportLabel +
-        "</li>" +
-        (e.exclAlmoco === false
-          ? ""
-          : '<li><i class="ti ti-tools-kitchen-2 text-no" aria-hidden="true"></i> ' +
-            escapeHtml(s.exclLunch) +
-            "</li>");
-    }
     return (
       '<div class="gcv-excursoes-card__coverage">' +
       '<div class="gcv-excursoes-card__block gcv-excursoes-card__block--in">' +
@@ -3710,13 +3732,6 @@
       "</span>" +
       '<ul class="gcv-excursoes-card__list">' +
       inclItems +
-      "</ul></div>" +
-      '<div class="gcv-excursoes-card__block gcv-excursoes-card__block--out">' +
-      '<span class="gcv-excursoes-card__label gcv-excursoes-card__label--out">' +
-      escapeHtml(s.exclLabel) +
-      "</span>" +
-      '<ul class="gcv-excursoes-card__list">' +
-      exclItems +
       "</ul></div></div>"
     );
   }
