@@ -2725,9 +2725,18 @@ function gcv_tarifario_validar_diaria_valor(int $exc4, int $quorum, int $diaria,
     }
 }
 
+function gcv_tarifario_e_teste(string $nome): bool
+{
+    $nome = trim($nome);
+    return $nome !== '' && str_starts_with($nome, 'Teste');
+}
+
 /** @param array<string,array<string,int>> $cidades */
 function gcv_tarifario_validar_cidades(array $cidades, int $quorum, int $diariaCents, string $nome): void
 {
+    if (gcv_tarifario_e_teste($nome)) {
+        $diariaCents = 0;
+    }
     foreach (GCV_TARIFARIO_CIDADES as $slug => $cidade) {
         $row = is_array($cidades[$slug] ?? null) ? $cidades[$slug] : [];
         $onde = $nome !== '' ? $nome . ' · ' . $cidade : $cidade;
@@ -2764,6 +2773,9 @@ function gcv_tarifario_checar_piso(PDO $pdo, int $diariaReais, int $pagamentoRea
         $rows = [];
     }
     foreach ($rows as $row) {
+        if (gcv_tarifario_e_teste((string)($row['nome'] ?? ''))) {
+            continue;
+        }
         $precos = json_decode((string)($row['precos_json'] ?? ''), true);
         $norm = gcv_tarifario_normalize(array_merge(is_array($precos) ? $precos : [], ['quorum' => $row['quorum'] ?? 4]));
         foreach (GCV_TARIFARIO_CIDADES as $slug => $cidade) {
@@ -3283,6 +3295,12 @@ function gcv_tarifario_public_attraction(PDO $pdo, string $slug): ?array
     if (!$row) {
         return null;
     }
+    if (str_starts_with((string)($row['slug'] ?? ''), 'teste-')) {
+        require_once __DIR__ . '/teste_acesso.php';
+        if (!gcv_teste_logada()) {
+            return null;
+        }
+    }
     $related = [];
     $max = gcv_passeio_max_atrativos($pdo);
     foreach (gcv_related_tours_for_attraction($pdo, (int)$row['id']) as $tour) {
@@ -3378,14 +3396,19 @@ function gcv_catalogo_subtitulo_principal(array $partes, int $principalId): arra
 }
 
 /** Catálogo da página Passeios: cadastrado sem tarifa fica de fora. */
-function gcv_tarifario_public_catalog(PDO $pdo): array
+function gcv_tarifario_public_catalog(PDO $pdo, bool $somenteTeste = false): array
 {
     if (!function_exists('gcv_attraction_public_html_path')) {
         require_once __DIR__ . '/excursion_attractions.php';
     }
     $out = [];
     $relacionadosPorAtrativo = [];
-    foreach ($pdo->query('SELECT id FROM gcv_passeio_relacionado ORDER BY id ASC')->fetchAll() as $row) {
+    if ($somenteTeste) {
+        $rowsRel = [];
+    } else {
+        $rowsRel = $pdo->query('SELECT id FROM gcv_passeio_relacionado ORDER BY id ASC')->fetchAll();
+    }
+    foreach ($rowsRel as $row) {
         $tour = gcv_related_tour_one($pdo, (int)$row['id']);
         if (!$tour || empty($tour['tarifa']) || !gcv_passeio_tarifa_vende($tour['tarifa']) || empty($tour['saidas']) || count($tour['attractions'] ?? []) < 2 || count($tour['attractions']) > gcv_passeio_max_atrativos($pdo)) {
             continue;
@@ -3426,10 +3449,14 @@ function gcv_tarifario_public_catalog(PDO $pdo): array
             }, $tour['attractions']),
         ];
     }
+    $filtroTeste = $somenteTeste
+        ? " AND slug LIKE 'teste-%'"
+        : " AND slug NOT LIKE 'teste-%'";
     $rows = $pdo->query(
-        "SELECT id, slug, title_pt, duration_minutes, duracao_json, cover_url, tarifario_id, tarifa_guia, tarifa_translado, tem_passeio, categorias, saidas_json, experiencia_json FROM gcv_attractions
+        "SELECT id, slug, title_pt, title_en, title_es, duration_minutes, duracao_json, cover_url, tarifario_id, tarifa_guia, tarifa_translado, tem_passeio, categorias, saidas_json, experiencia_json FROM gcv_attractions
          WHERE status = 'published' AND title_pt NOT LIKE '% + %'
            AND (tarifario_id IS NOT NULL OR tarifa_guia <> '' OR experiencia_json LIKE '%\"guia\"%')
+           {$filtroTeste}
          ORDER BY title_pt ASC"
     )->fetchAll();
     $mapa = gcv_cidades_saida_mapa($pdo);
@@ -3453,8 +3480,34 @@ function gcv_tarifario_public_catalog(PDO $pdo): array
                 (string)($row['tarifa_translado'] ?? ''),
                 $row['tarifario_id'] !== null ? (int)$row['tarifario_id'] : null
             );
-        if ($page === '' || !gcv_passeio_tarifa_vende($tarifa)) {
+        $eTeste = str_starts_with((string)$row['slug'], 'teste-');
+        if ($somenteTeste) {
+            if (!$eTeste || !gcv_passeio_tarifa_vende($tarifa)) {
+                continue;
+            }
+            if ($page === '') {
+                $page = 'passeios.html';
+            }
+        } elseif ($page === '' || !gcv_passeio_tarifa_vende($tarifa)) {
             continue;
+        }
+        $tituloEn = trim((string)($row['title_en'] ?? ''));
+        $tituloEs = trim((string)($row['title_es'] ?? ''));
+        $titulos = [
+            'pt' => (string)$row['title_pt'],
+            'en' => $tituloEn !== '' ? $tituloEn : (string)$row['title_pt'],
+            'es' => $tituloEs !== '' ? $tituloEs : (string)$row['title_pt'],
+        ];
+        if ($eTeste && is_array($tarifa)) {
+            $propria = gcv_tarifario_public_by_id(
+                $pdo,
+                $row['tarifario_id'] !== null ? (int)$row['tarifario_id'] : null
+            );
+            if ($propria) {
+                $tarifa['bilingue_tipo'] = $propria['bilingue_tipo'];
+                $tarifa['bilingue_valor'] = $propria['bilingue_valor'];
+                $tarifa['bilingue_cents'] = $propria['bilingue_cents'];
+            }
         }
         $minutos = (int)($row['duration_minutes'] ?? 0);
         $gravados = gcv_embarques_publicos(
@@ -3480,6 +3533,7 @@ function gcv_tarifario_public_catalog(PDO $pdo): array
             'slug' => (string)$row['slug'],
             'attraction_ids' => [(int)$row['id']],
             'title' => (string)$row['title_pt'],
+            'titles' => $titulos,
             'count' => 1,
             'categories' => gcv_passeio_categorias_parse($row['categorias'] ?? null, 1),
             'duration_minutes' => (int)($row['duration_minutes'] ?? 0),
@@ -3497,6 +3551,7 @@ function gcv_tarifario_public_catalog(PDO $pdo): array
             'parts' => [[
                 'id' => (int)$row['id'],
                 'title' => (string)$row['title_pt'],
+                'titles' => $titulos,
                 'image' => gcv_attraction_catalog_image((string)($row['cover_url'] ?? ''), (string)$row['title_pt'], (string)$row['slug']),
                 'href' => '/' . ltrim($page, '/'),
             ]],

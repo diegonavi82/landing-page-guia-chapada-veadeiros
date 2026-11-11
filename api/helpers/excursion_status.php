@@ -60,6 +60,11 @@ function gcv_excursion_sql_public_live(string $alias = 'e'): string
           SELECT 1 FROM gcv_users ug
           WHERE ug.id = {$a}.guide_user_id AND ug.status = 'active'
         )
+      )
+      AND NOT EXISTS (
+        SELECT 1 FROM gcv_attractions gcv_teste_a
+        WHERE gcv_teste_a.id = {$a}.attraction_id
+          AND gcv_teste_a.slug LIKE 'teste-%'
       )";
 }
 

@@ -15,6 +15,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../cupons.php';
+require_once __DIR__ . '/../teste_acesso.php';
 
 /**
  * @param array<string,mixed> $data  corpo do checkout (amount, trips)
@@ -23,8 +24,12 @@ require_once __DIR__ . '/../cupons.php';
 function gcv_pay_resolve_base_amount(array $data): array
 {
     $amountCents = (int) round(((float) ($data['amount'] ?? 0)) * 100);
-    if ($amountCents < 100 || $amountCents > 10000000) {
+    if ($amountCents < 1 || $amountCents > 10000000) {
         return ['ok' => false, 'error' => 'invalid_amount'];
+    }
+    $erroTeste = gcv_teste_pagamento_erro($data, $amountCents);
+    if ($erroTeste !== null) {
+        return ['ok' => false, 'error' => $erroTeste];
     }
 
     $trips = [];

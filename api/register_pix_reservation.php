@@ -8,6 +8,7 @@ require_once __DIR__ . '/helpers/pix_reservation_store.php';
 require_once __DIR__ . '/helpers/sicoob_api.php';
 require_once __DIR__ . '/helpers/excursion_status.php';
 require_once __DIR__ . '/helpers/cupons.php';
+require_once __DIR__ . '/helpers/teste_acesso.php';
 
 gcv_pix_cors_headers();
 
@@ -63,8 +64,15 @@ if ($cupomCodigo !== '' && $grossCents > 0) {
 if (!is_finite($amount) || $amount <= 0) {
     gcv_pix_json_error(422, 'Invalid amount');
 }
-
 $locale = in_array($data['locale'] ?? 'pt', ['pt', 'en', 'es'], true) ? (string) $data['locale'] : 'pt';
+$erroTeste = gcv_teste_pagamento_erro($data, (int) round($amount * 100));
+if ($erroTeste === 'teste_restrito') {
+    gcv_pix_json_error(422, gcv_teste_mensagem($locale));
+}
+if ($erroTeste !== null) {
+    gcv_pix_json_error(422, 'Invalid amount');
+}
+
 $window = gcv_booking_window_error(is_array($data['trips'] ?? null) ? $data['trips'] : [], $locale);
 if ($window !== null) {
     gcv_pix_json_error(422, $window);

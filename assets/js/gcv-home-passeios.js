@@ -25,8 +25,14 @@
     if (sub && typeof sub === "object") texto = sub[lang] || "";
     else texto = sub || "";
     texto = String(texto).trim();
-    if (!texto || texto === String((tour && tour.title) || "").trim()) return "";
+    if (!texto || texto === String(tituloDe(tour) || "").trim()) return "";
     return texto;
+  }
+
+  function tituloDe(node) {
+    var bag = node && node.titles;
+    if (bag && typeof bag === "object" && bag[lang]) return bag[lang];
+    return (node && node.title) || "";
   }
 
   function shuffle(list) {
@@ -87,7 +93,10 @@
   var picked = [];
 
   function reais(cents) {
-    return "R$ " + String(Math.round((parseInt(cents, 10) || 0) / 100));
+    var n = Math.abs(parseInt(cents, 10) || 0);
+    var reais = Math.floor(n / 100);
+    var cent = n % 100;
+    return "R$ " + reais + (cent ? "," + (cent < 10 ? "0" : "") + cent : "");
   }
 
   function precoVitrine(tarifa) {
@@ -154,7 +163,7 @@
     if (parts.length >= 2) {
       return '<span class="gcv-home-passeio__mosaic gcv-home-passeio__mosaic--' + parts.length + '">' +
         parts.map(function (part) {
-          return '<img src="' + esc(part.image) + '" alt="' + esc(part.title) + '" />';
+          return '<img src="' + esc(part.image) + '" alt="' + esc(tituloDe(part)) + '" />';
         }).join("") + "</span>";
     }
     return tour.image ? '<img src="' + esc(tour.image) + '" alt="" />' : "";
@@ -171,7 +180,7 @@
       '<span class="gcv-home-passeio__media">' + photo +
       '<span class="gcv-home-passeio__tag">' + esc(tag) + "</span></span>" +
       '<span class="gcv-home-passeio__body">' +
-      "<h3>" + esc(tour.title) + "</h3>" +
+      "<h3>" + esc(tituloDe(tour)) + "</h3>" +
       (places ? '<p class="gcv-home-passeio__places">' + esc(places) + "</p>" : "") +
       "</span></a>" +
       '<div class="gcv-home-passeio__foot">' +
@@ -194,7 +203,7 @@
     if (!window.GcvPasseioDialog) return;
     window.GcvPasseioDialog.open({
       slug: tour.slug,
-      title: tour.title,
+      title: tituloDe(tour),
       duration_minutes: tour.duration_minutes,
       duracao_cidades: tour.duracao_cidades,
       tarifa: tour.tarifa,
@@ -245,7 +254,7 @@
     gridBox.innerHTML = parts.map(function (part) {
       return '<a class="gcv-pick__item" href="' + esc(pickHref(part, parts)) + '">' +
         '<span class="gcv-pick__photo"><img src="' + esc(part.image) + '" alt="" /></span>' +
-        "<span>" + esc(part.title) + "</span></a>";
+        "<span>" + esc(tituloDe(part)) + "</span></a>";
     }).join("");
     box.hidden = false;
   }
@@ -284,7 +293,7 @@
     if (e.target && e.target.closest && e.target.closest("[data-gcv-cart-remove]")) setTimeout(paint, 0);
   });
 
-  fetch("/api/passeios.php")
+  fetch("/api/passeios.php", { credentials: "same-origin", cache: "no-store", headers: { Accept: "application/json" } })
     .then(function (res) { return res.json(); })
     .then(function (payload) {
       var data = (payload && payload.data) || {};

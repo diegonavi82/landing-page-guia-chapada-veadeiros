@@ -143,8 +143,11 @@ function gcv_pay_fetch_ptax(): ?array
 function gcv_pay_quote(int $baseCents, string $method): array
 {
     $method = gcv_pay_normalize_method($method);
-    if ($method === '' || $baseCents < 100) {
+    if ($method === '' || $baseCents < 1) {
         return ['ok' => false, 'error' => 'invalid_quote'];
+    }
+    if ($baseCents < 100 && $method !== 'pix') {
+        return ['ok' => false, 'error' => 'below_minimum'];
     }
     $cfg = gcv_pay_config();
 

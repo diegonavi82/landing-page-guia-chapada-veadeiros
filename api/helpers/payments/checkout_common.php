@@ -93,11 +93,16 @@ function gcv_checkout_read_request(): array
     $base = gcv_pay_resolve_base_amount($data);
     if (empty($base['ok'])) {
         $err = (string) ($base['error'] ?? 'invalid_amount');
+        if (!function_exists('gcv_teste_mensagem')) {
+            require_once __DIR__ . '/../teste_acesso.php';
+        }
         $msg = $err === 'price_changed' || $err === 'amount_mismatch'
             ? 'O preço deste passeio mudou. Atualize a página e tente de novo.'
             : ($err === 'coupon_invalid'
                 ? 'Este cupom não vale para este carrinho.'
-                : 'Valor inválido.');
+                : ($err === 'teste_restrito'
+                    ? gcv_teste_mensagem($locale)
+                    : 'Valor inválido.'));
         gcv_checkout_fail(409, $msg, $err);
     }
 

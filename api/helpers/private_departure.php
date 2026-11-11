@@ -273,6 +273,15 @@ function gcv_private_departure_ensure(string $reservationId, int $index, array $
         }
     }
     $note = 'Privativo · reserva ' . $reservationId;
+    $guideId = null;
+    require_once __DIR__ . '/teste_acesso.php';
+    if (gcv_teste_so_atracoes($attrIds)) {
+        $gid = gcv_teste_guia_id();
+        if ($gid > 0) {
+            $guideId = $gid;
+        }
+        $note = 'TESTE · privativo de centavos. Reserva ' . $reservationId;
+    }
 
     try {
         $stmt = db()->prepare(
@@ -285,7 +294,7 @@ function gcv_private_departure_ensure(string $reservationId, int $index, array $
               offer_transport, price_transport_cents, quorum_transport, max_people_transport, booked_people_transport,
               tour_type
             ) VALUES (
-              \'published\', ?, ?, ?, ?, NULL,
+              \'published\', ?, ?, ?, ?, ?,
               ?, 1, ?, ?, 0,
               ?, 0, 0,
               ?, ?,
@@ -299,6 +308,7 @@ function gcv_private_departure_ensure(string $reservationId, int $index, array $
             $time,
             $cityId,
             $attrIds[0],
+            $guideId,
             $price,
             $maxPeople,
             $bookedWalk,

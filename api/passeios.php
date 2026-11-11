@@ -99,6 +99,13 @@ try {
         if (gcv_passeios_so_preview()) {
             $catalog['preview'] = true;
         }
+        require_once __DIR__ . '/helpers/teste_acesso.php';
+        if (gcv_teste_logada()) {
+            $extras = gcv_tarifario_public_catalog($pdo, true);
+            if ($extras) {
+                $catalog['tours'] = array_values(array_merge($catalog['tours'] ?? [], $extras));
+            }
+        }
         echo json_encode(['ok' => true, 'data' => $catalog], JSON_UNESCAPED_UNICODE);
         exit;
     }

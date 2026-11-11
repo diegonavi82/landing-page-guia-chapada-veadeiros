@@ -78,9 +78,11 @@ function gcv_sale_capture_from_pix_reservation(array $reservation, string $sourc
     }
     require_once __DIR__ . '/../private_departure.php';
     $linkedPrivate = gcv_private_departure_sync($reservation, false);
+    require_once __DIR__ . '/../teste_acesso.php';
+    $linkedTeste = gcv_teste_group_departure_sync($reservation);
     $excursion = gcv_private_trip_mode($trip) === 'privativo'
         ? $linkedPrivate
-        : gcv_sale_resolve_excursion($reservation);
+        : ($linkedTeste ?: gcv_sale_resolve_excursion($reservation));
     $guide = gcv_sale_resolve_guide($excursion);
 
     $unitCents = $excursion

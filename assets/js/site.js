@@ -2605,7 +2605,7 @@
         bilingueValor: tarifa && tarifa.bilingue_valor != null && tarifa.bilingue_valor !== "" ? tarifa.bilingue_valor : (tarifa && tarifa.bilingue_cents),
       };
       var qty = faixa ? 1 : (exclusivoPacote ? 1 : billed);
-      var pixReais = Math.round(pay.pix / 100);
+      var pixReais = Math.round(pay.pix) / 100;
       var langName = bi.lang === "es" ? copy.langEs : copy.langEn;
       var guiaIdioma = bi.on ? bi.lang : "pt";
       var carrosTxt = comTranslado && cars > 1 ? " · " + cars + " " + (cars === 1 ? copy.car : copy.cars) + " · " + cars + " " + (copy.guides || "guias") : "";
@@ -2615,7 +2615,7 @@
         destinos: sel.names.slice(),
         dateLabel: date.split("-").reverse().join("/"),
         dateIso: date,
-        valorUnit: faixa ? pixReais : (qty > 1 ? Math.round(pixReais / qty) : pixReais),
+        valorUnit: faixa ? pixReais : (qty > 1 ? Math.round(pay.pix / qty) / 100 : pixReais),
         qty: qty,
         faixa: faixa,
         pixDesc: sel.names.join(" + ") + " · " + (modalidade === "exclusivo" ? copy.private : copy.group) + " · " + (comTranslado ? copy.withRide : copy.withoutRide) + carrosTxt + (bi.on ? " · " + copy.bilingual + " (" + langName + ")" : ""),
@@ -2910,7 +2910,7 @@
     }
 
     function pedirCotacao(base) {
-      if (base < 100) return;
+      if (base < 1) return;
       if (box._payQuote && box._payQuote.base === base) return;
       if (box._payQuoteLoading === base) return;
       box._payQuoteLoading = base;

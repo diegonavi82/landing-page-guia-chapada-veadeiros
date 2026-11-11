@@ -661,7 +661,7 @@
         extra = Math.max(0, parseInt(faixa.bilingueValor, 10) || 0);
       }
     }
-    return Math.round((base + extra) / 100);
+    return Math.round(base + extra) / 100;
   }
 
   function faixaPartesReais(faixa, pessoas) {
@@ -669,18 +669,18 @@
     var quorum = parseInt(faixa.quorum, 10) || 4;
     var temExcursao = faixa.excursao4Cents != null && faixa.excursao4Cents !== "";
     if (!temExcursao) {
-      var antigo4 = Math.round((parseInt(faixa.pax4Cents, 10) || 0) / 100);
+      var antigo4 = Math.round(parseInt(faixa.pax4Cents, 10) || 0) / 100;
       var antigo5raw = parseInt(faixa.pax5Cents, 10) || 0;
-      var antigo5 = antigo5raw > 0 ? Math.round(antigo5raw / 100) : antigo4;
+      var antigo5 = antigo5raw > 0 ? Math.round(antigo5raw) / 100 : antigo4;
       if (faixa.modalidade === "exclusivo" && pessoas <= quorum) return [{ q: quorum, u: antigo4 }];
       if (pessoas <= 4) return [{ q: pessoas, u: antigo4 }];
       return [{ q: 4, u: antigo4 }, { q: pessoas - 4, u: antigo5 }];
     }
-    var exc4 = Math.round((parseInt(faixa.excursao4Cents, 10) || 0) / 100);
+    var exc4 = Math.round(parseInt(faixa.excursao4Cents, 10) || 0) / 100;
     var exc5raw = parseInt(faixa.excursao5Cents, 10) || 0;
-    var exc5 = exc5raw > 0 ? Math.round(exc5raw / 100) : exc4;
+    var exc5 = exc5raw > 0 ? Math.round(exc5raw) / 100 : exc4;
     var pri5raw = parseInt(faixa.privativo5Cents, 10) || 0;
-    var pri5 = pri5raw > 0 ? Math.round(pri5raw / 100) : Math.round((parseInt(faixa.privativo4Cents, 10) || 0) / 100);
+    var pri5 = pri5raw > 0 ? Math.round(pri5raw) / 100 : Math.round(parseInt(faixa.privativo4Cents, 10) || 0) / 100;
     if (faixa.modalidade === "exclusivo") {
       if (pessoas <= quorum) return [{ q: quorum, u: exc4 }];
       return [{ q: quorum, u: exc4 }, { q: pessoas - quorum, u: pri5 }];
@@ -817,17 +817,28 @@
     return (items || loadItems()).length;
   }
 
+  function moneyNum(v) {
+    var n = parseFloat(String(v == null ? "" : v).replace(",", "."));
+    return Number.isFinite(n) ? n : 0;
+  }
+
   function cartTotal(items) {
     items = items || loadItems();
     return items.reduce(function (sum, it) {
-      var u = parseInt(String(it.valorUnit), 10) || 0;
+      var u = moneyNum(it.valorUnit);
       var q = parseInt(String(it.qty), 10) || 0;
       return sum + u * q;
     }, 0);
   }
 
   function formatBrl(n) {
-    return "R$\u00a0" + (parseInt(String(n), 10) || 0);
+    var cents = Math.round(moneyNum(n) * 100);
+    var sign = cents < 0 ? "-" : "";
+    cents = Math.abs(cents);
+    var reais = Math.floor(cents / 100);
+    var cent = cents % 100;
+    if (!cent) return "R$\u00a0" + sign + String(reais);
+    return "R$\u00a0" + sign + reais + "," + (cent < 10 ? "0" : "") + cent;
   }
 
   var CUPOM_KEY = "gcv-exc-cupom-code";
@@ -842,7 +853,7 @@
   }
 
   function cartGrossCents(items) {
-    return cartTotal(items) * 100;
+    return Math.round(cartTotal(items) * 100);
   }
 
   function cartItemPrivativo(it) {
@@ -853,9 +864,9 @@
   function cartPasseioCents(items) {
     return (items || []).reduce(function (sum, it) {
       if (!cartItemPrivativo(it)) return sum;
-      var u = parseInt(String(it.valorUnit), 10) || 0;
+      var u = moneyNum(it.valorUnit);
       var q = parseInt(String(it.qty), 10) || 0;
-      return sum + u * q * 100;
+      return sum + Math.round(u * q * 100);
     }, 0);
   }
 
@@ -864,7 +875,7 @@
       return {
         cartId: (it && it.id) || "",
         modalidade: (it && it.modalidade) || "",
-        valorUnit: parseInt(String(it && it.valorUnit), 10) || 0,
+        valorUnit: moneyNum(it && it.valorUnit),
         qty: parseInt(String(it && it.qty), 10) || 1,
         pessoas: parseInt(String(it && it.pessoas), 10) || parseInt(String(it && it.qty), 10) || 1,
       };
@@ -1243,8 +1254,8 @@
         base += p.q * p.u;
         gente += p.q;
       });
-      var total = parseInt(String(it.valorUnit), 10) || faixaTotalReais(it.faixa, pessoas);
-      var porPessoa = gente && total > base ? Math.round((total - base) / gente) : 0;
+      var total = moneyNum(it.valorUnit) || faixaTotalReais(it.faixa, pessoas);
+      var porPessoa = gente && total > base ? (total - base) / gente : 0;
       var pedacos = partes.map(function (p) {
         var word = p.q === 1 ? s("cartSeatOne") || "Pessoa" : s("cartSeatsMany") || "Pessoas";
         return String(p.q) + " " + word + " × " + formatBrl(p.u + porPessoa);
@@ -1252,7 +1263,7 @@
       return pedacos.join(" + ") + " = " + formatBrl(total) + " BRL " + suffix;
     }
     var qty = parseInt(String(it.qty), 10) || 0;
-    var unit = parseInt(String(it.valorUnit), 10) || 0;
+    var unit = moneyNum(it.valorUnit);
     var seatsWord = qty === 1 ? s("cartSeatOne") || "Pessoa" : s("cartSeatsMany") || "Pessoas";
     return String(qty) + " " + seatsWord + " × " + formatBrl(unit) + " = " + formatBrl(unit * qty) + " BRL " + suffix;
   }
@@ -1324,7 +1335,7 @@
           passeioKey: it.passeioKey || "",
           comTransporte: it.comTransporte === true,
           walkGuideSeatOk: it.walkGuideSeatOk === true,
-          valorUnit: parseInt(String(it.valorUnit), 10) || 0,
+          valorUnit: moneyNum(it.valorUnit),
           guiaIdioma: guideLangFromItem(it),
           modalidade: modeFromItem(it),
           tarifaGuia: it.tarifaGuia || "",
@@ -1349,7 +1360,7 @@
           hora: it.hora || "",
           qty: parseInt(String(it.qty), 10) || 1,
           cartId: it.id || "",
-          valorUnit: parseInt(String(it.valorUnit), 10) || 0,
+          valorUnit: moneyNum(it.valorUnit),
           // Não envia inclExcl cacheado: o modal regenera no idioma da página.
           inclExcl: null,
           guiaNome: it.guiaNome || "",

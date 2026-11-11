@@ -36,7 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 
 $amount = (float) str_replace(',', '.', (string) ($_GET['amount'] ?? '0'));
 $cents = (int) round($amount * 100);
-if (!is_finite($amount) || $cents < 100 || $cents > 10000000) {
+if (!is_finite($amount) || $cents < 1 || $cents > 10000000) {
     http_response_code(422);
     echo json_encode(['success' => false, 'message' => 'Invalid amount']);
     exit;

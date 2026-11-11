@@ -102,8 +102,14 @@
     if (sub && typeof sub === "object") texto = sub[lang] || "";
     else texto = sub || "";
     texto = String(texto).trim();
-    if (!texto || texto === String((tour && tour.title) || "").trim()) return "";
+    if (!texto || texto === String(tituloDe(tour) || "").trim()) return "";
     return texto;
+  }
+
+  function tituloDe(node) {
+    var bag = node && node.titles;
+    if (bag && typeof bag === "object" && bag[lang]) return bag[lang];
+    return (node && node.title) || "";
   }
 
   function esc(str) {
@@ -142,7 +148,10 @@
     img.src = next;
   }, true);
   function reais(cents) {
-    return "R$ " + String(Math.round((parseInt(cents, 10) || 0) / 100));
+    var n = Math.abs(parseInt(cents, 10) || 0);
+    var reais = Math.floor(n / 100);
+    var cent = n % 100;
+    return "R$ " + reais + (cent ? "," + (cent < 10 ? "0" : "") + cent : "");
   }
 
   function menorExcursao(tarifa) {
@@ -307,8 +316,8 @@
     gridBox.className = "gcv-pick__grid gcv-pick__grid--" + parts.length;
     gridBox.innerHTML = parts.map(function (part) {
       return '<a class="gcv-pick__item" href="' + esc(pickHref(part, parts)) + '">' +
-        '<span class="gcv-pick__photo">' + imageTag(part.image, part.title) + "</span>" +
-        "<span>" + esc(part.title) + "</span></a>";
+        '<span class="gcv-pick__photo">' + imageTag(part.image, tituloDe(part)) + "</span>" +
+        "<span>" + esc(tituloDe(part)) + "</span></a>";
     }).join("");
     box.hidden = false;
   }
@@ -334,6 +343,8 @@
     var q = textoBusca(busca).trim();
     if (!q) return true;
     var nomes = [tour && tour.title];
+    var bag = tour && tour.titles;
+    if (bag && typeof bag === "object") nomes.push(bag.pt, bag.en, bag.es);
     var sub = tour && tour.subtitle;
     if (sub && typeof sub === "object") nomes.push(sub.pt, sub.en, sub.es);
     else if (sub) nomes.push(sub);
@@ -381,16 +392,16 @@
       var photo = parts.length >= 2
         ? '<span class="gcv-shop-card__mosaic gcv-shop-card__mosaic--' + parts.length + '">' +
           parts.map(function (part) {
-            return imageTag(part.image, part.title);
+            return imageTag(part.image, tituloDe(part));
           }).join("") + "</span>"
-        : (tour.image ? imageTag(tour.image, tour.title) : "");
+        : (tour.image ? imageTag(tour.image, tituloDe(tour)) : "");
       return '<article class="gcv-shop-card' + (mine ? " is-in-cart" : "") + '">' +
         (mine ? '<span class="gcv-shop-card__badge">' + check + "</span>" : "") +
         '<a class="gcv-shop-card__media" href="' + esc(tourHref(tour.href)) + '" data-tour="' + esc(tour.id) + '">' + photo +
         '<p class="gcv-shop-card__count">' + esc(count) + "</p></a>" +
         '<div class="gcv-shop-card__body">' +
         '<p class="gcv-shop-card__tags">' + tags + "</p>" +
-        "<h2><a href=\"" + esc(tourHref(tour.href)) + "\" data-tour=\"" + esc(tour.id) + "\">" + esc(tour.title) + "</a></h2>" +
+        "<h2><a href=\"" + esc(tourHref(tour.href)) + "\" data-tour=\"" + esc(tour.id) + "\">" + esc(tituloDe(tour)) + "</a></h2>" +
         places +
         (function () {
           if (!saidas.length) return "";
@@ -509,7 +520,7 @@
       if (!window.GcvPasseioDialog) return;
       window.GcvPasseioDialog.open({
         slug: tour.slug,
-        title: tour.title,
+        title: tituloDe(tour),
         duration_minutes: tour.duration_minutes,
         duracao_cidades: tour.duracao_cidades,
         tarifa: tour.tarifa,
