@@ -192,9 +192,7 @@ if (!$sent) {
 $resRecord = gcv_pix_read_reservation($code);
 if ($resRecord) {
     $resRecord['email'] = strtolower($email);
-    if (is_array($data['trips'] ?? null) && $data['trips']) {
-        $resRecord['trips'] = $data['trips'];
-    }
+    // O recibo manda o trip sem cartId. Trocar aqui apagava o vínculo da compra.
     if (isset($data['amount']) && is_numeric($data['amount'])) {
         $resRecord['amount'] = (float)$data['amount'];
     }

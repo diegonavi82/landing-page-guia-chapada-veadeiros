@@ -561,6 +561,13 @@
         hora: trip.hora || "",
         valorUnit: unit,
         qty: qty,
+        pessoas: parseInt(String(trip.pessoas), 10) || qty,
+        cartId: trip.cartId || trip.id || "",
+        modalidade: trip.modalidade || "",
+        quorum: parseInt(String(trip.quorum), 10) || 0,
+        comTransporte: trip.comTransporte === true,
+        abreCatalogo: trip.abreCatalogo === true,
+        passeioKey: trip.passeioKey || "",
         totalDay: unit * qty,
       };
     });

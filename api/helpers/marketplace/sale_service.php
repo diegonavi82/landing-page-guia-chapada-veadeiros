@@ -61,6 +61,12 @@ function gcv_sale_capture_from_pix_reservation(array $reservation, string $sourc
         } catch (Throwable $e) {
             error_log('notify admin purchase (already paid): ' . $e->getMessage());
         }
+        try {
+            require_once __DIR__ . '/../catalog_departure.php';
+            gcv_catalog_repair_paid_sale($reservation, $sale);
+        } catch (Throwable $e) {
+            error_log('catalog repair paid: ' . $e->getMessage());
+        }
         return $sale;
     }
 
@@ -85,9 +91,11 @@ function gcv_sale_capture_from_pix_reservation(array $reservation, string $sourc
     $linkedPrivate = gcv_private_departure_sync($reservation, false);
     require_once __DIR__ . '/../teste_acesso.php';
     $linkedTeste = gcv_teste_group_departure_sync($reservation);
+    require_once __DIR__ . '/../catalog_departure.php';
+    $linkedCatalog = gcv_catalog_group_departure_sync($reservation);
     $excursion = gcv_private_trip_mode($trip) === 'privativo'
         ? $linkedPrivate
-        : ($linkedTeste ?: gcv_sale_resolve_excursion($reservation));
+        : ($linkedTeste ?: ($linkedCatalog ?: gcv_sale_resolve_excursion($reservation)));
     $guide = gcv_sale_resolve_guide($excursion);
 
     $unitCents = $excursion
