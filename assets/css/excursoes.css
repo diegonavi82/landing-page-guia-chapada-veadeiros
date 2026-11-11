@@ -6311,6 +6311,48 @@ html.gcv-waitlist-modal-open {
     align-items: stretch;
   }
 
+  .gcv-excursoes__track--day-list .gcv-excursoes-card__select-band-main .gcv-excursoes-card__time-city-grid {
+    display: grid;
+    grid-template-columns: auto max-content;
+    grid-template-rows: auto auto;
+    align-items: center;
+    column-gap: 0.7rem;
+    row-gap: 0.08rem;
+  }
+
+  .gcv-excursoes__track--day-list .gcv-excursoes-card__select-band-main .gcv-excursoes-card__meta-col,
+  .gcv-excursoes__track--day-list .gcv-excursoes-card__select-band-main .gcv-excursoes-card__meta-col--time,
+  .gcv-excursoes__track--day-list .gcv-excursoes-card__select-band-main .gcv-excursoes-card__meta-col--city {
+    display: contents;
+  }
+
+  .gcv-excursoes__track--day-list .gcv-excursoes-card__select-band-main .gcv-excursoes-card__meta-col--time .gcv-excursoes-card__time-kicker {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: end;
+  }
+
+  .gcv-excursoes__track--day-list .gcv-excursoes-card__select-band-main .gcv-excursoes-card__meta-col--city .gcv-excursoes-card__time-kicker {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: end;
+  }
+
+  .gcv-excursoes__track--day-list .gcv-excursoes-card__select-band-main .gcv-excursoes-card__time-hero {
+    grid-column: 1;
+    grid-row: 2;
+    align-self: center;
+  }
+
+  .gcv-excursoes__track--day-list .gcv-excursoes-card__select-band-main .gcv-excursoes-card__loc--inline,
+  .gcv-excursoes__track--day-list .gcv-excursoes-card--confirmada .gcv-excursoes-card__select-band-main .gcv-excursoes-card__loc--inline,
+  .gcv-excursoes__track--day-list .gcv-excursoes-card--pendente .gcv-excursoes-card__select-band-main .gcv-excursoes-card__loc--inline {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: center;
+    margin: 0;
+  }
+
   .gcv-excursoes__track--day-list .gcv-excursoes-card__media,
   .gcv-excursoes__track--day-list .gcv-excursoes-card__head:has(.gcv-excursoes-card__select-band) .gcv-excursoes-card__media {
     height: 100%;

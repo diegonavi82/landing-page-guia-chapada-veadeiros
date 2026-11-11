@@ -154,7 +154,7 @@
       return;
     }
     _pixLoadWait = [done];
-    loadStylesheet("/assets/css/excursoes.css?v=1.1.104");
+    loadStylesheet("/assets/css/excursoes.css?v=1.1.105");
     loadStylesheet("/assets/css/gcv-detail.css?v=1.1.40");
     var scripts = [
       "/assets/js/qrcode.min.js?v=1.1.31",
