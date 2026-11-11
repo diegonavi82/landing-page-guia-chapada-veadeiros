@@ -138,6 +138,13 @@ function redactGuiaPublicText(text, needles, initials) {
 }
 
 function publicGuiaProfile(profile) {
+  if (profile.slug === "diego-navi") {
+    return {
+      ...profile,
+      nome: "Diego Navi",
+      nomeCompleto: "Diego Navi Marques Carvalho",
+    };
+  }
   const initials = guiaInitials(profile.nomeCompleto || profile.nome);
   const needles = guiaNameNeedles([profile.nomeCompleto, profile.nome]);
   const bio = {};

@@ -647,9 +647,27 @@ function guiaChipSsr(e, locale) {
   if (!hasGuiaDefinidoSsr(e)) {
     return guiaChipPendenteSsr(s.guiaPending || "A definir", locale, ["pt"]);
   }
-  const ini = (e.guiaIniciais && String(e.guiaIniciais).trim()) || guiaIniciaisSsr(e.guiaNomeCompleto || e.guiaNome || "");
   const langs = Array.isArray(e.guiaIdiomas) && e.guiaIdiomas.length ? e.guiaIdiomas : ["pt"];
   const foto = e.guiaFoto ? String(e.guiaFoto) : "";
+  const slug = String(e.guiaSlug || "").trim().toLowerCase();
+  const nome = String(e.guiaNome || "").trim().toLowerCase();
+  const legal = String(e.guiaNomeCompleto || "").trim().toLowerCase();
+  const diego =
+    slug === "diego-navi" ||
+    slug.startsWith("diego-navi-") ||
+    nome === "diego navi" ||
+    nome.startsWith("diego navi ") ||
+    legal === "diego navi" ||
+    legal.startsWith("diego navi ") ||
+    String(e.guiaFoto || "").toLowerCase().includes("guia-diego-navi");
+  if (diego) {
+    return (
+      `<button type="button" class="gcv-excursoes-card__guide gcv-excursoes-card__guide--btn" data-guia-profile="diego-navi" aria-label="${esc(tpl(s.guiaAbout, { nome: "Diego Navi" }))}">` +
+      guiaChipInnerSsr("Diego Navi", foto, locale, "Diego Navi", e) +
+      `</button>`
+    );
+  }
+  const ini = (e.guiaIniciais && String(e.guiaIniciais).trim()) || guiaIniciaisSsr(e.guiaNomeCompleto || e.guiaNome || "");
   if (!ini) return guiaChipPendenteSsr(s.guiaPending || "A definir", locale, ["pt"]);
   const about = s.guiaAboutSecret || "Sobre o guia";
   if (!e.confirmada) {

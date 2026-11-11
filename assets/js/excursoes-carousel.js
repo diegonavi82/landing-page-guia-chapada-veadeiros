@@ -10,8 +10,8 @@
   var GUIA_PROFILES_FALLBACK = {
     "diego-navi": {
       slug: "diego-navi",
-      nome: "DN.",
-      nomeCompleto: "DN.",
+      nome: "Diego Navi",
+      nomeCompleto: "Diego Navi Marques Carvalho",
       foto: "/assets/img/imagens/guia-diego-navi.webp",
       idiomas: ["pt", "en", "es"],
       bio: { pt: [], en: [], es: [] },
@@ -3068,7 +3068,19 @@
     return out.replace(/\s{2,}/g, " ").replace(/\s+([,.;])/g, "$1").trim();
   }
 
+  function guiaEhDiego(e) {
+    if (!e) return false;
+    var slug = String(e.guiaSlug || e.slug || "").trim().toLowerCase();
+    if (slug === "diego-navi" || slug.indexOf("diego-navi-") === 0) return true;
+    var nome = String(e.guiaNome || e.nome || "").trim().toLowerCase();
+    var legal = String(e.guiaNomeCompleto || e.nomeCompleto || "").trim().toLowerCase();
+    if (nome === "diego navi" || nome.indexOf("diego navi ") === 0) return true;
+    if (legal === "diego navi" || legal.indexOf("diego navi ") === 0) return true;
+    return String(e.guiaFoto || e.foto || "").toLowerCase().indexOf("guia-diego-navi") >= 0;
+  }
+
   function guiaRotuloPublico(e) {
+    if (guiaEhDiego(e)) return "Diego Navi";
     var ini = e && e.guiaIniciais ? String(e.guiaIniciais).trim() : "";
     if (ini) return ini;
     return guiaIniciaisTexto((e && (e.guiaNomeCompleto || e.guiaNome)) || "");
@@ -3128,6 +3140,18 @@
     var ini = guiaRotuloPublico(e);
     var langs = e && Array.isArray(e.guiaIdiomas) && e.guiaIdiomas.length ? e.guiaIdiomas : ["pt"];
     var foto = e.guiaFoto ? String(e.guiaFoto) : "";
+    if (guiaEhDiego(e)) {
+      var slugDiego = (e.guiaSlug && String(e.guiaSlug).trim()) || "diego-navi";
+      return (
+        '<button type="button" class="gcv-excursoes-card__guide gcv-excursoes-card__guide--btn" data-guia-profile="' +
+        escapeHtml(slugDiego) +
+        '" aria-label="' +
+        escapeHtml(tpl(s.guiaAbout, { nome: "Diego Navi" })) +
+        '">' +
+        guiaChipInnerHtml("Diego Navi", foto, locale, "Diego Navi", langs) +
+        "</button>"
+      );
+    }
     if (!ini) {
       return guiaChipPendenteHtml(s.guiaPending || "A definir", locale, ["pt"]);
     }
@@ -7691,7 +7715,16 @@
     var sigilo = trigger && trigger.getAttribute && trigger.getAttribute("data-guia-sigilo") === "1";
     var profile = sigilo ? profileGuiaSigilo(row, s) : resolveGuiaProfile(slug, row, profiles);
     if (!profile || !profile.nome) return;
-    if (!sigilo) {
+    var diegoAberto = guiaEhDiego(row) || guiaEhDiego(profile) || String(slug || "") === "diego-navi";
+    if (diegoAberto) {
+      sigilo = false;
+      profile = resolveGuiaProfile(slug || (profile && profile.slug) || "diego-navi", row, profiles);
+      profile.nome = "Diego Navi";
+      if (!profile.nomeCompleto || profile.nomeCompleto === "Diego Navi" || profile.nomeCompleto === "DN.") {
+        profile.nomeCompleto = "Diego Navi Marques Carvalho";
+      }
+      profile.sigilo = false;
+    } else if (!sigilo) {
       var iniPerfil =
         guiaRotuloPublico(row) ||
         guiaIniciaisTexto(profile.nomeCompleto || profile.nome || "");

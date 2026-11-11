@@ -275,13 +275,31 @@ function gcv_guide_strip_alias_echo(string $text, string $initials): string
     return trim($text);
 }
 
-/** No site público o card e a descrição levam só as iniciais. O nome completo fica para o comprovante da reserva confirmada. */
+/** Diego Navi é o único guia com nome aberto no card e na descrição. */
+function gcv_guide_is_diego_navi(array $card): bool
+{
+    $slug = strtolower(trim((string)($card['guiaSlug'] ?? '')));
+    if ($slug === 'diego-navi' || strpos($slug, 'diego-navi-') === 0) {
+        return true;
+    }
+    foreach (['guiaNome', 'guiaNomeCompleto'] as $key) {
+        $name = mb_strtolower(trim((string)($card[$key] ?? '')));
+        if ($name === 'diego navi' || strpos($name, 'diego navi ') === 0) {
+            return true;
+        }
+    }
+    $photo = strtolower((string)($card['guiaFoto'] ?? ''));
+    return strpos($photo, 'guia-diego-navi') !== false;
+}
+
+/** No site público o card e a descrição levam só as iniciais, exceto Diego Navi. */
 function gcv_carousel_hide_guide_until_confirmed(array $card): array
 {
     $apelido = trim((string)($card['guiaApelido'] ?? ''));
     unset($card['guiaApelido']);
     $legal = trim((string)($card['guiaNomeCompleto'] ?? ''));
     $publico = trim((string)($card['guiaNome'] ?? ''));
+    $keepName = gcv_guide_is_diego_navi($card);
     $initials = trim((string)($card['guiaIniciais'] ?? ''));
     if ($initials === '') {
         $initials = gcv_guide_initials($legal !== '' ? $legal : $publico);
@@ -289,7 +307,10 @@ function gcv_carousel_hide_guide_until_confirmed(array $card): array
     if ($initials !== '') {
         $card['guiaIniciais'] = $initials;
     }
-    if (isset($card['guiaBio']) && is_array($card['guiaBio'])) {
+    if ($keepName && $publico !== 'Diego Navi') {
+        $card['guiaNome'] = 'Diego Navi';
+    }
+    if (!$keepName && isset($card['guiaBio']) && is_array($card['guiaBio'])) {
         $needles = gcv_guide_name_needles($legal, $publico, $apelido);
         foreach (['pt', 'en', 'es'] as $lang) {
             if (!isset($card['guiaBio'][$lang]) || !is_array($card['guiaBio'][$lang])) {
@@ -301,7 +322,10 @@ function gcv_carousel_hide_guide_until_confirmed(array $card): array
             }, $card['guiaBio'][$lang]);
         }
     }
-    if (!empty($card['confirmada'])) {
+    if (!empty($card['confirmada']) || $keepName) {
+        if (empty($card['confirmada'])) {
+            unset($card['guiaTelefone']);
+        }
         return $card;
     }
     unset(
