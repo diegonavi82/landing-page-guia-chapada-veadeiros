@@ -146,21 +146,23 @@
     return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="6" cy="7" r="2.2"/><path d="M2.2 16.5c.4-2.3 2-3.6 3.8-3.6s3.4 1.3 3.8 3.6"/><circle cx="13.2" cy="8.2" r="1.7"/><path d="M10.2 16.5c.3-1.8 1.5-2.8 3-2.8s2.7 1 3 2.8"/><circle cx="18.6" cy="9.2" r="1.25"/><path d="M16.4 16.5c.2-1.3 1.1-2 2.2-2s2 .7 2.2 2"/></svg>';
   }
 
-  function paintGuideMarks(lugar, temporada, fila, filaKalunga) {
+  function paintGuideMarks(lugar, temporada, fila, filaKalunga, guiaEspecial) {
     var box = document.getElementById('dash-marks');
     if (!box) return;
     var rank = lugar > 0 ? lugar + 'º' : '—';
-    var queue = fila > 0 ? fila + 'º' : '—';
+    var queue = guiaEspecial ? '★' : (fila > 0 ? fila + 'º' : '—');
     var rankTitle = lugar > 0
       ? (lugar + 'º no Ranking ' + temporada)
       : ('Sem pontuação no Ranking ' + temporada);
-    var queueTitle = fila > 0
-      ? (fila + 'º na fila ' + (filaKalunga ? 'Kalunga' : 'de guias'))
-      : 'Sem lugar na fila';
+    var queueTitle = guiaEspecial
+      ? 'Guia especial. As vendas chegam primeiro para você aceitar ou recusar.'
+      : (fila > 0
+        ? (fila + 'º na fila ' + (filaKalunga ? 'Kalunga' : 'de guias'))
+        : 'Sem lugar na fila');
     box.hidden = false;
     box.innerHTML =
       '<span class="gcv-dash-mark' + guideMarkClass(lugar) + '" title="' + rankTitle + '">' + guideMarkSvg('trophy') + rank + '</span>' +
-      '<span class="gcv-dash-mark' + guideMarkClass(fila) + '" title="' + queueTitle + '">' + guideMarkSvg('fila') + queue + '</span>';
+      '<span class="gcv-dash-mark' + (guiaEspecial ? ' is-top3' : guideMarkClass(fila)) + '" title="' + queueTitle + '">' + guideMarkSvg('fila') + queue + '</span>';
   }
 
   function refreshGuideMarks() {
@@ -184,11 +186,12 @@
     var lugar = 0;
     var fila = 0;
     var filaKalunga = false;
+    var guiaEspecial = false;
     var left = 2;
     function finish() {
       left -= 1;
       if (left > 0) return;
-      paintGuideMarks(lugar, temporada, fila, filaKalunga);
+      paintGuideMarks(lugar, temporada, fila, filaKalunga, guiaEspecial);
     }
     get('/api/guides/ranking.php?' + q.replace(/^&/, ''), function (_e, res) {
       var temp = res && res.data && res.data[chave];
@@ -201,6 +204,7 @@
     get('/api/guides/substituir.php?' + q.replace(/^&/, ''), function (_e, res) {
       fila = Number(res && res.data && res.data.posicao) || 0;
       filaKalunga = !!(res && res.data && res.data.fila_kalunga);
+      guiaEspecial = !!(res && res.data && res.data.guia_especial);
       finish();
     });
   }
@@ -1623,7 +1627,7 @@
         '<span class="gcv-dash-special-guide__badge"></span>' +
       '</div>' +
       '<h3 class="gcv-dash-special-guide__name">Diego Navi Marques Carvalho</h3>' +
-      '<p class="gcv-dash-special-guide__text">Guiagem em que o guia recebe mais de R$ 500, ou guiagem em outro idioma, é oferecida primeiro a você. São 24 horas para aceitar ou recusar, e o dia entra na sua agenda. Se você recusar, não responder ou já estiver ocupado, a venda segue a fila. Desligada, a venda vai direto para a fila, e o que ainda estiver esperando o seu aceite sai da agenda.</p>' +
+      '<p class="gcv-dash-special-guide__text">Toda venda chega primeiro para você, fora da fila. São 24 horas para aceitar ou recusar, e o dia entra na sua agenda. Se você recusar, não responder ou já estiver ocupado, a venda segue a fila. Santa Bárbara, Capivara, Candaru e Guardião ficam com a fila Kalunga. Desligada, a venda vai direto para a fila, e o que ainda estiver esperando o seu aceite sai da agenda.</p>' +
       '<div class="gcv-dash-special-guide__switch" role="group" aria-label="Ativar ou desativar a regra do guia especial">' +
         '<button type="button" class="gcv-dash-special-guide__btn" data-priority="1">ATIVAR</button>' +
         '<button type="button" class="gcv-dash-special-guide__btn" data-priority="0">DESATIVAR</button>' +
@@ -1666,7 +1670,7 @@
           }
           paint(specialGuideOn(r.data && r.data.value != null ? r.data.value : (next ? '1' : '0')));
           if (next) {
-            say('Prioridade ativada. A próxima guiagem acima de R$ 500 ou em outro idioma passa primeiro por você, se o dia estiver livre.', true);
+            say('Prioridade ativada. A próxima venda passa primeiro por você, se o dia estiver livre.', true);
             return;
           }
           var n = r.data && r.data.released ? Number(r.data.released) : 0;

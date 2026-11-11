@@ -567,6 +567,7 @@ if ($method === 'GET') {
         'fila_posicao' => gcv_substitution_fila_posicao((int)$user['id']),
         'fila_total' => count(gcv_substitution_queue(gcv_substitution_fila_do_guia((int)$user['id']))),
         'fila_kalunga' => gcv_substitution_fila_do_guia((int)$user['id']) === 'kalunga',
+        'guia_especial' => gcv_substitution_guia_especial_id() === (int)$user['id'],
         'profile_complete' => gcv_guide_profile_is_complete((int)$user['id']),
         'financial_ready' => gcv_guide_financial_is_ready((int)$user['id']),
         'business_mode' => 'GUIDE_MARKETPLACE',

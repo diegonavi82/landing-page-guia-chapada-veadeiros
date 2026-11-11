@@ -173,7 +173,7 @@ function gcv_guiagem_ensure_invites(array $tour): void
     if (!in_array((string)($tour['status'] ?? ''), ['published', 'soldout'], true)) {
         return;
     }
-    $picked = gcv_guiagem_open_top($tour, 0);
+    $picked = gcv_guiagem_open_next($tour, 0);
     if (!$picked) {
         return;
     }
@@ -364,10 +364,15 @@ function gcv_guiagem_priority_ensure_setting(): void
             )->execute([
                 'guia_especial_ativa',
                 '1',
-                'Guia especial: prioridade acima de R$ 500 ou em outro idioma',
+                'Guia especial: recebe toda venda antes da fila',
                 'integer',
             ]);
         }
+        $pdo->prepare('UPDATE gcv_settings SET label = ? WHERE key_name = ? AND label <> ?')->execute([
+            'Guia especial: recebe toda venda antes da fila',
+            'guia_especial_ativa',
+            'Guia especial: recebe toda venda antes da fila',
+        ]);
     } catch (Throwable $e) {
         error_log('gcv_guiagem_priority_ensure_setting: ' . $e->getMessage());
     }
@@ -519,17 +524,10 @@ function gcv_guiagem_has_other_language(array $tour): bool
     return false;
 }
 
-/** Acima de R$ 500 para o guia, ou cliente em outro idioma. */
+/** Toda venda passa pelo guia especial. Santa Bárbara, Capivara, Candaru e Guardião ficam na fila Kalunga. */
 function gcv_guiagem_qualifies_priority(array $tour): bool
 {
-    $id = (int)($tour['id'] ?? 0);
-    if ($id <= 0) {
-        return false;
-    }
-    if (gcv_guiagem_amount_cents($id) > gcv_guiagem_priority_min_cents()) {
-        return true;
-    }
-    return gcv_guiagem_has_other_language($tour);
+    return (int)($tour['id'] ?? 0) > 0;
 }
 
 function gcv_guiagem_priority_holds_day(int $guideId, string $dateIso, int $exceptId): bool
@@ -625,7 +623,7 @@ function gcv_guiagem_priority_note(string $expiresAt): string
     } catch (Throwable $e) {
         $when = $expiresAt;
     }
-    return 'Esta guiagem foi priorizada para você: o valor do guia passa de R$ 500 ou o cliente pediu outro idioma. '
+    return 'Esta venda chegou primeiro para você, o guia especial. '
         . 'Aceite ou recuse na Agenda até ' . $when . '. '
         . 'Esse dia fica ocupado enquanto você decide. '
         . 'Se recusar ou o prazo acabar, a venda segue para a fila.';
@@ -721,7 +719,7 @@ function gcv_guiagem_open_next(array $tour, int $exceptId): array
 
 /**
  * Venda paga ou autorizada, ainda sem guia.
- * Só segura para o Diego quando a guiagem qualifica e o dia está livre.
+ * O guia especial recebe primeiro. Se o dia estiver ocupado, ele recusar ou o prazo acabar, segue a fila.
  */
 function gcv_guiagem_after_unassigned_sale(int $excursionId): void
 {
@@ -734,9 +732,6 @@ function gcv_guiagem_after_unassigned_sale(int $excursionId): void
         return;
     }
     if (gcv_guiagem_pending_guide_ids($excursionId)) {
-        return;
-    }
-    if (!gcv_guiagem_qualifies_priority($tour)) {
         return;
     }
     $picked = gcv_guiagem_open_next($tour, 0);
@@ -953,13 +948,19 @@ function gcv_guiagem_release(int $excursionId, array $user, bool $isAdmin = fals
     $ids = array_map(static fn ($g) => (int)$g['id'], $picked);
     if ($cancelNow) {
         gcv_guiagem_finish_no_guide($excursionId);
-        $message = 'Guiagem cancelada. Você foi para o fim da fila (' . $posicao . 'º). Não havia outro guia disponível, então o passeio foi cancelado.';
+        $message = $posicao > 0
+            ? 'Guiagem cancelada. Você foi para o fim da fila (' . $posicao . 'º). Não havia outro guia disponível, então o passeio foi cancelado.'
+            : 'Guiagem cancelada. Você continua em destaque. Não havia outro guia disponível, então o passeio foi cancelado.';
     } elseif ($ids) {
         gcv_guiagem_notify_new_purchase($excursionId, $ids);
         gcv_guiagem_notify_agency_released($tour, $owner, count($ids));
-        $message = 'Guiagem cancelada. Você foi para o fim da fila (' . $posicao . 'º). Os guias do topo foram avisados e podem aceitar, como em uma compra nova. Os clientes só são avisados quando outro guia assumir.';
+        $message = $posicao > 0
+            ? 'Guiagem cancelada. Você foi para o fim da fila (' . $posicao . 'º). Os guias do topo foram avisados e podem aceitar, como em uma compra nova. Os clientes só são avisados quando outro guia assumir.'
+            : 'Guiagem cancelada. Você continua em destaque. A vaga foi para a fila. Os clientes só são avisados quando outro guia assumir.';
     } else {
-        $message = 'Guiagem cancelada. Você foi para o fim da fila (' . $posicao . 'º). A vaga segue aberta até 24 horas antes do passeio.';
+        $message = $posicao > 0
+            ? 'Guiagem cancelada. Você foi para o fim da fila (' . $posicao . 'º). A vaga segue aberta até 24 horas antes do passeio.'
+            : 'Guiagem cancelada. Você continua em destaque. A vaga segue aberta até 24 horas antes do passeio.';
     }
     return ['ok' => true, 'message' => $message, 'offered' => count($ids), 'posicao' => $posicao, 'tour_cancelled' => $cancelNow];
 }
@@ -1121,7 +1122,9 @@ function gcv_guiagem_accept(int $excursionId, array $user): array
         'ok' => true,
         'result' => 'accepted',
         'posicao' => $posicao,
-        'message' => 'Você assumiu ' . $title . ' e foi para o fim da fila (' . $posicao . 'º).',
+        'message' => $posicao > 0
+            ? 'Você assumiu ' . $title . ' e foi para o fim da fila (' . $posicao . 'º).'
+            : 'Você assumiu ' . $title . '. A próxima venda também chega primeiro para você.',
     ];
 }
 
@@ -1150,7 +1153,7 @@ function gcv_guiagem_decline(int $excursionId, int $guideId): array
         if ($pending < 1) {
             $tour = gcv_substitution_load_excursion($excursionId);
             if ($tour && !gcv_guiagem_staffing_ready($tour)) {
-                $picked = gcv_guiagem_open_top($tour, $guideId);
+                $picked = gcv_guiagem_open_next($tour, $guideId);
                 if (!$picked && count(gcv_guiagem_filled_ids($tour)) < 1) {
                     $cancelNow = gcv_guiagem_mark_cancelled($excursionId);
                 }

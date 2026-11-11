@@ -3074,9 +3074,11 @@
     if (!list) return;
     var upcoming = guideAgendaState.upcoming || [];
     var archived = guideAgendaState.archived || [];
-    var fila = guideAgendaState.fila > 0
-      ? '<p class="gcv-agenda-fila">Você está em ' + guideAgendaState.fila + 'º na fila ' + (guideAgendaState.filaKalunga ? 'Kalunga' : 'de guias') + '.</p>'
-      : '';
+    var fila = guideAgendaState.guiaEspecial
+      ? '<p class="gcv-agenda-fila">Você é o guia especial. Toda venda chega primeiro para você aceitar ou recusar.</p>'
+      : (guideAgendaState.fila > 0
+        ? '<p class="gcv-agenda-fila">Você está em ' + guideAgendaState.fila + 'º na fila ' + (guideAgendaState.filaKalunga ? 'Kalunga' : 'de guias') + '.</p>'
+        : '');
     var html = fila;
     if (guideAgendaState.view === 'archived') {
       html += agendaHeadBlock('Arquivados', archivedLinkHtml('gcv-agenda-back-upcoming', 'Próximas saídas', false));
@@ -3135,6 +3137,7 @@
       guideAgendaState.fila = Number(res.data && res.data.fila_posicao) || 0;
       guideAgendaState.filaTotal = Number(res.data && res.data.fila_total) || 0;
       guideAgendaState.filaKalunga = !!(res.data && res.data.fila_kalunga);
+      guideAgendaState.guiaEspecial = !!(res.data && res.data.guia_especial);
       guideAgendaState.loaded = true;
       paintGuideAgenda();
       if (typeof window.gcvRefreshGuideMarks === 'function') window.gcvRefreshGuideMarks();

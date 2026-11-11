@@ -25,6 +25,7 @@ if ($method === 'GET') {
             'posicao' => gcv_substitution_fila_posicao($me),
             'fila' => gcv_substitution_queue(gcv_substitution_fila_do_guia($me)),
             'fila_kalunga' => gcv_substitution_fila_do_guia($me) === 'kalunga',
+            'guia_especial' => gcv_substitution_guia_especial_id() === $me,
         ]);
     }
     $tour = gcv_substitution_load_excursion($excursionId);

@@ -289,7 +289,7 @@
           heading: "3. Oportunidade",
           paragraphs: [
             "Toda venda confirmada de passeio exclusivo ou de excursão, com transporte ou sem transporte, é enviada aos 3 primeiros da fila do idioma da compra, o TOP 3. Na excursão, isso ocorre quando o quórum é atingido. A exclusividade do TOP 3 dura 2 horas.",
-            "Enquanto a prioridade do guia especial estiver ativa, guiagem em que o guia recebe mais de R$ 500, ou guiagem em outro idioma, é oferecida primeiro a Diego Navi Marques Carvalho. Ele tem 24 horas para aceitar ou recusar, e a saída entra na agenda dele nesse prazo. Se ele recusar, não responder, já estiver ocupado nesse dia, ou se essa prioridade estiver desligada, a venda segue para o TOP 3.",
+            "Diego Navi Marques Carvalho é o guia especial e não entra na fila. Enquanto essa prioridade estiver ativa, toda venda confirmada chega primeiro para ele, por 24 horas, para aceitar ou recusar. A saída entra na agenda dele nesse prazo. Se ele recusar, não responder, já estiver ocupado nesse dia, ou se essa prioridade estiver desligada, a venda segue para o TOP 3. Santa Bárbara, Capivara, Candaru e Guardião não passam por ele: vão para a fila Kalunga.",
             "O envio da oportunidade é pelo WhatsApp. O GUIA e o cliente também recebem o aviso por e-mail. A mensagem traz os dados da excursão ou do passeio exclusivo, o pagamento que aquele GUIA recebe, o número de pessoas, se é com o veículo do GUIA, e os dados do comprador: nome, telefone e e-mail.",
             "O aceite é o clique no link enviado no WhatsApp. O mesmo link segue no e-mail. O tempo para aceitar é de 4 horas e 20 minutos. O primeiro clique válido ocupa a vaga e o link expira. Quem mais recebeu a oportunidade é avisado, por WhatsApp e por e-mail, de que ela foi aceita por outro guia.",
             "Se nenhum dos 3 aceitar nas 2 horas, todos os outros guias da lista são notificados ao mesmo tempo, com o mesmo prazo de 4 horas e 20 minutos. O primeiro que aceitar entra e o link expira.",
@@ -346,7 +346,7 @@
           paragraphs: [
             "Guia em português não gera acréscimo para o cliente.",
             "Se o cliente escolhe outro idioma, o acréscimo daquele passeio — percentual ou valor fixo, na cópia da tarifa do atrativo e da cidade — incide uma vez sobre o total da compra, depois dos descontos de idade. Não incide por pessoa.",
-            "A oportunidade usa a fila dos guias desse idioma, na ordem do ranking. Enquanto a prioridade do guia especial estiver ativa e o dia de Diego Navi Marques Carvalho estiver livre, a guiagem em outro idioma passa primeiro por ele, por 24 horas, antes dessa fila.",
+            "A oportunidade usa a fila dos guias desse idioma, na ordem do ranking. O guia especial recebe essa venda antes da fila, como qualquer outra, por 24 horas, se o dia dele estiver livre.",
           ],
         },
       ],

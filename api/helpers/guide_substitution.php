@@ -83,11 +83,16 @@ function gcv_substitution_seed_queue(): void
                 }
             }
         }
+        $especial = gcv_substitution_guia_especial_id();
+        if ($especial > 0) {
+            db()->prepare('DELETE FROM gcv_guide_queue WHERE user_id = ?')->execute([$especial]);
+            unset($known[$especial]);
+        }
         $ins = db()->prepare('INSERT INTO gcv_guide_queue (user_id, posicao, fila) VALUES (?, ?, ?)');
         $move = db()->prepare('UPDATE gcv_guide_queue SET fila = ?, posicao = ? WHERE user_id = ?');
         foreach ($rows as $row) {
             $id = (int)($row['id'] ?? 0);
-            if ($id <= 0) {
+            if ($id <= 0 || $id === $especial) {
                 continue;
             }
             $fila = ((int)($row['is_kalunga'] ?? 0) === 1) ? 'kalunga' : 'geral';
@@ -116,6 +121,19 @@ function gcv_substitution_fila_do_guia(int $userId): string
     return gcv_guia_e_kalunga($userId) ? 'kalunga' : 'geral';
 }
 
+/** Fora das duas filas: recebe a venda antes de todo mundo. */
+function gcv_substitution_guia_especial_id(): int
+{
+    if (function_exists('gcv_guiagem_priority_guide_id')) {
+        return gcv_guiagem_priority_guide_id();
+    }
+    $file = __DIR__ . '/guide_queue_offer.php';
+    if (is_file($file)) {
+        require_once $file;
+    }
+    return function_exists('gcv_guiagem_priority_guide_id') ? gcv_guiagem_priority_guide_id() : 0;
+}
+
 /** @return list<array{id:int,nome:string,foto:string,cidade:string,posicao:int,kalunga:bool}> */
 function gcv_substitution_queue(string $fila = 'geral'): array
 {
@@ -139,9 +157,10 @@ function gcv_substitution_queue(string $fila = 'geral'): array
              LEFT JOIN gcv_guides g ON g.user_id = u.id
              LEFT JOIN gcv_cities c ON c.id = g.base_city_id
              WHERE q.fila = ?
+               AND u.id <> ?
              ORDER BY q.posicao ASC, u.created_at ASC, u.id ASC"
         );
-        $st->execute([$fila]);
+        $st->execute([$fila, gcv_substitution_guia_especial_id()]);
         $out = [];
         $n = 0;
         foreach ($st->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
@@ -165,6 +184,10 @@ function gcv_substitution_queue(string $fila = 'geral'): array
 function gcv_substitution_move_to_end(int $userId): int
 {
     gcv_substitution_seed_queue();
+    if ($userId > 0 && $userId === gcv_substitution_guia_especial_id()) {
+        db()->prepare('DELETE FROM gcv_guide_queue WHERE user_id = ?')->execute([$userId]);
+        return 0;
+    }
     $fila = gcv_substitution_fila_do_guia($userId);
     $maxSt = db()->prepare('SELECT COALESCE(MAX(posicao), 0) FROM gcv_guide_queue WHERE fila = ?');
     $maxSt->execute([$fila]);
