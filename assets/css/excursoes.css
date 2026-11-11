@@ -7266,13 +7266,13 @@ html.gcv-waitlist-modal-open {
 }
 
 .gcv-excursoes-card--day-blocked {
-  opacity: 0.55;
-  filter: grayscale(0.25);
+  opacity: 1;
+  filter: none;
   position: relative;
   user-select: none;
   -webkit-user-select: none;
   cursor: not-allowed;
-  /* O card recebe o clique para avisar; os filhos não navegam nem adicionam. */
+  /* O card continua visível. O véu por cima recebe o clique; nada de dentro abre. */
   pointer-events: auto !important;
 }
 
@@ -7290,9 +7290,10 @@ html.gcv-waitlist-modal-open {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: rgba(248, 250, 252, 0.28);
-  pointer-events: none !important;
-  z-index: 20;
+  background: rgba(248, 250, 252, 0.42);
+  pointer-events: auto !important;
+  cursor: not-allowed !important;
+  z-index: 40;
 }
 
 .gcv-excursoes-card--day-blocked a,

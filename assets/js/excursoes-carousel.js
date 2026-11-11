@@ -7271,9 +7271,10 @@
     document.documentElement._gcvExcBookBound = true;
 
     function blockDayBlockedEvent(e) {
-      if (e.target.closest && e.target.closest("[data-gcv-exc-share], .gcv-share-sheet")) return false;
+      if (e.target.closest && e.target.closest(".gcv-share-sheet")) return false;
       var blocked = e.target.closest && e.target.closest(".gcv-excursoes-card--day-blocked");
-      if (!blocked || !blocked.closest("#excursoes-junho")) return false;
+      if (!blocked) return false;
+      if (!blocked.closest("#excursoes-junho") && !blocked.closest("#gcv-saida-modal")) return false;
       e.preventDefault();
       e.stopPropagation();
       if (typeof e.stopImmediatePropagation === "function") e.stopImmediatePropagation();
@@ -7294,7 +7295,7 @@
     });
 
     document.addEventListener("click", function (e) {
-      if (e.target.closest(".gcv-excursoes-card--day-blocked") && !e.target.closest("[data-gcv-exc-share]")) {
+      if (e.target.closest(".gcv-excursoes-card--day-blocked")) {
         e.preventDefault();
         e.stopPropagation();
         return;
@@ -7547,14 +7548,12 @@
   }
 
   function tryToggleCardFromSurfaceClick(e) {
-    if (!e.target.closest("#excursoes-junho")) return false;
     var blockedCard = e.target.closest(".gcv-excursoes-card--day-blocked");
-    if (blockedCard) {
-      e.preventDefault();
-      e.stopPropagation();
-      return true;
-    }
-    return false;
+    if (!blockedCard) return false;
+    if (!blockedCard.closest("#excursoes-junho") && !blockedCard.closest("#gcv-saida-modal")) return false;
+    e.preventDefault();
+    e.stopPropagation();
+    return true;
   }
 
   /** Alinha com o breakpoint do carrossel por dia (CSS ≤1023px). */
@@ -7961,21 +7960,22 @@
       if (key) ids[key] = true;
     });
 
-    /** Só conta como “dia ocupado” se o item do carrinho for um passeio válido daquele dia. */
+    /** Um item no carrinho ocupa o dia inteiro: os outros cards dessa data ficam bloqueados. */
     var occupiedDates = {};
     cartItems.forEach(function (it) {
-      var key = it && it.id ? normalizeLookupCartId(it.id) : "";
-      if (!key || !validIds[key]) return;
+      if (!it || !it.id) return;
+      var key = normalizeLookupCartId(it.id);
+      if (!key) return;
+      var roteiro = !!(it.passeioKey || String(it.id).indexOf("roteiro-") === 0);
+      if (!roteiro && !validIds[key]) return;
       var iso = "";
       if (it.dateIso) iso = String(it.dateIso).slice(0, 10);
-      if (!iso) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
         var m = String(it.id).match(/^(\d{4}-\d{2}-\d{2})-/);
         if (m) iso = m[1];
       }
       if (!iso) return;
-      if (validIdsByDate[iso] && validIdsByDate[iso][key]) {
-        occupiedDates[iso] = key;
-      }
+      occupiedDates[iso] = key;
     });
 
     syncDateTabsSelection(root, occupiedDates, cartItems, payloadRows);
@@ -7988,7 +7988,12 @@
           ((bookIdEl && bookIdEl.getAttribute("data-cart-id")) || ""),
       );
       var inCart = !!(id && ids[id]);
-      var cardDateIso = card.getAttribute("data-excursao-date-iso") || "";
+      var bookDateEl = card.querySelector(".gcv-excursoes-card__book");
+      var cardDateIso =
+        card.getAttribute("data-excursao-date-iso") ||
+        (bookDateEl && bookDateEl.getAttribute("data-cart-date-iso")) ||
+        "";
+      cardDateIso = String(cardDateIso).slice(0, 10);
       var selectedIdForDay = cardDateIso ? occupiedDates[cardDateIso] : "";
       var dayBlocked =
         !inCart &&
