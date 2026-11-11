@@ -3060,15 +3060,25 @@
         return '<span class="gcv-passeios__money">' + passeioEsc(text) + "</span>";
       };
       var partesPreco = passeioFaixaPartes(sel, modalidade, nPessoas, comTranslado);
-      var breakTxt = modalidade === "exclusivo" && comTranslado && carsNow > 1
-        ? passeioEsc(carsNow + " " + copy.cars + " × ") + moneyHtml(passeioReais(unit * (parseInt(sel.quorum, 10) || 4)))
-        : partesPreco && partesPreco.length
-          ? partesPreco.map(function (p) {
-              var w = p.q === 1 ? copy.person : copy.peopleWord;
-              return passeioEsc(p.q + " " + w + " × ") + moneyHtml(passeioReais(p.u));
-            }).join(passeioEsc(" + "))
-          : passeioEsc(billed + " " + word + " × ") + moneyHtml(passeioReais(unit));
-      if (bi.on) breakTxt += passeioEsc(" + " + copy.bilingualShort + " (") + moneyHtml(passeioReais(biCents)) + ")";
+      var extraBi = bi.on ? biCents : 0;
+      var breakTxt;
+      if (modalidade === "exclusivo" && comTranslado && carsNow > 1) {
+        var pacote = unit * (parseInt(sel.quorum, 10) || 4);
+        if (extraBi) pacote += Math.round(extraBi / carsNow);
+        breakTxt = passeioEsc(carsNow + " " + copy.cars + " × ") + moneyHtml(passeioReais(pacote));
+      } else if (partesPreco && partesPreco.length) {
+        var genteFaixa = 0;
+        partesPreco.forEach(function (p) { genteFaixa += p.q; });
+        var porPessoa = genteFaixa && extraBi ? Math.round(extraBi / genteFaixa) : 0;
+        breakTxt = partesPreco.map(function (p) {
+          var w = p.q === 1 ? copy.person : copy.peopleWord;
+          return passeioEsc(p.q + " " + w + " × ") + moneyHtml(passeioReais(p.u + porPessoa));
+        }).join(passeioEsc(" + "));
+      } else {
+        var porUm = billed && extraBi ? Math.round(extraBi / billed) : 0;
+        breakTxt = passeioEsc(billed + " " + word + " × ") + moneyHtml(passeioReais((parseInt(unit, 10) || 0) + porUm));
+      }
+      if (bi.on) breakTxt += passeioEsc(" (" + copy.bilingualShort + ")");
       var fill = function (tpl, map) {
         return String(tpl || "").replace(/\{(\w+)\}/g, function (_, k) {
           var v = map[k] != null ? String(map[k]) : "";

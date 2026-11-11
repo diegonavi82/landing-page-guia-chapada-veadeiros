@@ -1183,14 +1183,17 @@
       var pessoas = parseInt(String(it.pessoas), 10) || 1;
       var partes = faixaPartesReais(it.faixa, pessoas);
       var base = 0;
-      var pedacos = partes.map(function (p) {
+      var gente = 0;
+      partes.forEach(function (p) {
         base += p.q * p.u;
-        var word = p.q === 1 ? s("cartSeatOne") || "Pessoa" : s("cartSeatsMany") || "Pessoas";
-        return String(p.q) + " " + word + " × " + formatBrl(p.u);
+        gente += p.q;
       });
       var total = parseInt(String(it.valorUnit), 10) || faixaTotalReais(it.faixa, pessoas);
-      var extra = total - base;
-      if (extra > 0) pedacos.push(formatBrl(extra));
+      var porPessoa = gente && total > base ? Math.round((total - base) / gente) : 0;
+      var pedacos = partes.map(function (p) {
+        var word = p.q === 1 ? s("cartSeatOne") || "Pessoa" : s("cartSeatsMany") || "Pessoas";
+        return String(p.q) + " " + word + " × " + formatBrl(p.u + porPessoa);
+      });
       return pedacos.join(" + ") + " = " + formatBrl(total) + " BRL " + suffix;
     }
     var qty = parseInt(String(it.qty), 10) || 0;
