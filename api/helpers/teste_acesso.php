@@ -14,6 +14,7 @@ function gcv_teste_emails(): array
         'priscilacsp@yahoo.com.br',
         'diegonavi82@gmail.com',
         'cecybfr@gmail.com',
+        'viscardo@gmail.com',
     ];
 }
 
