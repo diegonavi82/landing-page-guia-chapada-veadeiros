@@ -339,15 +339,15 @@ function gcv_referral_message(string $name, string $link, ?string $from, ?string
         $de = gcv_referral_format_date($from, $lang);
         $ate = $to ? gcv_referral_format_date($to, $lang) : $de;
         if ($lang === 'en') {
-            $when = $de === $ate ? ('on ' . $de) : ('from ' . $de . ' to ' . $ate);
-            return $who . ' invited you to Chapada dos Veadeiros. See every excursion ' . $when . ': ' . $link;
+            $when = $de === $ate ? $de : ($de . ' to ' . $ate);
+            return $who . ' invited you to enjoy the upcoming tours from ' . $when . ': ' . $link;
         }
         if ($lang === 'es') {
-            $when = $de === $ate ? ('el ' . $de) : ('del ' . $de . ' al ' . $ate);
-            return $who . ' te invitó a la Chapada dos Veadeiros. Mira todas las excursiones ' . $when . ': ' . $link;
+            $when = $de === $ate ? $de : ($de . ' al ' . $ate);
+            return $who . ' te indicó para disfrutar los próximos paseos del ' . $when . ': ' . $link;
         }
-        $when = $de === $ate ? ('no dia ' . $de) : ('de ' . $de . ' a ' . $ate);
-        return $who . ' te indicou a Chapada dos Veadeiros. Veja todas as excursões ' . $when . ': ' . $link;
+        $when = $de === $ate ? ('de ' . $de) : ('de ' . $de . ' a ' . $ate);
+        return $who . ' te indicou para curtir os próximos passeios ' . $when . ': ' . $link;
     }
     if ($lang === 'en') {
         return $who . ' invited you to Chapada dos Veadeiros. Create your account with email and password, then confirm the email: ' . $link;

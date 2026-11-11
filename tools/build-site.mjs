@@ -1489,7 +1489,7 @@ function loadAfterIdle(srcs) {
         document.body.appendChild(s);
       });
     }
-    if (/[?&]saida=/.test(location.search)) go();
+    if (/[?&](?:saida|de)=/.test(location.search)) go();
     ["pointerdown","keydown","touchstart"].forEach(function(ev){
       window.addEventListener(ev,go,{once:true,passive:true});
     });

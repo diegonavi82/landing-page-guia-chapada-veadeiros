@@ -226,6 +226,7 @@
       statusWait: "⏳ Em formação",
       joinTripTitle: "Inscrever-me na Excursão",
       joinTripMissing: "Essa saída não está mais disponível.",
+      periodEmpty: "Não há passeios nesse período.",
       close: "Fechar",
       meetingPointLabel: "Ponto de encontro",
       guidePhoneLabel: "Telefone do guia",
@@ -445,6 +446,7 @@
       statusWait: "⏳ Forming",
       joinTripTitle: "Join this departure",
       joinTripMissing: "This departure is no longer available.",
+      periodEmpty: "There are no tours in this period.",
       close: "Close",
       meetingPointLabel: "Meeting point",
       guidePhoneLabel: "Guide phone",
@@ -664,6 +666,7 @@
       statusWait: "⏳ Formando",
       joinTripTitle: "Inscribirme en la excursión",
       joinTripMissing: "Esta salida ya no está disponible.",
+      periodEmpty: "No hay paseos en este periodo.",
       close: "Cerrar",
       meetingPointLabel: "Punto de encuentro",
       guidePhoneLabel: "Teléfono del guía",
@@ -2739,6 +2742,8 @@
         escapeHtml(destino) +
         '" data-cart-date="' +
         escapeHtml(dateLabel) +
+        '" data-guide-user-id="' +
+        String(parseInt(String(e.guideUserId || e.guiaId || 0), 10) || 0) +
         '">' +
         '<div class="gcv-excursoes-card__book-row">' +
         '<span class="gcv-excursoes-card__price gcv-excursoes-card__price--soldout">' +
@@ -2776,6 +2781,8 @@
       escapeHtml(horaExcursao(e)) +
       '" data-cart-embarque="' +
       escapeHtml(excursaoEmbarque(e, s)) +
+      '" data-guide-user-id="' +
+      String(parseInt(String(e.guideUserId || e.guiaId || 0), 10) || 0) +
       '">' +
       '<div class="gcv-excursoes-card__book-row">' +
       '<div class="gcv-excursoes-card__book-people">' +
@@ -7066,7 +7073,7 @@
     return rest ? m[1] + "-" + rest : m[1];
   }
 
-  function sharePageUrl(locale, cartId) {
+  function sharePageUrl(locale, cartId, todos) {
     var origin = "https://www.guiachapadaveadeiros.com";
     try {
       if (location.protocol === "http:" || location.protocol === "https:") origin = location.origin;
@@ -7074,7 +7081,8 @@
       /* */
     }
     var prefix = locale === "en" ? "/en" : locale === "es" ? "/es" : "";
-    return origin + prefix + "/s/" + encodeURIComponent(saidaPublicId(cartId));
+    var url = origin + prefix + "/s/" + encodeURIComponent(saidaPublicId(cartId));
+    return todos ? url + "?todos=1" : url;
   }
 
   function shareMessage(s, destino, dateLabel, url) {
@@ -7163,7 +7171,52 @@
     return sheet;
   }
 
+  var shareActor = { ready: false, id: 0, guide: false };
+  function loadShareActor() {
+    if (shareActor.loading) return;
+    shareActor.loading = true;
+    fetch("/api/auth/me.php", {
+      method: "GET",
+      credentials: "same-origin",
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+    })
+      .then(function (res) {
+        return res.json().then(
+          function (body) {
+            return body;
+          },
+          function () {
+            return null;
+          },
+        );
+      })
+      .then(function (body) {
+        var user = body && body.ok && body.data && body.data.id ? body.data : null;
+        var role = user ? String(user.active_role || user.role || "") : "";
+        shareActor.id = user ? parseInt(String(user.id), 10) || 0 : 0;
+        shareActor.guide = role === "guide";
+        shareActor.ready = true;
+      })
+      .catch(function () {
+        shareActor.ready = true;
+      });
+  }
+
   function openShareSheet(btn) {
+    if (!shareActor.ready) {
+      if (btn._gcvShareWait) return;
+      btn._gcvShareWait = true;
+      var tries = 0;
+      var timer = window.setInterval(function () {
+        tries += 1;
+        if (!shareActor.ready && tries < 25) return;
+        window.clearInterval(timer);
+        btn._gcvShareWait = false;
+        openShareSheet(btn);
+      }, 40);
+      return;
+    }
     var card = btn.closest(".gcv-excursoes-card");
     var block = btn.closest(".gcv-excursoes-card__book");
     var sec = card && card.closest("#excursoes-junho");
@@ -7174,7 +7227,9 @@
     if (!cartId) return;
     var destino = (block && block.getAttribute("data-cart-destino")) || "";
     var dateLabel = (block && block.getAttribute("data-cart-date")) || "";
-    var url = sharePageUrl(locale, cartId);
+    var guideId = parseInt((block && block.getAttribute("data-guide-user-id")) || "0", 10) || 0;
+    var ownGuide = shareActor.guide && shareActor.id > 0 && guideId > 0 && shareActor.id === guideId;
+    var url = sharePageUrl(locale, cartId, !ownGuide);
     var message = shareMessage(s, destino, dateLabel, url);
     var text = shareMessage(s, destino, dateLabel, "");
     var sheet = ensureShareSheet();
@@ -7226,17 +7281,25 @@
     if (closeBtn && typeof closeBtn.focus === "function") closeBtn.focus();
   }
 
-  function saidaIdFromUrl() {
+  function queryParam(name) {
     try {
-      return String(new URLSearchParams(window.location.search || "").get("saida") || "").trim();
+      return String(new URLSearchParams(window.location.search || "").get(name) || "").trim();
     } catch (err) {
       return "";
     }
   }
 
+  function isoDay(value) {
+    return /^\d{4}-\d{2}-\d{2}$/.test(String(value || "")) ? String(value) : "";
+  }
+
   function openSharedSaidaFromUrl() {
-    var id = saidaIdFromUrl();
-    if (!id || !window.GcvSaidaPopup || typeof window.GcvSaidaPopup.open !== "function") return;
+    var de = isoDay(queryParam("de"));
+    var ate = isoDay(queryParam("ate")) || de;
+    var id = queryParam("saida");
+    var todos = queryParam("todos") === "1";
+    if (!window.GcvSaidaPopup) return;
+    if (!de && !id) return;
     var section = document.getElementById("excursoes") || document.getElementById("excursoes-junho");
     if (section && typeof section.scrollIntoView === "function") {
       try {
@@ -7245,7 +7308,11 @@
         section.scrollIntoView();
       }
     }
-    window.GcvSaidaPopup.open(id);
+    if (de && typeof window.GcvSaidaPopup.openPeriod === "function") {
+      window.GcvSaidaPopup.openPeriod(de, ate);
+      return;
+    }
+    if (id && typeof window.GcvSaidaPopup.open === "function") window.GcvSaidaPopup.open(id, todos ? "todos" : "guide");
   }
 
   function initBookingControls() {
@@ -8204,6 +8271,7 @@
       initBookingControls();
       initExcCart(locale);
       bootExcursaoCarousel();
+      loadShareActor();
     } catch (err) {
       if (typeof console !== "undefined" && console.error) console.error("[gcv-excursoes]", err);
     }
@@ -9097,70 +9165,54 @@
     document.addEventListener("keydown", modal._gcvSaidaKeys);
   }
 
-  function paintSaidaCard(cartId, rows, locale) {
+  function dedupeSaidaTours(rows, preferId) {
+    var byExcursion = {};
+    var order = [];
+    var want = preferId ? saidaPublicId(preferId) : "";
+    (rows || []).forEach(function (row) {
+      var eid = parseInt(String((row && row.id) || 0), 10);
+      var bucket = eid > 0 ? "e" + eid : "c" + saidaPublicId(excursaoCartId(row));
+      if (!byExcursion[bucket]) {
+        byExcursion[bucket] = row;
+        order.push(bucket);
+        return;
+      }
+      if (want && saidaPublicId(excursaoCartId(row)) === want) byExcursion[bucket] = row;
+    });
+    return order.map(function (bucket) {
+      return byExcursion[bucket];
+    });
+  }
+
+  function showSaidaTours(tours, locale, start, emptyText) {
     var s = STRINGS[locale] || STRINGS.pt;
     var modal = ensureSaidaModal();
     var title = modal.querySelector(".gcv-saida-modal__title");
     var body = modal.querySelector("[data-saida-body]");
     var closeBtn = modal.querySelector("[data-saida-close]");
+    var panel = modal.querySelector(".gcv-saida-modal__panel");
     if (title) title.textContent = s.joinTripTitle || "Inscrever-me na Excursão";
     if (closeBtn) closeBtn.setAttribute("aria-label", s.close || "Fechar");
-    var found = null;
-    var idx = 0;
-    (rows || []).some(function (row, i) {
-      if (saidaPublicId(excursaoCartId(row)) === saidaPublicId(cartId)) {
-        found = row;
-        idx = i;
-        return true;
-      }
-      return false;
-    });
-    if (!found || !body) {
-      if (body) body.innerHTML = '<p class="gcv-saida-modal__empty">' + escapeHtml(s.joinTripMissing || "Essa saída não está mais disponível.") + "</p>";
-      var emptyPanel = modal.querySelector(".gcv-saida-modal__panel");
-      if (emptyPanel) emptyPanel.classList.remove("gcv-saida-modal__panel--carousel");
+    if (modal._gcvSaidaKeys) {
+      document.removeEventListener("keydown", modal._gcvSaidaKeys);
+      modal._gcvSaidaKeys = null;
+    }
+    if (!body) {
       modal.hidden = false;
       return;
     }
-    var guideKey = guideSaidaKey(found);
-    var sameGuide = guideKey
-      ? (rows || []).filter(function (row) {
-          return guideSaidaKey(row) === guideKey;
-        })
-      : [found];
-    if (!sameGuide.length) sameGuide = [found];
-    var byExcursion = {};
-    var excursionOrder = [];
-    sameGuide.forEach(function (row) {
-      var eid = parseInt(String((row && row.id) || 0), 10);
-      var bucket = eid > 0 ? "e" + eid : "c" + saidaPublicId(excursaoCartId(row));
-      if (!byExcursion[bucket]) {
-        byExcursion[bucket] = row;
-        excursionOrder.push(bucket);
-        return;
-      }
-      if (saidaPublicId(excursaoCartId(row)) === saidaPublicId(cartId)) byExcursion[bucket] = row;
-    });
-    var tours = excursionOrder.map(function (bucket) {
-      return byExcursion[bucket];
-    });
-    if (!tours.length) tours = [found];
-    tours = sortExcursaoByDeparture(tours);
-    var start = 0;
-    var want = saidaPublicId(cartId);
-    tours.some(function (row, i) {
-      if (saidaPublicId(excursaoCartId(row)) === want) {
-        start = i;
-        return true;
-      }
-      return false;
-    });
-    var panel = modal.querySelector(".gcv-saida-modal__panel");
+    if (!tours || !tours.length) {
+      body.innerHTML =
+        '<p class="gcv-saida-modal__empty">' + escapeHtml(emptyText || s.joinTripMissing || "") + "</p>";
+      if (panel) panel.classList.remove("gcv-saida-modal__panel--carousel");
+      modal.hidden = false;
+      return;
+    }
     if (tours.length < 2) {
       if (panel) panel.classList.remove("gcv-saida-modal__panel--carousel");
       body.innerHTML =
         '<div class="gcv-excursoes__track gcv-excursoes__track--day-list">' +
-        buildCard(found, idx, locale, s) +
+        buildCard(tours[0], 0, locale, s) +
         "</div>";
       modal.hidden = false;
       return;
@@ -9189,23 +9241,92 @@
       '">' +
       saidaArrowSvg(1) +
       "</button></div>";
-    bindSaidaCarousel(modal, tours.length, start);
+    bindSaidaCarousel(modal, tours.length, start || 0);
     modal.hidden = false;
   }
 
+  function popupRows(locale, cb) {
+    fetchLiveExcursaoRows(locale, function (live) {
+      var rows = live && live.length ? filterFutureExcursoes(applyBookingOverlays(live)) : [];
+      if (!rows.length) {
+        var fallback = EXCURSOES[locale] || EXCURSOES.pt;
+        rows = filterFutureExcursoes(applyBookingOverlays(fallback || []));
+      }
+      cb(rows || []);
+    });
+  }
+
+  function paintSaidaCard(cartId, rows, locale, scope) {
+    var s = STRINGS[locale] || STRINGS.pt;
+    var found = null;
+    (rows || []).some(function (row) {
+      if (saidaPublicId(excursaoCartId(row)) === saidaPublicId(cartId)) {
+        found = row;
+        return true;
+      }
+      return false;
+    });
+    var pool = rows || [];
+    if (scope !== "todos") {
+      if (!found) {
+        showSaidaTours([], locale, 0, s.joinTripMissing);
+        return;
+      }
+      var guideKey = guideSaidaKey(found);
+      pool = guideKey
+        ? pool.filter(function (row) {
+            return guideSaidaKey(row) === guideKey;
+          })
+        : [found];
+    }
+    var tours = sortExcursaoByDeparture(dedupeSaidaTours(pool, cartId));
+    var start = 0;
+    var want = saidaPublicId(cartId);
+    tours.some(function (row, i) {
+      if (saidaPublicId(excursaoCartId(row)) === want) {
+        start = i;
+        return true;
+      }
+      return false;
+    });
+    showSaidaTours(tours, locale, start, s.joinTripMissing);
+  }
+
+  function paintSaidaPeriod(from, to, rows, locale) {
+    var s = STRINGS[locale] || STRINGS.pt;
+    var a = from;
+    var b = to || from;
+    if (a > b) {
+      var swap = a;
+      a = b;
+      b = swap;
+    }
+    var pool = (rows || []).filter(function (row) {
+      var iso = excursaoDateIso(row);
+      return iso && iso >= a && iso <= b;
+    });
+    showSaidaTours(sortExcursaoByDeparture(dedupeSaidaTours(pool, "")), locale, 0, s.periodEmpty || s.joinTripMissing);
+  }
+
   window.GcvSaidaPopup = {
-    open: function (cartId) {
+    open: function (cartId, scope) {
       if (!cartId) return;
       var locale = detectLocale(document.documentElement);
       var modal = ensureSaidaModal();
       modal.hidden = false;
-      fetchLiveExcursaoRows(locale, function (live) {
-        var rows = live && live.length ? filterFutureExcursoes(applyBookingOverlays(live)) : [];
-        if (!rows.length) {
-          var fallback = EXCURSOES[locale] || EXCURSOES.pt;
-          rows = filterFutureExcursoes(applyBookingOverlays(fallback || []));
-        }
-        paintSaidaCard(cartId, rows, locale);
+      popupRows(locale, function (rows) {
+        paintSaidaCard(cartId, rows, locale, scope === "todos" ? "todos" : "guide");
+      });
+    },
+    openPeriod: function (from, to) {
+      var start = isoDay(from);
+      var end = isoDay(to) || start;
+      if (!start) return;
+      var locale = detectLocale(document.documentElement);
+      var modal = ensureSaidaModal();
+      modal.hidden = false;
+      popupRows(locale, function (rows) {
+        paintSaidaPeriod(start, end, rows, locale);
       });
     },
   };
