@@ -38,6 +38,7 @@ if (empty($calc['ok'])) {
         'error' => $calc['error'] ?? 'invalid',
         'message' => $calc['message'] ?? '',
         'minimo_pessoas' => (int) ($calc['minimo_pessoas'] ?? 0),
+        'minimo_cents' => (int) ($calc['minimo_cents'] ?? 0),
     ], JSON_UNESCAPED_UNICODE);
     exit;
 }
@@ -50,6 +51,7 @@ echo json_encode([
     'modo' => $cupom['modo'],
     'valor' => (int) $cupom['valor'],
     'minimo_pessoas' => (int) $cupom['minimo_pessoas'],
+    'minimo_cents' => (int) ($cupom['minimo_cents'] ?? 0),
     'alcance' => $cupom['alcance'],
     'desconto_cents' => (int) $calc['desconto_cents'],
     'total_cents' => $total,

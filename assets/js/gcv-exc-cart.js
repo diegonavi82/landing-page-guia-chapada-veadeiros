@@ -884,15 +884,18 @@
     if (loc === "en") {
       var en = porPessoa ? valor + " per person" : valor + " off the total";
       if (c.tipo === "grupo") en += ", with more than " + c.minimo_pessoas + " people";
+      if (c.tipo === "compra") en += ", on purchases of " + formatBrlCents(c.minimo_cents) + " or more";
       return en;
     }
     if (loc === "es") {
       var es = porPessoa ? valor + " por persona" : valor + " sobre el total";
       if (c.tipo === "grupo") es += ", con más de " + c.minimo_pessoas + " personas";
+      if (c.tipo === "compra") es += ", para compras a partir de " + formatBrlCents(c.minimo_cents);
       return es;
     }
     var pt = porPessoa ? valor + " por pessoa" : valor + " no total";
     if (c.tipo === "grupo") pt += ", com mais de " + c.minimo_pessoas + " pessoas";
+    if (c.tipo === "compra") pt += ", para compras a partir de " + formatBrlCents(c.minimo_cents);
     return pt;
   }
 
@@ -1049,6 +1052,7 @@
             modo: data.modo,
             valor: data.valor,
             minimo_pessoas: data.minimo_pessoas,
+            minimo_cents: data.minimo_cents,
             alcance: data.alcance,
           };
         }

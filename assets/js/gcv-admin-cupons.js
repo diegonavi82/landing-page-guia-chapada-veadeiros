@@ -33,12 +33,25 @@
     return 'R$ ' + n.toFixed(2).replace('.', ',');
   }
 
+  function reaisToCents(raw) {
+    var s = String(raw || '').trim().replace(/\s/g, '');
+    if (!s) return 0;
+    if (s.indexOf(',') >= 0) s = s.replace(/\./g, '').replace(',', '.');
+    else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');
+    var n = parseFloat(s);
+    if (!isFinite(n) || n <= 0) return 0;
+    return Math.round(n * 100);
+  }
+
   function regra(c) {
     var valor = c.modo === 'percentual' ? (parseInt(String(c.valor), 10) || 0) + '%' : money(c.valor);
     var porPessoa = c.tipo === 'pessoa' || (c.tipo === 'grupo' && c.alcance === 'pessoa');
     var texto = porPessoa ? valor + ' por pessoa' : valor + ' no total do carrinho';
     if (c.tipo === 'grupo') {
       texto += ', quando há mais de ' + (parseInt(String(c.minimo_pessoas), 10) || 0) + ' pessoas';
+    }
+    if (c.tipo === 'compra') {
+      texto += ', para compras a partir de ' + money(c.minimo_cents);
     }
     return texto;
   }
@@ -57,6 +70,7 @@
     if (!isFinite(num) || num <= 0) num = 0;
     var valor = modo === 'percentual' ? Math.round(num) : Math.round(num * 100);
     var min = parseInt(String((box.querySelector('[data-cupom-min]') || {}).value || ''), 10) || 0;
+    var piso = reaisToCents((box.querySelector('[data-cupom-piso]') || {}).value);
     var alcance = (box.querySelector('[data-cupom-alcance]') || {}).value || 'total';
     var ativo = !!((box.querySelector('[data-cupom-ativo]') || {}).checked);
     return {
@@ -66,6 +80,7 @@
       modo: modo,
       valor: valor,
       minimo_pessoas: min,
+      minimo_cents: piso,
       alcance: alcance,
       ativo: ativo
     };
@@ -77,10 +92,12 @@
     var tipo = (box.querySelector('[data-cupom-tipo]') || {}).value || 'total';
     var modo = (box.querySelector('[data-cupom-modo]') || {}).value || 'fixo';
     var grupo = box.querySelector('[data-cupom-grupo]');
+    var pisoBox = box.querySelector('[data-cupom-piso-box]');
     var valorLabel = box.querySelector('[data-cupom-valor-label]');
     var ativoBox = box.querySelector('[data-cupom-ativo]');
     var aviso = box.querySelector('[data-cupom-ativo-aviso]');
     if (grupo) grupo.hidden = tipo !== 'grupo';
+    if (pisoBox) pisoBox.hidden = tipo !== 'compra';
     if (valorLabel) valorLabel.textContent = modo === 'percentual' ? 'Percentual' : 'Valor em R$';
     if (aviso) aviso.hidden = !ativoBox || !!ativoBox.checked;
   }
@@ -95,6 +112,8 @@
     var valor = c.modo === 'percentual' ? String(c.valor) : ((parseInt(String(c.valor), 10) || 0) / 100).toFixed(2);
     box.querySelector('[data-cupom-valor]').value = valor;
     box.querySelector('[data-cupom-min]').value = c.minimo_pessoas || 4;
+    var pisoCents = parseInt(String(c.minimo_cents), 10) || 0;
+    box.querySelector('[data-cupom-piso]').value = pisoCents ? (pisoCents / 100).toFixed(2).replace('.', ',') : '';
     box.querySelector('[data-cupom-alcance]').value = c.alcance || 'total';
     box.querySelector('[data-cupom-ativo]').checked = c.ativo !== false;
     var title = box.querySelector('[data-cupom-form-title]');
@@ -141,6 +160,7 @@
       '<option value="total">Desconto no total do carrinho</option>' +
       '<option value="pessoa">Desconto por pessoa</option>' +
       '<option value="grupo">A partir de mais de X pessoas</option>' +
+      '<option value="compra">Para compras acima de um valor</option>' +
       '</select></label>' +
       '<div class="gcv-cupom-form__row">' +
       '<label>Forma <select data-cupom-modo><option value="fixo">Valor em R$</option><option value="percentual">Percentual</option></select></label>' +
@@ -152,6 +172,9 @@
       '<option value="total">no total do carrinho</option>' +
       '<option value="pessoa">em cada pessoa</option>' +
       '</select></label></div>' +
+      '<div data-cupom-piso-box hidden>' +
+      '<label>A partir de R$ <input type="text" inputmode="decimal" data-cupom-piso placeholder="500" /></label>' +
+      '</div>' +
       '<label class="gcv-cupom-form__check"><input type="checkbox" data-cupom-ativo checked /> Cupom ativo no carrinho</label>' +
       '<p class="gcv-cupom-form__warn" data-cupom-ativo-aviso hidden>Desmarcado, o carrinho recusa este código.</p>' +
       '<div class="gcv-cupom-form__actions">' +
@@ -174,6 +197,10 @@
       }
       if (!payload.valor) {
         if (err) { err.hidden = false; err.textContent = 'Informe o valor do desconto.'; }
+        return;
+      }
+      if (payload.tipo === 'compra' && payload.minimo_cents < 100) {
+        if (err) { err.hidden = false; err.textContent = 'Informe a partir de quantos reais a compra precisa chegar.'; }
         return;
       }
       if (err) err.hidden = true;

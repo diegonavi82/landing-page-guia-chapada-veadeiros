@@ -2395,16 +2395,23 @@ function cuponsLista() {
 }
 
 function cupomNorm(row) {
-  const tipo = ["total", "pessoa", "grupo"].includes(row.tipo) ? row.tipo : "total";
+  const tipo = ["total", "pessoa", "grupo", "compra"].includes(row.tipo) ? row.tipo : "total";
   const modo = row.modo === "percentual" ? "percentual" : "fixo";
   let alcance = row.alcance === "pessoa" ? "pessoa" : "total";
   const codigo = String(row.codigo || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
   let valor = parseInt(String(row.valor), 10) || 0;
   valor = modo === "percentual" ? Math.max(1, Math.min(100, valor)) : Math.max(1, valor);
   let min = Math.max(0, parseInt(String(row.minimo_pessoas), 10) || 0);
-  if (tipo === "grupo") min = Math.max(1, min);
-  else {
+  let piso = Math.max(0, parseInt(String(row.minimo_cents), 10) || 0);
+  if (tipo === "grupo") {
+    min = Math.max(1, min);
+    piso = 0;
+  } else if (tipo === "compra") {
     min = 0;
+    alcance = "total";
+  } else {
+    min = 0;
+    piso = 0;
     alcance = tipo === "pessoa" ? "pessoa" : "total";
   }
   return {
@@ -2415,11 +2422,12 @@ function cupomNorm(row) {
     modo,
     valor,
     minimo_pessoas: min,
+    minimo_cents: piso,
     alcance,
   };
 }
 
-function cupomMsg(error, locale, min) {
+function cupomMsg(error, locale, min, minCents) {
   const loc = locale === "en" || locale === "es" ? locale : "pt";
   const msgs = {
     pt: {
@@ -2427,6 +2435,7 @@ function cupomMsg(error, locale, min) {
       not_found: "Cupom não encontrado.",
       inactive: "Este cupom está desativado.",
       min_people: "Este cupom vale quando o carrinho tem mais de " + min + " pessoas.",
+      min_value: "Este cupom vale para compras a partir de R$ " + ((minCents || 0) / 100).toFixed(2).replace(".", ",") + ".",
       zero: "Este cupom não gera desconto neste carrinho.",
     },
     en: {
@@ -2434,6 +2443,7 @@ function cupomMsg(error, locale, min) {
       not_found: "Coupon not found.",
       inactive: "This coupon is turned off.",
       min_people: "This coupon applies when the cart has more than " + min + " people.",
+      min_value: "This coupon applies to purchases of R$ " + ((minCents || 0) / 100).toFixed(2).replace(".", ",") + " or more.",
       zero: "This coupon does not discount this cart.",
     },
     es: {
@@ -2441,6 +2451,7 @@ function cupomMsg(error, locale, min) {
       not_found: "Cupón no encontrado.",
       inactive: "Este cupón está desactivado.",
       min_people: "Este cupón vale cuando el carrito tiene más de " + min + " personas.",
+      min_value: "Este cupón vale para compras a partir de R$ " + ((minCents || 0) / 100).toFixed(2).replace(".", ",") + ".",
       zero: "Este cupón no genera descuento en este carrito.",
     },
   };
@@ -2457,6 +2468,13 @@ function cupomDesconto(cupom, pessoas, totalCents) {
       return { ok: false, error: "min_people", minimo_pessoas: cupom.minimo_pessoas };
     }
     tipo = cupom.alcance === "pessoa" ? "pessoa" : "total";
+  }
+  if (tipo === "compra") {
+    const piso = cupom.minimo_cents || 0;
+    if (piso < 100 || totalCents < piso) {
+      return { ok: false, error: "min_value", minimo_cents: piso };
+    }
+    tipo = "total";
   }
   if (totalCents < 100) return { ok: false, error: "zero" };
   let off = 0;
@@ -2481,7 +2499,8 @@ function cupomAplicar(codigo, pessoas, totalCents, locale) {
   const calc = cupomDesconto(found, pessoas, totalCents);
   if (!calc.ok) {
     const min = calc.minimo_pessoas || found.minimo_pessoas;
-    return { ok: false, error: calc.error, minimo_pessoas: min, message: cupomMsg(calc.error, locale, min) };
+    const piso = calc.minimo_cents || found.minimo_cents || 0;
+    return { ok: false, error: calc.error, minimo_pessoas: min, minimo_cents: piso, message: cupomMsg(calc.error, locale, min, piso) };
   }
   const off = cupomTeto(totalCents, calc.desconto_cents);
   if (off < 1) return { ok: false, error: "zero", message: cupomMsg("zero", locale, 0) };
@@ -2523,7 +2542,7 @@ function handleCupomApi(urlPath, req, res) {
         const locale = data.locale === "en" || data.locale === "es" ? data.locale : "pt";
         const calc = cupomAplicar(data.codigo, parseInt(data.pessoas, 10) || 0, parseInt(data.total_cents, 10) || 0, locale);
         if (!calc.ok) {
-          send({ ok: false, error: calc.error, message: calc.message, minimo_pessoas: calc.minimo_pessoas || 0 });
+          send({ ok: false, error: calc.error, message: calc.message, minimo_pessoas: calc.minimo_pessoas || 0, minimo_cents: calc.minimo_cents || 0 });
           return;
         }
         send({
@@ -2533,6 +2552,7 @@ function handleCupomApi(urlPath, req, res) {
           modo: calc.cupom.modo,
           valor: calc.cupom.valor,
           minimo_pessoas: calc.cupom.minimo_pessoas,
+          minimo_cents: calc.cupom.minimo_cents || 0,
           alcance: calc.cupom.alcance,
           desconto_cents: calc.desconto_cents,
           total_cents: parseInt(data.total_cents, 10) || 0,
@@ -2562,6 +2582,9 @@ function handleCupomApi(urlPath, req, res) {
         }
         const norm = cupomNorm(body || {});
         if (!norm.codigo) throw new Error("Informe o código do cupom.");
+        if (norm.tipo === "compra" && norm.minimo_cents < 100) {
+          throw new Error("Informe a partir de quantos reais a compra precisa chegar.");
+        }
         if (lista.some((c) => c.codigo === norm.codigo && c.id !== String(body.id || ""))) {
           throw new Error("Já existe um cupom com este código.");
         }

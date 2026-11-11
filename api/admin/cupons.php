@@ -53,6 +53,9 @@ try {
     if ($norm['codigo'] === '') {
         throw new RuntimeException('Informe o código do cupom.');
     }
+    if ($norm['tipo'] === 'compra' && $norm['minimo_cents'] < 100) {
+        throw new RuntimeException('Informe a partir de quantos reais a compra precisa chegar.');
+    }
     foreach ($lista as $c) {
         if ($c['codigo'] === $norm['codigo'] && $c['id'] !== (string) ($body['id'] ?? '')) {
             throw new RuntimeException('Já existe um cupom com este código.');

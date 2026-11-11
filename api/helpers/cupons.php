@@ -9,6 +9,7 @@ declare(strict_types=1);
  * - total:  R$ ou % sobre o total do carrinho
  * - pessoa: R$ ou % por pessoa (o % incide no total, que é a soma das pessoas)
  * - grupo:  só vale com mais pessoas do que o mínimo; o desconto pode ser no total ou por pessoa
+ * - compra: só vale quando o carrinho chega num valor; o desconto é no total
  *
  * O desconto nunca deixa o pagamento abaixo de R$ 1,00.
  */
@@ -64,12 +65,12 @@ function gcv_cupons_gravar(PDO $pdo, array $rows): void
 
 /**
  * @param array<string,mixed> $row
- * @return array{id:string,codigo:string,ativo:bool,tipo:string,modo:string,valor:int,minimo_pessoas:int,alcance:string}
+ * @return array{id:string,codigo:string,ativo:bool,tipo:string,modo:string,valor:int,minimo_pessoas:int,minimo_cents:int,alcance:string}
  */
 function gcv_cupom_normalizar(array $row): array
 {
     $tipo = (string) ($row['tipo'] ?? 'total');
-    if (!in_array($tipo, ['total', 'pessoa', 'grupo'], true)) {
+    if (!in_array($tipo, ['total', 'pessoa', 'grupo', 'compra'], true)) {
         $tipo = 'total';
     }
     $modo = (string) ($row['modo'] ?? 'fixo');
@@ -88,10 +89,16 @@ function gcv_cupom_normalizar(array $row): array
         $valor = max(1, $valor);
     }
     $min = max(0, (int) ($row['minimo_pessoas'] ?? 0));
+    $piso = max(0, (int) ($row['minimo_cents'] ?? 0));
     if ($tipo === 'grupo') {
         $min = max(1, $min);
+        $piso = 0;
+    } elseif ($tipo === 'compra') {
+        $min = 0;
+        $alcance = 'total';
     } else {
         $min = 0;
+        $piso = 0;
         $alcance = $tipo === 'pessoa' ? 'pessoa' : 'total';
     }
 
@@ -103,6 +110,7 @@ function gcv_cupom_normalizar(array $row): array
         'modo' => $modo,
         'valor' => $valor,
         'minimo_pessoas' => $min,
+        'minimo_cents' => $piso,
         'alcance' => $alcance,
     ];
 }
@@ -136,7 +144,14 @@ function gcv_cupom_aplicar_codigo(string $codigo, int $pessoas, int $totalCents,
     if (empty($calc['ok'])) {
         $err = (string) ($calc['error'] ?? 'invalid');
         $min = (int) ($calc['minimo_pessoas'] ?? $found['minimo_pessoas']);
-        return ['ok' => false, 'error' => $err, 'minimo_pessoas' => $min, 'message' => gcv_cupom_msg($err, $locale, $min)];
+        $piso = (int) ($calc['minimo_cents'] ?? $found['minimo_cents'] ?? 0);
+        return [
+            'ok' => false,
+            'error' => $err,
+            'minimo_pessoas' => $min,
+            'minimo_cents' => $piso,
+            'message' => gcv_cupom_msg($err, $locale, $min, $piso),
+        ];
     }
     $off = gcv_cupom_teto_desconto($totalCents, (int) $calc['desconto_cents']);
     if ($off < 1) {
@@ -171,6 +186,13 @@ function gcv_cupom_desconto_cents(array $cupom, int $pessoas, int $totalCents): 
             return ['ok' => false, 'error' => 'min_people', 'minimo_pessoas' => $min];
         }
         $tipo = $alcance === 'pessoa' ? 'pessoa' : 'total';
+    }
+    if ($tipo === 'compra') {
+        $piso = (int) ($cupom['minimo_cents'] ?? 0);
+        if ($piso < 100 || $totalCents < $piso) {
+            return ['ok' => false, 'error' => 'min_value', 'minimo_cents' => $piso];
+        }
+        $tipo = 'total';
     }
     if ($totalCents < 100) {
         return ['ok' => false, 'error' => 'zero'];
@@ -243,15 +265,26 @@ function gcv_cupom_sobre_carrinho(array $data, int $grossCents): array
     ];
 }
 
-function gcv_cupom_msg(string $error, string $locale, int $min): string
+function gcv_cupom_reais(int $cents): string
+{
+    $cents = abs($cents);
+    $reais = intdiv($cents, 100);
+    $frac = str_pad((string) ($cents % 100), 2, '0', STR_PAD_LEFT);
+
+    return 'R$ ' . number_format($reais, 0, ',', '.') . ',' . $frac;
+}
+
+function gcv_cupom_msg(string $error, string $locale, int $min, int $minCents = 0): string
 {
     $locale = in_array($locale, ['pt', 'en', 'es'], true) ? $locale : 'pt';
+    $piso = gcv_cupom_reais($minCents);
     $msgs = [
         'pt' => [
             'empty_code' => 'Informe o código do cupom.',
             'not_found' => 'Cupom não encontrado.',
             'inactive' => 'Este cupom está desativado.',
             'min_people' => 'Este cupom vale quando o carrinho tem mais de ' . $min . ' pessoas.',
+            'min_value' => 'Este cupom vale para compras a partir de ' . $piso . '.',
             'zero' => 'Este cupom não gera desconto neste carrinho.',
             'unavailable' => 'Não foi possível conferir o cupom agora.',
         ],
@@ -260,6 +293,7 @@ function gcv_cupom_msg(string $error, string $locale, int $min): string
             'not_found' => 'Coupon not found.',
             'inactive' => 'This coupon is turned off.',
             'min_people' => 'This coupon applies when the cart has more than ' . $min . ' people.',
+            'min_value' => 'This coupon applies to purchases of ' . $piso . ' or more.',
             'zero' => 'This coupon does not discount this cart.',
             'unavailable' => 'Could not check the coupon right now.',
         ],
@@ -268,6 +302,7 @@ function gcv_cupom_msg(string $error, string $locale, int $min): string
             'not_found' => 'Cupón no encontrado.',
             'inactive' => 'Este cupón está desactivado.',
             'min_people' => 'Este cupón vale cuando el carrito tiene más de ' . $min . ' personas.',
+            'min_value' => 'Este cupón vale para compras a partir de ' . $piso . '.',
             'zero' => 'Este cupón no genera descuento en este carrito.',
             'unavailable' => 'No se pudo comprobar el cupón ahora.',
         ],
