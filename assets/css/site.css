@@ -3431,29 +3431,22 @@ table.season th {
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Círculo 2.65rem, borda 1.5px de cada lado e 3px de folga para o traço não encostar. */
-  width: calc(2.65rem - 9px);
-  height: calc(2.65rem - 9px);
+  /* Boneco + seta: o canto de baixo é o ponto mais perto do círculo. */
+  width: calc(2.65rem - 15px);
+  height: calc(2.65rem - 15px);
   pointer-events: none;
+}
+
+.gcv-header-login.is-in .gcv-header-login__glyph {
+  /* Só o boneco, centralizado, com a mesma folga da borda. */
+  width: calc(2.65rem - 11px);
+  height: calc(2.65rem - 11px);
 }
 
 .gcv-header-login__glyph svg {
   display: block;
   width: 100%;
   height: 100%;
-}
-
-.gcv-header-login.is-in::after {
-  content: "";
-  position: absolute;
-  right: -0.02rem;
-  bottom: -0.02rem;
-  width: 0.72rem;
-  height: 0.72rem;
-  border-radius: 50%;
-  background: #047857 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.2 6.3 4.7 8.7 9.8 3.4' fill='none' stroke='%23fff' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 0.48rem no-repeat;
-  box-shadow: 0 0 0 1.5px #fff;
-  pointer-events: none;
 }
 
 .gcv-exc-cart-float--dock:not([hidden]) {

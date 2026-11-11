@@ -79,12 +79,12 @@
     var ICON_OUT =
       '<svg viewBox="2.95 3.75 17.7 14.6" aria-hidden="true" focusable="false" fill="currentColor" stroke="currentColor" stroke-width="0.4" stroke-linejoin="round" stroke-linecap="round">' +
       '<circle cx="7.2" cy="6.3" r="2.55" stroke="none"></circle>' +
-      '<path d="M3.15 18.15V14.9Q3.15 9.55 7.2 9.55Q11.25 9.55 11.25 14.9V18.15Z"></path>' +
+      '<path d="M3.15 16.3V14.9Q3.15 9.55 7.2 9.55Q11.25 9.55 11.25 14.9V16.3Q11.25 18.15 9.55 18.15H4.85Q3.15 18.15 3.15 16.3Z"></path>' +
       '<path d="M20.45 12.2H16.45V9.75L12.85 13.85 16.45 17.95V15.5H20.45Z"></path></svg>';
     var ICON_IN =
       '<svg viewBox="2.95 3.75 8.5 14.6" aria-hidden="true" focusable="false" fill="currentColor" stroke="currentColor" stroke-width="0.4" stroke-linejoin="round" stroke-linecap="round">' +
       '<circle cx="7.2" cy="6.3" r="2.55" stroke="none"></circle>' +
-      '<path d="M3.15 18.15V14.9Q3.15 9.55 7.2 9.55Q11.25 9.55 11.25 14.9V18.15Z"></path></svg>';
+      '<path d="M3.15 16.3V14.9Q3.15 9.55 7.2 9.55Q11.25 9.55 11.25 14.9V16.3Q11.25 18.15 9.55 18.15H4.85Q3.15 18.15 3.15 16.3Z"></path></svg>';
 
     function uiLang() {
       return pageSiteLang(window.location.pathname || "/");
@@ -194,8 +194,10 @@
         var actions = headerInner.querySelector(".header-actions");
         var mobile = window.matchMedia("(max-width: 860px)").matches;
         if (cart && cart.parentElement) {
-          if (link.parentElement !== cart.parentElement || link.nextElementSibling !== cart) {
-            cart.parentElement.insertBefore(link, cart);
+          if (link.parentElement !== cart.parentElement || cart.nextElementSibling !== link) {
+            var afterCart = cart.nextElementSibling;
+            if (afterCart) cart.parentElement.insertBefore(link, afterCart);
+            else cart.parentElement.appendChild(link);
           }
           return;
         }
