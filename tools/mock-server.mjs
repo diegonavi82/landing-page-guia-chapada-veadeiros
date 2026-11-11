@@ -2446,8 +2446,8 @@ function cupomMsg(error, locale, min, minCents, quando) {
       inactive: "Este cupom está desativado.",
       min_people: "Este cupom vale quando o carrinho tem mais de " + min + " pessoas.",
       min_value: "Este cupom vale para compras a partir de R$ " + ((minCents || 0) / 100).toFixed(2).replace(".", ",") + ".",
-      min_value_passeios: "Este cupom vale para passeios a partir de R$ " + ((minCents || 0) / 100).toFixed(2).replace(".", ",") + ". Excursão publicada por guia não entra nessa conta.",
-      passeios_only: "O BLACKFRIDAY vale só para passeios comprados em Passeios. Não vale para excursões publicadas por guias.",
+      min_value_passeios: "Este cupom vale para passeios privativos a partir de R$ " + ((minCents || 0) / 100).toFixed(2).replace(".", ",") + ". Excursões não entram nessa conta.",
+      passeios_only: "O BLACKFRIDAY vale somente para passeios privativos, com ou sem translado. Não vale para excursões.",
       expired: "Este cupom venceu em " + (quando || "") + ".",
       zero: "Este cupom não gera desconto neste carrinho.",
     },
@@ -2457,8 +2457,8 @@ function cupomMsg(error, locale, min, minCents, quando) {
       inactive: "This coupon is turned off.",
       min_people: "This coupon applies when the cart has more than " + min + " people.",
       min_value: "This coupon applies to purchases of R$ " + ((minCents || 0) / 100).toFixed(2).replace(".", ",") + " or more.",
-      min_value_passeios: "This coupon applies to tours from R$ " + ((minCents || 0) / 100).toFixed(2).replace(".", ",") + ". Trips published by guides are not included.",
-      passeios_only: "BLACKFRIDAY applies only to tours bought in Tours. It does not apply to trips published by guides.",
+      min_value_passeios: "This coupon applies to private tours from R$ " + ((minCents || 0) / 100).toFixed(2).replace(".", ",") + ". Group departures are not included.",
+      passeios_only: "BLACKFRIDAY applies only to private tours, with or without transport. It does not apply to group departures.",
       expired: "This coupon expired on " + (quando || "") + ".",
       zero: "This coupon does not discount this cart.",
     },
@@ -2468,8 +2468,8 @@ function cupomMsg(error, locale, min, minCents, quando) {
       inactive: "Este cupón está desactivado.",
       min_people: "Este cupón vale cuando el carrito tiene más de " + min + " personas.",
       min_value: "Este cupón vale para compras a partir de R$ " + ((minCents || 0) / 100).toFixed(2).replace(".", ",") + ".",
-      min_value_passeios: "Este cupón vale para paseos a partir de R$ " + ((minCents || 0) / 100).toFixed(2).replace(".", ",") + ". La excursión publicada por un guía no entra en esa cuenta.",
-      passeios_only: "BLACKFRIDAY vale solo para paseos comprados en Paseos. No vale para excursiones publicadas por guías.",
+      min_value_passeios: "Este cupón vale para paseos privados a partir de R$ " + ((minCents || 0) / 100).toFixed(2).replace(".", ",") + ". Las excursiones no entran en esa cuenta.",
+      passeios_only: "BLACKFRIDAY vale solo para paseos privados, con o sin traslado. No vale para excursiones.",
       expired: "Este cupón venció el " + (quando || "") + ".",
       zero: "Este cupón no genera descuento en este carrito.",
     },
@@ -2540,7 +2540,9 @@ function cupomPartes(trips) {
     const unit = Math.round((Number(trip.valorUnit) || 0) * 100);
     const cents = Math.max(0, unit) * qty;
     const id = String(trip.cartId || trip.id || "").toLowerCase();
-    if (id.startsWith("roteiro-")) {
+    const modo = String(trip.modalidade || "").toLowerCase();
+    const privativo = /-\d{4}-\d{2}-\d{2}-exclusivo-[ts](?:-bi-(?:en|es))?$/.test(id) && (modo === "" || modo === "exclusivo");
+    if (privativo) {
       elegivel += cents;
       pessoas += Math.max(1, parseInt(String(trip.pessoas != null ? trip.pessoas : qty), 10) || qty);
     } else {

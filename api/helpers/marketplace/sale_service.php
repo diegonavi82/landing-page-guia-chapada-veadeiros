@@ -151,8 +151,8 @@ function gcv_sale_capture_from_pix_reservation(array $reservation, string $sourc
         $platformRevenue = 0;
     }
 
-    // BLACKFRIDAY troca a tarifa só quando a compra inteira é de Passeios.
-    // Excursão publicada por guia não entra no cupom e segue a tarifa vigente.
+    // BLACKFRIDAY troca a tarifa só quando a compra inteira é de passeio privativo.
+    // Excursão não entra no cupom e segue a tarifa vigente.
     require_once __DIR__ . '/../tarifa_repasse.php';
     require_once __DIR__ . '/../cupons.php';
     $partesCupom = gcv_cupom_partes(is_array($reservation['trips'] ?? null) ? $reservation['trips'] : []);

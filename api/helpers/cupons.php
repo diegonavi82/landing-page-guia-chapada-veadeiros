@@ -262,12 +262,19 @@ function gcv_cupom_e_blackfriday(string $codigo): bool
     return strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', $codigo)) === 'BLACKFRIDAY';
 }
 
-/** Passeio comprado na vitrine de Passeios. Excursão, inclusive a publicada por guia, fica de fora. */
+/**
+ * Passeio privativo da vitrine, com ou sem translado.
+ * Excursão compartilhada e saída publicada no calendário ficam de fora.
+ */
 function gcv_cupom_trip_e_passeio(array $trip): bool
 {
     $id = strtolower(trim((string) ($trip['cartId'] ?? $trip['cart_id'] ?? $trip['id'] ?? '')));
+    if (!preg_match('/-\d{4}-\d{2}-\d{2}-exclusivo-[ts](?:-bi-(?:en|es))?$/', $id)) {
+        return false;
+    }
+    $modo = strtolower(trim((string) ($trip['modalidade'] ?? '')));
 
-    return str_starts_with($id, 'roteiro-');
+    return $modo === '' || $modo === 'exclusivo';
 }
 
 function gcv_cupom_trip_cents(array $trip): int
@@ -308,7 +315,7 @@ function gcv_cupom_partes(array $trips): array
 }
 
 /**
- * BLACKFRIDAY só desconta a parte comprada em Passeios.
+ * BLACKFRIDAY só desconta passeio privativo, com ou sem translado.
  *
  * @param array<string,mixed> $data
  * @return array{ok:bool,error?:string,base_cents:int,pessoas:int}
@@ -423,8 +430,8 @@ function gcv_cupom_msg(string $error, string $locale, int $min, int $minCents = 
             'inactive' => 'Este cupom está desativado.',
             'min_people' => 'Este cupom vale quando o carrinho tem mais de ' . $min . ' pessoas.',
             'min_value' => 'Este cupom vale para compras a partir de ' . $piso . '.',
-            'min_value_passeios' => 'Este cupom vale para passeios a partir de ' . $piso . '. Excursão publicada por guia não entra nessa conta.',
-            'passeios_only' => 'O BLACKFRIDAY vale só para passeios comprados em Passeios. Não vale para excursões publicadas por guias.',
+            'min_value_passeios' => 'Este cupom vale para passeios privativos a partir de ' . $piso . '. Excursões não entram nessa conta.',
+            'passeios_only' => 'O BLACKFRIDAY vale somente para passeios privativos, com ou sem translado. Não vale para excursões.',
             'expired' => 'Este cupom venceu em ' . $dia . '.',
             'zero' => 'Este cupom não gera desconto neste carrinho.',
             'unavailable' => 'Não foi possível conferir o cupom agora.',
@@ -435,8 +442,8 @@ function gcv_cupom_msg(string $error, string $locale, int $min, int $minCents = 
             'inactive' => 'This coupon is turned off.',
             'min_people' => 'This coupon applies when the cart has more than ' . $min . ' people.',
             'min_value' => 'This coupon applies to purchases of ' . $piso . ' or more.',
-            'min_value_passeios' => 'This coupon applies to tours from ' . $piso . '. Trips published by guides are not included.',
-            'passeios_only' => 'BLACKFRIDAY applies only to tours bought in Tours. It does not apply to trips published by guides.',
+            'min_value_passeios' => 'This coupon applies to private tours from ' . $piso . '. Group departures are not included.',
+            'passeios_only' => 'BLACKFRIDAY applies only to private tours, with or without transport. It does not apply to group departures.',
             'expired' => 'This coupon expired on ' . $dia . '.',
             'zero' => 'This coupon does not discount this cart.',
             'unavailable' => 'Could not check the coupon right now.',
@@ -447,8 +454,8 @@ function gcv_cupom_msg(string $error, string $locale, int $min, int $minCents = 
             'inactive' => 'Este cupón está desactivado.',
             'min_people' => 'Este cupón vale cuando el carrito tiene más de ' . $min . ' personas.',
             'min_value' => 'Este cupón vale para compras a partir de ' . $piso . '.',
-            'min_value_passeios' => 'Este cupón vale para paseos a partir de ' . $piso . '. La excursión publicada por un guía no entra en esa cuenta.',
-            'passeios_only' => 'BLACKFRIDAY vale solo para paseos comprados en Paseos. No vale para excursiones publicadas por guías.',
+            'min_value_passeios' => 'Este cupón vale para paseos privados a partir de ' . $piso . '. Las excursiones no entran en esa cuenta.',
+            'passeios_only' => 'BLACKFRIDAY vale solo para paseos privados, con o sin traslado. No vale para excursiones.',
             'expired' => 'Este cupón venció el ' . $dia . '.',
             'zero' => 'Este cupón no genera descuento en este carrito.',
             'unavailable' => 'No se pudo comprobar el cupón ahora.',

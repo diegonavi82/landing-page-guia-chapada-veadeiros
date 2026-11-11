@@ -845,10 +845,14 @@
     return cartTotal(items) * 100;
   }
 
+  function cartItemPrivativo(it) {
+    var id = String((it && it.id) || "").toLowerCase();
+    return /-\d{4}-\d{2}-\d{2}-exclusivo-[ts](?:-bi-(?:en|es))?$/.test(id);
+  }
+
   function cartPasseioCents(items) {
     return (items || []).reduce(function (sum, it) {
-      var id = String((it && it.id) || "");
-      if (id.indexOf("roteiro-") !== 0) return sum;
+      if (!cartItemPrivativo(it)) return sum;
       var u = parseInt(String(it.valorUnit), 10) || 0;
       var q = parseInt(String(it.qty), 10) || 0;
       return sum + u * q * 100;
@@ -859,6 +863,7 @@
     return (items || []).map(function (it) {
       return {
         cartId: (it && it.id) || "",
+        modalidade: (it && it.modalidade) || "",
         valorUnit: parseInt(String(it && it.valorUnit), 10) || 0,
         qty: parseInt(String(it && it.qty), 10) || 1,
         pessoas: parseInt(String(it && it.pessoas), 10) || parseInt(String(it && it.qty), 10) || 1,
@@ -908,7 +913,7 @@
       if (c.tipo === "compra") en += ", on purchases of " + formatBrlCents(c.minimo_cents) + " or more";
       if (c.valido_ate) en += ", valid through " + couponDate(c.valido_ate, "en");
       if (String(c.codigo || "").toUpperCase() === "BLACKFRIDAY") {
-        en += ". Tours section only. Not valid on trips published by guides.";
+        en += ". Private tours only, with or without transport. Not valid for group departures.";
       }
       return en;
     }
@@ -918,7 +923,7 @@
       if (c.tipo === "compra") es += ", para compras a partir de " + formatBrlCents(c.minimo_cents);
       if (c.valido_ate) es += ", válido hasta el " + couponDate(c.valido_ate, "es");
       if (String(c.codigo || "").toUpperCase() === "BLACKFRIDAY") {
-        es += ". Solo en Paseos. No vale para excursiones publicadas por guías.";
+        es += ". Solo para paseos privados, con o sin traslado. No vale para excursiones.";
       }
       return es;
     }
@@ -927,7 +932,7 @@
     if (c.tipo === "compra") pt += ", para compras a partir de " + formatBrlCents(c.minimo_cents);
     if (c.valido_ate) pt += ", válido até " + couponDate(c.valido_ate, "pt");
     if (String(c.codigo || "").toUpperCase() === "BLACKFRIDAY") {
-      pt += ". Só em Passeios. Não vale para excursão publicada por guia.";
+      pt += ". Somente para passeios privativos, com ou sem translado. Não vale para excursões.";
     }
     return pt;
   }
