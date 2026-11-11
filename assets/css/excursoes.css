@@ -2548,8 +2548,10 @@
 
 .gcv-excursoes-card__guide {
   display: flex;
-  flex-direction: row;
-  align-items: stretch;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.28rem;
   overflow: hidden;
   width: 100%;
   border-radius: 0;
@@ -2558,49 +2560,56 @@
   border-top: 1px solid #e2e8f0;
   border-bottom: 1px solid #e2e8f0;
   background: #f8fafc;
-  /* Altura mínima = chip com foto + idiomas, para alinhar o bloco Incluso nos cards */
-  min-height: 4.75rem;
+  min-height: 11.25rem;
   flex-shrink: 0;
-  padding: 0;
+  margin: 0;
+  padding: 0.85rem 16px 0.95rem;
   box-sizing: border-box;
+  text-align: center;
 }
 
 .gcv-excursoes-card__guide-photo-wrap {
-  width: 58px;
+  width: 4.75rem;
   height: 4.75rem;
-  min-width: 58px;
+  min-width: 4.75rem;
   min-height: 4.75rem;
-  max-width: 58px;
+  max-width: 4.75rem;
   max-height: 4.75rem;
-  flex-shrink: 0;
-  align-self: stretch;
+  flex: 0 0 auto;
+  align-self: center;
+  margin: 0.2rem auto;
   overflow: hidden;
   background: #f1f5f9;
   display: block;
+  border-radius: 12px;
 }
 .gcv-excursoes-card__guide-photo {
-  width: 58px;
-  height: 4.75rem;
-  min-width: 58px;
-  min-height: 4.75rem;
-  max-width: 58px;
-  max-height: 4.75rem;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  max-width: none;
+  max-height: none;
   margin: 0;
   padding: 0;
   border: 0;
   object-fit: cover;
-  object-position: center top;
+  object-position: center center;
   display: block;
   background: #f1f5f9;
-  border-radius: 0;
+  border-radius: 12px;
 }
 
 .gcv-excursoes-card__guide-icon {
-  width: 58px;
+  width: 4.75rem;
+  height: 4.75rem;
+  min-width: 4.75rem;
   min-height: 4.75rem;
-  flex-shrink: 0;
-  align-self: stretch;
-  margin: 0;
+  max-width: 4.75rem;
+  max-height: 4.75rem;
+  flex: 0 0 auto;
+  align-self: center;
+  margin: 0.2rem auto;
   padding: 0;
   background: #f1f5f9;
   display: flex;
@@ -2609,44 +2618,44 @@
   font-size: 1.5rem;
   line-height: 1;
   color: #94a3b8;
-  border-radius: 0;
+  border-radius: 12px;
 }
 
 .gcv-excursoes-card__guide-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 0.1rem;
-  padding: 0.5rem 0.75rem;
-  background: #f8fafc;
-  min-width: 0;
+  display: contents;
 }
 
 .gcv-excursoes-card__guide-label {
-  font-size: 9px;
+  display: block;
+  font-size: 0.78rem;
   font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #94a3b8;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  color: #0f766e;
 }
 
 .gcv-excursoes-card__guide-name {
-  font-weight: 700;
-  color: #1e293b;
-  font-size: 0.85rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  display: block;
+  font-weight: 800;
+  color: #0f172a;
+  font-size: 1rem;
+  line-height: 1.2;
+  text-align: center;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
 }
 
 .gcv-excursoes-card__guide-langs {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
+  justify-content: center;
   gap: 0.2rem;
-  margin-top: 0.1rem;
+  margin-top: 0;
   line-height: 1;
+  width: 100%;
   min-width: 0;
   min-height: 1rem;
 }
@@ -2818,9 +2827,9 @@
 .gcv-excursoes-card__guide--btn {
   width: 100%;
   margin: 0;
-  padding: 0;
+  padding: 0.85rem 16px 0.95rem;
   font: inherit;
-  text-align: left;
+  text-align: center;
   cursor: pointer;
   transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
@@ -6068,59 +6077,62 @@ html.gcv-waitlist-modal-open {
   width: 100%;
 }
 
-.gcv-excursoes__track--day-list .gcv-excursoes-card__block--in .gcv-excursoes-card__guide,
-.gcv-excursoes__track--day-list .gcv-excursoes-card__block--in .gcv-excursoes-card__guide--btn {
+.gcv-excursoes__track--day-list .gcv-excursoes-card__guide,
+.gcv-excursoes__track--day-list .gcv-excursoes-card__guide--btn {
+  grid-area: incluso;
+  align-self: stretch;
   display: flex;
-  flex-direction: row;
-  align-items: stretch;
-  gap: 0.55rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.28rem;
   width: 100%;
-  min-height: 2.75rem;
-  height: auto;
+  height: 100%;
+  min-height: 11.25rem;
   margin: 0;
-  padding: 0 0.55rem 0 0;
+  padding: 0.85rem 16px 0.95rem;
   border-radius: 0;
   border-left: 0;
   border-right: 0;
-  border-top: 1px solid #10b981;
-  border-bottom: 1px solid #10b981;
+  border-top: 1px solid #e2e8f0;
+  border-bottom: 1px solid #e2e8f0;
   background: #f8fafc;
   box-shadow: none;
   filter: none;
   box-sizing: border-box;
   overflow: hidden;
-  text-align: left;
+  text-align: center;
   color: inherit;
 }
 
-.gcv-excursoes__track--day-list .gcv-excursoes-card__block--in .gcv-excursoes-card__guide--btn:hover {
+.gcv-excursoes__track--day-list .gcv-excursoes-card__guide--btn:hover {
   border-left: 0;
   border-right: 0;
-  border-color: #059669;
+  border-color: #cbd5e1;
   background: #f8fafc;
   box-shadow: none;
   filter: none;
 }
 
-.gcv-excursoes__track--day-list .gcv-excursoes-card__block--in .gcv-excursoes-card__guide-photo-wrap,
-.gcv-excursoes__track--day-list .gcv-excursoes-card__block--in .gcv-excursoes-card__guide-icon {
-  width: 2.55rem;
-  min-width: 2.55rem;
-  max-width: 2.55rem;
-  height: auto;
-  min-height: 2.75rem;
-  max-height: none;
-  margin: 0;
+.gcv-excursoes__track--day-list .gcv-excursoes-card__guide .gcv-excursoes-card__guide-photo-wrap,
+.gcv-excursoes__track--day-list .gcv-excursoes-card__guide .gcv-excursoes-card__guide-icon {
+  width: 4.75rem;
+  min-width: 4.75rem;
+  max-width: 4.75rem;
+  height: 4.75rem;
+  min-height: 4.75rem;
+  max-height: 4.75rem;
+  margin: 0.2rem auto;
   padding: 0;
-  border-radius: 0;
+  border-radius: 12px;
   border: 0;
   overflow: hidden;
-  flex-shrink: 0;
-  align-self: stretch;
+  flex: 0 0 auto;
+  align-self: center;
   box-shadow: none;
 }
 
-.gcv-excursoes__track--day-list .gcv-excursoes-card__block--in .gcv-excursoes-card__guide-photo {
+.gcv-excursoes__track--day-list .gcv-excursoes-card__guide .gcv-excursoes-card__guide-photo {
   width: 100%;
   height: 100%;
   min-width: 0;
@@ -6129,44 +6141,46 @@ html.gcv-waitlist-modal-open {
   max-height: none;
   margin: 0;
   border: 0;
-  border-radius: 0;
+  border-radius: 12px;
   object-fit: cover;
-  object-position: center top;
+  object-position: center center;
 }
 
-.gcv-excursoes__track--day-list .gcv-excursoes-card__block--in .gcv-excursoes-card__guide-avatar {
+.gcv-excursoes__track--day-list .gcv-excursoes-card__guide .gcv-excursoes-card__guide-avatar {
   width: 100%;
   height: 100%;
-  border-radius: 0;
-  background: #d1fae5;
-  color: #047857;
+  border-radius: 12px;
+  background: #e2e8f0;
+  color: #64748b;
 }
 
-.gcv-excursoes__track--day-list .gcv-excursoes-card__block--in .gcv-excursoes-card__guide-info {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 0.04rem;
-  min-width: 0;
-  margin: 0;
-  padding: 0;
-  background: transparent;
+.gcv-excursoes__track--day-list .gcv-excursoes-card__guide .gcv-excursoes-card__guide-avatar svg {
+  width: 2rem;
+  height: 2rem;
 }
 
-.gcv-excursoes__track--day-list .gcv-excursoes-card__block--in .gcv-excursoes-card__guide-label {
-  color: #047857;
-  font-size: 0.62rem;
-  letter-spacing: 0.09em;
+.gcv-excursoes__track--day-list .gcv-excursoes-card__guide .gcv-excursoes-card__guide-info {
+  display: contents;
 }
 
-.gcv-excursoes__track--day-list .gcv-excursoes-card__block--in .gcv-excursoes-card__guide-name {
-  color: #064e3b;
-  font-size: 0.92rem;
+.gcv-excursoes__track--day-list .gcv-excursoes-card__guide .gcv-excursoes-card__guide-label {
+  color: #0f766e;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+
+.gcv-excursoes__track--day-list .gcv-excursoes-card__guide .gcv-excursoes-card__guide-name {
+  color: #0f172a;
+  font-size: 1rem;
   font-weight: 800;
   font-style: normal;
+  text-align: center;
+  white-space: normal;
 }
 
-.gcv-excursoes__track--day-list .gcv-excursoes-card__block--in .gcv-excursoes-card__guide--pending .gcv-excursoes-card__guide-name {
+.gcv-excursoes__track--day-list .gcv-excursoes-card__guide--pending .gcv-excursoes-card__guide-name {
   color: #475569;
   font-weight: 700;
 }

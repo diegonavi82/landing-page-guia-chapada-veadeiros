@@ -153,6 +153,7 @@ const SSR = {
     exclLunch: "Almoço",
     cta: "Quero participar",
     guiaPending: "A definir",
+    guiaRole: "Guia de Turismo",
     guiaAbout: "Sobre {{nome}}",
     guiaAboutSecret: "Sobre o guia",
     guiaModalClose: "Fechar",
@@ -211,6 +212,7 @@ const SSR = {
     exclLunch: "Lunch",
     cta: "I want to join",
     guiaPending: "To be confirmed",
+    guiaRole: "Tour guide",
     guiaAbout: "About {{nome}}",
     guiaAboutSecret: "About the guide",
     guiaModalClose: "Close",
@@ -269,6 +271,7 @@ const SSR = {
     exclLunch: "Almuerzo",
     cta: "Quiero participar",
     guiaPending: "Por definir",
+    guiaRole: "Guía de turismo",
     guiaAbout: "Acerca de {{nome}}",
     guiaAboutSecret: "Acerca del guía",
     guiaModalClose: "Cerrar",
@@ -569,26 +572,19 @@ function guiaLangsSsr(nome, locale, e) {
 }
 
 function guiaChipInnerSsr(nome, foto, locale, altInPhoto, e) {
+  const s = SSR[locale] || SSR.pt;
   let langs = guiaLangsSsr(nome, locale, e);
   if (!langs) {
     langs = `<span class="gcv-excursoes-card__guide-langs gcv-excursoes-card__guide-langs--empty" aria-hidden="true"></span>`;
   }
-  const info =
-    `<div class="gcv-excursoes-card__guide-info">` +
-    `<span class="gcv-excursoes-card__guide-label">Guia</span>` +
-    `<span class="gcv-excursoes-card__guide-name">${esc(nome)}</span>` +
-    langs +
-    `</div>`;
-  if (foto) {
-    const alt = altInPhoto ? esc(altInPhoto) : "";
-    return (
-      `<img class="gcv-excursoes-card__guide-photo" src="${esc(foto)}" alt="${alt}" loading="lazy" width="230" height="90">` +
-      info
-    );
-  }
+  const photo = foto
+    ? `<span class="gcv-excursoes-card__guide-photo-wrap"><img class="gcv-excursoes-card__guide-photo" src="${esc(foto)}" alt="${altInPhoto ? esc(altInPhoto) : ""}" loading="lazy" decoding="async"></span>`
+    : guiaAvatarSsr();
   return (
-    `<div class="gcv-excursoes-card__guide-icon" aria-hidden="true"><i class="ti ti-user" aria-hidden="true"></i></div>` +
-    info
+    `<span class="gcv-excursoes-card__guide-label">${esc(s.guiaRole || "Guia de Turismo")}</span>` +
+    `<span class="gcv-excursoes-card__guide-name">${esc(nome)}</span>` +
+    photo +
+    langs
   );
 }
 
@@ -635,13 +631,7 @@ function guiaFotoSsr(foto) {
 }
 
 function guiaChipPendenteSsr(label, locale, idiomas, foto, ariaLabel) {
-  const inner =
-    guiaFotoSsr(foto) +
-    `<div class="gcv-excursoes-card__guide-info">` +
-    `<span class="gcv-excursoes-card__guide-label">Guia</span>` +
-    `<span class="gcv-excursoes-card__guide-name">${esc(label)}</span>` +
-    guiaLangsSsr("pt", locale, { guiaIdiomas: idiomas || ["pt"] }) +
-    `</div>`;
+  const inner = guiaChipInnerSsr(label, foto || "", locale, "", { guiaIdiomas: idiomas || ["pt"] });
   if (!ariaLabel) {
     return `<div class="gcv-excursoes-card__guide gcv-excursoes-card__guide--pending">${inner}</div>`;
   }
@@ -734,27 +724,7 @@ function naoInclusoFootSsr(e, s) {
 }
 
 function inclExclBlocksSsr(e, s, locale) {
-  const comTransporte = e.comTransporte === true;
-  const inclEntradas = e.inclEntradas === true;
-  const ingressoIncl = esc(formatIngressoWithValor(s.inclEntries, e.valorIngresso, locale));
-  let inclItems =
-    `<li><i class="ti ti-user text-ok" aria-hidden="true"></i> ${esc(s.inclSpot)}</li>` +
-    `<li class="gcv-excursoes-card__guide-slot">${guiaChipSsr(e, locale)}</li>`;
-  if (inclEntradas) {
-    inclItems += `<li><i class="ti ti-ticket text-ok" aria-hidden="true"></i> ${ingressoIncl}</li>`;
-  }
-  if (comTransporte) {
-    inclItems += `<li><i class="ti ti-bus text-ok" aria-hidden="true"></i> ${esc(s.inclTransport)}</li>`;
-  }
-  if (e.inclLanterna) {
-    inclItems += `<li><i class="ti ti-bulb text-ok" aria-hidden="true"></i> ${esc(s.inclLanterna)}</li>`;
-  }
-  return (
-    '<div class="gcv-excursoes-card__coverage">' +
-    '<div class="gcv-excursoes-card__block gcv-excursoes-card__block--in">' +
-    `<span class="gcv-excursoes-card__label gcv-excursoes-card__label--in">${esc(s.inclLabel)}</span>` +
-    `<ul class="gcv-excursoes-card__list">${inclItems}</ul></div></div>`
-  );
+  return `<div class="gcv-excursoes-card__coverage">${guiaChipSsr(e, locale)}</div>`;
 }
 
 function excursaoValor(e) {

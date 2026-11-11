@@ -230,6 +230,7 @@
       meetingPointLabel: "Ponto de encontro",
       guidePhoneLabel: "Telefone do guia",
       guiaPending: "A definir",
+      guiaRole: "Guia de Turismo",
       pixBtnAria: "Pagar {{valor}} com Pix",
       pixModalTitle: "Pagamento",
       pixOpenFail: "Não foi possível abrir o pagamento. Tente de novo.",
@@ -445,6 +446,7 @@
       meetingPointLabel: "Meeting point",
       guidePhoneLabel: "Guide phone",
       guiaPending: "To be confirmed",
+      guiaRole: "Tour guide",
       pixBtnAria: "Pay {{valor}} with Pix",
       pixModalTitle: "Payment",
       pixOpenFail: "Could not open checkout. Please try again.",
@@ -660,6 +662,7 @@
       meetingPointLabel: "Punto de encuentro",
       guidePhoneLabel: "Teléfono del guía",
       guiaPending: "Por definir",
+      guiaRole: "Guía de turismo",
       pixBtnAria: "Pagar {{valor}} con Pix",
       pixModalTitle: "Pago",
       pixOpenFail: "No se pudo abrir el pago. Inténtalo de nuevo.",
@@ -2621,13 +2624,14 @@
       ".gcv-excursoes-card__cart-add--added{background:#0f766e;border-color:#0f766e;color:#fff}" +
       ".gcv-excursoes-card__cart-add--added:hover{background:#115e59;color:#fff}" +
       ".gcv-excursoes-card__book{container-type:inline-size}" +
-      ".gcv-excursoes-card__block--in{border-left:0;border-right:0;border-top:1px solid #6ee7b7;border-bottom:1px solid #6ee7b7}" +
-      ".gcv-excursoes__track--day-list .gcv-excursoes-card__block--in{border-left:0;border-right:0;border-top:1px solid #34d399;border-bottom:1px solid #34d399;padding-left:0;padding-right:0;background:#ecfdf5;box-shadow:none!important;filter:none!important}" +
-      ".gcv-excursoes__track--day-list .gcv-excursoes-card__block--in .gcv-excursoes-card__label--in,.gcv-excursoes__track--day-list .gcv-excursoes-card__block--in .gcv-excursoes-card__list>li:not(.gcv-excursoes-card__guide-slot){padding-left:0.5rem;padding-right:0.5rem}" +
-      ".gcv-excursoes__track--day-list .gcv-excursoes-card__block--in .gcv-excursoes-card__guide-slot{margin:0.4rem 0 0.2rem;width:100%}" +
-      ".gcv-excursoes-card__block--in .gcv-excursoes-card__guide,.gcv-excursoes-card__block--in .gcv-excursoes-card__guide--btn,.gcv-excursoes__track--day-list .gcv-excursoes-card__block--in .gcv-excursoes-card__guide,.gcv-excursoes__track--day-list .gcv-excursoes-card__block--in .gcv-excursoes-card__guide--btn{border-left:0;border-right:0;background:#f8fafc;box-shadow:none!important;filter:none!important;width:100%}" +
-      ".gcv-excursoes__track--day-list .gcv-excursoes-card__block--in .gcv-excursoes-card__guide--btn:hover{border-left:0;border-right:0;background:#f8fafc;box-shadow:none!important;filter:none!important}" +
-      ".gcv-excursoes__track--day-list .gcv-excursoes-card__block--in .gcv-excursoes-card__guide-photo-wrap,.gcv-excursoes__track--day-list .gcv-excursoes-card__block--in .gcv-excursoes-card__guide-icon{border-radius:0;align-self:stretch;height:auto;min-height:2.75rem;max-height:none;box-shadow:none!important;filter:none!important}" +
+      ".gcv-excursoes-card__guide,.gcv-excursoes-card__guide--btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.28rem;width:100%;min-height:11.25rem;margin:0;padding:0.85rem 16px 0.95rem;box-sizing:border-box;text-align:center;background:#f8fafc;border-left:0;border-right:0;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;border-radius:0;box-shadow:none!important;filter:none!important}" +
+      ".gcv-excursoes__track--day-list .gcv-excursoes-card__guide{grid-area:incluso;align-self:stretch;height:100%}" +
+      ".gcv-excursoes-card__guide-label{display:block;text-transform:none;font-size:0.78rem;font-weight:800;letter-spacing:0.01em;line-height:1.2;color:#0f766e}" +
+      ".gcv-excursoes-card__guide-name{display:block;font-size:1rem;font-weight:800;line-height:1.2;text-align:center;color:#0f172a;white-space:normal;overflow:visible;text-overflow:clip}" +
+      ".gcv-excursoes-card__guide-photo-wrap,.gcv-excursoes-card__guide-icon{width:4.75rem;height:4.75rem;min-width:4.75rem;max-width:4.75rem;min-height:4.75rem;max-height:4.75rem;align-self:center;margin:0.2rem auto;border-radius:12px;overflow:hidden;flex:0 0 auto}" +
+      ".gcv-excursoes-card__guide-photo{width:100%;height:100%;min-width:0;max-width:none;min-height:0;max-height:none;object-fit:cover;object-position:center center;border-radius:12px}" +
+      ".gcv-excursoes-card__guide-langs{justify-content:center;width:100%}" +
+      ".gcv-excursoes__track--day-list .gcv-excursoes-card__guide .gcv-excursoes-card__guide-avatar{width:100%;height:100%;border-radius:12px}" +
       ".gcv-excursoes-card__out-foot{display:flex;flex-wrap:wrap;align-items:center;gap:0.35rem 0.85rem;margin:0.55rem 0 0;padding:0;background:none;border:0;box-shadow:none}" +
       ".gcv-excursoes-card__out-foot .gcv-excursoes-card__label{display:inline-flex;margin:0;flex:0 0 auto;color:#e11d48;font-weight:800;letter-spacing:0.04em}" +
       ".gcv-excursoes-card__out-list{display:contents}" +
@@ -3112,34 +3116,29 @@
     return guiaLangsHtmlFromCodes(resolveGuiaIdiomas(e, nome), locale);
   }
 
-  function guiaChipInnerHtml(nome, foto, locale, altInPhoto, idiomas) {
+  function guiaChipInnerHtml(nome, foto, locale, altInPhoto, idiomas, roleLabel) {
     var langs = guiaLangsHtmlFromCodes(idiomas || ["pt"], locale);
     if (!langs) {
       langs =
         '<span class="gcv-excursoes-card__guide-langs gcv-excursoes-card__guide-langs--empty" aria-hidden="true"></span>';
     }
-    var info =
-      '<div class="gcv-excursoes-card__guide-info">' +
-      '<span class="gcv-excursoes-card__guide-label">Guia</span>' +
-      '<span class="gcv-excursoes-card__guide-name">' +
-      escapeHtml(nome) +
-      "</span>" +
-      langs +
-      "</div>";
-    if (foto) {
-      return (
-        '<span class="gcv-excursoes-card__guide-photo-wrap">' +
+    var photo = foto
+      ? '<span class="gcv-excursoes-card__guide-photo-wrap">' +
         '<img class="gcv-excursoes-card__guide-photo" src="' +
         escapeHtml(foto) +
         '" alt="' +
         (altInPhoto ? escapeHtml(altInPhoto) : "") +
-        '" loading="lazy" decoding="async"></span>' +
-        info
-      );
-    }
+        '" loading="lazy" decoding="async"></span>'
+      : guiaAvatarHtml();
     return (
-      '<div class="gcv-excursoes-card__guide-icon" aria-hidden="true"><i class="ti ti-user" aria-hidden="true"></i></div>' +
-      info
+      '<span class="gcv-excursoes-card__guide-label">' +
+      escapeHtml(roleLabel || "Guia de Turismo") +
+      "</span>" +
+      '<span class="gcv-excursoes-card__guide-name">' +
+      escapeHtml(nome) +
+      "</span>" +
+      photo +
+      langs
     );
   }
 
@@ -3244,16 +3243,8 @@
     );
   }
 
-  function guiaChipPendenteHtml(label, locale, idiomas, foto, ariaLabel) {
-    var inner =
-      guiaFotoHtml(foto) +
-      '<div class="gcv-excursoes-card__guide-info">' +
-      '<span class="gcv-excursoes-card__guide-label">Guia</span>' +
-      '<span class="gcv-excursoes-card__guide-name">' +
-      escapeHtml(label) +
-      "</span>" +
-      guiaLangsHtmlFromCodes(idiomas || ["pt"], locale) +
-      "</div>";
+  function guiaChipPendenteHtml(label, locale, idiomas, foto, ariaLabel, roleLabel) {
+    var inner = guiaChipInnerHtml(label, foto || "", locale, "", idiomas || ["pt"], roleLabel);
     if (!ariaLabel) {
       return '<div class="gcv-excursoes-card__guide gcv-excursoes-card__guide--pending">' + inner + "</div>";
     }
@@ -3267,8 +3258,9 @@
   }
 
   function guiaChipHtml(e, locale, s) {
+    var role = (s && s.guiaRole) || "Guia de Turismo";
     if (!hasGuiaDefinido(e)) {
-      return guiaChipPendenteHtml(s.guiaPending || "A definir", locale, ["pt"]);
+      return guiaChipPendenteHtml(s.guiaPending || "A definir", locale, ["pt"], "", "", role);
     }
     var ini = guiaRotuloPublico(e);
     var langs = e && Array.isArray(e.guiaIdiomas) && e.guiaIdiomas.length ? e.guiaIdiomas : ["pt"];
@@ -3281,22 +3273,22 @@
         '" aria-label="' +
         escapeHtml(tpl(s.guiaAbout, { nome: "Diego Navi" })) +
         '">' +
-        guiaChipInnerHtml("Diego Navi", foto, locale, "Diego Navi", langs) +
+        guiaChipInnerHtml("Diego Navi", foto, locale, "Diego Navi", langs, role) +
         "</button>"
       );
     }
     if (!ini) {
-      return guiaChipPendenteHtml(s.guiaPending || "A definir", locale, ["pt"]);
+      return guiaChipPendenteHtml(s.guiaPending || "A definir", locale, ["pt"], "", "", role);
     }
     var about = s.guiaAboutSecret || "Sobre o guia";
     if (!e.confirmada) {
-      return guiaChipPendenteHtml(ini, locale, langs, foto, about);
+      return guiaChipPendenteHtml(ini, locale, langs, foto, about, role);
     }
     return (
       '<button type="button" class="gcv-excursoes-card__guide gcv-excursoes-card__guide--btn" data-guia-sigilo="1" aria-label="' +
       escapeHtml(about) +
       '">' +
-      guiaChipInnerHtml(ini, foto, locale, null, langs) +
+      guiaChipInnerHtml(ini, foto, locale, null, langs, role) +
       "</button>"
     );
   }
@@ -3721,43 +3713,10 @@
   }
 
   function inclExclBlocksHtml(e, s, locale) {
-    var comTransporte = e.comTransporte === true;
-    var inclEntradas = e.inclEntradas === true;
-    var ingressoIncl = escapeHtml(formatIngressoWithValor(s.inclEntries, e.valorIngresso, locale));
-    var inclItems =
-      '<li><i class="ti ti-user text-ok" aria-hidden="true"></i> ' +
-      escapeHtml(s.inclSpot) +
-      "</li>" +
-      '<li class="gcv-excursoes-card__guide-slot">' +
-      guiaChipHtml(e, locale, s) +
-      "</li>";
-    if (inclEntradas) {
-      inclItems +=
-        '<li><i class="ti ti-ticket text-ok" aria-hidden="true"></i> ' +
-        ingressoIncl +
-        "</li>";
-    }
-    if (comTransporte) {
-      inclItems +=
-        '<li><i class="ti ti-bus text-ok" aria-hidden="true"></i> ' +
-        escapeHtml(s.inclTransport) +
-        "</li>";
-    }
-    if (e.inclLanterna) {
-      inclItems +=
-        '<li><i class="ti ti-bulb text-ok" aria-hidden="true"></i> ' +
-        escapeHtml(s.inclLanterna) +
-        "</li>";
-    }
     return (
       '<div class="gcv-excursoes-card__coverage">' +
-      '<div class="gcv-excursoes-card__block gcv-excursoes-card__block--in">' +
-      '<span class="gcv-excursoes-card__label gcv-excursoes-card__label--in">' +
-      escapeHtml(s.inclLabel) +
-      "</span>" +
-      '<ul class="gcv-excursoes-card__list">' +
-      inclItems +
-      "</ul></div></div>"
+      guiaChipHtml(e, locale, s) +
+      "</div>"
     );
   }
 
