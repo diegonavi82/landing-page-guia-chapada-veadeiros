@@ -5798,9 +5798,32 @@ html.gcv-waitlist-modal-open {
   border-radius: 0;
   background: transparent;
   box-shadow: none;
-  color: inherit;
-  font-size: inherit;
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 900;
+  line-height: 0.85;
+  text-shadow: 0 1px 2px rgba(15, 23, 42, 0.55);
+}
+
+.gcv-excursoes__track--day-list .gcv-excursoes-card__cap .ti {
+  display: none;
+}
+
+.gcv-excursoes__track--day-list .gcv-excursoes-card__cap-ratio {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  line-height: 0.85;
+  font-variant-numeric: tabular-nums;
+}
+
+.gcv-excursoes__track--day-list .gcv-excursoes-card__cap-slash {
+  margin: 0;
+  opacity: 1;
   font-weight: 800;
+  line-height: 0.65;
 }
 
 .gcv-excursoes__track--day-list .gcv-excursoes-card__select-band-falta {
@@ -6253,14 +6276,16 @@ html.gcv-waitlist-modal-open {
     right: 4px;
     left: auto;
     z-index: 3;
+    display: inline-flex;
     margin: 0;
-    padding: 0.32rem 0.5rem 0.36rem;
+    padding: 0;
     border: 0;
-    border-radius: 0 0 0 12px;
-    background: inherit;
-    color: inherit;
-    line-height: 1;
+    border-radius: 0;
+    background: transparent;
+    color: #fff;
+    line-height: 0.85;
     box-shadow: none;
+    text-shadow: 0 1px 2px rgba(15, 23, 42, 0.55);
   }
 }
 
@@ -6387,27 +6412,45 @@ html.gcv-waitlist-modal-open {
     display: inline-flex;
     align-items: center;
     margin: 0 0 0 auto;
-    padding: 0.1rem 0.35rem;
+    padding: 0;
     border: 0;
-    border-radius: 6px;
-    background: #fde68a;
+    border-radius: 0;
+    background: transparent;
     box-shadow: none;
-    color: #92400e;
-    font-size: 0.78rem;
-    font-weight: 700;
-    line-height: 1;
-    gap: 0.2rem;
+    color: #14532d;
+    font-size: 0.95rem;
+    font-weight: 900;
+    line-height: 0.85;
+    gap: 0;
+    text-shadow: none;
   }
 
   .gcv-excursoes__track--day-list .gcv-excursoes-card--confirmada .gcv-excursoes-card__card-date .gcv-excursoes-card__cap {
-    background: #86efac;
+    background: transparent;
     color: #14532d;
   }
 
   .gcv-excursoes__track--day-list .gcv-excursoes-card__card-date .gcv-excursoes-card__cap .ti,
   .gcv-excursoes__track--day-list .gcv-excursoes-card--pendente .gcv-excursoes-card__card-date .gcv-excursoes-card__cap .ti,
   .gcv-excursoes__track--day-list .gcv-excursoes-card--confirmada .gcv-excursoes-card__card-date .gcv-excursoes-card__cap .ti {
-    font-size: 0.78rem;
+    display: none;
+  }
+
+  .gcv-excursoes__track--day-list .gcv-excursoes-card__cap-ratio {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    line-height: 0.85;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .gcv-excursoes__track--day-list .gcv-excursoes-card__cap-slash {
+    margin: 0;
+    opacity: 1;
+    font-weight: 800;
+    line-height: 0.7;
   }
 }
 
