@@ -3,6 +3,7 @@
  * Uso: node tools/build-site.mjs  |  npm run build
  */
 import { mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { NEW_DETAIL_IMAGES, NEW_GALLERIES } from "./atrativos-novos.mjs";
@@ -98,6 +99,33 @@ const PKG_JSON = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8"));
 /** Evita JavaScript antigo em cache (CDN/browser) após cada deploy. */
 const BUILD_ASSET_QUERY = `?v=${encodeURIComponent(String(PKG_JSON.version || "1").trim())}`;
 
+function ensureMinAssets() {
+  const jobs = [
+    ["assets/css/site.css", "assets/css/site.min.css"],
+    ["assets/css/gcv-detail.css", "assets/css/gcv-detail.min.css"],
+    ["assets/css/gcv-seo.css", "assets/css/gcv-seo.min.css"],
+    ["assets/css/gcv-hero-slider.css", "assets/css/gcv-hero-slider.min.css"],
+    ["assets/css/excursoes.css", "assets/css/excursoes.min.css"],
+    ["assets/css/gcv-home-passeios.css", "assets/css/gcv-home-passeios.min.css"],
+    ["assets/css/gcv-confirmacao.css", "assets/css/gcv-confirmacao.min.css"],
+    ["assets/css/gcv-post.css", "assets/css/gcv-post.min.css"],
+    ["assets/js/site.js", "assets/js/site.min.js"],
+    ["assets/js/gcv-hero-slider.js", "assets/js/gcv-hero-slider.min.js"],
+  ];
+  for (const [input, output] of jobs) {
+    const r = spawnSync(
+      "npx --yes esbuild " + input + " --minify --outfile=" + output,
+      { cwd: ROOT, stdio: "inherit", shell: true },
+    );
+    if (r.status !== 0) {
+      console.error("[build] minify falhou:", input);
+      process.exit(typeof r.status === "number" ? r.status : 1);
+    }
+  }
+  console.log("[build] CSS e JS da home minificados");
+}
+ensureMinAssets();
+
 const INSTAGRAM_URL = "https://www.instagram.com/guiachapadaveadeiros/";
 
 /** Mesmo link do rodapé em `SiteLayout.tsx` (planejar viagem). */
@@ -188,7 +216,8 @@ function sitePathSegmentsTrimmed() {
  * @param {string} [pageOutRelPath] ex.: `es/index.html` — necessário quando `GCV_RELATIVE_JS=1`
  */
 function publicJsSrc(file, pageOutRelPath) {
-  const name = String(file || "").trim().replace(/^\//, "");
+  let name = String(file || "").trim().replace(/^\//, "");
+  if (name === "site.js" || name === "gcv-hero-slider.js") name = name.replace(/\.js$/i, ".min.js");
   const q = BUILD_ASSET_QUERY;
   const prefixSegment = sitePathSegmentsTrimmed();
   if (prefixSegment) {
@@ -204,7 +233,8 @@ function publicJsSrc(file, pageOutRelPath) {
 
 /** CSS com o mesmo `?v=` do JS para evitar HTML novo + folha antiga em cache (ex.: grid Instagram). */
 function publicCssSrc(file, pageOutRelPath) {
-  const name = String(file || "").trim().replace(/^\//, "");
+  let name = String(file || "").trim().replace(/^\//, "");
+  if (name.endsWith(".css") && !name.endsWith(".min.css")) name = name.replace(/\.css$/i, ".min.css");
   const q = BUILD_ASSET_QUERY;
   const ap = pageOutRelPath != null ? assetPrefix(pageOutRelPath) : "./";
   return `${ap}assets/css/${name}${q}`;
@@ -1437,7 +1467,32 @@ function cssLink(href, blocking) {
 
 function loadAfterIdle(srcs) {
   const json = JSON.stringify(srcs);
-  return `  <script>(function(){var srcs=${json};function go(){srcs.forEach(function(src){var s=document.createElement("script");s.src=src;s.async=false;document.body.appendChild(s);});}window.addEventListener("load",function(){if(window.requestIdleCallback)requestIdleCallback(go,{timeout:1800});else setTimeout(go,400);});})();</script>\n`;
+  const tabler = JSON.stringify(
+    "https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css",
+  );
+  return `  <script>(function(){
+    var srcs=${json};
+    var started=0;
+    function go(){
+      if(started)return;
+      started=1;
+      var link=document.createElement("link");
+      link.rel="stylesheet";
+      link.href=${tabler};
+      link.crossOrigin="anonymous";
+      document.head.appendChild(link);
+      srcs.forEach(function(src){
+        var s=document.createElement("script");
+        s.src=src;
+        s.async=false;
+        document.body.appendChild(s);
+      });
+    }
+    ["pointerdown","keydown","touchstart"].forEach(function(ev){
+      window.addEventListener(ev,go,{once:true,passive:true});
+    });
+    window.addEventListener("load",function(){setTimeout(go,20000);});
+  })();</script>\n`;
 }
 
 function buildHead(ctx) {
@@ -1463,7 +1518,7 @@ function buildHead(ctx) {
   const ogSiteType = ogType || "website";
   const home = pathKey === "";
   const cssExtra = (extraCss || [])
-    .map((rel) => cssLink(`${ap}${rel}`, !home || /gcv-hero-slider\.css/.test(String(rel))))
+    .map((rel) => cssLink(`${ap}${rel}`, !home || /gcv-hero-slider(\.min)?\.css/.test(String(rel))))
     .join("");
   const canon = `${SITE_ORIGIN}${localePathToUrl(locale, pathKey)}`.replace(/([^:])\/{2,}/g, "$1/");
   const ogAbs = ogImageRel ? `${SITE_ORIGIN}/assets/img/${ogImageRel.replace(/^\//, "")}` : "";
@@ -3011,17 +3066,17 @@ const CART_CATALOG_SCRIPT = `  <script type="application/json" id="gcv-exc-cart-
 /** Carrinho de excursões em todas as páginas (persistência na navegação). */
 function withSitewideExcCart(pageOutRel, { extraCss = [], extraHead = "", extraFooterScripts = "" } = {}) {
   const css = Array.isArray(extraCss) ? extraCss.slice() : [];
-  if (!css.some((c) => String(c).includes("excursoes.css"))) {
-    css.push(`assets/css/excursoes.css${BUILD_ASSET_QUERY}`);
+  if (!css.some((c) => String(c).includes("excursoes"))) {
+    css.push(`assets/css/excursoes.min.css${BUILD_ASSET_QUERY}`);
   }
   let head = extraHead || "";
-  if (!head.includes("tabler-icons")) {
+  let scripts = extraFooterScripts || "";
+  if (!head.includes("tabler-icons") && !scripts.includes("tabler-icons")) {
     head =
       (head ? `${head}\n` : "") +
       `    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" crossorigin="anonymous" />`;
   }
   const ap = assetPrefix(pageOutRel);
-  let scripts = extraFooterScripts || "";
   if (!scripts.includes("gcv-exc-cart-catalog") && !scripts.includes('id="gcv-exc-cart-catalog"')) {
     scripts = CART_CATALOG_SCRIPT + scripts;
   }
@@ -3312,16 +3367,14 @@ for (const locale of LOCALES) {
     const homeExcursionsHead = homeIsLanding
       ? {
           extraCss: [
-            `assets/css/gcv-hero-slider.css${BUILD_ASSET_QUERY}`,
-            `assets/css/excursoes.css${BUILD_ASSET_QUERY}`,
-            `assets/css/gcv-home-passeios.css${BUILD_ASSET_QUERY}`,
+            `assets/css/gcv-hero-slider.min.css${BUILD_ASSET_QUERY}`,
+            `assets/css/excursoes.min.css${BUILD_ASSET_QUERY}`,
+            `assets/css/gcv-home-passeios.min.css${BUILD_ASSET_QUERY}`,
           ],
           extraHead: `${heroPreloadLinks(homeAp, locale)}
     <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&display=swap" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
-    <noscript><link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" /></noscript>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" crossorigin="anonymous" media="print" onload="this.media='all'" />
-    <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" crossorigin="anonymous" /></noscript>`,
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" /></noscript>`,
           extraFooterScripts:
             homeExcursionsHideScript +
             `  <script src="${esc(publicJsSrc("gcv-hero-slider.js", outPk))}" defer></script>\n` +
@@ -3355,7 +3408,7 @@ for (const locale of LOCALES) {
         (pk === "" || pk === "contato.html" ? `  ${floatWaHtml(locale)}\n` : "") + (p.extraAfterFooter || ""),
       extraFooterScripts: (p.extraFooterScripts || homeExcursionsHead.extraFooterScripts || "") + homeConsultarScript,
       extraCss: [
-        ...(pk === "confirmacao.html" ? [`assets/css/gcv-confirmacao.css${BUILD_ASSET_QUERY}`] : []),
+        ...(pk === "confirmacao.html" ? [`assets/css/gcv-confirmacao.min.css${BUILD_ASSET_QUERY}`] : []),
         ...(homeExcursionsHead.extraCss || []),
       ],
       extraHead: homeExcursionsHead.extraHead,
@@ -3387,7 +3440,7 @@ for (const locale of LOCALES) {
         ogTitle: premium.ogTitle,
         ogDesc: premium.ogDesc,
         ogType: "article",
-        extraCss: ["assets/css/gcv-post.css"],
+        extraCss: ["assets/css/gcv-post.min.css"],
         extraHead: premium.extraHead,
         current: "revista",
         mainHtml: premium.mainHtml,
@@ -3517,7 +3570,7 @@ for (const locale of LOCALES) {
         ogTitle: premium.ogTitle,
         ogDesc: premium.ogDesc,
         ogType: "article",
-        extraCss: ["assets/css/gcv-post.css"],
+        extraCss: ["assets/css/gcv-post.min.css"],
         extraHead: premium.extraHead,
         current: "revista",
         mainHtml: premium.mainHtml,
