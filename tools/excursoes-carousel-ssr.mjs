@@ -834,7 +834,8 @@ function bookingBlockSsr(e, s, locale) {
     '<div class="gcv-excursoes-card__book-total">' +
     `<span class="gcv-excursoes-card__book-total-copy"><span class="gcv-excursoes-card__book-total-label">${esc(s.bookTotal)}</span>` +
     `<span class="gcv-excursoes-card__book-total-pix">${esc(s.bookPix || "no PIX")}</span></span>` +
-    `<span class="gcv-excursoes-card__price" data-gcv-exc-total>R$&nbsp;${unit}</span></div></div>` +
+    `<span class="gcv-excursoes-card__price-go"><span class="gcv-excursoes-card__price" data-gcv-exc-total>R$&nbsp;${unit}</span>` +
+    '<span class="gcv-excursoes-card__price-chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></span></span></div></div>' +
     '<div class="gcv-excursoes-card__book-actions">' +
     `<button type="button" class="gcv-excursoes-card__cart-add" data-gcv-exc-cart-add><i class="ti ti-shopping-cart" aria-hidden="true"></i> ${esc(s.bookAddCart)}</button>` +
     shareButtonSsr(s) +
