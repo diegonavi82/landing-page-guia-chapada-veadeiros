@@ -31,7 +31,7 @@ const RAW = [
   spot({
     slug: "bocaina-de-farias-guia-chapada-veadeiros",
     file: "cachoeira-bocaina-de-farias-guia-chapada-veadeiros.jpg",
-    map: { l: 72, t: 78, w: 10, h: 4 },
+    map: { l: 74.52, t: 80.83, w: 7.69, h: 6.83 },
     title: L("Bocaina de Farias", "Bocaina de Farias", "Bocaina de Farias"),
     lead: L(
       "Cânion estreito em São João d'Aliança, na Chapada dos Veadeiros, com poços no encontro dos rios Farias e Farinha.",
@@ -109,7 +109,7 @@ const RAW = [
   spot({
     slug: "boqueirao-guia-chapada-veadeiros",
     file: "cachoeira-boqueirao-guia-chapada-veadeiros-cavalcante.jpg",
-    map: { l: 40, t: 11, w: 9, h: 4 },
+    map: { l: 37.26, t: 11.33, w: 8.49, h: 5 },
     title: L("Boqueirão", "Boqueirão", "Boqueirão"),
     lead: L(
       "Poços verde-esmeralda do Rio Capivara, no interior de Cavalcante, na Chapada dos Veadeiros.",
@@ -184,7 +184,7 @@ const RAW = [
   spot({
     slug: "candaru-guia-chapada-veadeiros",
     file: "cachoeira-candaru-guia-chapada-veadeiros-cavalcante.jpg",
-    map: { l: 50, t: 12, w: 8, h: 4 },
+    map: { l: 53.07, t: 10.17, w: 7.61, h: 4.83 },
     title: L("Candaru", "Candaru", "Candaru"),
     lead: L(
       "Queda de cerca de 70 metros no quilombo Kalunga do Engenho II, em Cavalcante, na Chapada dos Veadeiros.",
@@ -262,7 +262,7 @@ const RAW = [
   spot({
     slug: "canjica-aguas-lindas-guia-chapada-veadeiros",
     file: "complexo-aguas-lindas-canjica-guia-chapada-veadeiros-cavalcante.jpg",
-    map: { l: 36, t: 2, w: 11, h: 4.5 },
+    map: { l: 33.82, t: 3.67, w: 10.18, h: 7.17 },
     title: L("Canjica e Águas Lindas", "Canjica and Águas Lindas", "Canjica y Águas Lindas"),
     lead: L(
       "Poços, cânion e a cachoeira da Canjica, a cerca de 75 km de Cavalcante, na Chapada dos Veadeiros.",
@@ -343,7 +343,7 @@ const RAW = [
   spot({
     slug: "capivara-guia-chapada-veadeiros",
     file: "cachoeira-capivara-guia-chapada-veadeiros-cavalcante.jpg",
-    map: { l: 53, t: 6, w: 8, h: 4 },
+    map: { l: 53.44, t: 6, w: 7.91, h: 5 },
     title: L("Capivara", "Capivara", "Capivara"),
     lead: L(
       "Cachoeira do quilombo Kalunga do Engenho II, ao lado da Santa Bárbara, em Cavalcante, na Chapada dos Veadeiros.",
@@ -418,7 +418,7 @@ const RAW = [
   spot({
     slug: "catoa-guia-chapada-veadeiros",
     file: "cachoeira-catoa-guia-chapada-veadeiros-cavalcante.jpg",
-    map: { l: 28, t: 2, w: 8, h: 4 },
+    map: { l: 26.72, t: 2.83, w: 6.22, h: 4.83 },
     title: L("Catoá", "Catoá", "Catoá"),
     lead: L(
       "Queda alta no povoado de Campo Alegre, ao norte de Cavalcante, com um poço verde e outro de água morna, na Chapada dos Veadeiros.",
@@ -493,7 +493,7 @@ const RAW = [
   spot({
     slug: "chapada-alta-guia-chapada-veadeiros",
     file: "chapada-alta-guia-chapada-veadeiros-alto-paraiso.jpg",
-    map: { l: 74, t: 39, w: 10, h: 4 },
+    map: { l: 74.3, t: 41.9, w: 10.5, h: 5.5 },
     title: L("Chapada Alta", "Chapada Alta", "Chapada Alta"),
     lead: L(
       "Complexo de cachoeiras e mirantes na serra a nordeste de Alto Paraíso, na Chapada dos Veadeiros.",
@@ -568,7 +568,7 @@ const RAW = [
   spot({
     slug: "dragao-4x4-guia-chapada-veadeiros",
     file: "cachoeira-do-dragao-guia-chapada-veadeiros.jpg",
-    map: { l: 88, t: 72, w: 8, h: 4 },
+    map: { l: 91.95, t: 71.17, w: 7.1, h: 4.83 },
     title: L("Dragão", "Dragão", "Dragão"),
     lead: L(
       "Cachoeira do Dragão no cânion do Rio Macaquinhos, em São João d'Aliança, com trecho a nado na Chapada dos Veadeiros.",
@@ -643,7 +643,7 @@ const RAW = [
   spot({
     slug: "guardiao-4x4-guia-chapada-veadeiros",
     file: "cachoeira-do-guardiao-guia-chapada-veadeiros-cavalcante.jpg",
-    map: { l: 64, t: 9, w: 9, h: 4 },
+    map: { l: 65.52, t: 10.83, w: 8.35, h: 4.83 },
     title: L("Guardião", "Guardião", "Guardião"),
     lead: L(
       "Cachoeira do Guardião no cânion do Rio Curriola, Vão do Moleque, em Cavalcante, na Chapada dos Veadeiros.",
@@ -712,7 +712,7 @@ const RAW = [
   spot({
     slug: "lajeado-guia-chapada-veadeiros",
     file: "cachoeira-do-lajeado-guia-chapada-veadeiros-sao-jorge.jpg",
-    map: { l: 20, t: 78, w: 7, h: 4 },
+    map: { l: 18.16, t: 80.67, w: 7.17, h: 5 },
     title: L("Lajeado", "Lajeado", "Lajeado"),
     lead: L(
       "Trilha curta e sombreada a poucos quilômetros de São Jorge, com poços de córrego na Chapada dos Veadeiros.",
@@ -868,7 +868,7 @@ const RAW = [
   spot({
     slug: "morada-do-sol-guia-chapada-veadeiros",
     file: "complexo-morada-do-sol-guia-chapada-veadeiros-sao-jorge.jpg",
-    map: { l: 12, t: 70, w: 9, h: 4 },
+    map: { l: 11.42, t: 70.67, w: 6.44, h: 6.83 },
     title: L("Morada do Sol", "Morada do Sol", "Morada do Sol"),
     lead: L(
       "Quatro trilhas no Rio São Miguel, na GO-239, a cerca de 6 km de São Jorge, na Chapada dos Veadeiros.",
@@ -1024,7 +1024,7 @@ const RAW = [
   spot({
     slug: "raizama-guia-chapada-veadeiros",
     file: "santuario-raizama-guia-chapada-veadeiros-sao-jorge.jpg",
-    map: { l: 13, t: 78, w: 7, h: 4 },
+    map: { l: 10.76, t: 77.83, w: 7.54, h: 4.83 },
     title: L("Raizama", "Raizama", "Raizama"),
     lead: L(
       "Santuário no cânion do Rio São Miguel, a poucos quilômetros de São Jorge, na Chapada dos Veadeiros.",
@@ -1102,7 +1102,7 @@ const RAW = [
   spot({
     slug: "sertao-zen-guia-chapada-veadeiros",
     file: "sertao-zen-guia-chapada-veadeiros-alto-paraiso-2.jpg",
-    map: { l: 72, t: 56, w: 8, h: 4 },
+    map: { l: 75.04, t: 59.17, w: 8.49, h: 4.67 },
     title: L("Sertão Zen", "Sertão Zen", "Sertão Zen"),
     lead: L(
       "Trilha longa na Serra da Baliza, com mirante sobre uma queda de cerca de 150 metros, perto de Alto Paraíso, na Chapada dos Veadeiros.",
@@ -1183,7 +1183,7 @@ const RAW = [
   spot({
     slug: "simao-correia-guia-chapada-veadeiros",
     file: "cachoeira-simao-correia-guia-chapada-veadeiros.jpg",
-    map: { l: 87, t: 46, w: 10, h: 4 },
+    map: { l: 89.31, t: 49.33, w: 10.32, h: 4.67 },
     title: L("Simão Correia", "Simão Correia", "Simão Correia"),
     lead: L(
       "Cachoeira a leste de Alto Paraíso, depois da comunidade do Sertão, com trilha longa na Chapada dos Veadeiros.",
@@ -1258,7 +1258,7 @@ const RAW = [
   spot({
     slug: "veredas-guia-chapada-veadeiros",
     file: "complexo-veredas-guia-chapada-veadeiros-cavalcante.jpg",
-    map: { l: 40, t: 22, w: 8, h: 4 },
+    map: { l: 37.26, t: 24.5, w: 7.17, h: 4.83 },
     title: L("Veredas", "Veredas", "Veredas"),
     lead: L(
       "Fazenda Veredas, a cerca de 8 km de Cavalcante, com uma queda de quase 100 metros na Chapada dos Veadeiros.",
@@ -1333,7 +1333,7 @@ const RAW = [
   spot({
     slug: "sao-felix-guia-chapada-veadeiros",
     file: "cachoeira-sao-felix-guia-chapada-veadeiros-cavalcante.jpg",
-    map: { l: 24.7, t: 16.3, w: 7.5, h: 7.7 },
+    map: { l: 25.77, t: 15.5, w: 4.9, h: 6.83 },
     title: L("São Félix", "São Félix", "São Félix"),
     lead: L(
       "Prainha de areia clara e poço raso na fazenda São Félix, a noroeste de Cavalcante, na Chapada dos Veadeiros.",

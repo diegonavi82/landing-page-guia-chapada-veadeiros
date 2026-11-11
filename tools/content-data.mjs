@@ -137,7 +137,7 @@ export const MAP_BOX_BY_SLUG = {
   "parque-nacional-chapada-veadeiros-saltos-rio-preto-sao-jorge": { l: 20.42, t: 61.67, w: 10.32, h: 5.5 },
   "parque-nacional-chapada-veadeiros-canions-carioquinhas-sao-jorge": { l: 26.87, t: 59.17, w: 6.66, h: 6 },
   "cachoeira-macacao-guia-chapada-veadeiros-sao-joao-alianca": { l: 81.55, t: 64.5, w: 7.17, h: 3.5 },
-  "caracol-guia-chapada-veadeiros": { l: 80.4, t: 52, w: 6.6, h: 4.2 },
+  "caracol-guia-chapada-veadeiros": { l: 80.01, t: 51.5, w: 7.17, h: 4.67 },
   ...NEW_MAP_BOXES,
 };
 
