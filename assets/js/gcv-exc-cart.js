@@ -845,8 +845,29 @@
     return cartTotal(items) * 100;
   }
 
+  function cartPasseioCents(items) {
+    return (items || []).reduce(function (sum, it) {
+      var id = String((it && it.id) || "");
+      if (id.indexOf("roteiro-") !== 0) return sum;
+      var u = parseInt(String(it.valorUnit), 10) || 0;
+      var q = parseInt(String(it.qty), 10) || 0;
+      return sum + u * q * 100;
+    }, 0);
+  }
+
+  function cartCupomTrips(items) {
+    return (items || []).map(function (it) {
+      return {
+        cartId: (it && it.id) || "",
+        valorUnit: parseInt(String(it && it.valorUnit), 10) || 0,
+        qty: parseInt(String(it && it.qty), 10) || 1,
+        pessoas: parseInt(String(it && it.pessoas), 10) || parseInt(String(it && it.qty), 10) || 1,
+      };
+    });
+  }
+
   function cartCupomSig(items) {
-    return String(cartGrossCents(items)) + ":" + String(cartPeople(items));
+    return String(cartGrossCents(items)) + ":" + String(cartPeople(items)) + ":" + String(cartPasseioCents(items));
   }
 
   function cupomCode() {
@@ -886,6 +907,9 @@
       if (c.tipo === "grupo") en += ", with more than " + c.minimo_pessoas + " people";
       if (c.tipo === "compra") en += ", on purchases of " + formatBrlCents(c.minimo_cents) + " or more";
       if (c.valido_ate) en += ", valid through " + couponDate(c.valido_ate, "en");
+      if (String(c.codigo || "").toUpperCase() === "BLACKFRIDAY") {
+        en += ". Tours section only. Not valid on trips published by guides.";
+      }
       return en;
     }
     if (loc === "es") {
@@ -893,12 +917,18 @@
       if (c.tipo === "grupo") es += ", con más de " + c.minimo_pessoas + " personas";
       if (c.tipo === "compra") es += ", para compras a partir de " + formatBrlCents(c.minimo_cents);
       if (c.valido_ate) es += ", válido hasta el " + couponDate(c.valido_ate, "es");
+      if (String(c.codigo || "").toUpperCase() === "BLACKFRIDAY") {
+        es += ". Solo en Paseos. No vale para excursiones publicadas por guías.";
+      }
       return es;
     }
     var pt = porPessoa ? valor + " por pessoa" : valor + " no total";
     if (c.tipo === "grupo") pt += ", com mais de " + c.minimo_pessoas + " pessoas";
     if (c.tipo === "compra") pt += ", para compras a partir de " + formatBrlCents(c.minimo_cents);
     if (c.valido_ate) pt += ", válido até " + couponDate(c.valido_ate, "pt");
+    if (String(c.codigo || "").toUpperCase() === "BLACKFRIDAY") {
+      pt += ". Só em Passeios. Não vale para excursão publicada por guia.";
+    }
     return pt;
   }
 
@@ -1041,6 +1071,7 @@
         codigo: code,
         pessoas: cartPeople(items),
         total_cents: cartGrossCents(items),
+        trips: cartCupomTrips(items),
         locale: _locale === "en" || _locale === "es" ? _locale : "pt",
       }),
     })

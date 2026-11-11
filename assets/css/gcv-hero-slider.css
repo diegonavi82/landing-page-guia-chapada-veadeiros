@@ -211,6 +211,15 @@
   font-weight: 700;
 }
 
+.gcv-hero--offers .gcv-cupom-hero__limit {
+  margin: 0;
+  max-width: 34ch;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.35;
+  color: #f4c56a;
+}
+
 .gcv-hero--offers .gcv-cupom-ticket .gcv-actions {
   margin-top: 14px;
 }
@@ -610,6 +619,11 @@
 
   .gcv-hero--offers .gcv-slide--cupom .gcv-text {
     max-width: none;
+  }
+
+  .gcv-hero--offers .gcv-slide--cupom .gcv-cupom-hero__limit {
+    max-width: none;
+    font-size: 14px;
   }
 
   .gcv-hero--offers .gcv-slide--cupom .gcv-cupom-ticket {

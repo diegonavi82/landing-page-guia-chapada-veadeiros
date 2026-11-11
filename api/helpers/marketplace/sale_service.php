@@ -151,9 +151,14 @@ function gcv_sale_capture_from_pix_reservation(array $reservation, string $sourc
         $platformRevenue = 0;
     }
 
-    // BLACKFRIDAY troca a tarifa: 16% sem veículo, 10% com veículo, sobre o valor já cobrado.
+    // BLACKFRIDAY troca a tarifa só quando a compra inteira é de Passeios.
+    // Excursão publicada por guia não entra no cupom e segue a tarifa vigente.
     require_once __DIR__ . '/../tarifa_repasse.php';
-    $blackfriday = gcv_blackfriday_repasse_cents($soldCents, $reservation);
+    require_once __DIR__ . '/../cupons.php';
+    $partesCupom = gcv_cupom_partes(is_array($reservation['trips'] ?? null) ? $reservation['trips'] : []);
+    $blackfriday = $partesCupom['outros_cents'] > 0
+        ? null
+        : gcv_blackfriday_repasse_cents($soldCents, $reservation);
     if ($blackfriday !== null) {
         $guideAmount = (int) $blackfriday['guia_cents'];
         $platformRevenue = (int) $blackfriday['plataforma_cents'];

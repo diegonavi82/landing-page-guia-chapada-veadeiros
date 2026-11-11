@@ -31,12 +31,34 @@ if (!is_array($data)) {
 $locale = in_array($data['locale'] ?? 'pt', ['pt', 'en', 'es'], true) ? (string) $data['locale'] : 'pt';
 $pessoas = max(0, (int) ($data['pessoas'] ?? 0));
 $total = max(0, (int) ($data['total_cents'] ?? 0));
-$calc = gcv_cupom_aplicar_codigo((string) ($data['codigo'] ?? ''), $pessoas, $total, $locale);
-if (empty($calc['ok'])) {
+$codigo = strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', (string) ($data['codigo'] ?? '')));
+$base = gcv_cupom_base_do_pedido($codigo, $data, $total);
+if (empty($base['ok'])) {
+    $err = (string) ($base['error'] ?? 'passeios_only');
     echo json_encode([
         'ok' => false,
-        'error' => $calc['error'] ?? 'invalid',
-        'message' => $calc['message'] ?? '',
+        'error' => $err,
+        'message' => gcv_cupom_msg($err, $locale, 0),
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+$pessoas = (int) $base['pessoas'];
+$calc = gcv_cupom_aplicar_codigo($codigo, $pessoas, (int) $base['base_cents'], $locale);
+if (empty($calc['ok'])) {
+    $err = (string) ($calc['error'] ?? 'invalid');
+    if (gcv_cupom_e_blackfriday($codigo) && $err === 'min_value') {
+        $err = 'min_value_passeios';
+    }
+    echo json_encode([
+        'ok' => false,
+        'error' => $err,
+        'message' => gcv_cupom_msg(
+            $err,
+            $locale,
+            (int) ($calc['minimo_pessoas'] ?? 0),
+            (int) ($calc['minimo_cents'] ?? 0),
+            (string) ($calc['valido_ate'] ?? '')
+        ),
         'minimo_pessoas' => (int) ($calc['minimo_pessoas'] ?? 0),
         'minimo_cents' => (int) ($calc['minimo_cents'] ?? 0),
         'valido_ate' => (string) ($calc['valido_ate'] ?? ''),

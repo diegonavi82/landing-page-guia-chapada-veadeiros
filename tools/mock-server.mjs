@@ -2446,6 +2446,8 @@ function cupomMsg(error, locale, min, minCents, quando) {
       inactive: "Este cupom está desativado.",
       min_people: "Este cupom vale quando o carrinho tem mais de " + min + " pessoas.",
       min_value: "Este cupom vale para compras a partir de R$ " + ((minCents || 0) / 100).toFixed(2).replace(".", ",") + ".",
+      min_value_passeios: "Este cupom vale para passeios a partir de R$ " + ((minCents || 0) / 100).toFixed(2).replace(".", ",") + ". Excursão publicada por guia não entra nessa conta.",
+      passeios_only: "O BLACKFRIDAY vale só para passeios comprados em Passeios. Não vale para excursões publicadas por guias.",
       expired: "Este cupom venceu em " + (quando || "") + ".",
       zero: "Este cupom não gera desconto neste carrinho.",
     },
@@ -2455,6 +2457,8 @@ function cupomMsg(error, locale, min, minCents, quando) {
       inactive: "This coupon is turned off.",
       min_people: "This coupon applies when the cart has more than " + min + " people.",
       min_value: "This coupon applies to purchases of R$ " + ((minCents || 0) / 100).toFixed(2).replace(".", ",") + " or more.",
+      min_value_passeios: "This coupon applies to tours from R$ " + ((minCents || 0) / 100).toFixed(2).replace(".", ",") + ". Trips published by guides are not included.",
+      passeios_only: "BLACKFRIDAY applies only to tours bought in Tours. It does not apply to trips published by guides.",
       expired: "This coupon expired on " + (quando || "") + ".",
       zero: "This coupon does not discount this cart.",
     },
@@ -2464,6 +2468,8 @@ function cupomMsg(error, locale, min, minCents, quando) {
       inactive: "Este cupón está desactivado.",
       min_people: "Este cupón vale cuando el carrito tiene más de " + min + " personas.",
       min_value: "Este cupón vale para compras a partir de R$ " + ((minCents || 0) / 100).toFixed(2).replace(".", ",") + ".",
+      min_value_passeios: "Este cupón vale para paseos a partir de R$ " + ((minCents || 0) / 100).toFixed(2).replace(".", ",") + ". La excursión publicada por un guía no entra en esa cuenta.",
+      passeios_only: "BLACKFRIDAY vale solo para paseos comprados en Paseos. No vale para excursiones publicadas por guías.",
       expired: "Este cupón venció el " + (quando || "") + ".",
       zero: "Este cupón no genera descuento en este carrito.",
     },
@@ -2524,6 +2530,26 @@ function cupomAplicar(codigo, pessoas, totalCents, locale) {
   return { ok: true, desconto_cents: off, cupom: found };
 }
 
+function cupomPartes(trips) {
+  let elegivel = 0;
+  let outros = 0;
+  let pessoas = 0;
+  (Array.isArray(trips) ? trips : []).forEach((trip) => {
+    if (!trip || typeof trip !== "object") return;
+    const qty = Math.max(1, parseInt(String(trip.qty), 10) || 1);
+    const unit = Math.round((Number(trip.valorUnit) || 0) * 100);
+    const cents = Math.max(0, unit) * qty;
+    const id = String(trip.cartId || trip.id || "").toLowerCase();
+    if (id.startsWith("roteiro-")) {
+      elegivel += cents;
+      pessoas += Math.max(1, parseInt(String(trip.pessoas != null ? trip.pessoas : qty), 10) || qty);
+    } else {
+      outros += cents;
+    }
+  });
+  return { elegivel, outros, pessoas };
+}
+
 function cupomSobreCarrinho(data) {
   const codigo = String((data && data.cupom) || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
   const trips = Array.isArray(data && data.trips) ? data.trips : [];
@@ -2538,7 +2564,20 @@ function cupomSobreCarrinho(data) {
   });
   if (!codigo || gross < 1) return { aplicado: false, invalido: false, esperadoReais: 0, codigo: "" };
   const locale = data.locale === "en" || data.locale === "es" ? data.locale : "pt";
-  const calc = cupomAplicar(codigo, pessoas || 1, gross, locale);
+  let base = gross;
+  if (codigo === "BLACKFRIDAY") {
+    const partes = cupomPartes(trips);
+    if (partes.elegivel < 1) {
+      return { aplicado: false, invalido: true, message: cupomMsg("passeios_only", locale, 0), codigo };
+    }
+    base = partes.elegivel;
+    pessoas = partes.pessoas;
+  }
+  const calc = cupomAplicar(codigo, pessoas || 1, base, locale);
+  if (!calc.ok && codigo === "BLACKFRIDAY" && calc.error === "min_value") {
+    calc.error = "min_value_passeios";
+    calc.message = cupomMsg("min_value_passeios", locale, 0, calc.minimo_cents || 0, calc.valido_ate || "");
+  }
   if (!calc.ok) return { aplicado: false, invalido: true, message: calc.message, codigo };
   return {
     aplicado: true,
@@ -2557,7 +2596,23 @@ function handleCupomApi(urlPath, req, res) {
     readJsonBody(req)
       .then((data) => {
         const locale = data.locale === "en" || data.locale === "es" ? data.locale : "pt";
-        const calc = cupomAplicar(data.codigo, parseInt(data.pessoas, 10) || 0, parseInt(data.total_cents, 10) || 0, locale);
+        const codigo = String(data.codigo || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+        let base = parseInt(data.total_cents, 10) || 0;
+        let pessoas = parseInt(data.pessoas, 10) || 0;
+        if (codigo === "BLACKFRIDAY") {
+          const partes = cupomPartes(data.trips);
+          if (partes.elegivel < 1) {
+            send({ ok: false, error: "passeios_only", message: cupomMsg("passeios_only", locale, 0) });
+            return;
+          }
+          base = partes.elegivel;
+          pessoas = partes.pessoas;
+        }
+        const calc = cupomAplicar(codigo, pessoas, base, locale);
+        if (!calc.ok && codigo === "BLACKFRIDAY" && calc.error === "min_value") {
+          calc.error = "min_value_passeios";
+          calc.message = cupomMsg("min_value_passeios", locale, 0, calc.minimo_cents || 0, calc.valido_ate || "");
+        }
         if (!calc.ok) {
           send({ ok: false, error: calc.error, message: calc.message, minimo_pessoas: calc.minimo_pessoas || 0, minimo_cents: calc.minimo_cents || 0, valido_ate: calc.valido_ate || "" });
           return;

@@ -1952,6 +1952,7 @@ function heroCouponSlide(slide, first, pos) {
           <span class="gcv-tag">${esc(slide.tag || "")}</span>
           <h2 class="gcv-title">${lines}</h2>
           <p class="gcv-text">${esc(slide.text || "")}</p>
+          ${slide.limit ? '<p class="gcv-cupom-hero__limit">' + esc(slide.limit) + "</p>" : ""}
         </div>
         <div class="gcv-cupom-ticket">
           <span class="gcv-cupom-ticket__kicker">${esc(slide.kicker || "")}</span>
@@ -1959,7 +1960,7 @@ function heroCouponSlide(slide, first, pos) {
           <span class="gcv-cupom-ticket__until">${esc(slide.untilLabel || "")}</span>
           <div class="gcv-actions">
             <button type="button" class="gcv-btn gcv-btn-main" data-gcv-copy-cupom="${esc(slide.code || "")}" data-label="${esc(slide.copy || "")}" data-copied="${esc(slide.copied || "")}">${esc(slide.copy || "")}</button>
-            <a class="gcv-btn gcv-btn-ghost" href="#excursoes" data-gcv-use-cupom="${esc(slide.code || "")}">${esc(slide.use || "")}</a>
+            <a class="gcv-btn gcv-btn-ghost" href="${esc(slide.useHref || "passeios.html")}" data-gcv-use-cupom="${esc(slide.code || "")}">${esc(slide.use || "")}</a>
           </div>
         </div>
       </div>
@@ -3141,7 +3142,7 @@ for (const locale of LOCALES) {
     const homeExcursionsHead = homeIsLanding
       ? {
           extraCss: [
-            `assets/css/gcv-hero-slider.css?v=1.1.34`,
+            `assets/css/gcv-hero-slider.css?v=1.1.35`,
             `assets/css/excursoes.css?v=1.1.34`,
             `assets/css/gcv-home-passeios.css${BUILD_ASSET_QUERY}`,
           ],

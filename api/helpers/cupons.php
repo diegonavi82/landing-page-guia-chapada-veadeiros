@@ -257,6 +257,92 @@ function gcv_cupom_teto_desconto(int $totalCents, int $off): int
     return max(0, $off);
 }
 
+function gcv_cupom_e_blackfriday(string $codigo): bool
+{
+    return strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', $codigo)) === 'BLACKFRIDAY';
+}
+
+/** Passeio comprado na vitrine de Passeios. Excursão, inclusive a publicada por guia, fica de fora. */
+function gcv_cupom_trip_e_passeio(array $trip): bool
+{
+    $id = strtolower(trim((string) ($trip['cartId'] ?? $trip['cart_id'] ?? $trip['id'] ?? '')));
+
+    return str_starts_with($id, 'roteiro-');
+}
+
+function gcv_cupom_trip_cents(array $trip): int
+{
+    $qty = max(1, (int) ($trip['qty'] ?? 1));
+    $unit = (int) round(((float) ($trip['valorUnit'] ?? $trip['valor_unit'] ?? 0)) * 100);
+
+    return max(0, $unit) * $qty;
+}
+
+/**
+ * @param list<mixed> $trips
+ * @return array{elegivel_cents:int,outros_cents:int,pessoas:int}
+ */
+function gcv_cupom_partes(array $trips): array
+{
+    $elegivel = 0;
+    $outros = 0;
+    $pessoas = 0;
+    foreach ($trips as $trip) {
+        if (!is_array($trip)) {
+            continue;
+        }
+        $cents = gcv_cupom_trip_cents($trip);
+        if (gcv_cupom_trip_e_passeio($trip)) {
+            $elegivel += $cents;
+            $pessoas += max(1, (int) ($trip['pessoas'] ?? $trip['qty'] ?? 1));
+        } else {
+            $outros += $cents;
+        }
+    }
+
+    return [
+        'elegivel_cents' => $elegivel,
+        'outros_cents' => $outros,
+        'pessoas' => $pessoas,
+    ];
+}
+
+/**
+ * BLACKFRIDAY só desconta a parte comprada em Passeios.
+ *
+ * @param array<string,mixed> $data
+ * @return array{ok:bool,error?:string,base_cents:int,pessoas:int}
+ */
+function gcv_cupom_base_do_pedido(string $codigo, array $data, int $grossCents): array
+{
+    $trips = is_array($data['trips'] ?? null) ? $data['trips'] : [];
+    if (!gcv_cupom_e_blackfriday($codigo)) {
+        $pessoas = 0;
+        foreach ($trips as $trip) {
+            if (!is_array($trip)) {
+                continue;
+            }
+            $pessoas += max(1, (int) ($trip['pessoas'] ?? $trip['qty'] ?? 1));
+        }
+        if ($pessoas < 1) {
+            $pessoas = max(1, (int) ($data['pessoas'] ?? 1));
+        }
+
+        return ['ok' => true, 'base_cents' => max(0, $grossCents), 'pessoas' => $pessoas];
+    }
+
+    $partes = gcv_cupom_partes($trips);
+    if ($partes['elegivel_cents'] < 1) {
+        return ['ok' => false, 'error' => 'passeios_only', 'base_cents' => 0, 'pessoas' => 0];
+    }
+
+    return [
+        'ok' => true,
+        'base_cents' => $partes['elegivel_cents'],
+        'pessoas' => max(1, $partes['pessoas']),
+    ];
+}
+
 /**
  * Recalcula o valor cobrado (centavos) quando o checkout manda um cupom.
  *
@@ -270,27 +356,43 @@ function gcv_cupom_sobre_carrinho(array $data, int $grossCents): array
         return ['aplicado' => false, 'esperado_cents' => $grossCents, 'desconto_cents' => 0];
     }
     $locale = in_array($data['locale'] ?? 'pt', ['pt', 'en', 'es'], true) ? (string) $data['locale'] : 'pt';
-    $pessoas = 0;
-    foreach (is_array($data['trips'] ?? null) ? $data['trips'] : [] as $trip) {
-        if (!is_array($trip)) {
-            continue;
-        }
-        $pessoas += max(1, (int) ($trip['pessoas'] ?? $trip['qty'] ?? 1));
-    }
-    if ($pessoas < 1) {
-        $pessoas = 1;
-    }
-    $calc = gcv_cupom_aplicar_codigo($codigo, $pessoas, $grossCents, $locale);
-    if (empty($calc['ok'])) {
+    $base = gcv_cupom_base_do_pedido($codigo, $data, $grossCents);
+    if (empty($base['ok'])) {
+        $err = (string) ($base['error'] ?? 'passeios_only');
+
         return [
             'aplicado' => false,
             'invalido' => true,
             'esperado_cents' => $grossCents,
             'desconto_cents' => 0,
-            'message' => (string) ($calc['message'] ?? ''),
+            'message' => gcv_cupom_msg($err, $locale, 0),
+        ];
+    }
+    $calc = gcv_cupom_aplicar_codigo($codigo, (int) $base['pessoas'], (int) $base['base_cents'], $locale);
+    if (empty($calc['ok'])) {
+        $err = (string) ($calc['error'] ?? 'invalid');
+        if (gcv_cupom_e_blackfriday($codigo) && $err === 'min_value') {
+            $err = 'min_value_passeios';
+        }
+
+        return [
+            'aplicado' => false,
+            'invalido' => true,
+            'esperado_cents' => $grossCents,
+            'desconto_cents' => 0,
+            'message' => gcv_cupom_msg(
+                $err,
+                $locale,
+                (int) ($calc['minimo_pessoas'] ?? 0),
+                (int) ($calc['minimo_cents'] ?? 0),
+                (string) ($calc['valido_ate'] ?? '')
+            ),
         ];
     }
     $off = (int) $calc['desconto_cents'];
+    if ($off > $grossCents) {
+        $off = $grossCents;
+    }
 
     return [
         'aplicado' => true,
@@ -321,6 +423,8 @@ function gcv_cupom_msg(string $error, string $locale, int $min, int $minCents = 
             'inactive' => 'Este cupom está desativado.',
             'min_people' => 'Este cupom vale quando o carrinho tem mais de ' . $min . ' pessoas.',
             'min_value' => 'Este cupom vale para compras a partir de ' . $piso . '.',
+            'min_value_passeios' => 'Este cupom vale para passeios a partir de ' . $piso . '. Excursão publicada por guia não entra nessa conta.',
+            'passeios_only' => 'O BLACKFRIDAY vale só para passeios comprados em Passeios. Não vale para excursões publicadas por guias.',
             'expired' => 'Este cupom venceu em ' . $dia . '.',
             'zero' => 'Este cupom não gera desconto neste carrinho.',
             'unavailable' => 'Não foi possível conferir o cupom agora.',
@@ -331,6 +435,8 @@ function gcv_cupom_msg(string $error, string $locale, int $min, int $minCents = 
             'inactive' => 'This coupon is turned off.',
             'min_people' => 'This coupon applies when the cart has more than ' . $min . ' people.',
             'min_value' => 'This coupon applies to purchases of ' . $piso . ' or more.',
+            'min_value_passeios' => 'This coupon applies to tours from ' . $piso . '. Trips published by guides are not included.',
+            'passeios_only' => 'BLACKFRIDAY applies only to tours bought in Tours. It does not apply to trips published by guides.',
             'expired' => 'This coupon expired on ' . $dia . '.',
             'zero' => 'This coupon does not discount this cart.',
             'unavailable' => 'Could not check the coupon right now.',
@@ -341,6 +447,8 @@ function gcv_cupom_msg(string $error, string $locale, int $min, int $minCents = 
             'inactive' => 'Este cupón está desactivado.',
             'min_people' => 'Este cupón vale cuando el carrito tiene más de ' . $min . ' personas.',
             'min_value' => 'Este cupón vale para compras a partir de ' . $piso . '.',
+            'min_value_passeios' => 'Este cupón vale para paseos a partir de ' . $piso . '. La excursión publicada por un guía no entra en esa cuenta.',
+            'passeios_only' => 'BLACKFRIDAY vale solo para paseos comprados en Paseos. No vale para excursiones publicadas por guías.',
             'expired' => 'Este cupón venció el ' . $dia . '.',
             'zero' => 'Este cupón no genera descuento en este carrito.',
             'unavailable' => 'No se pudo comprobar el cupón ahora.',
