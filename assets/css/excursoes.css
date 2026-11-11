@@ -2179,7 +2179,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.12rem;
+  gap: 2px;
   width: 100%;
   max-width: 100%;
   margin: 0;
@@ -2250,7 +2250,7 @@
   align-self: center;
   flex-shrink: 0;
   max-width: none;
-  font-size: 0.98rem;
+  font-size: calc(0.98rem + 2px);
   font-weight: 900;
   color: #2563eb;
   line-height: 1;
