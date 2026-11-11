@@ -46,6 +46,14 @@ const EXCLUSIVO = [
       es: "Familia en un paseo exclusivo con guía local tras un baño de arcilla a orillas de un lago en Chapada dos Veadeiros",
     },
   },
+  {
+    n: "passeio-exclusivo-guia-local-amigos-pedras-cachoeira-chapada-dos-veadeiros-06",
+    alt: {
+      pt: "Amigos em passeio exclusivo com guia local posando nas pedras diante de uma cachoeira na mata da Chapada dos Veadeiros",
+      en: "Friends on a private tour with a local guide posing on the rocks in front of a waterfall in the forest of Chapada dos Veadeiros",
+      es: "Amigos en un paseo exclusivo con guía local posando en las piedras frente a una cascada en la mata de Chapada dos Veadeiros",
+    },
+  },
 ];
 
 const COMPARTILHADO = [
@@ -129,8 +137,7 @@ function fileUrl(item) {
 }
 
 export function heroAgencyImageUrls() {
-  const desktop = [...EXCLUSIVO, ...COMPARTILHADO].filter((item) => !item.soCelular).map(fileUrl);
-  return desktop.slice(0, 10);
+  return [...EXCLUSIVO, ...COMPARTILHADO].filter((item) => !item.soCelular).map(fileUrl);
 }
 
 export function heroImageObjectsLd(locale) {
