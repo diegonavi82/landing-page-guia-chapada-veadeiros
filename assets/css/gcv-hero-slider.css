@@ -231,6 +231,15 @@
   max-width: 600px;
 }
 
+.gcv-hero--offers .gcv-content.gcv-cupom-hero__layout {
+  display: grid;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  margin: 0;
+  padding: 64px 72px 64px 64px;
+}
+
 .gcv-hero--offers .gcv-tag {
   align-self: flex-start;
   font-weight: 700;
@@ -575,6 +584,54 @@
     max-width: none;
     padding: 0 20px 16px;
     margin-top: -48px;
+  }
+
+  .gcv-hero--offers .gcv-content.gcv-cupom-hero__layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    gap: 14px;
+    width: 100%;
+    max-width: none;
+    height: auto;
+    margin: 0;
+    padding: 54px 16px 20px;
+  }
+
+  .gcv-hero--offers .gcv-slide--cupom .gcv-cupom-hero__copy,
+  .gcv-hero--offers .gcv-slide--cupom .gcv-cupom-ticket {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .gcv-hero--offers .gcv-slide--cupom .gcv-title {
+    font-size: clamp(26px, 7.6vw, 34px);
+  }
+
+  .gcv-hero--offers .gcv-slide--cupom .gcv-text {
+    max-width: none;
+  }
+
+  .gcv-hero--offers .gcv-slide--cupom .gcv-cupom-ticket {
+    padding: 18px 16px 16px;
+    border-radius: 20px;
+  }
+
+  .gcv-hero--offers .gcv-slide--cupom .gcv-cupom-ticket__code {
+    font-size: clamp(22px, 7.4vw, 32px);
+    letter-spacing: 0.03em;
+    overflow-wrap: anywhere;
+  }
+
+  .gcv-hero--offers .gcv-slide--cupom .gcv-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+  }
+
+  .gcv-hero--offers .gcv-slide--cupom .gcv-btn {
+    width: 100%;
+    padding: 0 16px;
   }
 
   .gcv-hero--offers .gcv-title {

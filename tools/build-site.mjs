@@ -3141,7 +3141,7 @@ for (const locale of LOCALES) {
     const homeExcursionsHead = homeIsLanding
       ? {
           extraCss: [
-            `assets/css/gcv-hero-slider.css?v=1.1.33`,
+            `assets/css/gcv-hero-slider.css?v=1.1.34`,
             `assets/css/excursoes.css?v=1.1.34`,
             `assets/css/gcv-home-passeios.css${BUILD_ASSET_QUERY}`,
           ],
