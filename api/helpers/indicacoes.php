@@ -3,8 +3,8 @@ declare(strict_types=1);
 
 /**
  * Campanha de indicação.
- * O telefone é o convite. O e-mail só entra na conta.
- * 1 ponto e o cashback do tarifário saem no primeiro passeio pago, no mesmo corte do ranking (16h20).
+ * O convite vai por telefone (DDI + número, como no perfil) ou por e-mail.
+ * Os dois recebem a mesma URL. 1 ponto e o cashback saem no primeiro passeio pago.
  */
 
 require_once __DIR__ . '/db.php';
@@ -35,6 +35,42 @@ function gcv_referral_ensure_schema(): void
     } catch (Throwable $e) {
         error_log('referral schema: ' . $e->getMessage());
     }
+    gcv_referral_ensure_columns();
+    $done = true;
+}
+
+/** E-mail opcional e telefone que pode ficar vazio quando o convite vai só por e-mail. */
+function gcv_referral_ensure_columns(): void
+{
+    try {
+        $cols = db()->query('SHOW COLUMNS FROM gcv_referrals')->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) {
+        return;
+    }
+    $have = [];
+    $phoneNull = false;
+    foreach ($cols as $col) {
+        $name = strtolower((string) ($col['Field'] ?? ''));
+        $have[$name] = true;
+        if ($name === 'phone') {
+            $phoneNull = strtoupper((string) ($col['Null'] ?? '')) === 'YES';
+        }
+    }
+    try {
+        if (empty($have['email'])) {
+            db()->exec('ALTER TABLE gcv_referrals ADD COLUMN email VARCHAR(190) NULL AFTER phone');
+            try {
+                db()->exec('ALTER TABLE gcv_referrals ADD UNIQUE KEY uq_ref_email (email)');
+            } catch (Throwable $e) {
+                error_log('referral email unique: ' . $e->getMessage());
+            }
+        }
+        if (!$phoneNull) {
+            db()->exec('ALTER TABLE gcv_referrals MODIFY phone VARCHAR(20) NULL');
+        }
+    } catch (Throwable $e) {
+        error_log('referral columns: ' . $e->getMessage());
+    }
 }
 
 function gcv_referral_lang(string $lang): string
@@ -53,14 +89,62 @@ function gcv_referral_origin(): string
     return 'https://www.guiachapadaveadeiros.com';
 }
 
-/** Telefone brasileiro com DDI, só dígitos. Vazio se inválido. */
-function gcv_referral_phone(string $raw): string
+/** Telefone no padrão do perfil: DDI + número nacional. Vazio se inválido. */
+function gcv_referral_phone(string $raw, string $ddi = '+55', string $iso = 'br'): string
 {
-    $check = gcv_validate_contact_phone($raw, '+55', 'br', true);
+    $check = gcv_validate_contact_phone($raw, $ddi, $iso, true);
     if (empty($check['ok']) || ($check['phone'] ?? '') === '') {
         return '';
     }
-    return '55' . $check['phone'];
+    $ddiDigits = preg_replace('/\D+/', '', (string) ($check['ddi'] ?? $ddi)) ?: '55';
+    return $ddiDigits . $check['phone'];
+}
+
+function gcv_referral_error(string $lang, string $key): string
+{
+    $all = [
+        'pt' => [
+            'role' => 'Entre como cliente ou guia para indicar.',
+            'suspended' => 'Esta conta não pode indicar agora.',
+            'need' => 'Informe o telefone ou o e-mail.',
+            'phone' => 'Telefone: DDD (2 dígitos) + número (8 ou 9 dígitos)',
+            'own_phone' => 'Não dá para indicar o próprio telefone.',
+            'taken_phone' => 'Este telefone já tem conta no site.',
+            'dup_phone' => 'Este telefone já foi indicado.',
+            'email' => 'E-mail inválido.',
+            'own_email' => 'Não dá para indicar o próprio e-mail.',
+            'taken_email' => 'Este e-mail já tem conta no site.',
+            'dup_email' => 'Este e-mail já foi indicado.',
+        ],
+        'en' => [
+            'role' => 'Sign in as a client or guide to refer someone.',
+            'suspended' => 'This account cannot refer anyone right now.',
+            'need' => 'Enter a phone number or an email.',
+            'phone' => 'Phone: area code (2 digits) + number (8 or 9 digits)',
+            'own_phone' => 'You cannot refer your own phone number.',
+            'taken_phone' => 'This phone number already has an account.',
+            'dup_phone' => 'This phone number was already referred.',
+            'email' => 'Invalid email.',
+            'own_email' => 'You cannot refer your own email.',
+            'taken_email' => 'This email already has an account.',
+            'dup_email' => 'This email was already referred.',
+        ],
+        'es' => [
+            'role' => 'Entra como cliente o guía para indicar.',
+            'suspended' => 'Esta cuenta no puede indicar ahora.',
+            'need' => 'Indica el teléfono o el correo.',
+            'phone' => 'Teléfono: código de área (2 dígitos) + número (8 o 9 dígitos)',
+            'own_phone' => 'No puedes indicar tu propio teléfono.',
+            'taken_phone' => 'Este teléfono ya tiene cuenta en el sitio.',
+            'dup_phone' => 'Este teléfono ya fue indicado.',
+            'email' => 'Correo inválido.',
+            'own_email' => 'No puedes indicar tu propio correo.',
+            'taken_email' => 'Este correo ya tiene cuenta en el sitio.',
+            'dup_email' => 'Este correo ya fue indicado.',
+        ],
+    ];
+    $lang = gcv_referral_lang($lang);
+    return $all[$lang][$key] ?? $all['pt'][$key] ?? $key;
 }
 
 /** @return array<string,true> */
@@ -75,7 +159,7 @@ function gcv_referral_user_phones(int $userId): array
         if ($phone === '') {
             return;
         }
-        $norm = gcv_referral_phone((string)($row['phone_ddi'] ?? '+55') . $phone);
+        $norm = gcv_referral_phone($phone, (string)($row['phone_ddi'] ?? '+55'));
         if ($norm === '') {
             $norm = gcv_referral_phone($phone);
         }
@@ -269,64 +353,144 @@ function gcv_referral_message(string $name, string $link, ?string $from, ?string
 }
 
 /**
+ * Convite por telefone (DDI + número, como no perfil) ou por e-mail.
+ * Os dois recebem a mesma URL.
+ *
  * @return array<string,mixed>
  */
-function gcv_referral_create(array $user, string $phoneRaw, ?string $dateFrom, ?string $dateTo): array
-{
+function gcv_referral_create(
+    array $user,
+    string $phoneRaw,
+    ?string $dateFrom,
+    ?string $dateTo,
+    string $ddi = '+55',
+    string $iso = 'br',
+    string $emailRaw = ''
+): array {
     gcv_referral_ensure_schema();
+    $lang = gcv_referral_lang((string)($user['lang'] ?? 'pt'));
     $role = (string)($user['active_role'] ?? $user['role'] ?? '');
     if (!in_array($role, ['client', 'guide'], true)) {
-        throw new InvalidArgumentException('Entre como cliente ou guia para indicar.');
+        throw new InvalidArgumentException(gcv_referral_error($lang, 'role'));
     }
     if (($user['status'] ?? '') === 'suspended' || ($user['status'] ?? '') === 'cancelled') {
-        throw new InvalidArgumentException('Esta conta não pode indicar agora.');
+        throw new InvalidArgumentException(gcv_referral_error($lang, 'suspended'));
     }
-    $phone = gcv_referral_phone($phoneRaw);
-    if ($phone === '') {
-        throw new InvalidArgumentException('Informe um celular com DDD.');
+
+    $emailRaw = trim($emailRaw);
+    $email = $emailRaw === '' ? '' : validate_email($emailRaw);
+    if ($emailRaw !== '' && $email === '') {
+        throw new InvalidArgumentException(gcv_referral_error($lang, 'email'));
     }
+
+    $phoneDigits = preg_replace('/\D+/', '', $phoneRaw) ?? '';
+    $phone = '';
+    if ($phoneDigits !== '') {
+        $check = gcv_validate_contact_phone($phoneRaw, $ddi, $iso, true);
+        if (empty($check['ok']) || ($check['phone'] ?? '') === '') {
+            $detail = (string)($check['error'] ?? '');
+            throw new InvalidArgumentException($lang === 'pt' && $detail !== '' ? $detail : gcv_referral_error($lang, 'phone'));
+        }
+        $ddiDigits = preg_replace('/\D+/', '', (string)($check['ddi'] ?? $ddi)) ?: '55';
+        $phone = $ddiDigits . $check['phone'];
+    }
+    if ($phone === '' && $email === '') {
+        throw new InvalidArgumentException(gcv_referral_error($lang, 'need'));
+    }
+
     $userId = (int)$user['id'];
-    if (isset(gcv_referral_user_phones($userId)[$phone]) || gcv_referral_phone_owner($phone) === $userId) {
-        throw new InvalidArgumentException('Não dá para indicar o próprio telefone.');
+    if ($phone !== '') {
+        if (isset(gcv_referral_user_phones($userId)[$phone]) || gcv_referral_phone_owner($phone) === $userId) {
+            throw new InvalidArgumentException(gcv_referral_error($lang, 'own_phone'));
+        }
+        if (gcv_referral_phone_owner($phone) > 0) {
+            throw new InvalidArgumentException(gcv_referral_error($lang, 'taken_phone'));
+        }
+        $dup = db()->prepare('SELECT id FROM gcv_referrals WHERE phone = ? LIMIT 1');
+        $dup->execute([$phone]);
+        if ($dup->fetch()) {
+            throw new InvalidArgumentException(gcv_referral_error($lang, 'dup_phone'));
+        }
     }
-    if (gcv_referral_phone_owner($phone) > 0) {
-        throw new InvalidArgumentException('Este telefone já tem conta no site.');
+    if ($email !== '') {
+        $ownEmail = strtolower(trim((string)($user['email'] ?? '')));
+        if ($ownEmail !== '' && $ownEmail === $email) {
+            throw new InvalidArgumentException(gcv_referral_error($lang, 'own_email'));
+        }
+        $taken = db()->prepare('SELECT id FROM gcv_users WHERE LOWER(email) = ? LIMIT 1');
+        $taken->execute([$email]);
+        if ($taken->fetch()) {
+            throw new InvalidArgumentException(gcv_referral_error($lang, 'taken_email'));
+        }
+        $dupMail = db()->prepare('SELECT id FROM gcv_referrals WHERE LOWER(email) = ? LIMIT 1');
+        $dupMail->execute([$email]);
+        if ($dupMail->fetch()) {
+            throw new InvalidArgumentException(gcv_referral_error($lang, 'dup_email'));
+        }
     }
+
     [$from, $to] = gcv_referral_dates($dateFrom, $dateTo);
-    $lang = gcv_referral_lang((string)($user['lang'] ?? 'pt'));
-    $dup = db()->prepare('SELECT id FROM gcv_referrals WHERE phone = ? LIMIT 1');
-    $dup->execute([$phone]);
-    if ($dup->fetch()) {
-        throw new InvalidArgumentException('Este telefone já foi indicado.');
-    }
     $code = gcv_referral_new_code();
     $cents = gcv_referral_cashback_cents($role);
     db()->prepare(
-        'INSERT INTO gcv_referrals (code, referrer_user_id, referrer_role, phone, date_from, date_to, cashback_cents, status)
-         VALUES (?,?,?,?,?,?,?,\'sent\')'
-    )->execute([$code, $userId, $role, $phone, $from, $to, $cents]);
+        'INSERT INTO gcv_referrals (code, referrer_user_id, referrer_role, phone, email, date_from, date_to, cashback_cents, status)
+         VALUES (?,?,?,?,?,?,?,?,\'sent\')'
+    )->execute([$code, $userId, $role, $phone !== '' ? $phone : null, $email !== '' ? $email : null, $from, $to, $cents]);
     $link = gcv_referral_public_link($code, $from, $to, $lang);
     $text = gcv_referral_message((string)($user['name'] ?? ''), $link, $from, $to, $lang);
     $sent = false;
-    if (!function_exists('gcv_whatsapp_send_text')) {
-        require_once __DIR__ . '/purchase_notify.php';
-    }
-    if (function_exists('gcv_whatsapp_send_text')) {
-        try {
-            $sent = gcv_whatsapp_send_text($phone, $text);
-        } catch (Throwable $e) {
-            error_log('referral whatsapp: ' . $e->getMessage());
+    if ($phone !== '') {
+        if (!function_exists('gcv_whatsapp_send_text')) {
+            require_once __DIR__ . '/purchase_notify.php';
         }
+        if (function_exists('gcv_whatsapp_send_text')) {
+            try {
+                $sent = gcv_whatsapp_send_text($phone, $text);
+            } catch (Throwable $e) {
+                error_log('referral whatsapp: ' . $e->getMessage());
+            }
+        }
+    }
+    $emailSent = false;
+    if ($email !== '') {
+        $emailSent = gcv_referral_send_email($email, $text, $link, $lang);
     }
     return [
         'code' => $code,
         'sent' => $sent,
+        'email_sent' => $emailSent,
         'link' => $link,
-        'wa_url' => 'https://wa.me/' . $phone . '?text=' . rawurlencode($text),
+        'wa_url' => $phone !== '' ? ('https://wa.me/' . $phone . '?text=' . rawurlencode($text)) : '',
         'cashback_cents' => $cents,
         'date_from' => $from,
         'date_to' => $to,
+        'phone' => $phone,
+        'email' => $email,
     ];
+}
+
+function gcv_referral_send_email(string $to, string $text, string $link, string $lang): bool
+{
+    if (!function_exists('send_mail')) {
+        require_once __DIR__ . '/mailer.php';
+    }
+    if (!function_exists('send_mail')) {
+        return false;
+    }
+    $safeText = htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
+    $safeLink = htmlspecialchars($link, ENT_QUOTES, 'UTF-8');
+    $body = '<p>' . $safeText . '</p><p><a href="' . $safeLink . '">' . $safeLink . '</a></p>';
+    $subjects = [
+        'pt' => 'Convite para a Chapada dos Veadeiros',
+        'en' => 'Invitation to Chapada dos Veadeiros',
+        'es' => 'Invitación a la Chapada dos Veadeiros',
+    ];
+    try {
+        return send_mail($to, $subjects[gcv_referral_lang($lang)] ?? $subjects['pt'], $body);
+    } catch (Throwable $e) {
+        error_log('referral email: ' . $e->getMessage());
+        return false;
+    }
 }
 
 function gcv_referral_find_code(string $code): ?array
@@ -658,7 +822,7 @@ function gcv_referral_panel(int $userId): array
 {
     gcv_referral_ensure_schema();
     $st = db()->prepare(
-        'SELECT id, code, phone, date_from, date_to, cashback_cents, status, rewarded_at, created_at
+        'SELECT id, code, phone, email, date_from, date_to, cashback_cents, status, rewarded_at, created_at
          FROM gcv_referrals WHERE referrer_user_id = ? ORDER BY id DESC LIMIT 50'
     );
     $st->execute([$userId]);
@@ -667,7 +831,8 @@ function gcv_referral_panel(int $userId): array
         $items[] = [
             'id' => (int)$row['id'],
             'code' => (string)$row['code'],
-            'phone' => (string)$row['phone'],
+            'phone' => (string)($row['phone'] ?? ''),
+            'email' => (string)($row['email'] ?? ''),
             'date_from' => $row['date_from'] ? (string)$row['date_from'] : null,
             'date_to' => $row['date_to'] ? (string)$row['date_to'] : null,
             'cashback_cents' => (int)$row['cashback_cents'],

@@ -6,14 +6,20 @@
       title: "Indicações",
       loading: "Carregando…",
       fail: "Não foi possível carregar agora.",
-      lead: "Indique um celular novo. Quando o primeiro passeio pago for concluído, você ganha 1 ponto e o cashback do tarifário.",
-      phone: "Celular com DDD",
+      lead: "Indique um telefone com DDI ou um e-mail. Quando o primeiro passeio pago for concluído, você ganha 1 ponto e o cashback do tarifário.",
+      phone: "Telefone",
+      email: "E-mail",
+      either: "Informe o telefone ou o e-mail.",
+      emailInvalid: "E-mail inválido.",
       arrive: "Chegada (opcional)",
       leave: "Volta (opcional)",
       send: "Enviar convite",
       sending: "Enviando…",
       sent: "Convite enviado no WhatsApp.",
+      sentEmail: "Convite enviado por e-mail.",
+      sentBoth: "Convite enviado no WhatsApp e por e-mail.",
       manual: "O WhatsApp da agência não enviou. Mande você mesmo:",
+      manualEmail: "O e-mail não saiu. Envie este link:",
       wa: "Abrir WhatsApp",
       balance: "Saldo",
       points: "Pontos",
@@ -53,14 +59,20 @@
       title: "Referrals",
       loading: "Loading…",
       fail: "Could not load this right now.",
-      lead: "Refer a new mobile number. When their first paid tour is completed, you earn 1 point and the cashback set in the price list.",
-      phone: "Mobile number with area code",
+      lead: "Refer a phone number with country code, or an email. When their first paid tour is completed, you earn 1 point and the cashback set in the price list.",
+      phone: "Phone",
+      email: "Email",
+      either: "Enter a phone number or an email.",
+      emailInvalid: "Invalid email.",
       arrive: "Arrival (optional)",
       leave: "Return (optional)",
       send: "Send invite",
       sending: "Sending…",
       sent: "Invite sent on WhatsApp.",
+      sentEmail: "Invite sent by email.",
+      sentBoth: "Invite sent on WhatsApp and by email.",
       manual: "The agency WhatsApp did not send it. Send it yourself:",
+      manualEmail: "The email did not go out. Send this link:",
       wa: "Open WhatsApp",
       balance: "Balance",
       points: "Points",
@@ -100,14 +112,20 @@
       title: "Indicaciones",
       loading: "Cargando…",
       fail: "No se pudo cargar ahora.",
-      lead: "Indica un celular nuevo. Cuando se concluya su primer paseo pago, ganas 1 punto y el cashback del tarifario.",
-      phone: "Celular con código de área",
+      lead: "Indica un teléfono con código de país, o un correo. Cuando se concluya su primer paseo pago, ganas 1 punto y el cashback del tarifario.",
+      phone: "Teléfono",
+      email: "Correo",
+      either: "Indica el teléfono o el correo.",
+      emailInvalid: "Correo inválido.",
       arrive: "Llegada (opcional)",
       leave: "Vuelta (opcional)",
       send: "Enviar invitación",
       sending: "Enviando…",
       sent: "Invitación enviada por WhatsApp.",
+      sentEmail: "Invitación enviada por correo.",
+      sentBoth: "Invitación enviada por WhatsApp y por correo.",
       manual: "El WhatsApp de la agencia no la envió. Mándala tú:",
+      manualEmail: "El correo no salió. Envía este enlace:",
       wa: "Abrir WhatsApp",
       balance: "Saldo",
       points: "Puntos",
@@ -173,10 +191,20 @@
 
   function phoneMask(phone) {
     var d = String(phone || "").replace(/\D/g, "");
-    if (d.indexOf("55") === 0 && d.length > 11) d = d.slice(2);
-    if (d.length === 11) return "(" + d.slice(0, 2) + ") " + d.slice(2, 7) + "-" + d.slice(7);
-    if (d.length === 10) return "(" + d.slice(0, 2) + ") " + d.slice(2, 6) + "-" + d.slice(6);
+    if (d.indexOf("55") === 0 && (d.length === 12 || d.length === 13)) {
+      d = d.slice(2);
+      if (d.length === 11) return "(" + d.slice(0, 2) + ") " + d.slice(2, 7) + "-" + d.slice(7);
+      if (d.length === 10) return "(" + d.slice(0, 2) + ") " + d.slice(2, 6) + "-" + d.slice(6);
+    }
+    if (d.length > 8) return "+" + d;
     return phone || "";
+  }
+
+  function contactLabel(item) {
+    var bits = [];
+    if (item.phone) bits.push(phoneMask(item.phone));
+    if (item.email) bits.push(item.email);
+    return bits.join(" · ");
   }
 
   function statusLabel(status) {
@@ -203,7 +231,7 @@
     var rows = items.length
       ? items.map(function (item) {
           var when = item.date_from ? (item.date_from + (item.date_to && item.date_to !== item.date_from ? " → " + item.date_to : "")) : "";
-          return '<article class="gcv-ind__row"><strong>' + esc(phoneMask(item.phone)) + '</strong><span>' + esc(statusLabel(item.status)) + (when ? " · " + esc(when) : "") + '</span></article>';
+          return '<article class="gcv-ind__row"><strong>' + esc(contactLabel(item)) + '</strong><span>' + esc(statusLabel(item.status)) + (when ? " · " + esc(when) : "") + '</span></article>';
         }).join("")
       : '<p class="gcv-ind__note">' + esc(t("empty")) + "</p>";
     var rank = data.ranking || [];
@@ -220,7 +248,9 @@
         '<div class="gcv-ind__card"><span>' + esc(t("place")) + "</span><strong>" + esc(data.position || t("none")) + "</strong></div>" +
       "</div>" +
       '<form class="gcv-dash-form" id="gcv-ind-form">' +
-        '<div class="gcv-dash-field"><label class="gcv-dash-label" for="gcv-ind-phone">' + esc(t("phone")) + '</label><input class="gcv-dash-input" id="gcv-ind-phone" name="phone" inputmode="tel" autocomplete="tel" required /></div>' +
+        '<div class="gcv-dash-field"><span class="gcv-dash-label">' + esc(t("phone")) + '</span><div id="gcv-ind-phone-wrap"></div></div>' +
+        '<div class="gcv-dash-field"><label class="gcv-dash-label" for="gcv-ind-email">' + esc(t("email")) + '</label><input class="gcv-dash-input" id="gcv-ind-email" name="email" type="email" autocomplete="email" /></div>' +
+        '<p class="gcv-ind__note">' + esc(t("either")) + "</p>" +
         '<div class="gcv-dash-field-row">' +
           '<div class="gcv-dash-field"><label class="gcv-dash-label" for="gcv-ind-from">' + esc(t("arrive")) + '</label><input class="gcv-dash-input" id="gcv-ind-from" name="date_from" type="date" /></div>' +
           '<div class="gcv-dash-field"><label class="gcv-dash-label" for="gcv-ind-to">' + esc(t("leave")) + '</label><input class="gcv-dash-input" id="gcv-ind-to" name="date_to" type="date" /></div>' +
@@ -264,33 +294,79 @@
       });
     }
 
+    var phoneCtl = null;
+    var phoneWrap = document.getElementById("gcv-ind-phone-wrap");
+    if (phoneWrap && window.GcvDashRoles && typeof window.GcvDashRoles.bindDashPhone === "function") {
+      phoneCtl = window.GcvDashRoles.bindDashPhone(phoneWrap, "gcv-ind", "br", "");
+      var phoneInput = document.getElementById("gcv-ind-phone");
+      if (phoneInput) phoneInput.removeAttribute("required");
+    }
+
     var form = document.getElementById("gcv-ind-form");
     if (form) {
       form.addEventListener("submit", function (ev) {
         ev.preventDefault();
-        var btn = form.querySelector("button");
+        var btn = form.querySelector('button[type="submit"]');
         var msg = document.getElementById("gcv-ind-msg");
+        var emailEl = document.getElementById("gcv-ind-email");
+        var email = emailEl ? String(emailEl.value || "").trim() : "";
+        var digits = phoneCtl ? phoneCtl.getPhoneDigits() : "";
+        function showMsg(text) {
+          if (!msg) return;
+          msg.hidden = false;
+          msg.textContent = text;
+        }
+        if (!digits && !email) {
+          showMsg(t("either"));
+          return;
+        }
+        if (digits && phoneCtl) {
+          var issue = phoneCtl.validate();
+          if (issue) {
+            showMsg(issue);
+            return;
+          }
+        }
+        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          showMsg(t("emailInvalid"));
+          return;
+        }
         if (btn) { btn.disabled = true; btn.textContent = t("sending"); }
         post("/api/indicacoes.php", {
           action: "criar",
-          phone: form.phone.value,
+          phone: digits,
+          phone_ddi: phoneCtl ? phoneCtl.getDial() : "+55",
+          phone_iso: phoneCtl ? phoneCtl.getIso() : "br",
+          email: email,
           date_from: form.date_from.value,
           date_to: form.date_to.value
         }).then(function (res) {
           if (btn) { btn.disabled = false; btn.textContent = t("send"); }
           if (!res.ok) {
-            if (msg) { msg.hidden = false; msg.textContent = res.error || t("fail"); }
+            showMsg(res.error || t("fail"));
             return;
           }
-          if (res.data && res.data.sent === false && res.data.wa_url) {
-            flash = { invite: { html: esc(t("manual")) + ' <a class="gcv-ind__wa" href="' + esc(res.data.wa_url) + '" target="_blank" rel="noopener">' + esc(t("wa")) + "</a>" } };
+          var data = res.data || {};
+          var parts = [];
+          if (data.phone && data.sent === false && data.wa_url) {
+            parts.push(esc(t("manual")) + ' <a class="gcv-ind__wa" href="' + esc(data.wa_url) + '" target="_blank" rel="noopener">' + esc(t("wa")) + "</a>");
+          }
+          if (data.email && data.email_sent === false && data.link) {
+            parts.push(esc(t("manualEmail")) + " " + esc(data.link));
+          }
+          if (parts.length) {
+            flash = { invite: { html: parts.join("<br>") } };
+          } else if (data.phone && data.email) {
+            flash = { invite: { text: t("sentBoth") } };
+          } else if (data.email) {
+            flash = { invite: { text: t("sentEmail") } };
           } else {
             flash = { invite: { text: t("sent") } };
           }
           open();
         }).catch(function () {
           if (btn) { btn.disabled = false; btn.textContent = t("send"); }
-          if (msg) { msg.hidden = false; msg.textContent = t("fail"); }
+          showMsg(t("fail"));
         });
       });
     }

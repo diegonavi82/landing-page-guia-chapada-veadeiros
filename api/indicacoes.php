@@ -58,7 +58,10 @@ try {
         $user,
         (string)($data['phone'] ?? ''),
         isset($data['date_from']) ? (string)$data['date_from'] : null,
-        isset($data['date_to']) ? (string)$data['date_to'] : null
+        isset($data['date_to']) ? (string)$data['date_to'] : null,
+        (string)($data['phone_ddi'] ?? '+55'),
+        (string)($data['phone_iso'] ?? 'br'),
+        (string)($data['email'] ?? '')
     );
     json_response(true, $created);
 } catch (InvalidArgumentException $e) {

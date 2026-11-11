@@ -5100,6 +5100,7 @@
     loadClientUpcoming: loadClientUpcoming,
     loadClientBookings: loadClientBookingsEnhanced,
     loadClientProfile: loadClientProfile,
+    bindDashPhone: bindDashPhone,
     openCheckinScanner: openCheckinScanner,
     consumeCheckinHash: consumeCheckinHash,
   };
