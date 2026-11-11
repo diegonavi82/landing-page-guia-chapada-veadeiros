@@ -5997,10 +5997,11 @@ html.gcv-waitlist-modal-open {
   border-right: 0;
   padding-left: 0;
   padding-right: 0;
-  background: linear-gradient(165deg, #f8fffb 0%, #d1fae5 100%);
+  background: #ecfdf5;
   border-top: 1px solid #34d399;
   border-bottom: 1px solid #34d399;
   box-shadow: none;
+  filter: none;
 }
 
 .gcv-excursoes__track--day-list .gcv-excursoes-card__block--out {
@@ -6055,8 +6056,9 @@ html.gcv-waitlist-modal-open {
   border-right: 0;
   border-top: 1px solid #10b981;
   border-bottom: 1px solid #10b981;
-  background: linear-gradient(180deg, #ffffff 0%, #f0fdf8 100%);
+  background: #f8fafc;
   box-shadow: none;
+  filter: none;
   box-sizing: border-box;
   overflow: hidden;
   text-align: left;
@@ -6067,8 +6069,9 @@ html.gcv-waitlist-modal-open {
   border-left: 0;
   border-right: 0;
   border-color: #059669;
-  background: linear-gradient(180deg, #ffffff 0%, #ecfdf5 100%);
+  background: #f8fafc;
   box-shadow: none;
+  filter: none;
 }
 
 .gcv-excursoes__track--day-list .gcv-excursoes-card__block--in .gcv-excursoes-card__guide-photo-wrap,
