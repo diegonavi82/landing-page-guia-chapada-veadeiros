@@ -91,7 +91,7 @@
   }
   if (!reg()) {
     var n = 0;
-    var id = setInterval(function(){ if (reg() || ++n > 40) clearInterval(id); }, 100);
+    var id = setInterval(function(){ if (reg() || ++n > 100) clearInterval(id); }, 100);
   }
   document.addEventListener("DOMContentLoaded", reg);
   window.addEventListener("load", reg);
@@ -117,7 +117,7 @@
       <a href="../atrativos.html"  aria-current="page">Atrativos</a>
       <a href="../passeios.html" >Passeios</a>
       <a href="../consultar-reserva.html" >Reservas</a>
-      <a href="../contato.html" >Fale Conosco</a>
+      <a href="/contact">Fale Conosco</a>
       <div class="nav-search-wrap" data-gcv-search data-locale="pt" data-page-out="atrativos/parque-nacional-chapada-veadeiros-canions-carioquinhas-sao-jorge.html" data-search-index="/assets/data/search-index.json?v=1.1.36" data-no-results="Nenhuma página encontrada">
         <button type="button" class="nav-search" aria-label="Busca" aria-expanded="false" aria-controls="nav-search-panel">⌕</button>
         <div class="nav-search-panel" id="nav-search-panel" hidden>
@@ -268,10 +268,10 @@ Saindo dos cânions, é necessário caminhar mais 1 km até chegar na cachoeira 
         <span>Passeios e serviços</span>
         <span>Hospedagem</span>
         <a href="../consultar-reserva.html">Reservas</a>
-        <a href="../sobre.html" title="Sobre / About">Sobre</a>
-        <a href="../contato.html" title="Contato / Contact">Contato</a>
-        <a href="../privacidade.html" rel="privacy-policy" title="Privacidade / Privacy">Privacidade</a>
-        <a href="../termos.html" rel="terms-of-service" title="Termos / Terms">Termos</a>
+        <a href="/about" title="Sobre / About">Sobre</a>
+        <a href="/contact" title="Contato / Contact">Contato</a>
+        <a href="/privacy" rel="privacy-policy" title="Privacidade / Privacy">Privacidade</a>
+        <a href="/terms" rel="terms-of-service" title="Termos / Terms">Termos</a>
         <a href="https://api.whatsapp.com/send?phone=5562982506891&amp;text=*Quero%20planejar%20minha%20viagem%20na%20Chapada*" rel="noreferrer" target="_blank">WhatsApp</a>
       </nav>
       <div class="footer-col footer-support">
@@ -279,6 +279,11 @@ Saindo dos cânions, é necessário caminhar mais 1 km até chegar na cachoeira 
         <p><strong>WhatsApp:</strong> <a href="https://wa.me/5562982506891" rel="noopener noreferrer" target="_blank">+55 62 98250-6891</a></p>
         <p><strong>Email:</strong> <a href="mailto:contato@guiachapadaveadeiros.com">contato@guiachapadaveadeiros.com</a></p>
         <p><strong>Base:</strong> Chapada dos Veadeiros, Goiás</p>
+        <form class="footer-tool" action="/contact" method="get" toolname="pedir_orcamento" tooldescription="Pede um orçamento de passeio na Chapada dos Veadeiros" tool-name="pedir_orcamento" tool-description="Pede um orçamento de passeio na Chapada dos Veadeiros">
+          <label for="footer-interesse">Interesse no passeio</label>
+          <input id="footer-interesse" name="interesse" type="text" maxlength="240" tool-param-description="Cachoeira, data ou tipo de passeio" />
+          <button type="submit">Pedir orçamento</button>
+        </form>
       </div>
     </div>
   </div>

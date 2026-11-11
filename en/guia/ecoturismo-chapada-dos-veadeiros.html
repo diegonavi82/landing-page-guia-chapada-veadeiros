@@ -92,7 +92,7 @@
   }
   if (!reg()) {
     var n = 0;
-    var id = setInterval(function(){ if (reg() || ++n > 40) clearInterval(id); }, 100);
+    var id = setInterval(function(){ if (reg() || ++n > 100) clearInterval(id); }, 100);
   }
   document.addEventListener("DOMContentLoaded", reg);
   window.addEventListener("load", reg);
@@ -118,7 +118,7 @@
       <a href="../atrativos.html" >Attractions</a>
       <a href="../passeios.html" >Tours</a>
       <a href="../consultar-reserva.html" >Reservations</a>
-      <a href="../contato.html" >Contact</a>
+      <a href="/en/contact">Contact</a>
       <div class="nav-search-wrap" data-gcv-search data-locale="en" data-page-out="en/guia/ecoturismo-chapada-dos-veadeiros.html" data-search-index="/assets/data/search-index.json?v=1.1.36" data-no-results="No pages found">
         <button type="button" class="nav-search" aria-label="Search" aria-expanded="false" aria-controls="nav-search-panel">⌕</button>
         <div class="nav-search-panel" id="nav-search-panel" hidden>
@@ -227,10 +227,10 @@
         <span>Tours &amp; services</span>
         <span>Lodging</span>
         <a href="../consultar-reserva.html">Reservations</a>
-        <a href="../sobre.html" title="About / Sobre">About</a>
-        <a href="../contato.html" title="Contact / Contato">Contact</a>
-        <a href="../privacidade.html" rel="privacy-policy" title="Privacy / Privacidade">Privacy</a>
-        <a href="../termos.html" rel="terms-of-service" title="Terms / Termos">Terms</a>
+        <a href="/en/about" title="About / Sobre">About</a>
+        <a href="/en/contact" title="Contact / Contato">Contact</a>
+        <a href="/en/privacy" rel="privacy-policy" title="Privacy / Privacidade">Privacy</a>
+        <a href="/en/terms" rel="terms-of-service" title="Terms / Termos">Terms</a>
         <a href="https://api.whatsapp.com/send?phone=5562982506891&amp;text=*Quero%20planejar%20minha%20viagem%20na%20Chapada*" rel="noreferrer" target="_blank">WhatsApp</a>
       </nav>
       <div class="footer-col footer-support">
@@ -238,6 +238,11 @@
         <p><strong>WhatsApp:</strong> <a href="https://wa.me/5562982506891" rel="noopener noreferrer" target="_blank">+55 62 98250-6891</a></p>
         <p><strong>Email:</strong> <a href="mailto:contato@guiachapadaveadeiros.com">contato@guiachapadaveadeiros.com</a></p>
         <p><strong>Based in:</strong> Chapada dos Veadeiros, Goiás — Brazil</p>
+        <form class="footer-tool" action="/en/contact" method="get" toolname="pedir_orcamento" tooldescription="Request a tour quote in Chapada dos Veadeiros" tool-name="pedir_orcamento" tool-description="Request a tour quote in Chapada dos Veadeiros">
+          <label for="footer-interesse">Tour interest</label>
+          <input id="footer-interesse" name="interesse" type="text" maxlength="240" tool-param-description="Waterfall, date or type of tour" />
+          <button type="submit">Request a quote</button>
+        </form>
       </div>
     </div>
   </div>

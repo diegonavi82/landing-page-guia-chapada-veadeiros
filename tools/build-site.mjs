@@ -1407,7 +1407,7 @@ function webmcpBootScript(locale) {
   }
   if (!reg()) {
     var n = 0;
-    var id = setInterval(function(){ if (reg() || ++n > 40) clearInterval(id); }, 100);
+    var id = setInterval(function(){ if (reg() || ++n > 100) clearInterval(id); }, 100);
   }
   document.addEventListener("DOMContentLoaded", reg);
   window.addEventListener("load", reg);
@@ -1548,7 +1548,7 @@ function headerHtml(ctx) {
       ${nav("atrativos", "atrativos.html", S.nav.atrativos)}
       ${nav("passeios", "passeios.html", S.nav.passeios)}
       ${nav("reservas", "consultar-reserva.html", S.nav.reservas)}
-      ${nav("contact", "contato.html", S.nav.contact)}
+      <a href="${esc(locale === "pt" ? "/contact" : `/${locale}/contact`)}"${current === "contact" ? ' aria-current="page"' : ""}>${esc(S.nav.contact)}</a>
       <div class="nav-search-wrap" data-gcv-search data-locale="${esc(locale)}" data-page-out="${esc(cur)}" data-search-index="${esc(publicDataSrc("search-index.json", cur))}" data-no-results="${esc(S.searchNoResults)}">
         <button type="button" class="nav-search" aria-label="${esc(S.searchAria)}" aria-expanded="false" aria-controls="nav-search-panel">⌕</button>
         <div class="nav-search-panel" id="nav-search-panel" hidden>
@@ -1567,10 +1567,11 @@ function footerHtml(ctx) {
   const S = STRINGS[locale];
   const F = S.footer;
   const cur = outRelPath(locale, pathKey);
-  const contactHref = relBetweenSync(cur, outRelPath(locale, "contato.html"));
-  const aboutHref = relBetweenSync(cur, outRelPath(locale, "sobre.html"));
-  const privacyHref = relBetweenSync(cur, outRelPath(locale, "privacidade.html"));
-  const termsHref = relBetweenSync(cur, outRelPath(locale, "termos.html"));
+  const agentRoot = locale === "pt" ? "" : `/${locale}`;
+  const contactHref = `${agentRoot}/contact`;
+  const aboutHref = `${agentRoot}/about`;
+  const privacyHref = `${agentRoot}/privacy`;
+  const termsHref = `${agentRoot}/terms`;
   const brandPic = picture(
     ap,
     "imagens/parque-nacional-guia-chapada-veadeiros-saltos-rio-preto-garimpao.jpg",
@@ -1613,6 +1614,11 @@ function footerHtml(ctx) {
         <p><strong>${esc(F.whatsappLabel)}</strong> <a href="https://wa.me/${WHATSAPP_PHONE}" rel="noopener noreferrer" target="_blank">${esc(S.contact.phoneDisplay)}</a></p>
         <p><strong>${esc(F.emailLabel)}</strong> <a href="mailto:${esc(CONTACT_EMAIL)}">${esc(CONTACT_EMAIL)}</a></p>
         <p><strong>${esc(F.baseLabel)}</strong> ${esc(F.baseValue)}</p>
+        <form class="footer-tool" action="${esc(contactHref)}" method="get" toolname="pedir_orcamento" tooldescription="${esc(F.toolDescription)}" tool-name="pedir_orcamento" tool-description="${esc(F.toolDescription)}">
+          <label for="footer-interesse">${esc(F.toolLabel)}</label>
+          <input id="footer-interesse" name="interesse" type="text" maxlength="240" tool-param-description="${esc(F.toolInterest)}" />
+          <button type="submit">${esc(F.toolSubmit)}</button>
+        </form>
       </div>
     </div>
   </div>

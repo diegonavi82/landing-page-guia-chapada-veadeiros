@@ -666,6 +666,39 @@ main {
   color: #df8350;
 }
 
+.footer-tool {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.4rem;
+  margin-top: 1rem;
+}
+
+.footer-tool label {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.footer-tool input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  border-radius: 8px;
+  padding: 0.45rem 0.6rem;
+}
+
+.footer-tool button {
+  border: 0;
+  border-radius: 8px;
+  padding: 0.45rem 0.75rem;
+  background: #df8350;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .footer-bottom {
   width: 100%;
   margin: 0;

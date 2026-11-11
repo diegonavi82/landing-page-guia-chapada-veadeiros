@@ -33,6 +33,20 @@ Options -Indexes
   # MCP streamable HTTP
   RewriteRule ^mcp/?$ /mcp/index.php [L]
 
+  # Nomes que o exame de visibilidade procura: about, contact, privacy, terms
+  RewriteRule ^about/?$ /sobre.html [L]
+  RewriteRule ^contact/?$ /contato.html [L]
+  RewriteRule ^privacy/?$ /privacidade.html [L]
+  RewriteRule ^terms/?$ /termos.html [L]
+  RewriteRule ^en/about/?$ /en/sobre.html [L]
+  RewriteRule ^en/contact/?$ /en/contato.html [L]
+  RewriteRule ^en/privacy/?$ /en/privacidade.html [L]
+  RewriteRule ^en/terms/?$ /en/termos.html [L]
+  RewriteRule ^es/about/?$ /es/sobre.html [L]
+  RewriteRule ^es/contact/?$ /es/contato.html [L]
+  RewriteRule ^es/privacy/?$ /es/privacidade.html [L]
+  RewriteRule ^es/terms/?$ /es/termos.html [L]
+
   # Link headers com aspas reais (o LiteSpeed não remove a barra de \")
   RewriteRule ^ - [E=GCV_LINK_LLMS:<https://www.guiachapadaveadeiros.com/llms.txt>;rel="describedby";type="text/markdown",E=GCV_LINK_MD:<https://www.guiachapadaveadeiros.com/index.md>;rel="alternate";type="text/markdown"]
 
@@ -60,6 +74,8 @@ AddType application/json .json
   Header set X-Content-Type-Options "nosniff"
   Header set Referrer-Policy "strict-origin-when-cross-origin"
   Header always set X-XSS-Protection "1; mode=block"
+  Header set Content-Signal "search=yes, ai-input=yes, ai-train=yes"
+  Header merge Vary Accept
   Header add Link "%{GCV_LINK_LLMS}e" env=GCV_LINK_LLMS
   Header add Link "%{GCV_LINK_MD}e" env=GCV_LINK_MD
   Header add Link "%{REDIRECT_GCV_LINK_LLMS}e" env=REDIRECT_GCV_LINK_LLMS

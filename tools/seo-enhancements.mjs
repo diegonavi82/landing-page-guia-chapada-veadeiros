@@ -160,10 +160,14 @@ Guia Chapada Veadeiros reserva passeios em grupo e privativos com guia local. Te
 - [Início](${o}/): passeios e guia local na Chapada dos Veadeiros
 - [English](${o}/en/): English homepage
 - [Español](${o}/es/): página en español
-- [Sobre](${o}/sobre.html): quem é o Guia Chapada Veadeiros
-- [Contato](${o}/contato.html): WhatsApp, e-mail e formulário
-- [Privacidade](${o}/privacidade.html): política de privacidade
-- [Termos](${o}/termos.html): termos de uso, cancelamento e segurança
+- [About](${o}/about): quem é o Guia Chapada Veadeiros
+- [Contact](${o}/contact): WhatsApp, e-mail e formulário
+- [Privacy](${o}/privacy): política de privacidade
+- [Terms](${o}/terms): termos de uso, cancelamento e segurança
+- [Sobre](${o}/sobre.html): mesma página Sobre
+- [Contato](${o}/contato.html): mesma página de contato
+- [Privacidade](${o}/privacidade.html): mesma política de privacidade
+- [Termos](${o}/termos.html): mesmos termos de uso
 - [Passeios](${o}/passeios.html): reservar com guia local
 - [Atrativos](${o}/atrativos.html): cachoeiras e trilhas
 - [Guia de passeios](${o}/guia/passeios-chapada-dos-veadeiros.html): o que fazer na Chapada dos Veadeiros
@@ -200,10 +204,10 @@ Phone and WhatsApp: +55 62 98250-6891. Email: contato@guiachapadaveadeiros.com. 
 ## Pages
 
 - [Home](${o}/en/): English homepage
-- [About](${o}${prefix}/sobre.html): who runs Guia Chapada Veadeiros
-- [Contact](${o}${prefix}/contato.html): WhatsApp, email and form
-- [Privacy](${o}${prefix}/privacidade.html): privacy policy
-- [Terms](${o}${prefix}/termos.html): terms, cancellation and safety
+- [About](${o}/en/about): who runs Guia Chapada Veadeiros
+- [Contact](${o}/en/contact): WhatsApp, email and form
+- [Privacy](${o}/en/privacy): privacy policy
+- [Terms](${o}/en/terms): terms, cancellation and safety
 - [Tours](${o}${prefix}/passeios.html): book a local guide
 - [Attractions](${o}${prefix}/atrativos.html): waterfalls and trails
 - [Portuguese home](${o}/): página em português
@@ -221,10 +225,10 @@ Teléfono y WhatsApp: +55 62 98250-6891. Correo: contato@guiachapadaveadeiros.co
 ## Páginas
 
 - [Inicio](${o}/es/): página en español
-- [Acerca de](${o}${prefix}/sobre.html): quién es Guía Chapada Veadeiros
-- [Contacto](${o}${prefix}/contato.html): WhatsApp, correo y formulario
-- [Privacidad](${o}${prefix}/privacidade.html): política de privacidad
-- [Términos](${o}${prefix}/termos.html): términos, cancelación y seguridad
+- [About](${o}/es/about): quién es Guía Chapada Veadeiros
+- [Contact](${o}/es/contact): WhatsApp, correo y formulario
+- [Privacy](${o}/es/privacy): política de privacidad
+- [Terms](${o}/es/terms): términos, cancelación y seguridad
 - [Excursiones](${o}${prefix}/passeios.html): reservar con guía local
 - [Atractivos](${o}${prefix}/atrativos.html): cascadas y senderos
 - [Portugués](${o}/): página em português
@@ -241,10 +245,10 @@ Telefone e WhatsApp: +55 62 98250-6891. E-mail: contato@guiachapadaveadeiros.com
 ## Páginas
 
 - [Início](${o}/): página inicial
-- [Sobre](${o}/sobre.html): quem é o Guia Chapada Veadeiros
-- [Contato](${o}/contato.html): WhatsApp, e-mail e formulário
-- [Privacidade](${o}/privacidade.html): política de privacidade
-- [Termos](${o}/termos.html): termos, cancelamento e segurança
+- [About](${o}/about): quem é o Guia Chapada Veadeiros
+- [Contact](${o}/contact): WhatsApp, e-mail e formulário
+- [Privacy](${o}/privacy): política de privacidade
+- [Terms](${o}/terms): termos, cancelamento e segurança
 - [Passeios](${o}/passeios.html): reservar com guia local
 - [Atrativos](${o}/atrativos.html): cachoeiras e trilhas
 - [English](${o}/en/): English homepage

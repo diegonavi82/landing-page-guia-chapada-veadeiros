@@ -91,7 +91,7 @@
   }
   if (!reg()) {
     var n = 0;
-    var id = setInterval(function(){ if (reg() || ++n > 40) clearInterval(id); }, 100);
+    var id = setInterval(function(){ if (reg() || ++n > 100) clearInterval(id); }, 100);
   }
   document.addEventListener("DOMContentLoaded", reg);
   window.addEventListener("load", reg);
@@ -117,7 +117,7 @@
       <a href="../atrativos.html"  aria-current="page">Atractivos</a>
       <a href="../passeios.html" >Paseos</a>
       <a href="../consultar-reserva.html" >Reservas</a>
-      <a href="../contato.html" >Contacto</a>
+      <a href="/es/contact">Contacto</a>
       <div class="nav-search-wrap" data-gcv-search data-locale="es" data-page-out="es/atrativos/caracol-guia-chapada-veadeiros.html" data-search-index="/assets/data/search-index.json?v=1.1.36" data-no-results="Ninguna página encontrada">
         <button type="button" class="nav-search" aria-label="Buscar" aria-expanded="false" aria-controls="nav-search-panel">⌕</button>
         <div class="nav-search-panel" id="nav-search-panel" hidden>
@@ -320,10 +320,10 @@
         <span>Tours y servicios</span>
         <span>Alojamiento</span>
         <a href="../consultar-reserva.html">Reservas</a>
-        <a href="../sobre.html" title="Acerca de / About">Acerca de</a>
-        <a href="../contato.html" title="Contacto / Contact">Contacto</a>
-        <a href="../privacidade.html" rel="privacy-policy" title="Privacidad / Privacy">Privacidad</a>
-        <a href="../termos.html" rel="terms-of-service" title="Términos / Terms">Términos</a>
+        <a href="/es/about" title="Acerca de / About">Acerca de</a>
+        <a href="/es/contact" title="Contacto / Contact">Contacto</a>
+        <a href="/es/privacy" rel="privacy-policy" title="Privacidad / Privacy">Privacidad</a>
+        <a href="/es/terms" rel="terms-of-service" title="Términos / Terms">Términos</a>
         <a href="https://api.whatsapp.com/send?phone=5562982506891&amp;text=*Quero%20planejar%20minha%20viagem%20na%20Chapada*" rel="noreferrer" target="_blank">WhatsApp</a>
       </nav>
       <div class="footer-col footer-support">
@@ -331,6 +331,11 @@
         <p><strong>WhatsApp:</strong> <a href="https://wa.me/5562982506891" rel="noopener noreferrer" target="_blank">+55 62 98250-6891</a></p>
         <p><strong>Correo:</strong> <a href="mailto:contato@guiachapadaveadeiros.com">contato@guiachapadaveadeiros.com</a></p>
         <p><strong>Sede:</strong> Chapada dos Veadeiros, Goiás — Brasil</p>
+        <form class="footer-tool" action="/es/contact" method="get" toolname="pedir_orcamento" tooldescription="Pide un presupuesto de excursión en la Chapada dos Veadeiros" tool-name="pedir_orcamento" tool-description="Pide un presupuesto de excursión en la Chapada dos Veadeiros">
+          <label for="footer-interesse">Interés en la excursión</label>
+          <input id="footer-interesse" name="interesse" type="text" maxlength="240" tool-param-description="Cascada, fecha o tipo de excursión" />
+          <button type="submit">Pedir presupuesto</button>
+        </form>
       </div>
     </div>
   </div>

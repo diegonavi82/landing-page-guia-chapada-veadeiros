@@ -9,10 +9,10 @@ Telefone e WhatsApp: +55 62 98250-6891. E-mail: contato@guiachapadaveadeiros.com
 ## Páginas
 
 - [Início](https://www.guiachapadaveadeiros.com/): página inicial
-- [Sobre](https://www.guiachapadaveadeiros.com/sobre.html): quem é o Guia Chapada Veadeiros
-- [Contato](https://www.guiachapadaveadeiros.com/contato.html): WhatsApp, e-mail e formulário
-- [Privacidade](https://www.guiachapadaveadeiros.com/privacidade.html): política de privacidade
-- [Termos](https://www.guiachapadaveadeiros.com/termos.html): termos, cancelamento e segurança
+- [About](https://www.guiachapadaveadeiros.com/about): quem é o Guia Chapada Veadeiros
+- [Contact](https://www.guiachapadaveadeiros.com/contact): WhatsApp, e-mail e formulário
+- [Privacy](https://www.guiachapadaveadeiros.com/privacy): política de privacidade
+- [Terms](https://www.guiachapadaveadeiros.com/terms): termos, cancelamento e segurança
 - [Passeios](https://www.guiachapadaveadeiros.com/passeios.html): reservar com guia local
 - [Atrativos](https://www.guiachapadaveadeiros.com/atrativos.html): cachoeiras e trilhas
 - [English](https://www.guiachapadaveadeiros.com/en/): English homepage
