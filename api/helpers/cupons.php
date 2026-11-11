@@ -111,8 +111,37 @@ function gcv_cupom_normalizar(array $row): array
         'valor' => $valor,
         'minimo_pessoas' => $min,
         'minimo_cents' => $piso,
+        'valido_ate' => gcv_cupom_data_ok((string) ($row['valido_ate'] ?? '')) ? (string) $row['valido_ate'] : '',
         'alcance' => $alcance,
     ];
+}
+
+function gcv_cupom_data_ok(string $ymd): bool
+{
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $ymd)) {
+        return false;
+    }
+    $dt = DateTimeImmutable::createFromFormat('!Y-m-d', $ymd);
+
+    return $dt instanceof DateTimeImmutable && $dt->format('Y-m-d') === $ymd;
+}
+
+function gcv_cupom_hoje(): string
+{
+    return (new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo')))->format('Y-m-d');
+}
+
+function gcv_cupom_data_local(string $ymd, string $locale): string
+{
+    $dt = DateTimeImmutable::createFromFormat('!Y-m-d', $ymd);
+    if (!$dt instanceof DateTimeImmutable) {
+        return $ymd;
+    }
+    if ($locale === 'en') {
+        return $dt->format('F j, Y');
+    }
+
+    return $dt->format('d/m/Y');
 }
 
 /**
@@ -145,12 +174,14 @@ function gcv_cupom_aplicar_codigo(string $codigo, int $pessoas, int $totalCents,
         $err = (string) ($calc['error'] ?? 'invalid');
         $min = (int) ($calc['minimo_pessoas'] ?? $found['minimo_pessoas']);
         $piso = (int) ($calc['minimo_cents'] ?? $found['minimo_cents'] ?? 0);
+        $quando = (string) ($calc['valido_ate'] ?? $found['valido_ate'] ?? '');
         return [
             'ok' => false,
             'error' => $err,
             'minimo_pessoas' => $min,
             'minimo_cents' => $piso,
-            'message' => gcv_cupom_msg($err, $locale, $min, $piso),
+            'valido_ate' => $quando,
+            'message' => gcv_cupom_msg($err, $locale, $min, $piso, $quando),
         ];
     }
     $off = gcv_cupom_teto_desconto($totalCents, (int) $calc['desconto_cents']);
@@ -173,6 +204,10 @@ function gcv_cupom_desconto_cents(array $cupom, int $pessoas, int $totalCents): 
 {
     if (empty($cupom['ativo'])) {
         return ['ok' => false, 'error' => 'inactive'];
+    }
+    $ate = (string) ($cupom['valido_ate'] ?? '');
+    if ($ate !== '' && gcv_cupom_hoje() > $ate) {
+        return ['ok' => false, 'error' => 'expired', 'valido_ate' => $ate];
     }
     $pessoas = max(0, $pessoas);
     $totalCents = max(0, $totalCents);
@@ -274,10 +309,11 @@ function gcv_cupom_reais(int $cents): string
     return 'R$ ' . number_format($reais, 0, ',', '.') . ',' . $frac;
 }
 
-function gcv_cupom_msg(string $error, string $locale, int $min, int $minCents = 0): string
+function gcv_cupom_msg(string $error, string $locale, int $min, int $minCents = 0, string $quando = ''): string
 {
     $locale = in_array($locale, ['pt', 'en', 'es'], true) ? $locale : 'pt';
     $piso = gcv_cupom_reais($minCents);
+    $dia = $quando !== '' ? gcv_cupom_data_local($quando, $locale) : '';
     $msgs = [
         'pt' => [
             'empty_code' => 'Informe o código do cupom.',
@@ -285,6 +321,7 @@ function gcv_cupom_msg(string $error, string $locale, int $min, int $minCents = 
             'inactive' => 'Este cupom está desativado.',
             'min_people' => 'Este cupom vale quando o carrinho tem mais de ' . $min . ' pessoas.',
             'min_value' => 'Este cupom vale para compras a partir de ' . $piso . '.',
+            'expired' => 'Este cupom venceu em ' . $dia . '.',
             'zero' => 'Este cupom não gera desconto neste carrinho.',
             'unavailable' => 'Não foi possível conferir o cupom agora.',
         ],
@@ -294,6 +331,7 @@ function gcv_cupom_msg(string $error, string $locale, int $min, int $minCents = 
             'inactive' => 'This coupon is turned off.',
             'min_people' => 'This coupon applies when the cart has more than ' . $min . ' people.',
             'min_value' => 'This coupon applies to purchases of ' . $piso . ' or more.',
+            'expired' => 'This coupon expired on ' . $dia . '.',
             'zero' => 'This coupon does not discount this cart.',
             'unavailable' => 'Could not check the coupon right now.',
         ],
@@ -303,6 +341,7 @@ function gcv_cupom_msg(string $error, string $locale, int $min, int $minCents = 
             'inactive' => 'Este cupón está desactivado.',
             'min_people' => 'Este cupón vale cuando el carrito tiene más de ' . $min . ' personas.',
             'min_value' => 'Este cupón vale para compras a partir de ' . $piso . '.',
+            'expired' => 'Este cupón venció el ' . $dia . '.',
             'zero' => 'Este cupón no genera descuento en este carrito.',
             'unavailable' => 'No se pudo comprobar el cupón ahora.',
         ],

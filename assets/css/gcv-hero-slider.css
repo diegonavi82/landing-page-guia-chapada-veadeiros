@@ -113,6 +113,113 @@
     linear-gradient(0deg, rgba(40, 18, 4, 0.8) 0%, rgba(40, 18, 4, 0) 28%);
 }
 
+.gcv-hero--offers .gcv-slide--cupom {
+  background: #07140e;
+}
+
+.gcv-hero--offers .gcv-cupom-hero {
+  position: relative;
+  height: 100%;
+}
+
+.gcv-hero--offers .gcv-cupom-hero__mesh {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(820px 420px at 88% 12%, rgba(95, 191, 127, 0.42), transparent 62%),
+    radial-gradient(640px 360px at 8% 92%, rgba(240, 122, 46, 0.32), transparent 58%),
+    linear-gradient(145deg, #07140e 0%, #143728 52%, #0b1c14 100%);
+}
+
+.gcv-hero--offers .gcv-cupom-hero__mesh::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+  background-size: 52px 52px;
+  mask-image: radial-gradient(circle at 72% 40%, #000 0%, transparent 72%);
+}
+
+.gcv-hero--offers .gcv-cupom-hero__layout {
+  position: relative;
+  z-index: 1;
+  max-width: none;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(280px, 440px);
+  gap: 36px;
+  align-items: center;
+  padding-right: 72px;
+}
+
+.gcv-hero--offers [data-theme="cupom"] .gcv-tag {
+  background: #f4c56a;
+  color: #1a1204;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.gcv-hero--offers [data-theme="cupom"] .gcv-big {
+  color: #b7f7c8;
+}
+
+.gcv-hero--offers .gcv-cupom-ticket {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  padding: 28px 26px 22px;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1.5px dashed rgba(255, 255, 255, 0.55);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+}
+
+.gcv-hero--offers .gcv-cupom-ticket::before,
+.gcv-hero--offers .gcv-cupom-ticket::after {
+  content: "";
+  position: absolute;
+  top: 58%;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #123526;
+}
+
+.gcv-hero--offers .gcv-cupom-ticket::before { left: -11px; }
+.gcv-hero--offers .gcv-cupom-ticket::after { right: -11px; }
+
+.gcv-hero--offers .gcv-cupom-ticket__kicker {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #f4c56a;
+}
+
+.gcv-hero--offers .gcv-cupom-ticket__code {
+  font-family: "Bricolage Grotesque", Inter, sans-serif;
+  font-size: clamp(30px, 3.2vw, 44px);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1;
+}
+
+.gcv-hero--offers .gcv-cupom-ticket__until {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.gcv-hero--offers .gcv-cupom-ticket .gcv-actions {
+  margin-top: 14px;
+}
+
+.gcv-hero--offers .gcv-cupom-ticket .gcv-btn.is-copied {
+  background: #b7f7c8;
+  color: #10231a;
+}
+
 .gcv-hero--offers .gcv-content {
   position: relative;
   z-index: 2;
@@ -423,6 +530,27 @@
 
   .gcv-hero--offers [data-theme="online"] {
     background: #281204;
+  }
+
+  .gcv-hero--offers .gcv-slide--cupom {
+    background: #07140e;
+  }
+
+  .gcv-hero--offers .gcv-cupom-hero,
+  .gcv-hero--offers .gcv-cupom-hero__layout {
+    height: auto;
+  }
+
+  .gcv-hero--offers .gcv-cupom-hero__layout {
+    grid-template-columns: 1fr;
+    gap: 18px;
+    margin-top: 0;
+    padding: 28px 20px 8px;
+  }
+
+  .gcv-hero--offers .gcv-cupom-ticket::before,
+  .gcv-hero--offers .gcv-cupom-ticket::after {
+    display: none;
   }
 
   .gcv-hero--offers .gcv-media {

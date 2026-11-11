@@ -56,6 +56,10 @@ try {
     if ($norm['tipo'] === 'compra' && $norm['minimo_cents'] < 100) {
         throw new RuntimeException('Informe a partir de quantos reais a compra precisa chegar.');
     }
+    $ate = trim((string) ($body['valido_ate'] ?? ''));
+    if ($ate !== '' && !gcv_cupom_data_ok($ate)) {
+        throw new RuntimeException('Informe uma data de validade válida.');
+    }
     foreach ($lista as $c) {
         if ($c['codigo'] === $norm['codigo'] && $c['id'] !== (string) ($body['id'] ?? '')) {
             throw new RuntimeException('Já existe um cupom com este código.');

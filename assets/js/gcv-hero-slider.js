@@ -1,10 +1,71 @@
 /**
- * Slider da home — exclusivo, compartilhado e reserva online.
+ * Slider da home — cupom, exclusivo, compartilhado e reserva online.
  */
 (function () {
   var hero = document.querySelector(".gcv-hero--offers");
   if (!hero) return;
+
+  function hojeBrasil() {
+    try {
+      return new Intl.DateTimeFormat("en-CA", {
+        timeZone: "America/Sao_Paulo",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(new Date());
+    } catch (e) {
+      return new Date().toISOString().slice(0, 10);
+    }
+  }
+
+  var hoje = hojeBrasil();
+  hero.querySelectorAll("[data-gcv-until]").forEach(function (el) {
+    var ate = el.getAttribute("data-gcv-until") || "";
+    if (ate && hoje >= ate) el.remove();
+  });
+
   var slides = hero.querySelectorAll(".gcv-slide");
+  if (!slides.length) return;
+  if (!hero.querySelector(".gcv-slide.is-active")) {
+    slides[0].classList.add("is-active");
+    slides[0].setAttribute("aria-hidden", "false");
+  }
+  var lang = (document.documentElement.lang || "pt").slice(0, 2);
+  var meio = lang === "en" ? " of " : " de ";
+  slides.forEach(function (s, k) {
+    s.setAttribute("aria-label", (k + 1) + meio + slides.length);
+  });
+
+  hero.addEventListener("click", function (e) {
+    var copy = e.target.closest("[data-gcv-copy-cupom]");
+    var use = e.target.closest("[data-gcv-use-cupom]");
+    var code = copy
+      ? copy.getAttribute("data-gcv-copy-cupom") || ""
+      : use
+        ? use.getAttribute("data-gcv-use-cupom") || ""
+        : "";
+    if (!code) return;
+    try { sessionStorage.setItem("gcv-exc-cupom-code", code); } catch (err) {}
+    var field = document.querySelector("[data-gcv-cart-cupom-code]");
+    var apply = document.querySelector("[data-gcv-cart-cupom-apply]");
+    if (field) field.value = code;
+    if (apply && apply.getAttribute("data-gcv-cart-cupom-mode") !== "remove") apply.click();
+    if (!copy) return;
+    e.preventDefault();
+    var done = function () {
+      copy.classList.add("is-copied");
+      copy.textContent = copy.getAttribute("data-copied") || "Copiado";
+      setTimeout(function () {
+        copy.textContent = copy.getAttribute("data-label") || code;
+        copy.classList.remove("is-copied");
+      }, 1600);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(code).then(done).catch(function () {});
+    } else {
+      done();
+    }
+  });
   var tabs = hero.querySelectorAll(".gcv-tab");
   var pauseBtn = hero.querySelector(".gcv-pause");
   if (!slides.length || !pauseBtn) return;

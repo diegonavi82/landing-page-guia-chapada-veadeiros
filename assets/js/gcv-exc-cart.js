@@ -885,18 +885,32 @@
       var en = porPessoa ? valor + " per person" : valor + " off the total";
       if (c.tipo === "grupo") en += ", with more than " + c.minimo_pessoas + " people";
       if (c.tipo === "compra") en += ", on purchases of " + formatBrlCents(c.minimo_cents) + " or more";
+      if (c.valido_ate) en += ", valid through " + couponDate(c.valido_ate, "en");
       return en;
     }
     if (loc === "es") {
       var es = porPessoa ? valor + " por persona" : valor + " sobre el total";
       if (c.tipo === "grupo") es += ", con más de " + c.minimo_pessoas + " personas";
       if (c.tipo === "compra") es += ", para compras a partir de " + formatBrlCents(c.minimo_cents);
+      if (c.valido_ate) es += ", válido hasta el " + couponDate(c.valido_ate, "es");
       return es;
     }
     var pt = porPessoa ? valor + " por pessoa" : valor + " no total";
     if (c.tipo === "grupo") pt += ", com mais de " + c.minimo_pessoas + " pessoas";
     if (c.tipo === "compra") pt += ", para compras a partir de " + formatBrlCents(c.minimo_cents);
+    if (c.valido_ate) pt += ", válido até " + couponDate(c.valido_ate, "pt");
     return pt;
+  }
+
+  function couponDate(ymd, locale) {
+    var p = String(ymd || "").split("-");
+    if (p.length !== 3) return "";
+    if (locale === "en") {
+      var months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      var month = months[(parseInt(p[1], 10) || 1) - 1] || p[1];
+      return month + " " + (parseInt(p[2], 10) || p[2]) + ", " + p[0];
+    }
+    return p[2] + "/" + p[1] + "/" + p[0];
   }
 
   function injectCouponCss() {
@@ -1053,6 +1067,7 @@
             valor: data.valor,
             minimo_pessoas: data.minimo_pessoas,
             minimo_cents: data.minimo_cents,
+            valido_ate: data.valido_ate,
             alcance: data.alcance,
           };
         }

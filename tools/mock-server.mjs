@@ -2423,11 +2423,21 @@ function cupomNorm(row) {
     valor,
     minimo_pessoas: min,
     minimo_cents: piso,
+    valido_ate: /^\d{4}-\d{2}-\d{2}$/.test(String(row.valido_ate || "")) ? String(row.valido_ate) : "",
     alcance,
   };
 }
 
-function cupomMsg(error, locale, min, minCents) {
+function cupomHoje() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+function cupomMsg(error, locale, min, minCents, quando) {
   const loc = locale === "en" || locale === "es" ? locale : "pt";
   const msgs = {
     pt: {
@@ -2436,6 +2446,7 @@ function cupomMsg(error, locale, min, minCents) {
       inactive: "Este cupom está desativado.",
       min_people: "Este cupom vale quando o carrinho tem mais de " + min + " pessoas.",
       min_value: "Este cupom vale para compras a partir de R$ " + ((minCents || 0) / 100).toFixed(2).replace(".", ",") + ".",
+      expired: "Este cupom venceu em " + (quando || "") + ".",
       zero: "Este cupom não gera desconto neste carrinho.",
     },
     en: {
@@ -2444,6 +2455,7 @@ function cupomMsg(error, locale, min, minCents) {
       inactive: "This coupon is turned off.",
       min_people: "This coupon applies when the cart has more than " + min + " people.",
       min_value: "This coupon applies to purchases of R$ " + ((minCents || 0) / 100).toFixed(2).replace(".", ",") + " or more.",
+      expired: "This coupon expired on " + (quando || "") + ".",
       zero: "This coupon does not discount this cart.",
     },
     es: {
@@ -2452,6 +2464,7 @@ function cupomMsg(error, locale, min, minCents) {
       inactive: "Este cupón está desactivado.",
       min_people: "Este cupón vale cuando el carrito tiene más de " + min + " personas.",
       min_value: "Este cupón vale para compras a partir de R$ " + ((minCents || 0) / 100).toFixed(2).replace(".", ",") + ".",
+      expired: "Este cupón venció el " + (quando || "") + ".",
       zero: "Este cupón no genera descuento en este carrito.",
     },
   };
@@ -2460,6 +2473,9 @@ function cupomMsg(error, locale, min, minCents) {
 
 function cupomDesconto(cupom, pessoas, totalCents) {
   if (!cupom.ativo) return { ok: false, error: "inactive" };
+  if (cupom.valido_ate && cupomHoje() > cupom.valido_ate) {
+    return { ok: false, error: "expired", valido_ate: cupom.valido_ate };
+  }
   pessoas = Math.max(0, pessoas);
   totalCents = Math.max(0, totalCents);
   let tipo = cupom.tipo;
@@ -2500,7 +2516,8 @@ function cupomAplicar(codigo, pessoas, totalCents, locale) {
   if (!calc.ok) {
     const min = calc.minimo_pessoas || found.minimo_pessoas;
     const piso = calc.minimo_cents || found.minimo_cents || 0;
-    return { ok: false, error: calc.error, minimo_pessoas: min, minimo_cents: piso, message: cupomMsg(calc.error, locale, min, piso) };
+    const quando = calc.valido_ate || found.valido_ate || "";
+    return { ok: false, error: calc.error, minimo_pessoas: min, minimo_cents: piso, valido_ate: quando, message: cupomMsg(calc.error, locale, min, piso, quando) };
   }
   const off = cupomTeto(totalCents, calc.desconto_cents);
   if (off < 1) return { ok: false, error: "zero", message: cupomMsg("zero", locale, 0) };
@@ -2542,7 +2559,7 @@ function handleCupomApi(urlPath, req, res) {
         const locale = data.locale === "en" || data.locale === "es" ? data.locale : "pt";
         const calc = cupomAplicar(data.codigo, parseInt(data.pessoas, 10) || 0, parseInt(data.total_cents, 10) || 0, locale);
         if (!calc.ok) {
-          send({ ok: false, error: calc.error, message: calc.message, minimo_pessoas: calc.minimo_pessoas || 0, minimo_cents: calc.minimo_cents || 0 });
+          send({ ok: false, error: calc.error, message: calc.message, minimo_pessoas: calc.minimo_pessoas || 0, minimo_cents: calc.minimo_cents || 0, valido_ate: calc.valido_ate || "" });
           return;
         }
         send({
@@ -2553,6 +2570,7 @@ function handleCupomApi(urlPath, req, res) {
           valor: calc.cupom.valor,
           minimo_pessoas: calc.cupom.minimo_pessoas,
           minimo_cents: calc.cupom.minimo_cents || 0,
+          valido_ate: calc.cupom.valido_ate || "",
           alcance: calc.cupom.alcance,
           desconto_cents: calc.desconto_cents,
           total_cents: parseInt(data.total_cents, 10) || 0,

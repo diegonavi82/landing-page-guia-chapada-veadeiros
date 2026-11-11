@@ -1937,12 +1937,44 @@ function heroSitemapImages() {
   return images;
 }
 
+function heroCouponSlide(slide, first, pos) {
+  const lines = (slide.lines || [])
+    .map((line, li) => {
+      const big = li === slide.lines.length - 1 ? " gcv-big" : "";
+      return `<span class="gcv-line${big}">${esc(line)}</span>`;
+    })
+    .join("");
+  return `<article class="gcv-slide gcv-slide--cupom${first ? " is-active" : ""}" data-theme="cupom" data-gcv-until="${esc(slide.until || "2026-12-01")}" aria-label="${esc(pos)}" aria-hidden="${first ? "false" : "true"}">
+    <div class="gcv-cupom-hero">
+      <div class="gcv-cupom-hero__mesh" aria-hidden="true"></div>
+      <div class="gcv-content gcv-cupom-hero__layout">
+        <div class="gcv-cupom-hero__copy">
+          <span class="gcv-tag">${esc(slide.tag || "")}</span>
+          <h2 class="gcv-title">${lines}</h2>
+          <p class="gcv-text">${esc(slide.text || "")}</p>
+        </div>
+        <div class="gcv-cupom-ticket">
+          <span class="gcv-cupom-ticket__kicker">${esc(slide.kicker || "")}</span>
+          <strong class="gcv-cupom-ticket__code">${esc(slide.code || "")}</strong>
+          <span class="gcv-cupom-ticket__until">${esc(slide.untilLabel || "")}</span>
+          <div class="gcv-actions">
+            <button type="button" class="gcv-btn gcv-btn-main" data-gcv-copy-cupom="${esc(slide.code || "")}" data-label="${esc(slide.copy || "")}" data-copied="${esc(slide.copied || "")}">${esc(slide.copy || "")}</button>
+            <a class="gcv-btn gcv-btn-ghost" href="#excursoes" data-gcv-use-cupom="${esc(slide.code || "")}">${esc(slide.use || "")}</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </article>`;
+}
+
 function heroOffersSection(locale, ap) {
   const copy = HERO_OFFERS[locale] || HERO_OFFERS.pt;
   const n = copy.slides.length;
   const slidesHtml = copy.slides
     .map((slide, i) => {
       const first = i === 0;
+      const pos = locale === "en" ? `${i + 1} of ${n}` : `${i + 1} de ${n}`;
+      if (slide.theme === "cupom") return heroCouponSlide(slide, first, pos);
       const lines = slide.lines
         .map((line, li) => {
           const big = li === slide.lines.length - 1 ? " gcv-big" : "";
@@ -1960,7 +1992,6 @@ function heroOffersSection(locale, ap) {
           return `<a class="${cls}" href="${esc(heroOfferHref(action.href))}">${esc(action.label)}</a>`;
         })
         .join("\n        ");
-      const pos = locale === "en" ? `${i + 1} of ${n}` : `${i + 1} de ${n}`;
       return `<article class="gcv-slide${first ? " is-active" : ""}" data-theme="${esc(slide.theme)}" aria-label="${esc(pos)}" aria-hidden="${first ? "false" : "true"}">
     ${heroOfferPicture(ap, locale, slide.theme, slide.alt, first)}
     <div class="gcv-shade"></div>
@@ -3110,7 +3141,7 @@ for (const locale of LOCALES) {
     const homeExcursionsHead = homeIsLanding
       ? {
           extraCss: [
-            `assets/css/gcv-hero-slider.css?v=1.1.32`,
+            `assets/css/gcv-hero-slider.css?v=1.1.33`,
             `assets/css/excursoes.css?v=1.1.34`,
             `assets/css/gcv-home-passeios.css${BUILD_ASSET_QUERY}`,
           ],
@@ -3120,7 +3151,7 @@ for (const locale of LOCALES) {
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" crossorigin="anonymous" />`,
           extraFooterScripts:
             homeExcursionsHideScript +
-            `  <script src="${esc(publicJsSrc("gcv-hero-slider.js", outPk).replace(BUILD_ASSET_QUERY, "?v=1.1.31"))}" defer></script>\n  <script src="${esc(publicJsSrc("qrcode.min.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix-receipt.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix-polling.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-confirm.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-bookings.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-waitlist.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-cart-policies.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-cart.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("excursoes-carousel.js", outPk).replace(BUILD_ASSET_QUERY, "?v=1.1.87"))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-home-passeios.js", outPk).replace(BUILD_ASSET_QUERY, "?v=1.1.37"))}" defer></script>\n`,
+            `  <script src="${esc(publicJsSrc("gcv-hero-slider.js", outPk).replace(BUILD_ASSET_QUERY, "?v=1.1.32"))}" defer></script>\n  <script src="${esc(publicJsSrc("qrcode.min.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix-receipt.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-pix-polling.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-confirm.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-bookings.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-waitlist.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-cart-policies.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-exc-cart.js", outPk))}" defer></script>\n  <script src="${esc(publicJsSrc("excursoes-carousel.js", outPk).replace(BUILD_ASSET_QUERY, "?v=1.1.87"))}" defer></script>\n  <script src="${esc(publicJsSrc("gcv-home-passeios.js", outPk).replace(BUILD_ASSET_QUERY, "?v=1.1.37"))}" defer></script>\n`,
         }
       : {};
     const homeConsultarScript = "";

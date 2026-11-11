@@ -53,6 +53,10 @@
     if (c.tipo === 'compra') {
       texto += ', para compras a partir de ' + money(c.minimo_cents);
     }
+    if (c.valido_ate) {
+      var partes = String(c.valido_ate).split('-');
+      if (partes.length === 3) texto += ', válido até ' + partes[2] + '/' + partes[1] + '/' + partes[0];
+    }
     return texto;
   }
 
@@ -81,6 +85,7 @@
       valor: valor,
       minimo_pessoas: min,
       minimo_cents: piso,
+      valido_ate: String((box.querySelector('[data-cupom-ate]') || {}).value || ''),
       alcance: alcance,
       ativo: ativo
     };
@@ -114,6 +119,7 @@
     box.querySelector('[data-cupom-min]').value = c.minimo_pessoas || 4;
     var pisoCents = parseInt(String(c.minimo_cents), 10) || 0;
     box.querySelector('[data-cupom-piso]').value = pisoCents ? (pisoCents / 100).toFixed(2).replace('.', ',') : '';
+    box.querySelector('[data-cupom-ate]').value = c.valido_ate || '';
     box.querySelector('[data-cupom-alcance]').value = c.alcance || 'total';
     box.querySelector('[data-cupom-ativo]').checked = c.ativo !== false;
     var title = box.querySelector('[data-cupom-form-title]');
@@ -175,6 +181,8 @@
       '<div data-cupom-piso-box hidden>' +
       '<label>A partir de R$ <input type="text" inputmode="decimal" data-cupom-piso placeholder="500" /></label>' +
       '</div>' +
+      '<label>Válido até <input type="date" data-cupom-ate /></label>' +
+      '<p class="gcv-cupom-form__hint">Em branco, o cupom não vence. O último dia preenchido ainda vale.</p>' +
       '<label class="gcv-cupom-form__check"><input type="checkbox" data-cupom-ativo checked /> Cupom ativo no carrinho</label>' +
       '<p class="gcv-cupom-form__warn" data-cupom-ativo-aviso hidden>Desmarcado, o carrinho recusa este código.</p>' +
       '<div class="gcv-cupom-form__actions">' +
@@ -290,6 +298,7 @@
       '.gcv-cupom-form__actions{display:flex;gap:.5rem}' +
       '.gcv-cupom-form__err{margin:0;color:#b91c1c;font-weight:700}' +
       '.gcv-cupom-form__warn{margin:0;color:#b45309;font-size:.82rem;font-weight:700}' +
+      '.gcv-cupom-form__hint{margin:0;color:#64748b;font-size:.78rem;font-weight:600}' +
       '.gcv-cupom-list{list-style:none;margin:0;padding:0;display:grid;gap:.6rem}' +
       '.gcv-cupom-item{display:flex;justify-content:space-between;gap:1rem;align-items:center;padding:.85rem 1rem;border:1px solid #e2e8f0;border-radius:12px;background:#f8fafc}' +
       '.gcv-cupom-item p{margin:.2rem 0 0;color:#475569;font-size:.88rem}' +
