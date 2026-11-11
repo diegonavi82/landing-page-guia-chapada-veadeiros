@@ -2657,10 +2657,8 @@
       ".gcv-excursoes-card__book-total-copy{display:flex;flex-direction:row;align-items:baseline;justify-content:center;gap:0.28rem;line-height:1;min-width:0;text-align:center;white-space:nowrap}" +
       ".gcv-excursoes-card__book-total-label{font-size:0.72rem;font-weight:800;line-height:1;letter-spacing:0.04em;text-transform:uppercase;color:#64748b;text-align:center}" +
       ".gcv-excursoes-card__book-total-pix{font-size:0.68rem;font-weight:700;line-height:1;color:#64748b;text-transform:none;letter-spacing:0;text-align:center}" +
-      ".gcv-excursoes-card__price-go{display:inline-flex;align-items:center;justify-content:center;gap:0.04rem;flex-shrink:0;color:#2563eb;font-size:0.98rem}" +
-      ".gcv-excursoes-card__price-chev{display:inline-flex;width:0.85em;height:0.85em;flex-shrink:0;color:#2563eb}" +
-      ".gcv-excursoes-card__price-chev svg{width:100%;height:100%;display:block}" +
-      ".gcv-excursoes-card__book-total .gcv-excursoes-card__price,.gcv-excursoes-card--pendente .gcv-excursoes-card__book-total .gcv-excursoes-card__price{color:#2563eb!important;align-self:center;flex-shrink:0;max-width:none;line-height:1;white-space:nowrap;font-size:0.98rem}" +
+      ".gcv-excursoes-card__price-go{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;color:#2563eb;font-size:1.4rem}" +
+      ".gcv-excursoes-card__book-total .gcv-excursoes-card__price,.gcv-excursoes-card--pendente .gcv-excursoes-card__book-total .gcv-excursoes-card__price{color:#2563eb!important;align-self:center;flex-shrink:0;max-width:none;line-height:1;white-space:nowrap;font-size:1.4rem}" +
       ".gcv-excursoes-card__cart-add{background:#14b8a6;border-color:#0f766e;color:#fff}" +
       ".gcv-excursoes-card__cart-add:hover{background:#0d9488;color:#fff}" +
       ".gcv-excursoes-card__cart-add--added{background:#0f766e;border-color:#0f766e;color:#fff}" +
@@ -2812,9 +2810,6 @@
       '<span class="gcv-excursoes-card__price-go">' +
       '<span class="gcv-excursoes-card__price" data-gcv-exc-total>' +
       formatBrlAmount(unit) +
-      "</span>" +
-      '<span class="gcv-excursoes-card__price-chev" aria-hidden="true">' +
-      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg>' +
       "</span></span></div></div>" +
       '<div class="gcv-excursoes-card__book-actions">' +
       '<button type="button" class="gcv-excursoes-card__cart-add" data-gcv-exc-cart-add>' +
