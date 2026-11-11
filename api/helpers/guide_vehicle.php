@@ -2,8 +2,8 @@
 declare(strict_types=1);
 
 /**
- * Veículo do guia (modelo da tabela FIPE + ano). Opcional no perfil.
- * Os dois campos entram juntos: ou o par completo, ou nenhum.
+ * Veículo do guia (modelo da tabela FIPE + ano).
+ * Sem veículo, os dois ficam vazios. Com veículo, o modelo e o ano são obrigatórios.
  */
 
 function gcv_guide_vehicle_fold(string $value): string

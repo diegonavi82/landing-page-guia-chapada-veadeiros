@@ -5666,6 +5666,42 @@ body.gcv-spot-open { overflow: hidden; }
   gap: 0.35rem;
   min-width: 11rem;
 }
+.gcv-vehicle__ask {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 0 0 0.85rem;
+}
+.gcv-vehicle__ask .gcv-dash-label { margin: 0; }
+.gcv-vehicle__toggle {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 999px;
+  background: #e7e5e4;
+  border: 1px solid #d6d3d1;
+}
+.gcv-vehicle__toggle button {
+  border: 0;
+  background: transparent;
+  min-width: 72px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  color: #44403c;
+}
+.gcv-vehicle__toggle button.is-on[data-vehicle-no] {
+  background: #64748b;
+  color: #fff;
+}
+.gcv-vehicle__toggle button.is-on[data-vehicle-yes] {
+  background: #0f3d2e;
+  color: #fff;
+}
+.gcv-vehicle__fields[hidden] { display: none !important; }
 .gcv-vehicle__row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 148px;

@@ -1,6 +1,6 @@
 /**
- * Modelo do veículo: autocomplete da tabela FIPE (carros, SUVs, picapes e vans).
- * O ano fica ao lado. Os dois são opcionais e só valem juntos.
+ * Pergunta se o guia possui veículo. O padrão é não.
+ * Com sim, o modelo (lista FIPE) e o ano ficam obrigatórios.
  */
 (function (global) {
   var catalog = null;
@@ -32,7 +32,10 @@
     var all = {
       pt: {
         title: 'Veículo',
-        hint: 'Opcional. Se você faz passeio com o seu veículo, digite o modelo e escolha na lista. Informe também o ano.',
+        hint: 'O padrão é não. Se marcar sim, escolha o modelo na lista e o ano.',
+        question: 'Você possui veículo?',
+        no: 'Não',
+        yes: 'Sim',
         model: 'Modelo do veículo',
         year: 'Ano',
         ph: 'Digite para buscar o modelo',
@@ -47,7 +50,10 @@
       },
       en: {
         title: 'Vehicle',
-        hint: 'Optional. If you run tours with your own vehicle, type the model and pick it from the list. Add the year too.',
+        hint: 'The default is no. If you choose yes, pick the model from the list and the year.',
+        question: 'Do you have a vehicle?',
+        no: 'No',
+        yes: 'Yes',
         model: 'Vehicle model',
         year: 'Year',
         ph: 'Type to search the model',
@@ -62,7 +68,10 @@
       },
       es: {
         title: 'Vehículo',
-        hint: 'Opcional. Si hace el paseo con su vehículo, escriba el modelo y elíjalo en la lista. Indique también el año.',
+        hint: 'El valor por defecto es no. Si marca sí, elija el modelo en la lista y el año.',
+        question: '¿Tiene vehículo?',
+        no: 'No',
+        yes: 'Sí',
         model: 'Modelo del vehículo',
         year: 'Año',
         ph: 'Escriba para buscar el modelo',
@@ -141,11 +150,16 @@
     return starts.concat(words, rest).slice(0, cap);
   }
 
+  function hasSavedVehicle(model, year) {
+    return !!(String(model || '').trim() && parseInt(year, 10) >= 1960);
+  }
+
   function fieldsHtml(opts) {
     opts = opts || {};
     var t = labels();
     var model = String(opts.model || '');
     var year = opts.year ? String(opts.year) : '';
+    var owns = hasSavedVehicle(model, year);
     var max = new Date().getFullYear() + 1;
     var years = '<option value="">' + esc(t.yearPh) + '</option>';
     var y;
@@ -153,23 +167,32 @@
       years += '<option value="' + y + '"' + (String(y) === year ? ' selected' : '') + '>' + y + '</option>';
     }
     return (
-      '<div class="gcv-vehicle" data-vehicle>' +
-        '<div class="gcv-vehicle__row">' +
-          '<div class="gcv-dash-field gcv-vehicle__model">' +
-            '<label class="gcv-dash-label">' + esc(t.model) + '</label>' +
-            '<div class="gcv-vehicle__combo">' +
-              '<input class="gcv-dash-input" data-vehicle-input type="text" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" placeholder="' + esc(t.ph) + '" value="' + esc(model) + '" data-saved="' + esc(model) + '" />' +
-              '<ul class="gcv-vehicle__list" data-vehicle-list role="listbox" hidden></ul>' +
-            '</div>' +
-            '<p class="gcv-dash-field-error" data-vehicle-model-error hidden></p>' +
-          '</div>' +
-          '<div class="gcv-dash-field gcv-vehicle__year">' +
-            '<label class="gcv-dash-label">' + esc(t.year) + '</label>' +
-            '<select class="gcv-dash-select" data-vehicle-year data-saved="' + esc(year) + '">' + years + '</select>' +
-            '<p class="gcv-dash-field-error" data-vehicle-year-error hidden></p>' +
+      '<div class="gcv-vehicle' + (owns ? ' is-yes' : '') + '" data-vehicle data-has="' + (owns ? '1' : '0') + '">' +
+        '<div class="gcv-vehicle__ask">' +
+          '<p class="gcv-dash-label" id="gcv-vehicle-q">' + esc(t.question) + '</p>' +
+          '<div class="gcv-vehicle__toggle" role="group" aria-labelledby="gcv-vehicle-q">' +
+            '<button type="button" data-vehicle-no class="' + (owns ? '' : 'is-on') + '" aria-pressed="' + (owns ? 'false' : 'true') + '">' + esc(t.no) + '</button>' +
+            '<button type="button" data-vehicle-yes class="' + (owns ? 'is-on' : '') + '" aria-pressed="' + (owns ? 'true' : 'false') + '">' + esc(t.yes) + '</button>' +
           '</div>' +
         '</div>' +
-        '<p class="gcv-cms-muted" data-vehicle-status hidden></p>' +
+        '<div class="gcv-vehicle__fields"' + (owns ? '' : ' hidden') + '>' +
+          '<div class="gcv-vehicle__row">' +
+            '<div class="gcv-dash-field gcv-vehicle__model">' +
+              '<label class="gcv-dash-label">' + esc(t.model) + '</label>' +
+              '<div class="gcv-vehicle__combo">' +
+                '<input class="gcv-dash-input" data-vehicle-input type="text" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" placeholder="' + esc(t.ph) + '" value="' + esc(model) + '" data-saved="' + esc(model) + '"' + (owns ? '' : ' disabled') + ' />' +
+                '<ul class="gcv-vehicle__list" data-vehicle-list role="listbox" hidden></ul>' +
+              '</div>' +
+              '<p class="gcv-dash-field-error" data-vehicle-model-error hidden></p>' +
+            '</div>' +
+            '<div class="gcv-dash-field gcv-vehicle__year">' +
+              '<label class="gcv-dash-label">' + esc(t.year) + '</label>' +
+              '<select class="gcv-dash-select" data-vehicle-year data-saved="' + esc(year) + '"' + (owns ? '' : ' disabled') + '>' + years + '</select>' +
+              '<p class="gcv-dash-field-error" data-vehicle-year-error hidden></p>' +
+            '</div>' +
+          '</div>' +
+          '<p class="gcv-cms-muted" data-vehicle-status hidden></p>' +
+        '</div>' +
       '</div>'
     );
   }
@@ -182,10 +205,27 @@
     var list = root.querySelector('[data-vehicle-list]');
     var combo = root.querySelector('.gcv-vehicle__combo');
     var status = root.querySelector('[data-vehicle-status]');
+    var fields = root.querySelector('.gcv-vehicle__fields');
+    var yearEl = root.querySelector('[data-vehicle-year]');
+    var noBtn = root.querySelector('[data-vehicle-no]');
+    var yesBtn = root.querySelector('[data-vehicle-yes]');
     var t = labels();
     var active = -1;
     var items = [];
-    if (!input || !list || !combo) return;
+    if (!input || !list || !combo || !noBtn || !yesBtn) return;
+
+    function setOwns(yes) {
+      root.setAttribute('data-has', yes ? '1' : '0');
+      root.classList.toggle('is-yes', !!yes);
+      noBtn.classList.toggle('is-on', !yes);
+      yesBtn.classList.toggle('is-on', !!yes);
+      noBtn.setAttribute('aria-pressed', yes ? 'false' : 'true');
+      yesBtn.setAttribute('aria-pressed', yes ? 'true' : 'false');
+      if (fields) fields.hidden = !yes;
+      input.disabled = !yes;
+      if (yearEl) yearEl.disabled = !yes;
+      if (!yes) close();
+    }
 
     function setStatus(text) {
       if (!status) return;
@@ -246,6 +286,12 @@
         close();
       });
     }
+
+    noBtn.addEventListener('click', function () { setOwns(false); });
+    yesBtn.addEventListener('click', function () {
+      setOwns(true);
+      input.focus();
+    });
 
     setStatus(t.loading);
     load().then(function () {
@@ -321,13 +367,14 @@
     var t = labels();
     var root = scope && scope.querySelector ? scope.querySelector('[data-vehicle]') : null;
     if (!root) return { model: '', year: '', error: '' };
+    if (root.getAttribute('data-has') !== '1') return { model: '', year: '', error: '' };
     var input = root.querySelector('[data-vehicle-input]');
     var yearEl = root.querySelector('[data-vehicle-year]');
     var model = input ? String(input.value || '').trim() : '';
     var year = yearEl ? String(yearEl.value || '').trim() : '';
     var savedModel = input ? String(input.getAttribute('data-saved') || '') : '';
     var savedYear = yearEl ? String(yearEl.getAttribute('data-saved') || '') : '';
-    if (!model && !year) return { model: '', year: '', error: '' };
+    if (!model && !year) return { model: '', year: '', error: t.modelNeed };
     if (!catalog) {
       if (model === savedModel && year === savedYear) return { model: model, year: year, error: '' };
       return { model: model, year: year, error: failed ? t.loadFail : t.wait };
