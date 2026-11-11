@@ -719,6 +719,104 @@ function gcv_ops_guide_unit_cents(array $exc): int
     return max(0, $n);
 }
 
+/** Repasse por inscrição. Se a saída não gravou o líquido, usa a média das vendas pagas. */
+function gcv_ops_guide_unit_for_notice(array $exc, int $excursionId = 0): int
+{
+    $unit = gcv_ops_guide_unit_cents($exc);
+    if ($unit > 0) {
+        return $unit;
+    }
+    $id = $excursionId > 0 ? $excursionId : (int)($exc['id'] ?? 0);
+    if ($id > 0) {
+        $g = gcv_ops_group_counts($id, $exc);
+        $people = (int)($g['platform'] ?? 0);
+        $guideCents = (int)($g['guide_cents'] ?? 0);
+        if ($people > 0 && $guideCents > 0) {
+            return (int)round($guideCents / $people);
+        }
+    }
+    $price = (int)($exc['price_cents'] ?? 0);
+    if ($price > 0) {
+        return gcv_ops_reserva_guia_cents(0, $price);
+    }
+    return 0;
+}
+
+/**
+ * Cartão que o guia recebe ao ser alocado e a cada mudança de inscrição, até confirmar.
+ */
+function gcv_ops_guide_posse_text(int $excursionId, ?array $exc = null): string
+{
+    if ($excursionId > 0) {
+        $fresh = gcv_ops_load_excursion($excursionId);
+        if (is_array($fresh)) {
+            $exc = $fresh;
+        }
+    }
+    $exc = $exc ?: [];
+    $g = gcv_ops_group_counts($excursionId, $exc);
+    $when = trim(
+        gcv_ops_date_br((string)($exc['date_iso'] ?? ''))
+        . ' às ' . substr((string)($exc['departure_time'] ?? ''), 0, 5)
+    );
+    $city = trim((string)($exc['departure_city_name'] ?? ''));
+    if ($city === '') {
+        $city = 'Alto Paraíso de Goiás';
+    }
+    $life = function_exists('gcv_resolve_excursion_lifecycle')
+        ? gcv_resolve_excursion_lifecycle($exc)
+        : '';
+    $confirmed = in_array($life, ['confirmada', 'soldout', 'concluida'], true);
+    $rotulo = gcv_excursion_is_private($exc)
+        ? gcv_ops_saida_rotulo($exc, $excursionId)
+        : ('Excursão#' . $excursionId);
+    $status = $confirmed ? '(✅ CONFIRMADA)' : '(EM FORMAÇÃO)';
+    $inscritosWord = (int)$g['total'] === 1 ? 'inscrito' : 'inscritos';
+    $unit = gcv_ops_guide_unit_for_notice($exc, $excursionId);
+    $quorum = max(0, (int)($exc['quorum'] ?? 0));
+    $lines = [
+        $rotulo . ' ' . $status,
+        '✅ Você é o guia dessa excursão.',
+        '',
+        'Destino: ' . gcv_ops_excursion_title($exc),
+        'Data: ' . $when,
+        'Cidade: ' . $city,
+        'Ponto de Encontro: ' . gcv_ops_ponto_encontro($exc),
+        'Inscritos: ' . gcv_ops_pessoas((int)$g['platform']),
+        'Quórum: ' . gcv_ops_pessoas($quorum),
+        'Grupo total: ' . $g['total'] . '/' . $g['max'] . ' ' . $inscritosWord,
+        'Valor a receber por inscrição: ' . gcv_ops_brl($unit)
+            . ' (total até o momento ' . gcv_ops_brl((int)$g['guide_cents']) . ')',
+        '',
+    ];
+    if ($confirmed) {
+        $lines[] = 'Este passeio está ✅ CONFIRMADO!';
+    } else {
+        $faltam = gcv_ops_people_needed_to_start($exc);
+        $palavra = $faltam === 1 ? 'inscrição' : 'inscrições';
+        $lines[] = 'Passeio em formação, aguardando mais ' . $faltam . ' ' . $palavra . ' para confirmar!';
+    }
+    $lines[] = 'A reserva está na sua Agenda do painel.';
+    return implode("\n", $lines);
+}
+
+function gcv_ops_notify_guide_posse(int $excursionId): bool
+{
+    $exc = gcv_ops_load_excursion($excursionId);
+    if (!$exc || gcv_excursion_is_private($exc)) {
+        return false;
+    }
+    if ((string)($exc['status'] ?? '') === 'cancelled') {
+        return false;
+    }
+    $guideId = (int)($exc['guide_user_id'] ?? 0);
+    if ($guideId <= 0) {
+        return false;
+    }
+    $text = gcv_ops_guide_posse_text($excursionId, $exc);
+    return gcv_ops_wa_guide($guideId, $text, ['kind' => 'guide_posse', 'excursion_id' => $excursionId]);
+}
+
 function gcv_ops_pessoas(int $n): string
 {
     return $n === 1 ? '1 pessoa' : ($n . ' pessoas');
@@ -1230,6 +1328,8 @@ function gcv_ops_notify_guide_new_booking(array $sale, ?array $exc, int $spots, 
         $textGuide = "Nova reserva privativa\n"
             . "Você ainda não confirmou esta guiagem.\n\n"
             . gcv_ops_aviso_saida_linhas($excId, $exc);
+    } elseif (!$privado && !$confirmed && $guideId > 0 && $note === '' && !gcv_excursion_is_guide_submitted($exc)) {
+        $textGuide = gcv_ops_guide_posse_text($excId, $exc);
     } elseif ($note === '' && !gcv_excursion_is_guide_submitted($exc) && !$comTransporte && $guideId > 0) {
         $g = gcv_ops_group_counts($excId, $exc);
         $mais = (int)($sale['guide_amount_cents'] ?? 0);
@@ -1470,7 +1570,7 @@ function gcv_ops_aviso_saida_linhas(int $excursionId, array $exc): string
     if ($privado) {
         $lines[] = 'Valor da reserva: ' . gcv_ops_brl(gcv_ops_reserva_guia_cents((int)$g['guide_cents'], (int)$g['cents']));
     } else {
-        $lines[] = 'Valor a receber por inscrição: ' . gcv_ops_brl(gcv_ops_guide_unit_cents($exc))
+        $lines[] = 'Valor a receber por inscrição: ' . gcv_ops_brl(gcv_ops_guide_unit_for_notice($exc, $excursionId))
             . ' (total até o momento ' . gcv_ops_brl((int)$g['guide_cents']) . ')';
     }
     $lines[] = gcv_ops_saida_rotulo($exc, $excursionId);
@@ -1605,13 +1705,13 @@ function gcv_ops_notify_guide_confirmed(int $excursionId): void
     gcv_ops_wa_agency($textAdmin);
     gcv_ops_mail_plain('diegonavi82@gmail.com', 'Passeio confirmado — ' . $title, $textAdmin);
 
-    $textGuide = ($privado
-            ? "✅ Você confirmou a guiagem\n\n"
-            : "✅ Passeio CONFIRMADO!\n\n")
-        . $linhas . "\n\n"
-        . gcv_ops_roster_text($excursionId) . "\n\n"
-        . 'Os dados dos clientes também estão na Agenda.' . "\n"
-        . gcv_ops_guide_qr_scan_lines();
+    $textGuide = $privado
+        ? ("✅ Você confirmou a guiagem\n\n"
+            . $linhas . "\n\n"
+            . gcv_ops_roster_text($excursionId) . "\n\n"
+            . 'Os dados dos clientes também estão na Agenda.' . "\n"
+            . gcv_ops_guide_qr_scan_lines())
+        : gcv_ops_guide_posse_text($excursionId, $exc);
     if ($guideId > 0) {
         $guidePhone = (string)(gcv_ops_guide_contact($guideId)['phone'] ?? '');
         $agency = function_exists('gcv_admin_whatsapp_phone') ? gcv_admin_whatsapp_phone() : '5521996039027';
@@ -1787,7 +1887,6 @@ function gcv_ops_group_update_text(int $excursionId, ?array $exc = null): string
     }
     $exc = $exc ?: [];
     $g = gcv_ops_group_counts($excursionId, $exc);
-    $unitGuide = gcv_ops_guide_unit_cents($exc);
     $quorum = max(0, (int)($exc['quorum'] ?? 0));
     $inscritosWord = $g['total'] === 1 ? 'inscrito' : 'inscritos';
     $lines = [];
@@ -1797,7 +1896,7 @@ function gcv_ops_group_update_text(int $excursionId, ?array $exc = null): string
     $lines[] = 'Inscritos: ' . gcv_ops_pessoas((int)$g['platform']);
     $lines[] = 'Quórum: ' . gcv_ops_quorum_text($quorum);
     $lines[] = 'Grupo total: ' . $g['total'] . '/' . $g['max'] . ' ' . $inscritosWord;
-    $lines[] = 'Valor a receber por inscrição: ' . gcv_ops_brl($unitGuide)
+    $lines[] = 'Valor a receber por inscrição: ' . gcv_ops_brl(gcv_ops_guide_unit_for_notice($exc, $excursionId))
         . ' (total até o momento ' . gcv_ops_brl((int)$g['guide_cents']) . ')';
     return implode("\n", $lines);
 }

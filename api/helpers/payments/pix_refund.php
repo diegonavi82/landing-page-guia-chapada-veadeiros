@@ -840,12 +840,40 @@ function gcv_pix_refund_notify(array $reservation, ?array $sale, array $done, in
     }
     $seen = [];
     foreach ($done as $trip) {
+        $excId = (int)($trip['excursion_id'] ?? 0);
+        if ($excId <= 0 && $sale) {
+            $excId = (int)($sale['excursion_id'] ?? 0);
+        }
         $guideId = (int)($trip['guide_user_id'] ?? 0);
-        if ($guideId <= 0 || isset($seen[$guideId])) {
+        $exc = null;
+        if ($excId > 0) {
+            try {
+                $exc = gcv_ops_load_excursion($excId, true);
+            } catch (Throwable $e) {
+                $exc = null;
+            }
+        }
+        if ($guideId <= 0 && $exc) {
+            $guideId = (int)($exc['guide_user_id'] ?? 0);
+        }
+        $key = $excId . ':' . $guideId;
+        if ($guideId <= 0 || isset($seen[$key])) {
             continue;
         }
-        $seen[$guideId] = true;
+        $seen[$key] = true;
+        $status = (string)($exc['status'] ?? '');
         try {
+            if ($exc && $status !== 'cancelled' && !gcv_excursion_is_private($exc)) {
+                gcv_ops_wa_guide(
+                    $guideId,
+                    gcv_ops_guide_posse_text($excId, $exc),
+                    ['kind' => 'guide_posse', 'excursion_id' => $excId]
+                );
+                continue;
+            }
+            if ($status === 'cancelled') {
+                continue;
+            }
             gcv_ops_wa_guide($guideId, $guideText, ['kind' => 'pix_partial_refund']);
         } catch (Throwable $e) {
             error_log('pix refund guide: ' . $e->getMessage());

@@ -662,8 +662,10 @@ function gcv_auth_release(array $rec, string $reason, bool $notifyCustomer = tru
         if ($excId > 0) {
             require_once __DIR__ . '/../marketplace/sale_service.php';
             gcv_sale_refresh_booked_people($excId);
-            if (function_exists('gcv_excursion_cancel_if_empty')) {
-                gcv_excursion_cancel_if_empty($excId);
+            $emptied = function_exists('gcv_excursion_cancel_if_empty') && gcv_excursion_cancel_if_empty($excId);
+            if (!$emptied) {
+                require_once __DIR__ . '/../notify_ops.php';
+                gcv_ops_notify_guide_posse($excId);
             }
         }
     } catch (Throwable $e) {

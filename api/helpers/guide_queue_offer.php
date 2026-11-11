@@ -542,31 +542,23 @@ function gcv_guiagem_notify_admin_assigned(int $guideId, array $tour, int $still
             gcv_ops_date_br((string)($exc['date_iso'] ?? ''))
             . ' às ' . substr((string)($exc['departure_time'] ?? ''), 0, 5)
         );
-        $head = 'A administração alocou você neste passeio. A vaga já é sua.';
-        if ($stillNeed > 0) {
-            $head .= ' Ainda falta ' . $stillNeed . ' guia(s) com veículo.';
-        }
-        try {
-            $body = $excursionId > 0 ? gcv_ops_aviso_saida_linhas($excursionId, $exc) : '';
-        } catch (Throwable $e) {
-            $body = '';
-        }
-        if (trim($body) === '') {
-            $body = 'Passeio: ' . $title . ($when !== '' ? "\nQuando: " . $when : '');
-        }
-        $text = $head . "\n\n" . $body . "\n\nA reserva está na sua Agenda do painel.";
-        $life = function_exists('gcv_resolve_excursion_lifecycle')
-            ? gcv_resolve_excursion_lifecycle($exc)
-            : '';
-        if (in_array($life, ['confirmada', 'soldout'], true) && $excursionId > 0) {
-            try {
-                $roster = trim(gcv_ops_roster_text($excursionId));
-                if ($roster !== '') {
-                    $text .= "\n\n" . $roster;
-                }
-            } catch (Throwable $e) {
-                error_log('gcv_guiagem_notify_admin_assigned roster: ' . $e->getMessage());
+        $privado = function_exists('gcv_excursion_is_private') && gcv_excursion_is_private($exc);
+        if (!$privado && $excursionId > 0) {
+            $text = gcv_ops_guide_posse_text($excursionId, $exc);
+        } else {
+            $head = 'A administração alocou você neste passeio. A vaga já é sua.';
+            if ($stillNeed > 0) {
+                $head .= ' Ainda falta ' . $stillNeed . ' guia(s) com veículo.';
             }
+            try {
+                $body = $excursionId > 0 ? gcv_ops_aviso_saida_linhas($excursionId, $exc) : '';
+            } catch (Throwable $e) {
+                $body = '';
+            }
+            if (trim($body) === '') {
+                $body = 'Passeio: ' . $title . ($when !== '' ? "\nQuando: " . $when : '');
+            }
+            $text = $head . "\n\n" . $body . "\n\nA reserva está na sua Agenda do painel.";
         }
         if (!gcv_ops_wa_guide($guideId, $text, ['kind' => 'guide_assigned', 'excursion_id' => $excursionId])) {
             error_log('gcv_guiagem_notify_admin_assigned: WhatsApp não enviado (excursão ' . $excursionId . ', guia ' . $guideId . ')');
@@ -614,6 +606,13 @@ function gcv_guiagem_notify_seat_accepted(int $guideId, array $tour, int $stillN
 {
     try {
         require_once __DIR__ . '/notify_ops.php';
+        $excursionId = (int)($tour['id'] ?? 0);
+        $privado = function_exists('gcv_excursion_is_private') && gcv_excursion_is_private($tour);
+        if (!$privado && $excursionId > 0) {
+            $text = gcv_ops_guide_posse_text($excursionId, $tour);
+            gcv_ops_wa_guide($guideId, $text, ['kind' => 'guide_accepted', 'excursion_id' => $excursionId]);
+            return;
+        }
         $title = trim((string)($tour['attraction_title'] ?? ''));
         if ($title === '') {
             $title = 'o passeio';
@@ -629,7 +628,7 @@ function gcv_guiagem_notify_seat_accepted(int $guideId, array $tour, int $stillN
         } else {
             $text .= 'Sua vaga nesta saída está confirmada.';
         }
-        gcv_ops_wa_guide($guideId, $text, ['kind' => 'guide_accepted', 'excursion_id' => (int)($tour['id'] ?? 0)]);
+        gcv_ops_wa_guide($guideId, $text, ['kind' => 'guide_accepted', 'excursion_id' => $excursionId]);
     } catch (Throwable $e) {
         error_log('gcv_guiagem_notify_seat_accepted: ' . $e->getMessage());
     }
