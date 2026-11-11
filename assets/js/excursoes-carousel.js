@@ -2649,15 +2649,15 @@
       ".gcv-excursoes-card__block,.gcv-excursoes-card__block--in,.gcv-excursoes__track--day-list .gcv-excursoes-card__block--in{border-radius:0}" +
       ".gcv-excursoes-card__book,.gcv-excursoes-card__book-row{min-width:0;max-width:100%;box-sizing:border-box}" +
       ".gcv-excursoes__track--day-list .gcv-excursoes-card__book{margin:0;padding:0.45rem 0.75rem 0.75rem;min-width:0;width:auto;max-width:none;box-sizing:border-box}" +
-      ".gcv-excursoes-card__book-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:0.35rem;width:100%;max-width:100%}" +
-      ".gcv-excursoes-card__book-people{display:flex;align-items:center;justify-content:flex-end;gap:0.4rem;min-width:0;width:100%;padding-right:0.35rem;box-sizing:border-box}" +
-      ".gcv-excursoes-card__book-label{order:0;text-align:left;justify-self:center}" +
+      ".gcv-excursoes-card__book-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:center;column-gap:0.5rem;width:100%;max-width:100%}" +
+      ".gcv-excursoes-card__book-people{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.28rem;min-width:0;width:100%;padding:0;box-sizing:border-box}" +
+      ".gcv-excursoes-card__book-label{order:0;display:block;text-align:center;justify-self:center;width:100%}" +
       ".gcv-excursoes-card__qty{order:0;justify-self:center;flex-shrink:0}" +
-      ".gcv-excursoes-card__book-total{order:0;justify-self:end;display:flex;flex-direction:row;align-items:center;justify-content:flex-end;gap:0.35rem;margin:0;width:auto;max-width:100%;min-width:0;overflow:hidden;white-space:normal;text-align:left;box-sizing:border-box}" +
-      ".gcv-excursoes-card__book-total-copy{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:0.06rem;line-height:1;min-width:0}" +
-      ".gcv-excursoes-card__book-total-label{font-size:0.56rem;font-weight:800;line-height:1;letter-spacing:0.02em;text-transform:uppercase;color:#64748b}" +
-      ".gcv-excursoes-card__book-total-pix{font-size:0.5rem;font-weight:700;line-height:1;color:#64748b;text-transform:none;letter-spacing:0}" +
-      ".gcv-excursoes-card__price-go{display:inline-flex;align-items:center;gap:0.04rem;flex-shrink:0;color:#2563eb;font-size:0.98rem}" +
+      ".gcv-excursoes-card__book-total{order:0;justify-self:stretch;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.12rem;margin:0;width:100%;max-width:100%;min-width:0;overflow:hidden;white-space:normal;text-align:center;box-sizing:border-box}" +
+      ".gcv-excursoes-card__book-total-copy{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.08rem;line-height:1.05;min-width:0;text-align:center}" +
+      ".gcv-excursoes-card__book-total-label{font-size:0.72rem;font-weight:800;line-height:1;letter-spacing:0.04em;text-transform:uppercase;color:#64748b;text-align:center}" +
+      ".gcv-excursoes-card__book-total-pix{font-size:0.68rem;font-weight:700;line-height:1;color:#64748b;text-transform:none;letter-spacing:0;text-align:center}" +
+      ".gcv-excursoes-card__price-go{display:inline-flex;align-items:center;justify-content:center;gap:0.04rem;flex-shrink:0;color:#2563eb;font-size:0.98rem}" +
       ".gcv-excursoes-card__price-chev{display:inline-flex;width:0.85em;height:0.85em;flex-shrink:0;color:#2563eb}" +
       ".gcv-excursoes-card__price-chev svg{width:100%;height:100%;display:block}" +
       ".gcv-excursoes-card__book-total .gcv-excursoes-card__price,.gcv-excursoes-card--pendente .gcv-excursoes-card__book-total .gcv-excursoes-card__price{color:#2563eb!important;align-self:center;flex-shrink:0;max-width:none;line-height:1;white-space:nowrap;font-size:0.98rem}" +
