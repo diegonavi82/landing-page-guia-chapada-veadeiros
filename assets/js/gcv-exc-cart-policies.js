@@ -1,6 +1,6 @@
 /**
  * Políticas de cancelamento e segurança — carrinho de excursões.
- * Cancelamento em pt, en e es. Segurança e termos do guia em PT.
+ * Cancelamento e segurança em pt, en e es. Termos do guia em PT.
  * Rótulos de UI traduzidos por locale.
  */
 (function (global) {
@@ -185,88 +185,68 @@
       ],
       security: [
         {
-          heading: "1. Objetivo",
+          heading: "1. Riscos da atividade",
           paragraphs: [
-            "A Guia Chapada Veadeiros adota procedimentos destinados a reduzir os riscos inerentes às atividades de ecoturismo.",
-            "Entretanto, o CONTRATANTE declara estar ciente de que atividades realizadas em ambiente natural envolvem riscos próprios que não podem ser totalmente eliminados.",
+            "A Guia Chapada Veadeiros adota procedimentos para reduzir os riscos do ecoturismo. O CONTRATANTE declara estar ciente de que a atividade em ambiente natural tem riscos que não podem ser totalmente eliminados.",
+            "O CONTRATANTE poderá estar exposto a trilhas irregulares, pedras escorregadias, rios, cachoeiras, cânions, animais silvestres, insetos, vegetação nativa, mudanças climáticas, exposição solar e demais condições do ambiente natural. Essas condições fazem parte do ecoturismo e não caracterizam falha na prestação do serviço.",
           ],
         },
         {
-          heading: "2. Responsabilidade Individual",
+          heading: "2. Responsabilidade do participante",
           paragraphs: [
-            "Cada participante é responsável por sua própria segurança, devendo agir com prudência, atenção e respeito às orientações do guia.",
-            "O guia atua na orientação, condução e apoio ao grupo, não sendo responsável pelas decisões individuais tomadas pelos participantes.",
-            "O CONTRATANTE assume os riscos decorrentes de atos de imprudência, negligência, imperícia, descumprimento das orientações recebidas ou condutas que coloquem em risco sua integridade física ou a de terceiros.",
+            "Cada participante é responsável pela própria segurança. Deve agir com prudência, permanecer junto ao grupo, seguir as orientações do guia, respeitar os horários, usar o equipamento de segurança quando exigido, respeitar áreas interditadas e sinalizações, e comunicar imediatamente qualquer risco ou mal-estar.",
+            "O guia orienta, conduz e apoia o grupo. Não responde pelas decisões individuais do participante. O CONTRATANTE assume os riscos de imprudência, negligência, imperícia, descumprimento das orientações ou conduta que coloque em risco a si ou a terceiros.",
           ],
         },
         {
-          heading: "3. Cumprimento das Orientações",
+          heading: "3. Saúde",
           paragraphs: [
-            "O CONTRATANTE compromete-se a: seguir integralmente as orientações do guia; permanecer junto ao grupo; respeitar os horários; utilizar equipamentos de segurança quando exigidos; respeitar áreas interditadas e sinalizações; comunicar imediatamente qualquer situação de risco ou mal-estar.",
-            "O descumprimento dessas obrigações poderá resultar na exclusão do passeio, sem direito a reembolso.",
+            "O CONTRATANTE declara ter condições físicas e psicológicas compatíveis com a atividade e informa, antes do passeio, qualquer condição médica que possa representar risco. A omissão dessa informação é de responsabilidade do CONTRATANTE.",
           ],
         },
         {
-          heading: "4. Condições de Saúde",
-          paragraphs: [
-            "O CONTRATANTE declara possuir condições físicas e psicológicas compatíveis com a atividade contratada.",
-            "Compromete-se também a informar previamente qualquer condição médica que possa representar risco durante o passeio.",
-            "A omissão dessas informações será de inteira responsabilidade do CONTRATANTE.",
-          ],
-        },
-        {
-          heading: "5. Álcool e Drogas",
+          heading: "4. Álcool, drogas e conduta",
           paragraphs: [
             "É proibida a participação sob efeito de álcool, drogas ilícitas ou qualquer substância que comprometa a capacidade física ou mental.",
-            "O guia poderá impedir o embarque ou retirar do passeio qualquer participante que coloque em risco sua segurança ou a de terceiros, sem direito a reembolso.",
+            "A CONTRATADA pode impedir o embarque ou excluir do passeio, sem reembolso, quem descumprir orientação do guia, colocar em risco a si ou a terceiros, consumir álcool ou drogas durante a atividade, praticar indisciplina, causar dano ambiental ou agir de forma agressiva ou incompatível com a atividade.",
           ],
         },
         {
-          heading: "6. Ambiente Natural",
+          heading: "5. Veículo",
           paragraphs: [
-            "O CONTRATANTE reconhece que poderá estar exposto a: trilhas irregulares; pedras escorregadias; rios e cachoeiras; cânions; animais silvestres; insetos; vegetação nativa; mudanças climáticas; exposição solar; demais riscos inerentes ao ambiente natural.",
-            "Essas condições fazem parte da natureza do ecoturismo e não caracterizam falha na prestação do serviço.",
+            "Com translado, o carro é do guia. Cada carro leva até 4 clientes e 1 guia, e o guia vai nesse carro.",
+            "Sem translado, o deslocamento é no veículo do grupo. O carro de passeio tem 5 lugares: um é do guia e cabem no máximo 4 clientes. O CONTRATANTE garante lugar para o guia. Sem essa vaga, a CONTRATADA pode cancelar o passeio, na forma da Política de Cancelamento.",
           ],
         },
         {
-          heading: "7. Objetos Pessoais",
+          heading: "6. Objetos pessoais",
           paragraphs: [
-            "Cada participante é integralmente responsável por seus pertences.",
-            "A CONTRATADA não se responsabiliza por perdas, furtos, roubos, quebras, molhamento ou danos a celulares, câmeras, drones, documentos, dinheiro, joias, equipamentos eletrônicos ou quaisquer objetos pessoais.",
+            "Cada participante é responsável pelos próprios pertences. A CONTRATADA não responde por perda, furto, roubo, quebra, molhamento ou dano a celular, câmera, drone, documento, dinheiro, joia, equipamento eletrônico ou qualquer objeto pessoal.",
           ],
         },
         {
-          heading: "8. Fauna e Flora",
+          heading: "7. Fauna e flora",
           paragraphs: [
-            "É proibido alimentar, capturar, perseguir, tocar ou provocar animais silvestres, bem como retirar plantas, pedras ou qualquer elemento do ambiente natural.",
-            "O CONTRATANTE compromete-se a cumprir integralmente a legislação ambiental e as normas das unidades de conservação visitadas.",
+            "É proibido alimentar, capturar, perseguir, tocar ou provocar animal silvestre, e retirar planta, pedra ou qualquer elemento do ambiente natural. O CONTRATANTE cumpre a legislação ambiental e as normas das unidades de conservação visitadas.",
           ],
         },
         {
-          heading: "9. Emergências",
+          heading: "8. Emergências",
           paragraphs: [
-            "Em caso de acidente ou mal súbito, o guia prestará os primeiros atendimentos compatíveis com seu treinamento e acionará os serviços públicos de emergência quando necessário.",
-            "O CONTRATANTE reconhece que o tempo de resposta em áreas naturais pode ser superior ao observado em centros urbanos.",
+            "Em acidente ou mal súbito, o guia presta os primeiros atendimentos compatíveis com o treinamento dele e aciona o serviço público de emergência quando necessário. O CONTRATANTE reconhece que o tempo de resposta em área natural pode ser maior do que na cidade.",
           ],
         },
         {
-          heading: "10. Decisões do Guia",
+          heading: "9. Decisões do guia",
           paragraphs: [
-            "Sempre que necessário para preservar a segurança do grupo, o guia poderá: alterar o roteiro; modificar horários; cancelar atrativos; interromper atividades; reduzir tempos de visita; retornar antecipadamente; encerrar o passeio.",
-            "Essas decisões deverão ser imediatamente cumpridas pelos participantes.",
+            "Para preservar a segurança do grupo, o guia pode alterar o roteiro, os horários e a ordem de visitação, cancelar ou substituir um atrativo, reduzir o tempo de permanência, interromper uma atividade, voltar antes ou encerrar o passeio. O participante cumpre essas decisões na hora.",
+            "Essas medidas são preventivas. O efeito sobre o preço e sobre o cancelamento está na Política de Cancelamento.",
           ],
         },
         {
-          heading: "11. Exclusão do Passeio",
+          heading: "10. Ciência",
           paragraphs: [
-            "A CONTRATADA poderá excluir do passeio, sem direito a reembolso, o participante que: descumprir orientações do guia; colocar em risco sua própria segurança ou a de terceiros; consumir álcool ou drogas durante a atividade; praticar atos de indisciplina; causar danos ambientais; apresentar comportamento agressivo ou incompatível com a atividade.",
-          ],
-        },
-        {
-          heading: "12. Declaração de Ciência",
-          paragraphs: [
-            "Ao contratar o passeio, o CONTRATANTE declara que: compreende os riscos inerentes ao ecoturismo; assume responsabilidade por suas próprias ações e decisões; compromete-se a seguir integralmente as orientações do guia; autoriza o guia a adotar todas as medidas necessárias para preservar a segurança do grupo; reconhece que alterações de roteiro, horários, duração da atividade ou encerramento antecipado poderão ocorrer sempre que exigidos por questões de segurança.",
-            "No cartão de crédito, o CONTRATANTE autoriza a verificação do cartão ao salvá-lo e a cobrança automática de 100% somente quando o passeio confirmar, nas condições da Política de Cancelamento. Compromete-se a manter o cartão válido e a substituí-lo se for recusado. Enquanto um cartão necessário ao quórum não passar, ninguém é cobrado.",
+            "Ao contratar, o CONTRATANTE declara que leu esta Política, compreende os riscos do ecoturismo e autoriza o guia a adotar as medidas necessárias para a segurança do grupo.",
           ],
         },
       ],
@@ -470,6 +450,73 @@
           ],
         },
       ],
+      security: [
+        {
+          heading: "1. Risks of the activity",
+          paragraphs: [
+            "Guia Chapada Veadeiros uses procedures to reduce the risks of ecotourism. The Client states that they understand that an activity in a natural setting has risks that cannot be fully removed.",
+            "The Client may be exposed to uneven trails, slippery rocks, rivers, waterfalls, canyons, wildlife, insects, native vegetation, weather changes, sun exposure and other conditions of the natural setting. These conditions are part of ecotourism and are not a failure of the service.",
+          ],
+        },
+        {
+          heading: "2. The participant's responsibility",
+          paragraphs: [
+            "Each participant is responsible for their own safety. They must act with care, stay with the group, follow the guide's instructions, keep to the schedule, use safety equipment when it is required, respect closed areas and signs, and report any risk or feeling of illness at once.",
+            "The guide orients, leads and supports the group. The guide is not responsible for a participant's individual decisions. The Client assumes the risks of recklessness, negligence, lack of skill, ignoring instructions, or conduct that puts themselves or others at risk.",
+          ],
+        },
+        {
+          heading: "3. Health",
+          paragraphs: [
+            "The Client states that they have the physical and psychological condition for the activity and, before the tour, informs any medical condition that may create a risk. Omitting that information is the Client's responsibility.",
+          ],
+        },
+        {
+          heading: "4. Alcohol, drugs and conduct",
+          paragraphs: [
+            "Participation under the effect of alcohol, illegal drugs or any substance that impairs physical or mental capacity is forbidden.",
+            "The Company may refuse boarding or remove from the tour, with no refund, anyone who ignores the guide, puts themselves or others at risk, uses alcohol or drugs during the activity, is undisciplined, causes environmental damage, or behaves in an aggressive way or in a way that does not fit the activity.",
+          ],
+        },
+        {
+          heading: "5. Vehicle",
+          paragraphs: [
+            "With transport, the car is the guide's. Each car takes up to 4 guests and 1 guide, and the guide rides in that car.",
+            "Without transport, travel is in the group's vehicle. A touring car has 5 seats: one is the guide's and at most 4 guests fit. The Client guarantees a seat for the guide. Without that seat, the Company may cancel the tour under the Cancellation Policy.",
+          ],
+        },
+        {
+          heading: "6. Personal belongings",
+          paragraphs: [
+            "Each participant is responsible for their own belongings. The Company is not responsible for loss, theft, robbery, breakage, wetting or damage to a phone, camera, drone, document, money, jewelry, electronic equipment or any personal item.",
+          ],
+        },
+        {
+          heading: "7. Wildlife and plants",
+          paragraphs: [
+            "It is forbidden to feed, capture, chase, touch or provoke wildlife, and to remove a plant, a rock or any element of the natural setting. The Client follows environmental law and the rules of the protected areas visited.",
+          ],
+        },
+        {
+          heading: "8. Emergencies",
+          paragraphs: [
+            "In an accident or a sudden illness, the guide gives the first aid that matches the guide's training and calls the public emergency service when needed. The Client understands that the response time in a natural area may be longer than in a city.",
+          ],
+        },
+        {
+          heading: "9. The guide's decisions",
+          paragraphs: [
+            "To protect the group's safety, the guide may change the route, the times and the order of visits, cancel or replace an attraction, shorten a stop, interrupt an activity, return early or end the tour. The participant follows those decisions at once.",
+            "These measures are preventive. The effect on the price and on cancellation is in the Cancellation Policy.",
+          ],
+        },
+        {
+          heading: "10. Acknowledgement",
+          paragraphs: [
+            "By booking, the Client states that they have read this Policy, understand the risks of ecotourism and authorize the guide to take the measures needed for the group's safety.",
+          ],
+        },
+      ],
     },
     es: {
       cancel: [
@@ -587,6 +634,73 @@
           heading: "6. Legislación aplicable",
           paragraphs: [
             "Esta Política fue elaborada de conformidad con la legislación brasileña, en especial el Código de Defensa del Consumidor, preservando los derechos legales del contratante en las hipótesis de falla en la prestación del servicio o imposibilidad de su ejecución por responsabilidad exclusiva de la contratada.",
+          ],
+        },
+      ],
+      security: [
+        {
+          heading: "1. Riesgos de la actividad",
+          paragraphs: [
+            "Guia Chapada Veadeiros adopta procedimientos para reducir los riesgos del ecoturismo. El contratante declara estar al tanto de que la actividad en un ambiente natural tiene riesgos que no pueden eliminarse por completo.",
+            "El contratante podrá estar expuesto a senderos irregulares, piedras resbaladizas, ríos, cascadas, cañones, animales silvestres, insectos, vegetación nativa, cambios climáticos, exposición al sol y demás condiciones del ambiente natural. Esas condiciones forman parte del ecoturismo y no caracterizan una falla en la prestación del servicio.",
+          ],
+        },
+        {
+          heading: "2. Responsabilidad del participante",
+          paragraphs: [
+            "Cada participante es responsable de su propia seguridad. Debe actuar con prudencia, permanecer junto al grupo, seguir las orientaciones del guía, respetar los horarios, usar el equipo de seguridad cuando se exija, respetar áreas cerradas y señalizaciones, y comunicar de inmediato cualquier riesgo o malestar.",
+            "El guía orienta, conduce y apoya al grupo. No responde por las decisiones individuales del participante. El contratante asume los riesgos de imprudencia, negligencia, impericia, incumplimiento de las orientaciones o conducta que ponga en riesgo a sí mismo o a terceros.",
+          ],
+        },
+        {
+          heading: "3. Salud",
+          paragraphs: [
+            "El contratante declara tener condiciones físicas y psicológicas compatibles con la actividad e informa, antes del paseo, cualquier condición médica que pueda representar un riesgo. La omisión de esa información es responsabilidad del contratante.",
+          ],
+        },
+        {
+          heading: "4. Alcohol, drogas y conducta",
+          paragraphs: [
+            "Está prohibida la participación bajo efecto de alcohol, drogas ilícitas o cualquier sustancia que comprometa la capacidad física o mental.",
+            "La contratada puede impedir el embarque o excluir del paseo, sin reembolso, a quien incumpla una orientación del guía, ponga en riesgo a sí mismo o a terceros, consuma alcohol o drogas durante la actividad, practique indisciplina, cause daño ambiental o actúe de forma agresiva o incompatible con la actividad.",
+          ],
+        },
+        {
+          heading: "5. Vehículo",
+          paragraphs: [
+            "Con traslado, el auto es del guía. Cada auto lleva hasta 4 clientes y 1 guía, y el guía va en ese auto.",
+            "Sin traslado, el desplazamiento es en el vehículo del grupo. El auto de paseo tiene 5 lugares: uno es del guía y caben como máximo 4 clientes. El contratante garantiza lugar para el guía. Sin esa plaza, la contratada puede cancelar el paseo, en la forma de la Política de cancelación.",
+          ],
+        },
+        {
+          heading: "6. Objetos personales",
+          paragraphs: [
+            "Cada participante es responsable de sus pertenencias. La contratada no responde por pérdida, hurto, robo, rotura, mojadura o daño a celular, cámara, dron, documento, dinero, joya, equipo electrónico o cualquier objeto personal.",
+          ],
+        },
+        {
+          heading: "7. Fauna y flora",
+          paragraphs: [
+            "Está prohibido alimentar, capturar, perseguir, tocar o provocar un animal silvestre, y retirar planta, piedra o cualquier elemento del ambiente natural. El contratante cumple la legislación ambiental y las normas de las unidades de conservación visitadas.",
+          ],
+        },
+        {
+          heading: "8. Emergencias",
+          paragraphs: [
+            "En un accidente o un mal súbito, el guía presta los primeros auxilios compatibles con su entrenamiento y llama al servicio público de emergencia cuando es necesario. El contratante reconoce que el tiempo de respuesta en un área natural puede ser mayor que en la ciudad.",
+          ],
+        },
+        {
+          heading: "9. Decisiones del guía",
+          paragraphs: [
+            "Para preservar la seguridad del grupo, el guía puede alterar el recorrido, los horarios y el orden de visita, cancelar o sustituir un atractivo, reducir el tiempo de permanencia, interrumpir una actividad, volver antes o terminar el paseo. El participante cumple esas decisiones en el momento.",
+            "Esas medidas son preventivas. El efecto sobre el precio y sobre la cancelación está en la Política de cancelación.",
+          ],
+        },
+        {
+          heading: "10. Conocimiento",
+          paragraphs: [
+            "Al contratar, el contratante declara que leyó esta Política, comprende los riesgos del ecoturismo y autoriza al guía a adoptar las medidas necesarias para la seguridad del grupo.",
           ],
         },
       ],
