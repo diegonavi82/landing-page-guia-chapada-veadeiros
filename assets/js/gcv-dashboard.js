@@ -641,16 +641,16 @@
   function loadAdminBookings() {
     var tbody = document.getElementById('admin-bookings-body');
     if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#888;">Carregando…</td></tr>';
-    get('/api/admin/bookings.php', function (err, res) {
+    tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;color:#888;">Carregando…</td></tr>';
+    get('/api/admin/bookings.php?t=' + Date.now(), function (err, res) {
       if (!res || !res.ok) {
         var msg = (res && res.error) ? String(res.error) : 'Erro ao carregar reservas.';
-        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#888;">' + escapeHtml(msg) + '</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;color:#888;">' + escapeHtml(msg) + '</td></tr>';
         return;
       }
       var rows = (res.data && res.data.bookings) || [];
       if (!rows.length) {
-        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#888;">Nenhuma reserva ainda.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;color:#888;">Nenhuma reserva ainda.</td></tr>';
         return;
       }
       tbody.innerHTML = rows.map(function (b) {
@@ -662,13 +662,15 @@
         return '<tr>'
           + '<td data-label="Código">' + escapeHtml(code) + '</td>'
           + '<td data-label="Passeio">' + escapeHtml(b.tour_title || '') + '</td>'
+          + '<td data-label="Tipo">' + escapeHtml(b.tour_type_label || '—') + '</td>'
           + '<td data-label="Cliente">' + escapeHtml(b.client_name || '') + '</td>'
           + '<td data-label="Guia">' + escapeHtml(b.guide_name || '') + '</td>'
           + '<td data-label="Transporte">' + transport + '</td>'
-          + '<td data-label="Vagas">' + b.spots + '</td>'
+          + '<td data-label="Inscrições">' + b.spots + '</td>'
           + '<td data-label="Total">' + fmtMoney(b.total_cents) + '</td>'
           + '<td data-label="Taxa">' + fmtMoney(b.platform_revenue_cents) + '</td>'
           + '<td data-label="Pago ao guia">' + fmtMoney(b.guide_amount_cents) + '</td>'
+          + '<td data-label="Pagamento">' + escapeHtml(b.payment_label || 'PIX') + '</td>'
           + '<td data-label="Status">' + statusBadge(b.status) + '</td>'
           + '<td data-label="Data">' + escapeHtml(when) + '</td>'
           + '</tr>';
@@ -2021,11 +2023,21 @@
   }
 
   function refreshApprovalBadge() {
-    get('/api/admin/excursion-approvals.php', function (err, res) {
+    get('/api/admin/excursion-approvals.php?t=' + Date.now(), function (err, res) {
       var n = (res && res.ok && res.data && res.data.pending) ? res.data.pending.length : 0;
       var link = document.querySelector('#gcv-dash-nav-list [data-section="section-cms-excursions"]');
-      if (!link) return;
-      link.innerHTML = '🚌 Excursões ou Privativos' + (n ? ' <span class="gcv-dash-nav-badge">' + n + '</span>' : '');
+      if (link) {
+        link.innerHTML = '🚌 Excursões ou Privativos' + (n ? ' <span class="gcv-dash-nav-badge">' + n + '</span>' : '');
+      }
+      var prev = window.__gcvApprovalCount;
+      window.__gcvApprovalCount = n;
+      if (typeof prev === 'number' && n !== prev) {
+        var sec = document.getElementById('section-cms-excursions');
+        var dirty = window.GcvAdminCms && typeof window.GcvAdminCms.hasUnsaved === 'function' && window.GcvAdminCms.hasUnsaved();
+        if (sec && sec.classList.contains('active') && !dirty && window.GcvAdminCms) {
+          window.GcvAdminCms.open('excursions');
+        }
+      }
     });
   }
 
@@ -2513,6 +2525,9 @@
       refreshGuideBadge();
       if (!window.__gcvGuideBadgeTimer) {
         window.__gcvGuideBadgeTimer = setInterval(refreshGuideBadge, 30000);
+      }
+      if (!window.__gcvApprovalBadgeTimer) {
+        window.__gcvApprovalBadgeTimer = setInterval(refreshApprovalBadge, 30000);
       }
     }
     if (role === 'guide' && status === 'active' && window.GcvDashRoles && typeof window.GcvDashRoles.syncAgendaAsks === 'function') {

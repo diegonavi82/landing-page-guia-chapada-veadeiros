@@ -21,6 +21,82 @@ try {
 $statusFilter = strtoupper(trim((string)($_GET['status'] ?? '')));
 $limit = min(200, max(1, (int)($_GET['limit'] ?? 100)));
 
+/**
+ * PIX, CARTÃO ou CARTÃO INTERNACIONAL, a partir da reserva gravada no pagamento.
+ *
+ * @param array<string,mixed>|null $res
+ */
+function gcv_admin_pay_label(?array $res): string
+{
+    if (!$res) {
+        return 'PIX';
+    }
+    $option = strtolower(trim((string)($res['payment_option'] ?? $res['method'] ?? $res['payment_method'] ?? '')));
+    $gateway = strtolower(trim((string)($res['gateway'] ?? '')));
+    if ($gateway === '' && is_array($res['card_auth'] ?? null)) {
+        $gateway = strtolower(trim((string)($res['card_auth']['gateway'] ?? '')));
+    }
+    $pixMode = strtolower(trim((string)($res['pix_mode'] ?? '')));
+    if ($option === 'card_intl' || $gateway === 'stripe') {
+        return 'CARTÃO INTERNACIONAL';
+    }
+    if (in_array($option, ['card_br', 'card', 'cartao'], true) || $gateway === 'mercadopago') {
+        return 'CARTÃO';
+    }
+    if ($option === 'pix' || $gateway === 'sicoob' || str_contains($pixMode, 'sicoob') || str_contains($pixMode, 'pix') || $pixMode !== '') {
+        return 'PIX';
+    }
+    if (!empty($res['brcode']) || !empty($res['txid'])) {
+        return 'PIX';
+    }
+    return 'PIX';
+}
+
+/**
+ * @param array<string,mixed> $row
+ * @param array<string,mixed>|null $res
+ */
+function gcv_admin_tipo_label(array $row, ?array $res): string
+{
+    $type = strtolower(trim((string)($row['tour_type'] ?? '')));
+    if ($type === 'privativo' || $type === 'exclusivo') {
+        return 'PRIVATIVA';
+    }
+    if ($type === 'excursao') {
+        return 'EXCURSÃO';
+    }
+    $blobs = [];
+    if (is_array($res)) {
+        foreach (['trips', 'packages'] as $key) {
+            $list = $res[$key] ?? null;
+            if (!is_array($list)) {
+                continue;
+            }
+            foreach ($list as $trip) {
+                if (!is_array($trip)) {
+                    continue;
+                }
+                $mode = strtolower(trim((string)($trip['modalidade'] ?? '')));
+                if ($mode === 'exclusivo' || $mode === 'privativo') {
+                    return 'PRIVATIVA';
+                }
+                if ($mode === 'excursao') {
+                    return 'EXCURSÃO';
+                }
+                $blobs[] = strtolower((string)($trip['cartId'] ?? $trip['id'] ?? ''));
+            }
+        }
+    }
+    $cart = implode(' ', $blobs);
+    if (str_contains($cart, '-exclusivo-') || str_contains($cart, '-privativo-')) {
+        return 'PRIVATIVA';
+    }
+    if (str_contains($cart, '-excursao-')) {
+        return 'EXCURSÃO';
+    }
+    return '—';
+}
+
 /** @param array<string,mixed> $row */
 function gcv_admin_booking_row(array $row): array
 {
@@ -54,6 +130,8 @@ function gcv_admin_booking_row(array $row): array
         'client_email' => $row['client_email'] ?? '',
         'guide_name' => $row['guide_name'] ?? '—',
         'source' => $row['source'] ?? 'sale',
+        'payment_label' => (string)($row['payment_label'] ?? 'PIX'),
+        'tour_type_label' => (string)($row['tour_type_label'] ?? '—'),
     ];
 }
 
@@ -81,8 +159,9 @@ try {
                 s.unit_price_cents, ' . $saleTransportSql . '
                 ' . $excTransportSql . ' ' . $excOfferSql . ' ' . $excPriceSql . '
                 s.sale_status AS status,
+                e.tour_type,
                 COALESCE(s.paid_at, s.sold_at, s.created_at) AS created_at,
-                COALESCE(NULLIF(s.excursion_title, \'\'), a.title_pt, \'Passeio\') AS tour_title,
+                COALESCE(NULLIF(NULLIF(s.excursion_title, \'\'), \'Passeio\'), NULLIF(a.title_pt, \'\'), \'Passeio\') AS tour_title,
                 COALESCE(NULLIF(s.tourist_name, \'\'), s.tourist_email, \'—\') AS client_name,
                 s.tourist_email AS client_email,
                 COALESCE(NULLIF(s.guide_name, \'\'), ug.name, \'—\') AS guide_name
@@ -107,6 +186,9 @@ try {
         }
         $pix = $rid !== '' ? gcv_pix_read_reservation($rid) : null;
         $r['with_transport'] = gcv_sale_row_has_transport($r, $pix);
+        $pixRow = is_array($pix) ? $pix : null;
+        $r['payment_label'] = gcv_admin_pay_label($pixRow);
+        $r['tour_type_label'] = gcv_admin_tipo_label($r, $pixRow);
         $rows[] = gcv_admin_booking_row($r);
     }
 } catch (Throwable $e) {
@@ -175,6 +257,8 @@ try {
             'guide_name' => $guideName !== '' ? $guideName : '—',
             'source' => 'pix',
             'with_transport' => gcv_reservation_has_transport($res),
+            'payment_label' => gcv_admin_pay_label($res),
+            'tour_type_label' => gcv_admin_tipo_label([], $res),
         ]);
     }
 } catch (Throwable $e) {
@@ -183,7 +267,7 @@ try {
 
 try {
     $legacy = db()->query(
-        'SELECT b.id, b.spots, b.total_cents, b.status, b.created_at,
+        'SELECT b.id, b.spots, b.total_cents, b.status, b.payment_method, b.created_at,
                 b.mp_marketplace_fee_cents AS platform_revenue_cents,
                 b.mp_guide_amount_cents AS guide_amount_cents,
                 t.title_pt AS tour_title, c.name AS client_name, c.email AS client_email,
@@ -198,6 +282,8 @@ try {
     if ($legacy) {
         foreach ($legacy->fetchAll(PDO::FETCH_ASSOC) ?: [] as $r) {
             $r['source'] = 'legacy';
+            $r['payment_label'] = gcv_admin_pay_label(['payment_method' => (string)($r['payment_method'] ?? '')]);
+            $r['tour_type_label'] = 'EXCURSÃO';
             $rows[] = gcv_admin_booking_row($r);
         }
     }

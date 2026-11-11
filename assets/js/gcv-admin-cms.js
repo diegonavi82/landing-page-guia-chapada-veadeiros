@@ -2870,7 +2870,7 @@
       if (pending > 0) return;
       if (typeof done === 'function') done();
     }
-    get('/api/admin/excursions.php', function (err, res) {
+    get('/api/admin/excursions.php?t=' + Date.now(), function (err, res) {
       excSheet.loadError = !!(err || !res || !res.ok);
       var rows = (res && res.data && res.data.excursions) || [];
       rows = rows.slice().sort(function (a, b) {

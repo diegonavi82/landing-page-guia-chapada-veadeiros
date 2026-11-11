@@ -16,6 +16,10 @@ require_once __DIR__ . '/../helpers/notify_ops.php';
 require_once __DIR__ . '/../helpers/tarifarios.php';
 
 header('Content-Type: application/json; charset=utf-8');
+header('Cache-Control: private, no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+header('Expires: 0');
+header('X-LiteSpeed-Cache-Control: no-cache');
 $admin = require_admin();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 // A leitura (lista, abrir edição, opções do formulário) não pode migrar o banco.
