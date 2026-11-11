@@ -6992,12 +6992,6 @@
     });
   }
 
-  function shareHomePath(locale) {
-    if (locale === "en") return "/en/";
-    if (locale === "es") return "/es/";
-    return "/";
-  }
-
   function sharePageUrl(locale, cartId) {
     var origin = "https://www.guiachapadaveadeiros.com";
     try {
@@ -7005,7 +6999,8 @@
     } catch (err) {
       /* */
     }
-    return origin + shareHomePath(locale) + "?saida=" + encodeURIComponent(cartId);
+    var prefix = locale === "en" ? "/en" : locale === "es" ? "/es" : "";
+    return origin + prefix + "/s/" + encodeURIComponent(cartId);
   }
 
   function shareMessage(s, destino, dateLabel, url) {

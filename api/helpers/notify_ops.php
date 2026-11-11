@@ -1346,6 +1346,33 @@ function gcv_ops_maybe_notify_confirmed(?array $before, ?array $after): void
     }
 }
 
+function gcv_ops_send_guide_saida_link(int $guideId, int $excursionId, string $guidePhone, string $agency): void
+{
+    if ($guideId <= 0 || $excursionId <= 0) {
+        return;
+    }
+    $shareFile = __DIR__ . '/saida_share.php';
+    if (!is_file($shareFile)) {
+        return;
+    }
+    require_once $shareFile;
+    if (!function_exists('gcv_saida_share_bundle_by_id')) {
+        return;
+    }
+    $share = gcv_saida_share_bundle_by_id($excursionId, 'pt');
+    if (($share['url'] ?? '') === '' || ($share['description'] ?? '') === '') {
+        return;
+    }
+    $text = $share['description'] . "\n" . $share['url'];
+    if ($guidePhone === '' || !gcv_ops_phones_same($guidePhone, $agency)) {
+        gcv_ops_wa_guide($guideId, $text, ['kind' => 'saida_share', 'excursion_id' => $excursionId]);
+        return;
+    }
+    if (function_exists('gcv_inbox_push')) {
+        gcv_inbox_push($guideId, $text, ['kind' => 'saida_share', 'excursion_id' => $excursionId]);
+    }
+}
+
 function gcv_ops_notify_guide_confirmed(int $excursionId): void
 {
     $exc = gcv_ops_load_excursion($excursionId);
@@ -1398,6 +1425,7 @@ function gcv_ops_notify_guide_confirmed(int $excursionId): void
         if ($email !== '' && strtolower($email) !== 'diegonavi82@gmail.com') {
             gcv_ops_mail_plain($email, 'Passeio confirmado — ' . $title, $textGuide);
         }
+        gcv_ops_send_guide_saida_link($guideId, $excursionId, $guidePhone, $agency);
     }
     foreach (gcv_ops_paid_sales_for_excursion($excursionId) as $sale) {
         gcv_ops_notify_client_confirmed($sale, $exc);

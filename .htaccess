@@ -53,6 +53,10 @@ Options -Indexes
   # Bloquear acesso direto a vendor
   RewriteRule ^api/vendor/ - [F,L]
 
+  # Link da saída: prévia própria (arara + foto do guia) e cai no card de reserva
+  RewriteRule ^(en|es)/s/([a-z0-9][a-z0-9-]{0,180})/?$ /api/saida-share.php?lang=$1&id=$2 [L,QSA,NC]
+  RewriteRule ^s/([a-z0-9][a-z0-9-]{0,180})/?$ /api/saida-share.php?lang=pt&id=$1 [L,QSA,NC]
+
   # URLs sem extensão → .html (ex: /login → /login.html)
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
