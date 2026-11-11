@@ -32,7 +32,6 @@
     var all = {
       pt: {
         title: 'Veículo',
-        hint: 'O padrão é não. Se marcar sim, escolha o modelo na lista e o ano.',
         question: 'Você possui veículo?',
         no: 'Não',
         yes: 'Sim',
@@ -50,7 +49,6 @@
       },
       en: {
         title: 'Vehicle',
-        hint: 'The default is no. If you choose yes, pick the model from the list and the year.',
         question: 'Do you have a vehicle?',
         no: 'No',
         yes: 'Yes',
@@ -68,7 +66,6 @@
       },
       es: {
         title: 'Vehículo',
-        hint: 'El valor por defecto es no. Si marca sí, elija el modelo en la lista y el año.',
         question: '¿Tiene vehículo?',
         no: 'No',
         yes: 'Sí',

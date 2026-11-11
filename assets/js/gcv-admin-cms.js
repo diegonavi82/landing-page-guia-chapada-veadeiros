@@ -2538,7 +2538,6 @@
         (window.GcvVehicleCombo
           ? ('<div class="gcv-cms-pix-box">' +
             '<h4>' + esc(window.GcvVehicleCombo.labels().title) + '</h4>' +
-            '<p class="gcv-cms-muted" style="margin:0 0 0.75rem;">' + esc(window.GcvVehicleCombo.labels().hint) + '</p>' +
             window.GcvVehicleCombo.fieldsHtml({ model: g && g.vehicle_model, year: g && g.vehicle_year }) +
             '</div>')
           : '') +

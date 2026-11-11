@@ -1583,7 +1583,6 @@
         (window.GcvVehicleCombo
           ? ('<div class="gcv-dash-card">' +
             '<h3 class="gcv-dash-card__title">' + esc(window.GcvVehicleCombo.labels().title) + '</h3>' +
-            '<p class="gcv-dash-hint" style="margin:0 0 0.75rem;">' + esc(window.GcvVehicleCombo.labels().hint) + '</p>' +
             window.GcvVehicleCombo.fieldsHtml({ model: p.vehicle_model || '', year: p.vehicle_year || '' }) +
             '</div>')
           : '') +
