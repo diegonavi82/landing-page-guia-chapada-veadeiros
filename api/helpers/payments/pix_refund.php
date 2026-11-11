@@ -697,6 +697,9 @@ function gcv_pix_refund_apply_sale(array $sale, array $reservation, array $done,
     $seen = [];
     foreach ($done as $trip) {
         $excId = (int)($trip['excursion_id'] ?? 0);
+        if ($excId <= 0) {
+            $excId = (int)($sale['excursion_id'] ?? 0);
+        }
         if ($excId <= 0 || isset($seen[$excId])) {
             continue;
         }
@@ -705,6 +708,9 @@ function gcv_pix_refund_apply_sale(array $sale, array $reservation, array $done,
             require_once dirname(__DIR__) . '/marketplace/sale_service.php';
             if (function_exists('gcv_sale_refresh_booked_people')) {
                 gcv_sale_refresh_booked_people($excId);
+            }
+            if (function_exists('gcv_excursion_cancel_if_empty')) {
+                gcv_excursion_cancel_if_empty($excId);
             }
         } catch (Throwable $e) {
             error_log('pix refund booked: ' . $e->getMessage());
@@ -764,22 +770,52 @@ function gcv_pix_refund_notify(array $reservation, ?array $sale, array $done, in
     $money = function_exists('gcv_ops_brl') ? gcv_ops_brl($cents) : ('R$ ' . number_format($cents / 100, 2, ',', '.'));
     $code = strtoupper((string)($reservation['reservation_id'] ?? ''));
     $list = $titles ? implode("\n", array_map(static fn ($t) => '• ' . $t, $titles)) : '';
+    $leftSite = false;
+    foreach ($done as $trip) {
+        $excId = (int)($trip['excursion_id'] ?? 0);
+        if ($excId <= 0 && $sale) {
+            $excId = (int)($sale['excursion_id'] ?? 0);
+        }
+        if ($excId <= 0) {
+            continue;
+        }
+        try {
+            $st = db()->prepare('SELECT status FROM gcv_excursions WHERE id = ? LIMIT 1');
+            $st->execute([$excId]);
+            if ((string)$st->fetchColumn() === 'cancelled') {
+                $leftSite = true;
+                break;
+            }
+        } catch (Throwable $e) {
+            error_log('pix refund left site: ' . $e->getMessage());
+        }
+    }
+    $gone = '';
+    if ($leftSite) {
+        if ($loc === 'en') {
+            $gone = "\n\nThis departure left the site: nobody remains signed up.";
+        } elseif ($loc === 'es') {
+            $gone = "\n\nEsta salida salió del sitio: no quedó nadie inscrito.";
+        } else {
+            $gone = "\n\nEssa saída saiu do site: não ficou ninguém inscrito.";
+        }
+    }
     if ($loc === 'en') {
-        $text = $partial
+        $text = ($partial
             ? "Partial Pix refund.\n\nCode: {$code}\nRefunded: {$money}\nCancelled tours:\n{$list}\n\nConfirmed tours on this booking stay active and were not cancelled."
-            : "Pix refunded.\n\nCode: {$code}\nAmount: {$money}\nThe money returns to the account that sent the Pix.";
+            : "Pix refunded.\n\nCode: {$code}\nAmount: {$money}\nThe money returns to the account that sent the Pix.") . $gone;
         $subject = $partial ? 'Partial Pix refund — Guia Chapada Veadeiros' : 'Pix refund — Guia Chapada Veadeiros';
         $guideText = "Client cancelled one tour on booking {$code}. Only that amount was refunded. Confirmed tours stay.";
     } elseif ($loc === 'es') {
-        $text = $partial
+        $text = ($partial
             ? "Reembolso parcial del Pix.\n\nCódigo: {$code}\nDevuelto: {$money}\nPaseos cancelados:\n{$list}\n\nLos paseos ya confirmados de esta reserva siguen valiendo y no se cancelaron."
-            : "Pix devuelto.\n\nCódigo: {$code}\nValor: {$money}\nEl dinero vuelve a la cuenta desde la que salió el Pix.";
+            : "Pix devuelto.\n\nCódigo: {$code}\nValor: {$money}\nEl dinero vuelve a la cuenta desde la que salió el Pix.") . $gone;
         $subject = $partial ? 'Reembolso parcial del Pix — Guia Chapada Veadeiros' : 'Pix devuelto — Guia Chapada Veadeiros';
         $guideText = "El cliente canceló un paseo de la reserva {$code}. Solo se devolvió ese valor. Los paseos confirmados siguen.";
     } else {
-        $text = $partial
+        $text = ($partial
             ? "Estorno parcial do Pix.\n\nCódigo: {$code}\nDevolvido: {$money}\nPasseios cancelados:\n{$list}\n\nOs passeios já confirmados desta reserva continuam valendo e não foram cancelados."
-            : "Pix devolvido.\n\nCódigo: {$code}\nValor: {$money}\nO dinheiro volta para a conta de onde o Pix saiu.";
+            : "Pix devolvido.\n\nCódigo: {$code}\nValor: {$money}\nO dinheiro volta para a conta de onde o Pix saiu.") . $gone;
         $subject = $partial ? 'Estorno parcial do Pix — Guia Chapada Veadeiros' : 'Pix devolvido — Guia Chapada Veadeiros';
         $guideText = "Cliente cancelou um passeio da reserva {$code}. Só esse valor foi estornado. Passeio confirmado continua.";
     }

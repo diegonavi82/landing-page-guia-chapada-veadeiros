@@ -1498,6 +1498,10 @@ function gcv_ops_send_guide_saida_link(int $guideId, int $excursionId, string $g
     if ($guideId <= 0 || $excursionId <= 0) {
         return;
     }
+    $exc = gcv_ops_load_excursion($excursionId);
+    if ($exc && gcv_excursion_is_private($exc)) {
+        return;
+    }
     $shareFile = __DIR__ . '/saida_share.php';
     if (!is_file($shareFile)) {
         return;
@@ -1512,6 +1516,60 @@ function gcv_ops_send_guide_saida_link(int $guideId, int $excursionId, string $g
     }
     $text = $share['description'] . "\n" . $share['url'];
     gcv_ops_wa_guide($guideId, $text, ['kind' => 'saida_share', 'excursion_id' => $excursionId]);
+}
+
+/** Quem reservou recebe o mesmo link de compartilhamento da saída. Privativo não entra no site. */
+function gcv_ops_send_client_saida_link(array $sale, ?array $exc): void
+{
+    if (!$exc) {
+        return;
+    }
+    if (!function_exists('gcv_excursion_is_private')) {
+        require_once __DIR__ . '/excursion_status.php';
+    }
+    if (gcv_excursion_is_private($exc) || gcv_ops_excursion_teste($exc)) {
+        return;
+    }
+    $excursionId = (int)($exc['id'] ?? $sale['excursion_id'] ?? 0);
+    if ($excursionId <= 0) {
+        return;
+    }
+    $shareFile = __DIR__ . '/saida_share.php';
+    if (!is_file($shareFile)) {
+        return;
+    }
+    require_once $shareFile;
+    if (!function_exists('gcv_saida_share_bundle_by_id')) {
+        return;
+    }
+    $loc = gcv_ops_sale_locale($sale);
+    $share = gcv_saida_share_bundle_by_id($excursionId, $loc);
+    $url = trim((string)($share['url'] ?? ''));
+    $description = trim((string)($share['description'] ?? ''));
+    if ($url === '' || $description === '') {
+        return;
+    }
+    gcv_ops_wa_client($sale, $description . "\n" . $url, ['kind' => 'saida_share', 'excursion_id' => $excursionId]);
+}
+
+/** A última inscrição saiu. O cliente já recebeu o estorno. */
+function gcv_ops_notify_excursion_emptied(int $excursionId): void
+{
+    $exc = gcv_ops_load_excursion($excursionId, true);
+    if (!$exc) {
+        return;
+    }
+    $title = gcv_ops_excursion_title($exc);
+    $when = trim(gcv_ops_date_br((string)($exc['date_iso'] ?? '')) . ' às ' . substr((string)($exc['departure_time'] ?? ''), 0, 5));
+    $text = "Excursão cancelada. A última pessoa cancelou e o valor foi estornado.\n\n"
+        . 'Destino: ' . $title . "\n"
+        . ($when !== '' ? 'Data: ' . $when . "\n" : '')
+        . 'Não ficou ninguém inscrito. A saída saiu do site.';
+    $guideId = (int)($exc['guide_user_id'] ?? 0);
+    if ($guideId > 0) {
+        gcv_ops_wa_guide($guideId, $text, ['kind' => 'excursion_empty', 'excursion_id' => $excursionId]);
+    }
+    gcv_ops_wa_agency($text);
 }
 
 function gcv_ops_notify_guide_confirmed(int $excursionId): void
@@ -2024,7 +2082,9 @@ function gcv_ops_notify_client_pix_paid(array $sale, ?array $exc = null): void
             . ($url !== '' ? "\nComprovante: " . $url : '')
             . gcv_ops_client_login_block('pt');
     }
-    if (gcv_ops_wa_client($sale, $text) && $id > 0) {
+    $pixSent = gcv_ops_wa_client($sale, $text);
+    gcv_ops_send_client_saida_link($sale, is_array($exc) ? $exc : null);
+    if ($pixSent && $id > 0) {
         gcv_ops_mark_sale_col($id, 'notify_pix_paid_sent_at');
     }
     if (is_array($exc) && $exc && gcv_ops_cancel_locked($exc)) {

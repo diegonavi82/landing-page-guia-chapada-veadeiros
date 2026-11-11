@@ -401,6 +401,12 @@ function gcv_sale_capture_from_pix_reservation(array $reservation, string $sourc
         if (!$justConfirmedR) {
             gcv_sale_notify_guide_new_booking($sale, $excursion, $spots);
         }
+        try {
+            require_once dirname(__DIR__) . '/notify_ops.php';
+            gcv_ops_send_client_saida_link($sale, is_array($excursion) ? $excursion : null);
+        } catch (Throwable $e) {
+            error_log('client saida link authorized: ' . $e->getMessage());
+        }
     }
 
     $becamePaid = $status === GcvSaleStatus::PAID && $previousStatus !== GcvSaleStatus::PAID;
@@ -544,6 +550,75 @@ function gcv_sale_refresh_booked_people(int $excursionId): bool
         error_log('gcv_sale_refresh_booked_people notify: ' . $e->getMessage());
     }
     return false;
+}
+
+/**
+ * Última pessoa cancelou e não sobrou inscrito: a saída sai do site.
+ * Confirmada não entra aqui.
+ */
+function gcv_excursion_cancel_if_empty(int $excursionId): bool
+{
+    if ($excursionId <= 0) {
+        return false;
+    }
+    try {
+        $st = db()->prepare('SELECT * FROM gcv_excursions WHERE id = ? AND deleted_at IS NULL LIMIT 1');
+        $st->execute([$excursionId]);
+        $row = $st->fetch(PDO::FETCH_ASSOC) ?: null;
+    } catch (Throwable $e) {
+        error_log('cancel if empty load: ' . $e->getMessage());
+        return false;
+    }
+    if (!$row || !in_array((string)($row['status'] ?? ''), ['published', 'soldout'], true)) {
+        return false;
+    }
+    $life = gcv_resolve_excursion_lifecycle($row);
+    if (in_array($life, ['confirmada', 'concluida'], true)) {
+        return false;
+    }
+    $people = max(0, (int)($row['booked_people'] ?? 0))
+        + max(0, (int)($row['booked_people_transport'] ?? 0))
+        + max(0, (int)($row['preconfirmed_people'] ?? 0));
+    if ($people > 0) {
+        return false;
+    }
+    try {
+        $paid = db()->prepare(
+            "SELECT COALESCE(SUM(spots), 0) FROM gcv_sales
+             WHERE excursion_id = ? AND deleted_at IS NULL
+               AND sale_status IN ('PAID','AUTHORIZED')"
+        );
+        $paid->execute([$excursionId]);
+        if ((int)$paid->fetchColumn() > 0) {
+            return false;
+        }
+    } catch (Throwable $e) {
+        error_log('cancel if empty sales: ' . $e->getMessage());
+        return false;
+    }
+    try {
+        $upd = db()->prepare(
+            "UPDATE gcv_excursions
+             SET status = 'cancelled'
+             WHERE id = ? AND deleted_at IS NULL AND status IN ('published','soldout')"
+        );
+        $upd->execute([$excursionId]);
+        if ($upd->rowCount() < 1) {
+            return false;
+        }
+    } catch (Throwable $e) {
+        error_log('cancel if empty: ' . $e->getMessage());
+        return false;
+    }
+    try {
+        require_once dirname(__DIR__) . '/notify_ops.php';
+        if (function_exists('gcv_ops_notify_excursion_emptied')) {
+            gcv_ops_notify_excursion_emptied($excursionId);
+        }
+    } catch (Throwable $e) {
+        error_log('cancel if empty notify: ' . $e->getMessage());
+    }
+    return true;
 }
 
 /**

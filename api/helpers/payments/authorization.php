@@ -662,6 +662,9 @@ function gcv_auth_release(array $rec, string $reason, bool $notifyCustomer = tru
         if ($excId > 0) {
             require_once __DIR__ . '/../marketplace/sale_service.php';
             gcv_sale_refresh_booked_people($excId);
+            if (function_exists('gcv_excursion_cancel_if_empty')) {
+                gcv_excursion_cancel_if_empty($excId);
+            }
         }
     } catch (Throwable $e) {
         error_log('auth release sale: ' . $e->getMessage());
