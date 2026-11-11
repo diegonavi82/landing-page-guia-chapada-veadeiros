@@ -2957,20 +2957,46 @@
     return null;
   }
 
+  function guideHasVehicle(g) {
+    return !!(g && String(g.vehicle_model || "").trim() && parseInt(g.vehicle_year, 10) >= 1960);
+  }
+
+  function excHasCustomers(e) {
+    if (!e) return false;
+    return (parseInt(e.booked_people, 10) || 0) > 0 || (parseInt(e.booked_people_transport, 10) || 0) > 0;
+  }
+
+  function excNeedsVehicleGuide(e) {
+    if (!e) return false;
+    if ((parseInt(e.booked_people_transport, 10) || 0) > 0) return true;
+    return !!(Number(e.include_transport) && !Number(e.offer_transport));
+  }
+
   function excGuideSelectHtml(e) {
     var selected = e.guide_user_id || e.guide_invite_user_id || "";
     var waiting = !e.guide_user_id && e.guide_invite_user_id;
     var exige = excExigeKalunga(e);
+    var sold = excHasCustomers(e);
+    var vehicleOnly = excNeedsVehicleGuide(e);
+    var title = exige ? "Só guia Kalunga neste passeio" : "";
+    if (sold) {
+      title = (title ? title + ". " : "") + "Passeio vendido: o guia escolhido entra na hora.";
+    }
+    if (vehicleOnly) {
+      title = (title ? title + " " : "") + "Com translado, só guia com veículo cadastrado.";
+    }
     var html = '<select class="gcv-exc-sheet__in gcv-exc-sheet__guide" data-field="guide_user_id" data-exc-id="' + e.id + '"' +
-      (exige ? ' title="Só guia Kalunga neste passeio"' : "") +
+      (title ? ' title="' + esc(title) + '"' : "") +
       '><option value="">Sem guia</option>';
     (excSheet.guides || []).forEach(function (g) {
       var id = g.user_id || g.id;
       var kalunga = isKalungaFlag(g.is_kalunga);
       if (exige && !kalunga && String(id) !== String(selected)) return;
       if (!exige && kalunga && String(id) !== String(selected)) return;
+      if (vehicleOnly && !guideHasVehicle(g) && String(id) !== String(selected)) return;
       var label = g.full_name || g.nickname || g.name || ("#" + id);
       if (exige && kalunga) label += " · Kalunga";
+      if (vehicleOnly && guideHasVehicle(g)) label += " · veículo";
       if (waiting && String(id) === String(selected)) label += " (aguardando WhatsApp)";
       html += '<option value="' + id + '"' + (String(selected) === String(id) ? " selected" : "") + ">" + esc(label) + "</option>";
     });
@@ -3949,8 +3975,22 @@
         return;
       }
     }
+    if (field === 'guide_user_id' && !next && e.guide_user_id && excHasCustomers(e)) {
+      var precisa = 'Passeio vendido precisa de um guia. Escolha quem assume a saída.';
+      if (typeof window.gcvAlert === 'function') window.gcvAlert(precisa);
+      else window.alert(precisa);
+      revertInputToCurrent(el, e, field);
+      return;
+    }
     if (field === 'guide_user_id' && next) {
       var guiaEscolhido = guiaDaPlanilha(next);
+      if (excNeedsVehicleGuide(rowWithDraft(e)) && guiaEscolhido && !guideHasVehicle(guiaEscolhido)) {
+        var soVeiculo = 'Este passeio é com translado. Escolha um guia com veículo cadastrado.';
+        if (typeof window.gcvAlert === 'function') window.gcvAlert(soVeiculo);
+        else window.alert(soVeiculo);
+        revertInputToCurrent(el, e, field);
+        return;
+      }
       if (excExigeKalunga(rowWithDraft(e)) && guiaEscolhido && !isKalungaFlag(guiaEscolhido.is_kalunga)) {
         if (typeof window.gcvAlert === 'function') window.gcvAlert(KALUNGA_GUIA_MSG);
         else window.alert(KALUNGA_GUIA_MSG);

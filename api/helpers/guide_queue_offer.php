@@ -313,6 +313,274 @@ function gcv_guiagem_designate(int $excursionId, int $guideId): array
     return ['ok' => true, 'token' => $token];
 }
 
+/** Passeio com cliente pago ou vaga ocupada no site. */
+function gcv_guiagem_tour_has_customers(array $tour): bool
+{
+    if ((int)($tour['booked_people'] ?? 0) > 0 || (int)($tour['booked_people_transport'] ?? 0) > 0) {
+        return true;
+    }
+    $id = (int)($tour['id'] ?? 0);
+    if ($id <= 0) {
+        return false;
+    }
+    try {
+        $st = db()->prepare(
+            "SELECT 1 FROM gcv_sales
+             WHERE excursion_id = ? AND deleted_at IS NULL
+               AND sale_status IN ('PAID','AUTHORIZED','PENDING')
+             LIMIT 1"
+        );
+        $st->execute([$id]);
+        return (bool)$st->fetchColumn();
+    } catch (Throwable $e) {
+        error_log('gcv_guiagem_tour_has_customers: ' . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Admin aloca o guia na hora, num passeio que já tem venda.
+ * Não espera o clique do WhatsApp.
+ *
+ * @return array{ok:bool,error?:string,assigned?:bool}
+ */
+function gcv_guiagem_assign_admin(int $excursionId, int $guideId): array
+{
+    gcv_guiagem_ensure_schema();
+    if ($excursionId <= 0 || $guideId <= 0) {
+        return ['ok' => false, 'error' => 'Guia inválido'];
+    }
+    $tour = gcv_substitution_load_excursion($excursionId);
+    if (!$tour) {
+        return ['ok' => false, 'error' => 'Passeio não encontrado'];
+    }
+    if ((string)($tour['status'] ?? '') === 'cancelled') {
+        return ['ok' => false, 'error' => 'Este passeio está cancelado'];
+    }
+    $kalungaErro = gcv_guia_erro_kalunga_excursao($tour, $guideId);
+    if ($kalungaErro === null) {
+        $kalungaErro = gcv_guia_erro_fila_kalunga($tour, $guideId);
+    }
+    if ($kalungaErro !== null) {
+        return ['ok' => false, 'error' => $kalungaErro];
+    }
+    $guideOk = db()->prepare(
+        "SELECT u.id FROM gcv_users u INNER JOIN gcv_guides g ON g.user_id = u.id
+         WHERE u.id = ? AND u.status = 'active' LIMIT 1"
+    );
+    $guideOk->execute([$guideId]);
+    if (!$guideOk->fetchColumn()) {
+        return ['ok' => false, 'error' => 'Guia inválido'];
+    }
+    if (gcv_guiagem_is_vehicle_broadcast($tour) && !gcv_guide_has_registered_vehicle($guideId)) {
+        return ['ok' => false, 'error' => 'Este passeio é com translado. Escolha um guia com veículo cadastrado.'];
+    }
+    $previous = (int)($tour['guide_user_id'] ?? 0);
+    if ($previous === $guideId) {
+        return ['ok' => true, 'assigned' => true];
+    }
+
+    $pdo = db();
+    $pdo->beginTransaction();
+    $others = [];
+    try {
+        $lock = $pdo->prepare('SELECT guide_user_id FROM gcv_excursions WHERE id = ? FOR UPDATE');
+        $lock->execute([$excursionId]);
+        $previous = (int)($lock->fetchColumn() ?: 0);
+        if ($previous === $guideId) {
+            $pdo->commit();
+            return ['ok' => true, 'assigned' => true];
+        }
+        if ($previous > 0) {
+            $pdo->prepare(
+                'DELETE FROM gcv_excursion_guide_seats WHERE excursion_id = ? AND guide_user_id = ?'
+            )->execute([$excursionId, $previous]);
+        }
+        $hasSeat = $pdo->prepare(
+            'SELECT id FROM gcv_excursion_guide_seats WHERE excursion_id = ? AND guide_user_id = ? LIMIT 1'
+        );
+        $hasSeat->execute([$excursionId, $guideId]);
+        if (!$hasSeat->fetchColumn()) {
+            $pdo->prepare(
+                'INSERT INTO gcv_excursion_guide_seats (excursion_id, guide_user_id) VALUES (?, ?)'
+            )->execute([$excursionId, $guideId]);
+        }
+        $pdo->prepare(
+            "UPDATE gcv_excursions SET guide_user_id = ?
+             WHERE id = ? AND status <> 'cancelled'"
+        )->execute([$guideId, $excursionId]);
+        $pdo->prepare(
+            "UPDATE gcv_booking_trips SET guide_user_id = ?
+             WHERE excursion_id = ? AND decision IN ('UNDECIDED','CONFIRMED','CAPTURED')
+               AND (guide_user_id IS NULL OR guide_user_id = 0 OR guide_user_id = ?)"
+        )->execute([$guideId, $excursionId, $previous > 0 ? $previous : 0]);
+        $tour['guide_user_id'] = $guideId;
+        try {
+            require_once __DIR__ . '/marketplace/sale_service.php';
+            $guide = gcv_sale_resolve_guide($tour);
+            $name = trim((string)($guide['name'] ?? ''));
+            $pdo->prepare(
+                "UPDATE gcv_sales
+                 SET guide_user_id = ?, guide_name = ?, guide_cpf = ?, guide_cnpj = ?, updated_at = NOW()
+                 WHERE excursion_id = ? AND deleted_at IS NULL
+                   AND payout_status <> 'PAYOUT_PAID'
+                   AND sale_status IN ('PENDING','AUTHORIZED','PAID')
+                   AND (guide_user_id IS NULL OR guide_user_id = 0 OR guide_user_id = ?)"
+            )->execute([
+                $guideId,
+                $name !== '' ? $name : null,
+                ($guide['cpf'] ?? '') !== '' ? $guide['cpf'] : null,
+                ($guide['cnpj'] ?? '') !== '' ? $guide['cnpj'] : null,
+                $excursionId,
+                $previous > 0 ? $previous : 0,
+            ]);
+        } catch (Throwable $e) {
+            error_log('gcv_guiagem_assign_admin sales: ' . $e->getMessage());
+        }
+        $pdo->prepare(
+            "UPDATE gcv_guide_queue_offers SET status = 'accepted', decided_at = NOW()
+             WHERE excursion_id = ? AND guide_user_id = ? AND status = 'pending'"
+        )->execute([$excursionId, $guideId]);
+        $othersSt = $pdo->prepare(
+            "SELECT guide_user_id FROM gcv_guide_queue_offers
+             WHERE excursion_id = ? AND status = 'pending' AND guide_user_id <> ?"
+        );
+        $othersSt->execute([$excursionId, $guideId]);
+        $others = array_values(array_filter(array_map('intval', $othersSt->fetchAll(PDO::FETCH_COLUMN) ?: []), static function (int $id) use ($previous): bool {
+            return $id > 0 && $id !== $previous;
+        }));
+        $freshSeats = $pdo->prepare('SELECT guide_user_id FROM gcv_excursion_guide_seats WHERE excursion_id = ?');
+        $freshSeats->execute([$excursionId]);
+        $seated = array_map('intval', $freshSeats->fetchAll(PDO::FETCH_COLUMN) ?: []);
+        $close = count($seated) >= gcv_guiagem_guides_needed($tour);
+        if ($close) {
+            $pdo->prepare(
+                "UPDATE gcv_guide_queue_offers SET status = 'declined', decided_at = NOW()
+                 WHERE excursion_id = ? AND status = 'pending'"
+            )->execute([$excursionId]);
+        } else {
+            $others = [];
+            if ($previous > 0) {
+                $pdo->prepare(
+                    "UPDATE gcv_guide_queue_offers SET status = 'declined', decided_at = NOW()
+                     WHERE excursion_id = ? AND guide_user_id = ? AND status = 'pending'"
+                )->execute([$excursionId, $previous]);
+            }
+        }
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log('gcv_guiagem_assign_admin: ' . $e->getMessage());
+        return ['ok' => false, 'error' => 'Não foi possível alocar o guia'];
+    }
+
+    $fresh = gcv_substitution_load_excursion($excursionId) ?: $tour;
+    $still = max(0, gcv_guiagem_guides_needed($fresh) - count(gcv_guiagem_filled_ids($fresh)));
+    gcv_guiagem_notify_admin_assigned($guideId, $fresh, $still);
+    if ($others) {
+        gcv_guiagem_notify_taken($excursionId, $others);
+    }
+    if ($previous > 0) {
+        gcv_guiagem_notify_clients_swapped($excursionId, $previous);
+    } else {
+        gcv_guiagem_notify_clients_assigned($excursionId);
+    }
+    if ($still < 1) {
+        try {
+            require_once __DIR__ . '/payments/authorization.php';
+            $trips = db()->prepare(
+                "SELECT id FROM gcv_booking_trips WHERE excursion_id = ? AND decision IN ('UNDECIDED','CONFIRMED')"
+            );
+            $trips->execute([$excursionId]);
+            $actor = ['id' => $guideId, 'role' => 'guide'];
+            foreach ($trips->fetchAll(PDO::FETCH_COLUMN) ?: [] as $tripId) {
+                gcv_auth_guide_confirm((int)$tripId, $actor, true);
+            }
+        } catch (Throwable $e) {
+            error_log('gcv_guiagem_assign_admin confirm: ' . $e->getMessage());
+        }
+    }
+    return ['ok' => true, 'assigned' => true];
+}
+
+function gcv_guiagem_notify_admin_assigned(int $guideId, array $tour, int $stillNeed): void
+{
+    if ($guideId <= 0) {
+        return;
+    }
+    try {
+        require_once __DIR__ . '/notify_ops.php';
+        $title = trim((string)($tour['attraction_title'] ?? ''));
+        if ($title === '') {
+            $title = 'o passeio';
+        }
+        $when = trim(
+            (function_exists('gcv_ops_date_br') ? gcv_ops_date_br((string)($tour['date_iso'] ?? '')) : (string)($tour['date_iso'] ?? ''))
+            . ' às ' . substr((string)($tour['departure_time'] ?? ''), 0, 5)
+        );
+        $note = "A administração alocou você neste passeio. A vaga já é sua.";
+        if ($stillNeed > 0) {
+            $note .= ' Ainda falta ' . $stillNeed . ' guia(s) com veículo.';
+        }
+        $excursionId = (int)($tour['id'] ?? 0);
+        $st = db()->prepare(
+            "SELECT * FROM gcv_sales
+             WHERE excursion_id = ? AND deleted_at IS NULL
+               AND sale_status IN ('PAID','AUTHORIZED','PENDING')
+             ORDER BY id ASC"
+        );
+        $st->execute([$excursionId]);
+        $sales = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        if (!$sales) {
+            $text = $note . "\n\nPasseio: " . $title . "\n" . ($when !== '' ? 'Quando: ' . $when . "\n" : '');
+            gcv_ops_wa_guide($guideId, $text, ['kind' => 'guide_assigned', 'excursion_id' => $excursionId]);
+            return;
+        }
+        $first = true;
+        $excCopy = $tour;
+        $excCopy['guide_user_id'] = $guideId;
+        foreach ($sales as $sale) {
+            $copy = $sale;
+            $copy['guide_user_id'] = $guideId;
+            gcv_ops_notify_guide_new_booking(
+                $copy,
+                $excCopy,
+                max(1, (int)($copy['spots'] ?? 1)),
+                false,
+                $first ? $note : ''
+            );
+            $first = false;
+        }
+    } catch (Throwable $e) {
+        error_log('gcv_guiagem_notify_admin_assigned: ' . $e->getMessage());
+    }
+}
+
+function gcv_guiagem_notify_clients_assigned(int $excursionId): void
+{
+    try {
+        require_once __DIR__ . '/notify_ops.php';
+        $exc = gcv_ops_load_excursion($excursionId);
+        if (!$exc || (int)($exc['guide_user_id'] ?? 0) <= 0) {
+            return;
+        }
+        $st = db()->prepare(
+            "SELECT * FROM gcv_sales
+             WHERE excursion_id = ? AND deleted_at IS NULL
+               AND sale_status IN ('PAID','AUTHORIZED')"
+        );
+        $st->execute([$excursionId]);
+        foreach ($st->fetchAll(PDO::FETCH_ASSOC) ?: [] as $sale) {
+            $sale['guide_user_id'] = (int)$exc['guide_user_id'];
+            gcv_ops_notify_client_guide_intro($sale, $exc);
+        }
+    } catch (Throwable $e) {
+        error_log('gcv_guiagem_notify_clients_assigned: ' . $e->getMessage());
+    }
+}
+
 function gcv_guiagem_notify_seat_accepted(int $guideId, array $tour, int $stillNeed): void
 {
     try {

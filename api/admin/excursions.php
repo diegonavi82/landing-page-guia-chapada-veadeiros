@@ -225,6 +225,34 @@ function gcv_admin_apply_forming(array $body, int $quorum, int $maxPeople): int
     return $quorum;
 }
 
+/**
+ * Passeio com venda: o guia entra na hora. Sem venda, segue o convite do WhatsApp.
+ */
+function gcv_admin_commit_guide(int $excursionId, int $guideId): string
+{
+    require_once __DIR__ . '/../helpers/guide_queue_offer.php';
+    $tour = gcv_substitution_load_excursion($excursionId);
+    if (!$tour) {
+        throw new InvalidArgumentException('Passeio não encontrado');
+    }
+    $conflict = gcv_admin_guide_date_conflict($guideId, (string)($tour['date_iso'] ?? ''), $excursionId);
+    if ($conflict) {
+        throw new InvalidArgumentException($conflict);
+    }
+    if (gcv_guiagem_tour_has_customers($tour)) {
+        $result = gcv_guiagem_assign_admin($excursionId, $guideId);
+        if (empty($result['ok'])) {
+            throw new InvalidArgumentException((string)($result['error'] ?? 'Não foi possível alocar o guia'));
+        }
+        return 'Guia alocado neste passeio.';
+    }
+    $invited = gcv_guiagem_designate($excursionId, $guideId);
+    if (empty($invited['ok'])) {
+        throw new InvalidArgumentException((string)($invited['error'] ?? 'Não foi possível chamar o guia'));
+    }
+    return 'Convite enviado. O guia confirma pelo link do WhatsApp.';
+}
+
 function gcv_excursion_enrich(array $row, ?array $attrs = null, ?int $inviteId = null): array
 {
     $id = (int)$row['id'];
@@ -361,6 +389,12 @@ function gcv_admin_apply_sheet_patch(array $body, array $ex, int $adminId): arra
         $newGuide = !empty($body['guide_user_id']) ? (int)$body['guide_user_id'] : 0;
         $current = (int)($ex['guide_user_id'] ?? 0);
         if ($newGuide <= 0) {
+            if ($current > 0) {
+                require_once __DIR__ . '/../helpers/guide_queue_offer.php';
+                if (gcv_guiagem_tour_has_customers($ex)) {
+                    throw new InvalidArgumentException('Passeio vendido precisa de um guia. Escolha quem assume a saída.');
+                }
+            }
             $sets[] = 'guide_user_id = ?';
             $params[] = null;
         } elseif ($newGuide !== $current) {
@@ -567,10 +601,11 @@ function gcv_admin_apply_sheet_patch(array $body, array $ex, int $adminId): arra
     }
     gcv_audit_diff('excursion', $id, $ex, $after, $adminId, GcvCreatedBy::ADMIN);
     if ($inviteGuide > 0) {
-        require_once __DIR__ . '/../helpers/guide_queue_offer.php';
-        $invited = gcv_guiagem_designate($id, $inviteGuide);
-        if (empty($invited['ok'])) {
-            throw new InvalidArgumentException((string)($invited['error'] ?? 'Não foi possível chamar o guia'));
+        gcv_admin_commit_guide($id, $inviteGuide);
+        $stmt->execute([$id]);
+        $reloaded = $stmt->fetch();
+        if ($reloaded) {
+            $after = $reloaded;
         }
     }
     try {
@@ -649,7 +684,7 @@ if ($method === 'GET' && !empty($_GET['publish_options'])) {
         $guides = db()->query(
             "SELECT u.id AS user_id,
                     COALESCE(NULLIF(g.full_name,''), NULLIF(g.nickname,''), u.name) AS full_name,
-                    g.nickname, g.is_kalunga, u.status
+                    g.nickname, g.is_kalunga, g.vehicle_model, g.vehicle_year, u.status
              FROM gcv_users u
              LEFT JOIN gcv_guides g ON g.user_id = u.id
              WHERE u.status = 'active'
@@ -982,19 +1017,20 @@ if ($method === 'PUT' || $method === 'PATCH') {
         try {
             $row = gcv_guide_update_excursion($ex, $body, (int)$admin['id'], true);
             $newGuide = (int)($body['guide_user_id'] ?? 0);
+            $guideMsg = 'Passeio atualizado.';
             if ($newGuide > 0 && $newGuide !== (int)($ex['guide_user_id'] ?? 0)) {
-                require_once __DIR__ . '/../helpers/guide_queue_offer.php';
-                $invited = gcv_guiagem_designate($id, $newGuide);
-                if (empty($invited['ok'])) {
-                    throw new InvalidArgumentException((string)($invited['error'] ?? 'Não foi possível chamar o guia'));
+                $guideMsg = gcv_admin_commit_guide($id, $newGuide);
+                $fresh = db()->prepare('SELECT * FROM gcv_excursions WHERE id = ?');
+                $fresh->execute([$id]);
+                $reloaded = $fresh->fetch(PDO::FETCH_ASSOC);
+                if ($reloaded) {
+                    $row = $reloaded;
                 }
             }
             echo json_encode([
                 'ok' => true,
                 'data' => [
-                    'message' => $newGuide > 0 && $newGuide !== (int)($ex['guide_user_id'] ?? 0)
-                        ? 'Convite enviado. O guia confirma pelo link do WhatsApp.'
-                        : 'Passeio atualizado.',
+                    'message' => $guideMsg,
                     'excursion' => gcv_excursion_enrich($row),
                 ],
             ]);
@@ -1081,6 +1117,17 @@ if ($method === 'PUT' || $method === 'PATCH') {
     if ($status === 'rejected' && (string)($ex['status'] ?? '') !== 'rejected') {
         $justRejected = true;
     }
+    if (array_key_exists('guide_user_id', $body)) {
+        $clearing = (int)($body['guide_user_id'] ?? 0) <= 0 && (int)($ex['guide_user_id'] ?? 0) > 0;
+        if ($clearing) {
+            require_once __DIR__ . '/../helpers/guide_queue_offer.php';
+            if (gcv_guiagem_tour_has_customers($ex)) {
+                http_response_code(400);
+                echo json_encode(['ok' => false, 'error' => 'Passeio vendido precisa de um guia. Escolha quem assume a saída.']);
+                exit;
+            }
+        }
+    }
     $stmt = db()->prepare(
         'UPDATE gcv_excursions SET
           status=?, date_iso=?, departure_time=?, departure_city_id=?, attraction_id=?, guide_user_id=?,
@@ -1133,11 +1180,11 @@ if ($method === 'PUT' || $method === 'PATCH') {
     if (array_key_exists('guide_user_id', $body)) {
         $postedGuide = !empty($body['guide_user_id']) ? (int)$body['guide_user_id'] : 0;
         if ($postedGuide > 0 && $postedGuide !== (int)($ex['guide_user_id'] ?? 0)) {
-            require_once __DIR__ . '/../helpers/guide_queue_offer.php';
-            $invited = gcv_guiagem_designate($id, $postedGuide);
-            if (empty($invited['ok'])) {
+            try {
+                gcv_admin_commit_guide($id, $postedGuide);
+            } catch (InvalidArgumentException $e) {
                 http_response_code(400);
-                echo json_encode(['ok' => false, 'error' => (string)($invited['error'] ?? 'Não foi possível chamar o guia')]);
+                echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
                 exit;
             }
         }
