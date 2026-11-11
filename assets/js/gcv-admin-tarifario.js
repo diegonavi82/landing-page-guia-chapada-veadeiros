@@ -1321,11 +1321,11 @@
       return '<div class="tf-nova">' +
         '<div class="tf-nova__head">' +
           '<div><p class="tf-nova__kicker">Campanha de indicação</p><h3>Cashback</h3></div>' +
-          '<p class="tf-nova__lead">Valor fixo por cliente indicado, creditado uma vez quando o primeiro passeio pago é concluído. R$ 0 não gera saldo.</p>' +
+          '<p class="tf-nova__lead">Valor por pessoa da compra. O total é esse valor × a quantidade de pessoas do primeiro passeio pago. R$ 0 não gera saldo.</p>' +
         '</div>' +
         '<form class="tf-oficial__new tf-line tf-line--4btn" id="tf-cashback-form">' +
-          '<label class="tf-field"><span>CASHBACK Cliente</span><span class="tf-money"><em>R$</em><input inputmode="numeric" id="tf-cashback-cliente" value="' + esc(cashbackReais('cashback_cliente_reais')) + '" aria-label="Cashback do cliente" /></span></label>' +
-          '<label class="tf-field"><span>CASHBACK Guia</span><span class="tf-money"><em>R$</em><input inputmode="numeric" id="tf-cashback-guia" value="' + esc(cashbackReais('cashback_guia_reais')) + '" aria-label="Cashback do guia" /></span></label>' +
+          '<label class="tf-field"><span>Cliente · por pessoa</span><span class="tf-money"><em>R$</em><input inputmode="numeric" id="tf-cashback-cliente" value="' + esc(cashbackReais('cashback_cliente_reais')) + '" aria-label="Valor por pessoa do cliente" /></span></label>' +
+          '<label class="tf-field"><span>Guia · por pessoa</span><span class="tf-money"><em>R$</em><input inputmode="numeric" id="tf-cashback-guia" value="' + esc(cashbackReais('cashback_guia_reais')) + '" aria-label="Valor por pessoa do guia" /></span></label>' +
           '<button type="submit" class="gcv-dash-btn tf-nova__btn">Salvar cashback</button>' +
         '</form></div>';
     }

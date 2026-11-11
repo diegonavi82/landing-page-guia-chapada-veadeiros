@@ -15,6 +15,11 @@ if ($method === 'GET') {
         json_response(false, null, 'Entre como cliente ou guia.', 403);
     }
     $panel = gcv_referral_panel((int)$user['id']);
+    $panel['role'] = $role;
+    if ($role !== 'guide') {
+        $panel['ranking'] = [];
+        $panel['position'] = null;
+    }
     $panel['lang'] = in_array((string)($user['lang'] ?? 'pt'), ['pt', 'en', 'es'], true)
         ? (string)$user['lang']
         : 'pt';

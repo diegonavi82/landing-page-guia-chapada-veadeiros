@@ -4,7 +4,7 @@ declare(strict_types=1);
 /**
  * Campanha de indicação.
  * O convite vai por telefone (DDI + número, como no perfil) ou por e-mail.
- * Os dois recebem a mesma URL. 1 ponto e o cashback saem no primeiro passeio pago.
+ * Os dois recebem a mesma URL. 1 ponto e o valor por pessoa saem no primeiro passeio pago.
  */
 
 require_once __DIR__ . '/db.php';
@@ -67,6 +67,12 @@ function gcv_referral_ensure_columns(): void
         }
         if (!$phoneNull) {
             db()->exec('ALTER TABLE gcv_referrals MODIFY phone VARCHAR(20) NULL');
+        }
+        if (empty($have['earned_cents'])) {
+            db()->exec('ALTER TABLE gcv_referrals ADD COLUMN earned_cents INT UNSIGNED NULL AFTER cashback_cents');
+        }
+        if (empty($have['people'])) {
+            db()->exec('ALTER TABLE gcv_referrals ADD COLUMN people SMALLINT UNSIGNED NULL AFTER earned_cents');
         }
     } catch (Throwable $e) {
         error_log('referral columns: ' . $e->getMessage());
@@ -795,7 +801,7 @@ function gcv_referral_ranking(int $limit = 20): array
                     COUNT(*) AS points, MIN(r.rewarded_at) AS first_at
              FROM gcv_referrals r
              INNER JOIN gcv_users u ON u.id = r.referrer_user_id
-             WHERE r.status = 'rewarded'
+             WHERE r.status = 'rewarded' AND r.referrer_role = 'guide'
              GROUP BY r.referrer_user_id, u.name
              ORDER BY points DESC, first_at ASC, user_id ASC"
         )->fetchAll(PDO::FETCH_ASSOC) ?: [];
@@ -817,26 +823,141 @@ function gcv_referral_ranking(int $limit = 20): array
     return ['rows' => array_slice($out, 0, max(1, $limit)), 'all' => $out];
 }
 
+function gcv_referral_tail(string $raw): string
+{
+    $digits = preg_replace('/\D+/', '', $raw) ?? '';
+    if (strlen($digits) < 8) {
+        return '';
+    }
+    return substr($digits, -8);
+}
+
+/**
+ * Primeira compra paga de cada convite, para mostrar o check e as pessoas.
+ *
+ * @param list<array<string,mixed>> $items
+ * @return array<int,array{people:int}>
+ */
+function gcv_referral_purchase_index(array $items): array
+{
+    $ids = [];
+    $emails = [];
+    $tails = [];
+    foreach ($items as $item) {
+        $uid = (int)($item['referred_user_id'] ?? 0);
+        if ($uid > 0) {
+            $ids[$uid] = true;
+        }
+        $email = strtolower(trim((string)($item['email'] ?? '')));
+        if ($email !== '') {
+            $emails[$email] = true;
+        }
+        $tail = gcv_referral_tail((string)($item['phone'] ?? ''));
+        if ($tail !== '') {
+            $tails[$tail] = true;
+        }
+    }
+    if (!$ids && !$emails && !$tails) {
+        return [];
+    }
+    $where = [];
+    $params = [];
+    if ($ids) {
+        $where[] = 's.tourist_user_id IN (' . implode(',', array_fill(0, count($ids), '?')) . ')';
+        foreach (array_keys($ids) as $id) {
+            $params[] = $id;
+        }
+    }
+    if ($emails) {
+        $where[] = 'LOWER(s.tourist_email) IN (' . implode(',', array_fill(0, count($emails), '?')) . ')';
+        foreach (array_keys($emails) as $email) {
+            $params[] = $email;
+        }
+    }
+    if ($tails) {
+        $expr = "RIGHT(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(IFNULL(s.tourist_phone,''),'+',''),' ',''),'-',''),'(',''),')',''), 8)";
+        $where[] = $expr . ' IN (' . implode(',', array_fill(0, count($tails), '?')) . ')';
+        foreach (array_keys($tails) as $tail) {
+            $params[] = $tail;
+        }
+    }
+    try {
+        $st = db()->prepare(
+            'SELECT s.tourist_user_id, s.tourist_email, s.tourist_phone, s.spots, e.date_iso
+             FROM gcv_sales s
+             LEFT JOIN gcv_excursions e ON e.id = s.excursion_id
+             WHERE s.deleted_at IS NULL AND s.sale_status = \'PAID\'
+               AND (' . implode(' OR ', $where) . ')
+             ORDER BY e.date_iso ASC, s.id ASC
+             LIMIT 400'
+        );
+        $st->execute($params);
+        $sales = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) {
+        error_log('referral purchases: ' . $e->getMessage());
+        return [];
+    }
+    $out = [];
+    foreach ($items as $item) {
+        $rid = (int)$item['id'];
+        $uid = (int)($item['referred_user_id'] ?? 0);
+        $email = strtolower(trim((string)($item['email'] ?? '')));
+        $tail = gcv_referral_tail((string)($item['phone'] ?? ''));
+        foreach ($sales as $sale) {
+            $match = $uid > 0 && (int)$sale['tourist_user_id'] === $uid;
+            $saleEmail = strtolower(trim((string)($sale['tourist_email'] ?? '')));
+            if ($email !== '' && $saleEmail === $email) {
+                $match = true;
+            }
+            $saleTail = gcv_referral_tail((string)($sale['tourist_phone'] ?? ''));
+            if ($tail !== '' && $saleTail !== '' && $saleTail === $tail) {
+                $match = true;
+            }
+            if (!$match) {
+                continue;
+            }
+            $out[$rid] = ['people' => max(1, (int)($sale['spots'] ?? 1))];
+            break;
+        }
+    }
+    return $out;
+}
+
 /** @return array<string,mixed> */
 function gcv_referral_panel(int $userId): array
 {
     gcv_referral_ensure_schema();
     $st = db()->prepare(
-        'SELECT id, code, phone, email, date_from, date_to, cashback_cents, status, rewarded_at, created_at
+        'SELECT id, code, phone, email, referred_user_id, date_from, date_to, cashback_cents, earned_cents, people, status, rewarded_at, created_at
          FROM gcv_referrals WHERE referrer_user_id = ? ORDER BY id DESC LIMIT 50'
     );
     $st->execute([$userId]);
+    $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    $purchases = gcv_referral_purchase_index($rows);
     $items = [];
-    foreach ($st->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+    foreach ($rows as $row) {
+        $id = (int)$row['id'];
+        $status = (string)$row['status'];
+        $purchase = $purchases[$id] ?? null;
+        $earned = $row['earned_cents'];
+        $people = null;
+        if ($row['people'] !== null && $row['people'] !== '') {
+            $people = (int)$row['people'];
+        } elseif ($purchase && $status !== 'rewarded') {
+            $people = (int)$purchase['people'];
+        }
         $items[] = [
-            'id' => (int)$row['id'],
+            'id' => $id,
             'code' => (string)$row['code'],
             'phone' => (string)($row['phone'] ?? ''),
             'email' => (string)($row['email'] ?? ''),
             'date_from' => $row['date_from'] ? (string)$row['date_from'] : null,
             'date_to' => $row['date_to'] ? (string)$row['date_to'] : null,
-            'cashback_cents' => (int)$row['cashback_cents'],
-            'status' => (string)$row['status'],
+            'unit_cents' => (int)$row['cashback_cents'],
+            'earned_cents' => $earned === null || $earned === '' ? null : (int)$earned,
+            'people' => $people,
+            'purchased' => $status === 'rewarded' || ($purchase && $status !== 'nao_conta'),
+            'status' => $status,
             'rewarded_at' => $row['rewarded_at'] ? (string)$row['rewarded_at'] : null,
             'created_at' => (string)$row['created_at'],
         ];
@@ -886,17 +1007,19 @@ function gcv_referral_reward_row(array $ref, int $excursionId): void
             $pdo->rollBack();
             return;
         }
-        $cents = max(0, (int)$row['cashback_cents']);
+        $people = max(1, (int)($ref['spots'] ?? 1));
+        $unit = max(0, (int)$row['cashback_cents']);
+        $total = $unit * $people;
         $pdo->prepare(
             "UPDATE gcv_referrals
-             SET status = 'rewarded', excursion_id = ?, rewarded_at = NOW()
+             SET status = 'rewarded', excursion_id = ?, rewarded_at = NOW(), earned_cents = ?, people = ?
              WHERE id = ? AND status = 'linked'"
-        )->execute([$excursionId, (int)$ref['id']]);
-        if ($cents > 0) {
+        )->execute([$excursionId, $total, $people, (int)$ref['id']]);
+        if ($total > 0) {
             gcv_wallet_insert(
                 $pdo,
                 (int)$row['referrer_user_id'],
-                $cents,
+                $total,
                 'referral_credit',
                 (int)$ref['id'],
                 null,
@@ -937,7 +1060,7 @@ function gcv_referral_settle_due(int $limit = 30): int
         return 0;
     }
     $saleSt = db()->prepare(
-        "SELECT s.excursion_id, e.date_iso, e.departure_time
+        "SELECT s.excursion_id, s.spots, e.date_iso, e.departure_time
          FROM gcv_sales s
          INNER JOIN gcv_excursions e ON e.id = s.excursion_id
          WHERE s.deleted_at IS NULL AND s.sale_status = 'PAID'
@@ -982,6 +1105,7 @@ function gcv_referral_settle_due(int $limit = 30): int
             if (!gcv_ranking_ja_fechou($data)) {
                 break;
             }
+            $ref['spots'] = max(1, (int)($sale['spots'] ?? 1));
             gcv_referral_reward_row($ref, $excId);
             $done++;
             break;

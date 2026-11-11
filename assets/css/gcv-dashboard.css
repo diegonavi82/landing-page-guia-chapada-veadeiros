@@ -5816,13 +5816,30 @@ body.gcv-spot-open { overflow: hidden; }
 .gcv-ind__list { display: grid; gap: 8px; margin-bottom: 1rem; }
 .gcv-ind__row {
   display: grid;
-  gap: 2px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
   background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 10px;
   padding: 10px 12px;
 }
-.gcv-ind__row span { color: #64748b; font-size: 0.85rem; }
+.gcv-ind__vias { display: flex; gap: 6px; color: #0f3d2e; }
+.gcv-ind__via { display: flex; }
+.gcv-ind__vias svg { width: 18px; height: 18px; display: block; }
+.gcv-ind__who { display: grid; gap: 2px; min-width: 0; }
+.gcv-ind__who strong { overflow: hidden; text-overflow: ellipsis; }
+.gcv-ind__who span { color: #64748b; font-size: 0.85rem; }
+.gcv-ind__earn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #0f3d2e;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.gcv-ind__earn svg { width: 16px; height: 16px; display: block; }
+.gcv-ind__earn strong { font-size: 0.95rem; }
 .gcv-ind__rank { margin: 0 0 1rem; padding-left: 1.2rem; }
 .gcv-ind__rank .is-mine { font-weight: 700; color: #0f3d2e; }
 .gcv-ind__wa { font-weight: 700; }

@@ -2659,8 +2659,8 @@ function gcv_tarifario_regras_ensure(PDO $pdo): void
         ['passeio_quorum', '4', 'Quórum do passeio (pessoas no pacote mínimo do privativo sem translado)', 'integer'],
         ['diaria_minima_reais', '320', 'Diária mínima de guiagem (R$)', 'integer'],
         ['pg_minimo_guia_reais', '280', 'Pagamento mínimo de guiagem (R$). Tem que ser menor que a diária mínima.', 'integer'],
-        ['cashback_cliente_reais', '0', 'Cashback do cliente por indicação concluída (R$)', 'integer'],
-        ['cashback_guia_reais', '0', 'Cashback do guia por indicação concluída (R$)', 'integer'],
+        ['cashback_cliente_reais', '0', 'Cashback do cliente por pessoa indicada (R$)', 'integer'],
+        ['cashback_guia_reais', '0', 'Cashback do guia por pessoa indicada (R$)', 'integer'],
     ];
     try {
         $check = $pdo->prepare('SELECT id FROM gcv_settings WHERE key_name = ? LIMIT 1');

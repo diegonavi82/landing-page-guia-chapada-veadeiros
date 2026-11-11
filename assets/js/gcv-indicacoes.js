@@ -6,7 +6,10 @@
       title: "Indicações",
       loading: "Carregando…",
       fail: "Não foi possível carregar agora.",
-      lead: "Indique um telefone com DDI ou um e-mail. Quando o primeiro passeio pago for concluído, você ganha 1 ponto e o cashback do tarifário.",
+      lead: "Indique um telefone com DDI ou um e-mail. No primeiro passeio pago, você ganha 1 ponto e o valor por pessoa do tarifário.",
+      viaWa: "Enviado no WhatsApp",
+      viaMail: "Enviado por e-mail",
+      bought: "Compra fechada",
       phone: "Telefone",
       email: "E-mail",
       either: "Informe o telefone ou o e-mail.",
@@ -59,7 +62,10 @@
       title: "Referrals",
       loading: "Loading…",
       fail: "Could not load this right now.",
-      lead: "Refer a phone number with country code, or an email. When their first paid tour is completed, you earn 1 point and the cashback set in the price list.",
+      lead: "Refer a phone number with country code, or an email. On their first paid tour, you earn 1 point and the per-person amount from the price list.",
+      viaWa: "Sent on WhatsApp",
+      viaMail: "Sent by email",
+      bought: "Purchase closed",
       phone: "Phone",
       email: "Email",
       either: "Enter a phone number or an email.",
@@ -112,7 +118,10 @@
       title: "Indicaciones",
       loading: "Cargando…",
       fail: "No se pudo cargar ahora.",
-      lead: "Indica un teléfono con código de país, o un correo. Cuando se concluya su primer paseo pago, ganas 1 punto y el cashback del tarifario.",
+      lead: "Indica un teléfono con código de país, o un correo. En su primer paseo pago, ganas 1 punto y el valor por persona del tarifario.",
+      viaWa: "Enviado por WhatsApp",
+      viaMail: "Enviado por correo",
+      bought: "Compra cerrada",
       phone: "Teléfono",
       email: "Correo",
       either: "Indica el teléfono o el correo.",
@@ -212,6 +221,35 @@
     return map[status] || status;
   }
 
+  var ICO_WA = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12.04 2C6.58 2 2.15 6.4 2.15 11.83c0 1.74.46 3.38 1.26 4.81L2 22l5.5-1.44a10 10 0 0 0 4.54 1.09h.01c5.46 0 9.89-4.4 9.89-9.82C21.94 6.4 17.5 2 12.04 2zm5.76 13.9c-.24.68-1.4 1.3-1.94 1.38-.5.08-1.12.11-1.81-.11-.42-.14-.95-.3-1.64-.59-2.88-1.25-4.76-4.16-4.9-4.35-.14-.2-1.16-1.54-1.16-2.94s.73-2.08 1-2.37c.24-.28.64-.41 1.02-.41.12 0 .23 0 .33.01.3.01.44-.1.69.53.24.64.84 2.2.91 2.36.08.16.12.36.02.56-.1.2-.14.36-.28.56-.14.18-.3.4-.42.54-.14.16-.28.32-.12.6.16.28.72 1.18 1.54 1.91 1.06.94 1.94 1.24 2.24 1.38.3.14.48.12.66-.08.18-.2.76-.88.96-1.18.2-.3.4-.24.68-.14.28.1 1.76.83 2.06.98.3.16.5.22.58.34.08.14.08.78-.16 1.46z"/></svg>';
+  var ICO_MAIL = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 6.5A1.5 1.5 0 0 1 5.5 5h13A1.5 1.5 0 0 1 20 6.5v11a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5v-11zm1.2.7 6.3 4.2a.8.8 0 0 0 .9 0l6.4-4.2H5.2zM18.5 9.2l-5.7 3.8a2 2 0 0 1-2.2 0L5.2 9.2V17h13.3V9.2z"/></svg>';
+  var ICO_CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="M5 12.5 9.2 17 19 7"/></svg>';
+
+  function earnedCents(item) {
+    if (!item || !item.purchased || item.status === "nao_conta") return null;
+    if (item.earned_cents != null && item.earned_cents !== "") return Number(item.earned_cents) || 0;
+    var unit = Number(item.unit_cents) || 0;
+    if (item.people == null) return unit;
+    return unit * (Number(item.people) || 1);
+  }
+
+  function inviteRow(item) {
+    var when = item.date_from ? (item.date_from + (item.date_to && item.date_to !== item.date_from ? " → " + item.date_to : "")) : "";
+    var cents = earnedCents(item);
+    var vias = "";
+    if (item.phone) vias += '<span class="gcv-ind__via" title="' + esc(t("viaWa")) + '">' + ICO_WA + "</span>";
+    if (item.email) vias += '<span class="gcv-ind__via" title="' + esc(t("viaMail")) + '">' + ICO_MAIL + "</span>";
+    var meta = [];
+    if (when) meta.push(when);
+    if (cents == null && item.status && item.status !== "sent") meta.push(statusLabel(item.status));
+    var earn = cents == null
+      ? ""
+      : '<span class="gcv-ind__earn" title="' + esc(t("bought")) + '">' + ICO_CHECK + "<strong>" + esc(money(cents, uiLang)) + "</strong></span>";
+    return '<article class="gcv-ind__row"><span class="gcv-ind__vias">' + vias + '</span><div class="gcv-ind__who"><strong>' + esc(contactLabel(item)) + "</strong>" +
+      (meta.length ? "<span>" + esc(meta.join(" · ")) + "</span>" : "") +
+      "</div>" + earn + "</article>";
+  }
+
   function post(url, body, method) {
     return fetch(url, {
       method: method || "POST",
@@ -227,25 +265,25 @@
     uiLang = data.lang === "en" || data.lang === "es" ? data.lang : "pt";
     var title = document.getElementById("gcv-ind-title");
     if (title) title.textContent = t("title");
+    var isGuide = data.role === "guide";
     var items = data.referrals || [];
     var rows = items.length
-      ? items.map(function (item) {
-          var when = item.date_from ? (item.date_from + (item.date_to && item.date_to !== item.date_from ? " → " + item.date_to : "")) : "";
-          return '<article class="gcv-ind__row"><strong>' + esc(contactLabel(item)) + '</strong><span>' + esc(statusLabel(item.status)) + (when ? " · " + esc(when) : "") + '</span></article>';
-        }).join("")
+      ? items.map(inviteRow).join("")
       : '<p class="gcv-ind__note">' + esc(t("empty")) + "</p>";
-    var rank = data.ranking || [];
-    var rankHtml = rank.length
-      ? "<ol class=\"gcv-ind__rank\">" + rank.map(function (row) {
-          return '<li class="' + (row.mine ? "is-mine" : "") + '">' + esc(row.position) + ". " + esc(row.name) + " · " + esc(row.points) + (row.mine ? " (" + esc(t("you")) + ")" : "") + "</li>";
-        }).join("") + "</ol>"
-      : '<p class="gcv-ind__note">' + esc(t("rankEmpty")) + "</p>";
+    var rank = isGuide ? (data.ranking || []) : [];
+    var rankHtml = !isGuide
+      ? ""
+      : (rank.length
+        ? "<ol class=\"gcv-ind__rank\">" + rank.map(function (row) {
+            return '<li class="' + (row.mine ? "is-mine" : "") + '">' + esc(row.position) + ". " + esc(row.name) + " · " + esc(row.points) + (row.mine ? " (" + esc(t("you")) + ")" : "") + "</li>";
+          }).join("") + "</ol>"
+        : '<p class="gcv-ind__note">' + esc(t("rankEmpty")) + "</p>");
     root.innerHTML =
       '<p class="gcv-ind__note">' + esc(t("lead")) + "</p>" +
       '<div class="gcv-ind__cards">' +
         '<div class="gcv-ind__card"><span>' + esc(t("balance")) + '</span><strong>' + esc(money(data.balance_cents, uiLang)) + "</strong></div>" +
         '<div class="gcv-ind__card"><span>' + esc(t("points")) + "</span><strong>" + esc(data.points || 0) + "</strong></div>" +
-        '<div class="gcv-ind__card"><span>' + esc(t("place")) + "</span><strong>" + esc(data.position || t("none")) + "</strong></div>" +
+        (isGuide ? '<div class="gcv-ind__card"><span>' + esc(t("place")) + "</span><strong>" + esc(data.position || t("none")) + "</strong></div>" : "") +
       "</div>" +
       '<form class="gcv-dash-form" id="gcv-ind-form">' +
         '<div class="gcv-dash-field"><span class="gcv-dash-label">' + esc(t("phone")) + '</span><div id="gcv-ind-phone-wrap"></div></div>' +
@@ -259,7 +297,7 @@
         '<p class="gcv-ind__note" id="gcv-ind-msg" hidden></p>' +
       "</form>" +
       "<h3>" + esc(t("list")) + '</h3><div class="gcv-ind__list">' + rows + "</div>" +
-      "<h3>" + esc(t("rank")) + "</h3>" + rankHtml +
+      (isGuide ? "<h3>" + esc(t("rank")) + "</h3>" + rankHtml : "") +
       "<h3>" + esc(t("withdraw")) + "</h3>" +
       '<form class="gcv-dash-form" id="gcv-ind-saque">' +
         '<div class="gcv-dash-field"><label class="gcv-dash-label" for="gcv-ind-pix">' + esc(t("pix")) + '</label><input class="gcv-dash-input" id="gcv-ind-pix" name="pix_key" required /></div>' +
