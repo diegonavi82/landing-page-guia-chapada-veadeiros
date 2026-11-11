@@ -6036,7 +6036,7 @@ html.gcv-waitlist-modal-open {
   align-self: stretch;
   margin: 0 0.55rem 0 0.7rem;
   min-height: 6.75rem;
-  border-radius: 14px;
+  border-radius: 0;
   background: linear-gradient(165deg, #fff 0%, #fff1f2 100%);
   border: 1px solid #fda4af;
   box-shadow:
