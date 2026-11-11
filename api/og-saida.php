@@ -66,13 +66,35 @@ if ($face) {
     imagedestroy($face);
 }
 
+try {
+    $bin = gcv_og_saida_jpeg($im);
+} catch (Throwable $e) {
+    error_log('og-saida jpeg: ' . $e->getMessage());
+    imagedestroy($im);
+    gcv_og_saida_send_file($fallback);
+}
+imagedestroy($im);
+if ($bin === '') {
+    gcv_og_saida_send_file($fallback);
+}
 header('Content-Type: image/jpeg');
 header('Cache-Control: public, max-age=3600');
+header('Content-Length: ' . strlen($bin));
 header('X-Content-Type-Options: nosniff');
-imageinterlace($im, 1);
-imagejpeg($im, null, 86);
-imagedestroy($im);
+echo $bin;
 exit;
+
+function gcv_og_saida_jpeg($im): string
+{
+    $tmp = tempnam(sys_get_temp_dir(), 'ogsaida');
+    if ($tmp === false) {
+        return '';
+    }
+    $ok = @imagejpeg($im, $tmp, 86);
+    $bin = $ok ? (string)file_get_contents($tmp) : '';
+    @unlink($tmp);
+    return $bin;
+}
 
 function gcv_og_saida_send_file(string $path): void
 {
