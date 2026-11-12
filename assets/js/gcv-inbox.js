@@ -85,14 +85,19 @@
     return '<svg ' + common + '><circle cx="12" cy="12" r="8"/><path d="M8.4 12.2l2.3 2.3 4.9-5.2"/></svg>';
   }
 
+  function plainTitle(s) {
+    return String(s || '').replace(/^\*+|\*+$/g, '').trim();
+  }
+
   function previewOf(it) {
-    var title = String(it.title || '').trim().toLowerCase();
+    var title = plainTitle(it.title).toLowerCase();
     var lines = String(it.body || '').split(/\r?\n/).map(function (line) { return line.trim(); }).filter(Boolean);
     var line = '';
     for (var i = 0; i < lines.length; i++) {
-      if (lines[i].toLowerCase() !== title) { line = lines[i]; break; }
+      if (plainTitle(lines[i]).toLowerCase() !== title) { line = lines[i]; break; }
     }
     if (!line) line = lines[0] || '';
+    line = line.replace(/^\*+|\*+$/g, '');
     if (line.length > 96) line = line.slice(0, 94).trim() + '…';
     return line;
   }
@@ -103,6 +108,22 @@
       var tail = url.slice(clean.length);
       return '<a href="' + clean + '" target="_blank" rel="noopener noreferrer">' + clean + '</a>' + tail;
     });
+  }
+
+  function modalBody(it) {
+    var title = plainTitle(it.title).toLowerCase();
+    var lines = String(it.body || '').replace(/\r\n/g, '\n').split('\n');
+    var i = 0;
+    while (i < lines.length && lines[i].trim() === '') i++;
+    if (i < lines.length && title && plainTitle(lines[i]).toLowerCase() === title) {
+      lines.splice(0, i + 1);
+      while (lines.length && lines[0].trim() === '') lines.shift();
+    }
+    return lines.join('\n');
+  }
+
+  function renderBody(text) {
+    return linkify(text).replace(/\*([^*\n]+)\*/g, '<strong>$1</strong>');
   }
 
   function setBadge(n) {
@@ -156,7 +177,7 @@
         '<button type="button" class="gcv-inbox-item' + (unread ? ' gcv-inbox-item--unread' : '') + ' is-' + tone + '" data-id="' + esc(it.id) + '">' +
           '<span class="gcv-inbox-item__icon">' + iconSvg(tone) + '</span>' +
           '<span class="gcv-inbox-item__main">' +
-            '<strong class="gcv-inbox-item__title">' + esc(it.title) + '</strong>' +
+            '<strong class="gcv-inbox-item__title">' + esc(plainTitle(it.title)) + '</strong>' +
             '<span class="gcv-inbox-item__preview">' + esc(previewOf(it)) + '</span>' +
           '</span>' +
           '<time class="gcv-inbox-item__time">' + esc(fmtShort(it.created_at)) + '</time>' +
@@ -215,9 +236,9 @@
     var icon = document.getElementById('gcv-inbox-modal-icon');
     icon.className = 'gcv-inbox-modal__icon is-' + tone;
     icon.innerHTML = iconSvg(tone);
-    document.getElementById('gcv-inbox-modal-title').textContent = it.title || 'Aviso';
+    document.getElementById('gcv-inbox-modal-title').textContent = plainTitle(it.title) || 'Aviso';
     document.getElementById('gcv-inbox-modal-time').textContent = fmtWhen(it.created_at);
-    document.getElementById('gcv-inbox-modal-body').innerHTML = linkify(it.body || '');
+    document.getElementById('gcv-inbox-modal-body').innerHTML = renderBody(modalBody(it));
     modal.hidden = false;
     var closer = modal.querySelector('.gcv-inbox-modal__close');
     if (closer) closer.focus();

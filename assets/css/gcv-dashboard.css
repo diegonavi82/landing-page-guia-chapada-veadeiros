@@ -267,6 +267,7 @@ body.gcv-dash-page main.gcv-dash-main {
   white-space: pre-wrap;
 }
 .gcv-inbox-modal__body a { color: #0f7a4a; }
+.gcv-inbox-modal__body strong { font-weight: 800; color: #0f172a; }
 .gcv-inbox-modal__back {
   margin-top: 8px;
   height: 42px;

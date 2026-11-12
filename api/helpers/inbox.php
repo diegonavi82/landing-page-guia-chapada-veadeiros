@@ -44,10 +44,14 @@ function gcv_inbox_title_from_body(string $text): string
     $first = '';
     foreach (explode("\n", $text) as $line) {
         $line = trim($line);
-        if ($line !== '') {
-            $first = $line;
-            break;
+        if ($line === '') {
+            continue;
         }
+        if (preg_match('/^\*(.+)\*$/u', $line, $m)) {
+            $line = trim($m[1]);
+        }
+        $first = $line;
+        break;
     }
     if (function_exists('mb_substr')) {
         return mb_substr($first !== '' ? $first : 'Aviso', 0, 160);
@@ -70,6 +74,10 @@ function gcv_inbox_push(int $userId, string $body, array $meta = []): void
     gcv_inbox_ensure_schema();
     $title = gcv_inbox_title_from_body($body);
     $kind = substr(trim((string)($meta['kind'] ?? $meta['type'] ?? '')), 0, 40);
+    $excIdEarly = isset($meta['excursion_id']) ? (int)$meta['excursion_id'] : 0;
+    if ($excIdEarly > 0 && gcv_inbox_is_card($body, $kind) && gcv_inbox_replace_card($userId, $excIdEarly, $title, $body)) {
+        return;
+    }
     $excId = isset($meta['excursion_id']) ? (int)$meta['excursion_id'] : null;
     $saleId = isset($meta['sale_id']) ? (int)$meta['sale_id'] : null;
     if ($excId !== null && $excId <= 0) {
@@ -92,6 +100,64 @@ function gcv_inbox_push(int $userId, string $body, array $meta = []): void
         ]);
     } catch (Throwable $e) {
         error_log('gcv_inbox_push: ' . $e->getMessage());
+    }
+}
+
+/** @return list<string> */
+function gcv_inbox_card_markers(): array
+{
+    return [
+        'Você é o guia dessa excursão',
+        'Sua reserva está nesta excursão',
+        'Your booking is on this tour',
+        'Tu reserva está en esta excursión',
+    ];
+}
+
+function gcv_inbox_is_card(string $body, string $kind): bool
+{
+    if (in_array($kind, ['guide_posse', 'guide_assigned', 'guide_accepted', 'client_posse'], true)) {
+        return true;
+    }
+    foreach (gcv_inbox_card_markers() as $marker) {
+        if (str_contains($body, $marker)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/** Regrava o aviso vivo da excursão em vez de empilhar uma cópia antiga. */
+function gcv_inbox_replace_card(int $userId, int $excursionId, string $title, string $body): bool
+{
+    if ($userId <= 0 || $excursionId <= 0 || trim($body) === '') {
+        return false;
+    }
+    $likes = [];
+    $params = [$userId, $excursionId, 'guide_posse', 'guide_assigned', 'guide_accepted', 'client_posse'];
+    foreach (gcv_inbox_card_markers() as $marker) {
+        $likes[] = 'body LIKE ?';
+        $params[] = '%' . $marker . '%';
+    }
+    try {
+        $st = db()->prepare(
+            'SELECT id FROM gcv_inbox WHERE user_id = ? AND excursion_id = ? AND (`kind` IN (?,?,?,?) OR '
+            . implode(' OR ', $likes) . ')'
+        );
+        $st->execute($params);
+        $ids = array_map('intval', $st->fetchAll(PDO::FETCH_COLUMN) ?: []);
+        $ids = array_values(array_filter($ids));
+        if (!$ids) {
+            return false;
+        }
+        $upd = db()->prepare('UPDATE gcv_inbox SET title = ?, body = ? WHERE id = ? AND user_id = ?');
+        foreach ($ids as $id) {
+            $upd->execute([$title, $body, $id, $userId]);
+        }
+        return true;
+    } catch (Throwable $e) {
+        error_log('gcv_inbox_replace_card: ' . $e->getMessage());
+        return false;
     }
 }
 
