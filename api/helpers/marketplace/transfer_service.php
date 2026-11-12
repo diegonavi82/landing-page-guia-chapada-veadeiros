@@ -289,6 +289,139 @@ function gcv_transfer_create_offers_for_sale(array $sale, array $from): int
     return $n;
 }
 
+/**
+ * Faltando 12 horas, saída em formação ou aguardando guia/veículo é cancelada.
+ * Pix devolvido. Cartão ainda não cobrado é liberado. Passeio confirmado não entra aqui.
+ */
+function gcv_close_unconfirmed_departure(array $exc, string $life): bool
+{
+    $excId = (int)($exc['id'] ?? 0);
+    if ($excId <= 0 || !in_array($life, ['em_formacao', 'aguardando_operacional'], true)) {
+        return false;
+    }
+    try {
+        $st = db()->prepare('SELECT status FROM gcv_excursions WHERE id = ? AND deleted_at IS NULL LIMIT 1');
+        $st->execute([$excId]);
+        if (!in_array((string)$st->fetchColumn(), ['published', 'soldout'], true)) {
+            return false;
+        }
+    } catch (Throwable $e) {
+        error_log('close unconfirmed status: ' . $e->getMessage());
+        return false;
+    }
+
+    require_once dirname(__DIR__) . '/payments/pix_refund.php';
+    require_once dirname(__DIR__) . '/payments/authorization.php';
+    require_once dirname(__DIR__) . '/notify_ops.php';
+
+    $sales = [];
+    try {
+        $salesSt = db()->prepare(
+            "SELECT * FROM gcv_sales
+             WHERE excursion_id = ? AND deleted_at IS NULL
+               AND sale_status IN ('PAID','AUTHORIZED','PENDING')"
+        );
+        $salesSt->execute([$excId]);
+        $sales = $salesSt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) {
+        error_log('close unconfirmed sales: ' . $e->getMessage());
+    }
+
+    foreach ($sales as $sale) {
+        $rid = trim((string)($sale['reservation_id'] ?? ''));
+        if ($rid === '') {
+            continue;
+        }
+        $rec = gcv_pix_read_reservation($rid);
+        $gw = strtolower((string)(is_array($rec) ? ($rec['gateway'] ?? '') : ''));
+        $isCard = in_array($gw, ['stripe', 'mercadopago'], true);
+        if (!$isCard && strtoupper((string)($sale['sale_status'] ?? '')) === 'PAID') {
+            try {
+                gcv_pix_refund_reservation($rid, (string)($sale['tourist_email'] ?? ''), null, false, true, true);
+            } catch (Throwable $e) {
+                error_log('close unconfirmed pix ' . $rid . ': ' . $e->getMessage());
+            }
+        }
+        if ($isCard && is_array($rec)) {
+            $payStatus = strtoupper((string)(function_exists('gcv_pix_effective_status') ? gcv_pix_effective_status($rec) : ($rec['status'] ?? '')));
+            if (in_array($payStatus, ['AUTHORIZED', 'CARD_SAVED'], true)) {
+                gcv_auth_release($rec, $life === 'em_formacao' ? 'no_quorum' : 'no_guides', false);
+            }
+        }
+    }
+
+    try {
+        db()->prepare(
+            "UPDATE gcv_excursions
+             SET status = 'cancelled', guide_user_id = NULL, updated_at = NOW()
+             WHERE id = ? AND deleted_at IS NULL AND status IN ('published','soldout')"
+        )->execute([$excId]);
+    } catch (Throwable $e) {
+        error_log('close unconfirmed cancel: ' . $e->getMessage());
+        return false;
+    }
+    try {
+        db()->prepare(
+            "UPDATE gcv_guide_queue_offers SET status = 'expired', decided_at = NOW()
+             WHERE excursion_id = ? AND status IN ('pending','accepted')"
+        )->execute([$excId]);
+    } catch (Throwable $e) {
+        error_log('close unconfirmed offers: ' . $e->getMessage());
+    }
+    try {
+        db()->prepare(
+            "UPDATE gcv_transfer_offers SET status = 'expired', updated_at = NOW()
+             WHERE from_excursion_id = ? AND status IN ('offered','awaiting_payment')"
+        )->execute([$excId]);
+    } catch (Throwable $e) {
+        error_log('close unconfirmed transfer: ' . $e->getMessage());
+    }
+
+    $title = gcv_ops_excursion_title($exc);
+    $when = trim(gcv_ops_date_br((string)($exc['date_iso'] ?? '')) . ' às ' . substr((string)($exc['departure_time'] ?? ''), 0, 5));
+    foreach ($sales as $sale) {
+        $loc = gcv_ops_sale_locale($sale);
+        $code = strtoupper(trim((string)($sale['reservation_id'] ?? '')));
+        if ($loc === 'en') {
+            $why = $life === 'em_formacao'
+                ? 'the group did not reach the minimum'
+                : 'the guide or the vehicle was not confirmed';
+            $text = "The tour was cancelled because 12 hours remained before the start and {$why}.\n\n"
+                . "Tour: {$title}\n"
+                . ($when !== '' ? "When: {$when}\n" : '')
+                . ($code !== '' ? "Code: {$code}\n" : '')
+                . "\nOn Pix, the amount is refunded. On a card, nothing was charged and the card hold is released.";
+            $subject = 'Tour cancelled — Guia Chapada Veadeiros';
+        } elseif ($loc === 'es') {
+            $why = $life === 'em_formacao'
+                ? 'el grupo no alcanzó el quórum'
+                : 'el guía o el vehículo no fue confirmado';
+            $text = "El paseo fue cancelado porque faltaban 12 horas para el inicio y {$why}.\n\n"
+                . "Paseo: {$title}\n"
+                . ($when !== '' ? "Cuándo: {$when}\n" : '')
+                . ($code !== '' ? "Código: {$code}\n" : '')
+                . "\nEn el Pix, el valor se devuelve. En la tarjeta, nada fue cobrado y la reserva de la tarjeta se libera.";
+            $subject = 'Paseo cancelado — Guia Chapada Veadeiros';
+        } else {
+            $why = $life === 'em_formacao'
+                ? 'o grupo não fechou o quórum'
+                : 'o guia ou o veículo não foi confirmado';
+            $text = "O passeio foi cancelado porque faltavam 12 horas para a saída e {$why}.\n\n"
+                . "Passeio: {$title}\n"
+                . ($when !== '' ? "Quando: {$when}\n" : '')
+                . ($code !== '' ? "Código: {$code}\n" : '')
+                . "\nNo Pix, o valor é devolvido. No cartão, nada foi cobrado e a reserva do cartão é liberada.";
+            $subject = 'Passeio cancelado — Guia Chapada Veadeiros';
+        }
+        gcv_ops_wa_client($sale, $text, ['kind' => 'unconfirmed_close', 'excursion_id' => $excId]);
+        $email = trim((string)($sale['tourist_email'] ?? ''));
+        if ($email !== '') {
+            gcv_ops_mail_plain($email, $subject, $text);
+        }
+    }
+    return true;
+}
+
 function gcv_transfer_scan_window(?DateTimeImmutable $now = null): array
 {
     gcv_marketplace_ensure_schema();
@@ -321,39 +454,10 @@ function gcv_transfer_scan_window(?DateTimeImmutable $now = null): array
         if ($hours === null) {
             continue;
         }
-        $salesSt = db()->prepare(
-            "SELECT * FROM gcv_sales
-             WHERE excursion_id = ? AND deleted_at IS NULL AND sale_status = 'PAID'"
-        );
-        $salesSt->execute([$excId]);
-        $sales = $salesSt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
-        if ($life === 'em_formacao' && gcv_transfer_in_offer_window($hours)) {
-            foreach ($sales as $sale) {
-                $created = gcv_transfer_create_offers_for_sale($sale, $exc);
-                $offered += $created;
-                if (empty($sale['transfer_notified_at'])) {
-                    try {
-                        gcv_transfer_notify_client($sale, $exc, gcv_transfer_offers_for_sale((int)$sale['id'], true));
-                        db()->prepare('UPDATE gcv_sales SET transfer_notified_at = NOW() WHERE id = ? AND transfer_notified_at IS NULL')
-                            ->execute([(int)$sale['id']]);
-                        $notified++;
-                    } catch (Throwable $e) {
-                        error_log('transfer notify: ' . $e->getMessage());
-                    }
-                }
-            }
-        }
-
-        if ($life === 'em_formacao' && $hours <= $cancelHours) {
-            db()->prepare(
-                "UPDATE gcv_transfer_offers SET status = 'expired', updated_at = NOW()
-                 WHERE from_excursion_id = ? AND status = 'offered'"
-            )->execute([$excId]);
-            foreach ($sales as $sale) {
-                if (gcv_transfer_auto_refund_sale($sale, $exc)) {
-                    $refunded++;
-                }
+        if (in_array($life, ['em_formacao', 'aguardando_operacional'], true) && $hours <= $cancelHours) {
+            if (gcv_close_unconfirmed_departure($exc, $life)) {
+                $refunded++;
             }
         }
     }
@@ -603,7 +707,7 @@ function gcv_transfer_list_client_sales(array $user): array
         $s['hours_to_start'] = $hoursLeft;
         $s['transfer_offers'] = $offers;
         $inOffer = gcv_transfer_in_offer_window($hoursLeft);
-        $s['can_transfer'] = $life === 'em_formacao' && strtoupper((string)$s['sale_status']) === 'PAID' && $offers !== [] && $inOffer;
+        $s['can_transfer'] = false;
         $s['refund_trips'] = [];
         $pix = null;
         $reservationId = (string)($s['reservation_id'] ?? '');
@@ -719,6 +823,7 @@ function gcv_transfer_new_pix_code(): string
  */
 function gcv_transfer_accept_offer(int $offerId, array $user): array
 {
+    throw new RuntimeException('A troca de passeio não está disponível. O contratante faz o passeio contratado ou cancela enquanto a saída está em formação.');
     $offer = gcv_transfer_load_offer($offerId);
     if (!$offer || !in_array((string)$offer['status'], ['offered', 'awaiting_payment'], true)) {
         throw new RuntimeException('Oferta indisponível.');

@@ -329,7 +329,16 @@ function gcv_auth_evaluate(string $reservationId): array
 {
     $rows = gcv_auth_trip_rows($reservationId);
     $nowStr = gcv_auth_now()->format('Y-m-d H:i:s');
-    $cut = gcv_auth_now()->modify('+' . gcv_auth_decision_hours() . ' hours')->format('Y-m-d H:i:s');
+    $closeHours = 12;
+    try {
+        require_once __DIR__ . '/../marketplace/transfer_service.php';
+        if (function_exists('gcv_transfer_cancel_hours')) {
+            $closeHours = gcv_transfer_cancel_hours();
+        }
+    } catch (Throwable $e) {
+        error_log('auth close hours: ' . $e->getMessage());
+    }
+    $cut = gcv_auth_now()->modify('+' . $closeHours . ' hours')->format('Y-m-d H:i:s');
     $out = ['trips' => [], 'undecided' => 0, 'confirmed_cents' => 0, 'cancelled_cents' => 0];
     foreach ($rows as $r) {
         $decision = (string) $r['decision'];
@@ -895,9 +904,9 @@ function gcv_auth_email_customer(array $rec, string $kind): void
             'es' => ['Paseo confirmado — ' . $rid, '<p>¡Buenas noticias! El paseo de la reserva <strong>' . $rid . '</strong> está <strong>confirmado</strong>. Cobramos ' . $amount . ' en tu tarjeta. ¡Nos vemos en la Chapada!</p><p>Política: tras la confirmación no hay reembolso por desistimiento.</p>'],
         ],
         'released' => [
-            'pt' => ['Passeio não confirmado — nada foi cobrado', '<p>O passeio da reserva <strong>' . $rid . '</strong> não confirmou a tempo. <strong>Nada foi cobrado</strong> e a reserva no seu cartão foi liberada (pode levar alguns dias para o banco atualizar o limite).</p><p>Quer outra data? Fale com a gente pelo WhatsApp.</p>'],
-            'en' => ['Tour not confirmed — you were not charged', '<p>The tour for booking <strong>' . $rid . '</strong> was not confirmed in time. <strong>You were not charged</strong> and the hold on your card was released (your bank may take a few days to update your limit).</p><p>Want another date? Message us on WhatsApp.</p>'],
-            'es' => ['Paseo no confirmado — no se cobró nada', '<p>El paseo de la reserva <strong>' . $rid . '</strong> no se confirmó a tiempo. <strong>No se cobró nada</strong> y la reserva en tu tarjeta fue liberada (el banco puede tardar unos días en actualizar tu límite).</p><p>¿Otra fecha? Escríbenos por WhatsApp.</p>'],
+            'pt' => ['Passeio não confirmado — nada foi cobrado', '<p>O passeio da reserva <strong>' . $rid . '</strong> foi cancelado porque não confirmou a tempo. <strong>Nada foi cobrado</strong> e a reserva no seu cartão foi liberada (pode levar alguns dias para o banco atualizar o limite).</p>'],
+            'en' => ['Tour not confirmed — you were not charged', '<p>The tour for booking <strong>' . $rid . '</strong> was cancelled because it was not confirmed in time. <strong>You were not charged</strong> and the hold on your card was released (your bank may take a few days to update your limit).</p>'],
+            'es' => ['Paseo no confirmado — no se cobró nada', '<p>El paseo de la reserva <strong>' . $rid . '</strong> fue cancelado porque no se confirmó a tiempo. <strong>No se cobró nada</strong> y la reserva en tu tarjeta fue liberada (el banco puede tardar unos días en actualizar tu límite).</p>'],
         ],
     ];
     if (!isset($T[$kind][$loc])) {

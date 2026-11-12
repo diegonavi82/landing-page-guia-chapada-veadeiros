@@ -5022,19 +5022,7 @@
         } else if (b.can_refund_full && b.lifecycle !== 'confirmada' && b.lifecycle !== 'concluida' && b.lifecycle !== 'aguardando_operacional') {
           refundBtn = '<button type="button" class="gcv-dash-btn gcv-dash-btn--danger gcv-dash-btn--sm" data-refund="' + b.id + '">Cancelar em formação</button>';
         }
-        var offers = (b.can_transfer && (b.transfer_offers || []).length)
-          ? '<div class="gcv-transfer-offers"><p>Passeios confirmados no mesmo dia, mesma cidade — você pode trocar enquanto o seu ainda está em formação:</p>' +
-            b.transfer_offers.map(function (o) {
-              var extra = (o.delta_cents > 0)
-                ? 'Pagar diferença ' + esc(o.delta_label)
-                : (o.delta_cents < 0 ? 'Ressarcimento ' + esc(o.delta_label) : 'Mesmo valor');
-              return '<div class="gcv-transfer-offer"><span><strong>' + esc(o.to_title) + '</strong> · ' +
-                esc(o.to_city || '') + (o.departure_time ? ' · ' + esc(o.departure_time) : '') +
-                (o.to_guide ? ' · ' + esc(o.to_guide) : '') +
-                ' · ' + extra + '</span>' +
-                '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary gcv-dash-btn--sm" data-accept="' + o.id + '">Trocar</button></div>';
-            }).join('') + '</div>'
-          : '';
+        var offers = '';
         return '<tr>' +
           '<td data-label="Passeio">' + esc(b.tour_title) + (b.reservation_id ? '<div class="gcv-cms-muted"><code>' + esc(b.reservation_id) + '</code></div>' : '') + offers + '</td>' +
           '<td data-label="' + esc(typeLabel) + '">' + esc(b.tour_mode_label || 'Excursão') + '</td>' +
@@ -5065,29 +5053,6 @@
               loadClientBookingsEnhanced();
               loadClientUpcoming();
             }
-          });
-        };
-      });
-      tbody.querySelectorAll('[data-accept]').forEach(function (btn) {
-        btn.onclick = function () {
-          if (!confirm('Confirmar a troca para este passeio?')) return;
-          sendJson('POST', '/api/client/transfer.php', {
-            action: 'accept',
-            offer_id: parseInt(btn.getAttribute('data-accept'), 10),
-          }, function (e, r) {
-            if (!r || !r.ok) {
-              alert((r && r.error) || 'Não foi possível trocar.');
-              return;
-            }
-            var d = r.data || {};
-            if (d.needs_payment && d.pix) {
-              showTransferPix(d.pix);
-              alert('Pague a diferença no PIX para concluir a troca.');
-              return;
-            }
-            alert('Reserva transferida.');
-            loadClientBookingsEnhanced();
-            loadClientUpcoming();
           });
         };
       });

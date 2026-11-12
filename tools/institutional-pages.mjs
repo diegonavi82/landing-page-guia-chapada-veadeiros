@@ -227,7 +227,7 @@ export const INSTITUTIONAL = {
         {
           h: "Pagamento e cancelamento",
           paragraphs: [
-            "No cartão, o cartão fica salvo e a cobrança de 100% ocorre quando o guia está alocado e, se houver translado, o veículo. No Pix já pago, o cancelamento enquanto o passeio ainda está em formação devolve 100% daquele passeio. Em Aguardando confirmação operacional, o Pix permanece até a saída ser cancelada.",
+            "No cartão, o cartão fica salvo e a cobrança de 100% ocorre quando o passeio confirma: na excursão, quórum fechado e guia alocado e, se houver translado, o veículo; no privativo, guia alocado e, se houver translado, o veículo. A partir daí o contratante não cancela e não há devolução. Enquanto a saída está em formação, o contratante pode cancelar: no Pix a devolução é de 100% e no cartão nada foi cobrado. Não há troca de passeio. Faltando 12 horas para o início, se a saída ainda estiver em formação ou aguardando confirmação operacional, ela é cancelada: o Pix é devolvido e a reserva do cartão que não foi cobrada é liberada.",
             "Enquanto a saída está em Aguardando confirmação operacional, o contratante não cancela. O cancelamento pelo contratante só é possível em formação. Quando o passeio está confirmado, o contratante não cancela. O estorno, quando houver, é o da contratada.",
           ],
         },
@@ -260,7 +260,7 @@ export const INSTITUTIONAL = {
         {
           h: "Payment and cancellation",
           paragraphs: [
-            "On card, the card is saved and the 100% charge happens when the guide is assigned and, if there is transport, the vehicle. If Pix is already paid, cancelling while that tour is still forming refunds 100% of that tour. While the departure is Waiting for operational confirmation, Pix stays until the departure is cancelled.",
+            "On card, the card is saved and the 100% charge happens when the tour is confirmed: on a shared tour, the minimum group is met and a guide is assigned and, if there is transport, a vehicle; on a private tour, a guide is assigned and, if there is transport, a vehicle. From then on the customer does not cancel and there is no refund. While the departure is still forming, the customer may cancel: on Pix the refund is 100% and on a card nothing was charged. There is no tour switch. When 12 hours remain before the start, if the departure is still forming or waiting for operational confirmation, it is cancelled: Pix is refunded and the card hold that was never charged is released.",
             "While the departure is Waiting for operational confirmation, the customer cannot cancel. The customer can cancel only while the tour is still forming. Once the tour is confirmed, the customer does not cancel. A refund, when there is one, is the Company's.",
           ],
         },
@@ -293,7 +293,7 @@ export const INSTITUTIONAL = {
         {
           h: "Pago y cancelación",
           paragraphs: [
-            "En tarjeta, la tarjeta queda guardada y el cobro del 100% ocurre cuando el guía está asignado y, si hay traslado, el vehículo. En el Pix ya pagado, la cancelación mientras la excursión sigue en formación devuelve el 100% de esa salida. En Esperando confirmación operativa, el Pix permanece hasta que la salida se cancele.",
+            "En tarjeta, la tarjeta queda guardada y el cobro del 100% ocurre cuando el paseo se confirma: en la excursión, quórum cerrado y guía asignado y, si hay traslado, el vehículo; en el privado, guía asignado y, si hay traslado, el vehículo. A partir de ahí el contratante no cancela y no hay devolución. Mientras la salida está en formación, el contratante puede cancelar: en el Pix la devolución es del 100% y en la tarjeta nada fue cobrado. No hay cambio de paseo. Faltando 12 horas para el inicio, si la salida sigue en formación o esperando confirmación operativa, se cancela: el Pix se devuelve y la reserva de la tarjeta que no fue cobrada se libera.",
             "Mientras la salida está en Esperando confirmación operativa, el contratante no puede cancelar. La cancelación por el contratante solo es posible en formación. Cuando la excursión está confirmada, el contratante no cancela. El reembolso, cuando lo hay, es el de la contratada.",
           ],
         },

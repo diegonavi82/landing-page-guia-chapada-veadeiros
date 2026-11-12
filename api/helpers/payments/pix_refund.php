@@ -411,7 +411,11 @@ function gcv_pix_refund_reservation(
 
     $targets = [];
     foreach ($byIndex as $i => $trip) {
-        if (empty($trip['can_cancel'])) {
+        $platformClose = $onlyDue && $trustCaller
+            && in_array((string)($trip['lifecycle'] ?? ''), ['em_formacao', 'aguardando_operacional'], true)
+            && empty($trip['refunded'])
+            && empty($trip['confirmed']);
+        if (empty($trip['can_cancel']) && !$platformClose) {
             continue;
         }
         if ($wanted !== null && empty($wanted[$i])) {
