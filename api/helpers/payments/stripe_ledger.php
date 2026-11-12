@@ -201,6 +201,12 @@ function gcv_stripe_apply_session(array $session): array
         return ['ok' => false, 'reason' => 'not_paid'] + $base;
     }
     $wasPaid = gcv_pix_effective_status($rec) === 'PAID';
+    if (!$wasPaid) {
+        require_once __DIR__ . '/authorization.php';
+        if (gcv_auth_booking_still_open($rid)) {
+            return ['ok' => true, 'state' => 'PARTIAL'] + $base;
+        }
+    }
     $marked = gcv_pix_mark_paid($rid, 'stripe');
     if (!$marked) {
         $again = gcv_pix_read_reservation($rid);

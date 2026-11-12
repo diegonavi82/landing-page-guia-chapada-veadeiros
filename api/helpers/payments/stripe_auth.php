@@ -84,7 +84,7 @@ function gcv_stripe_auth_off_session(array $rec): string
     }
     $rid = (string) $rec['reservation_id'];
     $r = gcv_stripe_request('POST', '/v1/payment_intents', [
-        'amount' => (int) $rec['charged_minor'],
+        'amount' => gcv_auth_due_minor($rec),
         'currency' => strtolower((string) ($rec['charged_currency'] ?? 'usd')),
         'customer' => $customer,
         'payment_method' => $pm,

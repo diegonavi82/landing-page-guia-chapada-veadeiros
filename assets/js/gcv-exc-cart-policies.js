@@ -78,7 +78,7 @@
           heading: "1.1 Quando o cartão é cobrado",
           paragraphs: [
             "No cartão de crédito, nacional ou internacional, a operadora apenas confirma na compra que o cartão existe e aceita cobrança futura.",
-            "A cobrança automática do valor só é autorizada quando o passeio é confirmado.",
+            "A cobrança automática do valor só é autorizada quando o passeio é confirmado. Em compra de mais de um dia, cada dia é cobrado quando aquele dia confirma. O dia que continua em formação não é cobrado.",
             "No Pix, o valor é pago na reserva e estornado nos casos previstos nesta Política.",
           ],
         },
@@ -154,6 +154,7 @@
           paragraphs: [
             "A Excursão fica confirmada quando o quórum está fechado e todos os guias necessários aceitaram. Quórum sem guia não cobra o cartão. Com o aceite do guia, a saída está confirmada: a vaga fica definitiva, a agenda do guia é bloqueada e o CONTRATANTE não cancela, mesmo que o cartão ainda não tenha sido cobrado.",
             "Cada reserva é cobrada na sua vez, em 100%, no cartão salvo. Não há teste único de todos os cartões do grupo antes de cobrar alguém.",
+            "Em compra de mais de um dia, cada dia é cobrado na sua confirmação, em separado. O CONTRATANTE recebe o aviso por WhatsApp e por e-mail, com o link da reserva. O dia que continua em formação não entra nessa cobrança e pode ser cancelado. Se o cartão de um dia seguinte for recusado, o dia já cobrado permanece e o CONTRATANTE troca o cartão só para o dia que falta.",
             "Se o cartão de uma reserva for recusado, nada é cobrado daquela reserva e o CONTRATANTE é avisado para trocar o cartão, sem prazo fixo. A recusa não desfaz a confirmação: o guia continua associado à saída e não volta ao fim da fila.",
             "A partir da cobrança o CONTRATANTE não cancela e não há devolução, na forma da seção 4.",
           ],
@@ -416,7 +417,7 @@
           heading: "1.1 When the card is charged",
           paragraphs: [
             "On a credit card, domestic or international, the card network only confirms at purchase that the card exists and can be charged later.",
-            "The automatic charge is authorized only when the tour is confirmed.",
+            "The automatic charge is authorized only when the tour is confirmed. On a booking with more than one day, each day is charged when that day is confirmed. A day that is still forming is not charged.",
             "On Pix, the amount is paid at booking and refunded in the cases set out in this Policy.",
           ],
         },
@@ -492,6 +493,7 @@
           paragraphs: [
             "A shared tour is confirmed when the minimum group is closed and every required guide has accepted. A full group without a guide does not charge the card. Once the guide accepts, the departure is confirmed: the seat is final, the guide's day is blocked, and the Client does not cancel, even if the card has not been charged yet.",
             "Each booking is charged in its turn, at 100%, on the saved card. There is no single test of every card in the group before someone is charged.",
+            "On a booking with more than one day, each day is charged when that day is confirmed, on its own. The Client is told by WhatsApp and by email, with the link to the booking. A day that is still forming is not part of that charge and can be cancelled. If the card for a later day is declined, the day already charged stays in place and the Client replaces the card only for the day that is left.",
             "If one booking's card is declined, nothing is charged on that booking and the Client is asked to replace the card, with no fixed deadline. The decline does not undo confirmation: the guide stays assigned to the departure and does not return to the end of the queue.",
             "From the charge on, the Client does not cancel and there is no refund, under section 4.",
           ],
@@ -675,7 +677,7 @@
           heading: "1.1 Cuándo se cobra la tarjeta",
           paragraphs: [
             "En la tarjeta de crédito, nacional o internacional, la operadora solo confirma en la compra que la tarjeta existe y acepta un cobro futuro.",
-            "El cobro automático del valor solo se autoriza cuando el paseo está confirmado.",
+            "El cobro automático del valor solo se autoriza cuando el paseo está confirmado. En una compra de más de un día, cada día se cobra cuando ese día se confirma. El día que sigue en formación no se cobra.",
             "En el Pix, el valor se paga en la reserva y se reembolsa en los casos previstos en esta Política.",
           ],
         },
@@ -751,6 +753,7 @@
           paragraphs: [
             "La excursión queda confirmada cuando el quórum está cerrado y todos los guías necesarios aceptaron. Quórum sin guía no cobra la tarjeta. Con la aceptación del guía, la salida está confirmada: la plaza queda definitiva, la agenda del guía se bloquea y el contratante no cancela, aunque la tarjeta todavía no haya sido cobrada.",
             "Cada reserva se cobra en su turno, al 100%, en la tarjeta guardada. No hay una prueba única de todas las tarjetas del grupo antes de cobrar a alguien.",
+            "En una compra de más de un día, cada día se cobra en su confirmación, por separado. El contratante recibe el aviso por WhatsApp y por correo electrónico, con el enlace de la reserva. El día que sigue en formación no entra en ese cobro y puede cancelarse. Si la tarjeta de un día siguiente es rechazada, el día ya cobrado permanece y el contratante cambia la tarjeta solo para el día que falta.",
             "Si la tarjeta de una reserva es rechazada, nada se cobra de esa reserva y se avisa al contratante para que cambie la tarjeta, sin plazo fijo. El rechazo no deshace la confirmación: el guía sigue asociado a la salida y no vuelve al final de la fila.",
             "A partir del cobro el contratante no cancela y no hay devolución, en la forma de la sección 4.",
           ],

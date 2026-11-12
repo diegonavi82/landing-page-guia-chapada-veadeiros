@@ -12,11 +12,12 @@ declare(strict_types=1);
  *   RELEASED    reserva no cartão liberada — passeio não confirmou / cancelado
  *
  * O cartão fica só salvo até a cobrança. Não há reserva de limite dias antes.
+ * Cada dia confirmado é cobrado na hora, mesmo que outro dia da mesma compra continue em formação.
  * Confirmação de cada passeio (gcv_booking_trips):
  *   CONFIRMED = quórum fechado (ou privativo) E todos os guias necessários aceitaram.
  *               Com translado, 1 guia com veículo a cada 4 clientes.
- *   CANCELLED = excursão cancelada OU faltam 24h para a saída e ainda falta quórum ou guia.
- * Quando todos os passeios da reserva estão decididos → captura a parte confirmada e libera o resto.
+ *   CANCELLED = excursão cancelada OU faltam 12h para a saída e ainda falta quórum ou guia.
+ * O dia em formação não é cobrado e pode ser cancelado.
  */
 
 require_once __DIR__ . '/../db.php';
@@ -287,8 +288,9 @@ function gcv_auth_mark_reserved(string $reservationId, string $state, array $inf
             'installments' => max(1, (int) ($info['installments'] ?? 1)),
             'authorized_at' => $now->format('Y-m-d H:i:s'),
             'expires_at' => $now->modify('+' . gcv_auth_validity_hours($gateway) . ' hours')->format('Y-m-d H:i:s'),
+            'covers_base_cents' => (int) ($rec['charge_next_base'] ?? $rec['amount_cents'] ?? 0),
         ];
-        unset($rec['card_action']);
+        unset($rec['card_action'], $rec['charge_next_minor'], $rec['charge_next_base']);
     }
     if (!empty($info['saved'])) {
         $rec['card_saved'] = array_merge(is_array($rec['card_saved'] ?? null) ? $rec['card_saved'] : [], $info['saved'], ['gateway' => $gateway]);
@@ -406,12 +408,50 @@ function gcv_auth_evaluate(string $reservationId): array
 /** Valor a cobrar na moeda do cartão, proporcional à parte confirmada do valor base. */
 function gcv_auth_capture_minor(array $rec, int $confirmedBaseCents): int
 {
-    $base = max(1, (int) ($rec['amount_cents'] ?? 1));
+    $covered = (int) ($rec['card_auth']['covers_base_cents'] ?? 0);
+    $base = $covered > 0 ? $covered : max(1, (int) ($rec['amount_cents'] ?? 1));
     $auth = (int) ($rec['card_auth']['amount_minor'] ?? $rec['charged_minor'] ?? 0);
     if ($confirmedBaseCents >= $base) {
         return $auth;
     }
     return (int) floor($auth * $confirmedBaseCents / $base);
+}
+
+/** Quanto desta fatia cabe na moeda do cartão, em cima do valor original da compra. */
+function gcv_auth_arm_slice(array $rec, int $baseSlice): array
+{
+    if ($baseSlice <= 0) {
+        return $rec;
+    }
+    if (empty($rec['charge_original_minor'])) {
+        $rec['charge_original_minor'] = (int) ($rec['charged_minor'] ?? 0);
+        $rec['charge_base_cents'] = (int) ($rec['amount_cents'] ?? 0);
+    }
+    $originalBase = max(1, (int) $rec['charge_base_cents']);
+    $originalMinor = (int) $rec['charge_original_minor'];
+    $alreadyBase = (int) ($rec['captured_base_cents'] ?? 0);
+    $alreadyMinor = (int) ($rec['captured_minor'] ?? 0);
+    if ($alreadyBase + $baseSlice >= $originalBase) {
+        $minor = max(0, $originalMinor - $alreadyMinor);
+    } else {
+        $minor = (int) floor($originalMinor * $baseSlice / $originalBase);
+    }
+    $rec['charge_next_minor'] = $minor;
+    $rec['charge_next_base'] = $baseSlice;
+    gcv_pix_write_reservation($rec);
+    return $rec;
+}
+
+function gcv_auth_captured_base(string $reservationId): int
+{
+    try {
+        $st = db()->prepare("SELECT COALESCE(SUM(base_cents),0) FROM gcv_booking_trips WHERE reservation_id = ? AND decision = 'CAPTURED'");
+        $st->execute([$reservationId]);
+        return (int) $st->fetchColumn();
+    } catch (Throwable $e) {
+        error_log('auth captured base: ' . $e->getMessage());
+        return 0;
+    }
 }
 
 /**
@@ -436,26 +476,35 @@ function gcv_auth_process_reservation(string $reservationId): string
     // 1) Todos decididos
     if ($ev['undecided'] === 0) {
         if ($ev['confirmed_cents'] <= 0) {
+            if (gcv_auth_captured_base($reservationId) > 0) {
+                return gcv_auth_settle_captured($rec, $ev) ? 'settled_partial' : 'settle_failed';
+            }
             gcv_auth_release($rec, 'not_confirmed');
             return 'released';
         }
         if ($status === 'CARD_SAVED') {
-            // Confirmou antes da janela (ou o cliente não deixou reservar): reserva agora e captura em seguida.
+            $rec = gcv_auth_arm_slice($rec, (int) $ev['confirmed_cents']);
             $r = gcv_auth_try_authorize_saved($rec);
             return 'authorize_for_capture:' . $r;
         }
         return gcv_auth_capture($rec, $ev) ? 'captured' : 'capture_failed';
     }
 
-    // 2) Ainda há passeio sem decisão
+    // 2) Um dia confirmou e outro ainda está em aberto: cobra só o confirmado.
+    if ($ev['confirmed_cents'] > 0) {
+        if ($status === 'AUTHORIZED') {
+            return gcv_auth_capture($rec, $ev, false, true) ? 'partial_day_captured' : 'partial_day_failed';
+        }
+        if ($status === 'CARD_SAVED') {
+            $rec = gcv_auth_arm_slice($rec, (int) $ev['confirmed_cents']);
+            return 'authorize_day:' . gcv_auth_try_authorize_saved($rec);
+        }
+    }
+
+    // 3) Nada confirmado ainda. Se a reserva do cartão vai vencer, guarda o cartão e espera.
     if ($status === 'AUTHORIZED') {
         $exp = (string) ($rec['card_auth']['expires_at'] ?? '');
         if ($exp !== '' && $exp <= gcv_auth_now()->modify('+12 hours')->format('Y-m-d H:i:s')) {
-            // Reserva no cartão vai vencer: cobra o que já confirmou e volta a "cartão salvo" para o resto.
-            if ($ev['confirmed_cents'] > 0) {
-                gcv_auth_capture($rec, $ev, true);
-                return 'partial_capture_before_expiry';
-            }
             gcv_auth_void_gateway($rec);
             $rec = gcv_pix_read_reservation($reservationId) ?: $rec;
             $rec['status'] = 'CARD_SAVED';
@@ -524,7 +573,7 @@ function gcv_auth_request_customer_action(array $rec, string $reason): string
         'count' => (int) ($rec['card_action']['count'] ?? 0) + 1,
     ];
     gcv_pix_write_reservation($rec);
-    gcv_auth_email_customer($rec, 'action');
+    gcv_auth_email_customer($rec, !empty($rec['charge_next_minor']) ? 'action_day' : 'action');
     return 'action_requested';
 }
 
@@ -553,9 +602,11 @@ function gcv_auth_valid_action_token(string $reservationId, string $token): bool
 }
 
 /**
- * Captura (cobra) a parte confirmada. $partial = reserva vai vencer e ainda há passeio pendente.
+ * Captura (cobra) a parte confirmada.
+ * $partial = a reserva ia vencer e o dia ainda sem decisão é liberado.
+ * $keepRest = cobra só o dia confirmado e deixa o dia em formação na reserva, sem cobrar.
  */
-function gcv_auth_capture(array $rec, array $ev, bool $partial = false): bool
+function gcv_auth_capture(array $rec, array $ev, bool $partial = false, bool $keepRest = false): bool
 {
     $rid = (string) $rec['reservation_id'];
     $gateway = (string) ($rec['card_auth']['gateway'] ?? $rec['gateway'] ?? '');
@@ -585,7 +636,7 @@ function gcv_auth_capture(array $rec, array $ev, bool $partial = false): bool
     foreach ($ev['trips'] as $t) {
         if ($t['decision'] === 'CONFIRMED') {
             db()->prepare("UPDATE gcv_booking_trips SET decision = 'CAPTURED' WHERE id = ?")->execute([(int) $t['id']]);
-        } elseif ($t['decision'] === 'CANCELLED' || ($partial && $t['decision'] === 'UNDECIDED')) {
+        } elseif ($t['decision'] === 'CANCELLED' || ($partial && !$keepRest && $t['decision'] === 'UNDECIDED')) {
             db()->prepare("UPDATE gcv_booking_trips SET decision = 'RELEASED', decided_at = NOW() WHERE id = ?")->execute([(int) $t['id']]);
             $releasedTrips[] = (int) $t['trip_index'];
             if ($t['decision'] === 'UNDECIDED') {
@@ -605,10 +656,43 @@ function gcv_auth_capture(array $rec, array $ev, bool $partial = false): bool
 
     $rec = gcv_pix_read_reservation($rid) ?: $rec;
     $rec['captured_minor'] = (int) ($rec['captured_minor'] ?? 0) + $minor;
-    $rec['amount_cents'] = (int) $ev['confirmed_cents'];
-    $rec['amount'] = round($ev['confirmed_cents'] / 100, 2);
+    $rec['captured_base_cents'] = (int) ($rec['captured_base_cents'] ?? 0) + (int) $ev['confirmed_cents'];
+    if (empty($rec['charge_original_minor'])) {
+        $rec['charge_original_minor'] = (int) ($rec['card_auth']['amount_minor'] ?? $rec['charged_minor'] ?? $minor);
+        $rec['charge_base_cents'] = (int) ($rec['amount_cents'] ?? $ev['confirmed_cents']);
+    }
     $rec['charged_label'] = gcv_checkout_label_for($rec, $minor);
     unset($rec['card_auth']);
+
+    if ($keepRest) {
+        $chargedDays = [];
+        $openDays = [];
+        foreach ($ev['trips'] as $t) {
+            $label = trim((string) ($t['title'] ?? ''));
+            $when = substr((string) ($t['starts_at'] ?? ''), 0, 16);
+            if ($when !== '') {
+                $label = trim($label . ' ' . $when);
+            }
+            if (($t['decision'] ?? '') === 'CONFIRMED') {
+                $chargedDays[] = $label;
+            } elseif (($t['decision'] ?? '') === 'UNDECIDED') {
+                $openDays[] = $label;
+            }
+        }
+        $rec['partial_charged'] = $chargedDays;
+        $rec['partial_open'] = $openDays;
+        $rec['partial_charges'] = is_array($rec['partial_charges'] ?? null) ? $rec['partial_charges'] : [];
+        $rec['partial_charges'][] = ['id' => $authId, 'minor' => $minor, 'gateway' => $gateway, 'at' => gmdate('c')];
+        $rec['status'] = 'CARD_SAVED';
+        gcv_pix_write_reservation($rec);
+        gcv_ledger_upsert(['reservation_id' => $rid, 'gateway' => $gateway, 'status' => 'CARD_SAVED']);
+        gcv_auth_email_customer($rec, 'partial_day');
+        gcv_auth_notify_partial_day($rec);
+        return true;
+    }
+
+    $rec['amount_cents'] = (int) $rec['captured_base_cents'];
+    $rec['amount'] = round(((int) $rec['captured_base_cents']) / 100, 2);
     gcv_pix_write_reservation($rec);
 
     // Venda passa a PAID → libera o repasse ao guia no dia do passeio.
@@ -628,6 +712,113 @@ function gcv_auth_capture(array $rec, array $ev, bool $partial = false): bool
     }
     gcv_auth_email_customer($marked ?: $rec, 'captured');
     return true;
+}
+
+function gcv_auth_due_minor(array $rec): int
+{
+    $next = (int) ($rec['charge_next_minor'] ?? 0);
+    return $next > 0 ? $next : (int) ($rec['charged_minor'] ?? 0);
+}
+
+/** Ainda há dia desta reserva sem cobrança fechada. */
+function gcv_auth_booking_still_open(string $reservationId): bool
+{
+    if ($reservationId === '') {
+        return false;
+    }
+    try {
+        $st = db()->prepare("SELECT COUNT(*) FROM gcv_booking_trips WHERE reservation_id = ? AND decision IN ('UNDECIDED','CONFIRMED')");
+        $st->execute([$reservationId]);
+        return (int) $st->fetchColumn() > 0;
+    } catch (Throwable $e) {
+        error_log('auth booking open: ' . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Os dias em aberto acabaram e uma parte já foi cobrada.
+ * A venda fica no valor cobrado. O dia cancelado não entra.
+ *
+ * @param array<string,mixed> $rec
+ * @param array<string,mixed> $ev
+ */
+function gcv_auth_settle_captured(array $rec, array $ev): bool
+{
+    $rid = (string) ($rec['reservation_id'] ?? '');
+    $base = gcv_auth_captured_base($rid);
+    if ($rid === '' || $base <= 0) {
+        return false;
+    }
+    if (strtoupper((string) ($rec['status'] ?? '')) === 'AUTHORIZED') {
+        gcv_auth_void_gateway($rec);
+    }
+    $rec = gcv_pix_read_reservation($rid) ?: $rec;
+    $rec['amount_cents'] = $base;
+    $rec['amount'] = round($base / 100, 2);
+    unset($rec['card_auth']);
+    gcv_pix_write_reservation($rec);
+    $indexes = [];
+    foreach ($ev['trips'] as $t) {
+        if (($t['decision'] ?? '') === 'CANCELLED') {
+            $indexes[] = (int) ($t['trip_index'] ?? -1);
+        }
+    }
+    $indexes = array_values(array_filter($indexes, static fn ($n) => $n >= 0));
+    if ($indexes) {
+        gcv_auth_release_seats($rec, $indexes);
+    }
+    return gcv_pix_mark_paid($rid, (string) ($rec['gateway'] ?? 'card')) !== null;
+}
+
+/** @param array<string,mixed> $rec */
+function gcv_auth_booking_url(array $rec): string
+{
+    $app = rtrim((string) ($_ENV['APP_URL'] ?? getenv('APP_URL') ?: 'https://www.guiachapadaveadeiros.com'), '/');
+    return $app . '/dashboard/#reservas';
+}
+
+/** @param array<string,mixed> $rec */
+function gcv_auth_notify_partial_day(array $rec): void
+{
+    $loc = in_array($rec['locale'] ?? 'pt', ['pt', 'en', 'es'], true) ? (string) $rec['locale'] : 'pt';
+    $rid = strtoupper((string) ($rec['reservation_id'] ?? ''));
+    $money = (string) ($rec['charged_label'] ?? '');
+    $charged = implode(', ', array_map('strval', is_array($rec['partial_charged'] ?? null) ? $rec['partial_charged'] : []));
+    $open = implode(', ', array_map('strval', is_array($rec['partial_open'] ?? null) ? $rec['partial_open'] : []));
+    $link = gcv_auth_booking_url($rec);
+    if ($loc === 'en') {
+        $text = "One day of your booking is confirmed and will be charged on its own.\n\n"
+            . "Code: {$rid}\n"
+            . ($charged !== '' ? "Charged now: {$charged}\n" : '')
+            . ($money !== '' ? "Amount: {$money}\n" : '')
+            . ($open !== '' ? "Still forming, not charged, and you can cancel: {$open}\n" : '')
+            . "\nSee the booking: {$link}";
+    } elseif ($loc === 'es') {
+        $text = "Un día de tu reserva está confirmado y se cobra aparte.\n\n"
+            . "Código: {$rid}\n"
+            . ($charged !== '' ? "Se cobra ahora: {$charged}\n" : '')
+            . ($money !== '' ? "Valor: {$money}\n" : '')
+            . ($open !== '' ? "Sigue en formación, sin cobro, y puedes cancelarlo: {$open}\n" : '')
+            . "\nVer la reserva: {$link}";
+    } else {
+        $text = "Um dia da sua reserva confirmou e será cobrado à parte.\n\n"
+            . "Código: {$rid}\n"
+            . ($charged !== '' ? "Cobrado agora: {$charged}\n" : '')
+            . ($money !== '' ? "Valor: {$money}\n" : '')
+            . ($open !== '' ? "Continua em formação, sem cobrança, e pode ser cancelado: {$open}\n" : '')
+            . "\nVer a reserva: {$link}";
+    }
+    try {
+        require_once __DIR__ . '/../notify_ops.php';
+        gcv_ops_wa_client([
+            'reservation_id' => $rid,
+            'tourist_email' => (string) ($rec['email'] ?? ''),
+            'tourist_phone' => (string) ($rec['phone'] ?? $rec['telefone'] ?? ''),
+        ], $text, ['kind' => 'partial_day']);
+    } catch (Throwable $e) {
+        error_log('auth partial whatsapp: ' . $e->getMessage());
+    }
 }
 
 function gcv_checkout_label_for(array $rec, int $minor): string
@@ -887,16 +1078,29 @@ function gcv_auth_email_customer(array $rec, string $kind): void
     $loc = in_array($rec['locale'] ?? 'pt', ['pt', 'en', 'es'], true) ? (string) $rec['locale'] : 'pt';
     $rid = htmlspecialchars((string) $rec['reservation_id'], ENT_QUOTES, 'UTF-8');
     $amount = htmlspecialchars((string) ($rec['charged_label'] ?? ''), ENT_QUOTES, 'UTF-8');
+    $chargedList = htmlspecialchars(implode(', ', array_map('strval', is_array($rec['partial_charged'] ?? null) ? $rec['partial_charged'] : [])), ENT_QUOTES, 'UTF-8');
+    $openList = htmlspecialchars(implode(', ', array_map('strval', is_array($rec['partial_open'] ?? null) ? $rec['partial_open'] : [])), ENT_QUOTES, 'UTF-8');
+    $bookingUrl = htmlspecialchars(gcv_auth_booking_url($rec), ENT_QUOTES, 'UTF-8');
     $T = [
         'reserved' => [
-            'pt' => ['Vaga reservada — ' . $rid, '<p>Sua vaga na reserva <strong>' . $rid . '</strong> está garantida.</p><p><strong>Nada foi cobrado ainda.</strong> O valor (' . $amount . ') fica reservado no seu cartão e só é cobrado quando o passeio for confirmado (grupo mínimo atingido e guia confirmado). Se o passeio não confirmar, a reserva no cartão é liberada automaticamente e você não paga nada.</p>'],
-            'en' => ['Spot reserved — ' . $rid, '<p>Your spot for booking <strong>' . $rid . '</strong> is secured.</p><p><strong>You have not been charged yet.</strong> The amount (' . $amount . ') is held on your card and only charged once the tour is confirmed (minimum group reached and guide confirmed). If the tour is not confirmed, the hold is released automatically and you pay nothing.</p>'],
-            'es' => ['Cupo reservado — ' . $rid, '<p>Tu cupo en la reserva <strong>' . $rid . '</strong> está garantizado.</p><p><strong>Todavía no se cobró nada.</strong> El monto (' . $amount . ') queda reservado en tu tarjeta y solo se cobra cuando el paseo se confirme (grupo mínimo y guía confirmado). Si no se confirma, la reserva se libera automáticamente y no pagas nada.</p>'],
+            'pt' => ['Vaga reservada — ' . $rid, '<p>Sua vaga na reserva <strong>' . $rid . '</strong> está garantida.</p><p><strong>Nada foi cobrado ainda.</strong> O valor (' . $amount . ') fica reservado no seu cartão e só é cobrado quando o passeio for confirmado (grupo mínimo atingido e guia confirmado). Se o passeio não confirmar, a reserva no cartão é liberada automaticamente e você não paga nada. Em compra de mais de um dia, cada dia é cobrado quando aquele dia confirma. O dia que continuar em formação não é cobrado.</p>'],
+            'en' => ['Spot reserved — ' . $rid, '<p>Your spot for booking <strong>' . $rid . '</strong> is secured.</p><p><strong>You have not been charged yet.</strong> The amount (' . $amount . ') is held on your card and only charged once the tour is confirmed (minimum group reached and guide confirmed). If the tour is not confirmed, the hold is released automatically and you pay nothing. On a booking with more than one day, each day is charged when that day is confirmed. A day that is still forming is not charged.</p>'],
+            'es' => ['Cupo reservado — ' . $rid, '<p>Tu cupo en la reserva <strong>' . $rid . '</strong> está garantizado.</p><p><strong>Todavía no se cobró nada.</strong> El monto (' . $amount . ') queda reservado en tu tarjeta y solo se cobra cuando el paseo se confirme (grupo mínimo y guía confirmado). Si no se confirma, la reserva se libera automáticamente y no pagas nada. En una compra de más de un día, cada día se cobra cuando ese día se confirma. El día que sigue en formación no se cobra.</p>'],
         ],
         'action' => [
             'pt' => ['Confirme seu cartão — ' . $rid, '<p>Seu passeio (reserva <strong>' . $rid . '</strong>) está chegando. Para manter a vaga, confirme o cartão salvo (leva 10 segundos):</p><p><a href="{{url}}">Confirmar meu cartão</a></p><p>Ainda não será cobrado: o valor só é cobrado quando o passeio confirmar. Sem essa confirmação até ' . gcv_auth_customer_deadline_hours() . 'h antes da saída, a vaga é liberada.</p>'],
             'en' => ['Confirm your card — ' . $rid, '<p>Your tour (booking <strong>' . $rid . '</strong>) is coming up. To keep your spot, confirm your saved card (takes 10 seconds):</p><p><a href="{{url}}">Confirm my card</a></p><p>You will not be charged yet: the charge only happens once the tour is confirmed. Without this confirmation ' . gcv_auth_customer_deadline_hours() . 'h before departure, the spot is released.</p>'],
             'es' => ['Confirma tu tarjeta — ' . $rid, '<p>Tu paseo (reserva <strong>' . $rid . '</strong>) se acerca. Para mantener el cupo, confirma la tarjeta guardada (10 segundos):</p><p><a href="{{url}}">Confirmar mi tarjeta</a></p><p>Aún no se cobrará: el cobro solo ocurre cuando el paseo se confirme. Sin esta confirmación ' . gcv_auth_customer_deadline_hours() . 'h antes de la salida, el cupo se libera.</p>'],
+        ],
+        'action_day' => [
+            'pt' => ['Confirme o cartão deste dia — ' . $rid, '<p>Um dia da reserva <strong>' . $rid . '</strong> confirmou e será cobrado à parte' . ($amount !== '' ? ' (' . $amount . ')' : '') . '.</p><p><a href="{{url}}">Confirmar o cartão deste dia</a></p><p>Os outros dias que continuam em formação não entram nesta cobrança.</p>'],
+            'en' => ['Confirm the card for this day — ' . $rid, '<p>One day of booking <strong>' . $rid . '</strong> is confirmed and will be charged on its own' . ($amount !== '' ? ' (' . $amount . ')' : '') . '.</p><p><a href="{{url}}">Confirm the card for this day</a></p><p>Days that are still forming are not part of this charge.</p>'],
+            'es' => ['Confirma la tarjeta de este día — ' . $rid, '<p>Un día de la reserva <strong>' . $rid . '</strong> se confirmó y se cobra aparte' . ($amount !== '' ? ' (' . $amount . ')' : '') . '.</p><p><a href="{{url}}">Confirmar la tarjeta de este día</a></p><p>Los otros días que siguen en formación no entran en este cobro.</p>'],
+        ],
+        'partial_day' => [
+            'pt' => ['Um dia foi cobrado — ' . $rid, '<p>Um dia da reserva <strong>' . $rid . '</strong> confirmou e foi cobrado à parte' . ($amount !== '' ? ': <strong>' . $amount . '</strong>' : '') . '.</p>' . ($chargedList !== '' ? '<p>Cobrado agora: ' . $chargedList . '.</p>' : '') . ($openList !== '' ? '<p>Continua em formação, sem cobrança, e pode ser cancelado: ' . $openList . '.</p>' : '') . '<p><a href="' . $bookingUrl . '">Ver a reserva</a></p>'],
+            'en' => ['One day was charged — ' . $rid, '<p>One day of booking <strong>' . $rid . '</strong> is confirmed and was charged on its own' . ($amount !== '' ? ': <strong>' . $amount . '</strong>' : '') . '.</p>' . ($chargedList !== '' ? '<p>Charged now: ' . $chargedList . '.</p>' : '') . ($openList !== '' ? '<p>Still forming, not charged, and you can cancel: ' . $openList . '.</p>' : '') . '<p><a href="' . $bookingUrl . '">See the booking</a></p>'],
+            'es' => ['Un día fue cobrado — ' . $rid, '<p>Un día de la reserva <strong>' . $rid . '</strong> se confirmó y se cobró aparte' . ($amount !== '' ? ': <strong>' . $amount . '</strong>' : '') . '.</p>' . ($chargedList !== '' ? '<p>Se cobra ahora: ' . $chargedList . '.</p>' : '') . ($openList !== '' ? '<p>Sigue en formación, sin cobro, y puedes cancelarlo: ' . $openList . '.</p>' : '') . '<p><a href="' . $bookingUrl . '">Ver la reserva</a></p>'],
         ],
         'captured' => [
             'pt' => ['Passeio confirmado — ' . $rid, '<p>Boa notícia: o passeio da reserva <strong>' . $rid . '</strong> está <strong>confirmado</strong>! Cobramos ' . $amount . ' no seu cartão. Nos vemos na Chapada!</p><p>Política: após a confirmação não há reembolso em caso de desistência.</p>'],

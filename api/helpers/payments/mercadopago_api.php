@@ -229,6 +229,12 @@ function gcv_mp_apply_payment(array $payment): array
     }
 
     $wasPaid = gcv_pix_effective_status($rec) === 'PAID';
+    if (!$wasPaid && function_exists('gcv_auth_booking_still_open') === false) {
+        require_once __DIR__ . '/authorization.php';
+    }
+    if (!$wasPaid && gcv_auth_booking_still_open($rid)) {
+        return ['ok' => true, 'status' => 'PARTIAL', 'reservation_id' => $rid, 'locale' => $locale];
+    }
     $installLabel = gcv_checkout_installments_label((string) ($rec['charged_currency'] ?? 'BRL'), $amountCents, $installments);
     $marked = gcv_pix_mark_paid($rid, 'mercadopago');
     if ($marked) {
@@ -402,8 +408,9 @@ function gcv_mp_authorize(array $rec, array $card, ?string $customerId = null): 
         $payer = ['type' => 'customer', 'id' => $customerId] + $payer;
     }
     $origin = rtrim((string) ($_ENV['APP_URL'] ?? getenv('APP_URL') ?: ''), '/');
+    $due = gcv_auth_due_minor($rec);
     $body = [
-        'transaction_amount' => round(((int) $rec['charged_minor']) / 100, 2),
+        'transaction_amount' => round($due / 100, 2),
         'token' => (string) ($card['token'] ?? ''),
         'description' => 'Guia Chapada Veadeiros ' . $rid,
         'installments' => max(1, (int) ($card['installments'] ?? 1)),
@@ -416,7 +423,7 @@ function gcv_mp_authorize(array $rec, array $card, ?string $customerId = null): 
         'metadata' => ['reservation_id' => $rid],
         'additional_info' => ['items' => [[
             'id' => $rid, 'title' => 'Passeio Guia Chapada Veadeiros', 'quantity' => 1,
-            'unit_price' => round(((int) $rec['charged_minor']) / 100, 2), 'category_id' => 'travels',
+            'unit_price' => round($due / 100, 2), 'category_id' => 'travels',
         ]]],
     ];
     if (!empty($card['issuer_id'])) {

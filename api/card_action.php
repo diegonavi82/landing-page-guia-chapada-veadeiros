@@ -62,7 +62,7 @@ if ($method === 'GET') {
             'card_id' => (string) ($saved['card_id'] ?? ''),
             'last4' => (string) ($saved['last4'] ?? ''),
             'payment_method_id' => (string) ($saved['payment_method_id'] ?? ''),
-            'amount' => round(((int) ($rec['charged_minor'] ?? 0)) / 100, 2),
+            'amount' => round(gcv_auth_due_minor($rec) / 100, 2),
         ] : null,
     ]);
 }
@@ -107,7 +107,7 @@ if ($action === 'mp' && $gateway === 'mercadopago') {
 
 if ($action === 'stripe' && $gateway === 'stripe') {
     require_once __DIR__ . '/helpers/payments/stripe_auth.php';
-    $items = gcv_stripe_line_items($rec, $rid, (int) $rec['charged_minor'], $locale, strtolower((string) ($rec['charged_currency'] ?? 'usd')));
+    $items = gcv_stripe_line_items($rec, $rid, gcv_auth_due_minor($rec), $locale, strtolower((string) ($rec['charged_currency'] ?? 'usd')));
     $s = gcv_stripe_auth_session($rec, 'payment', gcv_checkout_origin(), gcv_checkout_confirm_path($locale) . '?id=' . rawurlencode($rid), $items);
     if (empty($s['ok'])) {
         gcv_card_action_out(502, ['success' => false, 'message' => 'Não foi possível abrir o pagamento. Tente de novo.']);
