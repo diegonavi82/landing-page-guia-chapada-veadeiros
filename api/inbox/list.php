@@ -10,9 +10,10 @@ header('Content-Type: application/json; charset=utf-8');
 $user = require_auth();
 $uid = (int)($user['id'] ?? 0);
 $limit = (int)($_GET['limit'] ?? 80);
+$clientView = (string)($user['active_role'] ?? '') === 'client';
 
 json_response(true, [
-    'unread' => gcv_inbox_unread_count($uid),
-    'agenda_unread' => gcv_inbox_unread_count($uid, 'new_booking'),
-    'items' => gcv_inbox_list($uid, $limit),
+    'unread' => gcv_inbox_unread_count($uid, null, $clientView),
+    'agenda_unread' => $clientView ? 0 : gcv_inbox_unread_count($uid, 'new_booking'),
+    'items' => gcv_inbox_list($uid, $limit, $clientView),
 ]);

@@ -46,6 +46,6 @@ if ($all) {
 
 json_response(true, [
     'marked' => $n,
-    'unread' => gcv_inbox_unread_count($uid),
-    'agenda_unread' => gcv_inbox_unread_count($uid, 'new_booking'),
+    'unread' => gcv_inbox_unread_count($uid, null, (string)($user['active_role'] ?? '') === 'client'),
+    'agenda_unread' => (string)($user['active_role'] ?? '') === 'client' ? 0 : gcv_inbox_unread_count($uid, 'new_booking'),
 ]);

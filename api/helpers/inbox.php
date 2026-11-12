@@ -108,15 +108,12 @@ function gcv_inbox_card_markers(): array
 {
     return [
         'Você é o guia dessa excursão',
-        'Sua reserva está nesta excursão',
-        'Your booking is on this tour',
-        'Tu reserva está en esta excursión',
     ];
 }
 
 function gcv_inbox_is_card(string $body, string $kind): bool
 {
-    if (in_array($kind, ['guide_posse', 'guide_assigned', 'guide_accepted', 'client_posse'], true)) {
+    if (in_array($kind, ['guide_posse', 'guide_assigned', 'guide_accepted'], true)) {
         return true;
     }
     foreach (gcv_inbox_card_markers() as $marker) {
@@ -134,14 +131,14 @@ function gcv_inbox_replace_card(int $userId, int $excursionId, string $title, st
         return false;
     }
     $likes = [];
-    $params = [$userId, $excursionId, 'guide_posse', 'guide_assigned', 'guide_accepted', 'client_posse'];
+    $params = [$userId, $excursionId, 'guide_posse', 'guide_assigned', 'guide_accepted'];
     foreach (gcv_inbox_card_markers() as $marker) {
         $likes[] = 'body LIKE ?';
         $params[] = '%' . $marker . '%';
     }
     try {
         $st = db()->prepare(
-            'SELECT id FROM gcv_inbox WHERE user_id = ? AND excursion_id = ? AND (`kind` IN (?,?,?,?) OR '
+            'SELECT id FROM gcv_inbox WHERE user_id = ? AND excursion_id = ? AND (`kind` IN (?,?,?) OR '
             . implode(' OR ', $likes) . ')'
         );
         $st->execute($params);
@@ -161,7 +158,13 @@ function gcv_inbox_replace_card(int $userId, int $excursionId, string $title, st
     }
 }
 
-function gcv_inbox_unread_count(int $userId, ?string $kind = null): int
+function gcv_inbox_client_filter_sql(): string
+{
+    return " AND IFNULL(`kind`,'') NOT IN ('guide_posse','guide_assigned','guide_accepted','new_booking')"
+        . " AND body NOT LIKE '%Você é o guia dessa excursão%'";
+}
+
+function gcv_inbox_unread_count(int $userId, ?string $kind = null, bool $clientView = false): int
 {
     if ($userId <= 0) {
         return 0;
@@ -170,12 +173,17 @@ function gcv_inbox_unread_count(int $userId, ?string $kind = null): int
     $kind = $kind !== null ? substr(trim($kind), 0, 40) : '';
     try {
         if ($kind !== '') {
-            $st = db()->prepare('SELECT COUNT(*) FROM gcv_inbox WHERE user_id = ? AND read_at IS NULL AND `kind` = ?');
-            $st->execute([$userId, $kind]);
+            $sql = 'SELECT COUNT(*) FROM gcv_inbox WHERE user_id = ? AND read_at IS NULL AND `kind` = ?';
+            $params = [$userId, $kind];
         } else {
-            $st = db()->prepare('SELECT COUNT(*) FROM gcv_inbox WHERE user_id = ? AND read_at IS NULL');
-            $st->execute([$userId]);
+            $sql = 'SELECT COUNT(*) FROM gcv_inbox WHERE user_id = ? AND read_at IS NULL';
+            $params = [$userId];
         }
+        if ($clientView) {
+            $sql .= gcv_inbox_client_filter_sql();
+        }
+        $st = db()->prepare($sql);
+        $st->execute($params);
         return (int)$st->fetchColumn();
     } catch (Throwable $e) {
         return 0;
@@ -185,7 +193,7 @@ function gcv_inbox_unread_count(int $userId, ?string $kind = null): int
 /**
  * @return list<array<string,mixed>>
  */
-function gcv_inbox_list(int $userId, int $limit = 80): array
+function gcv_inbox_list(int $userId, int $limit = 80, bool $clientView = false): array
 {
     if ($userId <= 0) {
         return [];
@@ -193,13 +201,14 @@ function gcv_inbox_list(int $userId, int $limit = 80): array
     gcv_inbox_ensure_schema();
     $limit = max(1, min(200, $limit));
     try {
-        $st = db()->prepare(
-            "SELECT id, title, body, `kind`, excursion_id, sale_id, read_at, created_at
+        $sql = "SELECT id, title, body, `kind`, excursion_id, sale_id, read_at, created_at
              FROM gcv_inbox
-             WHERE user_id = ?
-             ORDER BY id DESC
-             LIMIT {$limit}"
-        );
+             WHERE user_id = ?";
+        if ($clientView) {
+            $sql .= gcv_inbox_client_filter_sql();
+        }
+        $sql .= " ORDER BY id DESC LIMIT {$limit}";
+        $st = db()->prepare($sql);
         $st->execute([$userId]);
         $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
         foreach ($rows as &$r) {

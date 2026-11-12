@@ -409,10 +409,6 @@ function gcv_ops_wa_guide(int $guideUserId, string $text, array $meta = []): boo
     if ($guideUserId > 0 && function_exists('gcv_inbox_push')) {
         gcv_inbox_push($guideUserId, $text, $meta);
     }
-    $excId = (int)($meta['excursion_id'] ?? 0);
-    if ($excId > 0 && str_contains($text, 'Você é o guia dessa excursão')) {
-        gcv_ops_refresh_posse_cards($excId, !str_contains($text, '(✅ CONFIRMADA)'), false);
-    }
     $c = gcv_ops_guide_contact($guideUserId);
     if ($c['phone'] === '') {
         error_log('gcv_ops_wa_guide: guia ' . $guideUserId . ' sem WhatsApp cadastrado');
@@ -894,80 +890,6 @@ function gcv_ops_guide_posse_text(int $excursionId, ?array $exc = null): string
         ]
     );
     return implode("\n", $lines);
-}
-
-function gcv_ops_client_posse_text(array $sale, array $exc): string
-{
-    $excursionId = (int)($exc['id'] ?? $sale['excursion_id'] ?? 0);
-    $loc = gcv_ops_sale_locale($sale);
-    $confirmed = gcv_ops_posse_confirmed($exc);
-    if ($loc === 'en') {
-        $hello = '✅ Your booking is on this tour.';
-        $money = 'Booking amount: ' . gcv_ops_brl((int)($sale['sold_price_cents'] ?? 0));
-        $heading = 'Tour#' . $excursionId . ' ' . ($confirmed ? '(✅ CONFIRMED)' : '(FORMING)');
-    } elseif ($loc === 'es') {
-        $hello = '✅ Tu reserva está en esta excursión.';
-        $money = 'Valor de la reserva: ' . gcv_ops_brl((int)($sale['sold_price_cents'] ?? 0));
-        $heading = 'Excursión#' . $excursionId . ' ' . ($confirmed ? '(✅ CONFIRMADA)' : '(EN FORMACIÓN)');
-    } else {
-        $hello = '✅ Sua reserva está nesta excursão.';
-        $money = 'Valor da reserva: ' . gcv_ops_brl((int)($sale['sold_price_cents'] ?? 0));
-        $heading = gcv_ops_posse_heading($exc, $excursionId, $confirmed);
-    }
-    $lines = array_merge(
-        [$heading, '', $hello, ''],
-        gcv_ops_posse_fact_lines($exc, $excursionId, $loc),
-        [$money, '', gcv_ops_posse_footer($exc, $confirmed, $loc, false)]
-    );
-    return implode("\n", $lines);
-}
-
-/**
- * Mantém o mesmo aviso do painel em dia para o guia e para cada cliente.
- * O WhatsApp do cliente sai só quando o grupo muda e o passeio ainda não confirmou.
- */
-function gcv_ops_refresh_posse_cards(int $excursionId, bool $sendClientWa, bool $touchGuideInbox = true): void
-{
-    static $depth = 0;
-    if ($excursionId <= 0 || $depth > 0) {
-        return;
-    }
-    $depth++;
-    try {
-        $exc = gcv_ops_load_excursion($excursionId);
-        if (!$exc || gcv_excursion_is_private($exc) || (string)($exc['status'] ?? '') === 'cancelled') {
-            return;
-        }
-        if ($touchGuideInbox) {
-            $guideId = (int)($exc['guide_user_id'] ?? 0);
-            if ($guideId > 0 && function_exists('gcv_inbox_push')) {
-                gcv_inbox_push($guideId, gcv_ops_guide_posse_text($excursionId, $exc), [
-                    'kind' => 'guide_posse',
-                    'excursion_id' => $excursionId,
-                ]);
-            }
-        }
-        foreach (gcv_ops_paid_sales_for_excursion($excursionId) as $sale) {
-            $text = gcv_ops_client_posse_text($sale, $exc);
-            $meta = [
-                'kind' => 'client_posse',
-                'excursion_id' => $excursionId,
-                'sale_id' => (int)($sale['id'] ?? 0),
-            ];
-            if ($sendClientWa) {
-                gcv_ops_wa_client($sale, $text, $meta);
-                continue;
-            }
-            $uid = gcv_ops_client_user_id($sale);
-            if ($uid > 0 && function_exists('gcv_inbox_push')) {
-                gcv_inbox_push($uid, $text, $meta);
-            }
-        }
-    } catch (Throwable $e) {
-        error_log('gcv_ops_refresh_posse_cards: ' . $e->getMessage());
-    } finally {
-        $depth--;
-    }
 }
 
 function gcv_ops_notify_guide_posse(int $excursionId): bool
@@ -1562,9 +1484,6 @@ function gcv_ops_notify_guide_new_booking(array $sale, ?array $exc, int $spots, 
         if ($email !== '') {
             gcv_ops_mail_plain($email, $subject, $textGuide);
         }
-    }
-    if ($excId > 0 && !$privado && !str_contains($textGuide, 'Você é o guia dessa excursão')) {
-        gcv_ops_refresh_posse_cards($excId, true, true);
     }
 
     if (!$agency) {
