@@ -30,7 +30,7 @@
     guideTitle: "Fundador e Guia Local",
     email: "contato@guiachapadaveadeiros.com",
     phone: "+55 62 98250-6891",
-    logoRel: "assets/img/imagens/logo-guia-chapada-veadeiros-oficial.webp",
+    logoRel: "assets/img/imagens/logo-email-guia-chapada-veadeiros.jpg",
   };
 
   var STRINGS = {
@@ -619,7 +619,7 @@
         ? formatPhoneIntl(buyerPhoneRaw)
         : buyerPhoneRaw
       : "";
-    var logo = siteAssetUrl(COMPANY.logoRel);
+    var logo = "https://www.guiachapadaveadeiros.com/" + COMPANY.logoRel;
     var emitted = emissionLabel(loc);
     var coverage = resolveInclExcl(data);
     var inclItems = coverage.incl.length ? coverage.incl : [rs(loc, "inclDefault")];
@@ -730,22 +730,20 @@
       '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef2f0;padding:24px 12px;">' +
       '<tr><td align="center">' +
       '<table role="presentation" width="640" cellpadding="0" cellspacing="0" style="max-width:640px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #d7e2db;box-shadow:0 8px 28px rgba(15,61,46,.08);">' +
-      '<tr><td style="background:linear-gradient(135deg,#0f3d2e 0%,#1a5c45 100%);padding:28px 28px 22px;">' +
-      '<table width="100%" cellpadding="0" cellspacing="0"><tr>' +
-      '<td style="vertical-align:middle;">' +
+      '<tr><td align="center" style="background:#ffffff;padding:22px 28px 8px;">' +
       '<img src="' +
       escapeHtml(logo) +
       '" alt="' +
       escapeHtml(COMPANY.name) +
-      '" width="160" height="42" style="display:block;max-width:160px;height:auto;border:0;">' +
-      "</td>" +
-      '<td align="right" style="vertical-align:middle;">' +
+      '" width="560" height="226" style="display:block;width:100%;max-width:560px;height:auto;border:0;outline:none;text-decoration:none;">' +
+      "</td></tr>" +
+      '<tr><td style="background:#0f3d2e;padding:22px 28px 22px;">' +
       '<p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#a7f3d0;">' +
       escapeHtml(rs(loc, "refLabel")) +
       "</p>" +
       '<p style="margin:4px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:20px;font-weight:800;color:#ffffff;letter-spacing:.04em;">' +
       escapeHtml(code) +
-      "</p></td></tr></table>" +
+      "</p>" +
       '<h1 style="margin:18px 0 0;font-family:Georgia,serif;font-size:22px;line-height:1.25;color:#ffffff;font-weight:700;">' +
       escapeHtml(rs(loc, "receiptDocTitle")) +
       "</h1></td></tr>" +
@@ -938,7 +936,7 @@
       "body{margin:0;padding:24px;background:#f1f5f9;font-family:Inter,Arial,sans-serif;color:#0f172a}",
       ".sheet{max-width:920px;margin:0 auto;background:#fff;padding:28px 32px;border:1px solid #e2e8f0;border-radius:8px}",
       ".head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:16px}",
-      ".brand img{display:block;max-height:44px;width:auto;margin-bottom:6px}",
+      ".brand img{display:block;width:100%;max-width:560px;height:auto;margin-bottom:6px}",
       ".brand strong{font-size:.78rem;letter-spacing:.04em;color:#064e3b}",
       ".doc-title{margin:0;max-width:420px;font-size:.72rem;line-height:1.35;text-align:right;color:#064e3b;font-weight:800}",
       ".intro{font-size:.82rem;line-height:1.55;color:#334155;margin:0 0 18px}",
