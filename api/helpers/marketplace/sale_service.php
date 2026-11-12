@@ -553,8 +553,9 @@ function gcv_sale_refresh_booked_people(int $excursionId): bool
 }
 
 /**
- * Última pessoa cancelou e não sobrou inscrito: a saída sai do site.
- * Confirmada não entra aqui.
+ * Última pessoa da reserva saiu e não sobrou inscrito: a saída sai do site.
+ * O registro permanece para estatística. Passeio criado pelo admin ou pelo guia,
+ * sem nenhuma reserva de cliente, não entra aqui.
  */
 function gcv_excursion_cancel_if_empty(int $excursionId): bool
 {
@@ -572,10 +573,6 @@ function gcv_excursion_cancel_if_empty(int $excursionId): bool
     if (!$row || !in_array((string)($row['status'] ?? ''), ['published', 'soldout'], true)) {
         return false;
     }
-    $life = gcv_resolve_excursion_lifecycle($row);
-    if (in_array($life, ['confirmada', 'concluida'], true)) {
-        return false;
-    }
     $people = max(0, (int)($row['booked_people'] ?? 0))
         + max(0, (int)($row['booked_people_transport'] ?? 0))
         + max(0, (int)($row['preconfirmed_people'] ?? 0));
@@ -583,13 +580,19 @@ function gcv_excursion_cancel_if_empty(int $excursionId): bool
         return false;
     }
     try {
-        $paid = db()->prepare(
-            "SELECT COALESCE(SUM(spots), 0) FROM gcv_sales
-             WHERE excursion_id = ? AND deleted_at IS NULL
-               AND sale_status IN ('PAID','AUTHORIZED')"
+        $sales = db()->prepare(
+            "SELECT
+               COALESCE(SUM(CASE WHEN sale_status IN ('PAID','AUTHORIZED') THEN spots ELSE 0 END), 0) AS active_spots,
+               COUNT(*) AS total_sales
+             FROM gcv_sales
+             WHERE excursion_id = ? AND deleted_at IS NULL"
         );
-        $paid->execute([$excursionId]);
-        if ((int)$paid->fetchColumn() > 0) {
+        $sales->execute([$excursionId]);
+        $count = $sales->fetch(PDO::FETCH_ASSOC) ?: [];
+        if ((int)($count['total_sales'] ?? 0) < 1) {
+            return false;
+        }
+        if ((int)($count['active_spots'] ?? 0) > 0) {
             return false;
         }
     } catch (Throwable $e) {

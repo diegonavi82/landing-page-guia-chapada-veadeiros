@@ -3770,7 +3770,7 @@
           confirmedCheckboxHtml(p, false) +
           '<div class="gcv-dash-field gcv-guide-net-box__field">' +
           '<label class="gcv-dash-label gcv-guide-net-box__label" id="' + p + 'net-label" for="' + p + 'net">Valor a receber por Pessoa *</label>' +
-          '<input class="gcv-dash-input gcv-guide-net-box__input" id="' + p + 'net" type="number" min="' + netMin + '" max="' + netMax + '" step="1" inputmode="decimal" required /></div>' +
+          '<input class="gcv-dash-input gcv-guide-net-box__input" id="' + p + 'net" type="number" min="' + netMin + '" max="' + netMax + '" step="0.01" inputmode="decimal" required /></div>' +
           '<div id="' + p + 'preview" class="gcv-guide-net-box__hint" hidden></div>' +
           quorumOnlyRowHtml(p) +
           '</div>' +
@@ -3780,7 +3780,7 @@
           '<div id="' + p + 'transport-fields" class="gcv-guide-net-box__body" hidden>' +
           '<div class="gcv-dash-field gcv-guide-net-box__field">' +
           '<label class="gcv-dash-label gcv-guide-net-box__label" id="' + p + 'net-t-label" for="' + p + 'net-t">Valor a receber por Pessoa (limite de R$' + netMaxTransport + ') *</label>' +
-          '<input class="gcv-dash-input gcv-guide-net-box__input" id="' + p + 'net-t" type="number" min="' + netMin + '" max="' + netMaxTransport + '" step="1" inputmode="decimal" disabled /></div>' +
+          '<input class="gcv-dash-input gcv-guide-net-box__input" id="' + p + 'net-t" type="number" min="' + netMin + '" max="' + netMaxTransport + '" step="0.01" inputmode="decimal" disabled /></div>' +
           '<div id="' + p + 'preview-t" class="gcv-guide-net-box__hint" hidden></div>' +
           quorumOnlyRowHtml(p + 't-', quorumSelectHtml(p + 't-quorum', DEFAULT_QUORUM, MAX_TRANSPORT_PEOPLE, 0)) +
           '<div class="gcv-dash-field"><label class="gcv-dash-label" for="' + p + 'max-t">Vagas com transporte (máximo 4)</label>' +
@@ -4269,7 +4269,10 @@
           payload.meeting_point_lng = meetingLng !== '' ? meetingLng : null;
         }
         if (!editing || netRaw !== '') {
-          payload.guide_net_cents = Math.round(net * 100);
+          var storedNet = pendingEditExcursion ? parseFiniteInt(pendingEditExcursion.guide_net_cents, 0) : 0;
+          var derived = pendingEditExcursion ? centsToReais(guideNetCentsForEdit(pendingEditExcursion, false)) : '';
+          var keepDerived = editing && storedNet <= 0 && sameReais(netRaw, derived);
+          if (!keepDerived) payload.guide_net_cents = Math.round(net * 100);
         }
         if (withTransport) {
           var netT = parseFloat(el('net-t') ? el('net-t').value : '');
@@ -4728,7 +4731,30 @@
 
       function centsToReais(cents) {
         var n = parseFiniteInt(cents, 0);
-        return n > 0 ? String(Math.round(n / 100)) : '';
+        if (n <= 0) return '';
+        if (n % 100 === 0) return String(n / 100);
+        return (n / 100).toFixed(2);
+      }
+      function guideNetCentsForEdit(e, transport) {
+        if (!e) return 0;
+        var raw = transport ? e.guide_net_transport_cents : e.guide_net_cents;
+        if (raw != null && raw !== '') {
+          var stored = parseFiniteInt(raw, 0);
+          if (stored > 0) return stored;
+        }
+        var price = parseFiniteInt(transport ? e.price_transport_cents : e.price_cents, 0);
+        if (price <= 0) return 0;
+        var pct = parseFloat(e.commission_pct_applied);
+        if (!isFinite(pct) || pct < 0 || pct >= 100) pct = 10;
+        var keep = 1 - (pct / 100);
+        if (!(keep > 0 && keep < 1)) keep = 0.9;
+        return Math.max(0, Math.round(price * keep));
+      }
+      function sameReais(a, b) {
+        var left = parseFloat(String(a || '').replace(',', '.'));
+        var right = parseFloat(String(b || '').replace(',', '.'));
+        if (!isFinite(left) || !isFinite(right)) return false;
+        return Math.abs(left - right) < 0.001;
       }
       function writeTimeSelect(hourId, minId, hhmm) {
         var raw = String(hhmm || '10:00');
@@ -4791,9 +4817,12 @@
           );
           el('meeting').value = saved ? saved.id : '';
           el('meeting').dispatchEvent(new Event('change', { bubbles: true }));
+          if (!saved && e.meeting_point && el('meeting-gps')) {
+            el('meeting-gps').textContent = 'Ponto salvo: ' + e.meeting_point;
+          }
         }
         if (el('net')) {
-          el('net').value = centsToReais(e.guide_net_cents);
+          el('net').value = centsToReais(guideNetCentsForEdit(e, false));
           el('net').dispatchEvent(new Event('input', { bubbles: true }));
         }
         if (el('max')) {
@@ -4818,7 +4847,7 @@
         }
         if (offersAgendaTransport(e)) {
           if (el('net-t')) {
-            el('net-t').value = centsToReais(e.guide_net_transport_cents);
+            el('net-t').value = centsToReais(guideNetCentsForEdit(e, true));
             el('net-t').dispatchEvent(new Event('input', { bubbles: true }));
           }
           if (el('max-t')) el('max-t').value = String(parseFiniteInt(e.max_people_transport, DEFAULT_MAX_TRANSPORT));
