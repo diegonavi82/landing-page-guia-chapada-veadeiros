@@ -58,12 +58,12 @@
           '<div class="gcv-ig-card">' +
             '<h3>Automático</h3>' +
             '<ul class="gcv-ig-rules">' +
-              '<li><strong>Excursão publicada.</strong> Um story e um post no feed, uma vez. Rascunho e rejeição não publicam.</li>' +
+              '<li><strong>Excursão publicada.</strong> Só um story, uma vez. Sem post no feed. Rascunho e rejeição não publicam.</li>' +
               '<li><strong>48 horas antes da saída.</strong> Um story de lembrete, se ainda houver vaga e o passeio não estiver cancelado.</li>' +
               '<li><strong>Últimas vagas.</strong> Um story quando restam 3 lugares ou menos, uma vez por excursão.</li>' +
-              '<li><strong>Quinta, 8h.</strong> Um story só, com as saídas abertas da semana. Não um story por passeio.</li>' +
-              '<li><strong>Revista.</strong> Um post no feed quando a matéria entra no ar. Sem story.</li>' +
-              '<li><strong>Horário.</strong> Só entre 8h e 20h. O que acontecer de noite espera a manhã seguinte. No máximo 4 stories automáticos por dia.</li>' +
+              '<li><strong>Quinta, 8h.</strong> Um story só, com as saídas abertas da semana. O endereço guiachapadaveadeiros.com/excursoes.html vai na imagem e abre a lista de saídas.</li>' +
+              '<li><strong>Revista.</strong> Um post no feed e um story quando a matéria entra no ar.</li>' +
+              '<li><strong>Horário.</strong> Só entre 8h e 20h. O que acontecer de noite espera a manhã seguinte.</li>' +
               '<li><strong>Grade do site.</strong> Atualiza a cada 6 horas com o feed. Story não entra nessa grade: some em 24 horas.</li>' +
             '</ul>' +
           '</div>' +
