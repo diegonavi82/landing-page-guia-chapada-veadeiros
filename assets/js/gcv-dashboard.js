@@ -2412,6 +2412,7 @@
         { id: 'section-admin-messages',    icon: '💬', label: 'Mensagens',         load: loadMessages       },
         { id: 'section-cms-cities',        icon: '📍', label: 'Cidades',           load: function () { if (window.GcvAdminCms) window.GcvAdminCms.open('cities'); } },
         { id: 'section-cms-excursions',    icon: '🚌', label: 'Excursões ou Privativos', load: function () { if (window.GcvAdminCms) window.GcvAdminCms.open('excursions'); } },
+        { id: 'section-admin-instagram',   icon: '📸', label: 'Instagram',         load: function () { if (window.GcvAdminInstagram) window.GcvAdminInstagram.open(); } },
         { id: 'section-admin-payouts',     icon: '💸', label: 'Pagamentos',        load: loadAdminPayouts   },
         { id: 'section-admin-bookings',    icon: '📋', label: 'Reservas',          load: loadAdminBookings  },
         { id: 'section-admin-financial',   icon: '💰', label: 'Financeiro',        load: loadFinancial      },
