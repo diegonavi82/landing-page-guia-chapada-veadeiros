@@ -284,12 +284,22 @@
             return '<li class="' + (row.mine ? "is-mine" : "") + '">' + esc(row.position) + ". " + esc(row.name) + " · " + esc(row.points) + (row.mine ? " (" + esc(t("you")) + ")" : "") + "</li>";
           }).join("") + "</ol>"
         : '<p class="gcv-ind__note">' + esc(t("rankEmpty")) + "</p>");
+    var guideMeta = isGuide
+      ? '<div class="gcv-ind__meta"><p><span>' + esc(t("points")) + "</span><strong>" + esc(data.points || 0) + "</strong></p><p><span>" + esc(t("place")) + "</span><strong>" + esc(data.position || t("none")) + "</strong></p></div>"
+      : "";
     root.innerHTML =
       '<p class="gcv-ind__note">' + esc(isGuide ? t("lead") : t("leadClient")) + "</p>" +
-      '<div class="gcv-ind__cards">' +
-        '<div class="gcv-ind__card"><span>' + esc(t("balance")) + '</span><strong>' + esc(money(data.balance_cents, uiLang)) + "</strong></div>" +
-        (isGuide ? '<div class="gcv-ind__card"><span>' + esc(t("points")) + "</span><strong>" + esc(data.points || 0) + "</strong></div>" : "") +
-        (isGuide ? '<div class="gcv-ind__card"><span>' + esc(t("place")) + "</span><strong>" + esc(data.position || t("none")) + "</strong></div>" : "") +
+      '<div class="gcv-ind__split">' +
+        '<div class="gcv-ind__card gcv-ind__balance"><span>' + esc(t("balance")) + "</span><strong>" + esc(money(data.balance_cents, uiLang)) + "</strong>" + guideMeta + "</div>" +
+        '<section class="gcv-ind__saque">' +
+          "<h3>" + esc(t("withdraw")) + "</h3>" +
+          '<form class="gcv-dash-form" id="gcv-ind-saque">' +
+            '<div class="gcv-dash-field"><label class="gcv-dash-label" for="gcv-ind-pix">' + esc(t("pix")) + '</label><input class="gcv-dash-input" id="gcv-ind-pix" name="pix_key" required /></div>' +
+            '<div class="gcv-dash-field"><label class="gcv-dash-label" for="gcv-ind-valor">' + esc(t("amount")) + '</label><input class="gcv-dash-input" id="gcv-ind-valor" name="amount" inputmode="decimal" /></div>' +
+            '<button class="gcv-dash-btn" type="submit">' + esc(t("ask")) + "</button>" +
+            '<p class="gcv-ind__note" id="gcv-ind-saque-msg" hidden></p>' +
+          "</form>" +
+        "</section>" +
       "</div>" +
       '<form class="gcv-dash-form" id="gcv-ind-form" autocomplete="off">' +
         '<div class="gcv-dash-field"><span class="gcv-dash-label">' + esc(t("phone")) + '</span><div id="gcv-ind-phone-wrap"></div></div>' +
@@ -301,14 +311,7 @@
         '<p class="gcv-ind__note" id="gcv-ind-msg" hidden></p>' +
       "</form>" +
       "<h3>" + esc(t("list")) + '</h3><div class="gcv-ind__list">' + rows + "</div>" +
-      (isGuide ? "<h3>" + esc(t("rank")) + "</h3>" + rankHtml : "") +
-      "<h3>" + esc(t("withdraw")) + "</h3>" +
-      '<form class="gcv-dash-form" id="gcv-ind-saque">' +
-        '<div class="gcv-dash-field"><label class="gcv-dash-label" for="gcv-ind-pix">' + esc(t("pix")) + '</label><input class="gcv-dash-input" id="gcv-ind-pix" name="pix_key" required /></div>' +
-        '<div class="gcv-dash-field"><label class="gcv-dash-label" for="gcv-ind-valor">' + esc(t("amount")) + '</label><input class="gcv-dash-input" id="gcv-ind-valor" name="amount" inputmode="decimal" /></div>' +
-        '<button class="gcv-dash-btn" type="submit">' + esc(t("ask")) + "</button>" +
-        '<p class="gcv-ind__note" id="gcv-ind-saque-msg" hidden></p>' +
-      "</form>";
+      (isGuide ? "<h3>" + esc(t("rank")) + "</h3>" + rankHtml : "");
 
     function bindIndDate(id) {
       var input = document.getElementById(id);
