@@ -221,14 +221,14 @@ export const INSTITUTIONAL = {
         {
           h: "Reserva",
           paragraphs: [
-            "A reserva é de um passeio em uma data, prestado pelo Guia Chapada Veadeiros. Não é a contratação de um guia escolhido pelo nome. Sem translado, entra o primeiro guia da fila que aceitar. Com translado, os guias com veículo recebem a proposta ao mesmo tempo e o primeiro que aceitar fica com a vaga.",
+            "A reserva é de um passeio em uma data, prestado pelo Guia Chapada Veadeiros. Na excursão sem translado, entra o primeiro dos 3 guias da fila que aceitar. No privativo, o contratante escolhe o guia numa lista de quem aceitou participar. Com translado na excursão, os guias com veículo recebem a proposta ao mesmo tempo e o primeiro que aceitar fica com a vaga.",
           ],
         },
         {
           h: "Pagamento e cancelamento",
           paragraphs: [
-            "No cartão, o cartão fica salvo e a cobrança de 100% ocorre quando a confirmação operacional termina, com o guia alocado e, se houver translado, o veículo. No Pix já pago, o cancelamento enquanto o passeio ainda está em formação devolve 100% daquele passeio.",
-            "Enquanto a saída está em Aguardando confirmação operacional, o contratante não cancela. O cancelamento só é possível em formação. Quando o passeio está confirmado, o contratante não cancela e não há reembolso.",
+            "No cartão, o cartão fica salvo e a cobrança de 100% ocorre quando o guia está alocado e, se houver translado, o veículo. No Pix já pago, o cancelamento enquanto o passeio ainda está em formação devolve 100% daquele passeio. Em Aguardando confirmação operacional, o Pix permanece até a saída ser cancelada.",
+            "Enquanto a saída está em Aguardando confirmação operacional, o contratante não cancela. O cancelamento pelo contratante só é possível em formação. Quando o passeio está confirmado, o contratante não cancela. O estorno, quando houver, é o da contratada.",
           ],
         },
         {
@@ -254,14 +254,14 @@ export const INSTITUTIONAL = {
         {
           h: "Booking",
           paragraphs: [
-            "A booking is for a tour on a date, provided by Guia Chapada Veadeiros. It is not a booking of a guide you choose by name. Without transport, the first guide in the queue who accepts takes the departure. With transport, guides who have a vehicle receive the offer at the same time, and the first to accept takes the seat.",
+            "A booking is for a tour on a date, provided by Guia Chapada Veadeiros. On a shared tour without transport, the first of the 3 guides in the queue who accepts takes the departure. On a private tour, the customer chooses the guide from a list of those who agreed to be chosen. On a shared tour with transport, guides who have a vehicle receive the offer at the same time, and the first to accept takes the seat.",
           ],
         },
         {
           h: "Payment and cancellation",
           paragraphs: [
-            "On card, the card is saved and the 100% charge happens when operational confirmation is complete, with the guide assigned and, if there is transport, the vehicle. If Pix is already paid, cancelling while that tour is still forming refunds 100% of that tour.",
-            "While the departure is Waiting for operational confirmation, the customer cannot cancel. Cancellation is possible only while the tour is still forming. Once the tour is confirmed, the customer cannot cancel and there is no refund.",
+            "On card, the card is saved and the 100% charge happens when the guide is assigned and, if there is transport, the vehicle. If Pix is already paid, cancelling while that tour is still forming refunds 100% of that tour. While the departure is Waiting for operational confirmation, Pix stays until the departure is cancelled.",
+            "While the departure is Waiting for operational confirmation, the customer cannot cancel. The customer can cancel only while the tour is still forming. Once the tour is confirmed, the customer does not cancel. A refund, when there is one, is the Company's.",
           ],
         },
         {
@@ -287,14 +287,14 @@ export const INSTITUTIONAL = {
         {
           h: "Reserva",
           paragraphs: [
-            "La reserva es de una excursión en una fecha, prestada por Guía Chapada Veadeiros. No es la contratación de un guía elegido por el nombre. Sin traslado, entra el primer guía de la fila que acepte. Con traslado, los guías con vehículo reciben la propuesta al mismo tiempo y el primero que acepte se queda con la plaza.",
+            "La reserva es de una excursión en una fecha, prestada por Guía Chapada Veadeiros. En la excursión sin traslado, entra el primero de los 3 guías de la fila que acepte. En el paseo privado, el contratante elige al guía en una lista de quienes aceptaron participar. Con traslado en la excursión, los guías con vehículo reciben la propuesta al mismo tiempo y el primero que acepte se queda con la plaza.",
           ],
         },
         {
           h: "Pago y cancelación",
           paragraphs: [
-            "En tarjeta, la tarjeta queda guardada y el cobro del 100% ocurre cuando la confirmación operativa termina, con el guía asignado y, si hay traslado, el vehículo. En el Pix ya pagado, la cancelación mientras la excursión sigue en formación devuelve el 100% de esa salida.",
-            "Mientras la salida está en Esperando confirmación operativa, el contratante no puede cancelar. La cancelación solo es posible en formación. Cuando la excursión está confirmada, el contratante no cancela y no hay reembolso.",
+            "En tarjeta, la tarjeta queda guardada y el cobro del 100% ocurre cuando el guía está asignado y, si hay traslado, el vehículo. En el Pix ya pagado, la cancelación mientras la excursión sigue en formación devuelve el 100% de esa salida. En Esperando confirmación operativa, el Pix permanece hasta que la salida se cancele.",
+            "Mientras la salida está en Esperando confirmación operativa, el contratante no puede cancelar. La cancelación por el contratante solo es posible en formación. Cuando la excursión está confirmada, el contratante no cancela. El reembolso, cuando lo hay, es el de la contratada.",
           ],
         },
         {
