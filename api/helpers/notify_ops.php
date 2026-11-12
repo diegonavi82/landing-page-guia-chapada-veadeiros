@@ -1992,10 +1992,12 @@ function gcv_ops_notify_guide_confirmed(int $excursionId): void
     $guideId = (int)($exc['guide_user_id'] ?? 0);
     $title = gcv_ops_excursion_title($exc);
     $linhas = gcv_ops_aviso_saida_linhas($excursionId, $exc);
+    $clientes = gcv_ops_confirmed_clients_text($excursionId);
+    $linhasComClientes = $linhas . ($clientes !== '' ? "\n\n" . $clientes : '');
     $textAdmin = ($privado
             ? "✅ Guia confirmou a guiagem\n\n"
             : "✅ Passeio CONFIRMADO (Em formação → Confirmado)\n\n")
-        . $linhas;
+        . $linhasComClientes;
     gcv_ops_wa_agency($textAdmin);
     gcv_ops_mail_plain('diegonavi82@gmail.com', 'Passeio confirmado — ' . $title, $textAdmin);
 
@@ -2005,7 +2007,8 @@ function gcv_ops_notify_guide_confirmed(int $excursionId): void
             . gcv_ops_roster_text($excursionId) . "\n\n"
             . 'Os dados dos clientes também estão na Agenda.' . "\n"
             . gcv_ops_guide_qr_scan_lines())
-        : gcv_ops_guide_posse_text($excursionId, $exc);
+        : (gcv_ops_guide_posse_text($excursionId, $exc)
+            . ($clientes !== '' ? "\n\n" . $clientes : ''));
     if ($guideId > 0) {
         $guidePhone = (string)(gcv_ops_guide_contact($guideId)['phone'] ?? '');
         $agency = function_exists('gcv_admin_whatsapp_phone') ? gcv_admin_whatsapp_phone() : '5521996039027';
@@ -2206,6 +2209,30 @@ function gcv_ops_group_update_text(int $excursionId, ?array $exc = null): string
     $lines[] = 'Valor a receber por inscrição: ' . gcv_ops_brl(gcv_ops_guide_unit_for_notice($exc, $excursionId))
         . ' (total até o momento ' . gcv_ops_brl((int)$g['guide_cents']) . ')';
     return implode("\n", $lines);
+}
+
+/** Nome e telefone dos inscritos. Só no aviso de passeio já confirmado. */
+function gcv_ops_confirmed_clients_text(int $excursionId): string
+{
+    $sales = gcv_ops_paid_sales_for_excursion($excursionId);
+    if (!$sales) {
+        return '';
+    }
+    $blocks = [];
+    foreach ($sales as $s) {
+        $name = trim((string)($s['tourist_name'] ?? ''));
+        if ($name === '') {
+            $name = 'Cliente';
+        }
+        $phone = trim((string)($s['tourist_phone'] ?? ''));
+        if ($phone === '') {
+            $phone = gcv_ops_client_phone($s);
+        }
+        $phoneDisp = gcv_ops_format_phone_display($phone);
+        $blocks[] = 'Nome: ' . $name . "\n" . 'Telefone: ' . ($phoneDisp !== '' ? $phoneDisp : '—');
+    }
+    $title = count($blocks) === 1 ? 'Cliente' : 'Clientes';
+    return $title . ":\n" . implode("\n\n", $blocks);
 }
 
 function gcv_ops_roster_text(int $excursionId): string
