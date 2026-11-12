@@ -36,7 +36,9 @@
   var STRINGS = {
     pt: {
       receiptTitle: "Recibo de confirmação de pagamento Pix — excursão",
-      receiptDocTitle: "RECIBO DE CONFIRMAÇÃO DE PAGAMENTO",
+      receiptDocTitle: "Confirmação da reserva",
+      mailHello:
+        "Olá. Guia Chapada Veadeiros confirma a sua reserva na Chapada dos Veadeiros. O roteiro está neste e-mail. Guarde a mensagem.",
       receiptIntro:
         "Recebemos a quantia de {{amount}} ({{amountWords}}), referente ao pagamento via Pix de passeio(s) em excursão, identificado pelo código de reserva {{code}}, conforme roteiro abaixo.",
       contractor: "Contratada",
@@ -103,7 +105,9 @@
     },
     en: {
       receiptTitle: "Pix payment receipt — excursion",
-      receiptDocTitle: "PAYMENT CONFIRMATION RECEIPT",
+      receiptDocTitle: "Reservation confirmation",
+      mailHello:
+        "Hello. Guia Chapada Veadeiros confirms your reservation at Chapada dos Veadeiros. The itinerary is in this email. Please keep it.",
       receiptIntro:
         "We acknowledge payment of {{amount}} ({{amountWords}}) via Pix for the excursion(s) below, reservation code {{code}}.",
       contractor: "Provider",
@@ -170,7 +174,9 @@
     },
     es: {
       receiptTitle: "Recibo de pago Pix — excursión",
-      receiptDocTitle: "RECIBO DE CONFIRMACIÓN DE PAGO",
+      receiptDocTitle: "Confirmación de la reserva",
+      mailHello:
+        "Hola. Guia Chapada Veadeiros confirma su reserva en Chapada dos Veadeiros. El itinerario está en este correo. Guárdelo.",
       receiptIntro:
         "Recibimos {{amount}} ({{amountWords}}) vía Pix por la(s) excursión(es) abajo, código de reserva {{code}}.",
       contractor: "Contratada",
@@ -719,14 +725,8 @@
       (loc === "en" ? "en" : loc === "es" ? "es" : "pt-BR") +
       '"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
       "<title>" +
-      escapeHtml(code) +
-      " - Reserva</title>" +
-      "<style>" +
-      receiptCss() +
-      "</style></head><body style=\"margin:0;padding:0;background:#eef2f0;font-family:Georgia,'Times New Roman',serif;color:#0f172a;\">" +
-      '<div style="display:none;max-height:0;overflow:hidden;">' +
-      escapeHtml(rs(loc, "receiptIntro").replace(/\{\{.*?\}\}/g, "")) +
-      "</div>" +
+      escapeHtml(rs(loc, "mailHello")) +
+      "</title></head><body style=\"margin:0;padding:0;background:#eef2f0;font-family:Georgia,'Times New Roman',serif;color:#0f172a;\">" +
       '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef2f0;padding:24px 12px;">' +
       '<tr><td align="center">' +
       '<table role="presentation" width="640" cellpadding="0" cellspacing="0" style="max-width:640px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #d7e2db;box-shadow:0 8px 28px rgba(15,61,46,.08);">' +
@@ -748,6 +748,9 @@
       escapeHtml(rs(loc, "receiptDocTitle")) +
       "</h1></td></tr>" +
       '<tr><td style="padding:24px 28px 8px;font-family:Arial,Helvetica,sans-serif;">' +
+      '<p style="margin:0 0 18px;font-size:15px;line-height:1.5;color:#0f172a;"><!-- gcv-mail-hello -->' +
+      escapeHtml(rs(loc, "mailHello")) +
+      "</p>" +
       '<p style="margin:0 0 18px;font-size:14px;line-height:1.55;color:#334155;">' +
       escapeHtml(
         tpl(rs(loc, "receiptIntro"), {
@@ -1602,29 +1605,19 @@
   function sendEmail(email, data, locale) {
     var loc = locale === "en" || locale === "es" ? locale : "pt";
     var html = buildReceiptHtml(data, loc);
-    return renderReceiptPngBase64(data, loc)
-      .catch(function () {
-        return "";
-      })
-      .then(function (pngBase64) {
-        var payload = {
-          email: email,
-          locale: loc,
-          code: data.code,
-          amount: data.amount,
-          trips: normalizeTrips(data.trips, loc),
-          html: html,
-        };
-        if (pngBase64) {
-          payload.attachment_png = pngBase64;
-          payload.attachment_name = receiptPngFilename(data.code);
-        }
-        return fetch(receiptApiUrl(), {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Accept: "application/json" },
-          body: JSON.stringify(payload),
-        });
-      })
+    var payload = {
+      email: email,
+      locale: loc,
+      code: data.code,
+      amount: data.amount,
+      trips: normalizeTrips(data.trips, loc),
+      html: html,
+    };
+    return fetch(receiptApiUrl(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(payload),
+    })
       .then(function (res) {
         if (!res.ok) throw new Error("send failed");
         return res.json();

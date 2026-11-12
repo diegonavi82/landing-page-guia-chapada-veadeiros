@@ -7,6 +7,19 @@ if ($gcvMailerReady) {
     require_once $gcvMailerAutoload;
 }
 
+function gcv_mail_plain_text(string $html): string
+{
+    $text = preg_replace('/<style\b[^>]*>.*?<\/style>/is', ' ', $html) ?? $html;
+    $text = preg_replace('/<script\b[^>]*>.*?<\/script>/is', ' ', $text) ?? $text;
+    $text = preg_replace('/<br\s*\/?>/i', "\n", $text) ?? $text;
+    $text = preg_replace('/<\/(p|div|tr|h1|h2|li)>/i', "\n", $text) ?? $text;
+    $text = html_entity_decode(strip_tags($text), ENT_QUOTES, 'UTF-8');
+    $text = preg_replace("/[ \t]+/u", ' ', $text) ?? $text;
+    $text = preg_replace("/\n[ \t]+/u", "\n", $text) ?? $text;
+    $text = preg_replace("/\n{3,}/u", "\n\n", $text) ?? $text;
+    return trim($text);
+}
+
 /**
  * @param list<array{path?:string,content?:string,name?:string,type?:string}> $attachments
  */
@@ -16,7 +29,8 @@ function send_mail(
     string $bodyHtml,
     string $toName = '',
     bool $wrapLayout = true,
-    array $attachments = []
+    array $attachments = [],
+    string $altBody = ''
 ): bool {
     global $gcvMailerReady;
     if (empty($gcvMailerReady) || !class_exists(\PHPMailer\PHPMailer\PHPMailer::class)) {
@@ -40,11 +54,15 @@ function send_mail(
         $from     = $_ENV['SMTP_FROM'] ?? 'contato@guiachapadaveadeiros.com';
         $fromName = 'Guia Chapada Veadeiros';
         $mail->setFrom($from, $fromName);
+        $mail->Sender = $from;
+        $mail->addReplyTo($from, $fromName);
         $mail->addAddress($to, $toName);
         $mail->isHTML(true);
+        $mail->XMailer = 'Guia Chapada Veadeiros';
+        $mail->MessageID = sprintf('<%s@guiachapadaveadeiros.com>', bin2hex(random_bytes(16)));
         $mail->Subject = $subject;
         $mail->Body    = $wrapLayout ? email_layout($subject, $bodyHtml) : $bodyHtml;
-        $mail->AltBody = strip_tags(preg_replace('/<style\b[^>]*>.*?<\/style>/is', '', $bodyHtml) ?? $bodyHtml);
+        $mail->AltBody = $altBody !== '' ? $altBody : gcv_mail_plain_text($bodyHtml);
 
         foreach ($attachments as $att) {
             if (!is_array($att)) {

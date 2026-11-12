@@ -323,5 +323,12 @@ function gcv_build_pix_receipt_email_html(array $rec, string $locale): string
 
 function gcv_pix_receipt_email_subject(string $code, string $locale): string
 {
-    return strtoupper(trim($code)) . ' - Reserva';
+    $code = strtoupper(trim($code));
+    $subjects = [
+        'pt' => 'Sua reserva ' . $code . ' na Chapada dos Veadeiros',
+        'en' => 'Your reservation ' . $code . ' at Chapada dos Veadeiros',
+        'es' => 'Su reserva ' . $code . ' en Chapada dos Veadeiros',
+    ];
+    $loc = in_array($locale, ['pt', 'en', 'es'], true) ? $locale : 'pt';
+    return $subjects[$loc];
 }

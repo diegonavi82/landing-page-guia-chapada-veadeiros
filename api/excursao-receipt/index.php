@@ -6,6 +6,7 @@ header('Content-Type: application/json; charset=utf-8');
 
 require_once dirname(__DIR__) . '/helpers/db.php';
 require_once dirname(__DIR__) . '/helpers/mailer.php';
+require_once dirname(__DIR__) . '/helpers/pix_receipt_html.php';
 require_once dirname(__DIR__) . '/helpers/pix_reservation_store.php';
 require_once dirname(__DIR__) . '/helpers/purchase_notify.php';
 
@@ -122,6 +123,8 @@ if ($html === '' || mb_strlen($html) < 200) {
 }
 
 $html = gcv_sanitize_receipt_html($html);
+$html = preg_replace('/<style\b[^>]*>.*?<\/style>/is', '', $html) ?? $html;
+$html = preg_replace('/<div\b[^>]*display\s*:\s*none[^>]*>.*?<\/div>/is', '', $html) ?? $html;
 
 // Mantém documento completo (css + body) — e-mails precisam do markup completo.
 if (!preg_match('/<html[\s>]/i', $html)) {
@@ -130,51 +133,69 @@ if (!preg_match('/<html[\s>]/i', $html)) {
         . '</body></html>';
 }
 
-$subject = $code . ' - Reserva';
+$subject = gcv_pix_receipt_email_subject($code, $locale);
 
-$preheaders = [
-    'pt' => 'Comprovante de pagamento Pix para sua excursão na Chapada dos Veadeiros.',
-    'en' => 'Pix payment receipt for your Chapada dos Veadeiros excursion.',
-    'es' => 'Comprobante de pago Pix para su excursión en Chapada dos Veadeiros.',
+$hellos = [
+    'pt' => 'Olá. Guia Chapada Veadeiros confirma a sua reserva na Chapada dos Veadeiros. O roteiro está neste e-mail. Guarde a mensagem.',
+    'en' => 'Hello. Guia Chapada Veadeiros confirms your reservation at Chapada dos Veadeiros. The itinerary is in this email. Please keep it.',
+    'es' => 'Hola. Guia Chapada Veadeiros confirma su reserva en Chapada dos Veadeiros. El itinerario está en este correo. Guárdelo.',
 ];
-$preheader = $preheaders[$locale] ?? $preheaders['pt'];
+if (!str_contains($html, 'gcv-mail-hello')) {
+    $hello = '<p style="margin:0;padding:16px 28px 0;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#0f172a;"><!-- gcv-mail-hello -->'
+        . htmlspecialchars($hellos[$locale] ?? $hellos['pt'], ENT_QUOTES, 'UTF-8')
+        . '</p>';
+    $html = preg_replace('/<body\b[^>]*>/i', '$0' . $hello, $html, 1) ?? ($hello . $html);
+}
 
 $footer = gcv_receipt_email_links_footer($code, $locale);
 if (stripos($html, '</body>') !== false) {
-    $wrapped = preg_replace(
-        '/<\/body>/i',
-        '<div style="display:none;max-height:0;overflow:hidden;">' . htmlspecialchars($preheader, ENT_QUOTES, 'UTF-8') . '</div>'
-        . $footer
-        . '</body>',
-        $html,
-        1
-    ) ?? ($html . $footer);
+    $wrapped = preg_replace('/<\/body>/i', $footer . '</body>', $html, 1) ?? ($html . $footer);
 } else {
     $wrapped = $html . $footer;
 }
 
-$attachments = [];
-$pngB64 = (string)($data['attachment_png'] ?? '');
-$pngName = gcv_clean_string($data['attachment_name'] ?? ('recibo-' . $code . '.png'), 120);
-if ($pngB64 !== '') {
-    if (strpos($pngB64, ',') !== false) {
-        $pngB64 = substr($pngB64, strpos($pngB64, ',') + 1) ?: '';
-    }
-    $pngB64 = preg_replace('/\s+/', '', $pngB64) ?? '';
-    if (strlen($pngB64) > 80 && strlen($pngB64) < 6000000) {
-        $bin = base64_decode($pngB64, true);
-        if ($bin !== false && strlen($bin) > 100) {
-            if (!preg_match('/\.png$/i', $pngName)) {
-                $pngName .= '.png';
-            }
-            $attachments[] = [
-                'content' => $bin,
-                'name' => $pngName,
-                'type' => 'image/png',
-            ];
-        }
-    }
-}
+$confirmPath = $locale === 'en' ? '/en/confirmacao.html' : ($locale === 'es' ? '/es/confirmacao.html' : '/confirmacao.html');
+$lookupPath = $locale === 'en' ? '/en/consultar-reserva.html' : ($locale === 'es' ? '/es/consultar-reserva.html' : '/consultar-reserva.html');
+$appUrl = rtrim((string)($_ENV['APP_URL'] ?? 'https://www.guiachapadaveadeiros.com'), '/');
+$altLines = [
+    'pt' => [
+        'Sua reserva ' . $code . ' na Chapada dos Veadeiros',
+        '',
+        'Guia Chapada Veadeiros confirma esta reserva.',
+        'Código: ' . $code,
+        '',
+        'Ver confirmação: ' . $appUrl . $confirmPath . '?id=' . rawurlencode($code),
+        'Consultar reserva: ' . $appUrl . $lookupPath . '?id=' . rawurlencode($code),
+        '',
+        'contato@guiachapadaveadeiros.com',
+        '+55 62 98250-6891',
+    ],
+    'en' => [
+        'Your reservation ' . $code . ' at Chapada dos Veadeiros',
+        '',
+        'Guia Chapada Veadeiros confirms this reservation.',
+        'Code: ' . $code,
+        '',
+        'View confirmation: ' . $appUrl . $confirmPath . '?id=' . rawurlencode($code),
+        'Look up reservation: ' . $appUrl . $lookupPath . '?id=' . rawurlencode($code),
+        '',
+        'contato@guiachapadaveadeiros.com',
+        '+55 62 98250-6891',
+    ],
+    'es' => [
+        'Su reserva ' . $code . ' en Chapada dos Veadeiros',
+        '',
+        'Guia Chapada Veadeiros confirma esta reserva.',
+        'Código: ' . $code,
+        '',
+        'Ver confirmación: ' . $appUrl . $confirmPath . '?id=' . rawurlencode($code),
+        'Consultar reserva: ' . $appUrl . $lookupPath . '?id=' . rawurlencode($code),
+        '',
+        'contato@guiachapadaveadeiros.com',
+        '+55 62 98250-6891',
+    ],
+];
+$altBody = implode("\n", $altLines[$locale] ?? $altLines['pt']);
 
 $smtpUser = trim((string)($_ENV['SMTP_USER'] ?? ''));
 $smtpPass = trim((string)($_ENV['SMTP_PASS'] ?? ''));
@@ -183,7 +204,7 @@ if ($smtpUser === '' || $smtpPass === '') {
     gcv_json_error(503, 'Mail service not configured');
 }
 
-$sent = send_mail($email, $subject, $wrapped, '', false, $attachments);
+$sent = send_mail($email, $subject, $wrapped, '', false, [], $altBody);
 
 if (!$sent) {
     gcv_json_error(500, 'Mail send failed');
@@ -212,5 +233,5 @@ echo json_encode([
     'ok' => true,
     'message' => 'Sent',
     'code' => $code,
-    'attachment' => $attachments !== [],
+    'attachment' => false,
 ]);
