@@ -6,8 +6,8 @@
       title: "Indicações",
       loading: "Carregando…",
       fail: "Não foi possível carregar agora.",
-      lead: "Indique um telefone com DDI ou um e-mail. No primeiro passeio pago, você ganha 1 ponto por pessoa da reserva e o valor por pessoa do tarifário.",
-      leadClient: "Indique um telefone com DDI ou um e-mail. No primeiro passeio pago, você ganha o valor por pessoa do tarifário.",
+      lead: "Indique um telefone com DDI ou um e-mail. O saldo e o ponto entram no dia seguinte ao primeiro passeio, se a saída foi confirmada e executada e o dinheiro caiu na conta, no Pix ou no cartão.",
+      leadClient: "Indique um telefone com DDI ou um e-mail. O saldo entra no dia seguinte ao primeiro passeio, se a saída foi confirmada e executada e o dinheiro caiu na conta, no Pix ou no cartão.",
       viaWa: "Enviado no WhatsApp",
       viaMail: "Enviado por e-mail",
       bought: "Compra fechada",
@@ -42,7 +42,7 @@
       status: {
         sent: "Enviado",
         pending_email: "Aguardando e-mail",
-        linked: "Aguardando o passeio",
+        linked: "Aguardando o crédito",
         rewarded: "Concluída",
         nao_conta: "Não conta"
       },
@@ -64,8 +64,8 @@
       title: "Referrals",
       loading: "Loading…",
       fail: "Could not load this right now.",
-      lead: "Refer a phone number with country code, or an email. On their first paid tour, you earn 1 point per person in the booking and the per-person amount from the price list.",
-      leadClient: "Refer a phone number with country code, or an email. On their first paid tour, you earn the per-person amount from the price list.",
+      lead: "Refer a phone number with country code, or an email. The balance and the point are added the day after their first tour, once that departure was confirmed and completed and the payment has landed in the account, by Pix or card.",
+      leadClient: "Refer a phone number with country code, or an email. The balance is added the day after their first tour, once that departure was confirmed and completed and the payment has landed in the account, by Pix or card.",
       viaWa: "Sent on WhatsApp",
       viaMail: "Sent by email",
       bought: "Purchase closed",
@@ -100,7 +100,7 @@
       status: {
         sent: "Sent",
         pending_email: "Waiting for email",
-        linked: "Waiting for the tour",
+        linked: "Waiting for the credit",
         rewarded: "Completed",
         nao_conta: "Does not count"
       },
@@ -122,8 +122,8 @@
       title: "Indicaciones",
       loading: "Cargando…",
       fail: "No se pudo cargar ahora.",
-      lead: "Indica un teléfono con código de país, o un correo. En su primer paseo pago, ganas 1 punto por persona de la reserva y el valor por persona del tarifario.",
-      leadClient: "Indica un teléfono con código de país, o un correo. En su primer paseo pago, ganas el valor por persona del tarifario.",
+      lead: "Indica un teléfono con código de país, o un correo. El saldo y el punto entran al día siguiente del primer paseo, si la salida quedó confirmada y se realizó, y solo si el dinero ya cayó en la cuenta, por Pix o tarjeta.",
+      leadClient: "Indica un teléfono con código de país, o un correo. El saldo entra al día siguiente del primer paseo, si la salida quedó confirmada y se realizó, y solo si el dinero ya cayó en la cuenta, por Pix o tarjeta.",
       viaWa: "Enviado por WhatsApp",
       viaMail: "Enviado por correo",
       bought: "Compra cerrada",
@@ -158,7 +158,7 @@
       status: {
         sent: "Enviado",
         pending_email: "Esperando el correo",
-        linked: "Esperando el paseo",
+        linked: "Esperando el crédito",
         rewarded: "Concluida",
         nao_conta: "No cuenta"
       },
@@ -232,11 +232,9 @@
   var ICO_CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="M5 12.5 9.2 17 19 7"/></svg>';
 
   function earnedCents(item) {
-    if (!item || !item.purchased || item.status === "nao_conta") return null;
+    if (!item || item.status !== "rewarded") return null;
     if (item.earned_cents != null && item.earned_cents !== "") return Number(item.earned_cents) || 0;
-    var unit = Number(item.unit_cents) || 0;
-    if (item.people == null) return unit;
-    return unit * (Number(item.people) || 1);
+    return null;
   }
 
   function inviteRow(item) {

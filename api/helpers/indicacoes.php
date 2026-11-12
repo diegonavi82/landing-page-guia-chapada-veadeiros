@@ -5,7 +5,8 @@ declare(strict_types=1);
  * Campanha de indicação.
  * O convite vai por telefone (DDI + número, como no perfil) ou por e-mail.
  * Cliente e guia usam a mesma tela. O ponto do ranking sai só para o guia:
- * 1 ponto por pessoa da reserva. O valor por pessoa sai no primeiro passeio pago.
+ * 1 ponto por pessoa da reserva. O saldo entra no dia seguinte ao passeio,
+ * com a saída confirmada e executada, e só se o dinheiro já caiu na conta.
  */
 
 require_once __DIR__ . '/db.php';
@@ -1151,6 +1152,81 @@ function gcv_referral_panel(int $userId): array
     ];
 }
 
+function gcv_referral_day_after_tour(string $dateIso): bool
+{
+    $dateIso = substr($dateIso, 0, 10);
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateIso)) {
+        return false;
+    }
+    try {
+        $today = (new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo')))->format('Y-m-d');
+    } catch (Throwable $e) {
+        return false;
+    }
+    return $today > $dateIso;
+}
+
+/**
+ * Dinheiro da compra já na conta: Pix ou cartão com lançamento IN_SICOOB.
+ * Autorização, captura e cartão ainda no gateway não entram.
+ *
+ * @param array<string,mixed> $sale
+ */
+function gcv_referral_money_in_account(array $sale): bool
+{
+    if (strtoupper((string)($sale['sale_status'] ?? '')) !== 'PAID') {
+        return false;
+    }
+    $saleId = (int)($sale['id'] ?? 0);
+    $rid = strtoupper(trim((string)($sale['reservation_id'] ?? '')));
+    if ($saleId <= 0 && $rid === '') {
+        return false;
+    }
+    $paid = [];
+    try {
+        $st = db()->prepare(
+            "SELECT status, settlement_status
+             FROM gcv_payment_transactions
+             WHERE (? > 0 AND sale_id = ?)
+                OR (? <> '' AND UPPER(reservation_id) = ?)
+             ORDER BY id DESC"
+        );
+        $st->execute([$saleId, $saleId, $rid, $rid]);
+        foreach ($st->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+            if (strtoupper((string)($row['status'] ?? '')) === 'PAID') {
+                $paid[] = $row;
+            }
+        }
+    } catch (Throwable $e) {
+        error_log('referral money ledger: ' . $e->getMessage());
+        $paid = [];
+    }
+    if ($paid) {
+        foreach ($paid as $row) {
+            if (strtoupper((string)($row['settlement_status'] ?? '')) !== 'IN_SICOOB') {
+                return false;
+            }
+        }
+        return true;
+    }
+    try {
+        $st = db()->prepare(
+            "SELECT id FROM gcv_pix_payments
+             WHERE deleted_at IS NULL AND status = 'PAID'
+               AND (
+                 (? > 0 AND sale_id = ?)
+                 OR (? <> '' AND UPPER(reservation_id) = ?)
+               )
+             LIMIT 1"
+        );
+        $st->execute([$saleId, $saleId, $rid, $rid]);
+        return (bool)$st->fetchColumn();
+    } catch (Throwable $e) {
+        error_log('referral money pix: ' . $e->getMessage());
+        return false;
+    }
+}
+
 function gcv_referral_reward_row(array $ref, int $excursionId): void
 {
     $pdo = db();
@@ -1198,9 +1274,6 @@ function gcv_referral_settle_due(int $limit = 30): int
     if (!function_exists('gcv_resolve_excursion_lifecycle')) {
         require_once __DIR__ . '/excursion_status.php';
     }
-    if (!function_exists('gcv_ranking_ja_fechou')) {
-        require_once __DIR__ . '/ranking.php';
-    }
     $done = 0;
     try {
         $refs = db()->query(
@@ -1216,7 +1289,7 @@ function gcv_referral_settle_due(int $limit = 30): int
         return 0;
     }
     $saleSt = db()->prepare(
-        "SELECT s.excursion_id, s.spots, e.date_iso, e.departure_time
+        "SELECT s.id, s.reservation_id, s.sale_status, s.excursion_id, s.spots, e.date_iso
          FROM gcv_sales s
          INNER JOIN gcv_excursions e ON e.id = s.excursion_id
          WHERE s.deleted_at IS NULL AND s.sale_status = 'PAID'
@@ -1251,15 +1324,12 @@ function gcv_referral_settle_due(int $limit = 30): int
             if (in_array($life, ['cancelada', 'rejeitada'], true)) {
                 continue;
             }
-            if (!in_array($life, ['concluida', 'confirmada'], true)) {
+            $date = substr((string)($exc['date_iso'] ?? ''), 0, 10);
+            if ($life !== 'concluida' || !gcv_referral_day_after_tour($date)) {
                 break;
             }
-            $data = gcv_ranking_data_contabil(
-                substr((string)($exc['date_iso'] ?? ''), 0, 10),
-                (string)($exc['departure_time'] ?? '')
-            );
-            if (!gcv_ranking_ja_fechou($data)) {
-                break;
+            if (!gcv_referral_money_in_account($sale)) {
+                continue;
             }
             $ref['spots'] = max(1, (int)($sale['spots'] ?? 1));
             gcv_referral_reward_row($ref, $excId);
