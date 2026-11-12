@@ -1207,22 +1207,31 @@
     },
   };
 
-  function getExcursionStatus(n, max, lang) {
+  function getExcursionStatus(n, max, lang, opts) {
     var enrolled = Number.isFinite(Number(n)) ? Math.trunc(Number(n)) : 0;
     var capacity = Number.isFinite(Number(max)) ? Math.trunc(Number(max)) : 0;
     var code = lang === "en" || lang === "es" ? lang : "pt";
     var t = EXC_STATUS_COPY[code];
+    var o = opts && typeof opts === "object" ? opts : {};
+    var qRaw = Number(o.quorum);
+    var q = Number.isFinite(qRaw) ? Math.trunc(qRaw) : EXC_QUORUM;
+    var forced = o.confirmada === true || q === 0;
+    var faltaRaw = Number(o.faltam);
+    var faltam = forced
+      ? 0
+      : Number.isFinite(faltaRaw)
+        ? Math.max(0, Math.trunc(faltaRaw))
+        : Math.max(0, (q > 0 ? q : EXC_QUORUM) - enrolled);
     function fill(template, x) {
       return template.replace("{x}", String(x));
     }
-    if (enrolled >= capacity) return { key: "esgotada", text: t.esgotada, variant: "neutral" };
-    if (enrolled < EXC_QUORUM) {
-      var faltam = EXC_QUORUM - enrolled;
+    if (capacity > 0 && enrolled >= capacity) return { key: "esgotada", text: t.esgotada, variant: "neutral" };
+    if (faltam > 0) {
       if (faltam === 1) return { key: "faltam", text: t.falta1, variant: "warning" };
       return { key: "faltam", text: fill(t.faltam, faltam), variant: "warning" };
     }
-    var restantes = capacity - enrolled;
-    if (restantes <= EXC_LOW_STOCK) {
+    var restantes = Math.max(0, capacity - enrolled);
+    if (restantes > 0 && restantes <= EXC_LOW_STOCK) {
       if (restantes === 1) return { key: "ultimas", text: t.ultima, variant: "urgent" };
       return { key: "ultimas", text: fill(t.ultimas, restantes), variant: "urgent" };
     }
@@ -1230,7 +1239,12 @@
   }
 
   function cardStatusBarHtml(e, s, locale) {
-    var status = getExcursionStatus(inscritosNoGrupo(e), grupoMaximoValor(e), locale);
+    var q = parseInt(String(e && e.quorumMin), 10);
+    var status = getExcursionStatus(inscritosNoGrupo(e), grupoMaximoValor(e), locale, {
+      quorum: Number.isFinite(q) ? q : undefined,
+      confirmada: !!(e && e.confirmada),
+      faltam: faltamParaConfirmar(e),
+    });
     return (
       '<div class="gcv-excursoes-card__status-bar is-' + status.variant + '" data-status="' + status.key + '">' +
       '<span class="gcv-excursoes-card__status-bar-label">' + escapeHtml(status.text) + "</span>" +

@@ -1584,7 +1584,7 @@
         return;
       }
       var script = document.createElement("script");
-      script.src = "/assets/js/excursoes-carousel.js?v=1.1.130";
+      script.src = "/assets/js/excursoes-carousel.js?v=1.1.131";
       script.onload = go;
       document.head.appendChild(script);
     }

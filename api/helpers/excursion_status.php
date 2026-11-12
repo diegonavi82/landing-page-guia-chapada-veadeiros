@@ -201,12 +201,13 @@ function gcv_excursion_walking_quorum_remaining(array $e): int
 function gcv_excursion_walking_quorum_met(array $e): bool
 {
     $quorum = max(0, (int)($e['quorum'] ?? 0));
-    $walk = gcv_excursion_platform_inscriptions($e);
-    if ($walk < $quorum) {
-        return false;
+    // Quórum 0 = confirmação manual da planilha. Não depende de inscrições nem de assento.
+    if ($quorum === 0) {
+        return true;
     }
-    if ($walk < 1) {
-        return $quorum === 0;
+    $walk = gcv_excursion_platform_inscriptions($e);
+    if ($walk < $quorum || $walk < 1) {
+        return false;
     }
     // Grupo de 5 (carro cheio) não confirma até outro grupo a pé deixar vaga para o guia.
     // SUV formado confirma pelo quórum de transporte (gcv_excursion_quorum_met).

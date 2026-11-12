@@ -458,7 +458,12 @@ function cardStatusSsr(e, s, isLotado) {
 }
 
 function cardStatusBarSsr(e, s, x, cap, labelAria, locale) {
-  const status = getExcursionStatus(x, cap, locale);
+  const q = parseInt(String(e && e.quorumMin), 10);
+  const status = getExcursionStatus(x, cap, locale, {
+    quorum: Number.isFinite(q) ? q : undefined,
+    confirmada: !!(e && e.confirmada),
+    faltam: faltamParaConfirmarSsr(e),
+  });
   return (
     `<div class="gcv-excursoes-card__status-bar is-${status.variant}" data-status="${status.key}">` +
     `<span class="gcv-excursoes-card__status-bar-label">${esc(status.text)}</span>` +

@@ -495,7 +495,9 @@ function gcv_row_to_cards(array $r, string $lang, array $months, array $weekdays
         ? gcv_excursion_walking_quorum_remaining($r)
         : max(0, $walkQuorum - $walkInscriptions);
     $walk['vagasRestantes'] = $occ['remaining'];
-    $walk['confirmada'] = $walkMet || $vanMet;
+    // Quórum 0 é a confirmação manual: vale para a saída inteira, a pé e com transporte.
+    $manual = $walkQuorum === 0;
+    $walk['confirmada'] = $manual || $walkMet || $vanMet;
 
     if ($legacyTransportOnly) {
         $walk['comTransporte'] = true;
@@ -521,7 +523,7 @@ function gcv_row_to_cards(array $r, string $lang, array $months, array $weekdays
     $van['quorumMin'] = $vanQuorum;
     $van['faltamPessoas'] = max(0, $vanQuorum - $vanBooked);
     $van['vagasRestantes'] = max(0, $vanSlots - $vanBooked);
-    $van['confirmada'] = $vanMet;
+    $van['confirmada'] = $manual || $vanMet;
     $van['walkGuideSeatOk'] = true;
     $cards[] = $van;
     return array_map('gcv_carousel_hide_guide_until_confirmed', $cards);
