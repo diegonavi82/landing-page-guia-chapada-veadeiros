@@ -50,7 +50,7 @@ function gcv_build_pix_receipt_email_html(array $rec, string $locale): string
     $loc = in_array($locale, ['pt', 'en', 'es'], true) ? $locale : 'pt';
     $labels = [
         'pt' => [
-            'docTitle' => 'RECIBO DE PAGAMENTO PIX',
+            'docTitle' => 'Confirmação da reserva',
             'introPaid' => 'Confirmamos o recebimento de {{amount}} via Pix referente à reserva {{code}}.',
             'introPending' => 'Reserva {{code}} registrada. Valor: {{amount}}. Aguardando confirmação do Pix.',
             'itinerary' => 'Itinerário',
@@ -79,7 +79,7 @@ function gcv_build_pix_receipt_email_html(array $rec, string $locale): string
             'lookup' => 'Consultar reserva',
         ],
         'en' => [
-            'docTitle' => 'PIX PAYMENT RECEIPT',
+            'docTitle' => 'Reservation confirmation',
             'introPaid' => 'We confirm receipt of {{amount}} via Pix for reservation {{code}}.',
             'introPending' => 'Reservation {{code}} registered. Amount: {{amount}}. Awaiting Pix confirmation.',
             'itinerary' => 'Itinerary',
@@ -108,7 +108,7 @@ function gcv_build_pix_receipt_email_html(array $rec, string $locale): string
             'lookup' => 'Look up reservation',
         ],
         'es' => [
-            'docTitle' => 'RECIBO DE PAGO PIX',
+            'docTitle' => 'Confirmación de la reserva',
             'introPaid' => 'Confirmamos la recepción de {{amount}} vía Pix para la reserva {{code}}.',
             'introPending' => 'Reserva {{code}} registrada. Valor: {{amount}}. Esperando confirmación del Pix.',
             'itinerary' => 'Itinerario',
