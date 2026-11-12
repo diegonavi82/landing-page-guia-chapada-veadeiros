@@ -78,6 +78,9 @@ function gcv_inbox_push(int $userId, string $body, array $meta = []): void
     if ($excIdEarly > 0 && gcv_inbox_is_card($body, $kind) && gcv_inbox_replace_card($userId, $excIdEarly, $title, $body)) {
         return;
     }
+    if ($excIdEarly > 0 && gcv_inbox_is_client_card($kind) && gcv_inbox_replace_client_card($userId, $excIdEarly, $title, $body, $kind)) {
+        return;
+    }
     $excId = isset($meta['excursion_id']) ? (int)$meta['excursion_id'] : null;
     $saleId = isset($meta['sale_id']) ? (int)$meta['sale_id'] : null;
     if ($excId !== null && $excId <= 0) {
@@ -154,6 +157,60 @@ function gcv_inbox_replace_card(int $userId, int $excursionId, string $title, st
         return true;
     } catch (Throwable $e) {
         error_log('gcv_inbox_replace_card: ' . $e->getMessage());
+        return false;
+    }
+}
+
+function gcv_inbox_is_client_card(string $kind): bool
+{
+    return in_array($kind, ['client_live', 'client_confirmed', 'client_group'], true);
+}
+
+/** Regrava o aviso da reserva do cliente em vez de empilhar o texto antigo. */
+function gcv_inbox_replace_client_card(int $userId, int $excursionId, string $title, string $body, string $kind): bool
+{
+    if ($userId <= 0 || $excursionId <= 0 || trim($body) === '') {
+        return false;
+    }
+    $kinds = ['client_live', 'client_confirmed', 'client_group', 'excursion_live'];
+    $markers = [
+        'Sua excursão está no ar',
+        'Your group tour is live',
+        'Tu excursión ya está en el sitio',
+        'Atualização excursão',
+        'Tour update',
+        'Actualización de la excursión',
+        'Sua excursão está ✅',
+        'Your tour is ✅',
+        'Tu excursión está ✅',
+    ];
+    $params = array_merge([$userId, $excursionId], $kinds);
+    $likes = [];
+    foreach ($markers as $marker) {
+        $likes[] = 'body LIKE ?';
+        $params[] = '%' . $marker . '%';
+    }
+    $kindSlots = implode(',', array_fill(0, count($kinds), '?'));
+    try {
+        $st = db()->prepare(
+            'SELECT id FROM gcv_inbox WHERE user_id = ? AND excursion_id = ? AND (`kind` IN (' . $kindSlots . ') OR '
+            . implode(' OR ', $likes) . ')'
+        );
+        $st->execute($params);
+        $ids = array_values(array_filter(array_map('intval', $st->fetchAll(PDO::FETCH_COLUMN) ?: [])));
+        if (!$ids) {
+            return false;
+        }
+        $kind = substr(trim($kind), 0, 40);
+        $upd = db()->prepare(
+            'UPDATE gcv_inbox SET title = ?, body = ?, `kind` = ?, read_at = NULL, created_at = NOW() WHERE id = ? AND user_id = ?'
+        );
+        foreach ($ids as $id) {
+            $upd->execute([$title, $body, $kind !== '' ? $kind : null, $id, $userId]);
+        }
+        return true;
+    } catch (Throwable $e) {
+        error_log('gcv_inbox_replace_client_card: ' . $e->getMessage());
         return false;
     }
 }

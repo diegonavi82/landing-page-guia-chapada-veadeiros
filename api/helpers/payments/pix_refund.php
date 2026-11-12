@@ -879,6 +879,24 @@ function gcv_pix_refund_notify(array $reservation, ?array $sale, array $done, in
             error_log('pix refund guide: ' . $e->getMessage());
         }
     }
+    $drop = [];
+    foreach ($done as $trip) {
+        $excId = (int)($trip['excursion_id'] ?? 0);
+        if ($excId <= 0 && $sale) {
+            $excId = (int)($sale['excursion_id'] ?? 0);
+        }
+        if ($excId <= 0) {
+            continue;
+        }
+        $drop[$excId] = ($drop[$excId] ?? 0) + max(1, (int)($trip['people'] ?? 1));
+    }
+    foreach ($drop as $excId => $people) {
+        try {
+            gcv_ops_notify_clients_group_delta((int)$excId, -1 * (int)$people);
+        } catch (Throwable $e) {
+            error_log('pix refund client group: ' . $e->getMessage());
+        }
+    }
 }
 
 /**
