@@ -268,10 +268,10 @@ function gcv_build_pix_receipt_email_html(array $rec, string $locale): string
         $buyerBlock .= '</div>';
     }
 
-    $logoUrl = 'https://www.guiachapadaveadeiros.com/assets/img/imagens/logo-email-guia-chapada-veadeiros.jpg';
+    $logoUrl = 'https://www.guiachapadaveadeiros.com/assets/img/imagens/logo-email-arara.jpg';
     $body = '<div style="max-width:640px;margin:0 auto;background:#fff;border:1px solid #d7e2db;border-radius:16px;overflow:hidden;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">'
         . '<div style="background:#ffffff;padding:22px 24px 8px;text-align:center;">'
-        . '<img src="' . htmlspecialchars($logoUrl, ENT_QUOTES, 'UTF-8') . '" alt="Guia Chapada Veadeiros" width="560" height="226" style="display:block;width:100%;max-width:560px;height:auto;margin:0 auto;border:0;outline:none;text-decoration:none;">'
+        . '<img src="' . htmlspecialchars($logoUrl, ENT_QUOTES, 'UTF-8') . '" alt="Guia Chapada Veadeiros" width="393" height="440" style="display:block;width:220px;max-width:100%;height:auto;margin:0 auto;border:0;outline:none;text-decoration:none;">'
         . '</div>'
         . '<div style="background:#0f3d2e;padding:22px 24px;">'
         . '<p style="margin:0 0 4px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#a7f3d0;">Código</p>'

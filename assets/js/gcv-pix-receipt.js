@@ -30,7 +30,7 @@
     guideTitle: "Fundador e Guia Local",
     email: "contato@guiachapadaveadeiros.com",
     phone: "+55 62 98250-6891",
-    logoRel: "assets/img/imagens/logo-email-guia-chapada-veadeiros.jpg",
+    logoRel: "assets/img/imagens/logo-email-arara.jpg",
   };
 
   var STRINGS = {
@@ -735,7 +735,7 @@
       escapeHtml(logo) +
       '" alt="' +
       escapeHtml(COMPANY.name) +
-      '" width="560" height="226" style="display:block;width:100%;max-width:560px;height:auto;border:0;outline:none;text-decoration:none;">' +
+      '" width="393" height="440" style="display:block;width:220px;max-width:100%;height:auto;margin:0 auto;border:0;outline:none;text-decoration:none;">' +
       "</td></tr>" +
       '<tr><td style="background:#0f3d2e;padding:22px 28px 22px;">' +
       '<p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#a7f3d0;">' +
@@ -939,7 +939,7 @@
       "body{margin:0;padding:24px;background:#f1f5f9;font-family:Inter,Arial,sans-serif;color:#0f172a}",
       ".sheet{max-width:920px;margin:0 auto;background:#fff;padding:28px 32px;border:1px solid #e2e8f0;border-radius:8px}",
       ".head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:16px}",
-      ".brand img{display:block;width:100%;max-width:560px;height:auto;margin-bottom:6px}",
+      ".brand img{display:block;width:220px;max-width:100%;height:auto;margin:0 auto 6px}",
       ".brand strong{font-size:.78rem;letter-spacing:.04em;color:#064e3b}",
       ".doc-title{margin:0;max-width:420px;font-size:.72rem;line-height:1.35;text-align:right;color:#064e3b;font-weight:800}",
       ".intro{font-size:.82rem;line-height:1.55;color:#334155;margin:0 0 18px}",

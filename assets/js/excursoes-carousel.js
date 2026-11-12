@@ -6516,7 +6516,7 @@
     var srcs = [
       "/assets/js/qrcode.min.js?v=1.1.31",
       "/assets/js/gcv-pix.js?v=1.1.31",
-      "/assets/js/gcv-pix-receipt.js?v=1.1.41",
+      "/assets/js/gcv-pix-receipt.js?v=1.1.42",
       "/assets/js/gcv-pix-polling.js?v=1.1.40",
     ];
     var i = 0;

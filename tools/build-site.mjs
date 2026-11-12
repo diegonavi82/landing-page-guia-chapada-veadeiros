@@ -219,8 +219,8 @@ function publicJsSrc(file, pageOutRelPath) {
   let name = String(file || "").trim().replace(/^\//, "");
   if (name === "site.js" || name === "gcv-hero-slider.js") name = name.replace(/\.js$/i, ".min.js");
   let q = BUILD_ASSET_QUERY;
-  if (name === "excursoes-carousel.js") q = "?v=1.1.134";
-  if (name === "gcv-exc-cart.js") q = "?v=1.1.79";
+  if (name === "excursoes-carousel.js") q = "?v=1.1.135";
+  if (name === "gcv-exc-cart.js") q = "?v=1.1.80";
   const prefixSegment = sitePathSegmentsTrimmed();
   if (prefixSegment) {
     const raw = `/${prefixSegment}/assets/js/${name}${q}`;
