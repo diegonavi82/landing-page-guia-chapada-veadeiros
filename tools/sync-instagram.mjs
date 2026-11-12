@@ -10,6 +10,8 @@ import {
   fetchInstagramFromGraph,
   cacheInstagramImages,
   writeInstagramFeedJson,
+  writeInstagramPoolAsset,
+  removeStaleInstagramImages,
   INSTAGRAM_FEED_JSON,
 } from "./instagram-feed.mjs";
 
@@ -35,7 +37,7 @@ loadEnv();
 
 const token = (process.env.INSTAGRAM_ACCESS_TOKEN || "").trim();
 const igUserId = (process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID || "").trim();
-const limit = Number.parseInt(String(process.env.INSTAGRAM_FEED_LIMIT || "9"), 10) || 9;
+const limit = Number.parseInt(String(process.env.INSTAGRAM_FEED_LIMIT || "400"), 10) || 400;
 
 if (!token || !igUserId) {
   console.error(
@@ -48,6 +50,8 @@ try {
   const raw = await fetchInstagramFromGraph(token, igUserId, limit);
   const posts = await cacheInstagramImages(raw);
   writeInstagramFeedJson(posts, { source: "graph-api" });
+  writeInstagramPoolAsset(posts);
+  removeStaleInstagramImages(posts);
   console.log(`OK: ${posts.length} publicações → ${INSTAGRAM_FEED_JSON}`);
 } catch (e) {
   console.error("Falha:", e.message);
