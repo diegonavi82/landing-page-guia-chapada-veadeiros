@@ -289,6 +289,15 @@
       : "";
     root.innerHTML =
       '<p class="gcv-ind__note">' + esc(isGuide ? t("lead") : t("leadClient")) + "</p>" +
+      '<form class="gcv-dash-form" id="gcv-ind-form" autocomplete="off">' +
+        '<div class="gcv-dash-field"><span class="gcv-dash-label">' + esc(t("phone")) + '</span><div id="gcv-ind-phone-wrap"></div></div>' +
+        '<div class="gcv-dash-field"><label class="gcv-dash-label" for="gcv-ind-email">' + esc(t("email")) + '</label><input class="gcv-dash-input" id="gcv-ind-email" name="referral_email" type="email" autocomplete="off" /></div>' +
+        '<p class="gcv-ind__note">' + esc(t("either")) + "</p>" +
+        '<div class="gcv-dash-field"><label class="gcv-dash-label" for="gcv-ind-from">' + esc(t("arrive")) + '</label><input class="gcv-dash-input" id="gcv-ind-from" name="date_from" type="date" /></div>' +
+        '<p class="gcv-ind__note">' + esc(t("whenHint")) + "</p>" +
+        '<button class="gcv-dash-btn gcv-dash-btn--primary" type="submit">' + esc(t("send")) + "</button>" +
+        '<p class="gcv-ind__note" id="gcv-ind-msg" hidden></p>' +
+      "</form>" +
       '<div class="gcv-ind__split">' +
         '<div class="gcv-ind__card gcv-ind__balance"><span>' + esc(t("balance")) + "</span><strong>" + esc(money(data.balance_cents, uiLang)) + "</strong>" + guideMeta + "</div>" +
         '<section class="gcv-ind__saque">' +
@@ -301,15 +310,6 @@
           "</form>" +
         "</section>" +
       "</div>" +
-      '<form class="gcv-dash-form" id="gcv-ind-form" autocomplete="off">' +
-        '<div class="gcv-dash-field"><span class="gcv-dash-label">' + esc(t("phone")) + '</span><div id="gcv-ind-phone-wrap"></div></div>' +
-        '<div class="gcv-dash-field"><label class="gcv-dash-label" for="gcv-ind-email">' + esc(t("email")) + '</label><input class="gcv-dash-input" id="gcv-ind-email" name="referral_email" type="email" autocomplete="off" /></div>' +
-        '<p class="gcv-ind__note">' + esc(t("either")) + "</p>" +
-        '<div class="gcv-dash-field"><label class="gcv-dash-label" for="gcv-ind-from">' + esc(t("arrive")) + '</label><input class="gcv-dash-input" id="gcv-ind-from" name="date_from" type="date" /></div>' +
-        '<p class="gcv-ind__note">' + esc(t("whenHint")) + "</p>" +
-        '<button class="gcv-dash-btn gcv-dash-btn--primary" type="submit">' + esc(t("send")) + "</button>" +
-        '<p class="gcv-ind__note" id="gcv-ind-msg" hidden></p>' +
-      "</form>" +
       "<h3>" + esc(t("list")) + '</h3><div class="gcv-ind__list">' + rows + "</div>" +
       (isGuide ? "<h3>" + esc(t("rank")) + "</h3>" + rankHtml : "");
 
