@@ -5407,10 +5407,12 @@ html.gcv-waitlist-modal-open {
 
 /* Setas sobre os cards, em qualquer largura, quando ainda há passeio ao lado. */
 .gcv-excursoes__shell--by-date .gcv-excursoes__nav {
+  position: relative;
   display: inline-flex !important;
   grid-area: view;
   align-self: center;
-  z-index: 6;
+  z-index: 50;
+  pointer-events: auto;
   width: 2.75rem;
   height: 2.75rem;
   align-items: center;
@@ -6721,7 +6723,8 @@ html.gcv-waitlist-modal-open {
 .gcv-saida-modal__arrow {
   position: absolute;
   top: 42%;
-  z-index: 4;
+  z-index: 50;
+  pointer-events: auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -7253,6 +7256,7 @@ html.gcv-waitlist-modal-open {
   opacity: 1;
   filter: none;
   position: relative;
+  isolation: isolate;
   user-select: none;
   -webkit-user-select: none;
   cursor: not-allowed;

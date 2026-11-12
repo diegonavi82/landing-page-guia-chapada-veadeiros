@@ -7270,7 +7270,12 @@
     if (document.documentElement._gcvExcBookBound) return;
     document.documentElement._gcvExcBookBound = true;
 
+    function isExcursaoArrowTarget(e) {
+      return !!(e.target && e.target.closest && e.target.closest(".gcv-excursoes__nav, .gcv-saida-modal__arrow"));
+    }
+
     function blockDayBlockedEvent(e) {
+      if (isExcursaoArrowTarget(e)) return false;
       if (e.target.closest && e.target.closest(".gcv-share-sheet")) return false;
       var blocked = e.target.closest && e.target.closest(".gcv-excursoes-card--day-blocked");
       if (!blocked) return false;
@@ -7295,6 +7300,7 @@
     });
 
     document.addEventListener("click", function (e) {
+      if (isExcursaoArrowTarget(e)) return;
       if (e.target.closest(".gcv-excursoes-card--day-blocked")) {
         e.preventDefault();
         e.stopPropagation();
@@ -8833,6 +8839,7 @@
       prev._gcvBound = true;
       prev.addEventListener("click", function (ev) {
         ev.preventDefault();
+        ev.stopPropagation();
         arrowPrev();
       });
     }
@@ -8840,6 +8847,7 @@
       next._gcvBound = true;
       next.addEventListener("click", function (ev) {
         ev.preventDefault();
+        ev.stopPropagation();
         arrowNext();
       });
     }
@@ -9153,7 +9161,7 @@
         ".gcv-saida-modal__viewport{overflow:hidden;border-radius:16px}" +
         ".gcv-saida-modal__strip{display:flex;align-items:flex-start;transition:transform .28s ease}" +
         ".gcv-saida-modal__slide{flex:0 0 100%;min-width:100%}" +
-        ".gcv-saida-modal__arrow{position:absolute;top:42%;z-index:4;display:inline-flex;align-items:center;justify-content:center;width:2.75rem;height:2.75rem;padding:0;border:0;border-radius:999px;background:#047857;color:#fff;cursor:pointer}" +
+        ".gcv-saida-modal__arrow{position:absolute;top:42%;z-index:50;pointer-events:auto;display:inline-flex;align-items:center;justify-content:center;width:2.75rem;height:2.75rem;padding:0;border:0;border-radius:999px;background:#047857;color:#fff;cursor:pointer}" +
         ".gcv-saida-modal__arrow svg{width:1.4rem;height:1.4rem;display:block}" +
         ".gcv-saida-modal__arrow--prev{left:.25rem}" +
         ".gcv-saida-modal__arrow--next{right:.25rem}" +
