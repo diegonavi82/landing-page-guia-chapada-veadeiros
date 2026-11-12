@@ -78,7 +78,7 @@
           heading: "1.1 Quando o cartão é cobrado",
           paragraphs: [
             "No cartão de crédito, nacional ou internacional, a operadora apenas confirma na compra que o cartão existe e aceita cobrança futura.",
-            "A cobrança automática do valor só é autorizada quando o passeio é confirmado, na forma da seção 2.6.",
+            "A cobrança automática do valor só é autorizada quando o passeio é confirmado.",
             "No Pix, o valor é pago na reserva e estornado nos casos previstos nesta Política.",
           ],
         },
@@ -87,7 +87,7 @@
           paragraphs: [
             "Um passeio é confirmado se, e somente se, na Excursão, com ou sem translado, o quórum está fechado e todos os guias necessários aceitaram. Com translado, cada carro exige o próprio guia.",
             "No Privativo, com ou sem translado, o passeio é confirmado quando o guia aceitou e, se houver translado, o veículo está garantido.",
-            "Nessas duas situações o passeio está confirmado. A cobrança de cada reserva no cartão é feita em seguida. A partir da confirmação o CONTRATANTE não cancela, mesmo que o cartão daquela reserva ainda não tenha sido cobrado. O estorno por decisão da CONTRATADA segue a seção 5. Trata-se de serviço com agendamento prévio, no qual o prestador, que é o guia, dedica aquela data ao grupo.",
+            "Nessas duas situações, o passeio está confirmado, a cobrança no cartão é feita e o CONTRATANTE não cancela nem recebe ressarcimento. O estorno por decisão da CONTRATADA segue a seção 5. Trata-se de serviço com agendamento prévio, no qual o prestador, que é o guia, dedica aquela data ao grupo.",
           ],
         },
         {
@@ -118,33 +118,35 @@
             "Na Excursão com translado, cada carro exige o próprio guia e veículo, e todos os guias com veículo cadastrado recebem a proposta juntos. Enquanto faltar um, o status continua e ninguém é cobrado.",
             "O CONTRATANTE é avisado por WhatsApp e por e-mail quando a saída entra nesse status.",
             "No cartão nada é cobrado. No Pix, o valor já pago permanece até a confirmação ou o cancelamento da saída. Nesse status o CONTRATANTE não pode cancelar.",
-            "A espera termina no que vier primeiro: um guia aceita; a fila acaba sem aceite; ou faltam 12 horas para o início e a saída ainda não confirmou.",
-            "Se a fila acabar sem aceite, o passeio é cancelado porque não há guias disponíveis. O CONTRATANTE é avisado por WhatsApp e por e-mail. No Pix o valor é estornado. No cartão nada é cobrado.",
-            "Faltando 12 horas para o início, se a saída ainda estiver em formação ou em Aguardando confirmação operacional, ela é cancelada. O Pix é devolvido. A reserva do cartão que não foi cobrada é liberada e nada é cobrado.",
+            "A espera termina no que vier primeiro: um guia aceita; a fila acaba sem aceite; ou faltam 12 horas para o início e o guia, ou o veículo no translado, ainda não está alocado. Nos dois últimos casos o passeio é cancelado automaticamente porque não há guias disponíveis, e o CONTRATANTE é avisado por WhatsApp e por e-mail. No Pix o valor é devolvido. No cartão nada é cobrado e o sinal da autorização é estornado, na forma da seção 2.4.",
           ],
         },
         {
           heading: "2.3 Cancelamento pelo CONTRATANTE durante a formação",
           paragraphs: [
             "Enquanto a saída está Em formação, o CONTRATANTE pode cancelar a qualquer momento.",
-            "No cartão não há cobrança nem estorno, porque o passeio ainda não foi cobrado. No Pix, a devolução é de 100% do valor daquele passeio.",
+            "No cartão não há cobrança nem estorno, porque o passeio ainda não foi cobrado.",
+            "No Pix, a devolução é de 100% do valor daquele passeio.",
             "Em reserva com mais de um dia, o CONTRATANTE cancela só os passeios ainda em formação. O dia já confirmado permanece e não é estornado.",
             "A CONTRATADA também pode encerrar a formação a qualquer momento, por motivo operacional ou inviabilidade da realização. No Pix o valor é estornado. No cartão nada é cobrado.",
           ],
         },
         {
-          heading: "2.4 Sem troca de passeio",
+          heading: "2.4 Cancelamento automático 12 horas antes da saída",
           paragraphs: [
-            "Não há troca de passeio. O CONTRATANTE faz o passeio contratado ou cancela enquanto a saída está em formação. Não existe oferta para mudar para outro passeio do mesmo dia.",
+            "Se faltarem 12 horas para o início e a Excursão ainda estiver sem quórum, em formação, ou sem guia ou veículo, em Aguardando confirmação operacional, o passeio é cancelado automaticamente e o CONTRATANTE é avisado por WhatsApp e por e-mail.",
+            "O mesmo horário vale para o Privativo que ainda estiver sem guia ou, no translado, sem veículo.",
+            "Exemplo: passeio marcado para as 8h de sábado, cancelamento automático às 20h de sexta.",
+            "No Pix, o valor é devolvido integralmente. No cartão, nada é cobrado e o sinal da autorização é estornado.",
           ],
         },
         {
-          heading: "2.5 Cancelamento automático 12 horas antes",
+          heading: "2.5 Sem troca de passeio: ou faz o passeio, ou cancela",
           paragraphs: [
-            "Faltando 12 horas para o início, se a Excursão ainda estiver em formação, sem quórum, ou em Aguardando confirmação operacional, sem guia ou sem veículo, a saída é cancelada pela plataforma.",
-            "No Pix, a devolução é de 100%. No cartão, nada foi cobrado e a reserva do cartão é liberada.",
-            "Passeio marcado para 8h de sábado é cancelado às 20h de sexta se, nesse horário, o quórum não fechou ou a confirmação operacional não foi concluída.",
-            "Quando a saída confirma, a cobrança de 100% é feita no cartão e o CONTRATANTE não cancela e não recebe devolução. A confirmação da Excursão exige quórum e guia alocado e, se houver translado, veículo. A do Privativo exige o guia alocado e, se houver translado, veículo.",
+            "A reserva não pode ser trocada por outro passeio. O CONTRATANTE faz o passeio contratado ou cancela. Todo passeio termina em uma destas situações:",
+            "Cancelado pelo CONTRATANTE, somente enquanto a Excursão está em formação: no Pix o valor é devolvido e no cartão nada é cobrado.",
+            "Cancelado pela plataforma, com estorno de 100%. Ocorre automaticamente 12 horas antes do início quando a Excursão não atingiu o quórum ou parou em Aguardando confirmação operacional, sem guia ou veículo, e quando o Privativo ainda está sem guia ou sem veículo. Ocorre também por decisão manual do administrador, como em condições climáticas severas, nas seções 5 e 8.",
+            "Confirmado: na Excursão, o quórum foi atingido e há guia alocado e, se houver translado, veículo. No Privativo, há guia alocado e, se houver translado, veículo. A cobrança é feita no cartão e o CONTRATANTE não cancela e não recebe devolução.",
           ],
         },
         {
@@ -159,10 +161,11 @@
         {
           heading: "3. Passeios Privativos",
           paragraphs: [
-            "O Privativo é exclusivo para o grupo do CONTRATANTE. Não é excursão compartilhada e não depende de outras inscrições. Não há troca de passeio. Faltando 12 horas para o início, se o guia ou o veículo ainda não estiver definido, a saída é cancelada: o Pix é devolvido e a reserva do cartão que não foi cobrada é liberada.",
+            "O Privativo é exclusivo para o grupo do CONTRATANTE. Não é excursão compartilhada, não depende de outras inscrições e não passa por formação de quórum.",
             "O cartão fica apenas salvo, sem cobrança, até um guia ser definido.",
             "Os guias livres na data são chamados em levas de até 5. A lista fecha quando 3 guias aceitam participar. Se não houver 3 guias livres, a lista fecha com quem aceitou. Se ninguém aceitar, o passeio é cancelado porque não há guias disponíveis. O CONTRATANTE recebe o link por WhatsApp e por e-mail e tem 6 horas para escolher, contadas no mesmo relógio da seção 2.2: só correm das 6h às 9h e das 16h às 22h. Se o prazo acabar, entra o guia mais bem colocado entre os que aceitaram. Enquanto a lista está aberta, o CONTRATANTE não cancela e o cartão não é cobrado.",
             "Sem translado, o veículo é o do CONTRATANTE e a confirmação ocorre quando o guia é definido. Com translado, a lista só inclui guias com veículo, e a confirmação também exige o veículo: um carro e um guia para cada grupo de até 4 clientes. O CONTRATANTE escolhe o guia do primeiro carro. Os carros seguintes seguem a seção 6.2.",
+            "Faltando 12 horas para o início, se o guia ainda não estiver definido ou, no translado, o veículo não estiver garantido, o Privativo é cancelado automaticamente, na forma da seção 2.4.",
             "Com o guia definido e, no translado, o veículo garantido, a CONTRATADA testa o cartão salvo. Se passar, o passeio fica associado a esse guia e o cartão é cobrado em 100%. A partir daí não há cancelamento nem devolução.",
             "Se o cartão for recusado, nada é cobrado e o CONTRATANTE é avisado para trocar o cartão, sem prazo fixo. A recusa não desfaz a confirmação. Quando o novo cartão passar, a cobrança de 100% ocorre automaticamente.",
           ],
@@ -185,7 +188,7 @@
           heading: "5. Cancelamento pela CONTRATADA",
           paragraphs: [
             "O cancelamento do passeio confirmado é feito apenas por um administrador da plataforma. O CONTRATANTE não cancela o passeio confirmado. O guia também não cancela o passeio: se ele solta a guiagem, a vaga volta à fila, na forma da seção 5.1.",
-            "A CONTRATADA pode cancelar o passeio, inclusive depois da confirmação, por problema de saúde ou impedimento grave do guia, força maior ou caso fortuito, inviabilidade da realização ou risco à segurança dos participantes, incluindo condições climáticas severas, interdição do atrativo e determinação de autoridade competente, falta de veículo para realizar o Privativo, ou falta de guia disponível.",
+            "A CONTRATADA pode cancelar o passeio, inclusive depois da confirmação, por problema de saúde ou impedimento grave do guia, força maior ou caso fortuito, inviabilidade da realização ou risco à segurança dos participantes, incluindo condições climáticas severas, interdição do atrativo e determinação de autoridade competente, falta de veículo para realizar o Privativo, falta de guia disponível, ou, 12 horas antes do início, Excursão sem quórum ou sem guia ou veículo, e Privativo sem guia ou sem veículo, na forma da seção 2.4.",
             "Nessas hipóteses o CONTRATANTE recebe o estorno integral do que foi pago. No cartão, se a cobrança ainda não ocorreu, nada é cobrado. Nenhum guia recebe por esse passeio, e o guia é avisado do cancelamento por WhatsApp e por e-mail.",
           ],
         },
@@ -413,7 +416,7 @@
           heading: "1.1 When the card is charged",
           paragraphs: [
             "On a credit card, domestic or international, the card network only confirms at purchase that the card exists and can be charged later.",
-            "The automatic charge is authorized only when the tour is confirmed, under section 2.6.",
+            "The automatic charge is authorized only when the tour is confirmed.",
             "On Pix, the amount is paid at booking and refunded in the cases set out in this Policy.",
           ],
         },
@@ -422,7 +425,7 @@
           paragraphs: [
             "A tour is confirmed if, and only if, on a shared tour, with or without transport, the minimum group is closed and every required guide has accepted. With transport, each car needs its own guide.",
             "On a private tour, with or without transport, the tour is confirmed when the guide has accepted and, if there is transport, the vehicle is secured.",
-            "In both cases the tour is confirmed. Each booking is then charged on its card. From confirmation on, the Client does not cancel, even if that booking's card has not been charged yet. A refund decided by the Company follows section 5. This is a service booked in advance, in which the provider, the guide, sets that date aside for the group.",
+            "In both cases the tour is confirmed, the card is charged, and the Client does not cancel and does not receive a refund. A refund decided by the Company follows section 5. This is a service booked in advance, in which the provider, the guide, sets that date aside for the group.",
           ],
         },
         {
@@ -453,33 +456,35 @@
             "On a shared tour with transport, each car needs its own guide and vehicle, and every guide with a registered vehicle receives the offer together. While one is missing, the status continues and nobody is charged.",
             "The Client is told by WhatsApp and by email when the departure enters this status.",
             "On a card nothing is charged. On Pix, the amount already paid stays until the departure is confirmed or cancelled. In this status the Client cannot cancel.",
-            "The wait ends at whichever comes first: a guide accepts; the queue ends with no acceptance; or 12 hours remain before the start and the departure is still not confirmed.",
-            "If the queue ends with no acceptance, the tour is cancelled because no guides are available. The Client is told by WhatsApp and by email. On Pix the amount is refunded. On a card nothing is charged.",
-            "When 12 hours remain before the start, if the departure is still forming or still waiting for operational confirmation, it is cancelled. Pix is refunded. The card hold that was never charged is released and nothing is charged.",
+            "The wait ends at whichever comes first: a guide accepts; the queue ends with no acceptance; or 12 hours remain before the start and the guide, or the vehicle on a tour with transport, is still not assigned. In the last two cases the tour is cancelled automatically because no guides are available, and the Client is told by WhatsApp and by email. On Pix the amount is refunded. On a card nothing is charged and the card authorization is released, under section 2.4.",
           ],
         },
         {
           heading: "2.3 Cancellation by the Client while the tour is forming",
           paragraphs: [
             "While the departure is Forming, the Client may cancel at any time.",
-            "On a card there is no charge and no refund, because the tour has not been charged. On Pix, the refund is 100% of that tour.",
+            "On a card there is no charge and no refund, because the tour has not been charged.",
+            "On Pix, the refund is 100% of that tour.",
             "On a booking with more than one day, the Client cancels only the tours that are still forming. A day that is already confirmed stays in place and is not refunded.",
             "The Company may also close a forming departure at any time, for an operational reason or because the tour cannot be run. On Pix the amount is refunded. On a card nothing is charged.",
           ],
         },
         {
-          heading: "2.4 No tour switch",
+          heading: "2.4 Automatic cancellation 12 hours before departure",
           paragraphs: [
-            "There is no tour switch. The Client takes the tour they booked or cancels while the departure is still forming. There is no offer to move to another tour on the same day.",
+            "If 12 hours remain before the start and the shared tour is still without the minimum group, Forming, or without a guide or a vehicle, Waiting for operational confirmation, the tour is cancelled automatically and the Client is told by WhatsApp and by email.",
+            "The same time applies to a private tour that still has no guide or, with transport, no vehicle.",
+            "Example: a tour set for 8:00 on Saturday is cancelled automatically at 20:00 on Friday.",
+            "On Pix, the amount is refunded in full. On a card, nothing is charged and the card authorization is released.",
           ],
         },
         {
-          heading: "2.5 Automatic cancellation 12 hours before",
+          heading: "2.5 No tour switch: take the tour, or cancel",
           paragraphs: [
-            "When 12 hours remain before the start, if the shared tour is still forming, without the minimum group, or still waiting for operational confirmation, without a guide or a vehicle, the platform cancels the departure.",
-            "On Pix, the refund is 100%. On a card, nothing was charged and the card hold is released.",
-            "A tour set for 8:00 on Saturday is cancelled at 20:00 on Friday if, at that time, the minimum group has not closed or the operational confirmation is not finished.",
-            "Once the departure is confirmed, the card is charged 100% and the Client does not cancel and does not receive a refund. A shared tour is confirmed when the minimum group is met and a guide is assigned and, if there is transport, a vehicle. A private tour is confirmed when a guide is assigned and, if there is transport, a vehicle.",
+            "A booking cannot be switched to another tour. The Client takes the tour they booked or cancels. Every tour ends in one of these ways:",
+            "Cancelled by the Client, only while the shared tour is still forming: on Pix the amount is refunded and on a card nothing is charged.",
+            "Cancelled by the platform, with a 100% refund. This happens automatically 12 hours before the start when the shared tour has not reached the minimum group or has stopped in Waiting for operational confirmation, without a guide or a vehicle, and when a private tour still has no guide or no vehicle. It also happens by an administrator's decision, such as severe weather, under sections 5 and 8.",
+            "Confirmed: on a shared tour, the minimum group is met and a guide is assigned and, if there is transport, a vehicle. On a private tour, a guide is assigned and, if there is transport, a vehicle. The card is charged and the Client does not cancel and does not receive a refund.",
           ],
         },
         {
@@ -494,10 +499,11 @@
         {
           heading: "3. Private tours",
           paragraphs: [
-            "A private tour is exclusive to the Client's group. It is not a shared departure and it does not depend on other bookings. There is no tour switch. When 12 hours remain before the start, if the guide or the vehicle is still not set, the departure is cancelled: Pix is refunded and the card hold that was never charged is released.",
+            "A private tour is exclusive to the Client's group. It is not a shared departure, it does not depend on other bookings, and it does not go through a minimum-group stage.",
             "The card stays only saved, with no charge, until a guide is set.",
             "Guides who are free on the date are called in waves of up to 5. The list closes when 3 guides agree to be chosen. If fewer than 3 guides are free, the list closes with whoever accepted. If nobody accepts, the tour is cancelled because no guides are available. The Client receives the link by WhatsApp and by email and has 6 hours to choose, counted on the same clock as section 2.2: it runs only from 6:00 to 9:00 and from 16:00 to 22:00. If the time runs out, the highest guide among those who accepted is assigned. While the list is open, the Client does not cancel and the card is not charged.",
             "Without transport, the vehicle is the Client's and confirmation happens when the guide is set. With transport, the list includes only guides with a vehicle, and confirmation also requires the vehicle: one car and one guide for every group of up to 4 guests. The Client chooses the guide of the first car. Further cars follow section 6.2.",
+            "When 12 hours remain before the start, if the guide is still not set or, with transport, the vehicle is not secured, the private tour is cancelled automatically, under section 2.4.",
             "Once the guide is set and, with transport, the vehicle is secured, the Company tests the saved card. If it passes, the tour is assigned to that guide and the card is charged 100%. From then on there is no cancellation and no refund.",
             "If the card is declined, nothing is charged and the Client is asked to replace the card, with no fixed deadline. The decline does not undo confirmation. When the new card passes, the 100% charge happens automatically.",
           ],
@@ -520,7 +526,7 @@
           heading: "5. Cancellation by the Company",
           paragraphs: [
             "A confirmed tour is cancelled only by a platform administrator. The Client does not cancel a confirmed tour. The guide does not cancel the tour either: if the guide releases the assignment from the schedule, the seat returns to the queue under section 5.1.",
-            "The Company may cancel the tour, including after confirmation, because of the guide's health or a serious impediment, force majeure or an unforeseeable event, because the tour cannot be run or because of a risk to the participants' safety, including severe weather, closure of the attraction and an order from a competent authority, lack of a vehicle for a private tour, or lack of an available guide.",
+            "The Company may cancel the tour, including after confirmation, because of the guide's health or a serious impediment, force majeure or an unforeseeable event, because the tour cannot be run or because of a risk to the participants' safety, including severe weather, closure of the attraction and an order from a competent authority, lack of a vehicle for a private tour, lack of an available guide, or, 12 hours before the start, a shared tour without the minimum group or without a guide or a vehicle, and a private tour without a guide or a vehicle, under section 2.4.",
             "In these cases the Client receives a full refund of what was paid. On a card, if the charge has not happened yet, nothing is charged. No guide is paid for that tour, and the guide is told of the cancellation by WhatsApp and by email.",
           ],
         },
@@ -669,7 +675,7 @@
           heading: "1.1 Cuándo se cobra la tarjeta",
           paragraphs: [
             "En la tarjeta de crédito, nacional o internacional, la operadora solo confirma en la compra que la tarjeta existe y acepta un cobro futuro.",
-            "El cobro automático del valor solo se autoriza cuando el paseo está confirmado, en la forma de la sección 2.6.",
+            "El cobro automático del valor solo se autoriza cuando el paseo está confirmado.",
             "En el Pix, el valor se paga en la reserva y se reembolsa en los casos previstos en esta Política.",
           ],
         },
@@ -678,7 +684,7 @@
           paragraphs: [
             "Un paseo está confirmado si, y solo si, en la excursión, con o sin traslado, el quórum está cerrado y todos los guías necesarios aceptaron. Con traslado, cada auto exige su propio guía.",
             "En el paseo privado, con o sin traslado, el paseo está confirmado cuando el guía aceptó y, si hay traslado, el vehículo está asegurado.",
-            "En esas dos situaciones el paseo está confirmado. El cobro de cada reserva en la tarjeta se hace enseguida. A partir de la confirmación el contratante no cancela, aunque la tarjeta de esa reserva todavía no haya sido cobrada. El reembolso por decisión de la contratada sigue la sección 5. Se trata de un servicio con reserva anticipada, en el cual el prestador, que es el guía, dedica esa fecha al grupo.",
+            "En esas dos situaciones, el paseo está confirmado, el cobro en la tarjeta se hace y el contratante no cancela ni recibe restitución. El reembolso por decisión de la contratada sigue la sección 5. Se trata de un servicio con reserva anticipada, en el cual el prestador, que es el guía, dedica esa fecha al grupo.",
           ],
         },
         {
@@ -709,33 +715,35 @@
             "En la excursión con traslado, cada auto exige su propio guía y vehículo, y todos los guías con vehículo registrado reciben la propuesta juntos. Mientras falte uno, el estado continúa y nadie es cobrado.",
             "El contratante es avisado por WhatsApp y por correo electrónico cuando la salida entra en ese estado.",
             "En la tarjeta nada se cobra. En el Pix, el valor ya pagado permanece hasta la confirmación o la cancelación de la salida. En ese estado el contratante no puede cancelar.",
-            "La espera termina en lo que ocurra primero: un guía acepta; la fila se acaba sin aceptación; o faltan 12 horas para el inicio y la salida todavía no está confirmada.",
-            "Si la fila se acaba sin aceptación, el paseo se cancela porque no hay guías disponibles. El contratante es avisado por WhatsApp y por correo electrónico. En el Pix el valor se reembolsa. En la tarjeta nada se cobra.",
-            "Faltando 12 horas para el inicio, si la salida todavía está en formación o en Esperando confirmación operativa, se cancela. El Pix se devuelve. La reserva de la tarjeta que no fue cobrada se libera y nada se cobra.",
+            "La espera termina en lo que ocurra primero: un guía acepta; la fila se acaba sin aceptación; o faltan 12 horas para el inicio y el guía, o el vehículo en el traslado, todavía no está asignado. En los dos últimos casos el paseo se cancela automáticamente porque no hay guías disponibles, y el contratante es avisado por WhatsApp y por correo electrónico. En el Pix el valor se devuelve. En la tarjeta nada se cobra y la autorización se libera, en la forma de la sección 2.4.",
           ],
         },
         {
           heading: "2.3 Cancelación por el contratante durante la formación",
           paragraphs: [
             "Mientras la salida está En formación, el contratante puede cancelar en cualquier momento.",
-            "En la tarjeta no hay cobro ni reembolso, porque el paseo todavía no fue cobrado. En el Pix, la devolución es del 100% del valor de ese paseo.",
+            "En la tarjeta no hay cobro ni reembolso, porque el paseo todavía no fue cobrado.",
+            "En el Pix, la devolución es del 100% del valor de ese paseo.",
             "En una reserva con más de un día, el contratante cancela solo los paseos que todavía están en formación. El día ya confirmado permanece y no se reembolsa.",
             "La contratada también puede cerrar la formación en cualquier momento, por un motivo operativo o porque el paseo no puede realizarse. En el Pix el valor se reembolsa. En la tarjeta nada se cobra.",
           ],
         },
         {
-          heading: "2.4 Sin cambio de paseo",
+          heading: "2.4 Cancelación automática 12 horas antes de la salida",
           paragraphs: [
-            "No hay cambio de paseo. El contratante hace el paseo contratado o cancela mientras la salida está en formación. No existe oferta para pasar a otro paseo del mismo día.",
+            "Si faltan 12 horas para el inicio y la excursión todavía está sin quórum, en formación, o sin guía o vehículo, en Esperando confirmación operativa, el paseo se cancela automáticamente y el contratante es avisado por WhatsApp y por correo electrónico.",
+            "El mismo horario vale para el paseo privado que todavía esté sin guía o, con traslado, sin vehículo.",
+            "Ejemplo: un paseo marcado para las 8:00 del sábado se cancela automáticamente a las 20:00 del viernes.",
+            "En el Pix, el valor se devuelve por completo. En la tarjeta, nada se cobra y la autorización se libera.",
           ],
         },
         {
-          heading: "2.5 Cancelación automática 12 horas antes",
+          heading: "2.5 Sin cambio de paseo: o se hace el paseo, o se cancela",
           paragraphs: [
-            "Faltando 12 horas para el inicio, si la excursión todavía está en formación, sin quórum, o en Esperando confirmación operativa, sin guía o sin vehículo, la plataforma cancela la salida.",
-            "En el Pix, la devolución es del 100%. En la tarjeta, nada fue cobrado y la reserva de la tarjeta se libera.",
-            "Un paseo marcado para las 8:00 del sábado se cancela a las 20:00 del viernes si, a esa hora, el quórum no cerró o la confirmación operativa no se completó.",
-            "Cuando la salida se confirma, el cobro del 100% se hace en la tarjeta y el contratante no cancela y no recibe devolución. La confirmación de la excursión exige quórum y guía asignado y, si hay traslado, vehículo. La del paseo privado exige el guía asignado y, si hay traslado, vehículo.",
+            "La reserva no puede cambiarse por otro paseo. El contratante hace el paseo contratado o cancela. Todo paseo termina en una de estas situaciones:",
+            "Cancelado por el contratante, solo mientras la excursión está en formación: en el Pix el valor se devuelve y en la tarjeta nada se cobra.",
+            "Cancelado por la plataforma, con reembolso del 100%. Ocurre automáticamente 12 horas antes del inicio cuando la excursión no alcanzó el quórum o se quedó en Esperando confirmación operativa, sin guía o vehículo, y cuando el paseo privado todavía está sin guía o sin vehículo. También ocurre por decisión manual del administrador, como en condiciones climáticas severas, en las secciones 5 y 8.",
+            "Confirmado: en la excursión, el quórum se alcanzó y hay guía asignado y, si hay traslado, vehículo. En el paseo privado, hay guía asignado y, si hay traslado, vehículo. El cobro se hace en la tarjeta y el contratante no cancela y no recibe devolución.",
           ],
         },
         {
@@ -750,10 +758,11 @@
         {
           heading: "3. Paseos privados",
           paragraphs: [
-            "El paseo privado es exclusivo para el grupo del contratante. No es una excursión compartida y no depende de otras inscripciones. No hay cambio de paseo. Faltando 12 horas para el inicio, si el guía o el vehículo todavía no está definido, la salida se cancela: el Pix se devuelve y la reserva de la tarjeta que no fue cobrada se libera.",
+            "El paseo privado es exclusivo para el grupo del contratante. No es una excursión compartida, no depende de otras inscripciones y no pasa por formación de quórum.",
             "La tarjeta queda solo guardada, sin cobro, hasta que un guía quede definido.",
             "Los guías libres en la fecha son llamados en tandas de hasta 5. La lista se cierra cuando 3 guías aceptan participar. Si no hay 3 guías libres, la lista se cierra con quien aceptó. Si nadie acepta, el paseo se cancela porque no hay guías disponibles. El contratante recibe el enlace por WhatsApp y por correo electrónico y tiene 6 horas para elegir, contadas en el mismo reloj de la sección 2.2: solo corren de 6:00 a 9:00 y de 16:00 a 22:00. Si el plazo termina, entra el guía mejor colocado entre los que aceptaron. Mientras la lista está abierta, el contratante no cancela y la tarjeta no se cobra.",
             "Sin traslado, el vehículo es del contratante y la confirmación ocurre cuando el guía queda definido. Con traslado, la lista solo incluye guías con vehículo, y la confirmación también exige el vehículo: un auto y un guía por cada grupo de hasta 4 clientes. El contratante elige al guía del primer auto. Los autos siguientes siguen la sección 6.2.",
+            "Faltando 12 horas para el inicio, si el guía todavía no está definido o, con traslado, el vehículo no está asegurado, el paseo privado se cancela automáticamente, en la forma de la sección 2.4.",
             "Con el guía definido y, en el traslado, el vehículo asegurado, la contratada prueba la tarjeta guardada. Si pasa, el paseo queda asociado a ese guía y la tarjeta se cobra al 100%. A partir de ahí no hay cancelación ni devolución.",
             "Si la tarjeta es rechazada, nada se cobra y se avisa al contratante para que cambie la tarjeta, sin plazo fijo. El rechazo no deshace la confirmación. Cuando la nueva tarjeta pasa, el cobro del 100% ocurre automáticamente.",
           ],
@@ -776,7 +785,7 @@
           heading: "5. Cancelación por la contratada",
           paragraphs: [
             "La cancelación del paseo confirmado la hace solo un administrador de la plataforma. El contratante no cancela el paseo confirmado. El guía tampoco cancela el paseo: si suelta la guiatura en la agenda, la plaza vuelve a la fila, en la forma de la sección 5.1.",
-            "La contratada puede cancelar el paseo, incluso después de la confirmación, por un problema de salud o un impedimento grave del guía, fuerza mayor o caso fortuito, inviabilidad de la realización o riesgo para la seguridad de los participantes, incluidas las condiciones climáticas severas, la interdicción del atractivo y la determinación de una autoridad competente, falta de vehículo para realizar el paseo privado, o falta de guía disponible.",
+            "La contratada puede cancelar el paseo, incluso después de la confirmación, por un problema de salud o un impedimento grave del guía, fuerza mayor o caso fortuito, inviabilidad de la realización o riesgo para la seguridad de los participantes, incluidas las condiciones climáticas severas, la interdicción del atractivo y la determinación de una autoridad competente, falta de vehículo para realizar el paseo privado, falta de guía disponible, o, 12 horas antes del inicio, excursión sin quórum o sin guía o vehículo, y paseo privado sin guía o sin vehículo, en la forma de la sección 2.4.",
             "En esas hipótesis el contratante recibe el reembolso integral de lo que fue pagado. En la tarjeta, si el cobro todavía no ocurrió, nada se cobra. Ningún guía recibe por ese paseo, y el guía es avisado de la cancelación por WhatsApp y por correo electrónico.",
           ],
         },
