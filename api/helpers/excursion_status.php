@@ -273,6 +273,27 @@ function gcv_excursion_is_private(array $e): bool
     return gcv_excursion_tour_type($e) === 'privativo';
 }
 
+/**
+ * Quórum já fechou (ou o privativo já tem gente), mas ainda falta guia
+ * ou, no translado, o aceite do guia com veículo.
+ */
+function gcv_excursion_staffing_ready(array $e): bool
+{
+    if ((int)($e['id'] ?? 0) <= 0) {
+        return (int)($e['quorum'] ?? 1) <= 0;
+    }
+    if (!function_exists('gcv_guiagem_staffing_ready')) {
+        $file = __DIR__ . '/guide_queue_offer.php';
+        if (is_file($file)) {
+            require_once $file;
+        }
+    }
+    if (!function_exists('gcv_guiagem_staffing_ready')) {
+        return true;
+    }
+    return gcv_guiagem_staffing_ready($e);
+}
+
 function gcv_resolve_excursion_lifecycle(array $e): string
 {
     $status = (string)($e['status'] ?? 'draft');
@@ -305,29 +326,33 @@ function gcv_resolve_excursion_lifecycle(array $e): string
         if ($date !== '' && $date < $today) {
             return $going ? 'concluida' : 'cancelada';
         }
-        return $going ? 'confirmada' : 'em_formacao';
+        if (!$going) {
+            return 'em_formacao';
+        }
+        return gcv_excursion_staffing_ready($e) ? 'confirmada' : 'aguardando_operacional';
     }
 
-    if ($status === 'soldout') {
-        return 'confirmada';
+    if ($status === 'soldout' && $date !== '' && $date < $today) {
+        return 'concluida';
     }
 
-    $quorumMet = gcv_excursion_quorum_met($e);
+    $quorumMet = $status === 'soldout' || gcv_excursion_quorum_met($e);
 
     if ($date !== '' && $date < $today) {
         return $quorumMet ? 'concluida' : 'cancelada';
     }
 
-    if ($quorumMet) {
-        return 'confirmada';
+    if (!$quorumMet) {
+        return 'em_formacao';
     }
-    return 'em_formacao';
+    return gcv_excursion_staffing_ready($e) ? 'confirmada' : 'aguardando_operacional';
 }
 
 function gcv_excursion_lifecycle_label(string $code): string
 {
     return match ($code) {
         'confirmada' => 'Confirmada',
+        'aguardando_operacional' => 'Aguardando confirmação operacional',
         'em_formacao' => 'Em formação',
         'concluida' => 'Concluída',
         'cancelada' => 'Cancelada',

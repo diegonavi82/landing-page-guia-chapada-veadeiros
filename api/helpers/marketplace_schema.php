@@ -545,6 +545,7 @@ function gcv_marketplace_ensure_checkin_columns(PDO $pdo): void
     if ($exc !== null) {
         foreach ([
             'notify_confirmed_at' => 'ALTER TABLE gcv_excursions ADD COLUMN notify_confirmed_at DATETIME NULL',
+            'notify_operational_at' => 'ALTER TABLE gcv_excursions ADD COLUMN notify_operational_at DATETIME NULL',
             'notify_approved_at' => 'ALTER TABLE gcv_excursions ADD COLUMN notify_approved_at DATETIME NULL',
             'notify_d12h_guide_at' => 'ALTER TABLE gcv_excursions ADD COLUMN notify_d12h_guide_at DATETIME NULL',
             'notify_h2_guide_at' => 'ALTER TABLE gcv_excursions ADD COLUMN notify_h2_guide_at DATETIME NULL',

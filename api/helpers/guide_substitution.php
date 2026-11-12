@@ -244,7 +244,22 @@ function gcv_substitution_busy(int $guideId, array $tour): bool
         }
     }
     if (function_exists('gcv_guiagem_priority_holds_day')) {
-        return gcv_guiagem_priority_holds_day(
+        if (gcv_guiagem_priority_holds_day(
+            $guideId,
+            (string)($tour['date_iso'] ?? ''),
+            (int)($tour['id'] ?? 0)
+        )) {
+            return true;
+        }
+    }
+    if (!function_exists('gcv_guiagem_choice_holds_day')) {
+        $choice = __DIR__ . '/guide_choice.php';
+        if (is_file($choice)) {
+            require_once $choice;
+        }
+    }
+    if (function_exists('gcv_guiagem_choice_holds_day')) {
+        return gcv_guiagem_choice_holds_day(
             $guideId,
             (string)($tour['date_iso'] ?? ''),
             (int)($tour['id'] ?? 0)

@@ -222,7 +222,7 @@ function gcv_guiagem_espera_confirmacao(array $tour): bool
         return false;
     }
     $life = gcv_resolve_excursion_lifecycle($tour);
-    return !in_array($life, ['confirmada', 'concluida'], true);
+    return !in_array($life, ['confirmada', 'concluida', 'aguardando_operacional'], true);
 }
 
 /** Abre o próximo convite do TOP 3 quando ainda falta guia e ninguém está com a vaga na mão. */
@@ -952,7 +952,17 @@ function gcv_guiagem_day_busy(int $guideId, string $dateIso, int $exceptId): boo
         error_log('gcv_guiagem_day_busy: ' . $e->getMessage());
         return true;
     }
-    return gcv_guiagem_priority_holds_day($guideId, $dateIso, $exceptId);
+    if (gcv_guiagem_priority_holds_day($guideId, $dateIso, $exceptId)) {
+        return true;
+    }
+    if (!function_exists('gcv_guiagem_choice_holds_day')) {
+        $choice = __DIR__ . '/guide_choice.php';
+        if (is_file($choice)) {
+            require_once $choice;
+        }
+    }
+    return function_exists('gcv_guiagem_choice_holds_day')
+        && gcv_guiagem_choice_holds_day($guideId, $dateIso, $exceptId);
 }
 
 /**
@@ -961,40 +971,65 @@ function gcv_guiagem_day_busy(int $guideId, string $dateIso, int $exceptId): boo
  *
  * @param array<string,mixed> $tour
  */
-function gcv_guiagem_priority_expires_at(array $tour): ?string
+/** Prazo real do aceite: 4h20 só dentro das janelas 6h–9h e 16h–22h. */
+function gcv_guiagem_deadline_for(array $tour): string
 {
-    $tz = new DateTimeZone('America/Sao_Paulo');
-    $now = new DateTimeImmutable('now', $tz);
-    $expires = $now->modify('+' . gcv_guiagem_priority_hours() . ' hours');
+    require_once __DIR__ . '/ops_clock.php';
+    $now = gcv_ops_clock_now();
+    $deadline = gcv_ops_clock_active_until($now, gcv_ops_clock_accept_seconds());
     if (!function_exists('gcv_ops_starts_at')) {
         require_once __DIR__ . '/notify_ops.php';
     }
     $start = gcv_ops_starts_at($tour);
-    if ($start instanceof DateTimeImmutable) {
-        if ($start <= $now->modify('+1 hour')) {
-            return null;
-        }
-        if ($start < $expires) {
-            $expires = $start;
-        }
+    if ($start instanceof DateTimeImmutable && $start > $now && $start < $deadline) {
+        $deadline = $start;
     }
-    return $expires->format('Y-m-d H:i:s');
+    return $deadline->format('Y-m-d H:i:s');
+}
+
+/** @param list<int> $guideIds */
+function gcv_guiagem_stamp_pending(int $excursionId, array $guideIds, array $tour): void
+{
+    $guideIds = array_values(array_filter(array_map('intval', $guideIds), static fn ($id) => $id > 0));
+    if ($excursionId <= 0 || !$guideIds || !gcv_guiagem_column_exists('expires_at')) {
+        return;
+    }
+    $deadline = gcv_guiagem_deadline_for($tour);
+    try {
+        $st = db()->prepare(
+            "UPDATE gcv_guide_queue_offers
+             SET expires_at = ?
+             WHERE excursion_id = ? AND guide_user_id = ? AND status = 'pending' AND expires_at IS NULL"
+        );
+        foreach ($guideIds as $gid) {
+            $st->execute([$deadline, $excursionId, $gid]);
+        }
+    } catch (Throwable $e) {
+        error_log('gcv_guiagem_stamp_pending: ' . $e->getMessage());
+    }
+}
+
+function gcv_guiagem_priority_expires_at(array $tour): ?string
+{
+    require_once __DIR__ . '/ops_clock.php';
+    $now = gcv_ops_clock_now();
+    if (!function_exists('gcv_ops_starts_at')) {
+        require_once __DIR__ . '/notify_ops.php';
+    }
+    $start = gcv_ops_starts_at($tour);
+    if ($start instanceof DateTimeImmutable && $start <= $now->modify('+1 hour')) {
+        return null;
+    }
+    return gcv_guiagem_deadline_for($tour);
 }
 
 function gcv_guiagem_priority_note(string $expiresAt): string
 {
-    $when = $expiresAt;
-    try {
-        $tz = new DateTimeZone('America/Sao_Paulo');
-        $end = new DateTimeImmutable($expiresAt, $tz);
-        $when = $end->format('d/m/Y') . ' às ' . $end->format('H:i');
-    } catch (Throwable $e) {
-        $when = $expiresAt;
-    }
-    return 'Esta venda chegou primeiro para você, o guia especial. '
-        . 'Aceite ou recuse na Agenda até ' . $when . '. '
-        . 'Esse dia fica ocupado enquanto você decide. '
-        . 'Se recusar ou o prazo acabar, a venda segue para a fila.';
+    require_once __DIR__ . '/wa_copy.php';
+    require_once __DIR__ . '/ops_clock.php';
+    return gcv_wa_text('guia_prioridade', 'pt', [
+        'prazo' => gcv_ops_clock_label_from_sql($expiresAt),
+    ]);
 }
 
 /**
@@ -1210,6 +1245,7 @@ function gcv_guiagem_open_vehicle_all(array $tour, int $exceptId): array
         error_log('gcv_guiagem_open_vehicle_all insert: ' . $e->getMessage());
         return $saved;
     }
+    gcv_guiagem_stamp_pending($tourId, array_map(static fn ($g) => (int)($g['id'] ?? 0), $saved), $tour);
     return $saved;
 }
 
@@ -1227,6 +1263,23 @@ function gcv_guiagem_open_next(array $tour, int $exceptId): array
     }
     if (gcv_guiagem_tour_is_teste($tour)) {
         return gcv_guiagem_offer_somente_diego($tour, $exceptId);
+    }
+    if (!function_exists('gcv_escolha_is_private')) {
+        require_once __DIR__ . '/guide_choice.php';
+    }
+    if (gcv_escolha_is_private($tour)) {
+        $lead = (int)($tour['guide_user_id'] ?? 0);
+        $vehiclePrivate = gcv_guiagem_is_vehicle_broadcast($tour);
+        if ($lead > 0 && $vehiclePrivate && !gcv_guiagem_staffing_ready($tour)) {
+            if (gcv_guiagem_pending_guide_ids($tourId)) {
+                return [];
+            }
+            return gcv_guiagem_open_vehicle_all($tour, $exceptId);
+        }
+        if ($lead > 0) {
+            return [];
+        }
+        return gcv_escolha_open_wave($tour, $exceptId);
     }
     $vehicle = gcv_guiagem_is_vehicle_broadcast($tour);
     $owner = (int)($tour['guide_user_id'] ?? 0);
@@ -1351,12 +1404,77 @@ function gcv_guiagem_close_priority_offers(?string $expiresBy): int
     return $n;
 }
 
-/** 24 h sem resposta: tira da agenda e abre a fila normal. */
+/** Encerra o que passou do relógio de 4h20 e chama os próximos. */
+function gcv_guiagem_expire_due(?DateTimeImmutable $now = null): int
+{
+    gcv_guiagem_ensure_schema();
+    require_once __DIR__ . '/ops_clock.php';
+    require_once __DIR__ . '/guide_choice.php';
+    $tz = gcv_ops_clock_tz();
+    $now = $now ? $now->setTimezone($tz) : gcv_ops_clock_now();
+    if (!gcv_guiagem_column_exists('expires_at')) {
+        return 0;
+    }
+    $stamp = $now->format('Y-m-d H:i:s');
+    try {
+        $st = db()->prepare(
+            "SELECT DISTINCT excursion_id FROM gcv_guide_queue_offers
+             WHERE status = 'pending' AND expires_at IS NOT NULL AND expires_at <= ?"
+        );
+        $st->execute([$stamp]);
+        $ids = array_map('intval', $st->fetchAll(PDO::FETCH_COLUMN) ?: []);
+    } catch (Throwable $e) {
+        error_log('gcv_guiagem_expire_due: ' . $e->getMessage());
+        return 0;
+    }
+    $n = 0;
+    foreach ($ids as $excursionId) {
+        if ($excursionId <= 0) {
+            continue;
+        }
+        try {
+            db()->prepare(
+                "UPDATE gcv_guide_queue_offers
+                 SET status = 'expired', decided_at = NOW()
+                 WHERE excursion_id = ? AND status = 'pending'
+                   AND expires_at IS NOT NULL AND expires_at <= ?"
+            )->execute([$excursionId, $stamp]);
+        } catch (Throwable $e) {
+            error_log('gcv_guiagem_expire_due update: ' . $e->getMessage());
+            continue;
+        }
+        if (gcv_guiagem_pending_guide_ids($excursionId)) {
+            $n++;
+            continue;
+        }
+        $tour = gcv_substitution_load_excursion($excursionId);
+        if (!$tour || gcv_guiagem_staffing_ready($tour)) {
+            $n++;
+            continue;
+        }
+        $picked = gcv_guiagem_open_next($tour, 0);
+        if ($picked) {
+            gcv_guiagem_notify_new_purchase($excursionId, array_map(static fn ($g) => (int)($g['id'] ?? 0), $picked));
+        } elseif (
+            !gcv_escolha_blocks_cancel($excursionId)
+            && count(gcv_guiagem_filled_ids($tour)) < 1
+            && !gcv_guiagem_tour_is_teste($tour)
+            && gcv_guiagem_mark_cancelled($excursionId)
+        ) {
+            gcv_guiagem_finish_no_guide($excursionId);
+        } elseif (gcv_guiagem_is_vehicle_broadcast($tour)) {
+            gcv_guiagem_notify_agency_no_vehicle($excursionId);
+        }
+        $n++;
+    }
+    $n += gcv_escolha_expire_rounds($now);
+    return $n;
+}
+
+/** Prazo do aceite esgotado: tira a oferta e segue a fila. */
 function gcv_guiagem_expire_priority(?DateTimeImmutable $now = null): int
 {
-    $tz = new DateTimeZone('America/Sao_Paulo');
-    $now = $now ? $now->setTimezone($tz) : new DateTimeImmutable('now', $tz);
-    return gcv_guiagem_close_priority_offers($now->format('Y-m-d H:i:s'));
+    return gcv_guiagem_expire_due($now);
 }
 
 /** Admin desligou a regra: tira da agenda o que ainda espera aceite. */
@@ -1406,6 +1524,7 @@ function gcv_guiagem_open_top(array $tour, int $exceptId): array
     foreach ($picked as $g) {
         $ins->execute([$tourId, (int)$g['id']]);
     }
+    gcv_guiagem_stamp_pending($tourId, array_map(static fn ($g) => (int)($g['id'] ?? 0), $picked), $tour);
     return $picked;
 }
 
@@ -1526,6 +1645,18 @@ function gcv_guiagem_release(int $excursionId, array $user, bool $isAdmin = fals
             ? 'Guiagem cancelada. Você foi para o fim da fila (' . $posicao . 'º). A vaga segue aberta até 24 horas antes do passeio.'
             : 'Guiagem cancelada. Você continua em destaque. A vaga segue aberta até 24 horas antes do passeio.';
     }
+    if (!$cancelNow) {
+        try {
+            require_once __DIR__ . '/notify_ops.php';
+            require_once __DIR__ . '/excursion_status.php';
+            $fresh = gcv_substitution_load_excursion($excursionId);
+            if ($fresh && gcv_resolve_excursion_lifecycle($fresh) === 'aguardando_operacional') {
+                gcv_ops_notify_operational($excursionId, true);
+            }
+        } catch (Throwable $e) {
+            error_log('gcv_guiagem_release operational: ' . $e->getMessage());
+        }
+    }
     return ['ok' => true, 'message' => $message, 'offered' => count($ids), 'posicao' => $posicao, 'tour_cancelled' => $cancelNow];
 }
 
@@ -1559,6 +1690,20 @@ function gcv_guiagem_accept(int $excursionId, array $user): array
     }
     if ($kalungaErro !== null) {
         return ['ok' => false, 'error' => $kalungaErro, 'status' => 422];
+    }
+    try {
+        $peek = db()->prepare(
+            "SELECT kind FROM gcv_guide_queue_offers
+             WHERE excursion_id = ? AND guide_user_id = ? AND status = 'pending'
+             ORDER BY id DESC LIMIT 1"
+        );
+        $peek->execute([$excursionId, $me]);
+        if ((string)($peek->fetchColumn() ?: '') === 'escolha') {
+            require_once __DIR__ . '/guide_choice.php';
+            return gcv_escolha_guide_accept($excursionId, $user);
+        }
+    } catch (Throwable $e) {
+        error_log('gcv_guiagem_accept escolha: ' . $e->getMessage());
     }
 
     // A fila cria tabela na primeira chamada. Isso dentro da transação
@@ -1758,6 +1903,7 @@ function gcv_guiagem_decline(int $excursionId, int $guideId): array
         return ['ok' => false, 'error' => 'Esta vaga não está aguardando você', 'status' => 404];
     }
     $wasVehicle = false;
+    $offerKind = '';
     try {
         $kindSt = db()->prepare(
             "SELECT kind FROM gcv_guide_queue_offers
@@ -1765,7 +1911,8 @@ function gcv_guiagem_decline(int $excursionId, int $guideId): array
              ORDER BY id DESC LIMIT 1"
         );
         $kindSt->execute([$excursionId, $guideId]);
-        $wasVehicle = (string)($kindSt->fetchColumn() ?: '') === 'vehicle';
+        $offerKind = (string)($kindSt->fetchColumn() ?: '');
+        $wasVehicle = $offerKind === 'vehicle';
     } catch (Throwable $e) {
         $wasVehicle = false;
     }
@@ -1791,7 +1938,13 @@ function gcv_guiagem_decline(int $excursionId, int $guideId): array
                 $picked = gcv_guiagem_open_next($tour, $guideId);
                 $testeSemOutro = $tour && gcv_guiagem_tour_is_teste($tour);
                 if (!$picked && !$testeSemOutro && count(gcv_guiagem_filled_ids($tour)) < 1) {
-                    $cancelNow = gcv_guiagem_mark_cancelled($excursionId);
+                    if (!function_exists('gcv_escolha_blocks_cancel')) {
+                        require_once __DIR__ . '/guide_choice.php';
+                    }
+                    $segura = function_exists('gcv_escolha_blocks_cancel') && gcv_escolha_blocks_cancel($excursionId);
+                    if (!$segura) {
+                        $cancelNow = gcv_guiagem_mark_cancelled($excursionId);
+                    }
                 }
             }
         }
@@ -1812,6 +1965,8 @@ function gcv_guiagem_decline(int $excursionId, int $guideId): array
     }
     if ($wasVehicle) {
         $message = 'Você recusou esta proposta. Ela continua disponível para os outros guias com veículo.';
+    } elseif ($offerKind === 'escolha') {
+        $message = 'Você não entrou na lista. Sua posição na fila não mudou.';
     } elseif ($tour && gcv_guiagem_tour_is_teste($tour)) {
         $message = 'Você recusou este passeio de teste. Nenhum outro guia recebe esta proposta.';
     } elseif ($picked) {
@@ -1865,8 +2020,9 @@ function gcv_guiagem_attach(array $rows, int $userId): array
         if (!$tour || !function_exists('gcv_map_excursion_row')) {
             continue;
         }
+        $kind = (string)($offer['kind'] ?? '');
+        $vehicleOffer = $kind === 'vehicle';
         $ownerId = (int)($tour['guide_user_id'] ?? 0);
-        $vehicleOffer = (string)($offer['kind'] ?? '') === 'vehicle';
         if ($ownerId > 0 && (!$vehicleOffer || gcv_guiagem_staffing_ready($tour))) {
             continue;
         }
@@ -1879,21 +2035,21 @@ function gcv_guiagem_attach(array $rows, int $userId): array
         $mapped['can_cancel'] = false;
         $mapped['queue_offer'] = true;
         $mapped['vehicle_offer'] = $vehicleOffer;
-        $priority = (string)($offer['kind'] ?? '') === 'priority' && !empty($offer['expires_at']);
-        $mapped['priority_offer'] = $priority;
-        if ($priority) {
+        $mapped['priority_offer'] = $kind === 'priority';
+        $mapped['choice_offer'] = $kind === 'escolha';
+        $exp = trim((string)($offer['expires_at'] ?? ''));
+        if ($exp !== '') {
             try {
-                $mapped['confirm_deadline'] = (new DateTimeImmutable(
-                    (string)$offer['expires_at'],
-                    new DateTimeZone('America/Sao_Paulo')
-                ))->format('c');
+                $mapped['confirm_deadline'] = (new DateTimeImmutable($exp, new DateTimeZone('America/Sao_Paulo')))->format('c');
+                $mapped['accept_windows'] = true;
             } catch (Throwable $e) {
                 $mapped['confirm_deadline'] = gcv_guide_confirm_deadline($mapped);
             }
-            $mapped['decision_hours'] = gcv_guiagem_priority_hours();
         } else {
             $mapped['confirm_deadline'] = gcv_guide_confirm_deadline($mapped);
-            $mapped['decision_hours'] = gcv_guide_decision_hours();
+            $mapped['decision_hours'] = $kind === 'priority'
+                ? gcv_guiagem_priority_hours()
+                : gcv_guide_decision_hours();
         }
         $incoming[] = $mapped;
         $have[$id] = true;
@@ -1948,17 +2104,29 @@ function gcv_guiagem_notify_new_purchase(int $excursionId, array $guideIds): voi
                 $kind->execute([$excursionId, $gid]);
                 $offerRow = $kind->fetch(PDO::FETCH_ASSOC) ?: null;
                 $offerKind = (string)($offerRow['kind'] ?? '');
-                if ($offerKind === 'priority') {
-                    $exp = (string)($offerRow['expires_at'] ?? '');
-                    if ($exp !== '') {
-                        $note = gcv_guiagem_priority_note($exp);
-                    }
+                $exp = (string)($offerRow['expires_at'] ?? '');
+                require_once __DIR__ . '/wa_copy.php';
+                require_once __DIR__ . '/ops_clock.php';
+                $prazo = $exp !== '' ? gcv_ops_clock_label_from_sql($exp) : '';
+                $relogio = $prazo !== '' ? gcv_wa_text('guia_aceite', 'pt', ['prazo' => $prazo]) : '';
+                if ($offerKind === 'priority' && $exp !== '') {
+                    $note = gcv_guiagem_priority_note($exp);
+                } elseif ($offerKind === 'escolha') {
+                    $note = gcv_wa_text('guia_escolha', 'pt', ['prazo' => $prazo]);
                 } elseif ($offerKind === 'teste') {
                     $note = 'Passeio de teste. Só você recebe esta proposta. Confirme se pode guiar.';
                 } elseif ($offerKind === 'vehicle') {
-                    $note = 'Passeio com translado. Não há fila: todos os guias com veículo cadastrado receberam esta proposta. O primeiro que aceitar fica com a vaga.';
+                    $note = trim(
+                        'Passeio com translado. Não há fila: todos os guias com veículo cadastrado receberam esta proposta. O primeiro que aceitar fica com a vaga.'
+                        . ($relogio !== '' ? "\n\n" . $relogio : '')
+                    );
                 } elseif ($offerKind === 'admin') {
-                    $note = 'A administração escolheu você para esta saída. Confirme no link para a vaga ficar sua.';
+                    $note = trim(
+                        'A administração escolheu você para esta saída. Confirme no link para a vaga ficar sua.'
+                        . ($relogio !== '' ? "\n\n" . $relogio : '')
+                    );
+                } elseif ($relogio !== '') {
+                    $note = $relogio;
                 }
             } catch (Throwable $e) {
                 $note = '';

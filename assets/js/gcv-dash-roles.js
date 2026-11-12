@@ -2452,6 +2452,9 @@
     if (life === 'cancelada' || life === 'rejeitada' || life === 'concluida' || life === 'aguardando_aprovacao') {
       return { life: life, label: label };
     }
+    if (life === 'aguardando_operacional') {
+      return { life: life, label: label || 'Aguardando confirmação operacional' };
+    }
     var qT = parseFiniteInt(e.quorum_transport, 0);
     var vanFormed = !!(st.offer && !st.cancelled && st.transport >= qT);
     if (mode === 'van') {
@@ -2907,7 +2910,9 @@
   function guideAskOpen(row) {
     if (!row || !row.awaiting_guide || row.substitution_offer_id) return false;
     var end = guideConfirmDeadlineMs(row);
-    return !isFinite(end) || end > Date.now();
+    if (!isFinite(end)) return true;
+    if (row.accept_windows) return activeMsBetween(Date.now(), end) > 0;
+    return end > Date.now();
   }
 
   function syncAgendaAskBadge(rows) {
@@ -2925,6 +2930,42 @@
       });
       syncAgendaAskBadge(upcoming);
     });
+  }
+
+  function spDayStartMs(ms) {
+    var ymd = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Sao_Paulo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(new Date(ms));
+    var start = Date.parse(ymd + 'T00:00:00-03:00');
+    return isNaN(start) ? ms : start;
+  }
+
+  function activeMsBetween(nowMs, endMs) {
+    if (!(endMs > nowMs)) return 0;
+    var total = 0;
+    var dayMs = spDayStartMs(nowMs);
+    var guard = 0;
+    var wins = [[6, 9], [16, 22]];
+    while (dayMs < endMs && guard < 30) {
+      guard++;
+      for (var i = 0; i < wins.length; i++) {
+        var open = dayMs + wins[i][0] * 3600000;
+        var shut = dayMs + wins[i][1] * 3600000;
+        var start = Math.max(open, nowMs);
+        var stop = Math.min(shut, endMs);
+        if (stop > start) total += stop - start;
+      }
+      dayMs += 86400000;
+    }
+    return total;
+  }
+
+  function acceptClockPaused(nowMs) {
+    var sec = (nowMs - spDayStartMs(nowMs)) / 1000;
+    return !((sec >= 6 * 3600 && sec < 9 * 3600) || (sec >= 16 * 3600 && sec < 22 * 3600));
   }
 
   function formatAskLeft(ms) {
@@ -2951,12 +2992,15 @@
       var gone = [];
       nodes.forEach(function (el) {
         var end = Number(el.getAttribute('data-ask-deadline'));
-        var left = end - now;
+        var windows = el.getAttribute('data-ask-windows') === '1';
+        var left = windows ? activeMsBetween(now, end) : (end - now);
+        var paused = windows && left > 0 && acceptClockPaused(now);
         var value = el.querySelector('[data-ask-left]');
         var kicker = el.querySelector('.gcv-agenda-ask__timer-kicker');
-        if (value) value.textContent = formatAskLeft(left);
+        if (value) value.textContent = paused ? ('pausa · ' + formatAskLeft(left)) : formatAskLeft(left);
         if (kicker) kicker.hidden = left <= 0;
-        el.classList.toggle('is-urgent', left > 0 && left <= 2 * 3600000);
+        el.classList.toggle('is-paused', paused);
+        el.classList.toggle('is-urgent', left > 0 && left <= 30 * 60 * 1000 && !paused);
         el.classList.toggle('is-expired', left <= 0);
         var item = el.closest('.gcv-agenda-ask__item');
         if (item && left <= 0) {
@@ -3018,9 +3062,14 @@
         fresh: 'NOVO',
         priority: 'PRIORIDADE',
         vehicle: 'TRANSLADO',
+        choice: 'ESCOLHA',
         confirmIn: 'Confirme em',
         acceptIn: 'Aceite em',
+        pauseIn: 'Pausa',
         normalHint: 'Sem a sua confirmação até {hours} horas antes da saída, a reserva do cliente é liberada.',
+        clockHint: 'Você tem 4h20 para aceitar ou recusar. Esse tempo só corre das 6h às 9h e das 16h às 22h. Fora disso, a contagem para.',
+        choiceHint: 'Se você aceitar, entra na lista para o cliente escolher. Ainda não é a guiagem. O prazo é de 4h20 e só corre das 6h às 9h e das 16h às 22h.',
+        choiceQuestion: 'Você topa entrar na lista para o cliente escolher?',
         priorityHint: 'Você tem até o prazo abaixo para aceitar ou recusar. Esse dia já está na sua agenda. Se recusar ou o prazo acabar, a vaga segue para os outros guias.',
         vehicleHint: 'Passeio com translado. Não há fila: todos os guias com veículo receberam esta proposta. O primeiro que aceitar fica com a vaga.'
       },
@@ -3032,9 +3081,14 @@
         fresh: 'NEW',
         priority: 'PRIORITY',
         vehicle: 'TRANSPORT',
+        choice: 'CHOICE',
         confirmIn: 'Confirm within',
         acceptIn: 'Accept within',
+        pauseIn: 'Paused',
         normalHint: 'If you do not confirm by {hours} hours before departure, the guest’s booking is released.',
+        clockHint: 'You have 4h20 to accept or decline. That time runs only from 6:00 to 9:00 and from 16:00 to 22:00. Outside those hours, the countdown pauses.',
+        choiceHint: 'If you accept, you join the list for the guest to choose. This is not the assignment yet. The 4h20 countdown runs only from 6:00 to 9:00 and from 16:00 to 22:00.',
+        choiceQuestion: 'Do you want to join the list for the guest to choose?',
         priorityHint: 'You have until the deadline below to accept or decline. This day is already on your schedule. If you decline or the time runs out, the job goes to the other guides.',
         vehicleHint: 'This tour includes transport. There is no queue: every guide with a vehicle received this offer. The first to accept gets it.'
       },
@@ -3046,9 +3100,14 @@
         fresh: 'NUEVO',
         priority: 'PRIORIDAD',
         vehicle: 'TRASLADO',
+        choice: 'ELECCIÓN',
         confirmIn: 'Confirma en',
         acceptIn: 'Acepta en',
+        pauseIn: 'Pausa',
         normalHint: 'Si no confirmas hasta {hours} horas antes de la salida, la reserva del cliente se libera.',
+        clockHint: 'Tienes 4h20 para aceptar o rechazar. Ese tiempo solo corre de 6:00 a 9:00 y de 16:00 a 22:00. Fuera de eso, la cuenta se detiene.',
+        choiceHint: 'Si aceptas, entras en la lista para que el cliente elija. Todavía no es la guiatura. El plazo es de 4h20 y solo corre de 6:00 a 9:00 y de 16:00 a 22:00.',
+        choiceQuestion: '¿Quieres entrar en la lista para que el cliente elija?',
         priorityHint: 'Tienes hasta el plazo de abajo para aceptar o rechazar. Ese día ya está en tu agenda. Si rechazas o se acaba el plazo, la plaza sigue con los otros guías.',
         vehicleHint: 'Paseo con traslado. No hay fila: todos los guías con vehículo recibieron esta propuesta. El primero que acepte se queda con la plaza.'
       }
@@ -3065,29 +3124,38 @@
     var hasPriority = false;
     var hasVehicle = false;
     var hasNormal = false;
+    var hasChoice = false;
+    var hasWindows = false;
     tours.forEach(function (e) {
       var n = Number(e && e.decision_hours);
       if (isFinite(n) && n >= 1) hours = n;
-      if (e && e.vehicle_offer) hasVehicle = true;
+      if (e && e.choice_offer) hasChoice = true;
+      else if (e && e.vehicle_offer) hasVehicle = true;
       else if (e && e.priority_offer) hasPriority = true;
       else hasNormal = true;
+      if (e && e.accept_windows) hasWindows = true;
     });
     var hint = ui.normalHint.replace('{hours}', String(hours));
-    if (hasVehicle && !hasPriority && !hasNormal) hint = ui.vehicleHint;
-    else if (hasPriority && !hasNormal && !hasVehicle) hint = ui.priorityHint;
-    else if (hasPriority || hasVehicle) hint = hint + (hasVehicle ? ' ' + ui.vehicleHint : '') + (hasPriority ? ' ' + ui.priorityHint : '');
+    if (hasChoice && !hasVehicle && !hasPriority && !hasNormal) hint = ui.choiceHint;
+    else if (hasWindows && !hasChoice) hint = ui.clockHint;
+    else if (hasVehicle && !hasPriority && !hasNormal && !hasChoice) hint = ui.vehicleHint;
+    else if (hasPriority && !hasNormal && !hasVehicle && !hasChoice) hint = ui.priorityHint;
+    else if (hasChoice) hint = ui.choiceHint;
+    if (hasChoice) question = ui.choiceQuestion || question;
     var items = tours.map(function (e) {
       var time = String(e.departure_time || '').slice(0, 5);
       var when = formatGuideDate(e.date_iso) + (time ? ' · ' + time : '');
       var deadline = guideConfirmDeadlineMs(e);
+      var windows = e && e.accept_windows ? ' data-ask-windows="1"' : '';
+      var badge = e && e.choice_offer ? ui.choice : (e && e.vehicle_offer ? ui.vehicle : (e && e.priority_offer ? ui.priority : ui.fresh));
       var timer = isFinite(deadline)
-        ? '<span class="gcv-agenda-ask__timer" role="timer" data-ask-deadline="' + deadline + '">' +
-          '<span class="gcv-agenda-ask__timer-kicker">' + esc(e && e.priority_offer ? ui.acceptIn : ui.confirmIn) + '</span>' +
+        ? '<span class="gcv-agenda-ask__timer" role="timer" data-ask-deadline="' + deadline + '"' + windows + '>' +
+          '<span class="gcv-agenda-ask__timer-kicker">' + esc(e && (e.priority_offer || e.choice_offer || e.accept_windows) ? ui.acceptIn : ui.confirmIn) + '</span>' +
           '<strong data-ask-left>—</strong></span>'
         : '';
       return (
         '<li class="gcv-agenda-ask__item">' +
-        '<span class="gcv-agenda-novo">' + esc(e && e.vehicle_offer ? ui.vehicle : (e && e.priority_offer ? ui.priority : ui.fresh)) + '</span>' +
+        '<span class="gcv-agenda-novo">' + esc(badge) + '</span>' +
         '<span class="gcv-agenda-ask__name">' + esc(e.attraction_title || 'Passeio') + '</span>' +
         '<span class="gcv-agenda-ask__when">' + esc(when) + '</span>' +
         timer +
@@ -4876,7 +4944,7 @@
           ' · guia ' + esc(b.guide_name || '') + ' · ' + money(b.total_cents) + '</div></div>' +
           '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.35rem;">' +
           lifeBadge(b.lifecycle, b.lifecycle_label) +
-          (b.can_cancel
+          (b.can_cancel && b.lifecycle !== 'aguardando_operacional'
             ? '<button type="button" class="gcv-dash-btn gcv-dash-btn--danger gcv-dash-btn--sm" data-cancel-booking="' + b.id + '"' +
               (b.cancel_no_refund ? ' title="Sem ressarcimento (confirmado)"' : '') + '>' +
               (b.cancel_no_refund ? 'Cancelar (sem ressarc.)' : 'Cancelar') + '</button>'
@@ -4948,10 +5016,10 @@
           refundBtn = tripsRefund.map(function (t) {
             var label = [t.date_label, t.title].filter(Boolean).join(' · ') || 'Passeio';
             if (t.refunded) return '<div class="gcv-cms-muted">' + esc(label) + ' — estornado</div>';
-            if (t.confirmed || !t.can_cancel || b.lifecycle === 'confirmada' || b.lifecycle === 'concluida') return '—';
+            if (t.confirmed || !t.can_cancel || b.lifecycle === 'confirmada' || b.lifecycle === 'concluida' || b.lifecycle === 'aguardando_operacional') return '—';
             return '<button type="button" class="gcv-dash-btn gcv-dash-btn--danger gcv-dash-btn--sm" data-refund="' + b.id + '" data-trip="' + t.trip_index + '">Cancelar este dia</button>';
           }).join('');
-        } else if (b.can_refund_full && b.lifecycle !== 'confirmada' && b.lifecycle !== 'concluida') {
+        } else if (b.can_refund_full && b.lifecycle !== 'confirmada' && b.lifecycle !== 'concluida' && b.lifecycle !== 'aguardando_operacional') {
           refundBtn = '<button type="button" class="gcv-dash-btn gcv-dash-btn--danger gcv-dash-btn--sm" data-refund="' + b.id + '">Cancelar em formação</button>';
         }
         var offers = (b.can_transfer && (b.transfer_offers || []).length)

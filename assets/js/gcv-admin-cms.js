@@ -3181,13 +3181,17 @@
     }
     if (st === 'draft' || life === 'rascunho') return 'rascunho';
     if (life === 'concluida' || String((e && e.status_lock) || '') === 'concluida') return 'concluida';
-    if (life === 'confirmada' || walkQuorumMet(e)) return 'confirmada';
+    if (life === 'aguardando_operacional') return 'aguardando_operacional';
+    if (life === 'confirmada') return 'confirmada';
+    if (life === 'em_formacao') return 'em_formacao';
+    if (walkQuorumMet(e)) return 'confirmada';
     return 'em_formacao';
   }
 
   function sheetStatusLabel(val) {
     var map = {
       em_formacao: 'Em formação',
+      aguardando_operacional: 'Aguardando confirmação operacional',
       confirmada: 'Confirmada',
       recusada: 'Recusada',
       cancelada: 'Recusada',
@@ -3203,7 +3207,7 @@
   function sheetStatusClass(val) {
     if (val === 'confirmada' || val === 'concluida') return 'gcv-exc-status-sel--ok';
     if (val === 'recusada' || val === 'cancelada') return 'gcv-exc-status-sel--no';
-    if (val === 'em_formacao') return 'gcv-exc-status-sel--form';
+    if (val === 'em_formacao' || val === 'aguardando_operacional') return 'gcv-exc-status-sel--form';
     if (val === 'aguardando') return 'gcv-exc-status-sel--wait';
     return 'gcv-exc-status-sel--muted';
   }
@@ -3231,12 +3235,13 @@
     var vanPending = isTransportPendingOnConfirmed(e);
     var opts = [
       ['em_formacao', 'Em formação'],
+      ['aguardando_operacional', 'Aguardando confirmação operacional'],
       ['confirmada', 'Confirmada'],
       ['concluida', 'Concluída'],
       ['cancelar', 'Cancelar']
     ];
     if (cur === 'rascunho') opts.unshift(['rascunho', 'Rascunho']);
-    else if (cur !== 'em_formacao' && cur !== 'confirmada' && cur !== 'concluida') cur = 'em_formacao';
+    else if (cur !== 'em_formacao' && cur !== 'aguardando_operacional' && cur !== 'confirmada' && cur !== 'concluida') cur = 'em_formacao';
     var html = '<div class="gcv-exc-status-wrap' + (vanPending ? ' is-van-pending' : '') + '">' +
       '<select class="gcv-exc-sheet__in gcv-exc-status-sel ' + sheetStatusClass(cur) + '" data-field="sheet_status" data-exc-id="' + e.id + '" title="' +
       (vanPending ? 'Confirmada. O quórum com transporte ainda não foi atingido.' : 'Status do passeio') + '">';
@@ -3542,6 +3547,8 @@
         payload.forming = true;
         payload.lifecycle = 'em_formacao';
         payload.status_lock = '';
+      } else if (value === 'aguardando_operacional') {
+        payload.lifecycle = 'aguardando_operacional';
       } else if (value === 'confirmada') {
         payload.forming = false;
         payload.lifecycle = 'confirmada';

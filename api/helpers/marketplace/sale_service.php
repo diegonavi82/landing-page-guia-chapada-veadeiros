@@ -541,10 +541,10 @@ function gcv_sale_refresh_booked_people(int $excursionId): bool
         $row = db()->prepare('SELECT * FROM gcv_excursions WHERE id = ? LIMIT 1');
         $row->execute([$excursionId]);
         $after = $row->fetch(PDO::FETCH_ASSOC) ?: [];
-        if ($after && $beforeLife !== 'confirmada' && gcv_resolve_excursion_lifecycle($after) === 'confirmada') {
+        if ($after) {
             require_once dirname(__DIR__) . '/notify_ops.php';
-            gcv_ops_notify_guide_confirmed($excursionId);
-            return true;
+            gcv_ops_maybe_notify_confirmed($before ?: null, $after);
+            return $beforeLife !== 'confirmada' && gcv_resolve_excursion_lifecycle($after) === 'confirmada';
         }
     } catch (Throwable $e) {
         error_log('gcv_sale_refresh_booked_people notify: ' . $e->getMessage());

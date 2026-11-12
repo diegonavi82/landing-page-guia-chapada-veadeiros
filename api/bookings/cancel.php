@@ -57,9 +57,12 @@ $life = gcv_resolve_excursion_lifecycle([
 // Em formação: pode cancelar. Confirmado: não cancela.
 $allowCancel = $life === 'em_formacao';
 if (!$allowCancel) {
-    json_response(false, null, $life === 'confirmada'
-        ? 'Passeio confirmado não pode ser cancelado.'
-        : 'Não é possível cancelar este passeio', 409);
+    $msg = $life === 'aguardando_operacional'
+        ? 'Este passeio está em Aguardando confirmação operacional e não pode ser cancelado. O cancelamento só é possível enquanto a saída está em formação.'
+        : ($life === 'confirmada'
+            ? 'Passeio confirmado não pode ser cancelado.'
+            : 'Não é possível cancelar este passeio');
+    json_response(false, null, $msg, 409);
 }
 
 $hoursUntilDeparture = (strtotime((string)$booking['departure_date']) - time()) / 3600;

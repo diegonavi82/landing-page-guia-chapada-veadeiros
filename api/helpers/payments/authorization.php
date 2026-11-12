@@ -347,6 +347,9 @@ function gcv_auth_evaluate(string $reservationId): array
             }
             $guideOk = !empty($r['guide_confirmed_at']);
             $quorumOk = $life === null || in_array($life, ['confirmada', 'concluida'], true);
+            if ($life === 'aguardando_operacional') {
+                $quorumOk = false;
+            }
             if ($exc) {
                 require_once __DIR__ . '/../guide_queue_offer.php';
                 if (gcv_guiagem_staffing_ready($exc)) {
@@ -358,13 +361,15 @@ function gcv_auth_evaluate(string $reservationId): array
                         )->execute([$by > 0 ? $by : null, (int)$r['id']]);
                         $r['guide_confirmed_at'] = $nowStr;
                     }
+                } elseif ($life === 'aguardando_operacional' && (empty($r['starts_at']) || (string)$r['starts_at'] > $cut)) {
+                    gcv_guiagem_ensure_invites($exc);
                 } elseif ($quorumOk && (empty($r['starts_at']) || (string)$r['starts_at'] > $cut)) {
                     gcv_guiagem_ensure_invites($exc);
                 }
             }
             if ($life === 'cancelada') {
                 $decision = 'CANCELLED';
-            } elseif ($guideOk && $quorumOk) {
+            } elseif ($guideOk && $quorumOk && ($exc === null || gcv_guiagem_staffing_ready($exc))) {
                 $decision = 'CONFIRMED';
             } elseif (!empty($r['starts_at']) && (string) $r['starts_at'] <= $cut) {
                 $decision = 'CANCELLED'; // não confirmou a tempo

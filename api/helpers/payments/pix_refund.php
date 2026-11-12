@@ -116,6 +116,7 @@ function gcv_pix_trip_cancel_state(array $trip, ?array $row, bool $refundedAlrea
     if ($life === 'cancelada') {
         $confirmed = false;
     }
+    $canCancel = !$refunded && !$confirmed && $life === 'em_formacao';
     $title = trim((string)($trip['destino'] ?? $row['title'] ?? $trip['title'] ?? ''));
     $dateLabel = trim((string)($trip['dateLabel'] ?? $trip['date_label'] ?? $trip['dateShort'] ?? ''));
     if ($dateLabel === '' && !empty($row['starts_at'])) {
@@ -130,7 +131,7 @@ function gcv_pix_trip_cancel_state(array $trip, ?array $row, bool $refundedAlrea
         'people' => (int)($row['people'] ?? $trip['qty'] ?? 1),
         'starts_at' => (string)($row['starts_at'] ?? ''),
         'guide_user_id' => (int)($row['guide_user_id'] ?? 0),
-        'can_cancel' => !$refunded && !$confirmed,
+        'can_cancel' => $canCancel,
         'confirmed' => $confirmed,
         'refunded' => $refunded,
         'lifecycle' => $refunded ? 'cancelada' : $life,
@@ -165,7 +166,7 @@ function gcv_pix_refund_apply_sale_lock(array $trips, ?array $sale): array
         return $trips;
     }
     $life = gcv_resolve_excursion_lifecycle($exc);
-    if (!in_array($life, ['confirmada', 'concluida'], true)) {
+    if (!in_array($life, ['confirmada', 'concluida', 'aguardando_operacional'], true)) {
         return $trips;
     }
     foreach ($trips as &$trip) {
@@ -176,7 +177,7 @@ function gcv_pix_refund_apply_sale_lock(array $trips, ?array $sale): array
         if ($tripExc > 0 && $tripExc !== $excId) {
             continue;
         }
-        $trip['confirmed'] = true;
+        $trip['confirmed'] = in_array($life, ['confirmada', 'concluida'], true);
         $trip['can_cancel'] = false;
         $trip['lifecycle'] = $life;
     }
@@ -399,6 +400,9 @@ function gcv_pix_refund_reservation(
             if (!$trip) {
                 throw new GcvPixRefundException('nothing', 'Passeio não encontrado nesta reserva.');
             }
+            if (($trip['lifecycle'] ?? '') === 'aguardando_operacional') {
+                throw new GcvPixRefundException('operational', 'Este passeio está em Aguardando confirmação operacional e não pode ser cancelado. O cancelamento só é possível enquanto a saída está em formação.');
+            }
             if (!empty($trip['confirmed'])) {
                 throw new GcvPixRefundException('trip_confirmed', 'Passeio confirmado não pode ser cancelado nem estornado.');
             }
@@ -419,6 +423,15 @@ function gcv_pix_refund_reservation(
         $targets[] = $trip;
     }
     if (!$targets) {
+        $waitingOps = false;
+        foreach ($byIndex as $trip) {
+            if (($trip['lifecycle'] ?? '') === 'aguardando_operacional' && empty($trip['refunded'])) {
+                $waitingOps = true;
+            }
+        }
+        if ($waitingOps && !$onlyDue) {
+            throw new GcvPixRefundException('operational', 'Este passeio está em Aguardando confirmação operacional e não pode ser cancelado. O cancelamento só é possível enquanto a saída está em formação.');
+        }
         if ($onlyDue || ($tripIndexes === null)) {
             return [
                 'ok' => true,

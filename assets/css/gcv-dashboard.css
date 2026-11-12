@@ -2922,6 +2922,8 @@ body.gcv-dash-page main.gcv-dash-main {
 }
 .gcv-life--em_formacao { background: #fff7ed; color: #c2410c; border: 1px solid #fdba74; }
 .gcv-life--em_espera { background: #fffbeb; color: #92400e; border: 1px solid #fcd34d; }
+.gcv-life--aguardando_operacional { background: #fffbeb; color: #92400e; border: 1px solid #fcd34d; }
+.gcv-agenda-ask__timer.is-paused { background: #f8fafc; color: #475569; border-color: #cbd5e1; }
 .gcv-life--confirmada { background: #ecfdf5; color: #047857; border: 1px solid #6ee7b7; }
 .gcv-life--concluida { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
 .gcv-life--cancelada { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }

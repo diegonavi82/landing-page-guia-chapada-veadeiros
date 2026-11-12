@@ -227,8 +227,8 @@ export const INSTITUTIONAL = {
         {
           h: "Pagamento e cancelamento",
           paragraphs: [
-            "No cartão, o cartão fica salvo e a cobrança de 100% ocorre quando o passeio confirma, com quórum fechado e aceite do guia. No Pix já pago, o cancelamento enquanto o passeio ainda está em formação devolve 100% daquele passeio.",
-            "Enquanto a chamada dos guias está em andamento, o cancelamento pelo contratante não é oferecido. Quando o passeio está confirmado, o contratante não cancela e não há reembolso.",
+            "No cartão, o cartão fica salvo e a cobrança de 100% ocorre quando a confirmação operacional termina, com o guia alocado e, se houver translado, o veículo. No Pix já pago, o cancelamento enquanto o passeio ainda está em formação devolve 100% daquele passeio.",
+            "Enquanto a saída está em Aguardando confirmação operacional, o contratante não cancela. O cancelamento só é possível em formação. Quando o passeio está confirmado, o contratante não cancela e não há reembolso.",
           ],
         },
         {
@@ -260,8 +260,8 @@ export const INSTITUTIONAL = {
         {
           h: "Payment and cancellation",
           paragraphs: [
-            "On card, the card is saved and the 100% charge happens when the tour is confirmed, with the group minimum met and the guide accepted. If Pix is already paid, cancelling while that tour is still forming refunds 100% of that tour.",
-            "While guides are being called, the customer cannot cancel. Once the tour is confirmed, the customer cannot cancel and there is no refund.",
+            "On card, the card is saved and the 100% charge happens when operational confirmation is complete, with the guide assigned and, if there is transport, the vehicle. If Pix is already paid, cancelling while that tour is still forming refunds 100% of that tour.",
+            "While the departure is Waiting for operational confirmation, the customer cannot cancel. Cancellation is possible only while the tour is still forming. Once the tour is confirmed, the customer cannot cancel and there is no refund.",
           ],
         },
         {
@@ -293,8 +293,8 @@ export const INSTITUTIONAL = {
         {
           h: "Pago y cancelación",
           paragraphs: [
-            "En tarjeta, la tarjeta queda guardada y el cobro del 100% ocurre cuando la excursión se confirma, con el cupo cerrado y la aceptación del guía. En el Pix ya pagado, la cancelación mientras la excursión sigue en formación devuelve el 100% de esa salida.",
-            "Mientras se llama a los guías, el contratante no puede cancelar. Cuando la excursión está confirmada, el contratante no cancela y no hay reembolso.",
+            "En tarjeta, la tarjeta queda guardada y el cobro del 100% ocurre cuando la confirmación operativa termina, con el guía asignado y, si hay traslado, el vehículo. En el Pix ya pagado, la cancelación mientras la excursión sigue en formación devuelve el 100% de esa salida.",
+            "Mientras la salida está en Esperando confirmación operativa, el contratante no puede cancelar. La cancelación solo es posible en formación. Cuando la excursión está confirmada, el contratante no cancela y no hay reembolso.",
           ],
         },
         {

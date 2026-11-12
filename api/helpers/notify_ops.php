@@ -1793,6 +1793,69 @@ function gcv_ops_aviso_saida_linhas(int $excursionId, array $exc): string
     return implode("\n", $lines);
 }
 
+function gcv_ops_notify_operational(int $excursionId, bool $force = false): void
+{
+    if ($excursionId <= 0) {
+        return;
+    }
+    require_once __DIR__ . '/excursion_status.php';
+    require_once __DIR__ . '/wa_copy.php';
+    require_once __DIR__ . '/marketplace_schema.php';
+    gcv_marketplace_ensure_schema();
+    $exc = gcv_ops_load_excursion($excursionId);
+    if (!$exc || gcv_resolve_excursion_lifecycle($exc) !== 'aguardando_operacional') {
+        return;
+    }
+    if ($force) {
+        try {
+            db()->prepare('UPDATE gcv_excursions SET notify_operational_at = NULL WHERE id = ?')->execute([$excursionId]);
+            $exc['notify_operational_at'] = null;
+        } catch (Throwable $e) {
+            error_log('gcv_ops_notify_operational reset: ' . $e->getMessage());
+        }
+    }
+    if (!empty($exc['notify_operational_at'])) {
+        return;
+    }
+    try {
+        $lock = db()->prepare(
+            'UPDATE gcv_excursions SET notify_operational_at = NOW() WHERE id = ? AND notify_operational_at IS NULL'
+        );
+        $lock->execute([$excursionId]);
+        if ($lock->rowCount() < 1) {
+            return;
+        }
+    } catch (Throwable $e) {
+        error_log('gcv_ops_notify_operational lock: ' . $e->getMessage());
+        return;
+    }
+    $title = gcv_ops_excursion_title($exc);
+    $when = trim(
+        gcv_ops_date_br((string)($exc['date_iso'] ?? ''))
+        . ' às ' . substr((string)($exc['departure_time'] ?? ''), 0, 5)
+    );
+    $private = gcv_excursion_is_private($exc);
+    $key = $private ? 'operacional_privativo' : 'operacional_excursao';
+    foreach (gcv_ops_reserved_sales_for_excursion($excursionId) as $sale) {
+        $loc = gcv_ops_sale_locale($sale);
+        $vars = [
+            'titulo' => $title,
+            'quando' => $when,
+            'codigo' => strtoupper(trim((string)($sale['reservation_id'] ?? ''))),
+        ];
+        $text = gcv_wa_text($key, $loc, $vars);
+        gcv_ops_wa_client($sale, $text, [
+            'kind' => 'operational_wait',
+            'excursion_id' => $excursionId,
+            'sale_id' => (int)($sale['id'] ?? 0),
+        ]);
+        $email = trim((string)($sale['tourist_email'] ?? ''));
+        if ($email !== '') {
+            gcv_ops_mail_plain($email, gcv_wa_text('assunto_operacional', $loc, $vars), $text);
+        }
+    }
+}
+
 function gcv_ops_maybe_notify_confirmed(?array $before, ?array $after): void
 {
     if (!$after) {
@@ -1804,6 +1867,16 @@ function gcv_ops_maybe_notify_confirmed(?array $before, ?array $after): void
     }
     $beforeLife = $before ? gcv_resolve_excursion_lifecycle($before) : '';
     $afterLife = gcv_resolve_excursion_lifecycle($after);
+    if ($beforeLife === 'aguardando_operacional' && $afterLife !== 'aguardando_operacional') {
+        try {
+            db()->prepare('UPDATE gcv_excursions SET notify_operational_at = NULL WHERE id = ?')->execute([$id]);
+        } catch (Throwable $e) {
+            error_log('ops clear operational: ' . $e->getMessage());
+        }
+    }
+    if ($beforeLife !== 'aguardando_operacional' && $afterLife === 'aguardando_operacional') {
+        gcv_ops_notify_operational($id);
+    }
     if ($beforeLife !== 'confirmada' && $afterLife === 'confirmada') {
         gcv_ops_notify_guide_confirmed($id);
     }
@@ -1910,6 +1983,11 @@ function gcv_ops_notify_guide_confirmed(int $excursionId): void
         }
     } catch (Throwable $e) {
         return;
+    }
+    try {
+        db()->prepare('UPDATE gcv_excursions SET notify_operational_at = NULL WHERE id = ?')->execute([$excursionId]);
+    } catch (Throwable $e) {
+        error_log('ops clear operational on confirm: ' . $e->getMessage());
     }
     $guideId = (int)($exc['guide_user_id'] ?? 0);
     $title = gcv_ops_excursion_title($exc);
@@ -2056,6 +2134,19 @@ function gcv_ops_paid_sales_for_excursion(int $excursionId): array
     $stmt = db()->prepare(
         "SELECT * FROM gcv_sales
          WHERE excursion_id = ? AND deleted_at IS NULL AND sale_status = 'PAID'
+         ORDER BY id ASC"
+    );
+    $stmt->execute([$excursionId]);
+    return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+}
+
+/** Pix pago ou cartão salvo/autorizado. Ainda não exige a cobrança do cartão. */
+function gcv_ops_reserved_sales_for_excursion(int $excursionId): array
+{
+    $stmt = db()->prepare(
+        "SELECT * FROM gcv_sales
+         WHERE excursion_id = ? AND deleted_at IS NULL
+           AND sale_status IN ('PAID','AUTHORIZED')
          ORDER BY id ASC"
     );
     $stmt->execute([$excursionId]);

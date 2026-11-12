@@ -78,10 +78,10 @@
         {
           heading: "2. Passeios em formação",
           paragraphs: [
-            "A compra na modalidade Excursão abre uma saída em formação naquele dia, naquela cidade e naquele translado. Outras pessoas podem entrar nessa mesma saída enquanto ela estiver em formação. O quórum é 4, salvo quando o passeio tiver outro número configurado. A saída permanece em formação enquanto faltar quórum, guia ou, no passeio com translado, veículo.",
+            "A compra na modalidade Excursão abre uma saída em formação naquele dia, naquela cidade e naquele translado. Outras pessoas podem entrar nessa mesma saída enquanto ela estiver em formação. O quórum é 4, salvo quando o passeio tiver outro número configurado. A saída permanece em formação enquanto faltar quórum.",
             "No cartão, nada é cobrado durante a formação. Enquanto nenhum guia foi chamado, o CONTRATANTE pode cancelar a qualquer momento. Não há cobrança nem estorno, porque o passeio ainda não foi cobrado.",
             "No Pix já pago, o cancelamento durante a formação devolve 100% do valor daquele passeio. Em uma reserva com mais de um dia, o CONTRATANTE cancela só os passeios que ainda estão em formação. O dia já confirmado permanece e não é estornado.",
-            "Quando o quórum é atingido, a vaga é oferecida aos guias e o aviso passa a ser \"Aguardando confirmação do guia\". Enquanto essa chamada corre, o cancelamento pelo CONTRATANTE não é oferecido. O primeiro guia que aceitar pelo link entra. Com translado, cada carro exige o próprio guia: enquanto faltar um, o aviso continua e ninguém é cobrado.",
+            "Quando o quórum é atingido, a saída deixa de estar em formação e passa ao status da cláusula 2.2. A partir daí o CONTRATANTE não cancela.",
             "Se nenhum guia aceitar, o passeio é cancelado porque não há guias disponíveis. O CONTRATANTE é avisado por WhatsApp e por e-mail. No Pix o valor é estornado. No cartão nada é cobrado.",
             "A CONTRATADA pode encerrar a formação a qualquer momento por motivo operacional ou por inviabilidade da realização. No Pix o valor é estornado. No cartão nada é cobrado.",
           ],
@@ -96,11 +96,20 @@
           ],
         },
         {
+          heading: "2.2 Aguardando confirmação operacional",
+          paragraphs: [
+            "Quando o quórum da Excursão é atingido, ou quando o Privativo é reservado, e ainda falta guia ou, no passeio com translado, o aceite do guia com veículo, o status da saída passa a ser Aguardando confirmação operacional. O CONTRATANTE recebe esse aviso por WhatsApp. O quórum foi atingido, e a saída ainda depende dessa confirmação.",
+            "Nesse status o CONTRATANTE não cancela. O cancelamento pelo CONTRATANTE só existe enquanto a saída está em formação. No cartão, nada é cobrado durante a espera. A cobrança de 100% só ocorre quando a confirmação operacional termina, com o guia alocado e, se houver translado, o veículo também.",
+            "O guia tem 4 horas e 20 minutos para aceitar ou recusar. Esse tempo só corre das 6h às 9h e das 16h às 22h. Fora desses horários a contagem para, porque o guia pode estar guiando ou dormindo. O prazo aparece na agenda do guia, com contagem regressiva.",
+            "Na Excursão, a vaga segue a fila. O primeiro guia do topo que aceitar entra. Se não aceitar, a vez passa ao próximo. Com translado, cada carro exige um guia com veículo. No Privativo, os guias livres na data são chamados do topo da fila, em levas de até 5. A lista do CONTRATANTE fecha quando 3 aceitam participar da escolha. O CONTRATANTE recebe o link por WhatsApp e por e-mail e escolhe o guia. Se o prazo de escolha acabar, entra o guia mais bem colocado entre os que aceitaram.",
+          ],
+        },
+        {
           heading: "3. Passeios confirmados",
           paragraphs: [
             "A Excursão fica confirmada para cobrança quando o quórum está fechado e todos os guias necessários aceitaram. Quórum sem guia não cobra o cartão. A partir da cobrança o CONTRATANTE não cancela e não há devolução.",
             "Antes de cobrar, a CONTRATADA testa o valor no cartão de todos os inscritos necessários ao quórum. A cobrança de 100% só ocorre se todos passarem. Quem já tem cartão válido não é cobrado sozinho. Se um cartão não passar, ninguém é cobrado, a saída fica em espera e quem teve a recusa é avisado para trocar o cartão. Não há prazo fixo. A CONTRATADA não confirma o passeio retirando esse inscrito se, sem ele, o quórum deixar de ser atingido.",
-            "Nessa espera, quem ainda não foi cobrado pode cancelar. Se alguém cancelar, a saída volta a Em Formação. Os inscritos recebem o aviso de que o passeio voltou à formação por um cancelamento de última hora. O guia que já tinha aceito deixa de estar associado, permanece no final da fila e é notificado por WhatsApp e por e-mail. Nada foi cobrado.",
+            "Se o teste do cartão falhar e a saída voltar a Em formação, quem ainda não foi cobrado pode cancelar. Se alguém cancelar, a saída volta a Em Formação. Os inscritos recebem o aviso de que o passeio voltou à formação por um cancelamento de última hora. O guia que já tinha aceito deixa de estar associado, permanece no final da fila e é notificado por WhatsApp e por e-mail. Nada foi cobrado.",
             "Quando todos os cartões passam no mesmo teste, a cobrança de 100% ocorre em cada cartão salvo. A vaga fica definitiva e a agenda do guia fica bloqueada.",
             "Depois da confirmação não há restituição por desistência, alteração de planos, atraso, não comparecimento, perda de transporte, doença, motivo pessoal ou profissional, ou qualquer outro impedimento que não seja da CONTRATADA. Quem não comparece continua cobrado pelo valor integral. A parte da plataforma continua sendo descontada e o guia recebe o pagamento daquela vaga. A ausência não entra na contagem de guiagem.",
           ],
@@ -110,7 +119,7 @@
           paragraphs: [
             "O Privativo é exclusivo para o grupo do CONTRATANTE. Não é uma excursão compartilhada, não depende de outras inscrições e não entra na troca da cláusula 2.1.",
             "No Privativo o cartão fica apenas salvo, sem sinal, até um guia aceitar. Com translado, a confirmação também exige o veículo: um carro e um guia a cada grupo de até 4 clientes. Sem translado, o veículo é o do CONTRATANTE e a confirmação ocorre quando o guia aceita.",
-            "A venda é enviada à fila de guias. O CONTRATANTE não escolhe o guia: entra quem aceitar primeiro pelo link. Enquanto a chamada corre, o cancelamento pelo CONTRATANTE não é oferecido e o cartão não é cobrado.",
+            "A venda é enviada à fila de guias livres na data. Cada um aceita ou recusa participar da escolha. Quando a lista fecha, o CONTRATANTE escolhe o guia pelo link enviado no WhatsApp e no e-mail. Enquanto a chamada corre, o cancelamento pelo CONTRATANTE não é oferecido e o cartão não é cobrado.",
             "Quando o guia aceita e, no translado, o veículo está garantido, a CONTRATADA testa o cartão salvo. Se passar, o passeio fica associado a esse guia e o cartão é cobrado em 100%. A partir daí não há cancelamento nem devolução. Se o cartão for recusado, nada é cobrado e o CONTRATANTE é avisado para trocá-lo, sem prazo fixo. Quando o novo cartão passar, a cobrança de 100% ocorre automaticamente.",
           ],
         },
@@ -269,10 +278,10 @@
           heading: "3. Oportunidade",
           paragraphs: [
             "Sem translado, toda venda confirmada de passeio exclusivo ou de excursão é enviada aos 3 primeiros da fila, o TOP 3. Na excursão, isso ocorre quando o quórum é atingido. Com translado, não há fila nem prioridade: todos os guias com veículo cadastrado recebem a proposta ao mesmo tempo e o primeiro que aceitar fica com a vaga.",
-            "Diego Navi Marques Carvalho é o guia especial e não entra na fila. Enquanto essa prioridade estiver ativa, toda venda confirmada sem translado chega primeiro para ele, por 24 horas, para aceitar ou recusar. Com translado, ele só recebe a proposta se tiver veículo cadastrado, junto com os outros guias. Na prioridade sem translado, a saída entra na agenda dele durante as 24 horas. Se ele recusar, não responder, já estiver ocupado nesse dia, ou se essa prioridade estiver desligada, a venda segue para o TOP 3. Santa Bárbara, Capivara, Candaru e Guardião não passam por ele: vão para a fila Kalunga.",
+            "Diego Navi Marques Carvalho é o guia especial e não entra na fila. Enquanto essa prioridade estiver ativa, toda venda confirmada sem translado chega primeiro para ele, pelo prazo de 4 horas e 20 minutos contado só das 6h às 9h e das 16h às 22h, para aceitar ou recusar. Com translado, ele só recebe a proposta se tiver veículo cadastrado, junto com os outros guias. Na prioridade sem translado, a saída entra na agenda dele enquanto o prazo corre. Se ele recusar, não responder, já estiver ocupado nesse dia, ou se essa prioridade estiver desligada, a venda segue para o TOP 3. Santa Bárbara, Capivara, Candaru e Guardião não passam por ele: vão para a fila Kalunga.",
             "O envio da oportunidade é pelo WhatsApp. O GUIA e o cliente também recebem o aviso por e-mail. A mensagem traz os dados da excursão ou do passeio exclusivo, o pagamento que aquele GUIA recebe, o número de pessoas, se é com o veículo do GUIA, e os dados do comprador: nome, telefone e e-mail.",
-            "O aceite é o clique no link enviado no WhatsApp. O mesmo link segue no e-mail. O tempo para aceitar é de 4 horas e 20 minutos. O primeiro clique válido ocupa a vaga e o link expira. Quem mais recebeu a oportunidade é avisado, por WhatsApp e por e-mail, de que ela foi aceita por outro guia.",
-            "Se nenhum dos 3 aceitar nas 2 horas, todos os outros guias da lista são notificados ao mesmo tempo, com o mesmo prazo de 4 horas e 20 minutos. O primeiro que aceitar entra e o link expira.",
+            "O aceite é o clique no link enviado no WhatsApp e o mesmo pedido aparece na Agenda. O tempo para aceitar é de 4 horas e 20 minutos e só corre das 6h às 9h e das 16h às 22h. Fora desses horários a contagem para. O primeiro clique válido ocupa a vaga e o link expira. Quem mais recebeu a oportunidade é avisado, por WhatsApp e por e-mail, de que ela foi aceita por outro guia.",
+            "Se nenhum dos 3 aceitar nesse prazo, a vez passa aos próximos da fila, com o mesmo prazo de 4 horas e 20 minutos. O primeiro que aceitar entra.",
             "Se faltarem menos de 24 horas para o início, todos os guias são notificados ao mesmo tempo e aquele que aceitar primeiro entra.",
             "O passeio só fica associado ao GUIA, e o cartão do cliente só é cobrado, quando o GUIA aceita. Com transporte, a confirmação também exige o veículo. Se ninguém aceitar, o passeio é cancelado porque não há guias disponíveis. No Pix o cliente é estornado. No cartão, nada é cobrado.",
           ],
@@ -281,7 +290,7 @@
           heading: "4. Mais de um guia e troca",
           paragraphs: [
             "No passeio com transporte, cada carro exige um GUIA. Cinco clientes exigem 2 guias. Todos os guias com veículo recebem a proposta ao mesmo tempo. O primeiro aceite ocupa uma vaga. Se ainda faltar outro carro, a proposta continua aberta para os demais até todas as vagas serem preenchidas. Quando a última vaga fecha, os outros são avisados de que a proposta não está mais disponível. Quem já aceitou permanece.",
-            "Enquanto faltar guia, os inscritos veem \"Aguardando confirmação do guia\" e não podem cancelar. No cartão, nada é cobrado nessa espera.",
+            "Enquanto faltar guia, os inscritos veem \"Aguardando confirmação operacional\" e não podem cancelar. No cartão, nada é cobrado nessa espera.",
             "Se nenhum guia aceitar, o passeio é cancelado porque não há guias disponíveis. O cliente e os guias que receberam a oportunidade são avisados por WhatsApp e por e-mail. No Pix há estorno. No cartão, nada foi cobrado.",
             "Um administrador pode destacar um GUIA a qualquer momento. Isso não vale como aceite. O GUIA recebe no WhatsApp a mensagem \"Clique aqui para confirmar\" e só entra quando clica no link. Em seguida recebe a confirmação da guiagem. A cobrança não sai enquanto faltar guia necessário ou quórum.",
             "Se o GUIA do passeio for trocado, ele recebe o aviso, com ou sem motivo. O motivo fica só com ele. O cliente é avisado por WhatsApp e por e-mail, sem o motivo, com os dados do novo guia. A troca não cancela, não devolve e não reduz o preço.",
@@ -326,7 +335,7 @@
           paragraphs: [
             "Guia em português não gera acréscimo para o cliente.",
             "Se o cliente escolhe outro idioma, o acréscimo daquele passeio — percentual ou valor fixo, na cópia da tarifa do atrativo e da cidade — incide uma vez sobre o total da compra, depois dos descontos de idade. Não incide por pessoa.",
-            "A oportunidade usa a fila dos guias desse idioma, na ordem do ranking. O guia especial recebe essa venda antes da fila, como qualquer outra, por 24 horas, se o dia dele estiver livre.",
+            "A oportunidade usa a fila dos guias desse idioma, na ordem do ranking. O guia especial recebe essa venda antes da fila, como qualquer outra, pelo prazo de 4 horas e 20 minutos contado só das 6h às 9h e das 16h às 22h, se o dia dele estiver livre.",
           ],
         },
       ],
@@ -345,10 +354,10 @@
         {
           heading: "2. Tours still forming",
           paragraphs: [
-            "A shared-tour purchase opens a departure that is still forming, on that day, in that city and with that transport choice. Other people may join the same departure while it is forming. The minimum group is 4, unless the tour is set to another number. The departure stays forming while it still needs guests, a guide or, with transport, a vehicle.",
+            "A shared-tour purchase opens a departure that is still forming, on that day, in that city and with that transport choice. Other people may join the same departure while it is forming. The minimum group is 4, unless the tour is set to another number. The departure stays forming while the minimum group is still open.",
             "On a card, nothing is charged while the tour is forming. Until a guide has been called, the Client may cancel at any time. There is no charge and no refund, because the tour has not been charged.",
             "On Pix already paid, cancellation while the tour is forming returns 100% of that tour. On a booking with more than one day, the Client cancels only the tours that are still forming. A day that is already confirmed stays in place and is not refunded.",
-            "When the minimum group is reached, the seat is offered to the guides and the notice becomes \"Waiting for the guide to confirm\". While that call is open, the Client is not offered cancellation. The first guide who accepts through the link is assigned. With transport, each car needs its own guide: while one is missing, the notice stays and nobody is charged.",
+            "When the minimum group is reached, the departure leaves forming and moves to clause 2.2. From then on the Client cannot cancel.",
             "If no guide accepts, the tour is cancelled because no guides are available. The Client is told by WhatsApp and by email. On Pix the amount is refunded. On a card nothing is charged.",
             "The Company may close a forming departure at any time for an operational reason or because the tour cannot be run. On Pix the amount is refunded. On a card nothing is charged.",
           ],
@@ -363,11 +372,20 @@
           ],
         },
         {
+          heading: "2.2 Waiting for operational confirmation",
+          paragraphs: [
+            "When the shared tour reaches its minimum group, or when a private tour is booked, and a guide is still missing or, on a tour with transport, the guide with a vehicle has not accepted, the departure status becomes Waiting for operational confirmation. The Client is told by WhatsApp. The minimum group has been reached, and the departure still depends on that confirmation.",
+            "In this status the Client cannot cancel. The Client can cancel only while the departure is still forming. On a card, nothing is charged during the wait. The 100% charge happens only when operational confirmation is complete, with the guide assigned and, if there is transport, the vehicle too.",
+            "The guide has 4 hours and 20 minutes to accept or decline. That time runs only from 6:00 to 9:00 and from 16:00 to 22:00. Outside those hours the countdown pauses, because the guide may be out with a group or asleep. The deadline is on the guide's schedule, with a countdown.",
+            "On a shared tour, the seat follows the queue. The first guide from the top who accepts is assigned. If that guide does not accept, the next guide is called. With transport, each car needs a guide with a vehicle. On a private tour, guides who are free on the date are called from the top of the queue, in waves of up to 5. The Client's list closes when 3 agree to be chosen. The Client receives the link by WhatsApp and by email and chooses the guide. If the choice time runs out, the highest guide among those who agreed is assigned.",
+          ],
+        },
+        {
           heading: "3. Confirmed tours",
           paragraphs: [
             "A shared tour is confirmed for charging when the minimum group is closed and every required guide has accepted. A full group without a guide does not charge the card. From the charge on, the Client cannot cancel and there is no refund.",
             "Before charging, the Company tests the amount on the card of every guest needed for the minimum group. The 100% charge happens only if every card passes. A guest whose card is already valid is not charged alone. If one card fails, nobody is charged, the departure waits, and the guest whose card was declined is asked to replace it. There is no fixed deadline. The Company does not confirm the tour by removing that guest if, without them, the minimum group would no longer be met.",
-            "During that wait, a guest who has not been charged may cancel. If someone cancels, the departure returns to forming. The guests are told that the tour went back to forming because of a last-minute cancellation. The guide who had already accepted is unassigned, stays at the end of the queue and is notified by WhatsApp and by email. Nothing was charged.",
+            "If the card test fails and the departure returns to forming, a guest who has not been charged may cancel. If someone cancels, the departure returns to forming. The guests are told that the tour went back to forming because of a last-minute cancellation. The guide who had already accepted is unassigned, stays at the end of the queue and is notified by WhatsApp and by email. Nothing was charged.",
             "When every card passes the same test, 100% is charged on each saved card. The seat becomes final and the guide's day is blocked.",
             "After confirmation there is no refund for a change of mind, a change of plans, delay, no-show, a missed transfer, illness, a personal or professional reason, or any other obstacle that is not the Company's. A guest who does not show up remains charged for the full amount. The platform fee is still deducted and the guide is paid for that seat. The absence does not count as a guided tour.",
           ],
@@ -377,7 +395,7 @@
           paragraphs: [
             "A private tour is exclusive to the Client's group. It is not a shared departure, it does not depend on other bookings, and it is not part of the switch in clause 2.1.",
             "On a private tour the card is only saved, with no deposit, until a guide accepts. With transport, confirmation also requires the vehicle: one car and one guide for every group of up to 4 guests. Without transport, the vehicle is the Client's, and confirmation happens when the guide accepts.",
-            "The sale is sent to the guide queue. The Client does not choose the guide: the first guide who accepts through the link is assigned. While that call is open, the Client is not offered cancellation and the card is not charged.",
+            "The sale is sent to guides who are free on the date. Each one accepts or declines to join the choice. When the list closes, the Client chooses the guide through the link sent on WhatsApp and by email. While that call is open, the Client is not offered cancellation and the card is not charged.",
             "When the guide accepts and, with transport, the vehicle is secured, the Company tests the saved card. If it passes, the tour is assigned to that guide and the card is charged 100%. From then on there is no cancellation and no refund. If the card is declined, nothing is charged and the Client is asked to replace it, with no fixed deadline. When the new card passes, the 100% charge happens automatically.",
           ],
         },
@@ -532,10 +550,10 @@
         {
           heading: "2. Paseos en formación",
           paragraphs: [
-            "La compra en la modalidad excursión abre una salida en formación ese día, en esa ciudad y con ese traslado. Otras personas pueden entrar en la misma salida mientras esté en formación. El quórum es 4, salvo cuando el paseo tenga otro número configurado. La salida permanece en formación mientras falte quórum, guía o, en el paseo con traslado, vehículo.",
+            "La compra en la modalidad excursión abre una salida en formación ese día, en esa ciudad y con ese traslado. Otras personas pueden entrar en la misma salida mientras esté en formación. El quórum es 4, salvo cuando el paseo tenga otro número configurado. La salida permanece en formación mientras falte quórum.",
             "En la tarjeta, nada se cobra durante la formación. Mientras ningún guía haya sido llamado, el contratante puede cancelar en cualquier momento. No hay cobro ni reembolso, porque el paseo todavía no fue cobrado.",
             "En el Pix ya pagado, la cancelación durante la formación devuelve el 100% del valor de ese paseo. En una reserva con más de un día, el contratante cancela solo los paseos que todavía están en formación. El día ya confirmado permanece y no se reembolsa.",
-            "Cuando se alcanza el quórum, la plaza se ofrece a los guías y el aviso pasa a ser \"Esperando la confirmación del guía\". Mientras esa convocatoria está en curso, no se ofrece la cancelación al contratante. Entra el primer guía que acepte por el enlace. Con traslado, cada auto exige su propio guía: mientras falte uno, el aviso continúa y nadie es cobrado.",
+            "Cuando se alcanza el quórum, la salida deja de estar en formación y pasa al estado de la cláusula 2.2. A partir de ahí el contratante no cancela.",
             "Si ningún guía acepta, el paseo se cancela porque no hay guías disponibles. El contratante es avisado por WhatsApp y por correo electrónico. En el Pix el valor se reembolsa. En la tarjeta nada se cobra.",
             "La contratada puede cerrar la formación en cualquier momento por un motivo operativo o porque el paseo no puede realizarse. En el Pix el valor se reembolsa. En la tarjeta nada se cobra.",
           ],
@@ -550,11 +568,20 @@
           ],
         },
         {
+          heading: "2.2 Esperando confirmación operativa",
+          paragraphs: [
+            "Cuando el quórum de la excursión se alcanza, o cuando el paseo privado queda reservado, y todavía falta guía o, en el paseo con traslado, la aceptación del guía con vehículo, el estado de la salida pasa a ser Esperando confirmación operativa. El contratante recibe ese aviso por WhatsApp. El quórum fue alcanzado y la salida todavía depende de esa confirmación.",
+            "En ese estado el contratante no cancela. La cancelación por el contratante solo existe mientras la salida está en formación. En la tarjeta, nada se cobra durante la espera. El cobro del 100% solo ocurre cuando la confirmación operativa termina, con el guía asignado y, si hay traslado, el vehículo también.",
+            "El guía tiene 4 horas y 20 minutos para aceptar o rechazar. Ese tiempo solo corre de 6:00 a 9:00 y de 16:00 a 22:00. Fuera de esos horarios la cuenta se detiene, porque el guía puede estar guiando o durmiendo. El plazo aparece en la agenda del guía, con cuenta regresiva.",
+            "En la excursión, la plaza sigue la fila. Entra el primer guía del tope que acepte. Si no acepta, la vez pasa al siguiente. Con traslado, cada auto exige un guía con vehículo. En el privado, los guías libres en la fecha son llamados desde el tope de la fila, en tandas de hasta 5. La lista del contratante se cierra cuando 3 aceptan participar de la elección. El contratante recibe el enlace por WhatsApp y por correo y elige al guía. Si el plazo de elección termina, entra el guía mejor colocado entre los que aceptaron.",
+          ],
+        },
+        {
           heading: "3. Paseos confirmados",
           paragraphs: [
             "La excursión queda confirmada para el cobro cuando el quórum está cerrado y todos los guías necesarios aceptaron. Quórum sin guía no cobra la tarjeta. A partir del cobro el contratante no cancela y no hay devolución.",
             "Antes de cobrar, la contratada prueba el valor en la tarjeta de todos los inscritos necesarios para el quórum. El cobro del 100% solo ocurre si todas pasan. Quien ya tiene una tarjeta válida no es cobrado solo. Si una tarjeta no pasa, nadie es cobrado, la salida queda en espera y a quien tuvo el rechazo se le pide cambiar la tarjeta. No hay un plazo fijo. La contratada no confirma el paseo quitando a ese inscrito si, sin él, el quórum deja de alcanzarse.",
-            "En esa espera, quien todavía no fue cobrado puede cancelar. Si alguien cancela, la salida vuelve a En formación. Los inscritos reciben el aviso de que el paseo volvió a formación por una cancelación de último momento. El guía que ya había aceptado deja de estar asociado, permanece al final de la fila y es notificado por WhatsApp y por correo electrónico. Nada fue cobrado.",
+            "Si la prueba de la tarjeta falla y la salida vuelve a En formación, quien todavía no fue cobrado puede cancelar. Si alguien cancela, la salida vuelve a En formación. Los inscritos reciben el aviso de que el paseo volvió a formación por una cancelación de último momento. El guía que ya había aceptado deja de estar asociado, permanece al final de la fila y es notificado por WhatsApp y por correo electrónico. Nada fue cobrado.",
             "Cuando todas las tarjetas pasan la misma prueba, el cobro del 100% ocurre en cada tarjeta guardada. La plaza queda definitiva y la agenda del guía queda bloqueada.",
             "Después de la confirmación no hay restitución por desistimiento, cambio de planes, retraso, inasistencia, pérdida del transporte, enfermedad, motivo personal o profesional, o cualquier otro impedimento que no sea de la contratada. Quien no se presenta sigue cobrado por el valor integral. La parte de la plataforma sigue descontándose y el guía recibe el pago de esa plaza. La ausencia no entra en el conteo de guiado.",
           ],
@@ -564,7 +591,7 @@
           paragraphs: [
             "El paseo privado es exclusivo para el grupo del contratante. No es una excursión compartida, no depende de otras inscripciones y no entra en el cambio de la cláusula 2.1.",
             "En el privado la tarjeta solo queda guardada, sin seña, hasta que un guía acepte. Con traslado, la confirmación también exige el vehículo: un auto y un guía por cada grupo de hasta 4 clientes. Sin traslado, el vehículo es del contratante y la confirmación ocurre cuando el guía acepta.",
-            "La venta se envía a la fila de guías. El contratante no elige al guía: entra quien acepte primero por el enlace. Mientras la convocatoria está en curso, no se ofrece la cancelación al contratante y la tarjeta no se cobra.",
+            "La venta se envía a los guías libres en la fecha. Cada uno acepta o rechaza participar de la elección. Cuando la lista se cierra, el contratante elige al guía por el enlace enviado por WhatsApp y por correo. Mientras la convocatoria está en curso, no se ofrece la cancelación al contratante y la tarjeta no se cobra.",
             "Cuando el guía acepta y, en el traslado, el vehículo está asegurado, la contratada prueba la tarjeta guardada. Si pasa, el paseo queda asociado a ese guía y la tarjeta se cobra al 100%. A partir de ahí no hay cancelación ni devolución. Si la tarjeta es rechazada, nada se cobra y se avisa al contratante para que la cambie, sin plazo fijo. Cuando la nueva tarjeta pasa, el cobro del 100% ocurre automáticamente.",
           ],
         },
