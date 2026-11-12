@@ -163,7 +163,7 @@
       "/assets/js/gcv-pix-polling.js?v=1.1.40",
       "/assets/js/gcv-confirm.js?v=1.1.31",
       "/assets/js/gcv-exc-bookings.js?v=1.1.31",
-      "/assets/js/excursoes-carousel.js?v=1.1.132",
+      "/assets/js/excursoes-carousel.js?v=1.1.133",
     ];
     var i = 0;
     function next(err) {

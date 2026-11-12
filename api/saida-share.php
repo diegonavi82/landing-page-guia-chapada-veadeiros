@@ -20,6 +20,9 @@ if ($bundle) {
     $imageH = '630';
     $pageUrl = $bundle['url'];
     $go = gcv_saida_home_url($bundle['cartId'], $lang);
+    if ((string) ($_GET['compartilhar'] ?? '') === '1') {
+        $go .= '&compartilhar=1';
+    }
 } else {
     $title = $lang === 'en'
         ? 'Tours in Chapada dos Veadeiros'

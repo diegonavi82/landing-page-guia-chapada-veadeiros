@@ -7245,67 +7245,74 @@
     ctx.restore();
   }
 
-  function buildStoryFile(image, destino, dateLabel, cta, url) {
+  function storyButton(ctx, x, y, w, h, label, fill, color, border) {
+    storyRoundRect(ctx, x, y, w, h, 22);
+    ctx.fillStyle = fill;
+    ctx.fill();
+    if (border) {
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = border;
+      ctx.stroke();
+    }
+    var size = 40;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = "800 " + size + "px Segoe UI, sans-serif";
+    while (size > 26 && ctx.measureText(label).width > w - 80) {
+      size -= 2;
+      ctx.font = "800 " + size + "px Segoe UI, sans-serif";
+    }
+    ctx.fillStyle = color;
+    ctx.fillText(label, x + w / 2, y + h / 2 + 2);
+    ctx.textBaseline = "alphabetic";
+  }
+
+  function buildStoryFile(image, destino, dateLabel, cta, shareLabel, cartLabel) {
     var w = 1080;
     var h = 1920;
     var canvas = document.createElement("canvas");
     canvas.width = w;
     canvas.height = h;
     var ctx = canvas.getContext("2d");
-    ctx.fillStyle = "#143528";
+    ctx.fillStyle = "#efe8dc";
     ctx.fillRect(0, 0, w, h);
+    var cardX = 64;
+    var cardY = 80;
+    var cardW = w - 128;
+    var cardH = h - 160;
+    storyRoundRect(ctx, cardX, cardY, cardW, cardH, 36);
+    ctx.fillStyle = "#fffdf9";
+    ctx.fill();
+    ctx.save();
+    storyRoundRect(ctx, cardX, cardY, cardW, 980, 36);
+    ctx.clip();
+    ctx.fillStyle = "#143528";
+    ctx.fillRect(cardX, cardY, cardW, 980);
     if (image && image.width && image.height) {
-      var scale = Math.max(w / image.width, h / image.height);
+      var scale = Math.max(cardW / image.width, 980 / image.height);
       var dw = image.width * scale;
       var dh = image.height * scale;
-      ctx.drawImage(image, (w - dw) / 2, (h - dh) / 2, dw, dh);
+      ctx.drawImage(image, cardX + (cardW - dw) / 2, cardY + (980 - dh) / 2, dw, dh);
     }
-    var top = ctx.createLinearGradient(0, 0, 0, 280);
-    top.addColorStop(0, "rgba(0,0,0,0.45)");
-    top.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = top;
-    ctx.fillRect(0, 0, w, 280);
-    var bottom = ctx.createLinearGradient(0, h * 0.42, 0, h);
-    bottom.addColorStop(0, "rgba(0,0,0,0)");
-    bottom.addColorStop(0.55, "rgba(0,0,0,0.35)");
-    bottom.addColorStop(1, "rgba(0,0,0,0.78)");
-    ctx.fillStyle = bottom;
-    ctx.fillRect(0, h * 0.42, w, h * 0.58);
+    ctx.restore();
     ctx.textAlign = "center";
-    ctx.fillStyle = "#fff";
-    ctx.font = "700 34px Segoe UI, sans-serif";
-    ctx.fillText("Guia Chapada Veadeiros", w / 2, 120);
-    ctx.font = "800 68px Segoe UI, sans-serif";
-    var titleLines = storyLines(ctx, destino || "Chapada dos Veadeiros", w - 140, 3);
-    var titleY = h - 560 - (titleLines.length - 1) * 40;
+    ctx.fillStyle = "#1c3a2e";
+    ctx.font = "800 54px Segoe UI, sans-serif";
+    var titleLines = storyLines(ctx, destino || "Chapada dos Veadeiros", cardW - 80, 2);
     titleLines.forEach(function (ln, i) {
-      ctx.fillText(ln, w / 2, titleY + i * 82);
+      ctx.fillText(ln, w / 2, 1148 + i * 64);
     });
     if (dateLabel) {
-      ctx.font = "600 40px Segoe UI, sans-serif";
-      ctx.fillStyle = "rgba(255,255,255,0.92)";
-      ctx.fillText(dateLabel, w / 2, h - 430);
+      ctx.font = "600 34px Segoe UI, sans-serif";
+      ctx.fillStyle = "#57534e";
+      ctx.fillText(dateLabel, w / 2, 1148 + titleLines.length * 64 + 8);
     }
-    ctx.font = "800 42px Segoe UI, sans-serif";
-    var label = cta || "Garanta Sua Vaga";
-    var pillW = Math.min(w - 140, Math.ceil(ctx.measureText(label).width) + 180);
-    var pillH = 108;
-    var pillX = (w - pillW) / 2;
-    var pillY = h - 360;
-    storyRoundRect(ctx, pillX, pillY, pillW, pillH, 54);
-    ctx.fillStyle = "#fff";
-    ctx.fill();
-    drawStoryLinkIcon(ctx, pillX + 64, pillY + pillH / 2);
-    ctx.fillStyle = "#111";
-    ctx.textAlign = "left";
-    ctx.fillText(label, pillX + 108, pillY + 68);
-    ctx.textAlign = "center";
-    ctx.font = "600 30px Segoe UI, sans-serif";
-    ctx.fillStyle = "#fff";
-    var shown = String(url || "");
-    while (shown.length > 18 && ctx.measureText(shown).width > w - 140) shown = shown.slice(0, -2);
-    if (shown !== String(url || "")) shown = shown.replace(/[/\s]+$/, "") + "…";
-    ctx.fillText(shown, w / 2, h - 160);
+    var btnX = cardX + 48;
+    var btnW = cardW - 96;
+    var btnH = 108;
+    storyButton(ctx, btnX, 1360, btnW, btnH, shareLabel || "Compartilhar", "#fff", "#1c3a2e", "#d6d3d1");
+    storyButton(ctx, btnX, 1490, btnW, btnH, cta || "Garanta Sua Vaga", "#0f766e", "#fff", "");
+    storyButton(ctx, btnX, 1620, btnW, btnH, cartLabel || "Adicionar ao carrinho", "#ccfbf1", "#115e59", "#5eead4");
     return new Promise(function (resolve) {
       canvas.toBlob(
         function (blob) {
@@ -7344,7 +7351,14 @@
       btn.textContent = payload.preparing || payload.storyLabel;
     }
     loadShareImage(payload.imageSrc).then(function (image) {
-      return buildStoryFile(image, payload.destino, payload.dateLabel, payload.cta, payload.url);
+      return buildStoryFile(
+        image,
+        payload.destino,
+        payload.dateLabel,
+        payload.cta,
+        payload.shareLabel,
+        payload.cartLabel,
+      );
     }).then(function (file) {
       if (sheet._gcvStoryToken !== token) return;
       sheet._gcvStoryFile = file;
@@ -7365,9 +7379,11 @@
     var payload = sheet && sheet._gcvShare;
     if (!payload) return;
     if (btn && btn.getAttribute("aria-busy") === "true") return;
-    copyShareText(payload.url);
+    copyShareText(payload.shareOpenUrl || payload.url);
     var file = sheet._gcvStoryFile;
-    var shareData = file ? { files: [file], title: payload.cta, text: payload.cta + "\n" + payload.url } : null;
+    var shareData = file
+      ? { files: [file], title: payload.shareLabel || payload.cta, text: (payload.shareLabel || "Compartilhar") + "\n" + (payload.shareOpenUrl || payload.url) }
+      : null;
     var canFile = !!(shareData && navigator.canShare && navigator.canShare(shareData) && shareIsMobile());
     if (canFile) {
       navigator.share(shareData).then(
@@ -7507,6 +7523,9 @@
       dateLabel: dateLabel,
       imageSrc: imageSrc,
       cta: s.shareIgCta || "Garanta Sua Vaga",
+      shareLabel: s.shareBtn || "Compartilhar",
+      cartLabel: s.bookAddCart || "Adicionar ao carrinho",
+      shareOpenUrl: url + (url.indexOf("?") >= 0 ? "&" : "?") + "compartilhar=1",
       storyLabel: s.shareIgStory || "Instagram Stories",
       preparing: s.shareIgPreparing || "",
       saved: s.shareIgSaved || "",
@@ -7547,6 +7566,19 @@
       return;
     }
     if (id && typeof window.GcvSaidaPopup.open === "function") window.GcvSaidaPopup.open(id);
+    if (queryParam("compartilhar") === "1") {
+      var tries = 0;
+      var timer = window.setInterval(function () {
+        tries += 1;
+        var shareBtn = document.querySelector("#gcv-saida-modal [data-gcv-exc-share]");
+        if (shareBtn) {
+          window.clearInterval(timer);
+          openShareSheet(shareBtn);
+          return;
+        }
+        if (tries > 50) window.clearInterval(timer);
+      }, 200);
+    }
   }
 
   function initBookingControls() {
