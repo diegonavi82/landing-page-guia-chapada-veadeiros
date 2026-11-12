@@ -7613,6 +7613,21 @@ body:has(.gcv-share-sheet:not([hidden])) {
   color: #0e7490;
 }
 
+.gcv-share-sheet__btn--ig-story,
+.gcv-share-sheet__btn--ig-direct {
+  background: linear-gradient(90deg, #f9ce34 0%, #ee2a7b 52%, #6228d7 100%);
+  color: #fff;
+}
+
+.gcv-share-sheet__btn--ig-direct {
+  background: linear-gradient(90deg, #833ab4 0%, #fd1d1d 55%, #fcb045 100%);
+}
+
+.gcv-share-sheet__btn--ig-story[aria-busy="true"] {
+  opacity: 0.72;
+  cursor: progress;
+}
+
 .gcv-share-sheet__btn--copy {
   border: 1px solid #d6d3d1;
   background: #fff;

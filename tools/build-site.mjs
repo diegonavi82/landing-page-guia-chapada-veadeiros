@@ -219,7 +219,7 @@ function publicJsSrc(file, pageOutRelPath) {
   let name = String(file || "").trim().replace(/^\//, "");
   if (name === "site.js" || name === "gcv-hero-slider.js") name = name.replace(/\.js$/i, ".min.js");
   let q = BUILD_ASSET_QUERY;
-  if (name === "excursoes-carousel.js") q = "?v=1.1.131";
+  if (name === "excursoes-carousel.js") q = "?v=1.1.132";
   if (name === "gcv-exc-cart.js") q = "?v=1.1.78";
   const prefixSegment = sitePathSegmentsTrimmed();
   if (prefixSegment) {
@@ -238,7 +238,7 @@ function publicCssSrc(file, pageOutRelPath) {
   let name = String(file || "").trim().replace(/^\//, "");
   if (name.endsWith(".css") && !name.endsWith(".min.css")) name = name.replace(/\.css$/i, ".min.css");
   let q = BUILD_ASSET_QUERY;
-  if (name === "excursoes.min.css" || name === "excursoes.css") q = "?v=1.1.128";
+  if (name === "excursoes.min.css" || name === "excursoes.css") q = "?v=1.1.129";
   const ap = pageOutRelPath != null ? assetPrefix(pageOutRelPath) : "./";
   return `${ap}assets/css/${name}${q}`;
 }

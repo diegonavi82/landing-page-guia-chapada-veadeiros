@@ -304,6 +304,11 @@
       shareSms: "SMS",
       shareEmail: "E-mail",
       shareTelegram: "Telegram",
+      shareIgStory: "Instagram Stories",
+      shareIgDirect: "Instagram Direct",
+      shareIgCta: "Garanta Sua Vaga",
+      shareIgPreparing: "Preparando o story…",
+      shareIgSaved: "Imagem do story baixada",
       shareCopy: "Copiar link",
       shareCopied: "Link copiado",
       shareClose: "Fechar",
@@ -523,6 +528,11 @@
       shareSms: "SMS",
       shareEmail: "Email",
       shareTelegram: "Telegram",
+      shareIgStory: "Instagram Stories",
+      shareIgDirect: "Instagram Direct",
+      shareIgCta: "Save your spot",
+      shareIgPreparing: "Preparing the story…",
+      shareIgSaved: "Story image downloaded",
       shareCopy: "Copy link",
       shareCopied: "Link copied",
       shareClose: "Close",
@@ -742,6 +752,11 @@
       shareSms: "SMS",
       shareEmail: "Correo",
       shareTelegram: "Telegram",
+      shareIgStory: "Instagram Stories",
+      shareIgDirect: "Instagram Direct",
+      shareIgCta: "Asegura tu lugar",
+      shareIgPreparing: "Preparando la historia…",
+      shareIgSaved: "Imagen de la historia descargada",
       shareCopy: "Copiar enlace",
       shareCopied: "Enlace copiado",
       shareClose: "Cerrar",
@@ -7159,6 +7174,244 @@
     }, 1600);
   }
 
+  function shareIsMobile() {
+    return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || "");
+  }
+
+  function loadShareImage(src) {
+    return new Promise(function (resolve) {
+      if (!src) {
+        resolve(null);
+        return;
+      }
+      var img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = function () {
+        resolve(img);
+      };
+      img.onerror = function () {
+        resolve(null);
+      };
+      img.src = src;
+    });
+  }
+
+  function storyRoundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  function storyLines(ctx, text, maxWidth, maxLines) {
+    var words = String(text || "").trim().split(/\s+/);
+    var lines = [];
+    var line = "";
+    words.forEach(function (word) {
+      if (!word) return;
+      var test = line ? line + " " + word : word;
+      if (line && ctx.measureText(test).width > maxWidth) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = test;
+      }
+    });
+    if (line) lines.push(line);
+    if (lines.length > maxLines) {
+      lines = lines.slice(0, maxLines);
+      var last = lines[maxLines - 1];
+      while (last.length > 1 && ctx.measureText(last + "…").width > maxWidth) last = last.slice(0, -1);
+      lines[maxLines - 1] = last.replace(/[.\s]+$/, "") + "…";
+    }
+    return lines;
+  }
+
+  function drawStoryLinkIcon(ctx, x, y) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.strokeStyle = "#111";
+    ctx.lineWidth = 7;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.arc(-12, -8, 14, 0.4, Math.PI * 1.35);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(12, 8, 14, Math.PI + 0.4, Math.PI * 2.35);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function buildStoryFile(image, destino, dateLabel, cta, url) {
+    var w = 1080;
+    var h = 1920;
+    var canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    var ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#143528";
+    ctx.fillRect(0, 0, w, h);
+    if (image && image.width && image.height) {
+      var scale = Math.max(w / image.width, h / image.height);
+      var dw = image.width * scale;
+      var dh = image.height * scale;
+      ctx.drawImage(image, (w - dw) / 2, (h - dh) / 2, dw, dh);
+    }
+    var top = ctx.createLinearGradient(0, 0, 0, 280);
+    top.addColorStop(0, "rgba(0,0,0,0.45)");
+    top.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = top;
+    ctx.fillRect(0, 0, w, 280);
+    var bottom = ctx.createLinearGradient(0, h * 0.42, 0, h);
+    bottom.addColorStop(0, "rgba(0,0,0,0)");
+    bottom.addColorStop(0.55, "rgba(0,0,0,0.35)");
+    bottom.addColorStop(1, "rgba(0,0,0,0.78)");
+    ctx.fillStyle = bottom;
+    ctx.fillRect(0, h * 0.42, w, h * 0.58);
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#fff";
+    ctx.font = "700 34px Segoe UI, sans-serif";
+    ctx.fillText("Guia Chapada Veadeiros", w / 2, 120);
+    ctx.font = "800 68px Segoe UI, sans-serif";
+    var titleLines = storyLines(ctx, destino || "Chapada dos Veadeiros", w - 140, 3);
+    var titleY = h - 560 - (titleLines.length - 1) * 40;
+    titleLines.forEach(function (ln, i) {
+      ctx.fillText(ln, w / 2, titleY + i * 82);
+    });
+    if (dateLabel) {
+      ctx.font = "600 40px Segoe UI, sans-serif";
+      ctx.fillStyle = "rgba(255,255,255,0.92)";
+      ctx.fillText(dateLabel, w / 2, h - 430);
+    }
+    ctx.font = "800 42px Segoe UI, sans-serif";
+    var label = cta || "Garanta Sua Vaga";
+    var pillW = Math.min(w - 140, Math.ceil(ctx.measureText(label).width) + 180);
+    var pillH = 108;
+    var pillX = (w - pillW) / 2;
+    var pillY = h - 360;
+    storyRoundRect(ctx, pillX, pillY, pillW, pillH, 54);
+    ctx.fillStyle = "#fff";
+    ctx.fill();
+    drawStoryLinkIcon(ctx, pillX + 64, pillY + pillH / 2);
+    ctx.fillStyle = "#111";
+    ctx.textAlign = "left";
+    ctx.fillText(label, pillX + 108, pillY + 68);
+    ctx.textAlign = "center";
+    ctx.font = "600 30px Segoe UI, sans-serif";
+    ctx.fillStyle = "#fff";
+    var shown = String(url || "");
+    while (shown.length > 18 && ctx.measureText(shown).width > w - 140) shown = shown.slice(0, -2);
+    if (shown !== String(url || "")) shown = shown.replace(/[/\s]+$/, "") + "…";
+    ctx.fillText(shown, w / 2, h - 160);
+    return new Promise(function (resolve) {
+      canvas.toBlob(
+        function (blob) {
+          if (!blob) {
+            resolve(null);
+            return;
+          }
+          resolve(new File([blob], "story.jpg", { type: "image/jpeg" }));
+        },
+        "image/jpeg",
+        0.86,
+      );
+    });
+  }
+
+  function downloadShareFile(file) {
+    var a = document.createElement("a");
+    var href = URL.createObjectURL(file);
+    a.href = href;
+    a.download = file.name || "story.jpg";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.setTimeout(function () {
+      URL.revokeObjectURL(href);
+    }, 2500);
+  }
+
+  function prepareShareStory(sheet, payload) {
+    var token = {};
+    sheet._gcvStoryToken = token;
+    sheet._gcvStoryFile = null;
+    var btn = sheet.querySelector("[data-share-ig='story']");
+    if (btn) {
+      btn.setAttribute("aria-busy", "true");
+      btn.textContent = payload.preparing || payload.storyLabel;
+    }
+    loadShareImage(payload.imageSrc).then(function (image) {
+      return buildStoryFile(image, payload.destino, payload.dateLabel, payload.cta, payload.url);
+    }).then(function (file) {
+      if (sheet._gcvStoryToken !== token) return;
+      sheet._gcvStoryFile = file;
+      if (btn) {
+        btn.removeAttribute("aria-busy");
+        btn.textContent = payload.storyLabel || "Instagram Stories";
+      }
+    }).catch(function () {
+      if (sheet._gcvStoryToken !== token) return;
+      if (btn) {
+        btn.removeAttribute("aria-busy");
+        btn.textContent = payload.storyLabel || "Instagram Stories";
+      }
+    });
+  }
+
+  function handoffInstagramStory(sheet, btn) {
+    var payload = sheet && sheet._gcvShare;
+    if (!payload) return;
+    if (btn && btn.getAttribute("aria-busy") === "true") return;
+    copyShareText(payload.url);
+    var file = sheet._gcvStoryFile;
+    var shareData = file ? { files: [file], title: payload.cta, text: payload.cta + "\n" + payload.url } : null;
+    var canFile = !!(shareData && navigator.canShare && navigator.canShare(shareData) && shareIsMobile());
+    if (canFile) {
+      navigator.share(shareData).then(
+        function () {
+          closeShareSheet();
+        },
+        function (err) {
+          if (err && err.name === "AbortError") return;
+          if (file) downloadShareFile(file);
+          if (btn) btn.textContent = payload.saved || payload.storyLabel;
+        },
+      );
+      return;
+    }
+    if (file) downloadShareFile(file);
+    if (btn) btn.textContent = payload.saved || payload.storyLabel;
+  }
+
+  function handoffInstagramDirect(url) {
+    copyShareText(url);
+    if (/Android/i.test(navigator.userAgent || "")) {
+      window.location.href =
+        "intent:#Intent;action=android.intent.action.SEND;type=text/plain;package=com.instagram.android;S.android.intent.extra.TEXT=" +
+        encodeURIComponent(url) +
+        ";S.browser_fallback_url=" +
+        encodeURIComponent("https://www.instagram.com/direct/inbox/") +
+        ";end";
+      return;
+    }
+    if (/iPhone|iPad|iPod/i.test(navigator.userAgent || "") && navigator.share) {
+      navigator.share({ url: url, text: url }).then(
+        function () {
+          closeShareSheet();
+        },
+        function (err) {
+          if (err && err.name === "AbortError") return;
+          window.open("https://www.instagram.com/direct/inbox/", "_blank", "noopener");
+        },
+      );
+      return;
+    }
+    window.open("https://www.instagram.com/direct/inbox/", "_blank", "noopener");
+  }
+
   function ensureShareSheet() {
     var sheet = document.getElementById("gcv-share-sheet");
     if (sheet) return sheet;
@@ -7204,6 +7457,8 @@
     var url = sharePageUrl(locale, cartId);
     var message = shareMessage(s, destino, dateLabel, url);
     var text = shareMessage(s, destino, dateLabel, "");
+    var img = card && card.querySelector(".gcv-excursoes-card__img");
+    var imageSrc = img ? img.currentSrc || img.getAttribute("src") || "" : "";
     var sheet = ensureShareSheet();
     var title = sheet.querySelector(".gcv-share-sheet__title");
     var lead = sheet.querySelector("[data-share-lead]");
@@ -7231,6 +7486,12 @@
         s.shareTelegram || "Telegram",
         true,
       ) +
+      '<button type="button" class="gcv-share-sheet__btn gcv-share-sheet__btn--ig-story" data-share-ig="story" aria-busy="true">' +
+      escapeHtml(s.shareIgPreparing || s.shareIgStory || "Instagram Stories") +
+      "</button>" +
+      '<button type="button" class="gcv-share-sheet__btn gcv-share-sheet__btn--ig-direct" data-share-ig="direct">' +
+      escapeHtml(s.shareIgDirect || "Instagram Direct") +
+      "</button>" +
       '<button type="button" class="gcv-share-sheet__btn gcv-share-sheet__btn--copy" data-share-copy>' +
       escapeHtml(s.shareCopy || "Copiar link") +
       "</button>";
@@ -7242,8 +7503,16 @@
       title: s.shareSubject || s.shareTitle || "",
       copied: s.shareCopied || "Link copiado",
       copy: s.shareCopy || "Copiar link",
+      destino: destino,
+      dateLabel: dateLabel,
+      imageSrc: imageSrc,
+      cta: s.shareIgCta || "Garanta Sua Vaga",
+      storyLabel: s.shareIgStory || "Instagram Stories",
+      preparing: s.shareIgPreparing || "",
+      saved: s.shareIgSaved || "",
     };
     sheet.hidden = false;
+    prepareShareStory(sheet, sheet._gcvShare);
     if (closeBtn && typeof closeBtn.focus === "function") closeBtn.focus();
   }
 
@@ -7326,6 +7595,22 @@
         e.preventDefault();
         e.stopPropagation();
         openShareSheet(shareBtn);
+        return;
+      }
+
+      var igBtn = e.target.closest("[data-share-ig]");
+      if (igBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        var igSheet = document.getElementById("gcv-share-sheet");
+        var igPayload = igSheet && igSheet._gcvShare;
+        if (!igPayload) return;
+        if (igBtn.getAttribute("data-share-ig") === "direct") {
+          handoffInstagramDirect(igPayload.url);
+          if (!/iPhone|iPad|iPod/i.test(navigator.userAgent || "") || !navigator.share) closeShareSheet();
+          return;
+        }
+        handoffInstagramStory(igSheet, igBtn);
         return;
       }
 
