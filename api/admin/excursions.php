@@ -758,7 +758,13 @@ if ($method === 'GET') {
             echo json_encode(['ok' => false, 'error' => 'Excursão não encontrada']);
             exit;
         }
-        echo json_encode(['ok' => true, 'data' => gcv_excursion_enrich($row)]);
+        $enriched = gcv_excursion_enrich($row);
+        require_once __DIR__ . '/../helpers/excursion_reservations.php';
+        $enriched['reservations'] = gcv_excursion_linked_reservations(
+            (int)$enriched['id'],
+            (string)($enriched['notes_pt'] ?? $row['notes_pt'] ?? '')
+        );
+        echo json_encode(['ok' => true, 'data' => $enriched]);
         exit;
     }
     $rows = db()->query(
@@ -991,6 +997,29 @@ if ($method === 'PUT' || $method === 'PATCH') {
     if ($id <= 0) {
         http_response_code(400);
         echo json_encode(['ok' => false, 'error' => 'id obrigatório']);
+        exit;
+    }
+    $linkAction = strtolower(trim((string)($body['action'] ?? '')));
+    if ($linkAction === 'link_reservation' || $linkAction === 'unlink_reservation') {
+        require_once __DIR__ . '/../helpers/excursion_reservations.php';
+        try {
+            $list = $linkAction === 'link_reservation'
+                ? gcv_excursion_link_reservation($id, (string)($body['reservation_id'] ?? ''))
+                : gcv_excursion_unlink_reservation($id, (string)($body['reservation_id'] ?? ''));
+            echo json_encode([
+                'ok' => true,
+                'data' => [
+                    'message' => $linkAction === 'link_reservation' ? 'Reserva vinculada. A inscrição entra no site.' : 'Reserva desvinculada.',
+                    'reservations' => $list,
+                ],
+            ]);
+        } catch (InvalidArgumentException $e) {
+            http_response_code(400);
+            echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+        } catch (Throwable $e) {
+            http_response_code(400);
+            echo json_encode(['ok' => false, 'error' => 'Não foi possível atualizar a reserva.']);
+        }
         exit;
     }
     $err = gcv_excursion_validate($body, false);

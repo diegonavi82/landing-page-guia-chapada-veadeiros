@@ -105,11 +105,11 @@
     return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
   }
 
-  var TIME_MINUTES = [15, 30, 45];
+  var TIME_MINUTES = [0, 10, 20, 30, 40, 50];
 
   function snapTimeMinutes(m) {
     var n = parseInt(m, 10);
-    if (!Number.isFinite(n) || n < 0) n = 15;
+    if (!Number.isFinite(n) || n < 0) n = 0;
     var best = TIME_MINUTES[0];
     var dist = 99;
     TIME_MINUTES.forEach(function (mm) {
@@ -123,7 +123,7 @@
   }
 
   function timeSelectHtml(hourId, minId, selectedHHmm) {
-    var raw = String(selectedHHmm || '10:15');
+    var raw = String(selectedHHmm || '10:00');
     var parts = raw.split(':');
     var h = parseInt(parts[0], 10);
     var m = snapTimeMinutes(parts[1]);
@@ -3625,6 +3625,110 @@
         });
       }
 
+      function reservationBoxHtml(prefix) {
+        var add = isAdmin
+          ? (
+            '<div class="gcv-res-link__add">' +
+            '<input class="gcv-dash-input" id="' + prefix + 'res-code" type="text" maxlength="32" placeholder="GCV-XXXX" autocomplete="off" />' +
+            '<button type="button" class="gcv-dash-btn gcv-dash-btn--primary" id="' + prefix + 'res-add">Vincular</button>' +
+            '</div>' +
+            '<p class="gcv-cms-muted gcv-res-link__hint">A reserva entra nesta saída. A inscrição passa a contar no site.</p>'
+          )
+          : '<p class="gcv-cms-muted gcv-res-link__hint">As reservas deste passeio aparecem aqui.</p>';
+        return (
+          '<div class="gcv-res-link" id="' + prefix + 'res">' +
+          '<p class="gcv-res-link__title">Reservas vinculadas</p>' +
+          '<ul class="gcv-res-link__list" id="' + prefix + 'res-list"></ul>' +
+          add +
+          '</div>'
+        );
+      }
+
+      function paintReservations(prefix, rows) {
+        var list = document.getElementById(prefix + 'res-list');
+        if (!list) return;
+        var items = Array.isArray(rows) ? rows : [];
+        if (!items.length) {
+          list.innerHTML = '<li class="gcv-res-link__empty">Nenhuma reserva vinculada.</li>';
+          return;
+        }
+        list.innerHTML = items.map(function (r) {
+          var code = String((r && r.reservation_id) || '');
+          var linked = !r || r.linked !== false;
+          var people = parseFiniteInt(r && r.spots, 1);
+          var who = esc((r && r.client_name) || '—');
+          var status = esc((r && r.status_label) || '');
+          var action = '';
+          if (isAdmin && code) {
+            action = linked
+              ? '<button type="button" class="gcv-dash-btn gcv-dash-btn--sm" data-unlink-res="' + esc(code) + '">Desvincular</button>'
+              : '<button type="button" class="gcv-dash-btn gcv-dash-btn--sm gcv-dash-btn--primary" data-link-res="' + esc(code) + '">Vincular</button>';
+          }
+          return (
+            '<li class="gcv-res-link__item">' +
+            '<div><span class="gcv-res-link__code">' + esc(code) + '</span>' +
+            '<span class="gcv-res-link__meta">' + who + ' · ' + people + (people === 1 ? ' pessoa' : ' pessoas') +
+            (status ? ' · ' + status : '') + '</span></div>' +
+            action +
+            '</li>'
+          );
+        }).join('');
+      }
+
+      function sendReservationLink(prefix, code, unlink) {
+        var editId = parseInt(form.getAttribute('data-edit-id') || '0', 10);
+        var clean = String(code || '').trim().toUpperCase();
+        if (!clean) return;
+        if (editId <= 0) {
+          if (typeof global.gcvAlert === 'function') global.gcvAlert('Salve o passeio antes de vincular uma reserva.');
+          else window.alert('Salve o passeio antes de vincular uma reserva.');
+          return;
+        }
+        sendJson('PUT', '/api/admin/excursions.php', {
+          id: editId,
+          action: unlink ? 'unlink_reservation' : 'link_reservation',
+          reservation_id: clean
+        }, function (e, r) {
+          if (!r || !r.ok) {
+            var msg = (r && r.error) || 'Não foi possível atualizar a reserva.';
+            if (typeof global.gcvAlert === 'function') global.gcvAlert(msg);
+            else window.alert(msg);
+            return;
+          }
+          paintReservations(prefix, (r.data && r.data.reservations) || []);
+          var input = document.getElementById(prefix + 'res-code');
+          if (input && !unlink) input.value = '';
+        });
+      }
+
+      function bindReservationBox(prefix) {
+        paintReservations(prefix, []);
+        var box = document.getElementById(prefix + 'res');
+        if (!box || box.getAttribute('data-bound') === '1') return;
+        box.setAttribute('data-bound', '1');
+        var add = document.getElementById(prefix + 'res-add');
+        var input = document.getElementById(prefix + 'res-code');
+        if (add) {
+          add.onclick = function () {
+            sendReservationLink(prefix, input ? input.value : '', false);
+          };
+        }
+        if (input) {
+          input.addEventListener('keydown', function (ev) {
+            if (ev.key === 'Enter') {
+              ev.preventDefault();
+              sendReservationLink(prefix, input.value, false);
+            }
+          });
+        }
+        box.addEventListener('click', function (ev) {
+          var link = ev.target && ev.target.closest ? ev.target.closest('[data-link-res]') : null;
+          var unlink = ev.target && ev.target.closest ? ev.target.closest('[data-unlink-res]') : null;
+          if (link) sendReservationLink(prefix, link.getAttribute('data-link-res'), false);
+          if (unlink) sendReservationLink(prefix, unlink.getAttribute('data-unlink-res'), true);
+        });
+      }
+
       function tourBlockHtml(idx) {
         var p = 'ge-' + idx + '-';
         return (
@@ -3639,7 +3743,7 @@
           '<div class="gcv-dash-field-row">' +
           '<div class="gcv-dash-field"><label class="gcv-dash-label">Data *</label><input class="gcv-dash-input" id="' + p + 'date" type="date" required /></div>' +
           '<div class="gcv-dash-field"><label class="gcv-dash-label">Horário de saída *</label>' +
-          timeSelectHtml(p + 'time-h', p + 'time-m', '10:15') + '</div>' +
+          timeSelectHtml(p + 'time-h', p + 'time-m', '10:00') + '</div>' +
           '<div class="gcv-dash-field"><label class="gcv-dash-label">Cidade de saída *</label>' +
           '<select class="gcv-dash-select" id="' + p + 'city" required>' + cityOptionsHtml() + '</select></div>' +
           '</div>' +
@@ -3682,8 +3786,7 @@
           '<div class="gcv-dash-field"><label class="gcv-dash-label" for="' + p + 'max-t">Vagas com transporte (máximo 4)</label>' +
           transportMaxSelectHtml(p + 'max-t', DEFAULT_MAX_TRANSPORT) +
           '</div></div></div></div>' +
-          '<div class="gcv-dash-field" style="margin-top:0.75rem;"><label class="gcv-dash-label">Observações</label>' +
-          '<textarea class="gcv-dash-textarea" id="' + p + 'notes" maxlength="2000" rows="3"></textarea></div>' +
+          reservationBoxHtml(p) +
           '</article>'
         );
       }
@@ -4068,6 +4171,7 @@
             rm.onclick = function () { removeTourBlock(idx); };
           }
         }
+        bindReservationBox(p);
         if (!activeTourIdx) selectTourTab(idx);
         refreshTourTabs();
         syncSequentialDates();
@@ -4110,16 +4214,23 @@
         var meetingId = (el('meeting').value || '').trim();
         var meetingRow = global.GcvMeetingPoints ? global.GcvMeetingPoints.byId(meetingId) : null;
         var meetingPoint = meetingRow ? (meetingRow.label.pt || meetingRow.label[Object.keys(meetingRow.label)[0]]) : meetingId;
-        var net = parseFloat(el('net').value);
+        var netRaw = String(el('net').value || '').trim();
+        var net = parseFloat(netRaw);
+        var editing = parseInt(form.getAttribute('data-edit-id') || '0', 10) > 0;
         var label = 'Passeio ' + n;
         if (!attrId) return { error: label + ': selecione um atrativo da lista.' };
         if (!dateIso) return { error: label + ': informe a data.' };
         if (!time) return { error: label + ': informe o horário de saída.' };
         if (!cityId) return { error: label + ': selecione a cidade de saída.' };
-        if (!meetingId || !meetingRow) return { error: label + ': selecione o ponto de encontro da lista.' };
-        if (!net || !isFinite(net) || net < netMin || net > netMaxForAttractionId(attrId, false)) {
+        if (!editing && (!meetingId || !meetingRow)) return { error: label + ': selecione o ponto de encontro da lista.' };
+        if (editing && meetingId && !meetingRow) return { error: label + ': selecione o ponto de encontro da lista.' };
+        if (!editing && (!net || !isFinite(net) || net < netMin || net > netMaxForAttractionId(attrId, false))) {
           var thisMax = netMaxForAttractionId(attrId, false);
           return { error: label + ': valor a receber deve ser entre R$ ' + netMin + ' e R$ ' + thisMax + '.' };
+        }
+        if (editing && netRaw !== '' && (!net || !isFinite(net) || net < netMin || net > netMaxForAttractionId(attrId, false))) {
+          var editMax = netMaxForAttractionId(attrId, false);
+          return { error: label + ': valor a receber deve ser entre R$ ' + netMin + ' e R$ ' + editMax + '.' };
         }
         var meetingLat = (el('meeting-lat').value || '').trim();
         var meetingLng = (el('meeting-lng').value || '').trim();
@@ -4136,23 +4247,30 @@
           return { error: label + ': vagas devem caber as pessoas confirmadas por fora e o quórum das novas inscrições.' };
         }
         var withTransport = !!(el('transport') && el('transport').checked);
+        var keepTransport = editing && pendingEditExcursion && offersAgendaTransport(pendingEditExcursion) === withTransport;
         var payload = {
             attraction_id: attrId,
             date_iso: dateIso,
             departure_time: time,
             departure_city_id: cityId,
-            meeting_point: meetingPoint,
-            meeting_point_place_id: meetingId || ((el('meeting-place').value || '').trim() || null),
-            meeting_point_lat: meetingLat !== '' ? meetingLat : null,
-            meeting_point_lng: meetingLng !== '' ? meetingLng : null,
-            guide_net_cents: Math.round(net * 100),
             quorum: quorum,
             preconfirmed_people: preconfirmed,
             max_people: maxPeople,
-            include_transport: withTransport,
-            offer_transport: withTransport,
-            notes_pt: (el('notes').value || '').trim(),
+            forming: !confirmed,
         };
+        if (!keepTransport) {
+          payload.include_transport = withTransport;
+          payload.offer_transport = withTransport;
+        }
+        if (meetingId && meetingRow) {
+          payload.meeting_point = meetingPoint;
+          payload.meeting_point_place_id = meetingId || ((el('meeting-place').value || '').trim() || null);
+          payload.meeting_point_lat = meetingLat !== '' ? meetingLat : null;
+          payload.meeting_point_lng = meetingLng !== '' ? meetingLng : null;
+        }
+        if (!editing || netRaw !== '') {
+          payload.guide_net_cents = Math.round(net * 100);
+        }
         if (withTransport) {
           var netT = parseFloat(el('net-t') ? el('net-t').value : '');
           var maxTCap = netMaxForAttractionId(attrId, true);
@@ -4217,12 +4335,18 @@
           }
           var cityId = parseInt(el('city') && el('city').value, 10) || 0;
           if (!cityId) return issue(el('city'), 'Selecione a cidade de saída.');
-          if (!(el('meeting') && (el('meeting').value || '').trim())) {
+          var editing = parseInt(form.getAttribute('data-edit-id') || '0', 10) > 0;
+          var meetingVal = el('meeting') && (el('meeting').value || '').trim();
+          if (!editing && !meetingVal) {
             return issue(el('meeting'), 'Selecione o ponto de encontro da lista.');
           }
-          var net = parseFloat(el('net') && el('net').value);
+          var netRaw = el('net') ? String(el('net').value || '').trim() : '';
+          var net = parseFloat(netRaw);
           var maxNet = netMaxForAttractionId(attrId, false);
-          if (!net || !isFinite(net) || net < netMin || net > maxNet) {
+          if (!editing && (!net || !isFinite(net) || net < netMin || net > maxNet)) {
+            return issue(el('net'), 'Valor a receber deve ser entre R$ ' + netMin + ' e R$ ' + maxNet + '.');
+          }
+          if (editing && netRaw !== '' && (!net || !isFinite(net) || net < netMin || net > maxNet)) {
             return issue(el('net'), 'Valor a receber deve ser entre R$ ' + netMin + ' e R$ ' + maxNet + '.');
           }
           var teto = tetoPessoasAtrativos([attractionById(attrId)]);
@@ -4686,6 +4810,7 @@
           el('quorum').value = String(e.quorum);
         }
         if (el('notes')) el('notes').value = e.notes_pt || '';
+        paintReservations(p, e.reservations || []);
         var t = el('transport');
         if (t) {
           t.checked = offersAgendaTransport(e);
