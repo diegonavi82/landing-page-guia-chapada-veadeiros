@@ -396,9 +396,116 @@ function gcv_referral_message(string $name, string $link, ?string $from, string 
     return $who . ' te convidou para a Chapada dos Veadeiros. Crie sua conta com e-mail e senha e confirme o e-mail: ' . $link;
 }
 
+function gcv_referral_digits(string $raw): string
+{
+    $digits = preg_replace('/\D+/', '', $raw) ?? '';
+    if (str_starts_with($digits, '00')) {
+        $digits = substr($digits, 2);
+    }
+    return $digits;
+}
+
+/** Sem DDI 55 e sem o 9 do celular, para o mesmo número bater em qualquer formato. */
+function gcv_referral_phone_key(string $raw): string
+{
+    $digits = gcv_referral_digits($raw);
+    if ($digits === '') {
+        return '';
+    }
+    if (str_starts_with($digits, '55') && strlen($digits) >= 12) {
+        $digits = substr($digits, 2);
+    }
+    if (strlen($digits) === 11 && ($digits[2] ?? '') === '9') {
+        $digits = substr($digits, 0, 2) . substr($digits, 3);
+    }
+    return $digits;
+}
+
+function gcv_referral_phones_same(string $a, string $b): bool
+{
+    $da = gcv_referral_digits($a);
+    $db = gcv_referral_digits($b);
+    if ($da === '' || $db === '') {
+        return false;
+    }
+    if ($da === $db) {
+        return true;
+    }
+    $ka = gcv_referral_phone_key($da);
+    $kb = gcv_referral_phone_key($db);
+    if ($ka !== '' && $ka === $kb && strlen($ka) >= 8) {
+        return true;
+    }
+    $short = strlen($da) < strlen($db) ? $da : $db;
+    $long = $short === $da ? $db : $da;
+    return strlen($short) >= 10 && str_ends_with($long, $short);
+}
+
+/** @return list<string> */
+function gcv_referral_locked_phones(): array
+{
+    $out = [];
+    try {
+        foreach (db()->query("SELECT phone FROM gcv_referrals WHERE phone IS NOT NULL AND phone <> ''")->fetchAll(PDO::FETCH_COLUMN) ?: [] as $phone) {
+            $out[] = (string)$phone;
+        }
+    } catch (Throwable $e) {
+        error_log('referral lock phones: ' . $e->getMessage());
+    }
+    $sqls = [
+        "SELECT p.phone FROM gcv_referrals r INNER JOIN gcv_client_profiles p ON p.user_id IN (r.referred_user_id, r.claim_user_id) WHERE p.phone IS NOT NULL AND p.phone <> ''",
+        "SELECT p.phone FROM gcv_referrals r INNER JOIN gcv_guides p ON p.user_id IN (r.referred_user_id, r.claim_user_id) WHERE p.phone IS NOT NULL AND p.phone <> ''",
+    ];
+    foreach ($sqls as $sql) {
+        try {
+            foreach (db()->query($sql)->fetchAll(PDO::FETCH_COLUMN) ?: [] as $phone) {
+                $out[] = (string)$phone;
+            }
+        } catch (Throwable $e) {
+            error_log('referral lock profile phone: ' . $e->getMessage());
+        }
+    }
+    return $out;
+}
+
+function gcv_referral_phone_taken(string $phone): bool
+{
+    foreach (gcv_referral_locked_phones() as $existing) {
+        if (gcv_referral_phones_same($phone, $existing)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function gcv_referral_email_taken(string $email): bool
+{
+    $email = strtolower(trim($email));
+    if ($email === '') {
+        return false;
+    }
+    try {
+        $st = db()->prepare(
+            "SELECT r.id
+             FROM gcv_referrals r
+             LEFT JOIN gcv_users u ON u.id = r.referred_user_id OR u.id = r.claim_user_id
+             WHERE LOWER(TRIM(IFNULL(r.email, ''))) = ?
+                OR LOWER(TRIM(IFNULL(u.email, ''))) = ?
+             LIMIT 1"
+        );
+        $st->execute([$email, $email]);
+        return (bool)$st->fetch();
+    } catch (Throwable $e) {
+        error_log('referral email taken: ' . $e->getMessage());
+        $st = db()->prepare('SELECT id FROM gcv_referrals WHERE LOWER(TRIM(email)) = ? LIMIT 1');
+        $st->execute([$email]);
+        return (bool)$st->fetch();
+    }
+}
+
 /**
  * Convite por telefone (DDI + número, como no perfil) ou por e-mail.
- * Um convite vai para um contato só.
+ * Um convite vai para um contato só. Telefone ou e-mail já indicado não entra de novo.
  *
  * @return array<string,mixed>
  */
@@ -452,9 +559,7 @@ function gcv_referral_create(
         if (gcv_referral_phone_owner($phone) > 0) {
             throw new InvalidArgumentException(gcv_referral_error($lang, 'taken_phone'));
         }
-        $dup = db()->prepare('SELECT id FROM gcv_referrals WHERE phone = ? LIMIT 1');
-        $dup->execute([$phone]);
-        if ($dup->fetch()) {
+        if (gcv_referral_phone_taken($phone)) {
             throw new InvalidArgumentException(gcv_referral_error($lang, 'dup_phone'));
         }
     }
@@ -468,9 +573,7 @@ function gcv_referral_create(
         if ($taken->fetch()) {
             throw new InvalidArgumentException(gcv_referral_error($lang, 'taken_email'));
         }
-        $dupMail = db()->prepare('SELECT id FROM gcv_referrals WHERE LOWER(email) = ? LIMIT 1');
-        $dupMail->execute([$email]);
-        if ($dupMail->fetch()) {
+        if (gcv_referral_email_taken($email)) {
             throw new InvalidArgumentException(gcv_referral_error($lang, 'dup_email'));
         }
     }
@@ -478,10 +581,21 @@ function gcv_referral_create(
     [$from, $to] = gcv_referral_dates($dateFrom, $lang);
     $code = gcv_referral_new_code();
     $cents = gcv_referral_cashback_cents($role);
-    db()->prepare(
-        'INSERT INTO gcv_referrals (code, referrer_user_id, referrer_role, phone, email, date_from, date_to, cashback_cents, status)
-         VALUES (?,?,?,?,?,?,?,?,\'sent\')'
-    )->execute([$code, $userId, $role, $phone !== '' ? $phone : null, $email !== '' ? $email : null, $from, $to, $cents]);
+    try {
+        db()->prepare(
+            'INSERT INTO gcv_referrals (code, referrer_user_id, referrer_role, phone, email, date_from, date_to, cashback_cents, status)
+             VALUES (?,?,?,?,?,?,?,?,\'sent\')'
+        )->execute([$code, $userId, $role, $phone !== '' ? $phone : null, $email !== '' ? $email : null, $from, $to, $cents]);
+    } catch (PDOException $e) {
+        $detail = $e->getMessage();
+        if (str_contains($detail, 'uq_ref_phone')) {
+            throw new InvalidArgumentException(gcv_referral_error($lang, 'dup_phone'));
+        }
+        if (str_contains($detail, 'uq_ref_email')) {
+            throw new InvalidArgumentException(gcv_referral_error($lang, 'dup_email'));
+        }
+        throw $e;
+    }
     $link = gcv_referral_public_link($code, $from, $to, $lang);
     $text = gcv_referral_message((string)($user['name'] ?? ''), $link, $from, $lang);
     $sent = false;
