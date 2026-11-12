@@ -2659,8 +2659,8 @@
       ".gcv-excursoes-card__book-total-pix{font-size:0.68rem;font-weight:700;line-height:1;color:#64748b;text-transform:none;letter-spacing:0;text-align:center}" +
       ".gcv-excursoes-card__price-go{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;color:#2563eb;font-size:1.4rem}" +
       ".gcv-excursoes-card__book-total .gcv-excursoes-card__price,.gcv-excursoes-card--pendente .gcv-excursoes-card__book-total .gcv-excursoes-card__price{color:#2563eb!important;align-self:center;flex-shrink:0;max-width:none;line-height:1;white-space:nowrap;font-size:1.4rem}" +
-      ".gcv-excursoes-card__cart-add{background:#14b8a6;border-color:#0f766e;color:#fff}" +
-      ".gcv-excursoes-card__cart-add:hover{background:#0d9488;color:#fff}" +
+      ".gcv-excursoes-card__cart-add{background:#ccfbf1;border-color:#5eead4;color:#115e59}" +
+      ".gcv-excursoes-card__cart-add:hover{background:#99f6e4;color:#115e59}" +
       ".gcv-excursoes-card__cart-add--added{background:#0f766e;border-color:#0f766e;color:#fff}" +
       ".gcv-excursoes-card__cart-add--added:hover{background:#115e59;color:#fff}" +
       ".gcv-excursoes-card__book{container-type:inline-size}" +

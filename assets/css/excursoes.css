@@ -2269,13 +2269,14 @@
 }
 
 .gcv-excursoes-card__cart-add {
-  border: 1px solid #0f766e;
-  background: #14b8a6;
-  color: #fff;
+  border: 1px solid #5eead4;
+  background: #ccfbf1;
+  color: #115e59;
 }
 
 .gcv-excursoes-card__cart-add:hover {
-  background: #0d9488;
+  background: #99f6e4;
+  color: #115e59;
 }
 
 .gcv-excursoes-card__cart-add--added {
